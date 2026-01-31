@@ -17,7 +17,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-class EntrantServiceImpl implements EntrantService {
+class DefaultEntrantService implements EntrantService {
 
     private final EntrantRepository entrantRepository;
     private final EntryCreditRepository creditRepository;

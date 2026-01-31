@@ -14,7 +14,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-class PendingOrderServiceImpl implements PendingOrderService {
+class DefaultPendingOrderService implements PendingOrderService {
 
     private final PendingOrderRepository repository;
 

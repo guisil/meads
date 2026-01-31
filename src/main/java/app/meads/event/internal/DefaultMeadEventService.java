@@ -14,7 +14,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-class MeadEventServiceImpl implements MeadEventService {
+class DefaultMeadEventService implements MeadEventService {
 
     private final MeadEventRepository eventRepository;
     private final CompetitionRepository competitionRepository;
