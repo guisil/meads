@@ -50,7 +50,8 @@ public class EntrantListView extends VerticalLayout {
 
         var addButton = new Button("Add Entrant", VaadinIcon.PLUS.create());
         addButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        addButton.addClickListener(e -> getUI().ifPresent(ui -> ui.navigate(EntrantFormView.class)));
+        addButton.addClickListener(e -> getUI().ifPresent(ui -> ui.navigate(EntrantFormView.class,
+            new RouteParam("id", "new"))));
 
         var toolbar = new HorizontalLayout(searchField, addButton);
         toolbar.setWidthFull();

@@ -20,7 +20,7 @@ import jakarta.annotation.security.PermitAll;
 
 import java.util.UUID;
 
-@Route(value = "admin/entrants/:id?", layout = AdminLayout.class)
+@Route(value = "admin/entrants/form/:id", layout = AdminLayout.class)
 @PageTitle("Entrant | MEADS Admin")
 @PermitAll
 public class EntrantFormView extends VerticalLayout implements BeforeEnterObserver {

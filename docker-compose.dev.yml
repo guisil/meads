@@ -1,0 +1,28 @@
+# Local development dependencies only - NOT for production
+# For automated tests, see Testcontainers configuration in pom.xml
+#
+# Usage:
+#   Start:  docker compose -f docker-compose.dev.yml up -d
+#   Stop:   docker compose -f docker-compose.dev.yml down
+#   Reset:  docker compose -f docker-compose.dev.yml down -v
+
+services:
+  postgres:
+    image: postgres:17
+    container_name: meads-postgres
+    environment:
+      POSTGRES_DB: meads
+      POSTGRES_USER: meads
+      POSTGRES_PASSWORD: meads
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U meads"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
