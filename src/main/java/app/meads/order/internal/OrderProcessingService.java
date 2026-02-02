@@ -75,22 +75,27 @@ public class OrderProcessingService {
     private Entrant findOrCreateEntrant(OrderPayload payload) {
         var customer = payload.customer();
         return entrantService.findEntrantByEmail(customer.email())
-            .orElseGet(() -> {
-                var address = customer.address();
-                var newEntrant = new Entrant(
-                    null,
-                    customer.email(),
-                    customer.name(),
-                    customer.phone(),
-                    address != null ? address.line1() : null,
-                    address != null ? address.line2() : null,
-                    address != null ? address.city() : null,
-                    address != null ? address.stateProvince() : null,
-                    address != null ? address.postalCode() : null,
-                    address != null ? address.country() : null
-                );
-                return entrantService.createEntrant(newEntrant);
-            });
+            .orElseGet(() -> entrantService.createEntrant(buildNewEntrant(customer)));
+    }
+
+    private Entrant buildNewEntrant(OrderPayload.CustomerInfo customer) {
+        var address = customer.address();
+        if (address == null) {
+            return new Entrant(null, customer.email(), customer.name(), customer.phone(),
+                null, null, null, null, null, null);
+        }
+        return new Entrant(
+            null,
+            customer.email(),
+            customer.name(),
+            customer.phone(),
+            address.line1(),
+            address.line2(),
+            address.city(),
+            address.stateProvince(),
+            address.postalCode(),
+            address.country()
+        );
     }
 
     private boolean hasCompetitionExclusivityViolation(UUID entrantId, Competition targetCompetition) {

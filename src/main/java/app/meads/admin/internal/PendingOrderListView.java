@@ -68,26 +68,14 @@ public class PendingOrderListView extends VerticalLayout {
 
         grid.addColumn(PendingOrder::externalOrderId).setHeader("Order ID").setSortable(true).setAutoWidth(true);
         grid.addColumn(PendingOrder::externalSource).setHeader("Source").setSortable(true).setAutoWidth(true);
-        grid.addColumn(order -> {
-            var comp = meadEventService.findCompetitionById(order.competitionId());
-            return comp.map(Competition::name).orElse(order.competitionId().toString());
-        }).setHeader("Competition").setSortable(true).setAutoWidth(true);
-        grid.addColumn(order -> {
-            if (order.entrantId() == null) return "N/A";
-            var entrant = entrantService.findEntrantById(order.entrantId());
-            return entrant.map(e -> e.name() + " (" + e.email() + ")").orElse(order.entrantId().toString());
-        }).setHeader("Entrant").setSortable(true).setAutoWidth(true);
+        grid.addColumn(order -> meadEventService.findCompetitionById(order.competitionId())
+            .map(Competition::name)
+            .orElse(order.competitionId().toString())
+        ).setHeader("Competition").setSortable(true).setAutoWidth(true);
+        grid.addColumn(this::formatEntrant).setHeader("Entrant").setSortable(true).setAutoWidth(true);
         grid.addColumn(PendingOrder::reason).setHeader("Reason").setSortable(true).setAutoWidth(true);
-        grid.addColumn(order -> {
-            var status = order.status();
-            return switch (status) {
-                case "NEEDS_REVIEW" -> "Needs Review";
-                case "RESOLVED" -> "Resolved";
-                case "CANCELLED" -> "Cancelled";
-                default -> status;
-            };
-        }).setHeader("Status").setSortable(true).setAutoWidth(true);
-        grid.addColumn(order -> order.createdAt() != null ? formatter.format(order.createdAt()) : "")
+        grid.addColumn(order -> formatStatus(order.status())).setHeader("Status").setSortable(true).setAutoWidth(true);
+        grid.addColumn(order -> formatTimestamp(order.createdAt()))
             .setHeader("Created").setSortable(true).setAutoWidth(true);
 
         grid.addComponentColumn(order -> {
@@ -152,5 +140,30 @@ public class PendingOrderListView extends VerticalLayout {
         dialog.getFooter().add(cancelButton, actionButton);
 
         dialog.open();
+    }
+
+    private String formatEntrant(PendingOrder order) {
+        if (order.entrantId() == null) {
+            return "N/A";
+        }
+        return entrantService.findEntrantById(order.entrantId())
+            .map(e -> e.name() + " (" + e.email() + ")")
+            .orElse(order.entrantId().toString());
+    }
+
+    private String formatStatus(String status) {
+        return switch (status) {
+            case "NEEDS_REVIEW" -> "Needs Review";
+            case "RESOLVED" -> "Resolved";
+            case "CANCELLED" -> "Cancelled";
+            default -> status;
+        };
+    }
+
+    private String formatTimestamp(java.time.Instant timestamp) {
+        if (timestamp == null) {
+            return "";
+        }
+        return formatter.format(timestamp);
     }
 }

@@ -90,27 +90,32 @@ public class EntryCreditListView extends VerticalLayout implements BeforeEnterOb
         var addButton = new Button("Add Credit", VaadinIcon.PLUS.create());
         addButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         addButton.addClickListener(e -> openAddCreditDialog());
-
-        var toolbar = new HorizontalLayout(addButton);
-        return toolbar;
+        return new HorizontalLayout(addButton);
     }
 
     private void configureGrid() {
         grid.addClassName("credit-grid");
         grid.setSizeFull();
 
-        grid.addColumn(credit -> {
-            var comp = meadEventService.findCompetitionById(credit.competitionId());
-            return comp.map(Competition::name).orElse(credit.competitionId().toString());
-        }).setHeader("Competition").setSortable(true).setAutoWidth(true);
+        grid.addColumn(credit -> meadEventService.findCompetitionById(credit.competitionId())
+            .map(Competition::name)
+            .orElse(credit.competitionId().toString())
+        ).setHeader("Competition").setSortable(true).setAutoWidth(true);
 
         grid.addColumn(EntryCredit::quantity).setHeader("Quantity").setSortable(true).setAutoWidth(true);
         grid.addColumn(EntryCredit::usedCount).setHeader("Used").setSortable(true).setAutoWidth(true);
         grid.addColumn(EntryCredit::availableCredits).setHeader("Available").setSortable(true).setAutoWidth(true);
         grid.addColumn(EntryCredit::status).setHeader("Status").setSortable(true).setAutoWidth(true);
         grid.addColumn(EntryCredit::externalSource).setHeader("Source").setSortable(true).setAutoWidth(true);
-        grid.addColumn(credit -> credit.purchasedAt() != null ? formatter.format(credit.purchasedAt()) : "")
+        grid.addColumn(credit -> formatTimestamp(credit.purchasedAt()))
             .setHeader("Purchased").setSortable(true).setAutoWidth(true);
+    }
+
+    private String formatTimestamp(java.time.Instant timestamp) {
+        if (timestamp == null) {
+            return "";
+        }
+        return formatter.format(timestamp);
     }
 
     private void refreshGrid() {

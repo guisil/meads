@@ -81,16 +81,24 @@ public class EntrantFormView extends VerticalLayout implements BeforeEnterObserv
 
     private void loadEntrant() {
         entrantService.findEntrantById(entrantId).ifPresent(entrant -> {
-            email.setValue(entrant.email() != null ? entrant.email() : "");
-            name.setValue(entrant.name() != null ? entrant.name() : "");
-            phone.setValue(entrant.phone() != null ? entrant.phone() : "");
-            addressLine1.setValue(entrant.addressLine1() != null ? entrant.addressLine1() : "");
-            addressLine2.setValue(entrant.addressLine2() != null ? entrant.addressLine2() : "");
-            city.setValue(entrant.city() != null ? entrant.city() : "");
-            stateProvince.setValue(entrant.stateProvince() != null ? entrant.stateProvince() : "");
-            postalCode.setValue(entrant.postalCode() != null ? entrant.postalCode() : "");
-            country.setValue(entrant.country() != null ? entrant.country() : "");
+            email.setValue(nullToEmpty(entrant.email()));
+            name.setValue(nullToEmpty(entrant.name()));
+            phone.setValue(nullToEmpty(entrant.phone()));
+            addressLine1.setValue(nullToEmpty(entrant.addressLine1()));
+            addressLine2.setValue(nullToEmpty(entrant.addressLine2()));
+            city.setValue(nullToEmpty(entrant.city()));
+            stateProvince.setValue(nullToEmpty(entrant.stateProvince()));
+            postalCode.setValue(nullToEmpty(entrant.postalCode()));
+            country.setValue(nullToEmpty(entrant.country()));
         });
+    }
+
+    private String nullToEmpty(String value) {
+        return value != null ? value : "";
+    }
+
+    private String emptyToNull(String value) {
+        return value != null && !value.isBlank() ? value : null;
     }
 
     private void save() {
@@ -104,13 +112,13 @@ public class EntrantFormView extends VerticalLayout implements BeforeEnterObserv
             entrantId,
             email.getValue(),
             name.getValue(),
-            phone.getValue().isBlank() ? null : phone.getValue(),
-            addressLine1.getValue().isBlank() ? null : addressLine1.getValue(),
-            addressLine2.getValue().isBlank() ? null : addressLine2.getValue(),
-            city.getValue().isBlank() ? null : city.getValue(),
-            stateProvince.getValue().isBlank() ? null : stateProvince.getValue(),
-            postalCode.getValue().isBlank() ? null : postalCode.getValue(),
-            country.getValue().isBlank() ? null : country.getValue()
+            emptyToNull(phone.getValue()),
+            emptyToNull(addressLine1.getValue()),
+            emptyToNull(addressLine2.getValue()),
+            emptyToNull(city.getValue()),
+            emptyToNull(stateProvince.getValue()),
+            emptyToNull(postalCode.getValue()),
+            emptyToNull(country.getValue())
         );
 
         try {
