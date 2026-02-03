@@ -36,6 +36,7 @@ MEADS (Mead Evaluation and Awards Data System) is a Spring Boot 4.0 application 
 - **Vaadin 25** for the UI layer
 - **Flyway** for database migrations
 - **Spring Actuator** for monitoring and observability
+- **Testcontainers** 2.0.3 for integration testing
 
 ## Project Structure
 
@@ -66,3 +67,21 @@ This project uses **Spring Modulith** which enforces module boundaries at compil
 - Use Spring Modulith's `@ApplicationModule` and related annotations to define module boundaries
 - Modules should communicate through well-defined APIs; avoid cross-module package access
 - Run modulith structure tests to verify module boundaries are respected
+
+## Code Conventions
+### Java Style
+- Google Java Style Guide for indentation (2 spaces)
+- Lombok to reduce boilerplate (@Data, @Builder, @RequiredArgsConstructor)
+- Avoid @AllArgsConstructor unless strictly necessary
+- Prefer Optional<T> to null returns
+- Stream API for collections when it improves readability
+### Naming Conventions
+- Classes: PascalCase (UserProfile, OrderService)
+- Methods/Variables: camelCase
+- Constants: UPPER_SNAKE_CASE
+- Database fields: snake_case but mapped to camelCase in entities
+## Testing Strategy
+- Unit tests: Given-When-Then pattern with AssertJ
+- Integration tests: @SpringBootTest with Testcontainers
+- Mock externals with WireMock
+- Minimum coverage: 80% for business logic
