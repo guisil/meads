@@ -28,6 +28,26 @@ MEADS (Mead Evaluation and Awards Data System) is a Spring Boot 4.0 application 
 ./mvnw vaadin:build-frontend
 ```
 
+## Local Development
+
+For local development, use Docker Compose to run PostgreSQL:
+
+```bash
+# Start PostgreSQL in Docker
+docker-compose up -d
+
+# Run the application with local profile
+./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+
+# Stop PostgreSQL
+docker-compose down
+
+# Stop PostgreSQL and remove data
+docker-compose down -v
+```
+
+The `local` profile (application-local.properties) configures the application to connect to the Docker PostgreSQL instance. This setup is only for local development and does not affect deployments to other environments.
+
 ## Technology Stack
 
 - **Java 25** with Lombok for boilerplate reduction
