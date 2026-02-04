@@ -28,13 +28,17 @@ public interface AccessTokenRepository extends JpaRepository<AccessToken, UUID> 
 
   /**
    * Finds a valid (unused and not expired) token by its hash.
+   * Eagerly fetches the associated user to avoid lazy loading issues.
    *
    * @param tokenHash the hashed token to search for
    * @param now the current time to check expiration
    * @return optional containing the token if found and valid
    */
+  @Query("SELECT t FROM AccessToken t LEFT JOIN FETCH t.user " +
+         "WHERE t.tokenHash = :tokenHash AND t.used = false AND t.expiresAt > :now")
   Optional<AccessToken> findByTokenHashAndUsedFalseAndExpiresAtAfter(
-      String tokenHash, Instant now);
+      @Param("tokenHash") String tokenHash,
+      @Param("now") Instant now);
 
   /**
    * Finds all unused tokens for a given email address.

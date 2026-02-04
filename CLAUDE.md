@@ -36,8 +36,8 @@ For local development, use Docker Compose to run PostgreSQL:
 # Start PostgreSQL in Docker
 docker-compose up -d
 
-# Run the application with local profile
-./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+# Run the application with dev profile
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 
 # Stop PostgreSQL
 docker-compose down
@@ -46,7 +46,7 @@ docker-compose down
 docker-compose down -v
 ```
 
-The `local` profile (application-local.properties) configures the application to connect to the Docker PostgreSQL instance. This setup is only for local development and does not affect deployments to other environments.
+The `dev` profile (application-dev.properties) configures the application to connect to the Docker PostgreSQL instance. This setup is only for local development and does not affect deployments to other environments.
 
 ## Technology Stack
 
