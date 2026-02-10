@@ -25,9 +25,10 @@ public class RootView extends VerticalLayout implements BeforeEnterObserver {
             String username = authentication.getName();
             add(new H1("Welcome " + username));
             add(new Button("Logout", e -> {
+                UI ui = UI.getCurrent();
                 VaadinSession.getCurrent().getSession().invalidate();
                 SecurityContextHolder.clearContext();
-                UI.getCurrent().navigate("login");
+                ui.navigate("login");
             }));
         } else {
             event.forwardTo("login");
