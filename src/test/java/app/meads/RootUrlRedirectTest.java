@@ -15,6 +15,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.test.context.support.WithMockUser;
 
+import static com.github.mvysny.kaributesting.v10.LocatorJ._click;
 import static com.github.mvysny.kaributesting.v10.LocatorJ._get;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -70,5 +71,16 @@ class RootUrlRedirectTest {
 
         var button = _get(Button.class);
         assertThat(button.getText()).isEqualTo("Logout");
+    }
+
+    @Test
+    @WithMockUser
+    void shouldRedirectToLoginWhenLogoutButtonClicked() {
+        UI.getCurrent().navigate("");
+
+        _click(_get(Button.class));
+
+        var location = UI.getCurrent().getInternals().getActiveViewLocation();
+        assertThat(location.getPath()).isEqualTo("login");
     }
 }

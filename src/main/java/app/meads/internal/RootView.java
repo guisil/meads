@@ -1,11 +1,13 @@
 package app.meads.internal;
 
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.server.VaadinSession;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -22,7 +24,11 @@ public class RootView extends VerticalLayout implements BeforeEnterObserver {
             removeAll();
             String username = authentication.getName();
             add(new H1("Welcome " + username));
-            add(new Button("Logout"));
+            add(new Button("Logout", e -> {
+                VaadinSession.getCurrent().getSession().invalidate();
+                SecurityContextHolder.clearContext();
+                UI.getCurrent().navigate("login");
+            }));
         } else {
             event.forwardTo("login");
         }
