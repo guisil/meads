@@ -47,4 +47,20 @@ class LoginViewTest {
     void shouldHaveUsernameAttributeOnEmailField() {
         assertThat(_get(TextField.class).getElement().getAttribute("name")).isEqualTo("username");
     }
+
+    @Test
+    void shouldRedirectToTokenSentPageWhenContinueClicked() {
+        var emailField = _get(TextField.class);
+        emailField.setValue("user@example.com");
+
+        var button = _get(Button.class);
+        button.click();
+
+        // After clicking Continue, should redirect to login?tokenSent
+        // The UI location should contain "tokenSent" parameter
+        var currentLocation = UI.getCurrent().getInternals().getActiveViewLocation();
+        assertThat(currentLocation.getPath()).isEqualTo("login");
+        assertThat(currentLocation.getQueryParameters().getParameters())
+                .containsKey("tokenSent");
+    }
 }
