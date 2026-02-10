@@ -21,7 +21,7 @@ public class LoginView extends VerticalLayout {
 
         var button = new Button("Continue");
         button.addClickListener(e -> {
-            magicLinkService.requestMagicLink(email.getValue());
+            var token = magicLinkService.requestMagicLink(email.getValue());
             e.getSource().getUI().ifPresent(ui ->
                 ui.navigate("login", QueryParameters.simple(Map.of("tokenSent", "")))
             );

@@ -2,9 +2,9 @@ package app.meads.internal;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.authentication.ott.GenerateOneTimeTokenRequest;
+import org.springframework.security.authentication.ott.OneTimeTokenService;
 import org.springframework.stereotype.Service;
-
-import java.util.UUID;
 
 @Service
 class MagicLinkService {
@@ -12,10 +12,18 @@ class MagicLinkService {
     private static final Logger log = LoggerFactory.getLogger(MagicLinkService.class);
     private static final String BASE_URL = "http://localhost:8080";
 
-    void requestMagicLink(String username) {
-        // Generate a temporary token for development
-        String token = UUID.randomUUID().toString();
-        String link = BASE_URL + "/login/ott?token=" + token;
+    private final OneTimeTokenService tokenService;
+
+    MagicLinkService(OneTimeTokenService tokenService) {
+        this.tokenService = tokenService;
+    }
+
+    String requestMagicLink(String username) {
+        var request = new GenerateOneTimeTokenRequest(username);
+        var oneTimeToken = tokenService.generate(request);
+        String tokenValue = oneTimeToken.getTokenValue();
+        String link = BASE_URL + "/login/ott?token=" + tokenValue;
         log.info("\n\n\tMagic link for {}: {}\n", username, link);
+        return tokenValue;
     }
 }
