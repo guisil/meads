@@ -19,7 +19,8 @@ public class RootView extends VerticalLayout implements BeforeEnterObserver {
         if (authentication != null && authentication.isAuthenticated()
                 && !"anonymousUser".equals(authentication.getPrincipal())) {
             removeAll();
-            add(new H1("Welcome"));
+            String username = authentication.getName();
+            add(new H1("Welcome " + username));
         } else {
             event.forwardTo("login");
         }

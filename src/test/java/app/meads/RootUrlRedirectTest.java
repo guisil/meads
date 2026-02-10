@@ -52,4 +52,13 @@ class RootUrlRedirectTest {
         var heading = _get(H1.class);
         assertThat(heading.getText()).contains("Welcome");
     }
+
+    @Test
+    @WithMockUser(username = "test@example.com")
+    void shouldDisplayUserEmailWhenAuthenticated() {
+        UI.getCurrent().navigate("");
+
+        var heading = _get(H1.class);
+        assertThat(heading.getText()).contains("test@example.com");
+    }
 }
