@@ -4,6 +4,7 @@ import com.github.mvysny.kaributesting.v10.MockVaadin;
 import com.github.mvysny.kaributesting.v10.Routes;
 import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
 import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.H1;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -60,5 +61,14 @@ class RootUrlRedirectTest {
 
         var heading = _get(H1.class);
         assertThat(heading.getText()).contains("test@example.com");
+    }
+
+    @Test
+    @WithMockUser
+    void shouldDisplayLogoutButtonWhenAuthenticated() {
+        UI.getCurrent().navigate("");
+
+        var button = _get(Button.class);
+        assertThat(button.getText()).isEqualTo("Logout");
     }
 }

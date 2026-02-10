@@ -1,5 +1,6 @@
 package app.meads.internal;
 
+import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.BeforeEnterEvent;
@@ -21,6 +22,7 @@ public class RootView extends VerticalLayout implements BeforeEnterObserver {
             removeAll();
             String username = authentication.getName();
             add(new H1("Welcome " + username));
+            add(new Button("Logout"));
         } else {
             event.forwardTo("login");
         }
