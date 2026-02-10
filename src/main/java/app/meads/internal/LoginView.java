@@ -21,7 +21,16 @@ public class LoginView extends VerticalLayout {
 
         var button = new Button("Continue");
         button.addClickListener(e -> {
-            var token = magicLinkService.requestMagicLink(email.getValue());
+            // Validate email format
+            String emailValue = email.getValue();
+            if (emailValue == null || !emailValue.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
+                email.setInvalid(true);
+                email.setErrorMessage("Please enter a valid email address");
+                return;
+            }
+
+            email.setInvalid(false);
+            var token = magicLinkService.requestMagicLink(emailValue);
             e.getSource().getUI().ifPresent(ui ->
                 ui.navigate("login", QueryParameters.simple(Map.of("tokenSent", "")))
             );
