@@ -1,17 +1,24 @@
 package app.meads.internal;
 
 import app.meads.TestcontainersConfiguration;
+import app.meads.User;
+import app.meads.UserStatus;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.authentication.ott.InMemoryOneTimeTokenService;
 import org.springframework.security.authentication.ott.OneTimeTokenService;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
+@Transactional
 class MagicLinkServiceTest {
 
     @Autowired
@@ -20,6 +27,9 @@ class MagicLinkServiceTest {
     @Autowired(required = false)
     OneTimeTokenService tokenService;
 
+    @Autowired
+    UserRepository userRepository;
+
     @Test
     void shouldUseSpringSecurityTokenServiceWhenGeneratingMagicLink() {
         // Given - Spring Security OTT service should be configured
@@ -27,6 +37,10 @@ class MagicLinkServiceTest {
                 .as("OneTimeTokenService should be available as a bean")
                 .isNotNull()
                 .isInstanceOf(InMemoryOneTimeTokenService.class);
+
+        // And - a user exists
+        var user = new User(UUID.randomUUID(), "user@example.com", "Test User", UserStatus.ACTIVE);
+        userRepository.save(user);
 
         // When - request a magic link
         String tokenValue = magicLinkService.requestMagicLink("user@example.com");
@@ -40,5 +54,26 @@ class MagicLinkServiceTest {
 
         assertThat(consumedToken).isNotNull();
         assertThat(consumedToken.getUsername()).isEqualTo("user@example.com");
+    }
+
+    @Test
+    void shouldThrowExceptionWhenUserDoesNotExist() {
+        // When/Then - requesting magic link for non-existent user should throw exception
+        assertThatThrownBy(() -> magicLinkService.requestMagicLink("nonexistent@example.com"))
+                .isInstanceOf(UserNotFoundException.class)
+                .hasMessageContaining("nonexistent@example.com");
+    }
+
+    @Test
+    void shouldGenerateMagicLinkWhenUserExists() {
+        // Given - a user exists in the database
+        var user = new User(UUID.randomUUID(), "existing@example.com", "Existing User", UserStatus.ACTIVE);
+        userRepository.save(user);
+
+        // When - request magic link for existing user
+        String tokenValue = magicLinkService.requestMagicLink("existing@example.com");
+
+        // Then - should successfully generate token
+        assertThat(tokenValue).isNotNull().isNotEmpty();
     }
 }

@@ -1,5 +1,6 @@
 package app.meads;
 
+import app.meads.internal.UserRepository;
 import com.github.mvysny.kaributesting.v10.MockVaadin;
 import com.github.mvysny.kaributesting.v10.Routes;
 import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
@@ -14,6 +15,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Import;
 
+import java.util.UUID;
+
 import static com.github.mvysny.kaributesting.v10.LocatorJ._get;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -23,6 +26,9 @@ class LoginViewTest {
 
     @Autowired
     ApplicationContext ctx;
+
+    @Autowired
+    UserRepository userRepository;
 
     @BeforeEach
     void setup() {
@@ -50,8 +56,12 @@ class LoginViewTest {
 
     @Test
     void shouldRedirectToTokenSentPageWhenContinueClicked() {
+        // Given - a user exists
+        var user = new User(UUID.randomUUID(), "login.test@example.com", "Test User", UserStatus.ACTIVE);
+        userRepository.save(user);
+
         var emailField = _get(TextField.class);
-        emailField.setValue("user@example.com");
+        emailField.setValue("login.test@example.com");
 
         var button = _get(Button.class);
         button.click();

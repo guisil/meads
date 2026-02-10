@@ -16,18 +16,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Transactional
 class UserRepositoryTest {
 
+    // Each test uses unique email to avoid conflicts
+
     @Autowired
     UserRepository userRepository;
 
     @Test
     void shouldSaveAndRetrieveUserByEmail() {
-        var user = new User(UUID.randomUUID(), "user@example.com", "John Doe", UserStatus.ACTIVE);
+        var user = new User(UUID.randomUUID(), "test@repository.com", "John Doe", UserStatus.ACTIVE);
 
         userRepository.save(user);
-        var found = userRepository.findByEmail("user@example.com");
+        var found = userRepository.findByEmail("test@repository.com");
 
         assertThat(found).isPresent();
-        assertThat(found.get().getEmail()).isEqualTo("user@example.com");
+        assertThat(found.get().getEmail()).isEqualTo("test@repository.com");
         assertThat(found.get().getName()).isEqualTo("John Doe");
         assertThat(found.get().getStatus()).isEqualTo(UserStatus.ACTIVE);
         assertThat(found.get().getCreatedAt()).isNotNull();

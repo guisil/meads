@@ -13,12 +13,18 @@ class MagicLinkService {
     private static final String BASE_URL = "http://localhost:8080";
 
     private final OneTimeTokenService tokenService;
+    private final UserRepository userRepository;
 
-    MagicLinkService(OneTimeTokenService tokenService) {
+    MagicLinkService(OneTimeTokenService tokenService, UserRepository userRepository) {
         this.tokenService = tokenService;
+        this.userRepository = userRepository;
     }
 
     String requestMagicLink(String username) {
+        // Check if user exists
+        userRepository.findByEmail(username)
+                .orElseThrow(() -> new UserNotFoundException(username));
+
         var request = new GenerateOneTimeTokenRequest(username);
         var oneTimeToken = tokenService.generate(request);
         String tokenValue = oneTimeToken.getTokenValue();
