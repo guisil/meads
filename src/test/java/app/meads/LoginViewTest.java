@@ -29,6 +29,7 @@ class LoginViewTest {
         var routes = new Routes().autoDiscoverViews("app.meads");
         var servlet = new MockSpringServlet(routes, ctx, UI::new);
         MockVaadin.setup(UI::new, servlet);
+        UI.getCurrent().navigate("login");
     }
 
     @AfterEach
@@ -37,24 +38,13 @@ class LoginViewTest {
     }
 
     @Test
-    void shouldDisplayEmailFieldAndButton() {
-        UI.getCurrent().navigate("login");
-
-        var emailField = _get(TextField.class);
-        var button = _get(Button.class);
-
-        assertThat(emailField).isNotNull();
-        assertThat(button).isNotNull();
+    void shouldDisplayEmailFieldAndContinueButton() {
+        assertThat(_get(TextField.class).getLabel()).isEqualTo("Email");
+        assertThat(_get(Button.class).getText()).isEqualTo("Continue");
     }
 
     @Test
-    void shouldDisplayEmailLabelAndContinueButtonText() {
-        UI.getCurrent().navigate("login");
-
-        var emailField = _get(TextField.class);
-        var button = _get(Button.class);
-
-        assertThat(emailField.getLabel()).isEqualTo("Email");
-        assertThat(button.getText()).isEqualTo("Continue");
+    void shouldHaveUsernameAttributeOnEmailField() {
+        assertThat(_get(TextField.class).getElement().getAttribute("name")).isEqualTo("username");
     }
 }

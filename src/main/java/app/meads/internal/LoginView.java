@@ -9,7 +9,28 @@ import com.vaadin.flow.router.Route;
 public class LoginView extends VerticalLayout {
 
     public LoginView() {
-        add(new TextField("Email"));
-        add(new Button("Continue"));
+        var email = new TextField("Email");
+        email.getElement().setAttribute("name", "username");
+
+        var button = new Button("Continue");
+        button.addClickListener(e ->
+            e.getSource().getUI().ifPresent(ui ->
+                ui.getPage().executeJs(
+                    "const form = document.createElement('form');" +
+                    "form.method = 'POST';" +
+                    "form.action = '/ott/generate';" +
+                    "const input = document.createElement('input');" +
+                    "input.type = 'hidden';" +
+                    "input.name = 'username';" +
+                    "input.value = $0;" +
+                    "form.appendChild(input);" +
+                    "document.body.appendChild(form);" +
+                    "form.submit();",
+                    email.getValue()
+                )
+            )
+        );
+
+        add(email, button);
     }
 }
