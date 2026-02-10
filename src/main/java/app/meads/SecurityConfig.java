@@ -16,8 +16,7 @@ import org.springframework.security.web.authentication.ott.OneTimeTokenGeneratio
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http,
-            OneTimeTokenGenerationSuccessHandler tokenSuccessHandler) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/", "/login/**", "/ott/**", "/VAADIN/**", "/favicon.ico").permitAll()
@@ -26,10 +25,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .formLogin(form -> form.disable())
             .httpBasic(basic -> basic.disable())
-            .logout(logout -> logout.permitAll())
-            .oneTimeTokenLogin(ott -> ott
-                .tokenGenerationSuccessHandler(tokenSuccessHandler)
-            );
+            .logout(logout -> logout.permitAll());
 
         return http.build();
     }
@@ -45,5 +41,10 @@ public class SecurityConfig {
     @Bean
     public OneTimeTokenService oneTimeTokenService() {
         return new InMemoryOneTimeTokenService();
+    }
+
+    @Bean
+    public org.springframework.security.web.context.SecurityContextRepository securityContextRepository() {
+        return new org.springframework.security.web.context.HttpSessionSecurityContextRepository();
     }
 }
