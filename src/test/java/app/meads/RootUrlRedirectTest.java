@@ -78,7 +78,7 @@ class RootUrlRedirectTest {
     void shouldHaveLogoutButtonThatNavigatesToLogoutEndpoint() {
         UI.getCurrent().navigate("");
 
-        var button = _get(Button.class);
+        var button = _get(Button.class, spec -> spec.withCaption("Logout"));
         assertThat(button.getText()).isEqualTo("Logout");
 
         // The button should not throw NPE when clicked
@@ -87,5 +87,14 @@ class RootUrlRedirectTest {
         org.junit.jupiter.api.Assertions.assertDoesNotThrow(() -> {
             _click(button);
         });
+    }
+
+    @Test
+    @WithMockUser(roles = "SYSTEM_ADMIN")
+    void shouldHaveUserListLinkForAdminUsers() {
+        UI.getCurrent().navigate("");
+
+        var button = _get(Button.class, spec -> spec.withCaption("Users"));
+        assertThat(button).isNotNull();
     }
 }

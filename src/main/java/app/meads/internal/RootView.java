@@ -24,6 +24,13 @@ public class RootView extends VerticalLayout implements BeforeEnterObserver {
             removeAll();
             String username = authentication.getName();
             add(new H1("Welcome " + username));
+
+            // Show Users link for system admin users
+            if (authentication.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_SYSTEM_ADMIN"))) {
+                add(new Button("Users", e -> e.getSource().getUI().ifPresent(ui -> ui.navigate("users"))));
+            }
+
             add(new Button("Logout", e -> {
                 UI.getCurrent().getPage().setLocation("/logout");
             }));
