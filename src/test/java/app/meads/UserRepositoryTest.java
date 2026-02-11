@@ -1,6 +1,7 @@
 package app.meads;
 
 import app.meads.internal.UserRepository;
+import app.meads.Role;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -23,7 +24,7 @@ class UserRepositoryTest {
 
     @Test
     void shouldSaveAndRetrieveUserByEmail() {
-        var user = new User(UUID.randomUUID(), "test@repository.com", "John Doe", UserStatus.ACTIVE);
+        var user = new User(UUID.randomUUID(), "test@repository.com", "John Doe", UserStatus.ACTIVE, Role.USER);
 
         userRepository.save(user);
         var found = userRepository.findByEmail("test@repository.com");

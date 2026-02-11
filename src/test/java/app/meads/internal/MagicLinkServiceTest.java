@@ -1,5 +1,6 @@
 package app.meads.internal;
 
+import app.meads.Role;
 import app.meads.TestcontainersConfiguration;
 import app.meads.User;
 import app.meads.UserStatus;
@@ -39,7 +40,7 @@ class MagicLinkServiceTest {
                 .isInstanceOf(InMemoryOneTimeTokenService.class);
 
         // And - a user exists
-        var user = new User(UUID.randomUUID(), "user@example.com", "Test User", UserStatus.ACTIVE);
+        var user = new User(UUID.randomUUID(), "user@example.com", "Test User", UserStatus.ACTIVE, Role.USER);
         userRepository.save(user);
 
         // When - request a magic link
@@ -67,7 +68,7 @@ class MagicLinkServiceTest {
     @Test
     void shouldGenerateMagicLinkWhenUserExists() {
         // Given - a user exists in the database
-        var user = new User(UUID.randomUUID(), "existing@example.com", "Existing User", UserStatus.ACTIVE);
+        var user = new User(UUID.randomUUID(), "existing@example.com", "Existing User", UserStatus.ACTIVE, Role.USER);
         userRepository.save(user);
 
         // When - request magic link for existing user

@@ -1,6 +1,7 @@
 package app.meads;
 
 import app.meads.internal.UserRepository;
+import app.meads.Role;
 import com.github.mvysny.kaributesting.v10.MockVaadin;
 import com.github.mvysny.kaributesting.v10.Routes;
 import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
@@ -57,7 +58,7 @@ class LoginViewTest {
     @Test
     void shouldRedirectToTokenSentPageWhenContinueClicked() {
         // Given - a user exists
-        var user = new User(UUID.randomUUID(), "login.test@example.com", "Test User", UserStatus.ACTIVE);
+        var user = new User(UUID.randomUUID(), "login.test@example.com", "Test User", UserStatus.ACTIVE, Role.USER);
         userRepository.save(user);
 
         var emailField = _get(TextField.class);

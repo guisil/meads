@@ -21,6 +21,10 @@ public class User {
     @Column(nullable = false)
     private UserStatus status;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Role role;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
@@ -28,11 +32,12 @@ public class User {
 
     protected User() {} // JPA
 
-    public User(UUID id, String email, String name, UserStatus status) {
+    public User(UUID id, String email, String name, UserStatus status, Role role) {
         this.id = id;
         this.email = email;
         this.name = name;
         this.status = status;
+        this.role = role;
     }
 
     @PrePersist
@@ -59,6 +64,10 @@ public class User {
 
     public UserStatus getStatus() {
         return status;
+    }
+
+    public Role getRole() {
+        return role;
     }
 
     public LocalDateTime getCreatedAt() {
