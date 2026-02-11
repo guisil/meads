@@ -47,4 +47,37 @@ class AdminInitializerTest {
         // And - should send magic link
         then(magicLinkService).should().requestMagicLink("admin@example.com");
     }
+
+    @Test
+    void shouldDoNothingWhenAdminAlreadyExists() {
+        // Given - admin already exists
+        given(userRepository.existsByRole(Role.SYSTEM_ADMIN)).willReturn(true);
+
+        // When - initialization runs
+        adminInitializer.initializeAdmin();
+
+        // Then - should not create any user
+        then(userRepository).should(never()).save(any());
+
+        // And - should not send magic link
+        then(magicLinkService).should(never()).requestMagicLink(any());
+    }
+
+    @Test
+    void shouldDoNothingWhenEmailNotSet() {
+        // Given - no admin exists
+        given(userRepository.existsByRole(Role.SYSTEM_ADMIN)).willReturn(false);
+
+        // And - INITIAL_ADMIN_EMAIL is not set
+        given(environment.getProperty("INITIAL_ADMIN_EMAIL")).willReturn(null);
+
+        // When - initialization runs
+        adminInitializer.initializeAdmin();
+
+        // Then - should not create any user
+        then(userRepository).should(never()).save(any());
+
+        // And - should not send magic link
+        then(magicLinkService).should(never()).requestMagicLink(any());
+    }
 }
