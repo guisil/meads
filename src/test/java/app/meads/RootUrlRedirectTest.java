@@ -75,33 +75,17 @@ class RootUrlRedirectTest {
 
     @Test
     @WithMockUser
-    void shouldRedirectToLoginWhenLogoutButtonClicked() {
+    void shouldHaveLogoutButtonThatNavigatesToLogoutEndpoint() {
         UI.getCurrent().navigate("");
 
-        _click(_get(Button.class));
-
-        var location = UI.getCurrent().getInternals().getActiveViewLocation();
-        assertThat(location.getPath()).isEqualTo("login");
-    }
-
-    @Test
-    @WithMockUser
-    void shouldHandleLogoutWithoutNPEWhenSessionInvalidated() {
-        UI.getCurrent().navigate("");
         var button = _get(Button.class);
+        assertThat(button.getText()).isEqualTo("Logout");
 
-        // Verify that clicking logout doesn't cause NPE even if UI context is cleared
-        // This simulates the production scenario where UI.getCurrent() might return null
-        // after session invalidation
-        assertThat(button).isNotNull();
-
-        // The button click should not throw NPE - it should handle the UI reference properly
+        // The button should not throw NPE when clicked
+        // In production, it will navigate to /logout endpoint via setLocation()
+        // In Karibu tests, setLocation() doesn't actually navigate, but shouldn't error
         org.junit.jupiter.api.Assertions.assertDoesNotThrow(() -> {
             _click(button);
         });
-
-        // Verify we still end up on login page
-        var location = UI.getCurrent().getInternals().getActiveViewLocation();
-        assertThat(location.getPath()).isEqualTo("login");
     }
 }

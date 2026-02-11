@@ -23,7 +23,9 @@ public class SecurityConfig {
             .formLogin(form -> form.disable())
             .httpBasic(basic -> basic.disable())
             .oneTimeTokenLogin(ott -> ott.showDefaultSubmitPage(false))
-            .logout(logout -> logout.permitAll());
+            .logout(logout -> logout
+                .logoutSuccessUrl("/")
+                .permitAll());
 
         return http.build();
     }
