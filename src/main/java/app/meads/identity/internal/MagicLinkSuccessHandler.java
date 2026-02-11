@@ -1,4 +1,4 @@
-package app.meads.internal;
+package app.meads.identity.internal;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

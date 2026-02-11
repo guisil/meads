@@ -1,6 +1,6 @@
-package app.meads.internal;
+package app.meads.identity.internal;
 
-import app.meads.User;
+import app.meads.identity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

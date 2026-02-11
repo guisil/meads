@@ -1,4 +1,6 @@
-package app.meads;
+package app.meads.identity;
+
+import app.meads.TestcontainersConfiguration;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

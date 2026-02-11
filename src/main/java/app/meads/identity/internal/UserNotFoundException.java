@@ -1,4 +1,4 @@
-package app.meads.internal;
+package app.meads.identity.internal;
 
 public class UserNotFoundException extends RuntimeException {
     public UserNotFoundException(String email) {

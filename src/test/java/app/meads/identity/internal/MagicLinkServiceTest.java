@@ -1,9 +1,9 @@
-package app.meads.internal;
+package app.meads.identity.internal;
 
-import app.meads.Role;
 import app.meads.TestcontainersConfiguration;
-import app.meads.User;
-import app.meads.UserStatus;
+import app.meads.identity.Role;
+import app.meads.identity.User;
+import app.meads.identity.UserStatus;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

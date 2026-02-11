@@ -1,7 +1,7 @@
-package app.meads;
+package app.meads.identity;
 
-import app.meads.internal.UserRepository;
-import app.meads.Role;
+import app.meads.TestcontainersConfiguration;
+import app.meads.identity.internal.UserRepository;
 import com.github.mvysny.kaributesting.v10.MockVaadin;
 import com.github.mvysny.kaributesting.v10.Routes;
 import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;

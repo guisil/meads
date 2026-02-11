@@ -1,4 +1,4 @@
-package app.meads;
+package app.meads.identity;
 
 public enum UserStatus {
     ACTIVE,
