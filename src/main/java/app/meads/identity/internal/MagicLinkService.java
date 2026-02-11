@@ -27,7 +27,7 @@ class MagicLinkService {
         var request = new GenerateOneTimeTokenRequest(username);
         var oneTimeToken = tokenService.generate(request);
         String tokenValue = oneTimeToken.getTokenValue();
-        String link = BASE_URL + "/login/ott?token=" + tokenValue;
+        String link = BASE_URL + "/login/magic?token=" + tokenValue;
         log.info("\n\n\tMagic link for {}: {}\n", username, link);
         return tokenValue;
     }

@@ -23,7 +23,7 @@ class MagicLinkSuccessHandler implements OneTimeTokenGenerationSuccessHandler {
     @Override
     public void handle(HttpServletRequest request, HttpServletResponse response, OneTimeToken oneTimeToken)
             throws IOException, ServletException {
-        String link = "http://localhost:8080/login/ott?token=" + oneTimeToken.getTokenValue();
+        String link = "http://localhost:8080/login/magic?token=" + oneTimeToken.getTokenValue();
         log.info("\n\n\tMagic link: {}\n", link);
         redirectHandler.handle(request, response, oneTimeToken);
     }

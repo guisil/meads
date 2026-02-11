@@ -6,10 +6,7 @@ import org.springframework.security.authentication.ott.InMemoryOneTimeTokenServi
 import org.springframework.security.authentication.ott.OneTimeTokenService;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.ott.OneTimeTokenGenerationSuccessHandler;
 
 @Configuration
 @EnableWebSecurity
@@ -25,17 +22,10 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .formLogin(form -> form.disable())
             .httpBasic(basic -> basic.disable())
+            .oneTimeTokenLogin(ott -> ott.showDefaultSubmitPage(false))
             .logout(logout -> logout.permitAll());
 
         return http.build();
-    }
-
-    @Bean
-    public UserDetailsService userDetailsService() {
-        return username -> User.withUsername(username)
-                .password("{noop}unused")
-                .authorities("ROLE_USER")
-                .build();
     }
 
     @Bean
@@ -43,8 +33,4 @@ public class SecurityConfig {
         return new InMemoryOneTimeTokenService();
     }
 
-    @Bean
-    public org.springframework.security.web.context.SecurityContextRepository securityContextRepository() {
-        return new org.springframework.security.web.context.HttpSessionSecurityContextRepository();
-    }
 }
