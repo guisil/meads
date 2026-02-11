@@ -1,6 +1,7 @@
 package app.meads.identity;
 
 import app.meads.TestcontainersConfiguration;
+import app.meads.identity.internal.UserListView;
 import com.github.mvysny.kaributesting.v10.MockVaadin;
 import com.github.mvysny.kaributesting.v10.Routes;
 import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
@@ -44,5 +45,18 @@ class UserListViewTest {
 
         var grid = _get(Grid.class);
         assertThat(grid).isNotNull();
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void shouldHaveRolesAllowedAnnotationForSecurity() {
+        // Note: @RolesAllowed("SYSTEM_ADMIN") on UserListView is enforced by Spring Security
+        // at runtime, but Karibu tests don't go through the full security filter chain.
+        // This test documents that the security annotation exists.
+        // In production, regular users will get an access denied error.
+
+        var annotation = UserListView.class.getAnnotation(jakarta.annotation.security.RolesAllowed.class);
+        assertThat(annotation).isNotNull();
+        assertThat(annotation.value()).containsExactly("SYSTEM_ADMIN");
     }
 }

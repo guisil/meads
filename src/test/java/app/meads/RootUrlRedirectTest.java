@@ -97,4 +97,13 @@ class RootUrlRedirectTest {
         var button = _get(Button.class, spec -> spec.withCaption("Users"));
         assertThat(button).isNotNull();
     }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void shouldNotShowUserListLinkForRegularUsers() {
+        UI.getCurrent().navigate("");
+
+        var buttons = com.github.mvysny.kaributesting.v10.LocatorJ._find(Button.class);
+        assertThat(buttons).noneMatch(button -> "Users".equals(button.getText()));
+    }
 }
