@@ -206,6 +206,13 @@ public class UserListView extends VerticalLayout {
                 return;
             }
 
+            // Validate email format
+            if (!emailField.getValue().matches("^[^@]+@[^@]+\\.[^@]+$")) {
+                emailField.setInvalid(true);
+                emailField.setErrorMessage("Please enter a valid email address");
+                return;
+            }
+
             // Validate email doesn't already exist
             if (userRepository.findByEmail(emailField.getValue()).isPresent()) {
                 emailField.setInvalid(true);

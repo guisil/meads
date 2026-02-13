@@ -661,4 +661,41 @@ class UserListViewTest {
         assertThat(emailField.isInvalid()).isTrue();
         assertThat(emailField.getErrorMessage()).contains("already exists");
     }
+
+    @Test
+    @WithMockUser(roles = "SYSTEM_ADMIN")
+    @DirtiesContext
+    void shouldNotCreateUserWhenEmailFormatIsInvalid() {
+        // Arrange - count users before
+        long userCountBefore = userRepository.count();
+
+        // Act - navigate, open dialog, enter invalid email format
+        UI.getCurrent().navigate("users");
+        var createButton = _get(Button.class, spec -> spec.withText("Create User"));
+        _click(createButton);
+
+        var emailField = _get(TextField.class, spec -> spec.withCaption("Email"));
+        var nameField = _get(TextField.class, spec -> spec.withCaption("Name"));
+        var roleSelect = _get(Select.class, spec -> spec.withCaption("Role"));
+        var statusSelect = _get(Select.class, spec -> spec.withCaption("Status"));
+
+        emailField.setValue("notanemail");
+        nameField.setValue("Test User");
+        roleSelect.setValue(Role.USER);
+        statusSelect.setValue(UserStatus.ACTIVE);
+
+        var saveButton = _get(Button.class, spec -> spec.withText("Save"));
+        _click(saveButton);
+
+        // Assert - user should NOT be created
+        assertThat(userRepository.count()).isEqualTo(userCountBefore);
+
+        // Dialog should still be open (save failed due to validation)
+        var dialog = _get(Dialog.class);
+        assertThat(dialog.isOpened()).isTrue();
+
+        // Email field should show validation error
+        assertThat(emailField.isInvalid()).isTrue();
+        assertThat(emailField.getErrorMessage()).contains("valid email");
+    }
 }
