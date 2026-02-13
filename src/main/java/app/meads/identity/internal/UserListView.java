@@ -2,12 +2,14 @@ package app.meads.identity.internal;
 
 import app.meads.identity.Role;
 import app.meads.identity.User;
+import app.meads.identity.UserService;
 import app.meads.identity.UserStatus;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.textfield.TextField;
@@ -20,10 +22,12 @@ import org.springframework.security.core.context.SecurityContextHolder;
 public class UserListView extends VerticalLayout {
 
     private final UserRepository userRepository;
+    private final UserService userService;
     private final Grid<User> grid;
 
-    public UserListView(UserRepository userRepository) {
+    public UserListView(UserRepository userRepository, UserService userService) {
         this.userRepository = userRepository;
+        this.userService = userService;
         add(new H1("Users"));
 
         grid = new Grid<>(User.class, false);
@@ -34,7 +38,14 @@ public class UserListView extends VerticalLayout {
         grid.addComponentColumn(user -> {
             Button editButton = new Button("Edit");
             editButton.addClickListener(e -> openEditDialog(user));
-            return editButton;
+
+            String deleteButtonText = user.getStatus() == UserStatus.DISABLED ? "Delete" : "Disable";
+            Button deleteButton = new Button(deleteButtonText);
+            deleteButton.addClickListener(e -> handleDeleteClick(user));
+
+            HorizontalLayout actions = new HorizontalLayout(editButton, deleteButton);
+            actions.setSpacing(true);
+            return actions;
         }).setHeader("Actions");
 
         grid.setItems(userRepository.findAll());
@@ -101,5 +112,57 @@ public class UserListView extends VerticalLayout {
         dialog.add(formLayout);
 
         dialog.open();
+    }
+
+    public void handleDeleteClick(User user) {
+        if (user.getStatus() == UserStatus.DISABLED) {
+            // Hard delete - show confirmation dialog
+            showDeleteConfirmationDialog(user);
+        } else {
+            // Soft delete - no confirmation needed
+            try {
+                deleteUser(user);
+            } catch (IllegalArgumentException ex) {
+                Notification.show(ex.getMessage());
+            }
+        }
+    }
+
+    private void showDeleteConfirmationDialog(User user) {
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle("Confirm Deletion");
+
+        VerticalLayout content = new VerticalLayout();
+        content.add("Are you sure you want to permanently delete user " + user.getEmail() + "?");
+        content.add("This action cannot be undone.");
+
+        Button confirmButton = new Button("Confirm");
+        confirmButton.addClickListener(e -> {
+            try {
+                deleteUser(user);
+                dialog.close();
+            } catch (IllegalArgumentException ex) {
+                Notification.show(ex.getMessage());
+                dialog.close();
+            }
+        });
+
+        Button cancelButton = new Button("Cancel");
+        cancelButton.addClickListener(e -> dialog.close());
+
+        HorizontalLayout buttons = new HorizontalLayout(confirmButton, cancelButton);
+        content.add(buttons);
+
+        dialog.add(content);
+        dialog.open();
+    }
+
+    public void deleteUser(User user) {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUserEmail = authentication != null ? authentication.getName() : "";
+
+        userService.deleteUser(user.getId(), currentUserEmail);
+        grid.setItems(userRepository.findAll());
+        Notification.show("User deleted successfully");
     }
 }

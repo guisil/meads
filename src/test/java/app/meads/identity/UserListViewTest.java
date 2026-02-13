@@ -411,4 +411,83 @@ class UserListViewTest {
         assertThat(roleSelect.isEnabled()).isFalse(); // Role cannot be changed
         assertThat(statusSelect.isEnabled()).isFalse(); // Status cannot be changed
     }
+
+    @Test
+    @WithMockUser(username = "admin@example.com", roles = "SYSTEM_ADMIN")
+    @DirtiesContext
+    void shouldSoftDeleteUserWhenStatusIsNotDisabled() {
+        // Arrange - create a test user
+        var userId = UUID.randomUUID();
+        var user = new User(
+                userId,
+                "delete-test-" + userId + "@example.com",
+                "Test User",
+                UserStatus.ACTIVE,
+                Role.USER
+        );
+        userRepository.save(user);
+
+        // Act - navigate and trigger delete
+        UI.getCurrent().navigate("users");
+        var view = _get(UserListView.class);
+        view.deleteUser(user);
+
+        // Assert - user should be soft deleted (status changed to DISABLED)
+        var deletedUser = userRepository.findById(userId).orElseThrow();
+        assertThat(deletedUser.getStatus()).isEqualTo(UserStatus.DISABLED);
+        assertThat(userRepository.findById(userId)).isPresent(); // Still in database
+    }
+
+    @Test
+    @WithMockUser(username = "admin@example.com", roles = "SYSTEM_ADMIN")
+    @DirtiesContext
+    void shouldShowConfirmationDialogBeforeHardDelete() {
+        // Arrange - create a DISABLED user
+        var userId = UUID.randomUUID();
+        var user = new User(
+                userId,
+                "hard-delete-test-" + userId + "@example.com",
+                "Test User",
+                UserStatus.DISABLED,
+                Role.USER
+        );
+        userRepository.save(user);
+
+        // Act - navigate and trigger delete click
+        UI.getCurrent().navigate("users");
+        var view = _get(UserListView.class);
+        view.handleDeleteClick(user);
+
+        // Assert - confirmation dialog should appear
+        var dialog = _get(Dialog.class);
+        assertThat(dialog.isOpened()).isTrue();
+    }
+
+    @Test
+    @WithMockUser(username = "admin@example.com", roles = "SYSTEM_ADMIN")
+    @DirtiesContext
+    void shouldHardDeleteUserWhenConfirmed() {
+        // Arrange - create a DISABLED user
+        var userId = UUID.randomUUID();
+        var user = new User(
+                userId,
+                "confirm-delete-test-" + userId + "@example.com",
+                "Test User",
+                UserStatus.DISABLED,
+                Role.USER
+        );
+        userRepository.save(user);
+
+        // Act - navigate, trigger delete, and confirm
+        UI.getCurrent().navigate("users");
+        var view = _get(UserListView.class);
+        view.handleDeleteClick(user);
+
+        // Click the confirm button
+        var confirmButton = _get(Button.class, spec -> spec.withCaption("Confirm"));
+        _click(confirmButton);
+
+        // Assert - user should be hard deleted (removed from database)
+        assertThat(userRepository.findById(userId)).isEmpty();
+    }
 }
