@@ -133,4 +133,24 @@ class UserTest {
         // Assert
         assertThat(user.getStatus()).isEqualTo(UserStatus.ACTIVE);
     }
+
+    @Test
+    void shouldUpdateDetailsWhenValidDataProvided() {
+        // Arrange
+        var user = new User(
+                UUID.randomUUID(),
+                "user@example.com",
+                "Original Name",
+                UserStatus.PENDING,
+                Role.USER
+        );
+
+        // Act
+        user.updateDetails("Updated Name", Role.SYSTEM_ADMIN, UserStatus.ACTIVE);
+
+        // Assert
+        assertThat(user.getName()).isEqualTo("Updated Name");
+        assertThat(user.getRole()).isEqualTo(Role.SYSTEM_ADMIN);
+        assertThat(user.getStatus()).isEqualTo(UserStatus.ACTIVE);
+    }
 }

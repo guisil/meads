@@ -82,6 +82,12 @@ public class User {
         this.status = UserStatus.ACTIVE;
     }
 
+    public void updateDetails(String name, Role role, UserStatus status) {
+        this.name = name;
+        this.role = role;
+        this.status = status;
+    }
+
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
     }
