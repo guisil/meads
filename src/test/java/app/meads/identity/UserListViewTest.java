@@ -515,4 +515,37 @@ class UserListViewTest {
         var notification = _get(Notification.class);
         assertThat(notification.isOpened()).isTrue();
     }
+
+    @Test
+    @WithMockUser(roles = "SYSTEM_ADMIN")
+    void shouldOpenCreateUserDialogWhenCreateButtonClicked() {
+        // Act - navigate and click create user button
+        UI.getCurrent().navigate("users");
+        var createButton = _get(Button.class, spec -> spec.withText("Create User"));
+        _click(createButton);
+
+        // Assert - dialog should be present
+        var dialog = _get(Dialog.class);
+        assertThat(dialog.isOpened()).isTrue();
+    }
+
+    @Test
+    @WithMockUser(roles = "SYSTEM_ADMIN")
+    void shouldDisplayFormFieldsInCreateUserDialog() {
+        // Act - navigate and open create dialog
+        UI.getCurrent().navigate("users");
+        var createButton = _get(Button.class, spec -> spec.withText("Create User"));
+        _click(createButton);
+
+        // Assert - form fields should be present and empty
+        var emailField = _get(TextField.class, spec -> spec.withCaption("Email"));
+        var nameField = _get(TextField.class, spec -> spec.withCaption("Name"));
+        var roleSelect = _get(Select.class, spec -> spec.withCaption("Role"));
+        var statusSelect = _get(Select.class, spec -> spec.withCaption("Status"));
+
+        assertThat(emailField.getValue()).isEmpty();
+        assertThat(nameField.getValue()).isEmpty();
+        assertThat(roleSelect.isEmpty()).isTrue();
+        assertThat(statusSelect.isEmpty()).isTrue();
+    }
 }

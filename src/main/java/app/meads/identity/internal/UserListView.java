@@ -32,6 +32,10 @@ public class UserListView extends VerticalLayout {
         this.magicLinkService = magicLinkService;
         add(new H1("Users"));
 
+        Button createUserButton = new Button("Create User");
+        createUserButton.addClickListener(e -> openCreateUserDialog());
+        add(createUserButton);
+
         grid = new Grid<>(User.class, false);
         grid.addColumn(User::getEmail).setHeader("Email");
         grid.addColumn(User::getName).setHeader("Name");
@@ -174,5 +178,32 @@ public class UserListView extends VerticalLayout {
     public void sendMagicLink(User user) {
         magicLinkService.requestMagicLink(user.getEmail());
         Notification.show("Magic link sent successfully");
+    }
+
+    public void openCreateUserDialog() {
+        Dialog dialog = new Dialog();
+
+        TextField emailField = new TextField("Email");
+        emailField.setRequired(true);
+
+        TextField nameField = new TextField("Name");
+        nameField.setRequired(true);
+
+        Select<Role> roleSelect = new Select<>();
+        roleSelect.setLabel("Role");
+        roleSelect.setItems(Role.values());
+
+        Select<UserStatus> statusSelect = new Select<>();
+        statusSelect.setLabel("Status");
+        statusSelect.setItems(UserStatus.values());
+
+        Button saveButton = new Button("Save");
+        Button cancelButton = new Button("Cancel");
+        cancelButton.addClickListener(e -> dialog.close());
+
+        VerticalLayout formLayout = new VerticalLayout(emailField, nameField, roleSelect, statusSelect, saveButton, cancelButton);
+        dialog.add(formLayout);
+
+        dialog.open();
     }
 }
