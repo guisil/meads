@@ -227,6 +227,13 @@ public class UserListView extends VerticalLayout {
                 return;
             }
 
+            // Validate role is selected
+            if (roleSelect.isEmpty()) {
+                roleSelect.setInvalid(true);
+                roleSelect.setErrorMessage("Role is required");
+                return;
+            }
+
             var user = new User(
                 java.util.UUID.randomUUID(),
                 emailField.getValue(),
