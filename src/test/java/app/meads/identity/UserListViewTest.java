@@ -617,4 +617,48 @@ class UserListViewTest {
         // Email field should show validation error
         assertThat(emailField.isInvalid()).isTrue();
     }
+
+    @Test
+    @WithMockUser(roles = "SYSTEM_ADMIN")
+    @DirtiesContext
+    void shouldNotCreateUserWhenEmailAlreadyExists() {
+        // Arrange - create an existing user with a specific email
+        var existingUser = new User(
+                UUID.randomUUID(),
+                "existing@example.com",
+                "Existing User",
+                UserStatus.ACTIVE,
+                Role.USER
+        );
+        userRepository.save(existingUser);
+
+        // Act - navigate, open dialog, try to create user with same email
+        UI.getCurrent().navigate("users");
+        var createButton = _get(Button.class, spec -> spec.withText("Create User"));
+        _click(createButton);
+
+        var emailField = _get(TextField.class, spec -> spec.withCaption("Email"));
+        var nameField = _get(TextField.class, spec -> spec.withCaption("Name"));
+        var roleSelect = _get(Select.class, spec -> spec.withCaption("Role"));
+        var statusSelect = _get(Select.class, spec -> spec.withCaption("Status"));
+
+        emailField.setValue("existing@example.com");
+        nameField.setValue("New User");
+        roleSelect.setValue(Role.USER);
+        statusSelect.setValue(UserStatus.ACTIVE);
+
+        var saveButton = _get(Button.class, spec -> spec.withText("Save"));
+        _click(saveButton);
+
+        // Assert - user should NOT be created (still only 1 user)
+        assertThat(userRepository.count()).isEqualTo(1);
+
+        // Dialog should still be open (save failed due to validation)
+        var dialog = _get(Dialog.class);
+        assertThat(dialog.isOpened()).isTrue();
+
+        // Email field should show validation error
+        assertThat(emailField.isInvalid()).isTrue();
+        assertThat(emailField.getErrorMessage()).contains("already exists");
+    }
 }

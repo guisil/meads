@@ -206,6 +206,13 @@ public class UserListView extends VerticalLayout {
                 return;
             }
 
+            // Validate email doesn't already exist
+            if (userRepository.findByEmail(emailField.getValue()).isPresent()) {
+                emailField.setInvalid(true);
+                emailField.setErrorMessage("Email already exists");
+                return;
+            }
+
             var user = new User(
                 java.util.UUID.randomUUID(),
                 emailField.getValue(),
