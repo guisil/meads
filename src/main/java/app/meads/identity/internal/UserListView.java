@@ -198,6 +198,20 @@ public class UserListView extends VerticalLayout {
         statusSelect.setItems(UserStatus.values());
 
         Button saveButton = new Button("Save");
+        saveButton.addClickListener(e -> {
+            var user = new User(
+                java.util.UUID.randomUUID(),
+                emailField.getValue(),
+                nameField.getValue(),
+                statusSelect.getValue(),
+                roleSelect.getValue()
+            );
+            userRepository.save(user);
+            grid.setItems(userRepository.findAll());
+            Notification.show("User created successfully");
+            dialog.close();
+        });
+
         Button cancelButton = new Button("Cancel");
         cancelButton.addClickListener(e -> dialog.close());
 

@@ -548,4 +548,37 @@ class UserListViewTest {
         assertThat(roleSelect.isEmpty()).isTrue();
         assertThat(statusSelect.isEmpty()).isTrue();
     }
+
+    @Test
+    @WithMockUser(roles = "SYSTEM_ADMIN")
+    @DirtiesContext
+    void shouldCreateUserWhenSaveButtonClicked() {
+        // Act - navigate, open dialog, fill form, and save
+        UI.getCurrent().navigate("users");
+        var createButton = _get(Button.class, spec -> spec.withText("Create User"));
+        _click(createButton);
+
+        var emailField = _get(TextField.class, spec -> spec.withCaption("Email"));
+        var nameField = _get(TextField.class, spec -> spec.withCaption("Name"));
+        var roleSelect = _get(Select.class, spec -> spec.withCaption("Role"));
+        var statusSelect = _get(Select.class, spec -> spec.withCaption("Status"));
+
+        emailField.setValue("newuser@example.com");
+        nameField.setValue("New User");
+        roleSelect.setValue(Role.USER);
+        statusSelect.setValue(UserStatus.ACTIVE);
+
+        var saveButton = _get(Button.class, spec -> spec.withText("Save"));
+        _click(saveButton);
+
+        // Assert - user should be created in database
+        var createdUser = userRepository.findByEmail("newuser@example.com");
+        assertThat(createdUser).isPresent();
+        assertThat(createdUser.get().getName()).isEqualTo("New User");
+        assertThat(createdUser.get().getRole()).isEqualTo(Role.USER);
+        assertThat(createdUser.get().getStatus()).isEqualTo(UserStatus.ACTIVE);
+
+        // Dialog should be closed
+        assertThat(_find(Dialog.class)).isEmpty();
+    }
 }
