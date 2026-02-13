@@ -23,11 +23,13 @@ public class UserListView extends VerticalLayout {
 
     private final UserRepository userRepository;
     private final UserService userService;
+    private final MagicLinkService magicLinkService;
     private final Grid<User> grid;
 
-    public UserListView(UserRepository userRepository, UserService userService) {
+    public UserListView(UserRepository userRepository, UserService userService, MagicLinkService magicLinkService) {
         this.userRepository = userRepository;
         this.userService = userService;
+        this.magicLinkService = magicLinkService;
         add(new H1("Users"));
 
         grid = new Grid<>(User.class, false);
@@ -43,7 +45,10 @@ public class UserListView extends VerticalLayout {
             Button deleteButton = new Button(deleteButtonText);
             deleteButton.addClickListener(e -> handleDeleteClick(user));
 
-            HorizontalLayout actions = new HorizontalLayout(editButton, deleteButton);
+            Button magicLinkButton = new Button("Send Magic Link");
+            magicLinkButton.addClickListener(e -> sendMagicLink(user));
+
+            HorizontalLayout actions = new HorizontalLayout(editButton, deleteButton, magicLinkButton);
             actions.setSpacing(true);
             return actions;
         }).setHeader("Actions");
@@ -164,5 +169,10 @@ public class UserListView extends VerticalLayout {
         userService.deleteUser(user.getId(), currentUserEmail);
         grid.setItems(userRepository.findAll());
         Notification.show("User deleted successfully");
+    }
+
+    public void sendMagicLink(User user) {
+        magicLinkService.requestMagicLink(user.getEmail());
+        Notification.show("Magic link sent successfully");
     }
 }

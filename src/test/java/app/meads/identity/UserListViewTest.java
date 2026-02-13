@@ -490,4 +490,29 @@ class UserListViewTest {
         // Assert - user should be hard deleted (removed from database)
         assertThat(userRepository.findById(userId)).isEmpty();
     }
+
+    @Test
+    @WithMockUser(username = "admin@example.com", roles = "SYSTEM_ADMIN")
+    @DirtiesContext
+    void shouldSendMagicLinkWhenButtonClicked() {
+        // Arrange - create a test user
+        var userId = UUID.randomUUID();
+        var user = new User(
+                userId,
+                "magic-link-test-" + userId + "@example.com",
+                "Test User",
+                UserStatus.ACTIVE,
+                Role.USER
+        );
+        userRepository.save(user);
+
+        // Act - navigate and trigger send magic link
+        UI.getCurrent().navigate("users");
+        var view = _get(UserListView.class);
+        view.sendMagicLink(user);
+
+        // Assert - success notification should be shown
+        var notification = _get(Notification.class);
+        assertThat(notification.isOpened()).isTrue();
+    }
 }
