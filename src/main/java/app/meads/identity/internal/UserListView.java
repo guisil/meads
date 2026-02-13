@@ -192,6 +192,7 @@ public class UserListView extends VerticalLayout {
         Select<Role> roleSelect = new Select<>();
         roleSelect.setLabel("Role");
         roleSelect.setItems(Role.values());
+        roleSelect.setValue(Role.USER);
 
         Select<UserStatus> statusSelect = new Select<>();
         statusSelect.setLabel("Status");
