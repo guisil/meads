@@ -220,6 +220,13 @@ public class UserListView extends VerticalLayout {
                 return;
             }
 
+            // Validate name field is not empty
+            if (nameField.getValue().isBlank()) {
+                nameField.setInvalid(true);
+                nameField.setErrorMessage("Name is required");
+                return;
+            }
+
             var user = new User(
                 java.util.UUID.randomUUID(),
                 emailField.getValue(),
