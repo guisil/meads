@@ -537,7 +537,7 @@ class UserListViewTest {
         var createButton = _get(Button.class, spec -> spec.withText("Create User"));
         _click(createButton);
 
-        // Assert - form fields should be present and empty
+        // Assert - form fields should be present and empty (except status which defaults to PENDING)
         var emailField = _get(TextField.class, spec -> spec.withCaption("Email"));
         var nameField = _get(TextField.class, spec -> spec.withCaption("Name"));
         var roleSelect = _get(Select.class, spec -> spec.withCaption("Role"));
@@ -546,7 +546,7 @@ class UserListViewTest {
         assertThat(emailField.getValue()).isEmpty();
         assertThat(nameField.getValue()).isEmpty();
         assertThat(roleSelect.isEmpty()).isTrue();
-        assertThat(statusSelect.isEmpty()).isTrue();
+        assertThat(statusSelect.getValue()).isEqualTo(UserStatus.PENDING);
     }
 
     @Test
@@ -769,5 +769,18 @@ class UserListViewTest {
 
         // Role select should show validation error
         assertThat(roleSelect.isInvalid()).isTrue();
+    }
+
+    @Test
+    @WithMockUser(roles = "SYSTEM_ADMIN")
+    void shouldDefaultStatusToPendingInCreateDialog() {
+        // Act - navigate and open create dialog
+        UI.getCurrent().navigate("users");
+        var createButton = _get(Button.class, spec -> spec.withText("Create User"));
+        _click(createButton);
+
+        // Assert - status field should default to PENDING
+        var statusSelect = _get(Select.class, spec -> spec.withCaption("Status"));
+        assertThat(statusSelect.getValue()).isEqualTo(UserStatus.PENDING);
     }
 }

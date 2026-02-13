@@ -196,6 +196,7 @@ public class UserListView extends VerticalLayout {
         Select<UserStatus> statusSelect = new Select<>();
         statusSelect.setLabel("Status");
         statusSelect.setItems(UserStatus.values());
+        statusSelect.setValue(UserStatus.PENDING);
 
         Button saveButton = new Button("Save");
         saveButton.addClickListener(e -> {
