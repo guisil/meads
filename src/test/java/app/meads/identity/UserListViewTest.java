@@ -581,4 +581,40 @@ class UserListViewTest {
         // Dialog should be closed
         assertThat(_find(Dialog.class)).isEmpty();
     }
+
+    @Test
+    @WithMockUser(roles = "SYSTEM_ADMIN")
+    @DirtiesContext
+    void shouldNotCreateUserWhenEmailFieldIsEmpty() {
+        // Arrange - count users before
+        long userCountBefore = userRepository.count();
+
+        // Act - navigate, open dialog, leave email empty, fill other fields, and try to save
+        UI.getCurrent().navigate("users");
+        var createButton = _get(Button.class, spec -> spec.withText("Create User"));
+        _click(createButton);
+
+        var emailField = _get(TextField.class, spec -> spec.withCaption("Email"));
+        var nameField = _get(TextField.class, spec -> spec.withCaption("Name"));
+        var roleSelect = _get(Select.class, spec -> spec.withCaption("Role"));
+        var statusSelect = _get(Select.class, spec -> spec.withCaption("Status"));
+
+        // Leave email empty
+        nameField.setValue("Test User");
+        roleSelect.setValue(Role.USER);
+        statusSelect.setValue(UserStatus.ACTIVE);
+
+        var saveButton = _get(Button.class, spec -> spec.withText("Save"));
+        _click(saveButton);
+
+        // Assert - user should NOT be created
+        assertThat(userRepository.count()).isEqualTo(userCountBefore);
+
+        // Dialog should still be open (save failed due to validation)
+        var dialog = _get(Dialog.class);
+        assertThat(dialog.isOpened()).isTrue();
+
+        // Email field should show validation error
+        assertThat(emailField.isInvalid()).isTrue();
+    }
 }

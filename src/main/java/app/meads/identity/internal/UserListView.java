@@ -199,6 +199,13 @@ public class UserListView extends VerticalLayout {
 
         Button saveButton = new Button("Save");
         saveButton.addClickListener(e -> {
+            // Validate email field is not empty
+            if (emailField.getValue().isBlank()) {
+                emailField.setInvalid(true);
+                emailField.setErrorMessage("Email is required");
+                return;
+            }
+
             var user = new User(
                 java.util.UUID.randomUUID(),
                 emailField.getValue(),
