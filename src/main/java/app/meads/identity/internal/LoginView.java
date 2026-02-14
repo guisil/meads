@@ -5,10 +5,12 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.QueryParameters;
+import com.vaadin.flow.server.auth.AnonymousAllowed;
 
 import java.util.Map;
 
 @Route("login")
+@AnonymousAllowed
 public class LoginView extends VerticalLayout {
 
     private final MagicLinkService magicLinkService;
