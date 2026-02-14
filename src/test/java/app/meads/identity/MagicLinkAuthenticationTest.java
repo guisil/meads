@@ -20,6 +20,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.authenticated;
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.unauthenticated;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
@@ -62,7 +63,8 @@ class MagicLinkAuthenticationTest {
 
         // When - the token is posted to /login/ott
         mockMvc.perform(post("/login/ott")
-                .param("token", token))
+                .param("token", token)
+                .with(csrf()))
                 // Then - the user should be authenticated
                 .andExpect(status().is3xxRedirection())
                 .andExpect(authenticated().withUsername(email));
@@ -72,7 +74,8 @@ class MagicLinkAuthenticationTest {
     void shouldRejectAuthenticationWhenInvalidTokenProvided() throws Exception {
         // When - user posts an invalid token
         mockMvc.perform(post("/login/ott")
-                .param("token", "invalid-token"))
+                .param("token", "invalid-token")
+                .with(csrf()))
                 // Then - authentication should fail
                 .andExpect(status().is3xxRedirection())
                 .andExpect(unauthenticated());
@@ -107,7 +110,8 @@ class MagicLinkAuthenticationTest {
 
         // When - the token is posted to /login/ott
         mockMvc.perform(post("/login/ott")
-                .param("token", token))
+                .param("token", token)
+                .with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(authenticated().withUsername(email));
 

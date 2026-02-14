@@ -1,6 +1,8 @@
 package app.meads.identity.internal;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -12,12 +14,14 @@ import java.io.IOException;
 class MagicLinkLandingController {
 
     @GetMapping("/login/magic")
-    void landingPage(@RequestParam String token, HttpServletResponse response) throws IOException {
+    void landingPage(@RequestParam String token, HttpServletRequest request, HttpServletResponse response) throws IOException {
         String escaped = HtmlUtils.htmlEscape(token);
+        CsrfToken csrfToken = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
         response.setContentType("text/html");
         response.getWriter().write(
                 "<html><body>"
                 + "<form action=\"/login/ott\" method=\"post\">"
+                + "<input type=\"hidden\" name=\"" + csrfToken.getParameterName() + "\" value=\"" + csrfToken.getToken() + "\"/>"
                 + "<input type=\"hidden\" name=\"token\" value=\"" + escaped + "\"/>"
                 + "</form>"
                 + "<script>document.forms[0].submit()</script>"

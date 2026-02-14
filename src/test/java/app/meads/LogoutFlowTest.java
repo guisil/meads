@@ -48,7 +48,7 @@ class LogoutFlowTest {
             .apply(springSecurity())
             .build();
 
-        // After logout, should redirect to root page (which will then forward to login for anonymous users)
+        // After logout, should redirect to root page (which forwards unauthenticated users to login)
         mockMvc.perform(post("/logout").with(csrf()))
             .andExpect(status().is3xxRedirection())
             .andExpect(redirectedUrl("/"));
