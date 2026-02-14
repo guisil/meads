@@ -11,6 +11,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -38,11 +40,19 @@ class MagicLinkLandingControllerTest {
         mockMvc.perform(get("/login/magic")
                 .param("token", "test-token-123"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("action=\"/login/ott\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("method=\"post\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"token\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"test-token-123\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("document.forms[0].submit()")));
+                .andExpect(content().string(containsString("action=\"/login/ott\"")))
+                .andExpect(content().string(containsString("method=\"post\"")))
+                .andExpect(content().string(containsString("name=\"token\"")))
+                .andExpect(content().string(containsString("value=\"test-token-123\"")))
+                .andExpect(content().string(containsString("document.forms[0].submit()")));
+    }
+
+    @Test
+    void shouldIncludeCsrfTokenInAutoSubmitForm() throws Exception {
+        mockMvc.perform(get("/login/magic")
+                .param("token", "test-token-123"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("name=\"_csrf\"")));
     }
 
     @Test
@@ -50,8 +60,8 @@ class MagicLinkLandingControllerTest {
         mockMvc.perform(get("/login/magic")
                 .param("token", "\"><script>alert('xss')</script>"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.not(
-                        org.hamcrest.Matchers.containsString("<script>alert('xss')</script>"))))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("&lt;script&gt;")));
+                .andExpect(content().string(not(
+                        containsString("<script>alert('xss')</script>"))))
+                .andExpect(content().string(containsString("&lt;script&gt;")));
     }
 }
