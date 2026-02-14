@@ -3,6 +3,8 @@ package app.meads.identity;
 import app.meads.TestcontainersConfiguration;
 import app.meads.identity.internal.UserListView;
 import app.meads.identity.internal.UserRepository;
+import com.github.mvysny.fakeservlet.FakeRequest;
+import com.github.mvysny.kaributesting.v10.MockAccessDeniedException;
 import com.github.mvysny.kaributesting.v10.MockVaadin;
 import com.github.mvysny.kaributesting.v10.Routes;
 import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
@@ -13,16 +15,24 @@ import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.server.VaadinServletRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.annotation.DirtiesContext;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 
 import static com.github.mvysny.kaributesting.v10.LocatorJ.*;
@@ -40,16 +50,59 @@ class UserListViewTest {
     UserRepository userRepository;
 
     @BeforeEach
-    void setup() {
+    void setup(TestInfo testInfo) {
         var routes = new Routes().autoDiscoverViews("app.meads");
         var servlet = new MockSpringServlet(routes, ctx, UI::new);
         MockVaadin.setup(UI::new, servlet);
+
+        var authentication = resolveAuthentication(testInfo);
+        if (authentication != null) {
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+        }
+        propagateSecurityContext(authentication);
+    }
+
+    private Authentication resolveAuthentication(TestInfo testInfo) {
+        // Try SecurityContextHolder first (works when @WithMockUser pipeline is intact)
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null) {
+            return auth;
+        }
+        // Fall back to reading @WithMockUser annotation directly.
+        // VaadinAwareSecurityContextHolderStrategy can lose the context set by
+        // @WithMockUser when other test classes modify the SecurityContextHolder strategy.
+        var method = testInfo.getTestMethod().orElse(null);
+        if (method == null) {
+            return null;
+        }
+        var withMockUser = method.getAnnotation(WithMockUser.class);
+        if (withMockUser == null) {
+            return null;
+        }
+        var username = withMockUser.username().isEmpty() ? withMockUser.value() : withMockUser.username();
+        if (username.isEmpty()) {
+            username = "user";
+        }
+        var authorities = Arrays.stream(withMockUser.roles())
+                .map(r -> new SimpleGrantedAuthority("ROLE_" + r))
+                .toList();
+        return new UsernamePasswordAuthenticationToken(username, null, authorities);
+    }
+
+    private void propagateSecurityContext(Authentication authentication) {
+        if (authentication != null) {
+            var fakeRequest = (FakeRequest) VaadinServletRequest.getCurrent().getRequest();
+            fakeRequest.setUserPrincipalInt(authentication);
+            fakeRequest.setUserInRole((principal, role) ->
+                    authentication.getAuthorities().stream()
+                            .anyMatch(a -> a.getAuthority().equals("ROLE_" + role)));
+        }
     }
 
     @AfterEach
     void tearDown() {
         MockVaadin.tearDown();
-        org.springframework.security.core.context.SecurityContextHolder.clearContext();
+        SecurityContextHolder.clearContext();
     }
 
     @Test
@@ -63,15 +116,9 @@ class UserListViewTest {
 
     @Test
     @WithMockUser(roles = "USER")
-    void shouldHaveRolesAllowedAnnotationForSecurity() {
-        // Note: @RolesAllowed("SYSTEM_ADMIN") on UserListView is enforced by Spring Security
-        // at runtime, but Karibu tests don't go through the full security filter chain.
-        // This test documents that the security annotation exists.
-        // In production, regular users will get an access denied error.
-
-        var annotation = UserListView.class.getAnnotation(jakarta.annotation.security.RolesAllowed.class);
-        assertThat(annotation).isNotNull();
-        assertThat(annotation.value()).containsExactly("SYSTEM_ADMIN");
+    void shouldDenyAccessToUsersViewForRegularUser() {
+        assertThatThrownBy(() -> UI.getCurrent().navigate("users"))
+                .isInstanceOf(MockAccessDeniedException.class);
     }
 
     @Test
@@ -382,20 +429,12 @@ class UserListViewTest {
         userRepository.save(currentUser);
 
         // Manually set up authentication to ensure it's present
-        var authorities = java.util.List.of(
-            new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN")
+        var authorities = List.of(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"));
+        var authentication = new UsernamePasswordAuthenticationToken(
+            "admin@example.com", null, authorities
         );
-        var authentication = new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
-            "admin@example.com",
-            null,
-            authorities
-        );
-        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(authentication);
-
-        // Verify the security context is set
-        var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
-        assertThat(auth).isNotNull();
-        assertThat(auth.getName()).isEqualTo("admin@example.com");
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        propagateSecurityContext(authentication);
 
         // Act - navigate and open edit dialog for current user
         UI.getCurrent().navigate("users");

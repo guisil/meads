@@ -19,7 +19,6 @@ public class SecurityConfig {
         http
             .with(vaadin(), vaadin -> vaadin
                 .loginView("/login")
-                .enableNavigationAccessControl(false)
             )
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/", "/login/**", "/ott/**").permitAll()
