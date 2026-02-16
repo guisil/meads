@@ -1,6 +1,7 @@
 package app.meads.identity.internal;
 
 import app.meads.identity.User;
+import app.meads.identity.UserStatus;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -23,6 +24,7 @@ class DatabaseUserDetailsService implements UserDetailsService {
                 .username(user.getEmail())
                 .password("")
                 .authorities(user.getAuthorities())
+                .disabled(user.getStatus() == UserStatus.DISABLED)
                 .build();
     }
 }

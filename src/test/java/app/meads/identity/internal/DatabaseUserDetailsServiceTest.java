@@ -47,6 +47,25 @@ class DatabaseUserDetailsServiceTest {
     }
 
     @Test
+    void shouldReturnDisabledUserDetailsWhenUserIsDisabled() {
+        // Arrange
+        var user = new User(
+                UUID.randomUUID(),
+                "disabled@example.com",
+                "Disabled User",
+                UserStatus.DISABLED,
+                Role.USER
+        );
+        given(userRepository.findByEmail("disabled@example.com")).willReturn(Optional.of(user));
+
+        // Act
+        var userDetails = databaseUserDetailsService.loadUserByUsername("disabled@example.com");
+
+        // Assert
+        assertThat(userDetails.isEnabled()).isFalse();
+    }
+
+    @Test
     void shouldThrowUsernameNotFoundExceptionWhenUserDoesNotExist() {
         // Arrange
         given(userRepository.findByEmail("unknown@example.com")).willReturn(Optional.empty());
