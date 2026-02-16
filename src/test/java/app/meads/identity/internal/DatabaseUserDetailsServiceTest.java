@@ -66,6 +66,25 @@ class DatabaseUserDetailsServiceTest {
     }
 
     @Test
+    void shouldReturnLockedUserDetailsWhenUserIsLocked() {
+        // Arrange
+        var user = new User(
+                UUID.randomUUID(),
+                "locked@example.com",
+                "Locked User",
+                UserStatus.LOCKED,
+                Role.USER
+        );
+        given(userRepository.findByEmail("locked@example.com")).willReturn(Optional.of(user));
+
+        // Act
+        var userDetails = databaseUserDetailsService.loadUserByUsername("locked@example.com");
+
+        // Assert
+        assertThat(userDetails.isAccountNonLocked()).isFalse();
+    }
+
+    @Test
     void shouldThrowUsernameNotFoundExceptionWhenUserDoesNotExist() {
         // Arrange
         given(userRepository.findByEmail("unknown@example.com")).willReturn(Optional.empty());

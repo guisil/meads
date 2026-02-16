@@ -25,6 +25,7 @@ class DatabaseUserDetailsService implements UserDetailsService {
                 .password("")
                 .authorities(user.getAuthorities())
                 .disabled(user.getStatus() == UserStatus.DISABLED)
+                .accountLocked(user.getStatus() == UserStatus.LOCKED)
                 .build();
     }
 }
