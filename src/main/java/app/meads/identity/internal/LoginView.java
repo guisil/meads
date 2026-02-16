@@ -32,7 +32,7 @@ public class LoginView extends VerticalLayout {
             }
 
             email.setInvalid(false);
-            var token = magicLinkService.requestMagicLink(emailValue);
+            magicLinkService.requestMagicLink(emailValue);
             e.getSource().getUI().ifPresent(ui ->
                 ui.navigate("login", QueryParameters.simple(Map.of("tokenSent", "")))
             );

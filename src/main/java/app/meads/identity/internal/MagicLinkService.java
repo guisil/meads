@@ -19,16 +19,17 @@ class MagicLinkService {
         this.userRepository = userRepository;
     }
 
-    String requestMagicLink(String username) {
-        // Check if user exists
-        userRepository.findByEmail(username)
-                .orElseThrow(() -> new UserNotFoundException(username));
+    void requestMagicLink(String username) {
+        var user = userRepository.findByEmail(username);
+        if (user.isEmpty()) {
+            log.debug("Magic link requested for unknown user: {}", username);
+            return;
+        }
 
         var request = new GenerateOneTimeTokenRequest(username);
         var oneTimeToken = tokenService.generate(request);
         String tokenValue = oneTimeToken.getTokenValue();
         String link = BASE_URL + "/login/magic?token=" + tokenValue;
         log.info("\n\n\tMagic link for {}: {}\n", username, link);
-        return tokenValue;
     }
 }
