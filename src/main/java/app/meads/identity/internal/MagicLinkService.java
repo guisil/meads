@@ -6,7 +6,7 @@ import org.springframework.security.authentication.ott.OneTimeTokenService;
 import org.springframework.stereotype.Service;
 
 @Service
-class MagicLinkService {
+public class MagicLinkService {
 
     private static final Logger log = LoggerFactory.getLogger(MagicLinkService.class);
     private static final String BASE_URL = "http://localhost:8080";
@@ -19,7 +19,7 @@ class MagicLinkService {
         this.userRepository = userRepository;
     }
 
-    void requestMagicLink(String username) {
+    public void requestMagicLink(String username) {
         var user = userRepository.findByEmail(username);
         if (user.isEmpty()) {
             log.debug("Magic link requested for unknown user: {}", username);

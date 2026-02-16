@@ -1,5 +1,6 @@
-package app.meads.identity.internal;
+package app.meads.identity;
 
+import app.meads.identity.internal.MagicLinkService;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;

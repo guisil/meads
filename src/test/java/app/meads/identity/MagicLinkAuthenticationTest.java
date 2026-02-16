@@ -14,12 +14,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
-import jakarta.servlet.ServletException;
-
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.authenticated;
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.unauthenticated;
@@ -93,9 +90,9 @@ class MagicLinkAuthenticationTest {
 
         // When - the token is sent via GET to /login/ott
         // Then - the OTT filter does not process GET requests;
-        // the request falls through to Vaadin's servlet (not available in MockMvc)
-        assertThatThrownBy(() -> mockMvc.perform(get("/login/ott").param("token", token)))
-                .isInstanceOf(ServletException.class);
+        // the user should not be authenticated
+        mockMvc.perform(get("/login/ott").param("token", token))
+                .andExpect(unauthenticated());
     }
 
     @Test
