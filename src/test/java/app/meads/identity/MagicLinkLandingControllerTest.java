@@ -56,6 +56,14 @@ class MagicLinkLandingControllerTest {
     }
 
     @Test
+    void shouldReturnWellFormedHtmlPage() throws Exception {
+        mockMvc.perform(get("/login/magic")
+                .param("token", "test-token-123"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("<!DOCTYPE html>")));
+    }
+
+    @Test
     void shouldEscapeTokenToPreventXss() throws Exception {
         mockMvc.perform(get("/login/magic")
                 .param("token", "\"><script>alert('xss')</script>"))
