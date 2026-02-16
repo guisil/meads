@@ -8,13 +8,13 @@ import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 import com.vaadin.flow.spring.security.AuthenticationContext;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 
 @Route("")
 @AnonymousAllowed
 public class RootView extends VerticalLayout implements BeforeEnterObserver {
 
-    private final AuthenticationContext authenticationContext;
+    private final transient AuthenticationContext authenticationContext;
 
     public RootView(AuthenticationContext authenticationContext) {
         this.authenticationContext = authenticationContext;
@@ -22,23 +22,18 @@ public class RootView extends VerticalLayout implements BeforeEnterObserver {
 
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
-        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        authenticationContext.getAuthenticatedUser(UserDetails.class).ifPresentOrElse(
+                user -> {
+                    removeAll();
+                    add(new H1("Welcome " + user.getUsername()));
 
-        if (authentication != null && authentication.isAuthenticated()
-                && !"anonymousUser".equals(authentication.getPrincipal())) {
-            removeAll();
-            String username = authentication.getName();
-            add(new H1("Welcome " + username));
+                    if (authenticationContext.hasRole("SYSTEM_ADMIN")) {
+                        add(new Button("Users", e -> e.getSource().getUI().ifPresent(ui -> ui.navigate("users"))));
+                    }
 
-            // Show Users link for system admin users
-            if (authentication.getAuthorities().stream()
-                    .anyMatch(a -> a.getAuthority().equals("ROLE_SYSTEM_ADMIN"))) {
-                add(new Button("Users", e -> e.getSource().getUI().ifPresent(ui -> ui.navigate("users"))));
-            }
-
-            add(new Button("Logout", e -> authenticationContext.logout()));
-        } else {
-            event.forwardTo("login");
-        }
+                    add(new Button("Logout", e -> authenticationContext.logout()));
+                },
+                () -> event.forwardTo("login")
+        );
     }
 }

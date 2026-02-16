@@ -86,7 +86,12 @@ class UserListViewTest {
         var authorities = Arrays.stream(withMockUser.roles())
                 .map(r -> new SimpleGrantedAuthority("ROLE_" + r))
                 .toList();
-        return new UsernamePasswordAuthenticationToken(username, null, authorities);
+        var userDetails = org.springframework.security.core.userdetails.User.builder()
+                .username(username)
+                .password("password")
+                .authorities(authorities)
+                .build();
+        return new UsernamePasswordAuthenticationToken(userDetails, null, authorities);
     }
 
     private void propagateSecurityContext(Authentication authentication) {
@@ -430,8 +435,13 @@ class UserListViewTest {
 
         // Manually set up authentication to ensure it's present
         var authorities = List.of(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"));
+        var userDetails = org.springframework.security.core.userdetails.User.builder()
+                .username("admin@example.com")
+                .password("password")
+                .authorities(authorities)
+                .build();
         var authentication = new UsernamePasswordAuthenticationToken(
-            "admin@example.com", null, authorities
+            userDetails, null, authorities
         );
         SecurityContextHolder.getContext().setAuthentication(authentication);
         propagateSecurityContext(authentication);

@@ -14,8 +14,9 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.spring.security.AuthenticationContext;
 import jakarta.annotation.security.RolesAllowed;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 
 @Route("users")
 @RolesAllowed("SYSTEM_ADMIN")
@@ -24,12 +25,14 @@ public class UserListView extends VerticalLayout {
     private final UserRepository userRepository;
     private final UserService userService;
     private final MagicLinkService magicLinkService;
+    private final transient AuthenticationContext authenticationContext;
     private final Grid<User> grid;
 
-    public UserListView(UserRepository userRepository, UserService userService, MagicLinkService magicLinkService) {
+    public UserListView(UserRepository userRepository, UserService userService, MagicLinkService magicLinkService, AuthenticationContext authenticationContext) {
         this.userRepository = userRepository;
         this.userService = userService;
         this.magicLinkService = magicLinkService;
+        this.authenticationContext = authenticationContext;
         add(new H1("Users"));
 
         Button createUserButton = new Button("Create User");
@@ -80,8 +83,9 @@ public class UserListView extends VerticalLayout {
         statusSelect.setValue(user.getStatus());
 
         // Prevent users from editing their own role or status
-        var authentication = SecurityContextHolder.getContext().getAuthentication();
-        boolean isEditingSelf = authentication != null && user.getEmail().equals(authentication.getName());
+        boolean isEditingSelf = authenticationContext.getAuthenticatedUser(UserDetails.class)
+                .map(u -> user.getEmail().equals(u.getUsername()))
+                .orElse(false);
         if (isEditingSelf) {
             roleSelect.setEnabled(false);
             statusSelect.setEnabled(false);
@@ -167,8 +171,9 @@ public class UserListView extends VerticalLayout {
     }
 
     public void deleteUser(User user) {
-        var authentication = SecurityContextHolder.getContext().getAuthentication();
-        String currentUserEmail = authentication != null ? authentication.getName() : "";
+        String currentUserEmail = authenticationContext.getAuthenticatedUser(UserDetails.class)
+                .map(UserDetails::getUsername)
+                .orElse("");
 
         userService.deleteUser(user.getId(), currentUserEmail);
         grid.setItems(userRepository.findAll());
