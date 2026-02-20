@@ -30,8 +30,6 @@ public class RootView extends VerticalLayout implements BeforeEnterObserver {
                     if (authenticationContext.hasRole("SYSTEM_ADMIN")) {
                         add(new Button("Users", e -> e.getSource().getUI().ifPresent(ui -> ui.navigate("users"))));
                     }
-
-                    add(new Button("Logout", e -> authenticationContext.logout()));
                 },
                 () -> event.forwardTo("login")
         );

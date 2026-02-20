@@ -7,6 +7,7 @@ import com.github.mvysny.kaributesting.v10.Routes;
 import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.AppLayout;
+import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.server.VaadinServletRequest;
 import org.junit.jupiter.api.AfterEach;
@@ -108,5 +109,17 @@ class MainLayoutTest {
 
         var title = _get(H1.class, spec -> spec.withText("MEADS"));
         assertThat(title).isNotNull();
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void shouldDisplayLogoutButtonInNavbarWhenAuthenticated() {
+        UI.getCurrent().navigate("");
+
+        var layout = _get(MainLayout.class);
+        var logoutButtons = layout.getChildren()
+                .filter(c -> c instanceof Button b && "Logout".equals(b.getText()))
+                .toList();
+        assertThat(logoutButtons).hasSize(1);
     }
 }
