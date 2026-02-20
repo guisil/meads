@@ -51,7 +51,7 @@ class RootUrlRedirectTest {
     void shouldShowHomePageWhenAuthenticatedUserAccessesRootUrl() {
         UI.getCurrent().navigate("");
 
-        var heading = _get(H1.class);
+        var heading = _get(H1.class, spec -> spec.withText("Welcome user"));
         assertThat(heading.getText()).contains("Welcome");
     }
 
@@ -60,7 +60,7 @@ class RootUrlRedirectTest {
     void shouldDisplayUserEmailWhenAuthenticated() {
         UI.getCurrent().navigate("");
 
-        var heading = _get(H1.class);
+        var heading = _get(H1.class, spec -> spec.withText("Welcome test@example.com"));
         assertThat(heading.getText()).contains("test@example.com");
     }
 

@@ -7,6 +7,7 @@ import com.github.mvysny.kaributesting.v10.Routes;
 import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.AppLayout;
+import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.server.VaadinServletRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -98,5 +99,14 @@ class MainLayoutTest {
         UI.getCurrent().navigate("");
 
         assertThat(_find(AppLayout.class)).isNotEmpty();
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void shouldDisplayAppTitleInNavbar() {
+        UI.getCurrent().navigate("");
+
+        var title = _get(H1.class, spec -> spec.withText("MEADS"));
+        assertThat(title).isNotNull();
     }
 }
