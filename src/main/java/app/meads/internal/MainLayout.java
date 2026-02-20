@@ -18,6 +18,12 @@ public class MainLayout extends AppLayout {
         title.getStyle().set("font-size", "1.125rem").set("margin", "0");
 
         Button logoutButton = new Button("Logout", e -> authenticationContext.logout());
-        addToNavbar(title, logoutButton);
+
+        if (authenticationContext.hasRole("SYSTEM_ADMIN")) {
+            Button usersButton = new Button("Users", e -> e.getSource().getUI().ifPresent(ui -> ui.navigate("users")));
+            addToNavbar(title, usersButton, logoutButton);
+        } else {
+            addToNavbar(title, logoutButton);
+        }
     }
 }

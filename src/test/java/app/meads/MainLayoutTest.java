@@ -122,4 +122,16 @@ class MainLayoutTest {
                 .toList();
         assertThat(logoutButtons).hasSize(1);
     }
+
+    @Test
+    @WithMockUser(roles = "SYSTEM_ADMIN")
+    void shouldDisplayUsersLinkInNavbarForAdmin() {
+        UI.getCurrent().navigate("");
+
+        var layout = _get(MainLayout.class);
+        var usersButtons = layout.getChildren()
+                .filter(c -> c instanceof Button b && "Users".equals(b.getText()))
+                .toList();
+        assertThat(usersButtons).hasSize(1);
+    }
 }
