@@ -10,7 +10,7 @@ import com.vaadin.flow.server.auth.AnonymousAllowed;
 import com.vaadin.flow.spring.security.AuthenticationContext;
 import org.springframework.security.core.userdetails.UserDetails;
 
-@Route("")
+@Route(value = "", layout = MainLayout.class)
 @AnonymousAllowed
 public class RootView extends VerticalLayout implements BeforeEnterObserver {
 
