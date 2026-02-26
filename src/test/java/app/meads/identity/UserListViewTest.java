@@ -856,4 +856,21 @@ class UserListViewTest {
 
         assertThat(_find(EmailField.class, spec -> spec.withCaption("Email"))).isNotEmpty();
     }
+
+    @Test
+    @WithMockUser(roles = "SYSTEM_ADMIN")
+    @DirtiesContext
+    void shouldShowSuccessVariantOnSaveNotification() {
+        var userId = UUID.randomUUID();
+        var user = new User(userId, "notify-test-" + userId + "@example.com", "Test User", UserStatus.PENDING, Role.USER);
+        userRepository.save(user);
+
+        UI.getCurrent().navigate("users");
+        var view = _get(UserListView.class);
+        view.openEditDialog(user);
+        _get(TextField.class, spec -> spec.withCaption("Name")).setValue("Updated Name");
+        _click(_get(Button.class, spec -> spec.withText("Save")));
+
+        assertThat(_get(Notification.class).getThemeNames()).contains("success");
+    }
 }

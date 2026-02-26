@@ -11,6 +11,7 @@ import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.select.Select;
@@ -112,7 +113,8 @@ public class UserListView extends VerticalLayout {
                 );
                 userRepository.save(managedUser);
                 grid.setItems(userRepository.findAll());
-                Notification.show("User saved successfully");
+                var notification = Notification.show("User saved successfully");
+                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (Exception ex) {
                 nameField.setInvalid(true);
