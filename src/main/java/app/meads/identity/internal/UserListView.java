@@ -188,7 +188,8 @@ public class UserListView extends VerticalLayout {
 
     public void sendMagicLink(User user) {
         magicLinkService.requestMagicLink(user.getEmail());
-        Notification.show("Magic link sent successfully");
+        var notification = Notification.show("Magic link sent successfully");
+        notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
     }
 
     public void openCreateUserDialog() {
