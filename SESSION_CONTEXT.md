@@ -1,4 +1,4 @@
-# Session Context — MainLayout with AppLayout
+# Session Context
 
 ## How to Resume
 
@@ -11,68 +11,111 @@
 
 `restart_tdd` (based on `main`)
 
-## Completed — MainLayout Cycles
+## Tests passing: 96
 
-All security fixes from the previous session are done. 86 tests passing.
+---
 
-### Cycle 1: MainLayout exists and wraps RootView
-- Created `MainLayout` extending `AppLayout` with `@AnonymousAllowed`
-- Updated `RootView` with `@Route(value = "", layout = MainLayout.class)`
-- Test: `shouldRenderRootViewInsideAppLayout`
+## Completed
 
-### Cycle 2: App title in navbar
-- Added H1 "MEADS" to MainLayout navbar
-- Fixed `RootUrlRedirectTest` locators (now two H1s in tree)
-- Test: `shouldDisplayAppTitleInNavbar`
+- MainLayout exists and wraps RootView inside AppLayout
+- App title "MEADS" in navbar
+- Logout button in navbar
+- Users nav link for admins only (SYSTEM_ADMIN role)
+- HorizontalLayout wrapper in navbar for layout
+- UserListView renders inside MainLayout (required moving MainLayout to `app.meads` public API and SecurityConfig to `app.meads.identity.internal` to break a module cycle)
+- EmailField in LoginView
+- EmailField in UserListView create dialog
+- LUMO_SUCCESS variant on "User saved successfully" notification
+- Fix: show "User disabled successfully" when soft-deleting (was always "User deleted successfully")
+- LUMO_SUCCESS variant on disable/delete notification
+- LUMO_SUCCESS variant on "User created successfully" notification
+- LUMO_SUCCESS variant on "Magic link sent successfully" notification
 
-### Cycle 3: Logout button in layout
-- Added logout button to MainLayout navbar using `AuthenticationContext`
-- Removed duplicate logout button from `RootView`
-- Test: `shouldDisplayLogoutButtonInNavbarWhenAuthenticated`
+---
 
-### Cycle 4: Users nav link for admins
-- Added conditional "Users" button in MainLayout navbar for SYSTEM_ADMIN role
-- Removed duplicate Users button from `RootView`
-- `RootView` is now a simple welcome page (just shows "Welcome {username}")
-- Test: `shouldDisplayUsersLinkInNavbarForAdmin`
+## Unresolved bug: Spring Security default OTT page shown at /login
 
-## Current State of Key Files
+### Symptom
+When navigating directly to `/login` in the browser, Spring Security shows its own default
+"Request a One-Time Token" page (with a username field and "Send Token" button) instead of
+the Vaadin LoginView.
 
-- `src/main/java/app/meads/internal/MainLayout.java` — `AppLayout` with navbar containing: H1 title, conditional Users button (admin only), Logout button
-- `src/main/java/app/meads/internal/RootView.java` — Simplified to just welcome message + forward to login for unauthenticated users
-- `src/test/java/app/meads/MainLayoutTest.java` — 4 Karibu UI tests
-- `src/test/java/app/meads/RootUrlRedirectTest.java` — 7 tests (updated locators for H1)
+### Current SecurityConfig
+```java
+http
+    .authorizeHttpRequests(auth -> auth
+        .requestMatchers("/login/magic").permitAll()
+    )
+    .with(vaadin(), vaadin -> vaadin
+        .loginView(LoginView.class)
+    )
+    .formLogin(form -> form.disable())
+    .oneTimeTokenLogin(ott -> ott.showDefaultSubmitPage(false));
+```
 
-## Next Steps — Continue MainLayout (#1)
+### Root cause hypothesis
+`VaadinSecurityConfigurer.init()` calls `http.formLogin(...)` internally to register `/login`
+as the custom login page — this is what normally suppresses `DefaultLoginPageGeneratingFilter`.
+Then `formLogin(form -> form.disable())` removes the FormLoginConfigurer, so Spring Security
+sees no custom login page set and generates its own OTT page at `/login`.
 
-These behaviors still need TDD cycles:
+### Attempted fix (did NOT work)
+Removing `formLogin(form -> form.disable())` — all 96 tests still passed, but the Spring
+Security page still appeared in the browser. Change was reverted.
 
-1. **Users link NOT shown for regular users** — Test that a user with role USER does not see the "Users" button in MainLayout. (Note: `RootUrlRedirectTest.shouldNotShowUserListLinkForRegularUsers` already covers this partially, but a MainLayout-scoped test would be cleaner.)
+This means the hypothesis above is incomplete. Something else is also generating the page,
+or the Vaadin `loginView()` configuration is not wiring up Spring Security the way expected.
 
-2. **Logout/Users buttons hidden for unauthenticated users** — The layout is `@AnonymousAllowed` so unauthenticated users can reach it (for LoginView forwarding). Verify nav buttons aren't shown when not logged in.
+### Next investigation steps
 
-3. **UserListView uses MainLayout** — Update `UserListView` with `@Route(value = "users", layout = MainLayout.class)` so it also renders inside the layout.
+1. **Run the app with debug logging and inspect the filter chain** for the `/login` URL:
+   ```
+   mvn spring-boot:run -Dspring-boot.run.arguments="--debug"
+   ```
+   Look for which filter is intercepting GET /login and generating the OTT form.
+   Candidates: `DefaultLoginPageGeneratingFilter`, `GenerateOneTimeTokenFilter`.
 
-4. **Navbar styling** — Consider using `HorizontalLayout` in navbar for proper spacing/alignment of title and buttons (title left, buttons right).
+2. **Check if `GenerateOneTimeTokenFilter` defaults to `/login`** as its token-generating
+   URL. If so, it intercepts GET /login to show the token-request form regardless of
+   the custom login page setting. Fix would be to move it to a different URL:
+   ```java
+   .oneTimeTokenLogin(ott -> ott
+       .showDefaultSubmitPage(false)
+       .tokenGeneratingUrl("/login/generate-token")
+   )
+   ```
 
-## Remaining Vaadin UI Improvements (after #1)
+3. **Try adding `.loginPage("/login")` explicitly on the OTT configurer:**
+   ```java
+   .oneTimeTokenLogin(ott -> ott
+       .showDefaultSubmitPage(false)
+       .loginPage("/login")
+   )
+   ```
 
-Per the original plan, after MainLayout is complete:
+4. **Check Vaadin docs/community** for the correct way to combine Vaadin login view
+   with Spring Security OTT login (there may be a known configuration pattern).
 
-| # | Description | Priority |
-|---|-------------|----------|
-| #3 | Use EmailField instead of TextField for email inputs | MEDIUM |
-| #4 | Binder, FormLayout, ConfirmDialog, button variants, notification variants | MEDIUM |
-| #6 | Grid styling (auto-width, resizable, theme variants) | LOW |
-| #5 | Theming with Lumo | LOW |
+---
+
+## Next TDD items (after the bug fix)
+
+Remaining UI polish:
+- Button variants: LUMO_PRIMARY on Save/Create buttons, LUMO_ERROR on Delete/Disable button
+- Error notification variants (LUMO_ERROR) for failure cases
+- ConfirmDialog improvements
+- FormLayout, Binder
+
+---
 
 ## Key Technical Notes
 
 - **Vaadin 25** with Java Flow (server-side, NOT React/Hilla)
-- **Spring Boot 4.0.2**, **Spring Security 7** (via Boot), **Spring Modulith 2.0.2**
+- **Spring Boot 4.0.2**, **Spring Security 7.0.2**, **Spring Modulith 2.0.2**
 - **Java 25**, **PostgreSQL 18**, **Flyway**
 - **Karibu Testing 2.6.2** for Vaadin UI tests (no browser, server-side)
-- **`AuthenticationContext`** (Vaadin's Spring Security integration) is used in views — mark field `transient`
-- **Module structure:** `app.meads.identity` = public API, `app.meads.identity.internal` = private. Views are in `internal` (except `LoginView` which is in public API).
-- **MainLayout** is in `app.meads.internal` — it's module-private to the root module
-- **Test setup:** Karibu tests use `resolveAuthentication` helper with `@WithMockUser` fallback for `UserDetails`-based principals. See `UserListViewTest` and `MainLayoutTest` for the pattern.
+- **`AuthenticationContext`** (Vaadin's Spring Security integration) — mark field `transient`
+- **Module structure:** `app.meads` = root public (contains `MainLayout`), `app.meads.identity` = identity public API, `app.meads.identity.internal` = private (views, repos, services, `SecurityConfig`)
+- **`Notification.setText()`** stores text under element property `"text"`. Assert via:
+  `notification.getElement().getProperty("text")`
+- **Karibu test pattern for `@WithMockUser`:** see `resolveAuthentication` + `propagateSecurityContext` helpers in `UserListViewTest` and `MainLayoutTest`
