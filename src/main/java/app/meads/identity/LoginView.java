@@ -3,7 +3,7 @@ package app.meads.identity;
 import app.meads.identity.internal.MagicLinkService;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.QueryParameters;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
@@ -19,7 +19,7 @@ public class LoginView extends VerticalLayout {
     public LoginView(MagicLinkService magicLinkService) {
         this.magicLinkService = magicLinkService;
 
-        var email = new TextField("Email");
+        var email = new EmailField("Email");
         email.getElement().setAttribute("name", "username");
 
         var button = new Button("Continue");
