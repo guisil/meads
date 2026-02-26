@@ -19,7 +19,7 @@ public class UserService {
     public void deleteUser(UUID userId, String currentUserEmail) {
         User user = userRepository.findById(userId).orElseThrow();
         if (user.getEmail().equals(currentUserEmail)) {
-            throw new IllegalArgumentException("Cannot delete your own account");
+            throw new IllegalArgumentException("Cannot disable or delete your own account");
         }
         if (user.getStatus() == UserStatus.DISABLED) {
             userRepository.delete(user);

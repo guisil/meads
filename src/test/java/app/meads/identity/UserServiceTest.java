@@ -73,6 +73,6 @@ class UserServiceTest {
         // Act & Assert
         assertThatThrownBy(() -> userService.deleteUser(userId, currentUserEmail))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Cannot delete your own account");
+                .hasMessageContaining("Cannot disable or delete your own account");
     }
 }
