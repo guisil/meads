@@ -3,6 +3,7 @@ package app.meads.identity.internal;
 import app.meads.MainLayout;
 import app.meads.identity.Role;
 import app.meads.identity.User;
+import com.vaadin.flow.component.textfield.EmailField;
 import app.meads.identity.UserService;
 import app.meads.identity.UserStatus;
 import com.vaadin.flow.component.button.Button;
@@ -189,7 +190,7 @@ public class UserListView extends VerticalLayout {
     public void openCreateUserDialog() {
         Dialog dialog = new Dialog();
 
-        TextField emailField = new TextField("Email");
+        EmailField emailField = new EmailField("Email");
         emailField.setRequired(true);
 
         TextField nameField = new TextField("Name");

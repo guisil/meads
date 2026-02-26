@@ -14,6 +14,7 @@ import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.select.Select;
+import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.server.VaadinServletRequest;
 import org.junit.jupiter.api.AfterEach;
@@ -587,7 +588,7 @@ class UserListViewTest {
         _click(createButton);
 
         // Assert - form fields should be present (email/name empty, role defaults to USER, status defaults to PENDING)
-        var emailField = _get(TextField.class, spec -> spec.withCaption("Email"));
+        var emailField = _get(EmailField.class, spec -> spec.withCaption("Email"));
         var nameField = _get(TextField.class, spec -> spec.withCaption("Name"));
         var roleSelect = _get(Select.class, spec -> spec.withCaption("Role"));
         var statusSelect = _get(Select.class, spec -> spec.withCaption("Status"));
@@ -607,7 +608,7 @@ class UserListViewTest {
         var createButton = _get(Button.class, spec -> spec.withText("Create User"));
         _click(createButton);
 
-        var emailField = _get(TextField.class, spec -> spec.withCaption("Email"));
+        var emailField = _get(EmailField.class, spec -> spec.withCaption("Email"));
         var nameField = _get(TextField.class, spec -> spec.withCaption("Name"));
         var roleSelect = _get(Select.class, spec -> spec.withCaption("Role"));
         var statusSelect = _get(Select.class, spec -> spec.withCaption("Status"));
@@ -643,7 +644,7 @@ class UserListViewTest {
         var createButton = _get(Button.class, spec -> spec.withText("Create User"));
         _click(createButton);
 
-        var emailField = _get(TextField.class, spec -> spec.withCaption("Email"));
+        var emailField = _get(EmailField.class, spec -> spec.withCaption("Email"));
         var nameField = _get(TextField.class, spec -> spec.withCaption("Name"));
         var roleSelect = _get(Select.class, spec -> spec.withCaption("Role"));
         var statusSelect = _get(Select.class, spec -> spec.withCaption("Status"));
@@ -686,7 +687,7 @@ class UserListViewTest {
         var createButton = _get(Button.class, spec -> spec.withText("Create User"));
         _click(createButton);
 
-        var emailField = _get(TextField.class, spec -> spec.withCaption("Email"));
+        var emailField = _get(EmailField.class, spec -> spec.withCaption("Email"));
         var nameField = _get(TextField.class, spec -> spec.withCaption("Name"));
         var roleSelect = _get(Select.class, spec -> spec.withCaption("Role"));
         var statusSelect = _get(Select.class, spec -> spec.withCaption("Status"));
@@ -723,7 +724,7 @@ class UserListViewTest {
         var createButton = _get(Button.class, spec -> spec.withText("Create User"));
         _click(createButton);
 
-        var emailField = _get(TextField.class, spec -> spec.withCaption("Email"));
+        var emailField = _get(EmailField.class, spec -> spec.withCaption("Email"));
         var nameField = _get(TextField.class, spec -> spec.withCaption("Name"));
         var roleSelect = _get(Select.class, spec -> spec.withCaption("Role"));
         var statusSelect = _get(Select.class, spec -> spec.withCaption("Status"));
@@ -760,7 +761,7 @@ class UserListViewTest {
         var createButton = _get(Button.class, spec -> spec.withText("Create User"));
         _click(createButton);
 
-        var emailField = _get(TextField.class, spec -> spec.withCaption("Email"));
+        var emailField = _get(EmailField.class, spec -> spec.withCaption("Email"));
         var nameField = _get(TextField.class, spec -> spec.withCaption("Name"));
         var roleSelect = _get(Select.class, spec -> spec.withCaption("Role"));
         var statusSelect = _get(Select.class, spec -> spec.withCaption("Status"));
@@ -796,7 +797,7 @@ class UserListViewTest {
         var createButton = _get(Button.class, spec -> spec.withText("Create User"));
         _click(createButton);
 
-        var emailField = _get(TextField.class, spec -> spec.withCaption("Email"));
+        var emailField = _get(EmailField.class, spec -> spec.withCaption("Email"));
         var nameField = _get(TextField.class, spec -> spec.withCaption("Name"));
         var roleSelect = _get(Select.class, spec -> spec.withCaption("Role"));
         var statusSelect = _get(Select.class, spec -> spec.withCaption("Status"));
@@ -845,5 +846,14 @@ class UserListViewTest {
         // Assert - role field should default to USER
         var roleSelect = _get(Select.class, spec -> spec.withCaption("Role"));
         assertThat(roleSelect.getValue()).isEqualTo(Role.USER);
+    }
+
+    @Test
+    @WithMockUser(roles = "SYSTEM_ADMIN")
+    void shouldUseEmailFieldForEmailInputInCreateDialog() {
+        UI.getCurrent().navigate("users");
+        _click(_get(Button.class, spec -> spec.withText("Create User")));
+
+        assertThat(_find(EmailField.class, spec -> spec.withCaption("Email"))).isNotEmpty();
     }
 }
