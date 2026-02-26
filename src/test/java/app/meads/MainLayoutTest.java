@@ -1,6 +1,6 @@
 package app.meads;
 
-import app.meads.internal.MainLayout;
+import app.meads.MainLayout;
 import com.github.mvysny.fakeservlet.FakeRequest;
 import com.github.mvysny.kaributesting.v10.MockVaadin;
 import com.github.mvysny.kaributesting.v10.Routes;
@@ -133,5 +133,25 @@ class MainLayoutTest {
                 .filter(c -> c instanceof Button b && "Users".equals(b.getText()))
                 .toList();
         assertThat(usersButtons).hasSize(1);
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void shouldNotDisplayUsersLinkInNavbarForRegularUser() {
+        UI.getCurrent().navigate("");
+
+        var layout = _get(MainLayout.class);
+        var usersButtons = layout.getChildren()
+                .filter(c -> c instanceof Button b && "Users".equals(b.getText()))
+                .toList();
+        assertThat(usersButtons).isEmpty();
+    }
+
+    @Test
+    @WithMockUser(roles = "SYSTEM_ADMIN")
+    void shouldRenderUserListViewInsideAppLayout() {
+        UI.getCurrent().navigate("users");
+
+        assertThat(_find(AppLayout.class)).isNotEmpty();
     }
 }

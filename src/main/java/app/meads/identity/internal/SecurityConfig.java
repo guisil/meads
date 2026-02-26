@@ -1,4 +1,4 @@
-package app.meads;
+package app.meads.identity.internal;
 
 import static com.vaadin.flow.spring.security.VaadinSecurityConfigurer.vaadin;
 

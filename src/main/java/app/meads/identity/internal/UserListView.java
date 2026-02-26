@@ -1,5 +1,6 @@
 package app.meads.identity.internal;
 
+import app.meads.MainLayout;
 import app.meads.identity.Role;
 import app.meads.identity.User;
 import app.meads.identity.UserService;
@@ -18,7 +19,7 @@ import com.vaadin.flow.spring.security.AuthenticationContext;
 import jakarta.annotation.security.RolesAllowed;
 import org.springframework.security.core.userdetails.UserDetails;
 
-@Route("users")
+@Route(value = "users", layout = MainLayout.class)
 @RolesAllowed("SYSTEM_ADMIN")
 public class UserListView extends VerticalLayout {
 

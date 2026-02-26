@@ -1,4 +1,4 @@
-package app.meads.internal;
+package app.meads;
 
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.button.Button;
