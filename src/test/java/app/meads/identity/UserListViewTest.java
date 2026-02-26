@@ -858,6 +858,22 @@ class UserListViewTest {
     }
 
     @Test
+    @WithMockUser(username = "admin@example.com", roles = "SYSTEM_ADMIN")
+    @DirtiesContext
+    void shouldShowDisabledMessageWhenSoftDeletingUser() {
+        var userId = UUID.randomUUID();
+        var user = new User(userId, "disable-msg-" + userId + "@example.com", "Test User", UserStatus.ACTIVE, Role.USER);
+        userRepository.save(user);
+
+        UI.getCurrent().navigate("users");
+        var view = _get(UserListView.class);
+        view.deleteUser(user);
+
+        assertThat(_get(Notification.class).getElement().getProperty("text"))
+                .isEqualTo("User disabled successfully");
+    }
+
+    @Test
     @WithMockUser(roles = "SYSTEM_ADMIN")
     @DirtiesContext
     void shouldShowSuccessVariantOnSaveNotification() {

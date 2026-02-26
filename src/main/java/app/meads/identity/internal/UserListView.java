@@ -179,9 +179,10 @@ public class UserListView extends VerticalLayout {
                 .map(UserDetails::getUsername)
                 .orElse("");
 
+        boolean isSoftDelete = user.getStatus() != UserStatus.DISABLED;
         userService.deleteUser(user.getId(), currentUserEmail);
         grid.setItems(userRepository.findAll());
-        Notification.show("User deleted successfully");
+        Notification.show(isSoftDelete ? "User disabled successfully" : "User deleted successfully");
     }
 
     public void sendMagicLink(User user) {
