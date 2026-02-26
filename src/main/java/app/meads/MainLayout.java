@@ -3,6 +3,7 @@ package app.meads;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 import com.vaadin.flow.spring.security.AuthenticationContext;
 
@@ -19,11 +20,13 @@ public class MainLayout extends AppLayout {
 
         Button logoutButton = new Button("Logout", e -> authenticationContext.logout());
 
+        HorizontalLayout navbarContent;
         if (authenticationContext.hasRole("SYSTEM_ADMIN")) {
             Button usersButton = new Button("Users", e -> e.getSource().getUI().ifPresent(ui -> ui.navigate("users")));
-            addToNavbar(title, usersButton, logoutButton);
+            navbarContent = new HorizontalLayout(title, usersButton, logoutButton);
         } else {
-            addToNavbar(title, logoutButton);
+            navbarContent = new HorizontalLayout(title, logoutButton);
         }
+        addToNavbar(navbarContent);
     }
 }

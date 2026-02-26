@@ -9,6 +9,7 @@ import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.server.VaadinServletRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -116,11 +117,7 @@ class MainLayoutTest {
     void shouldDisplayLogoutButtonInNavbarWhenAuthenticated() {
         UI.getCurrent().navigate("");
 
-        var layout = _get(MainLayout.class);
-        var logoutButtons = layout.getChildren()
-                .filter(c -> c instanceof Button b && "Logout".equals(b.getText()))
-                .toList();
-        assertThat(logoutButtons).hasSize(1);
+        assertThat(_find(Button.class, spec -> spec.withCaption("Logout"))).hasSize(1);
     }
 
     @Test
@@ -128,11 +125,7 @@ class MainLayoutTest {
     void shouldDisplayUsersLinkInNavbarForAdmin() {
         UI.getCurrent().navigate("");
 
-        var layout = _get(MainLayout.class);
-        var usersButtons = layout.getChildren()
-                .filter(c -> c instanceof Button b && "Users".equals(b.getText()))
-                .toList();
-        assertThat(usersButtons).hasSize(1);
+        assertThat(_find(Button.class, spec -> spec.withCaption("Users"))).hasSize(1);
     }
 
     @Test
@@ -140,11 +133,7 @@ class MainLayoutTest {
     void shouldNotDisplayUsersLinkInNavbarForRegularUser() {
         UI.getCurrent().navigate("");
 
-        var layout = _get(MainLayout.class);
-        var usersButtons = layout.getChildren()
-                .filter(c -> c instanceof Button b && "Users".equals(b.getText()))
-                .toList();
-        assertThat(usersButtons).isEmpty();
+        assertThat(_find(Button.class, spec -> spec.withCaption("Users"))).isEmpty();
     }
 
     @Test
@@ -153,5 +142,17 @@ class MainLayoutTest {
         UI.getCurrent().navigate("users");
 
         assertThat(_find(AppLayout.class)).isNotEmpty();
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void shouldUseHorizontalLayoutInNavbar() {
+        UI.getCurrent().navigate("");
+
+        var layout = _get(MainLayout.class);
+        var navbarLayouts = layout.getChildren()
+                .filter(c -> c instanceof HorizontalLayout)
+                .toList();
+        assertThat(navbarLayouts).hasSize(1);
     }
 }
