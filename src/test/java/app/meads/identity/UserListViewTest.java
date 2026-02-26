@@ -874,6 +874,21 @@ class UserListViewTest {
     }
 
     @Test
+    @WithMockUser(username = "admin@example.com", roles = "SYSTEM_ADMIN")
+    @DirtiesContext
+    void shouldShowSuccessVariantOnDisableNotification() {
+        var userId = UUID.randomUUID();
+        var user = new User(userId, "disable-variant-" + userId + "@example.com", "Test User", UserStatus.ACTIVE, Role.USER);
+        userRepository.save(user);
+
+        UI.getCurrent().navigate("users");
+        var view = _get(UserListView.class);
+        view.deleteUser(user);
+
+        assertThat(_get(Notification.class).getThemeNames()).contains("success");
+    }
+
+    @Test
     @WithMockUser(roles = "SYSTEM_ADMIN")
     @DirtiesContext
     void shouldShowSuccessVariantOnSaveNotification() {

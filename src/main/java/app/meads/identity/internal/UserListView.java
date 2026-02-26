@@ -182,7 +182,8 @@ public class UserListView extends VerticalLayout {
         boolean isSoftDelete = user.getStatus() != UserStatus.DISABLED;
         userService.deleteUser(user.getId(), currentUserEmail);
         grid.setItems(userRepository.findAll());
-        Notification.show(isSoftDelete ? "User disabled successfully" : "User deleted successfully");
+        var notification = Notification.show(isSoftDelete ? "User disabled successfully" : "User deleted successfully");
+        notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
     }
 
     public void sendMagicLink(User user) {
