@@ -256,7 +256,8 @@ public class UserListView extends VerticalLayout {
             );
             userRepository.save(user);
             grid.setItems(userRepository.findAll());
-            Notification.show("User created successfully");
+            var notification = Notification.show("User created successfully");
+            notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
             dialog.close();
         });
 

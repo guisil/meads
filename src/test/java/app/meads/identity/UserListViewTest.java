@@ -874,6 +874,20 @@ class UserListViewTest {
     }
 
     @Test
+    @WithMockUser(roles = "SYSTEM_ADMIN")
+    @DirtiesContext
+    void shouldShowSuccessVariantOnCreateNotification() {
+        UI.getCurrent().navigate("users");
+        _click(_get(Button.class, spec -> spec.withText("Create User")));
+
+        _get(EmailField.class, spec -> spec.withCaption("Email")).setValue("new-variant@example.com");
+        _get(TextField.class, spec -> spec.withCaption("Name")).setValue("New User");
+        _click(_get(Button.class, spec -> spec.withText("Save")));
+
+        assertThat(_get(Notification.class).getThemeNames()).contains("success");
+    }
+
+    @Test
     @WithMockUser(username = "admin@example.com", roles = "SYSTEM_ADMIN")
     @DirtiesContext
     void shouldShowSuccessVariantOnDisableNotification() {
