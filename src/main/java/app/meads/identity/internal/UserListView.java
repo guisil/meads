@@ -3,9 +3,9 @@ package app.meads.identity.internal;
 import app.meads.MainLayout;
 import app.meads.identity.Role;
 import app.meads.identity.User;
-import com.vaadin.flow.component.textfield.EmailField;
 import app.meads.identity.UserService;
 import app.meads.identity.UserStatus;
+import jakarta.validation.ConstraintViolationException;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
@@ -15,6 +15,7 @@ import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.select.Select;
+import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.spring.security.AuthenticationContext;
@@ -25,14 +26,12 @@ import org.springframework.security.core.userdetails.UserDetails;
 @RolesAllowed("SYSTEM_ADMIN")
 public class UserListView extends VerticalLayout {
 
-    private final UserRepository userRepository;
     private final UserService userService;
     private final MagicLinkService magicLinkService;
     private final transient AuthenticationContext authenticationContext;
     private final Grid<User> grid;
 
-    public UserListView(UserRepository userRepository, UserService userService, MagicLinkService magicLinkService, AuthenticationContext authenticationContext) {
-        this.userRepository = userRepository;
+    public UserListView(UserService userService, MagicLinkService magicLinkService, AuthenticationContext authenticationContext) {
         this.userService = userService;
         this.magicLinkService = magicLinkService;
         this.authenticationContext = authenticationContext;
@@ -63,7 +62,7 @@ public class UserListView extends VerticalLayout {
             return actions;
         }).setHeader("Actions");
 
-        grid.setItems(userRepository.findAll());
+        grid.setItems(userService.findAll());
 
         add(grid);
     }
@@ -86,9 +85,10 @@ public class UserListView extends VerticalLayout {
         statusSelect.setValue(user.getStatus());
 
         // Prevent users from editing their own role or status
-        boolean isEditingSelf = authenticationContext.getAuthenticatedUser(UserDetails.class)
-                .map(u -> user.getEmail().equals(u.getUsername()))
-                .orElse(false);
+        String currentUserEmail = authenticationContext.getAuthenticatedUser(UserDetails.class)
+                .map(UserDetails::getUsername)
+                .orElse("");
+        boolean isEditingSelf = userService.isEditingSelf(user.getId(), currentUserEmail);
         if (isEditingSelf) {
             roleSelect.setEnabled(false);
             statusSelect.setEnabled(false);
@@ -104,15 +104,14 @@ public class UserListView extends VerticalLayout {
             }
 
             try {
-                // Reload user from database to ensure we're working with a managed entity
-                User managedUser = userRepository.findById(user.getId()).orElseThrow();
-                managedUser.updateDetails(
+                userService.updateUser(
+                    user.getId(),
                     nameField.getValue(),
                     roleSelect.getValue(),
-                    statusSelect.getValue()
+                    statusSelect.getValue(),
+                    currentUserEmail
                 );
-                userRepository.save(managedUser);
-                grid.setItems(userRepository.findAll());
+                grid.setItems(userService.findAll());
                 var notification = Notification.show("User saved successfully");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
@@ -181,7 +180,7 @@ public class UserListView extends VerticalLayout {
 
         boolean isSoftDelete = user.getStatus() != UserStatus.DISABLED;
         userService.deleteUser(user.getId(), currentUserEmail);
-        grid.setItems(userRepository.findAll());
+        grid.setItems(userService.findAll());
         var notification = Notification.show(isSoftDelete ? "User disabled successfully" : "User deleted successfully");
         notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
     }
@@ -220,20 +219,6 @@ public class UserListView extends VerticalLayout {
                 return;
             }
 
-            // Validate email format
-            if (!emailField.getValue().matches("^[^@]+@[^@]+\\.[^@]+$")) {
-                emailField.setInvalid(true);
-                emailField.setErrorMessage("Please enter a valid email address");
-                return;
-            }
-
-            // Validate email doesn't already exist
-            if (userRepository.findByEmail(emailField.getValue()).isPresent()) {
-                emailField.setInvalid(true);
-                emailField.setErrorMessage("Email already exists");
-                return;
-            }
-
             // Validate name field is not empty
             if (nameField.getValue().isBlank()) {
                 nameField.setInvalid(true);
@@ -248,18 +233,26 @@ public class UserListView extends VerticalLayout {
                 return;
             }
 
-            var user = new User(
-                java.util.UUID.randomUUID(),
-                emailField.getValue(),
-                nameField.getValue(),
-                statusSelect.getValue(),
-                roleSelect.getValue()
-            );
-            userRepository.save(user);
-            grid.setItems(userRepository.findAll());
-            var notification = Notification.show("User created successfully");
-            notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-            dialog.close();
+            try {
+                userService.createUser(
+                    emailField.getValue(),
+                    nameField.getValue(),
+                    statusSelect.getValue(),
+                    roleSelect.getValue()
+                );
+                grid.setItems(userService.findAll());
+                var notification = Notification.show("User created successfully");
+                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                dialog.close();
+            } catch (IllegalArgumentException ex) {
+                emailField.setInvalid(true);
+                emailField.setErrorMessage(ex.getMessage());
+            } catch (ConstraintViolationException ex) {
+                emailField.setInvalid(true);
+                emailField.setErrorMessage("Please enter a valid email address");
+            } catch (Exception ex) {
+                Notification.show("Failed to save user. Please try again.");
+            }
         });
 
         Button cancelButton = new Button("Cancel");
