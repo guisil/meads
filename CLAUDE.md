@@ -40,7 +40,7 @@ When uncertain, default to **full cycle**.
 
 **Step 1: RED** — Write one failing test
 - Decide which test type fits (see Testing Strategy below).
-- Read the matching example from `doc/examples/` before writing.
+- Read the matching example from `docs/examples/` before writing.
 - Write ONE test method. No production code.
 - Run: `mvn test -Dtest=ClassName#methodName -Dsurefire.useFile=false`
 - **STOP. Wait for confirmation before Step 2.**
@@ -202,7 +202,7 @@ Auth-agnostic patterns that ARE canonical: `User.java`, `Role.java`, `UserStatus
 ## Testing Conventions
 
 ### Test Types
-Choose the test type BEFORE writing. Read the matching example from `doc/examples/`.
+Choose the test type BEFORE writing. Read the matching example from `docs/examples/`.
 
 | Test Type | Annotation / Tool | When | Example File |
 |---|---|---|---|
