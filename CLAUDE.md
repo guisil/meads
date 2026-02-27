@@ -12,7 +12,7 @@ future modules will follow the same patterns.
 
 ## Tech Stack
 
-- **Java 25**, Spring Boot 4.0.2, Spring Modulith 2.0.2
+- **Java 25**, Spring Boot 4.0.2, Spring Modulith 2.0.2, Jakarta Bean Validation (`spring-boot-starter-validation`)
 - **Vaadin 25.0.5** (Java Flow — server-side, NOT React/Hilla)
 - **PostgreSQL 18**, Flyway (managed by Boot)
 - **Testcontainers 2.0.3**, Karibu Testing 2.6.2, Mockito, Awaitility 4.3.0
@@ -163,11 +163,19 @@ Read `.claude/skills/new-module.md` before creating a module.
 
 ### Service Pattern
 **Reference:** `UserService.java`
-- `@Service` + `@Transactional` at class level
+- `@Service` + `@Transactional` + `@Validated` at class level
 - Public class in module root (part of public API)
 - Constructor injection (no `@Autowired` field injection)
 - Throws `IllegalArgumentException` for business rule violations
 - Package-private constructor where appropriate
+
+### Validation Pattern
+**Reference:** `UserService.java`
+- Add `@Validated` to service classes that need input validation
+- Use `@Email`, `@NotBlank`, `@NotNull` on method parameters for format/presence checks
+- Use manual checks + `IllegalArgumentException` for business rules (uniqueness, self-referential edits)
+- Bean Validation throws `ConstraintViolationException`; business rules throw `IllegalArgumentException`
+- Views keep basic blank checks for UX (immediate field-level feedback) but delegate enforcement to services
 
 ### View Pattern
 **Reference:** `UserListView.java`, `LoginView.java`
