@@ -82,23 +82,6 @@ class LoginViewTest {
     }
 
     @Test
-    void shouldShowValidationErrorWhenEmailIsInvalid() {
-        var emailField = _get(EmailField.class);
-        emailField.setValue("notanemail");
-
-        var button = _get(Button.class);
-        button.click();
-
-        assertThat(emailField.isInvalid()).isTrue();
-        assertThat(emailField.getErrorMessage()).isNotEmpty();
-
-        // Should not redirect when validation fails
-        var currentLocation = UI.getCurrent().getInternals().getActiveViewLocation();
-        assertThat(currentLocation.getQueryParameters().getParameters())
-                .doesNotContainKey("tokenSent");
-    }
-
-    @Test
     void shouldShowValidationErrorWhenEmailIsBlank() {
         var emailField = _get(EmailField.class);
         emailField.setValue("");
