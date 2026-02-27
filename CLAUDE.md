@@ -1,142 +1,283 @@
-# CLAUDE.md — Project Development Guide
+# CLAUDE.md — MEADS Project Development Guide
 
 ## Project Overview
 
-Spring Boot 4 web application with Vaadin 25 UI, PostgreSQL 18 (Flyway-managed),
-and Spring Modulith for modular DDD architecture.
+**MEADS (Mead Evaluation and Awards Data System)** is a Spring Boot 4 web application for
+managing mead competitions — from registration through judging and results. Built with
+Vaadin 25 (Java Flow, server-side), PostgreSQL 18 (Flyway-managed), and Spring Modulith
+for modular DDD architecture. The `identity` module is the reference implementation;
+future modules will follow the same patterns.
 
 ---
 
 ## Tech Stack
 
-- Java 21+, Spring Boot 4.0.2, Spring Modulith 2.0.2
-- Vaadin 25.0.3, PostgreSQL 18, Flyway (managed by Boot)
-- Testcontainers 2.0.3, Karibu Testing 2.6.2, Mockito, Awaitility 4.3.0
-- JUnit 5, AssertJ
+- **Java 25**, Spring Boot 4.0.2, Spring Modulith 2.0.2
+- **Vaadin 25.0.5** (Java Flow — server-side, NOT React/Hilla)
+- **PostgreSQL 18**, Flyway (managed by Boot)
+- **Testcontainers 2.0.3**, Karibu Testing 2.6.2, Mockito, Awaitility 4.3.0
+- **JUnit 5**, AssertJ, Spring Security 7.0.2
 
 ---
 
-## Workflow — EXECUTE THIS FOR EVERY CHANGE
+## Workflow — TWO-TIER TDD
 
 Before starting any code change, read `.claude/skills/tdd-cycle.md` and follow its steps.
+Choose the right cycle based on whether the change introduces new behavior.
 
-Every feature, bug fix, or refactoring goes through the same cycle. Each step is a
-**separate response**. Do not combine steps. Do not move to the next step until the
-current one is complete.
+### Choosing the Cycle
 
-### Step 1: RED — Write one failing test
+| | Full Cycle | Fast Cycle |
+|---|---|---|
+| **When** | New behavior, no existing test covers it | Existing tests already cover the change |
+| **Examples** | New features, bug fixes, new entities/services | Button variants, renames, layout tweaks, config changes |
+| **Responses** | 3 separate responses with confirmation gates | Single response |
+| **Decision rule** | Can you point to an existing test that would catch a regression? **No** → full cycle | **Yes** → fast cycle |
 
+When uncertain, default to **full cycle**.
+
+### Full Cycle (3 responses)
+
+**Step 1: RED** — Write one failing test
 - Decide which test type fits (see Testing Strategy below).
 - Read the matching example from `doc/examples/` before writing.
-- Write ONE test method. No production code. No new classes beyond what the
-  test file itself requires.
-- Run it:
-  ```
-  mvn test -Dtest=ClassName#methodName -Dsurefire.useFile=false
-  ```
-- Paste the failure output (compilation error counts as failure).
-- **STOP. End this response. Wait for confirmation before Step 2.**
+- Write ONE test method. No production code.
+- Run: `mvn test -Dtest=ClassName#methodName -Dsurefire.useFile=false`
+- **STOP. Wait for confirmation before Step 2.**
 
-### Step 2: GREEN — Minimum code to pass
-
+**Step 2: GREEN** — Minimum code to pass
 - Write the LEAST production code that makes the test pass.
-- Acceptable: hard-coded returns, trivial implementations, empty methods.
-- Not acceptable: extra methods, anticipated features, code no test requires.
-- If a Flyway migration is needed, create it now — it's part of making the test pass.
-- Run it:
-  ```
-  mvn test -Dtest=ClassName -Dsurefire.useFile=false
-  ```
-- Paste the passing output.
-- **STOP. End this response. Wait for confirmation before Step 3.**
+- If a Flyway migration is needed, create it now.
+- Run: `mvn test -Dtest=ClassName -Dsurefire.useFile=false`
+- **STOP. Wait for confirmation before Step 3.**
 
-### Step 3: REFACTOR
+**Step 3: REFACTOR**
+- Review both test and production code.
+- Run: `mvn test -Dsurefire.useFile=false` (full suite)
+- Suggest a commit message. State what to test next.
+- **STOP. Wait for confirmation before next cycle.**
 
-- Review both test and production code for duplication, naming, extraction.
-- If changes are made, run the full suite:
-  ```
-  mvn test -Dsurefire.useFile=false
-  ```
-- Paste the output.
-- Suggest a commit message: `Add/Fix/Refactor: <what changed>`
-- State what the next behavior to test should be.
-- **STOP. Wait for confirmation before starting the next cycle.**
+### Fast Cycle (1 response)
+
+1. State which existing test(s) cover the change.
+2. Make the change.
+3. Run: `mvn test -Dsurefire.useFile=false` (full suite)
+4. If any test breaks, stop and escalate to full cycle.
+5. Suggest a commit message.
+
+Multiple related fast-cycle changes can be batched in one response.
 
 ### Rules
 
-- NEVER create production code in Step 1. The test must fail against missing code.
+- NEVER create production code in Step 1 (full cycle). The test must fail first.
 - NEVER write multiple tests before making them pass. One test per cycle.
-- NEVER skip Step 3. Always review, always run the full suite.
+- NEVER skip Step 3 (full cycle). Always review, always run the full suite.
+- NEVER use fast cycle for genuinely new behavior. When in doubt, full cycle.
 - If a step produces unexpected results, investigate before moving on.
 
 ---
 
-## Project Structure — Spring Modulith + DDD
+## Architecture — Spring Modulith + DDD
 
-### Package Layout
+### Actual Package Layout
 
 ```
-com.example.app                     ← @SpringBootApplication + @Modulithic
-│
-├── <module>/                       ← Module root = public API
-│   ├── SomeAggregate.java          ← Entity / aggregate root (public)
-│   ├── SomeService.java            ← Application service (public)
-│   ├── SomeEvent.java              ← Domain event record (public)
-│   ├── package-info.java           ← @ApplicationModule config
-│   └── internal/                   ← Module-private
-│       ├── SomeRepository.java     ← Repository
-│       ├── SomeHelper.java         ← Internal logic
-│       └── SomeView.java           ← Vaadin view
-│
-└── shared/                         ← Shared kernel (use sparingly)
-    └── Money.java                  ← Value objects used across modules
+app.meads                                ← @SpringBootApplication (root module)
+├── MeadsApplication.java               ← Entry point
+├── MainLayout.java                      ← AppLayout wrapper (public API — shared by all views)
+└── internal/
+    └── RootView.java                    ← Root route, redirects unauthenticated to /login
+
+app.meads.identity                       ← Identity module public API
+├── package-info.java                    ← @ApplicationModule(allowedDependencies = {})
+├── User.java                           ← JPA entity / aggregate root
+├── UserStatus.java                      ← Enum: PENDING, ACTIVE, DISABLED, LOCKED
+├── Role.java                            ← Enum: USER, SYSTEM_ADMIN
+├── UserService.java                     ← Application service (public API)
+├── LoginView.java                       ← Vaadin login view (public — referenced by SecurityConfig)
+└── internal/                            ← Module-private
+    ├── UserRepository.java              ← JPA repository
+    ├── SecurityConfig.java              ← Spring Security filter chain
+    ├── MagicLinkService.java            ← OTT token generation
+    ├── MagicLinkLandingController.java  ← GET /login/magic endpoint
+    ├── MagicLinkSuccessHandler.java     ← OTT success handler
+    ├── DatabaseUserDetailsService.java  ← Spring Security UserDetailsService
+    ├── UserListView.java                ← Admin CRUD view (@RolesAllowed("SYSTEM_ADMIN"))
+    ├── AdminInitializer.java            ← Seeds initial admin on startup
+    ├── DevUserInitializer.java          ← Seeds dev user (dev profile only)
+    └── UserActivationListener.java      ← PENDING → ACTIVE on first login
 ```
 
 ### Module Rules
 
-- Each direct sub-package of `com.example.app` is an **application module**.
+- Each direct sub-package of `app.meads` is an **application module**.
 - Module root package = **public API**. Other modules can reference these classes.
 - `internal/` sub-package = **module-private**. No outside access.
 - Inter-module communication = **Spring application events**, not direct calls to internals.
-- Verify with `ApplicationModules.of(Application.class).verify()` (in ModulithStructureTest).
+- Verify with `ApplicationModules.of(MeadsApplication.class).verify()` (in `ModulithStructureTest`).
+- `MainLayout` lives in root `app.meads` package because all module views reference it via
+  `@Route(layout = MainLayout.class)`.
 
-### Creating a new module
+### Creating a New Module
 
 Read `.claude/skills/new-module.md` before creating a module.
 
-1. Create package under `com.example.app`.
+1. Create package under `app.meads.<modulename>/`.
 2. Add `package-info.java` with `@ApplicationModule(allowedDependencies = {...})`.
-3. Public API in root, implementation details in `internal/`.
+3. Public API (entities, services, events) in root; implementation in `internal/`.
 4. Run `ModulithStructureTest` — it must pass.
 5. Write a `@ApplicationModuleTest` for the module.
 
 ---
 
-## Database & Migrations
+## Module Map
 
-- Flyway files: `src/main/resources/db/migration/V{N}__{description}.sql`
-- Migrations are created in **Step 2** (GREEN), when a repository test needs a table.
-- Never edit existing migrations. Always create new ones.
+| Module | Status | Description |
+|--------|--------|-------------|
+| `identity` | **Exists** | User management, authentication (magic link/OTT), roles, admin CRUD |
+| `competition` | Planned | Events, competitions, scoring systems (MJP/BJCP), categories, competition admins |
+| `entry` | Planned | Entry credits (external webhook), mead registration, credit consumption |
+| `judging` | Planned | Judging sessions, tables, judge assignments, scoresheets (polymorphic via ScoreField child table) |
+| `awards` | Planned | Score aggregation, rankings, medal determination, results publication |
 
 ---
 
-## Testing Strategy
+## Code Conventions (from identity module)
 
+### Entity Pattern
+**Reference:** `User.java`
+- JPA `@Entity` with `@Table(name = "...")` — explicit table naming
+- `UUID` primary key, assigned in constructor (not auto-generated)
+- Enums stored as `@Enumerated(EnumType.STRING)`
+- `@PrePersist` / `@PreUpdate` for automatic timestamps
+- Protected no-arg constructor for JPA
+- Public constructor with all required fields
+- Domain methods on the entity (e.g., `activate()`, `updateDetails()`)
+- No Lombok on entities — manual getters, no setters (immutable where possible)
+
+### Repository Pattern
+**Reference:** `UserRepository.java`
+- Interface extending `JpaRepository<Entity, UUID>`
+- Package-private (in `internal/`) — never accessed outside the module
+- Spring Data derived query methods (e.g., `findByEmail()`, `existsByRole()`)
+
+### Service Pattern
+**Reference:** `UserService.java`
+- `@Service` + `@Transactional` at class level
+- Public class in module root (part of public API)
+- Constructor injection (no `@Autowired` field injection)
+- Throws `IllegalArgumentException` for business rule violations
+- Package-private constructor where appropriate
+
+### View Pattern
+**Reference:** `UserListView.java`, `LoginView.java`
+- `@Route(value = "path", layout = MainLayout.class)` for protected views
+- `@RolesAllowed("ROLE_NAME")` for access control
+- `@AnonymousAllowed` for public views (LoginView, RootView)
+- `transient AuthenticationContext` field for Spring Security context
+- Dialog-based forms for create/edit operations
+- `Notification` with `NotificationVariant.LUMO_SUCCESS` for success feedback
+
+### Auth-Coupled Code (under review — NOT reference patterns)
+The following are specific to the current magic-link auth mechanism and should NOT be
+treated as canonical patterns for other modules:
+- `LoginView.java` — auth-mechanism-specific UI
+- `SecurityConfig.java` — OTT filter chain configuration
+- `MagicLinkService.java`, `MagicLinkLandingController.java`, `MagicLinkSuccessHandler.java`
+- `DatabaseUserDetailsService.java` — password-less UserDetails mapping
+
+Auth-agnostic patterns that ARE canonical: `User.java`, `Role.java`, `UserStatus.java`,
+`UserService.java`, `UserListView.java`, `AdminInitializer.java`, `UserActivationListener.java`.
+
+---
+
+## Testing Conventions
+
+### Test Types
 Choose the test type BEFORE writing. Read the matching example from `doc/examples/`.
 
-| Test Type                | Annotation / Tool                 | When                                            | Example File                        |
-|--------------------------|------------------------------------|-------------------------------------------------|-------------------------------------|
-| Unit test                | `@ExtendWith(MockitoExtension)`   | Domain logic, no Spring context                 | `UnitTestExample.java`              |
-| Repository test          | `@DataJpaTest`                    | Persistence, schema correctness                 | `RepositoryTestExample.java`        |
-| Module integration test  | `@ApplicationModuleTest`          | One module with Spring context + DB             | `ModuleIntegrationTestExample.java` |
-| Vaadin UI test           | `@SpringBootTest` + Karibu        | View rendering, form actions                    | `VaadinUITestExample.java`          |
-| Modulith structure test  | `ApplicationModules.verify()`     | Module boundary validation                      | `ModulithStructureTestExample.java` |
-| Async event test         | `Scenario` or `Awaitility`        | Event publication & cross-module handling        | `AsyncEventTestExample.java`        |
+| Test Type | Annotation / Tool | When | Example File |
+|---|---|---|---|
+| Unit test | `@ExtendWith(MockitoExtension.class)` | Domain logic, no Spring context | `UnitTestExample.java` |
+| Repository test | `@SpringBootTest` + `@Transactional` | Persistence, schema correctness | `RepositoryTestExample.java` |
+| Module integration test | `@ApplicationModuleTest` | One module with Spring context + DB | `ModuleIntegrationTestExample.java` |
+| Vaadin UI test | `@SpringBootTest` + Karibu | View rendering, form actions | `VaadinUITestExample.java` |
+| Modulith structure test | `ApplicationModules.verify()` | Module boundary validation | `ModulithStructureTestExample.java` |
+| Async event test | `Scenario` or `Awaitility` | Event publication & cross-module handling | `AsyncEventTestExample.java` |
 
-**Test naming:** `should{Behavior}When{Condition}`
+**Note:** In practice, the identity module uses `@SpringBootTest` + `@Transactional` for
+repository tests rather than `@DataJpaTest`. Both work; be consistent within a module.
 
-**Testcontainers:** provides real PostgreSQL. Use `@ServiceConnection` for auto-wiring.
-**Karibu Testing:** runs Vaadin server-side, no browser.
+### Test Naming
+`should{Behavior}When{Condition}` — e.g., `shouldSoftDeleteUserWhenStatusIsNotDisabled()`
+
+### Testcontainers Setup
+**Reference:** `TestcontainersConfiguration.java`
+- `@TestConfiguration(proxyBeanMethods = false)` with `@ServiceConnection`
+- PostgreSQL 18 Alpine container, shared across test classes
+- Import via `@Import(TestcontainersConfiguration.class)` on integration tests
+
+### Karibu Testing Setup
+**Reference:** `UserListViewTest.java`, `MainLayoutTest.java`
+
+```java
+@BeforeEach
+void setup(TestInfo testInfo) {
+    var routes = new Routes().autoDiscoverViews("app.meads");
+    var servlet = new MockSpringServlet(routes, ctx, UI::new);
+    MockVaadin.setup(UI::new, servlet);
+    // Resolve @WithMockUser and propagate to Vaadin security context
+    // (see resolveAuthentication + propagateSecurityContext helpers)
+}
+
+@AfterEach
+void tearDown() {
+    MockVaadin.tearDown();
+    SecurityContextHolder.clearContext();
+}
+```
+
+**Key Karibu patterns:** `_get(Component.class)`, `_find(Component.class)`, `_click(button)`
+
+### Mocking Strategy
+- **Unit tests:** `@Mock` + `@InjectMocks`, BDDMockito (`given(...).willReturn(...)`)
+- **Integration tests:** Real beans, real DB (Testcontainers), no mocks
+- **UI tests:** Real Spring context + real DB + MockVaadin (no browser)
+
+### Important Test Quirks
+- `AuthenticationContext` in Vaadin views must be `transient`
+- `@WithMockUser` context can be lost when `VaadinAwareSecurityContextHolderStrategy`
+  is active — use the `resolveAuthentication()` helper pattern from `UserListViewTest`
+- Notification text is stored under element property `"text"` — assert via:
+  `notification.getElement().getProperty("text")`
+- Use `@DirtiesContext` on tests that modify application state or security context strategy
+
+---
+
+## Database & Migrations
+
+- **Location:** `src/main/resources/db/migration/V{N}__{description}.sql`
+- **Current highest version:** V3 (`V3__add_role_to_users.sql`)
+- **Naming:** `V{next}__{snake_case_description}.sql` (double underscore)
+- Migrations are created in **Step 2** (GREEN), when a repository test needs a table.
+- **Never edit existing migrations.** Always create new ones.
+- Spring Modulith event publication table is `V1` — every project needs it.
+
+---
+
+## Inter-Module Communication
+
+```java
+// Module A publishes (record in module root — public API):
+public record OrderCreatedEvent(UUID orderId, List<LineItem> items) {}
+applicationEventPublisher.publishEvent(new OrderCreatedEvent(...));
+
+// Module B listens (in internal/):
+@ApplicationModuleListener
+void on(OrderCreatedEvent event) { /* react */ }
+```
+
+Test with `PublishedEvents` (synchronous) or `Scenario` (cross-module workflows).
 
 ---
 
@@ -159,24 +300,64 @@ Do not jump ahead. Complete cycle N before starting cycle N+1.
 1. **Step 1 (RED):** Write a test that reproduces the bug — it asserts correct behavior
    and fails against current code.
 2. **Step 2 (GREEN):** Fix the production code with minimum change.
-3. **Step 3 (REFACTOR):** Review, run full suite, check for related edge cases that
-   need their own tests.
+3. **Step 3 (REFACTOR):** Review, run full suite, check for related edge cases.
 
 ---
 
-## Inter-Module Communication
+## Workflow Modes
 
-```java
-// Module A publishes:
-public record OrderCreatedEvent(UUID orderId, List<LineItem> items) {}
-applicationEventPublisher.publishEvent(new OrderCreatedEvent(...));
+### /architect
+Focus on domain modeling, module boundaries, event contracts, and API design.
+Output: spec files, interfaces, record types, skeleton classes.
+Do NOT write implementation logic or test assertions.
 
-// Module B listens:
-@ApplicationModuleListener
-void on(OrderCreatedEvent event) { /* react */ }
+### /build
+Follow the module spec. Work in TDD cycles: test → implement → verify.
+Do NOT change module boundaries, event contracts, or public API signatures
+unless explicitly discussed.
+Stay within the current module's package.
+
+---
+
+## Do NOT List
+
+- **No cross-module repository access.** Repositories are `internal/`. Use events or services.
+- **No `@Autowired` field injection.** Use constructor injection only.
+- **No `@Data` on entities.** Entities use manual getters, no setters. State changes via methods.
+- **No Lombok `@Builder` on entities.** Use explicit constructors.
+- **No Selenium/browser-based UI tests.** Use Karibu Testing.
+- **No mocking the database in integration tests.** Use Testcontainers.
+- **No making `internal/` classes public for test access.** Test through the module's public API.
+- **No `@Modulithic` annotation.** The project uses plain `@SpringBootApplication`.
+- **No React/Hilla views.** This project uses Vaadin Java Flow exclusively.
+- **No editing existing Flyway migrations.** Always create new versioned files.
+- **No production code in TDD Step 1.** The test must fail first.
+- **No multiple tests before making them pass.** One test per TDD cycle.
+
+---
+
+## Commands
+
+```bash
+# TDD workflow
+mvn test -Dtest=Class#method -Dsurefire.useFile=false   # one test (Step 1/2)
+mvn test -Dtest=Class -Dsurefire.useFile=false           # one class
+mvn test -Dsurefire.useFile=false                         # full suite (Step 3)
+
+# Module-scoped
+mvn test -Dtest="app.meads.identity.**" -Dsurefire.useFile=false  # identity module
+
+# Build & verify
+mvn verify                                                # compile + test + package
+mvn clean test                                            # clean rebuild
+
+# Architecture
+mvn test -Dtest=ModulithStructureTest -Dsurefire.useFile=false  # module boundaries
+
+# Development
+mvn spring-boot:run                                       # start app (needs PostgreSQL)
+# Or use docker-compose up -d for PostgreSQL, then mvn spring-boot:run
 ```
-
-Test with `PublishedEvents` (synchronous) or `Scenario` (cross-module workflows).
 
 ---
 
@@ -189,16 +370,5 @@ Test with `PublishedEvents` (synchronous) or `Scenario` (cross-module workflows)
 - Referencing another module's `internal` package. Use events.
 - Mocking the database in integration tests. Use Testcontainers.
 - Using Selenium for Vaadin tests. Use Karibu Testing.
-
----
-
-## Commands
-
-```bash
-mvn test -Dtest=Class#method -Dsurefire.useFile=false   # one test (Step 1/2)
-mvn test -Dtest=Class -Dsurefire.useFile=false           # one class
-mvn test -Dsurefire.useFile=false                         # full suite (Step 3)
-mvn test -Dtest="com.example.app.order.**"               # one module
-mvn verify                                                # compile + test + package
-mvn clean test                                            # clean rebuild
-```
+- Using generic Spring/Vaadin patterns instead of checking what the identity module actually does.
+- Treating auth-coupled code (LoginView, SecurityConfig, MagicLink*) as canonical patterns.

@@ -5,14 +5,14 @@ When the user asks to create a new domain module / bounded context.
 
 ## Steps
 
-1. Create the package: `src/main/java/com/example/app/<modulename>/`
+1. Create the package: `src/main/java/app/meads/<modulename>/`
 
 2. Create `package-info.java`:
    ```java
    @org.springframework.modulith.ApplicationModule(
-       allowedDependencies = {"shared"}
+       allowedDependencies = {}
    )
-   package com.example.app.<modulename>;
+   package app.meads.<modulename>;
    ```
 
 3. Create `internal/` sub-package with `.gitkeep`.
