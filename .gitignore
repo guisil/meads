@@ -63,3 +63,6 @@ vite.config.ts.timestamp*
 
 # Spring Boot
 *.pid
+
+# Claude Code
+.claude/settings.local.json
