@@ -3,6 +3,7 @@ package app.meads.identity;
 import app.meads.identity.internal.UserRepository;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
@@ -21,7 +22,7 @@ public class UserService {
         this.userRepository = userRepository;
     }
 
-    public User createUser(@Email @NotBlank String email, @NotBlank String name, UserStatus status, Role role) {
+    public User createUser(@Email @NotBlank String email, @NotBlank String name, @NotNull UserStatus status, @NotNull Role role) {
         if (userRepository.existsByEmail(email)) {
             throw new IllegalArgumentException("Email already exists");
         }
