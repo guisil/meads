@@ -4,19 +4,19 @@ import org.junit.jupiter.api.Test;
 import org.springframework.modulith.core.ApplicationModules;
 import org.springframework.modulith.docs.Documenter;
 
-class ModularityTests {
+class ModulithStructureTest {
 
-    ApplicationModules modules = ApplicationModules.of(MeadsApplication.class);
+    private final ApplicationModules modules = ApplicationModules.of(MeadsApplication.class);
 
     @Test
-    void verifyModularStructure() {
+    void shouldHaveValidModularStructure() {
         modules.verify();
     }
 
     @Test
-    void createModuleDocumentation() {
+    void shouldGenerateModuleDocumentation() {
         new Documenter(modules)
-                .writeDocumentation()
+                .writeModulesAsPlantUml()
                 .writeIndividualModulesAsPlantUml();
     }
 }

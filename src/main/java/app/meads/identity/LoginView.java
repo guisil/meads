@@ -1,0 +1,43 @@
+package app.meads.identity;
+
+import app.meads.identity.internal.MagicLinkService;
+import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.textfield.EmailField;
+import com.vaadin.flow.router.Route;
+import com.vaadin.flow.router.QueryParameters;
+import com.vaadin.flow.server.auth.AnonymousAllowed;
+
+import java.util.Map;
+
+@Route("login")
+@AnonymousAllowed
+public class LoginView extends VerticalLayout {
+
+    private final MagicLinkService magicLinkService;
+
+    public LoginView(MagicLinkService magicLinkService) {
+        this.magicLinkService = magicLinkService;
+
+        var email = new EmailField("Email");
+        email.getElement().setAttribute("name", "username");
+
+        var button = new Button("Continue");
+        button.addClickListener(e -> {
+            String emailValue = email.getValue();
+            if (emailValue == null || emailValue.isBlank()) {
+                email.setInvalid(true);
+                email.setErrorMessage("Please enter a valid email address");
+                return;
+            }
+
+            email.setInvalid(false);
+            magicLinkService.requestMagicLink(emailValue);
+            e.getSource().getUI().ifPresent(ui ->
+                ui.navigate("login", QueryParameters.simple(Map.of("tokenSent", "")))
+            );
+        });
+
+        add(email, button);
+    }
+}
