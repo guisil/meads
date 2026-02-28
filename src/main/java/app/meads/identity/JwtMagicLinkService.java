@@ -24,6 +24,15 @@ public class JwtMagicLinkService {
         this.baseUrl = baseUrl;
     }
 
+    public String validateToken(String token) {
+        return Jwts.parser()
+                .verifyWith(signingKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .getSubject();
+    }
+
     public String generateLink(String email, Duration validity) {
         Instant now = Instant.now();
         String token = Jwts.builder()
