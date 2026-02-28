@@ -8,7 +8,7 @@
 
 ## Branch
 
-`main` (auth redesign merged via PR #3)
+`competition-module` (branched from main, no work started yet)
 
 ## Tests passing: 122
 
