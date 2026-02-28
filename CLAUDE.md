@@ -16,6 +16,7 @@ future modules will follow the same patterns.
 - **Vaadin 25.0.5** (Java Flow — server-side, NOT React/Hilla)
 - **PostgreSQL 18**, Flyway (managed by Boot)
 - **Testcontainers 2.0.3**, Karibu Testing 2.6.2, Mockito, Awaitility 4.3.0
+- **jjwt 0.13.0** (JWT magic link tokens)
 - **JUnit 5**, AssertJ, Spring Security 7.0.2
 
 ---
@@ -94,17 +95,19 @@ app.meads.identity                       ← Identity module public API
 ├── UserStatus.java                      ← Enum: PENDING, ACTIVE, DISABLED, LOCKED
 ├── Role.java                            ← Enum: USER, SYSTEM_ADMIN
 ├── UserService.java                     ← Application service (public API)
+├── JwtMagicLinkService.java            ← JWT token generation + validation (public API)
+├── AccessCodeValidator.java             ← Interface for access code validation (public API)
 ├── LoginView.java                       ← Vaadin login view (public — referenced by SecurityConfig)
 └── internal/                            ← Module-private
     ├── UserRepository.java              ← JPA repository
-    ├── SecurityConfig.java              ← Spring Security filter chain
-    ├── MagicLinkService.java            ← OTT token generation
-    ├── MagicLinkLandingController.java  ← GET /login/magic endpoint
-    ├── MagicLinkSuccessHandler.java     ← OTT success handler
+    ├── SecurityConfig.java              ← Spring Security filter chain (formLogin + JWT filter)
+    ├── MagicLinkAuthenticationFilter.java ← JWT magic link authentication filter
+    ├── AccessCodeAuthenticationProvider.java ← Access code authentication provider
+    ├── AccessCodeAuthenticationToken.java ← Access code authentication token
     ├── DatabaseUserDetailsService.java  ← Spring Security UserDetailsService
     ├── UserListView.java                ← Admin CRUD view (@RolesAllowed("SYSTEM_ADMIN"))
-    ├── AdminInitializer.java            ← Seeds initial admin on startup
-    ├── DevUserInitializer.java          ← Seeds dev user (dev profile only)
+    ├── AdminInitializer.java            ← Seeds initial admin with password on startup
+    ├── DevUserInitializer.java          ← Seeds dev users (dev profile only)
     └── UserActivationListener.java      ← PENDING → ACTIVE on first login
 ```
 
@@ -134,7 +137,7 @@ Read `.claude/skills/new-module.md` before creating a module.
 
 | Module | Status | Description |
 |--------|--------|-------------|
-| `identity` | **Exists** | User management, authentication (magic link/OTT), roles, admin CRUD |
+| `identity` | **Exists** | User management, authentication (JWT magic links, admin passwords, access codes), roles, admin CRUD |
 | `competition` | Planned | Events, competitions, scoring systems (MJP/BJCP), categories, competition admins |
 | `entry` | Planned | Entry credits (external webhook), mead registration, credit consumption |
 | `judging` | Planned | Judging sessions, tables, judge assignments, scoresheets (polymorphic via ScoreField child table) |
@@ -186,13 +189,15 @@ Read `.claude/skills/new-module.md` before creating a module.
 - Dialog-based forms for create/edit operations
 - `Notification` with `NotificationVariant.LUMO_SUCCESS` for success feedback
 
-### Auth-Coupled Code (under review — NOT reference patterns)
-The following are specific to the current magic-link auth mechanism and should NOT be
+### Auth-Coupled Code (NOT reference patterns for other modules)
+The following are specific to the authentication mechanism and should NOT be
 treated as canonical patterns for other modules:
-- `LoginView.java` — auth-mechanism-specific UI
-- `SecurityConfig.java` — OTT filter chain configuration
-- `MagicLinkService.java`, `MagicLinkLandingController.java`, `MagicLinkSuccessHandler.java`
-- `DatabaseUserDetailsService.java` — password-less UserDetails mapping
+- `LoginView.java` — auth-mechanism-specific UI (three sections: magic link, access code, admin password)
+- `SecurityConfig.java` — formLogin + JWT filter + access code provider configuration
+- `JwtMagicLinkService.java` — JWT token generation/validation
+- `MagicLinkAuthenticationFilter.java` — JWT magic link filter
+- `AccessCodeAuthenticationProvider.java`, `AccessCodeAuthenticationToken.java` — access code auth
+- `DatabaseUserDetailsService.java` — UserDetails mapping (returns password hash when present)
 
 Auth-agnostic patterns that ARE canonical: `User.java`, `Role.java`, `UserStatus.java`,
 `UserService.java`, `UserListView.java`, `AdminInitializer.java`, `UserActivationListener.java`.
@@ -265,7 +270,7 @@ void tearDown() {
 ## Database & Migrations
 
 - **Location:** `src/main/resources/db/migration/V{N}__{description}.sql`
-- **Current highest version:** V3 (`V3__add_role_to_users.sql`)
+- **Current highest version:** V4 (`V4__add_password_hash_to_users.sql`)
 - **Naming:** `V{next}__{snake_case_description}.sql` (double underscore)
 - Migrations are created in **Step 2** (GREEN), when a repository test needs a table.
 - **Never edit existing migrations.** Always create new ones.
@@ -379,4 +384,4 @@ mvn spring-boot:run                                       # start app (needs Pos
 - Mocking the database in integration tests. Use Testcontainers.
 - Using Selenium for Vaadin tests. Use Karibu Testing.
 - Using generic Spring/Vaadin patterns instead of checking what the identity module actually does.
-- Treating auth-coupled code (LoginView, SecurityConfig, MagicLink*) as canonical patterns.
+- Treating auth-coupled code (LoginView, SecurityConfig, JwtMagicLinkService, MagicLinkAuthenticationFilter) as canonical patterns.
