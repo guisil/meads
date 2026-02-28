@@ -1,0 +1,180 @@
+/* ============================================================
+   MEADS Custom Theme — Warm Amber on Lumo
+   ============================================================ */
+
+html {
+  /* --- Primary: warm amber (honey) --- */
+  --lumo-primary-color-50pct: hsla(35, 85%, 45%, 0.5);
+  --lumo-primary-color-10pct: hsla(35, 85%, 45%, 0.1);
+  --lumo-primary-color: hsl(35, 85%, 45%);
+  --lumo-primary-text-color: hsl(35, 85%, 38%);
+  --lumo-primary-contrast-color: #fff;
+
+  /* --- Background: warm off-white --- */
+  --lumo-base-color: hsl(40, 20%, 98%);
+
+  /* --- Slightly warmer contrast tones --- */
+  --lumo-contrast-5pct: hsla(30, 10%, 40%, 0.05);
+  --lumo-contrast-10pct: hsla(30, 10%, 40%, 0.1);
+
+  /* --- Success: earthy green --- */
+  --lumo-success-color: hsl(145, 45%, 38%);
+  --lumo-success-text-color: hsl(145, 45%, 32%);
+
+  /* --- Error: muted brick red --- */
+  --lumo-error-color: hsl(5, 60%, 48%);
+  --lumo-error-text-color: hsl(5, 60%, 42%);
+
+  /* --- Shape: slightly softer --- */
+  --lumo-border-radius-m: 6px;
+  --lumo-border-radius-l: 10px;
+
+  /* --- Spacing: generous --- */
+  --lumo-space-wide-m: 1.5rem;
+}
+
+/* --- Navbar --- */
+vaadin-app-layout::part(navbar) {
+  background: hsl(30, 15%, 18%);
+  color: hsl(40, 30%, 92%);
+  box-shadow: 0 1px 4px hsla(30, 20%, 10%, 0.15);
+}
+
+/* --- Drawer --- */
+vaadin-app-layout::part(drawer) {
+  background: hsl(40, 15%, 96%);
+  border-right: 1px solid var(--lumo-contrast-10pct);
+}
+
+/* --- Status badge color mapping --- */
+.badge-draft {
+  background: var(--lumo-contrast-10pct);
+  color: var(--lumo-secondary-text-color);
+}
+
+.badge-registration-open {
+  background: hsla(200, 70%, 50%, 0.12);
+  color: hsl(200, 70%, 38%);
+}
+
+.badge-registration-closed {
+  background: hsla(35, 85%, 45%, 0.12);
+  color: hsl(35, 85%, 38%);
+}
+
+.badge-judging {
+  background: hsla(280, 55%, 50%, 0.12);
+  color: hsl(280, 55%, 40%);
+}
+
+.badge-deliberation {
+  background: hsla(25, 80%, 50%, 0.12);
+  color: hsl(25, 80%, 40%);
+}
+
+.badge-results-published {
+  background: hsla(145, 45%, 38%, 0.12);
+  color: hsl(145, 45%, 32%);
+}
+
+/* --- Page header pattern --- */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: var(--lumo-space-m);
+  border-bottom: 1px solid var(--lumo-contrast-10pct);
+  margin-bottom: var(--lumo-space-l);
+}
+
+.page-header h2 {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* --- Breadcrumb styling --- */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--lumo-space-xs);
+  font-size: var(--lumo-font-size-s);
+  color: var(--lumo-secondary-text-color);
+  margin-bottom: var(--lumo-space-s);
+}
+
+.breadcrumb a {
+  color: var(--lumo-primary-text-color);
+  text-decoration: none;
+}
+
+.breadcrumb a:hover {
+  text-decoration: underline;
+}
+
+.breadcrumb .separator {
+  color: var(--lumo-tertiary-text-color);
+}
+
+/* --- Event logo --- */
+.event-logo {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--lumo-border-radius-m);
+  object-fit: contain;
+  border: 1px solid var(--lumo-contrast-10pct);
+  background: white;
+  flex-shrink: 0;
+}
+
+.event-logo-large {
+  width: 80px;
+  height: 80px;
+  border-radius: var(--lumo-border-radius-m);
+  object-fit: contain;
+  border: 1px solid var(--lumo-contrast-10pct);
+  background: white;
+  flex-shrink: 0;
+}
+
+.event-logo-placeholder {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--lumo-border-radius-m);
+  border: 1px dashed var(--lumo-contrast-20pct);
+  background: var(--lumo-contrast-5pct);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--lumo-tertiary-text-color);
+  font-size: var(--lumo-font-size-xl);
+  flex-shrink: 0;
+}
+
+/* --- Summary cards (stats row) --- */
+.summary-cards {
+  display: flex;
+  gap: var(--lumo-space-m);
+  margin-bottom: var(--lumo-space-l);
+}
+
+.summary-card {
+  flex: 1;
+  background: var(--lumo-base-color);
+  border: 1px solid var(--lumo-contrast-10pct);
+  border-radius: var(--lumo-border-radius-l);
+  padding: var(--lumo-space-m) var(--lumo-space-l);
+}
+
+.summary-card .label {
+  font-size: var(--lumo-font-size-s);
+  color: var(--lumo-secondary-text-color);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.summary-card .value {
+  font-size: var(--lumo-font-size-xxl);
+  font-weight: 700;
+  color: var(--lumo-body-text-color);
+  margin-top: var(--lumo-space-xs);
+}

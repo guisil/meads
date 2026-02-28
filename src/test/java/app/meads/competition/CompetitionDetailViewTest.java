@@ -1,16 +1,22 @@
-package app.meads;
+package app.meads.competition;
 
-import app.meads.MainLayout;
+import app.meads.TestcontainersConfiguration;
+import app.meads.competition.internal.CompetitionDetailView;
+import app.meads.competition.internal.CompetitionRepository;
+import app.meads.competition.internal.EventRepository;
+import app.meads.identity.Role;
+import app.meads.identity.User;
+import app.meads.identity.UserStatus;
+import app.meads.identity.internal.UserRepository;
 import com.github.mvysny.fakeservlet.FakeRequest;
 import com.github.mvysny.kaributesting.v10.MockVaadin;
 import com.github.mvysny.kaributesting.v10.Routes;
 import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
 import com.vaadin.flow.component.UI;
-import com.vaadin.flow.component.applayout.AppLayout;
-import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.html.H1;
-import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
-import com.vaadin.flow.component.sidenav.SideNavItem;
+import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.tabs.TabSheet;
 import com.vaadin.flow.server.VaadinServletRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,22 +31,48 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.annotation.DirtiesContext;
 
+import java.time.LocalDate;
 import java.util.Arrays;
-import java.util.List;
+import java.util.UUID;
 
 import static com.github.mvysny.kaributesting.v10.LocatorJ.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
-class MainLayoutTest {
+@DirtiesContext
+class CompetitionDetailViewTest {
+
+    private static final String ADMIN_EMAIL = "detailview-admin@example.com";
 
     @Autowired
     ApplicationContext ctx;
 
+    @Autowired
+    EventRepository eventRepository;
+
+    @Autowired
+    CompetitionRepository competitionRepository;
+
+    @Autowired
+    UserRepository userRepository;
+
+    private Competition testCompetition;
+
     @BeforeEach
     void setup(TestInfo testInfo) {
+        if (userRepository.findByEmail(ADMIN_EMAIL).isEmpty()) {
+            userRepository.save(new User(UUID.randomUUID(), ADMIN_EMAIL,
+                    "Detail Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN));
+        }
+
+        var event = eventRepository.save(new Event(UUID.randomUUID(), "Test Event",
+                LocalDate.of(2026, 6, 15), LocalDate.of(2026, 6, 17), "Porto"));
+        testCompetition = competitionRepository.save(new Competition(
+                UUID.randomUUID(), event.getId(), "Home", ScoringSystem.MJP));
+
         var routes = new Routes().autoDiscoverViews("app.meads");
         var servlet = new MockSpringServlet(routes, ctx, UI::new);
         MockVaadin.setup(UI::new, servlet);
@@ -97,67 +129,40 @@ class MainLayoutTest {
     }
 
     @Test
-    @WithMockUser(roles = "USER")
-    void shouldRenderRootViewInsideAppLayout() {
-        UI.getCurrent().navigate("");
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldDisplayCompetitionHeader() {
+        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
 
-        assertThat(_find(AppLayout.class)).isNotEmpty();
+        var heading = _get(H2.class, spec -> spec.withText("Home"));
+        assertThat(heading).isNotNull();
     }
 
     @Test
-    @WithMockUser(roles = "USER")
-    void shouldDisplayAppTitleInNavbar() {
-        UI.getCurrent().navigate("");
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldDisplayStatusBadge() {
+        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
 
-        var title = _get(H1.class, spec -> spec.withText("MEADS"));
-        assertThat(title).isNotNull();
+        var badges = _find(Span.class);
+        assertThat(badges).anyMatch(span ->
+                span.getElement().getThemeList().contains("badge")
+                        && span.getText().equals("Draft"));
     }
 
     @Test
-    @WithMockUser(roles = "USER")
-    void shouldDisplayLogoutButtonInNavbarWhenAuthenticated() {
-        UI.getCurrent().navigate("");
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldDisplayTabSheet() {
+        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
 
-        assertThat(_find(Button.class, spec -> spec.withText("Logout"))).hasSize(1);
+        var tabSheet = _get(TabSheet.class);
+        assertThat(tabSheet).isNotNull();
     }
 
     @Test
-    @WithMockUser(roles = "SYSTEM_ADMIN")
-    void shouldDisplayUsersLinkInDrawerForAdmin() {
-        UI.getCurrent().navigate("");
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldDisplayParticipantsGrid() {
+        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
 
-        assertThat(_find(SideNavItem.class))
-                .extracting(SideNavItem::getLabel)
-                .contains("Users");
-    }
-
-    @Test
-    @WithMockUser(roles = "USER")
-    void shouldNotDisplayUsersLinkInDrawerForRegularUser() {
-        UI.getCurrent().navigate("");
-
-        assertThat(_find(SideNavItem.class))
-                .extracting(SideNavItem::getLabel)
-                .doesNotContain("Users");
-    }
-
-    @Test
-    @WithMockUser(roles = "SYSTEM_ADMIN")
-    void shouldRenderUserListViewInsideAppLayout() {
-        UI.getCurrent().navigate("users");
-
-        assertThat(_find(AppLayout.class)).isNotEmpty();
-    }
-
-    @Test
-    @WithMockUser(roles = "USER")
-    void shouldUseHorizontalLayoutInNavbar() {
-        UI.getCurrent().navigate("");
-
-        var layout = _get(MainLayout.class);
-        var navbarLayouts = layout.getChildren()
-                .filter(c -> c instanceof HorizontalLayout)
-                .toList();
-        assertThat(navbarLayouts).hasSize(1);
+        var grids = _find(Grid.class);
+        assertThat(grids).hasSizeGreaterThanOrEqualTo(1);
     }
 }

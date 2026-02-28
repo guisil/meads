@@ -6,6 +6,7 @@ import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.sidenav.SideNavItem;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -69,7 +70,7 @@ class RootUrlRedirectTest {
     void shouldDisplayLogoutButtonWhenAuthenticated() {
         UI.getCurrent().navigate("");
 
-        var button = _get(Button.class);
+        var button = _get(Button.class, spec -> spec.withText("Logout"));
         assertThat(button.getText()).isEqualTo("Logout");
     }
 
@@ -94,8 +95,9 @@ class RootUrlRedirectTest {
     void shouldHaveUserListLinkForAdminUsers() {
         UI.getCurrent().navigate("");
 
-        var button = _get(Button.class, spec -> spec.withText("Users"));
-        assertThat(button).isNotNull();
+        assertThat(com.github.mvysny.kaributesting.v10.LocatorJ._find(SideNavItem.class))
+                .extracting(SideNavItem::getLabel)
+                .contains("Users");
     }
 
     @Test
@@ -103,7 +105,8 @@ class RootUrlRedirectTest {
     void shouldNotShowUserListLinkForRegularUsers() {
         UI.getCurrent().navigate("");
 
-        var buttons = com.github.mvysny.kaributesting.v10.LocatorJ._find(Button.class);
-        assertThat(buttons).noneMatch(button -> "Users".equals(button.getText()));
+        assertThat(com.github.mvysny.kaributesting.v10.LocatorJ._find(SideNavItem.class))
+                .extracting(SideNavItem::getLabel)
+                .doesNotContain("Users");
     }
 }

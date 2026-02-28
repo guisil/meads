@@ -9,6 +9,7 @@ import app.meads.identity.UserService;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.security.SecureRandom;
+import java.time.LocalDate;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,6 +49,61 @@ public class CompetitionService {
         this.eventPublisher = eventPublisher;
     }
 
+    public Event createEvent(@NotBlank String name,
+                             @NotNull LocalDate startDate,
+                             @NotNull LocalDate endDate,
+                             String location,
+                             @NotNull UUID requestingUserId) {
+        requireSystemAdmin(requestingUserId);
+        var event = new Event(UUID.randomUUID(), name, startDate, endDate, location);
+        return eventRepository.save(event);
+    }
+
+    public Event findEventById(@NotNull UUID eventId) {
+        return eventRepository.findById(eventId)
+                .orElseThrow(() -> new IllegalArgumentException("Event not found"));
+    }
+
+    public List<Event> findAllEvents() {
+        return eventRepository.findAll();
+    }
+
+    public Event updateEvent(@NotNull UUID eventId,
+                              @NotBlank String name,
+                              @NotNull LocalDate startDate,
+                              @NotNull LocalDate endDate,
+                              String location,
+                              @NotNull UUID requestingUserId) {
+        var event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new IllegalArgumentException("Event not found"));
+        requireSystemAdmin(requestingUserId);
+        event.updateDetails(name, startDate, endDate, location);
+        return eventRepository.save(event);
+    }
+
+    public Event updateEventLogo(@NotNull UUID eventId,
+                                  byte[] logo,
+                                  String contentType,
+                                  @NotNull UUID requestingUserId) {
+        var event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new IllegalArgumentException("Event not found"));
+        requireSystemAdmin(requestingUserId);
+        event.updateLogo(logo, contentType);
+        return eventRepository.save(event);
+    }
+
+    public void deleteEvent(@NotNull UUID eventId,
+                             @NotNull UUID requestingUserId) {
+        var event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new IllegalArgumentException("Event not found"));
+        requireSystemAdmin(requestingUserId);
+        var competitions = competitionRepository.findByEventId(eventId);
+        if (!competitions.isEmpty()) {
+            throw new IllegalArgumentException("Cannot delete event with competitions");
+        }
+        eventRepository.delete(event);
+    }
+
     public Competition createCompetition(@NotNull UUID eventId,
                                          @NotBlank String name,
                                          @NotNull ScoringSystem scoringSystem,
@@ -79,6 +135,10 @@ public class CompetitionService {
 
     public List<Competition> findByEvent(@NotNull UUID eventId) {
         return competitionRepository.findByEventId(eventId);
+    }
+
+    public List<CompetitionParticipant> findParticipantsByCompetition(@NotNull UUID competitionId) {
+        return participantRepository.findByCompetitionId(competitionId);
     }
 
     public List<Category> findCategoriesByScoringSystem(@NotNull ScoringSystem scoringSystem) {

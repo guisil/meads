@@ -393,6 +393,161 @@ class CompetitionServiceTest {
         then(participantRepository).should(never()).save(any());
     }
 
+    // --- createEvent ---
+
+    @Test
+    void shouldCreateEventWhenRequestedBySystemAdmin() {
+        var admin = createAdmin();
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(eventRepository.save(any(Event.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var result = competitionService.createEvent(
+                "Regional 2026", LocalDate.of(2026, 6, 15),
+                LocalDate.of(2026, 6, 17), "Porto", admin.getId());
+
+        assertThat(result).isNotNull();
+        assertThat(result.getName()).isEqualTo("Regional 2026");
+        assertThat(result.getStartDate()).isEqualTo(LocalDate.of(2026, 6, 15));
+        assertThat(result.getEndDate()).isEqualTo(LocalDate.of(2026, 6, 17));
+        assertThat(result.getLocation()).isEqualTo("Porto");
+        then(eventRepository).should().save(any(Event.class));
+    }
+
+    @Test
+    void shouldRejectCreateEventWhenUserNotSystemAdmin() {
+        var user = createRegularUser();
+        given(userService.findById(user.getId())).willReturn(user);
+
+        assertThatThrownBy(() -> competitionService.createEvent(
+                "Regional 2026", LocalDate.of(2026, 6, 15),
+                LocalDate.of(2026, 6, 17), "Porto", user.getId()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("authorized");
+
+        then(eventRepository).should(never()).save(any());
+    }
+
+    // --- findAllEvents ---
+
+    @Test
+    void shouldFindAllEvents() {
+        var event = createEvent();
+        given(eventRepository.findAll()).willReturn(List.of(event));
+
+        var result = competitionService.findAllEvents();
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().getName()).isEqualTo("Test Event");
+    }
+
+    // --- updateEvent ---
+
+    @Test
+    void shouldUpdateEventWhenRequestedBySystemAdmin() {
+        var admin = createAdmin();
+        var event = createEvent();
+        given(eventRepository.findById(event.getId())).willReturn(Optional.of(event));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(eventRepository.save(any(Event.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var result = competitionService.updateEvent(
+                event.getId(), "Updated Name", LocalDate.of(2026, 7, 1),
+                LocalDate.of(2026, 7, 3), "Lisbon", admin.getId());
+
+        assertThat(result.getName()).isEqualTo("Updated Name");
+        assertThat(result.getStartDate()).isEqualTo(LocalDate.of(2026, 7, 1));
+        assertThat(result.getLocation()).isEqualTo("Lisbon");
+        then(eventRepository).should().save(event);
+    }
+
+    @Test
+    void shouldRejectUpdateEventWhenUserNotSystemAdmin() {
+        var user = createRegularUser();
+        var event = createEvent();
+        given(eventRepository.findById(event.getId())).willReturn(Optional.of(event));
+        given(userService.findById(user.getId())).willReturn(user);
+
+        assertThatThrownBy(() -> competitionService.updateEvent(
+                event.getId(), "Updated", LocalDate.of(2026, 7, 1),
+                LocalDate.of(2026, 7, 3), "Lisbon", user.getId()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("authorized");
+
+        then(eventRepository).should(never()).save(any());
+    }
+
+    // --- updateEventLogo ---
+
+    @Test
+    void shouldUpdateEventLogoWhenRequestedBySystemAdmin() {
+        var admin = createAdmin();
+        var event = createEvent();
+        given(eventRepository.findById(event.getId())).willReturn(Optional.of(event));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(eventRepository.save(any(Event.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var logo = new byte[]{1, 2, 3};
+        var result = competitionService.updateEventLogo(
+                event.getId(), logo, "image/png", admin.getId());
+
+        assertThat(result.hasLogo()).isTrue();
+        assertThat(result.getLogoContentType()).isEqualTo("image/png");
+        then(eventRepository).should().save(event);
+    }
+
+    @Test
+    void shouldClearEventLogoWhenNullProvided() {
+        var admin = createAdmin();
+        var event = createEvent();
+        event.updateLogo(new byte[]{1, 2, 3}, "image/png");
+        given(eventRepository.findById(event.getId())).willReturn(Optional.of(event));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(eventRepository.save(any(Event.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var result = competitionService.updateEventLogo(
+                event.getId(), null, null, admin.getId());
+
+        assertThat(result.hasLogo()).isFalse();
+    }
+
+    // --- deleteEvent ---
+
+    @Test
+    void shouldDeleteEventWhenNoCompetitionsExist() {
+        var admin = createAdmin();
+        var event = createEvent();
+        given(eventRepository.findById(event.getId())).willReturn(Optional.of(event));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(competitionRepository.findByEventId(event.getId())).willReturn(List.of());
+
+        competitionService.deleteEvent(event.getId(), admin.getId());
+
+        then(eventRepository).should().delete(event);
+    }
+
+    @Test
+    void shouldRejectDeleteEventWhenCompetitionsExist() {
+        var admin = createAdmin();
+        var event = createEvent();
+        var competition = new Competition(UUID.randomUUID(), event.getId(),
+                "Home", ScoringSystem.MJP);
+        given(eventRepository.findById(event.getId())).willReturn(Optional.of(event));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(competitionRepository.findByEventId(event.getId()))
+                .willReturn(List.of(competition));
+
+        assertThatThrownBy(() -> competitionService.deleteEvent(
+                event.getId(), admin.getId()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("competitions");
+
+        then(eventRepository).should(never()).delete(any());
+    }
+
     // --- findCategoriesByScoringSystem ---
 
     @Test

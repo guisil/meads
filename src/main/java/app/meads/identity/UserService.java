@@ -57,6 +57,11 @@ public class UserService {
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
     }
 
+    public User findByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+    }
+
     public boolean isEditingSelf(UUID userId, String currentUserEmail) {
         return userRepository.findById(userId)
                 .map(user -> user.getEmail().equals(currentUserEmail))
