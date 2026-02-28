@@ -145,12 +145,22 @@ one-directional: `competition → identity`.
 | `startDate` | `LocalDate` | NOT NULL | Events span days |
 | `endDate` | `LocalDate` | NOT NULL, >= startDate | |
 | `location` | `String` | nullable | May not be known at creation |
+| `logo` | `byte[]` | nullable, max 512KB | Event logo image (PNG/JPEG) |
+| `logoContentType` | `String` | nullable | MIME type (e.g., "image/png") |
 | `createdAt` | `LocalDateTime` | NOT NULL, @PrePersist | |
 | `updatedAt` | `LocalDateTime` | nullable, @PreUpdate | |
+
+**Logo storage:** The logo is stored as a `byte[]` (`BYTEA` in PostgreSQL) directly in the
+`events` table. This is appropriate for small images (logos, ≤512KB). The `logoContentType`
+field stores the MIME type for correct rendering. JPA mapping uses `@Column(length = 524288)`
+and `@Basic(fetch = FetchType.LAZY)` to avoid loading the blob on every Event query.
 
 **Domain methods:**
 - `updateDetails(String name, LocalDate startDate, LocalDate endDate, String location)` —
   validates `startDate <= endDate`, throws `IllegalArgumentException` if not
+- `updateLogo(byte[] logo, String contentType)` — validates size (≤512KB) and content type
+  (image/png, image/jpeg), throws `IllegalArgumentException` if invalid. Pass `null` to remove.
+- `hasLogo()` — returns `logo != null`
 
 **JPA conventions:** Same as `User.java` — protected no-arg constructor, explicit `@Table`,
 `@PrePersist`/`@PreUpdate`, manual getters, no setters, no Lombok.
@@ -299,6 +309,10 @@ public class EventService {
     Event findById(@NotNull UUID eventId);
 
     List<Event> findAll();
+
+    // Updates the event logo. Pass null to remove.
+    // Validates: size ≤512KB, content type is image/png or image/jpeg.
+    Event updateLogo(@NotNull UUID eventId, byte[] logo, String contentType);
 
     // Deletes an event. Throws if competitions exist for this event.
     void deleteEvent(@NotNull UUID eventId);
@@ -554,13 +568,15 @@ Current highest: V4. Competition module starts at V5.
 
 ```sql
 CREATE TABLE events (
-    id         UUID         PRIMARY KEY,
-    name       VARCHAR(255) NOT NULL,
-    start_date DATE         NOT NULL,
-    end_date   DATE         NOT NULL,
-    location   VARCHAR(500),
-    created_at TIMESTAMP    NOT NULL,
-    updated_at TIMESTAMP
+    id                 UUID         PRIMARY KEY,
+    name               VARCHAR(255) NOT NULL,
+    start_date         DATE         NOT NULL,
+    end_date           DATE         NOT NULL,
+    location           VARCHAR(500),
+    logo               BYTEA,
+    logo_content_type  VARCHAR(100),
+    created_at         TIMESTAMP    NOT NULL,
+    updated_at         TIMESTAMP
 );
 ```
 
@@ -679,8 +695,9 @@ Each item is a full RED-GREEN-REFACTOR cycle. Work in this order per CLAUDE.md's
 1. Create `package-info.java` with `allowedDependencies = {"identity"}`.
 2. Run `ModulithStructureTest` — must pass with new module.
 3. Unit test: `EventTest` — `updateDetails()` validates date ordering.
-4. Repository test: `EventRepositoryTest` — save/find. Drives V5 migration.
-5. Unit test: `EventServiceTest` — `createEvent`, `deleteEvent` with mocked repository.
+3b. Unit test: `EventTest` — `updateLogo()` validates size and content type.
+4. Repository test: `EventRepositoryTest` — save/find (including logo). Drives V5 migration.
+5. Unit test: `EventServiceTest` — `createEvent`, `deleteEvent`, `updateLogo` with mocked repository.
 6. Module integration test: `CompetitionModuleTest` — context boots.
 
 ### Phase 2 — Competition Entity and Lifecycle

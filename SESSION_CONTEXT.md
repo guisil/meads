@@ -62,10 +62,19 @@ Start with Phase 1. Each item is a full RED-GREEN-REFACTOR TDD cycle.
 - **Two services:** `EventService` + `CompetitionService`. No separate `CategoryService`.
 - **Authorization:** `requestingUserId` on mutating methods. SYSTEM_ADMIN bypasses;
   COMPETITION_ADMIN checked per competition. Service-layer enforcement, not `@RolesAllowed`.
+- **Event logo:** Stored as `byte[]` (BYTEA) + `logoContentType` on Event entity. ≤512KB,
+  PNG/JPEG only. Displayed in grid thumbnails and event headers.
 
 ---
 
 ## Previously Completed
+
+### Competition Views Design (current session)
+
+**Design doc:** `docs/plans/2026-02-28-competition-views-design.md`
+**Status:** Complete. Covers theme, MainLayout upgrade (drawer + SideNav),
+EventListView, CompetitionListView, CompetitionDetailView, event logo upload/display,
+shared UI patterns, and role-based view organization strategy for later stage.
 
 ### Competition Module Design (current session)
 
