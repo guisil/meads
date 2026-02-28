@@ -182,9 +182,9 @@ class UserListViewTest {
         view.openEditDialog(user);
 
         // Assert - form fields should be present
-        var nameField = _get(TextField.class, spec -> spec.withCaption("Name"));
-        var roleSelect = _get(Select.class, spec -> spec.withCaption("Role"));
-        var statusSelect = _get(Select.class, spec -> spec.withCaption("Status"));
+        var nameField = _get(TextField.class, spec -> spec.withLabel("Name"));
+        var roleSelect = _get(Select.class, spec -> spec.withLabel("Role"));
+        var statusSelect = _get(Select.class, spec -> spec.withLabel("Status"));
 
         assertThat(nameField.getValue()).isEqualTo("Test User");
         assertThat(roleSelect.getValue()).isEqualTo(Role.USER);
@@ -210,9 +210,9 @@ class UserListViewTest {
         var view = _get(UserListView.class);
         view.openEditDialog(user);
 
-        var nameField = _get(TextField.class, spec -> spec.withCaption("Name"));
-        var roleSelect = _get(Select.class, spec -> spec.withCaption("Role"));
-        var statusSelect = _get(Select.class, spec -> spec.withCaption("Status"));
+        var nameField = _get(TextField.class, spec -> spec.withLabel("Name"));
+        var roleSelect = _get(Select.class, spec -> spec.withLabel("Role"));
+        var statusSelect = _get(Select.class, spec -> spec.withLabel("Status"));
 
         nameField.setValue("Updated Name");
         roleSelect.setValue(Role.SYSTEM_ADMIN);
@@ -250,9 +250,9 @@ class UserListViewTest {
         var view = _get(UserListView.class);
         view.openEditDialog(user);
 
-        var nameField = _get(TextField.class, spec -> spec.withCaption("Name"));
-        var roleSelect = _get(Select.class, spec -> spec.withCaption("Role"));
-        var statusSelect = _get(Select.class, spec -> spec.withCaption("Status"));
+        var nameField = _get(TextField.class, spec -> spec.withLabel("Name"));
+        var roleSelect = _get(Select.class, spec -> spec.withLabel("Role"));
+        var statusSelect = _get(Select.class, spec -> spec.withLabel("Status"));
 
         nameField.setValue("Changed Name");
         roleSelect.setValue(Role.SYSTEM_ADMIN);
@@ -290,7 +290,7 @@ class UserListViewTest {
         var view = _get(UserListView.class);
         view.openEditDialog(user);
 
-        var nameField = _get(TextField.class, spec -> spec.withCaption("Name"));
+        var nameField = _get(TextField.class, spec -> spec.withLabel("Name"));
         nameField.setValue("");
 
         var saveButton = _get(Button.class, spec -> spec.withText("Save"));
@@ -330,9 +330,9 @@ class UserListViewTest {
 
         view.openEditDialog(user);
 
-        var nameField = _get(TextField.class, spec -> spec.withCaption("Name"));
-        var roleSelect = _get(Select.class, spec -> spec.withCaption("Role"));
-        var statusSelect = _get(Select.class, spec -> spec.withCaption("Status"));
+        var nameField = _get(TextField.class, spec -> spec.withLabel("Name"));
+        var roleSelect = _get(Select.class, spec -> spec.withLabel("Role"));
+        var statusSelect = _get(Select.class, spec -> spec.withLabel("Status"));
 
         nameField.setValue("Updated Name");
         roleSelect.setValue(Role.SYSTEM_ADMIN);
@@ -372,7 +372,7 @@ class UserListViewTest {
         var view = _get(UserListView.class);
         view.openEditDialog(user);
 
-        var nameField = _get(TextField.class, spec -> spec.withCaption("Name"));
+        var nameField = _get(TextField.class, spec -> spec.withLabel("Name"));
         nameField.setValue("Updated Name");
 
         // Delete the user while dialog is open (simulates concurrent deletion or database error)
@@ -409,7 +409,7 @@ class UserListViewTest {
         var view = _get(UserListView.class);
         view.openEditDialog(user);
 
-        var nameField = _get(TextField.class, spec -> spec.withCaption("Name"));
+        var nameField = _get(TextField.class, spec -> spec.withLabel("Name"));
         nameField.setValue("Updated Name");
 
         var saveButton = _get(Button.class, spec -> spec.withText("Save"));
@@ -453,9 +453,9 @@ class UserListViewTest {
         view.openEditDialog(currentUser);
 
         // Assert - role and status fields should be disabled
-        var nameField = _get(TextField.class, spec -> spec.withCaption("Name"));
-        var roleSelect = _get(Select.class, spec -> spec.withCaption("Role"));
-        var statusSelect = _get(Select.class, spec -> spec.withCaption("Status"));
+        var nameField = _get(TextField.class, spec -> spec.withLabel("Name"));
+        var roleSelect = _get(Select.class, spec -> spec.withLabel("Role"));
+        var statusSelect = _get(Select.class, spec -> spec.withLabel("Status"));
 
         assertThat(nameField.isEnabled()).isTrue(); // Name can be edited
         assertThat(roleSelect.isEnabled()).isFalse(); // Role cannot be changed
@@ -534,7 +534,7 @@ class UserListViewTest {
         view.handleDeleteClick(user);
 
         // Click the confirm button
-        var confirmButton = _get(Button.class, spec -> spec.withCaption("Confirm"));
+        var confirmButton = _get(Button.class, spec -> spec.withText("Confirm"));
         _click(confirmButton);
 
         // Assert - user should be hard deleted (removed from database)
@@ -588,10 +588,10 @@ class UserListViewTest {
         _click(createButton);
 
         // Assert - form fields should be present (email/name empty, role defaults to USER, status defaults to PENDING)
-        var emailField = _get(EmailField.class, spec -> spec.withCaption("Email"));
-        var nameField = _get(TextField.class, spec -> spec.withCaption("Name"));
-        var roleSelect = _get(Select.class, spec -> spec.withCaption("Role"));
-        var statusSelect = _get(Select.class, spec -> spec.withCaption("Status"));
+        var emailField = _get(EmailField.class, spec -> spec.withLabel("Email"));
+        var nameField = _get(TextField.class, spec -> spec.withLabel("Name"));
+        var roleSelect = _get(Select.class, spec -> spec.withLabel("Role"));
+        var statusSelect = _get(Select.class, spec -> spec.withLabel("Status"));
 
         assertThat(emailField.getValue()).isEmpty();
         assertThat(nameField.getValue()).isEmpty();
@@ -608,10 +608,10 @@ class UserListViewTest {
         var createButton = _get(Button.class, spec -> spec.withText("Create User"));
         _click(createButton);
 
-        var emailField = _get(EmailField.class, spec -> spec.withCaption("Email"));
-        var nameField = _get(TextField.class, spec -> spec.withCaption("Name"));
-        var roleSelect = _get(Select.class, spec -> spec.withCaption("Role"));
-        var statusSelect = _get(Select.class, spec -> spec.withCaption("Status"));
+        var emailField = _get(EmailField.class, spec -> spec.withLabel("Email"));
+        var nameField = _get(TextField.class, spec -> spec.withLabel("Name"));
+        var roleSelect = _get(Select.class, spec -> spec.withLabel("Role"));
+        var statusSelect = _get(Select.class, spec -> spec.withLabel("Status"));
 
         emailField.setValue("newuser@example.com");
         nameField.setValue("New User");
@@ -644,10 +644,10 @@ class UserListViewTest {
         var createButton = _get(Button.class, spec -> spec.withText("Create User"));
         _click(createButton);
 
-        var emailField = _get(EmailField.class, spec -> spec.withCaption("Email"));
-        var nameField = _get(TextField.class, spec -> spec.withCaption("Name"));
-        var roleSelect = _get(Select.class, spec -> spec.withCaption("Role"));
-        var statusSelect = _get(Select.class, spec -> spec.withCaption("Status"));
+        var emailField = _get(EmailField.class, spec -> spec.withLabel("Email"));
+        var nameField = _get(TextField.class, spec -> spec.withLabel("Name"));
+        var roleSelect = _get(Select.class, spec -> spec.withLabel("Role"));
+        var statusSelect = _get(Select.class, spec -> spec.withLabel("Status"));
 
         // Leave email empty
         nameField.setValue("Test User");
@@ -687,10 +687,10 @@ class UserListViewTest {
         var createButton = _get(Button.class, spec -> spec.withText("Create User"));
         _click(createButton);
 
-        var emailField = _get(EmailField.class, spec -> spec.withCaption("Email"));
-        var nameField = _get(TextField.class, spec -> spec.withCaption("Name"));
-        var roleSelect = _get(Select.class, spec -> spec.withCaption("Role"));
-        var statusSelect = _get(Select.class, spec -> spec.withCaption("Status"));
+        var emailField = _get(EmailField.class, spec -> spec.withLabel("Email"));
+        var nameField = _get(TextField.class, spec -> spec.withLabel("Name"));
+        var roleSelect = _get(Select.class, spec -> spec.withLabel("Role"));
+        var statusSelect = _get(Select.class, spec -> spec.withLabel("Status"));
 
         emailField.setValue("existing@example.com");
         nameField.setValue("New User");
@@ -724,10 +724,10 @@ class UserListViewTest {
         var createButton = _get(Button.class, spec -> spec.withText("Create User"));
         _click(createButton);
 
-        var emailField = _get(EmailField.class, spec -> spec.withCaption("Email"));
-        var nameField = _get(TextField.class, spec -> spec.withCaption("Name"));
-        var roleSelect = _get(Select.class, spec -> spec.withCaption("Role"));
-        var statusSelect = _get(Select.class, spec -> spec.withCaption("Status"));
+        var emailField = _get(EmailField.class, spec -> spec.withLabel("Email"));
+        var nameField = _get(TextField.class, spec -> spec.withLabel("Name"));
+        var roleSelect = _get(Select.class, spec -> spec.withLabel("Role"));
+        var statusSelect = _get(Select.class, spec -> spec.withLabel("Status"));
 
         emailField.setValue("notanemail");
         nameField.setValue("Test User");
@@ -761,10 +761,10 @@ class UserListViewTest {
         var createButton = _get(Button.class, spec -> spec.withText("Create User"));
         _click(createButton);
 
-        var emailField = _get(EmailField.class, spec -> spec.withCaption("Email"));
-        var nameField = _get(TextField.class, spec -> spec.withCaption("Name"));
-        var roleSelect = _get(Select.class, spec -> spec.withCaption("Role"));
-        var statusSelect = _get(Select.class, spec -> spec.withCaption("Status"));
+        var emailField = _get(EmailField.class, spec -> spec.withLabel("Email"));
+        var nameField = _get(TextField.class, spec -> spec.withLabel("Name"));
+        var roleSelect = _get(Select.class, spec -> spec.withLabel("Role"));
+        var statusSelect = _get(Select.class, spec -> spec.withLabel("Status"));
 
         emailField.setValue("validuser@example.com");
         // Leave name empty
@@ -797,10 +797,10 @@ class UserListViewTest {
         var createButton = _get(Button.class, spec -> spec.withText("Create User"));
         _click(createButton);
 
-        var emailField = _get(EmailField.class, spec -> spec.withCaption("Email"));
-        var nameField = _get(TextField.class, spec -> spec.withCaption("Name"));
-        var roleSelect = _get(Select.class, spec -> spec.withCaption("Role"));
-        var statusSelect = _get(Select.class, spec -> spec.withCaption("Status"));
+        var emailField = _get(EmailField.class, spec -> spec.withLabel("Email"));
+        var nameField = _get(TextField.class, spec -> spec.withLabel("Name"));
+        var roleSelect = _get(Select.class, spec -> spec.withLabel("Role"));
+        var statusSelect = _get(Select.class, spec -> spec.withLabel("Status"));
 
         emailField.setValue("validuser@example.com");
         nameField.setValue("Valid User");
@@ -831,7 +831,7 @@ class UserListViewTest {
         _click(createButton);
 
         // Assert - status field should default to PENDING
-        var statusSelect = _get(Select.class, spec -> spec.withCaption("Status"));
+        var statusSelect = _get(Select.class, spec -> spec.withLabel("Status"));
         assertThat(statusSelect.getValue()).isEqualTo(UserStatus.PENDING);
     }
 
@@ -844,7 +844,7 @@ class UserListViewTest {
         _click(createButton);
 
         // Assert - role field should default to USER
-        var roleSelect = _get(Select.class, spec -> spec.withCaption("Role"));
+        var roleSelect = _get(Select.class, spec -> spec.withLabel("Role"));
         assertThat(roleSelect.getValue()).isEqualTo(Role.USER);
     }
 
@@ -854,7 +854,7 @@ class UserListViewTest {
         UI.getCurrent().navigate("users");
         _click(_get(Button.class, spec -> spec.withText("Create User")));
 
-        assertThat(_find(EmailField.class, spec -> spec.withCaption("Email"))).isNotEmpty();
+        assertThat(_find(EmailField.class, spec -> spec.withLabel("Email"))).isNotEmpty();
     }
 
     @Test
@@ -895,8 +895,8 @@ class UserListViewTest {
         UI.getCurrent().navigate("users");
         _click(_get(Button.class, spec -> spec.withText("Create User")));
 
-        _get(EmailField.class, spec -> spec.withCaption("Email")).setValue("new-variant@example.com");
-        _get(TextField.class, spec -> spec.withCaption("Name")).setValue("New User");
+        _get(EmailField.class, spec -> spec.withLabel("Email")).setValue("new-variant@example.com");
+        _get(TextField.class, spec -> spec.withLabel("Name")).setValue("New User");
         _click(_get(Button.class, spec -> spec.withText("Save")));
 
         assertThat(_get(Notification.class).getThemeNames()).contains("success");
@@ -928,7 +928,7 @@ class UserListViewTest {
         UI.getCurrent().navigate("users");
         var view = _get(UserListView.class);
         view.openEditDialog(user);
-        _get(TextField.class, spec -> spec.withCaption("Name")).setValue("Updated Name");
+        _get(TextField.class, spec -> spec.withLabel("Name")).setValue("Updated Name");
         _click(_get(Button.class, spec -> spec.withText("Save")));
 
         assertThat(_get(Notification.class).getThemeNames()).contains("success");
