@@ -13,17 +13,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
-@TestPropertySource(properties = "INITIAL_ADMIN_EMAIL=admin@test.local")
+@TestPropertySource(properties = {
+        "INITIAL_ADMIN_EMAIL=admin@test.local",
+        "INITIAL_ADMIN_PASSWORD=testPassword123"
+})
 class AdminInitializerIntegrationTest {
 
     @Autowired
     UserRepository userRepository;
 
     @Test
-    void shouldCreatePendingAdminOnApplicationStartup() {
-        // When - application has started (context is loaded)
-
-        // Then - should have created a PENDING admin
+    void shouldCreateActiveAdminWithPasswordOnApplicationStartup() {
         var admins = userRepository.findAll().stream()
                 .filter(user -> user.getRole() == Role.SYSTEM_ADMIN)
                 .toList();
@@ -32,7 +32,8 @@ class AdminInitializerIntegrationTest {
 
         var admin = admins.get(0);
         assertThat(admin.getEmail()).isEqualTo("admin@test.local");
-        assertThat(admin.getStatus()).isEqualTo(UserStatus.PENDING);
+        assertThat(admin.getStatus()).isEqualTo(UserStatus.ACTIVE);
         assertThat(admin.getRole()).isEqualTo(Role.SYSTEM_ADMIN);
+        assertThat(admin.getPasswordHash()).startsWith("$2a$");
     }
 }
