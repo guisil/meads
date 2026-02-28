@@ -1,11 +1,14 @@
 package app.meads.identity;
 
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.login.LoginForm;
+import com.vaadin.flow.component.login.LoginI18n;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.tabs.TabSheet;
 import com.vaadin.flow.component.textfield.EmailField;
-import com.vaadin.flow.component.textfield.PasswordField;
+import com.vaadin.flow.router.BeforeEnterEvent;
+import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 import org.slf4j.Logger;
@@ -15,9 +18,11 @@ import java.time.Duration;
 
 @Route("login")
 @AnonymousAllowed
-public class LoginView extends VerticalLayout {
+public class LoginView extends VerticalLayout implements BeforeEnterObserver {
 
     private static final Logger log = LoggerFactory.getLogger(LoginView.class);
+
+    private final LoginForm loginForm;
 
     public LoginView(JwtMagicLinkService jwtMagicLinkService) {
         var tabSheet = new TabSheet();
@@ -43,40 +48,32 @@ public class LoginView extends VerticalLayout {
         tabSheet.add("Magic Link", magicLinkLayout);
 
         // --- Credentials tab (code / password) ---
-        var credentialsLayout = new VerticalLayout();
-        var credentialsEmail = new EmailField("Email");
-        credentialsEmail.getElement().setAttribute("name", "username");
-        var credentialsSecret = new PasswordField("Code / Password");
-        credentialsSecret.getElement().setAttribute("name", "password");
-        var credentialsButton = new Button("Login");
-        credentialsButton.addClickListener(e -> {
-            getElement().executeJs(
-                    "const form = document.createElement('form');" +
-                    "form.method = 'POST';" +
-                    "form.action = '/login';" +
-                    "const emailInput = document.createElement('input');" +
-                    "emailInput.name = 'username';" +
-                    "emailInput.value = $0;" +
-                    "form.appendChild(emailInput);" +
-                    "const passInput = document.createElement('input');" +
-                    "passInput.name = 'password';" +
-                    "passInput.value = $1;" +
-                    "form.appendChild(passInput);" +
-                    "const csrf = document.querySelector('meta[name=\"_csrf\"]');" +
-                    "if (csrf) {" +
-                    "  const csrfInput = document.createElement('input');" +
-                    "  csrfInput.name = csrf.getAttribute('content');" +
-                    "  const csrfToken = document.querySelector('meta[name=\"_csrf_token\"]');" +
-                    "  if (csrfToken) csrfInput.value = csrfToken.getAttribute('content');" +
-                    "  form.appendChild(csrfInput);" +
-                    "}" +
-                    "document.body.appendChild(form);" +
-                    "form.submit();",
-                    credentialsEmail.getValue(), credentialsSecret.getValue());
-        });
-        credentialsLayout.add(credentialsEmail, credentialsSecret, credentialsButton);
-        tabSheet.add("Login with Credentials", credentialsLayout);
+        loginForm = new LoginForm();
+        loginForm.setAction("login");
+        loginForm.setForgotPasswordButtonVisible(false);
+
+        var i18n = LoginI18n.createDefault();
+        i18n.getForm().setTitle("");
+        i18n.getForm().setUsername("Email");
+        i18n.getForm().setPassword("Code / Password");
+        loginForm.setI18n(i18n);
+
+        loginForm.getElement().getStyle()
+                .set("--vaadin-login-form-background", "transparent")
+                .set("--vaadin-login-form-padding", "0");
+
+        tabSheet.add("Login with Credentials", loginForm);
 
         add(tabSheet);
+    }
+
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        if (event.getLocation()
+                .getQueryParameters()
+                .getParameters()
+                .containsKey("error")) {
+            loginForm.setError(true);
+        }
     }
 }

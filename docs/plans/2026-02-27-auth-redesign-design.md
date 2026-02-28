@@ -226,6 +226,13 @@ JWTs are stateless — no built-in individual revocation. Mitigations:
 - Password reset flow for admins
 - JWT revocation list
 - Competition-scoped role authorization checks
+- UI style consistency pass — LoginForm's submit button uses Vaadin's primary theme variant
+  (bold/dark) while other buttons in the app use the default style. Defer to a general
+  UI/UX redesign pass covering consistent button styling, layout, and theming across all views.
+- Internationalization (i18n) — implement `I18NProvider`, extract hardcoded strings into
+  `messages.properties` bundles, and update views to use `getTranslation()`. Priority for
+  user-facing views (login, competition, entry, judging) over admin views. Infrastructure
+  effort is the same regardless of when it's done; can be applied incrementally per module.
 
 ---
 

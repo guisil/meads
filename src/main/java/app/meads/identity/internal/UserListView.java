@@ -7,6 +7,7 @@ import app.meads.identity.User;
 import app.meads.identity.UserService;
 import app.meads.identity.UserStatus;
 import jakarta.validation.ConstraintViolationException;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.dialog.Dialog;
@@ -28,6 +29,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 @Route(value = "users", layout = MainLayout.class)
 @RolesAllowed("SYSTEM_ADMIN")
 public class UserListView extends VerticalLayout {
+
+    private static final Logger log = LoggerFactory.getLogger(UserListView.class);
 
     private final UserService userService;
     private final JwtMagicLinkService jwtMagicLinkService;
@@ -190,8 +193,7 @@ public class UserListView extends VerticalLayout {
 
     public void sendMagicLink(User user) {
         String link = jwtMagicLinkService.generateLink(user.getEmail(), Duration.ofDays(7));
-        LoggerFactory.getLogger(UserListView.class)
-                .info("\n\n\tMagic link for {}: {}\n", user.getEmail(), link);
+        log.info("\n\n\tMagic link for {}: {}\n", user.getEmail(), link);
         var notification = Notification.show("Magic link sent successfully");
         notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
     }

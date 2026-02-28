@@ -188,11 +188,18 @@ Read `.claude/skills/new-module.md` before creating a module.
 - `transient AuthenticationContext` field for Spring Security context
 - Dialog-based forms for create/edit operations
 - `Notification` with `NotificationVariant.LUMO_SUCCESS` for success feedback
+- **Always use Vaadin's built-in components** before writing custom code. Use the Vaadin MCP
+  tools (`search_vaadin_docs`, `get_component_java_api`, `get_components_by_version`) to check
+  what's available. Examples: `LoginForm` for login pages (handles CSRF, form POST, error
+  display automatically), `Grid` for data tables, `Dialog` for modals, `Upload` for file uploads.
+- **Never use `executeJs()` to do what a Vaadin component already does.** Custom JavaScript
+  bypasses Vaadin's server-side model (CSRF handling, accessibility, theming, i18n) and
+  is fragile. Use `executeJs()` only for browser APIs with no Vaadin equivalent.
 
 ### Auth-Coupled Code (NOT reference patterns for other modules)
 The following are specific to the authentication mechanism and should NOT be
 treated as canonical patterns for other modules:
-- `LoginView.java` — auth-mechanism-specific UI (three sections: magic link, access code, admin password)
+- `LoginView.java` — auth-mechanism-specific UI (TabSheet: magic link tab + LoginForm credentials tab)
 - `SecurityConfig.java` — formLogin + JWT filter + access code provider configuration
 - `JwtMagicLinkService.java` — JWT token generation/validation
 - `MagicLinkAuthenticationFilter.java` — JWT magic link filter
@@ -343,6 +350,8 @@ Stay within the current module's package.
 - **No making `internal/` classes public for test access.** Test through the module's public API.
 - **No `@Modulithic` annotation.** The project uses plain `@SpringBootApplication`.
 - **No React/Hilla views.** This project uses Vaadin Java Flow exclusively.
+- **No custom JavaScript (`executeJs`) when a Vaadin component exists.** Check the Vaadin component
+  catalog and docs first. Custom JS bypasses CSRF, theming, accessibility, and i18n.
 - **No editing existing Flyway migrations.** Always create new versioned files.
 - **No production code in TDD Step 1.** The test must fail first.
 - **No multiple tests before making them pass.** One test per TDD cycle.
@@ -385,3 +394,6 @@ mvn spring-boot:run                                       # start app (needs Pos
 - Using Selenium for Vaadin tests. Use Karibu Testing.
 - Using generic Spring/Vaadin patterns instead of checking what the identity module actually does.
 - Treating auth-coupled code (LoginView, SecurityConfig, JwtMagicLinkService, MagicLinkAuthenticationFilter) as canonical patterns.
+- Reinventing Vaadin components in JavaScript. **Always check the Vaadin component catalog first** —
+  e.g., use `LoginForm` instead of building a form POST with `executeJs()`, use `Upload` instead of
+  custom file input JS. Custom JS bypasses CSRF, theming, accessibility, and i18n.

@@ -1,9 +1,8 @@
 package app.meads;
 
 import app.meads.identity.Role;
-import app.meads.identity.User;
+import app.meads.identity.UserService;
 import app.meads.identity.UserStatus;
-import app.meads.identity.internal.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -12,8 +11,6 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
-
-import java.util.UUID;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
@@ -29,19 +26,18 @@ class LogoutFlowTest {
     WebApplicationContext context;
 
     @Autowired
-    UserRepository userRepository;
+    UserService userService;
 
     @Test
     @WithMockUser(username = "logout-test@example.com")
     void shouldRedirectToRootPageAfterLogout() throws Exception {
         // Ensure user exists
-        userRepository.save(new User(
-            UUID.randomUUID(),
+        userService.createUser(
             "logout-test@example.com",
             "Logout Test User",
             UserStatus.ACTIVE,
             Role.USER
-        ));
+        );
 
         MockMvc mockMvc = MockMvcBuilders
             .webAppContextSetup(context)

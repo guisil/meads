@@ -8,7 +8,7 @@
 
 ## Branch
 
-`main` (auth redesign merged)
+`auth-mechanism-decision` (auth redesign — ready for merge to main)
 
 ## Tests passing: 123
 
