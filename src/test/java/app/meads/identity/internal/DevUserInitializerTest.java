@@ -1,7 +1,6 @@
 package app.meads.identity.internal;
 
-import app.meads.identity.Role;
-import app.meads.identity.UserStatus;
+import app.meads.identity.JwtMagicLinkService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -10,6 +9,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.env.Environment;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
@@ -19,7 +19,7 @@ class DevUserInitializerTest {
 
     @InjectMocks DevUserInitializer devUserInitializer;
     @Mock UserRepository userRepository;
-    @Mock MagicLinkService magicLinkService;
+    @Mock JwtMagicLinkService jwtMagicLinkService;
     @Mock Environment environment;
 
     @Test
@@ -40,7 +40,7 @@ class DevUserInitializerTest {
         devUserInitializer.initializeDevUser();
 
         then(userRepository).should().save(any());
-        then(magicLinkService).should().requestMagicLink("dev@example.com");
+        then(jwtMagicLinkService).should().generateLink(eq("dev@example.com"), any());
     }
 
     @Test

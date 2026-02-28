@@ -1,7 +1,7 @@
 package app.meads.identity.internal;
 
+import app.meads.identity.JwtMagicLinkService;
 import app.meads.identity.Role;
-import app.meads.identity.UserStatus;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -25,7 +25,7 @@ class AdminInitializerTest {
     UserRepository userRepository;
 
     @Mock
-    MagicLinkService magicLinkService;
+    JwtMagicLinkService jwtMagicLinkService;
 
     @Mock
     Environment environment;
@@ -44,8 +44,8 @@ class AdminInitializerTest {
         // Then - should create a PENDING admin user
         then(userRepository).should().save(any());
 
-        // And - should send magic link
-        then(magicLinkService).should().requestMagicLink("admin@example.com");
+        // And - should generate magic link
+        then(jwtMagicLinkService).should().generateLink(eq("admin@example.com"), any());
     }
 
     @Test
@@ -59,8 +59,8 @@ class AdminInitializerTest {
         // Then - should not create any user
         then(userRepository).should(never()).save(any());
 
-        // And - should not send magic link
-        then(magicLinkService).should(never()).requestMagicLink(any());
+        // And - should not generate magic link
+        then(jwtMagicLinkService).should(never()).generateLink(any(), any());
     }
 
     @Test
@@ -77,7 +77,7 @@ class AdminInitializerTest {
         // Then - should not create any user
         then(userRepository).should(never()).save(any());
 
-        // And - should not send magic link
-        then(magicLinkService).should(never()).requestMagicLink(any());
+        // And - should not generate magic link
+        then(jwtMagicLinkService).should(never()).generateLink(any(), any());
     }
 }
