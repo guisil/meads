@@ -4,6 +4,7 @@ import app.meads.identity.UserStatus;
 import org.springframework.context.event.EventListener;
 import org.springframework.security.authentication.event.AuthenticationSuccessEvent;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 @Component
 class UserActivationListener {
@@ -15,6 +16,7 @@ class UserActivationListener {
     }
 
     @EventListener(AuthenticationSuccessEvent.class)
+    @Transactional
     void onAuthenticationSuccess(AuthenticationSuccessEvent event) {
         String email = event.getAuthentication().getName();
         userRepository.findByEmail(email)

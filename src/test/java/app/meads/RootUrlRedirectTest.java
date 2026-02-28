@@ -78,7 +78,7 @@ class RootUrlRedirectTest {
     void shouldHaveLogoutButtonThatNavigatesToLogoutEndpoint() {
         UI.getCurrent().navigate("");
 
-        var button = _get(Button.class, spec -> spec.withCaption("Logout"));
+        var button = _get(Button.class, spec -> spec.withText("Logout"));
         assertThat(button.getText()).isEqualTo("Logout");
 
         // The button should not throw NPE when clicked
@@ -94,7 +94,7 @@ class RootUrlRedirectTest {
     void shouldHaveUserListLinkForAdminUsers() {
         UI.getCurrent().navigate("");
 
-        var button = _get(Button.class, spec -> spec.withCaption("Users"));
+        var button = _get(Button.class, spec -> spec.withText("Users"));
         assertThat(button).isNotNull();
     }
 

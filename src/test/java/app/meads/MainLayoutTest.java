@@ -117,7 +117,7 @@ class MainLayoutTest {
     void shouldDisplayLogoutButtonInNavbarWhenAuthenticated() {
         UI.getCurrent().navigate("");
 
-        assertThat(_find(Button.class, spec -> spec.withCaption("Logout"))).hasSize(1);
+        assertThat(_find(Button.class, spec -> spec.withText("Logout"))).hasSize(1);
     }
 
     @Test
@@ -125,7 +125,7 @@ class MainLayoutTest {
     void shouldDisplayUsersLinkInNavbarForAdmin() {
         UI.getCurrent().navigate("");
 
-        assertThat(_find(Button.class, spec -> spec.withCaption("Users"))).hasSize(1);
+        assertThat(_find(Button.class, spec -> spec.withText("Users"))).hasSize(1);
     }
 
     @Test
@@ -133,7 +133,7 @@ class MainLayoutTest {
     void shouldNotDisplayUsersLinkInNavbarForRegularUser() {
         UI.getCurrent().navigate("");
 
-        assertThat(_find(Button.class, spec -> spec.withCaption("Users"))).isEmpty();
+        assertThat(_find(Button.class, spec -> spec.withText("Users"))).isEmpty();
     }
 
     @Test

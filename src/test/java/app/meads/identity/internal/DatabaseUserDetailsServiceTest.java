@@ -85,6 +85,33 @@ class DatabaseUserDetailsServiceTest {
     }
 
     @Test
+    void shouldReturnPasswordHashWhenUserHasPassword() {
+        // Arrange
+        var user = new User(UUID.randomUUID(), "admin@example.com", "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
+        user.setPasswordHash("$2a$10$someBcryptHash");
+        given(userRepository.findByEmail("admin@example.com")).willReturn(Optional.of(user));
+
+        // Act
+        var userDetails = databaseUserDetailsService.loadUserByUsername("admin@example.com");
+
+        // Assert
+        assertThat(userDetails.getPassword()).isEqualTo("$2a$10$someBcryptHash");
+    }
+
+    @Test
+    void shouldReturnEmptyPasswordWhenUserHasNoPasswordHash() {
+        // Arrange
+        var user = new User(UUID.randomUUID(), "user@example.com", "User", UserStatus.ACTIVE, Role.USER);
+        given(userRepository.findByEmail("user@example.com")).willReturn(Optional.of(user));
+
+        // Act
+        var userDetails = databaseUserDetailsService.loadUserByUsername("user@example.com");
+
+        // Assert
+        assertThat(userDetails.getPassword()).isEmpty();
+    }
+
+    @Test
     void shouldThrowUsernameNotFoundExceptionWhenUserDoesNotExist() {
         // Arrange
         given(userRepository.findByEmail("unknown@example.com")).willReturn(Optional.empty());

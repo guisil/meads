@@ -30,6 +30,9 @@ public class User {
     @Column(nullable = false)
     private Role role;
 
+    @Column(name = "password_hash")
+    private String passwordHash;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
@@ -92,6 +95,14 @@ public class User {
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
     }
 
+    public String getPasswordHash() {
+        return passwordHash;
+    }
+
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -100,7 +111,4 @@ public class User {
         return updatedAt;
     }
 
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
-    }
 }

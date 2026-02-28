@@ -1,17 +1,21 @@
 package app.meads.identity.internal;
 
 import app.meads.MainLayout;
+import app.meads.identity.JwtMagicLinkService;
 import app.meads.identity.Role;
 import app.meads.identity.User;
 import app.meads.identity.UserService;
 import app.meads.identity.UserStatus;
 import jakarta.validation.ConstraintViolationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
+import java.time.Duration;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.select.Select;
@@ -26,14 +30,16 @@ import org.springframework.security.core.userdetails.UserDetails;
 @RolesAllowed("SYSTEM_ADMIN")
 public class UserListView extends VerticalLayout {
 
+    private static final Logger log = LoggerFactory.getLogger(UserListView.class);
+
     private final UserService userService;
-    private final MagicLinkService magicLinkService;
+    private final JwtMagicLinkService jwtMagicLinkService;
     private final transient AuthenticationContext authenticationContext;
     private final Grid<User> grid;
 
-    public UserListView(UserService userService, MagicLinkService magicLinkService, AuthenticationContext authenticationContext) {
+    public UserListView(UserService userService, JwtMagicLinkService jwtMagicLinkService, AuthenticationContext authenticationContext) {
         this.userService = userService;
-        this.magicLinkService = magicLinkService;
+        this.jwtMagicLinkService = jwtMagicLinkService;
         this.authenticationContext = authenticationContext;
         add(new H1("Users"));
 
@@ -186,7 +192,8 @@ public class UserListView extends VerticalLayout {
     }
 
     public void sendMagicLink(User user) {
-        magicLinkService.requestMagicLink(user.getEmail());
+        String link = jwtMagicLinkService.generateLink(user.getEmail(), Duration.ofDays(7));
+        log.info("\n\n\tMagic link for {}: {}\n", user.getEmail(), link);
         var notification = Notification.show("Magic link sent successfully");
         notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
     }

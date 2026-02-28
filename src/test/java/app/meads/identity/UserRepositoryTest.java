@@ -36,4 +36,27 @@ class UserRepositoryTest {
         assertThat(found.get().getCreatedAt()).isNotNull();
         assertThat(found.get().getUpdatedAt()).isNull();
     }
+
+    @Test
+    void shouldPersistUserWithPasswordHash() {
+        var user = new User(UUID.randomUUID(), "hashed@repository.com", "Hashed User", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
+        user.setPasswordHash("$2a$10$someBcryptHashValue");
+
+        userRepository.save(user);
+        var found = userRepository.findByEmail("hashed@repository.com");
+
+        assertThat(found).isPresent();
+        assertThat(found.get().getPasswordHash()).isEqualTo("$2a$10$someBcryptHashValue");
+    }
+
+    @Test
+    void shouldPersistUserWithNullPasswordHash() {
+        var user = new User(UUID.randomUUID(), "nopassword@repository.com", "No Password", UserStatus.ACTIVE, Role.USER);
+
+        userRepository.save(user);
+        var found = userRepository.findByEmail("nopassword@repository.com");
+
+        assertThat(found).isPresent();
+        assertThat(found.get().getPasswordHash()).isNull();
+    }
 }

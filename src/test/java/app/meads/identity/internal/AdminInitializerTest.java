@@ -1,16 +1,19 @@
 package app.meads.identity.internal;
 
 import app.meads.identity.Role;
+import app.meads.identity.User;
 import app.meads.identity.UserStatus;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.env.Environment;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
@@ -25,59 +28,59 @@ class AdminInitializerTest {
     UserRepository userRepository;
 
     @Mock
-    MagicLinkService magicLinkService;
+    PasswordEncoder passwordEncoder;
 
     @Mock
     Environment environment;
 
     @Test
-    void shouldCreatePendingAdminWhenNoAdminExistsAndEmailIsSet() {
+    void shouldCreateActiveAdminWithPasswordWhenBothEnvVarsSet() {
         // Given - no admin exists
         given(userRepository.existsByRole(Role.SYSTEM_ADMIN)).willReturn(false);
-
-        // And - INITIAL_ADMIN_EMAIL is set
         given(environment.getProperty("INITIAL_ADMIN_EMAIL")).willReturn("admin@example.com");
+        given(environment.getProperty("INITIAL_ADMIN_PASSWORD")).willReturn("secretPassword");
+        given(passwordEncoder.encode("secretPassword")).willReturn("$2a$10$encodedHash");
 
-        // When - initialization runs
+        // When
         adminInitializer.initializeAdmin();
 
-        // Then - should create a PENDING admin user
-        then(userRepository).should().save(any());
-
-        // And - should send magic link
-        then(magicLinkService).should().requestMagicLink("admin@example.com");
+        // Then - should create an ACTIVE admin with password hash and SYSTEM_ADMIN role
+        var captor = ArgumentCaptor.forClass(User.class);
+        then(userRepository).should().save(captor.capture());
+        var savedUser = captor.getValue();
+        assertThat(savedUser.getEmail()).isEqualTo("admin@example.com");
+        assertThat(savedUser.getStatus()).isEqualTo(UserStatus.ACTIVE);
+        assertThat(savedUser.getRole()).isEqualTo(Role.SYSTEM_ADMIN);
+        assertThat(savedUser.getPasswordHash()).isEqualTo("$2a$10$encodedHash");
     }
 
     @Test
     void shouldDoNothingWhenAdminAlreadyExists() {
-        // Given - admin already exists
         given(userRepository.existsByRole(Role.SYSTEM_ADMIN)).willReturn(true);
 
-        // When - initialization runs
         adminInitializer.initializeAdmin();
 
-        // Then - should not create any user
         then(userRepository).should(never()).save(any());
-
-        // And - should not send magic link
-        then(magicLinkService).should(never()).requestMagicLink(any());
     }
 
     @Test
     void shouldDoNothingWhenEmailNotSet() {
-        // Given - no admin exists
         given(userRepository.existsByRole(Role.SYSTEM_ADMIN)).willReturn(false);
-
-        // And - INITIAL_ADMIN_EMAIL is not set
         given(environment.getProperty("INITIAL_ADMIN_EMAIL")).willReturn(null);
 
-        // When - initialization runs
         adminInitializer.initializeAdmin();
 
-        // Then - should not create any user
         then(userRepository).should(never()).save(any());
+    }
 
-        // And - should not send magic link
-        then(magicLinkService).should(never()).requestMagicLink(any());
+    @Test
+    void shouldDoNothingWhenPasswordNotSet() {
+        given(userRepository.existsByRole(Role.SYSTEM_ADMIN)).willReturn(false);
+        given(environment.getProperty("INITIAL_ADMIN_EMAIL")).willReturn("admin@example.com");
+        given(environment.getProperty("INITIAL_ADMIN_PASSWORD")).willReturn(null);
+
+        adminInitializer.initializeAdmin();
+
+        then(userRepository).should(never()).save(any());
     }
 }
