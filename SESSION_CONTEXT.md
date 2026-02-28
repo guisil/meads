@@ -8,9 +8,9 @@
 
 ## Branch
 
-`auth-mechanism-decision` (auth redesign — ready for merge to main)
+`main` (auth redesign merged via PR #3)
 
-## Tests passing: 123
+## Tests passing: 122
 
 ---
 
@@ -35,10 +35,10 @@ access code authentication provider.
 
 ## Previously Completed
 
-### Auth Redesign (on branch `auth-mechanism-decision`)
+### Auth Redesign (merged to main via PR #3)
 
 **Design doc:** `docs/plans/2026-02-27-auth-redesign-design.md`
-**Status:** Implemented. All 14 tasks + LoginView TabSheet UX improvement complete.
+**Status:** Merged. All 14 tasks + LoginView refactor + pre-merge fixes complete.
 
 Replaced Spring Security OTT with three auth mechanisms:
 
@@ -49,15 +49,13 @@ Replaced Spring Security OTT with three auth mechanisms:
 3. **Admin passwords** — `formLogin` + `BCryptPasswordEncoder` + `DatabaseUserDetailsService`
    returns password hash. `AdminInitializer` creates admin with password from env vars.
 
-**Files created:** `JwtMagicLinkService.java`, `AccessCodeValidator.java`,
-`MagicLinkAuthenticationFilter.java`, `AccessCodeAuthenticationProvider.java`,
-`AccessCodeAuthenticationToken.java`, `V4__add_password_hash_to_users.sql`
-
-**Files deleted:** `MagicLinkService.java`, `MagicLinkLandingController.java`,
-`MagicLinkSuccessHandler.java`, `templates/magic-link-landing.html`
-
 **Login UX:** TabSheet with two tabs — "Magic Link" (email + send button) and
-"Login with Credentials" (email + code/password + login button).
+"Login with Credentials" (Vaadin `LoginForm` with CSRF, form POST, error display).
+
+**Pre-merge fixes:** Replaced custom JS form POST with Vaadin `LoginForm` (fixed CSRF bug),
+consistent `IllegalArgumentException` in `UserService.deleteUser`, `@Transactional` on
+`UserActivationListener`, removed dead `User.setUpdatedAt`, fixed `LogoutFlowTest`
+cross-module boundary violation, static logger in `UserListView`.
 
 **Dev users (dev profile):** admin@localhost (password: "admin"), user@localhost (magic link),
 pending@localhost (magic link).
