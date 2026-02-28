@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.env.Environment;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -22,39 +23,42 @@ class DevUserInitializer {
 
     private final UserRepository userRepository;
     private final JwtMagicLinkService jwtMagicLinkService;
+    private final PasswordEncoder passwordEncoder;
     private final Environment environment;
 
-    DevUserInitializer(UserRepository userRepository, JwtMagicLinkService jwtMagicLinkService, Environment environment) {
+    DevUserInitializer(UserRepository userRepository, JwtMagicLinkService jwtMagicLinkService,
+                       PasswordEncoder passwordEncoder, Environment environment) {
         this.userRepository = userRepository;
         this.jwtMagicLinkService = jwtMagicLinkService;
+        this.passwordEncoder = passwordEncoder;
         this.environment = environment;
     }
 
     @EventListener(ApplicationReadyEvent.class)
-    void initializeDevUser() {
+    void initializeDevUsers() {
         if (!isDevProfile()) {
             return;
         }
 
-        String devEmail = environment.getProperty("DEV_USER_EMAIL");
-        if (devEmail == null) {
+        createDevUserIfAbsent("admin@localhost", "Dev Admin", Role.SYSTEM_ADMIN, UserStatus.ACTIVE, "admin");
+        createDevUserIfAbsent("user@localhost", "Dev User", Role.USER, UserStatus.ACTIVE, null);
+        createDevUserIfAbsent("pending@localhost", "Pending User", Role.USER, UserStatus.PENDING, null);
+    }
+
+    private void createDevUserIfAbsent(String email, String name, Role role, UserStatus status, String password) {
+        if (userRepository.existsByEmail(email)) {
             return;
         }
 
-        if (userRepository.existsByEmail(devEmail)) {
-            return;
+        User user = new User(UUID.randomUUID(), email, name, status, role);
+        if (password != null) {
+            user.setPasswordHash(passwordEncoder.encode(password));
+            log.info("Created dev user {} with password: {}", email, password);
+        } else {
+            String link = jwtMagicLinkService.generateLink(email, Duration.ofDays(30));
+            log.info("\n\n\tDev magic link for {}: {}\n", email, link);
         }
-
-        User devUser = new User(
-                UUID.randomUUID(),
-                devEmail,
-                "Dev User",
-                UserStatus.PENDING,
-                Role.USER
-        );
-        userRepository.save(devUser);
-        String link = jwtMagicLinkService.generateLink(devEmail, Duration.ofDays(7));
-        log.info("\n\n\tDev user magic link for {}: {}\n", devEmail, link);
+        userRepository.save(user);
     }
 
     private boolean isDevProfile() {
