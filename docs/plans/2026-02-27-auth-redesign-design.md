@@ -2,7 +2,7 @@
 
 **Date:** 2026-02-27
 **Branch:** `auth-mechanism-decision`
-**Status:** Design approved, implementation plan not yet written
+**Status:** Implemented (all 14 tasks + LoginView TabSheet UX improvement)
 
 ---
 
@@ -243,6 +243,6 @@ JWTs are stateless — no built-in individual revocation. Mitigations:
 
 ## Next Steps
 
-1. Write implementation plan (use `writing-plans` skill)
-2. Implement in TDD cycles per CLAUDE.md workflow
-3. After identity module auth is done, competition module can implement `AccessCodeValidator`
+1. ~~Write implementation plan~~ Done
+2. ~~Implement in TDD cycles per CLAUDE.md workflow~~ Done (123 tests passing)
+3. Competition module can now implement `AccessCodeValidator` to activate access code auth
