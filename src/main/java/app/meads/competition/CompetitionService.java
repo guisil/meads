@@ -1,5 +1,6 @@
 package app.meads.competition;
 
+import app.meads.competition.internal.CategoryRepository;
 import app.meads.competition.internal.CompetitionParticipantRepository;
 import app.meads.competition.internal.CompetitionRepository;
 import app.meads.competition.internal.EventRepository;
@@ -28,17 +29,20 @@ public class CompetitionService {
 
     private final CompetitionRepository competitionRepository;
     private final CompetitionParticipantRepository participantRepository;
+    private final CategoryRepository categoryRepository;
     private final EventRepository eventRepository;
     private final UserService userService;
     private final ApplicationEventPublisher eventPublisher;
 
     CompetitionService(CompetitionRepository competitionRepository,
                        CompetitionParticipantRepository participantRepository,
+                       CategoryRepository categoryRepository,
                        EventRepository eventRepository,
                        UserService userService,
                        ApplicationEventPublisher eventPublisher) {
         this.competitionRepository = competitionRepository;
         this.participantRepository = participantRepository;
+        this.categoryRepository = categoryRepository;
         this.eventRepository = eventRepository;
         this.userService = userService;
         this.eventPublisher = eventPublisher;
@@ -75,6 +79,10 @@ public class CompetitionService {
 
     public List<Competition> findByEvent(@NotNull UUID eventId) {
         return competitionRepository.findByEventId(eventId);
+    }
+
+    public List<Category> findCategoriesByScoringSystem(@NotNull ScoringSystem scoringSystem) {
+        return categoryRepository.findByScoringSystem(scoringSystem);
     }
 
     public CompetitionParticipant addParticipant(@NotNull UUID competitionId,

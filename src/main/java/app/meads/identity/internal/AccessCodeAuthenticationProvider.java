@@ -20,13 +20,22 @@ class AccessCodeAuthenticationProvider implements AuthenticationProvider {
 
     @Override
     public Authentication authenticate(Authentication authentication) throws AuthenticationException {
-        if (!(authentication instanceof AccessCodeAuthenticationToken token)) {
+        String email;
+        String code;
+        if (authentication instanceof AccessCodeAuthenticationToken token) {
+            email = (String) token.getPrincipal();
+            code = (String) token.getCredentials();
+        } else if (authentication instanceof UsernamePasswordAuthenticationToken token) {
+            email = (String) token.getPrincipal();
+            code = (String) token.getCredentials();
+        } else {
             return null;
         }
-        String email = (String) token.getPrincipal();
-        String code = (String) token.getCredentials();
         if (!accessCodeValidator.validate(email, code)) {
-            throw new BadCredentialsException("Invalid access code");
+            if (authentication instanceof AccessCodeAuthenticationToken) {
+                throw new BadCredentialsException("Invalid access code");
+            }
+            return null;
         }
         var userDetails = userDetailsService.loadUserByUsername(email);
         return new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
@@ -34,6 +43,7 @@ class AccessCodeAuthenticationProvider implements AuthenticationProvider {
 
     @Override
     public boolean supports(Class<?> authentication) {
-        return AccessCodeAuthenticationToken.class.isAssignableFrom(authentication);
+        return AccessCodeAuthenticationToken.class.isAssignableFrom(authentication)
+                || UsernamePasswordAuthenticationToken.class.isAssignableFrom(authentication);
     }
 }

@@ -1,5 +1,6 @@
 package app.meads.competition;
 
+import app.meads.competition.internal.CategoryRepository;
 import app.meads.competition.internal.CompetitionParticipantRepository;
 import app.meads.competition.internal.CompetitionRepository;
 import app.meads.competition.internal.EventRepository;
@@ -37,6 +38,9 @@ class CompetitionServiceTest {
 
     @Mock
     CompetitionParticipantRepository participantRepository;
+
+    @Mock
+    CategoryRepository categoryRepository;
 
     @Mock
     EventRepository eventRepository;
@@ -387,5 +391,19 @@ class CompetitionServiceTest {
                 .hasMessageContaining("same event");
 
         then(participantRepository).should(never()).save(any());
+    }
+
+    // --- findCategoriesByScoringSystem ---
+
+    @Test
+    void shouldFindCategoriesByScoringSystem() {
+        var category = new Category();
+        given(categoryRepository.findByScoringSystem(ScoringSystem.MJP))
+                .willReturn(List.of(category));
+
+        var result = competitionService.findCategoriesByScoringSystem(ScoringSystem.MJP);
+
+        assertThat(result).hasSize(1);
+        then(categoryRepository).should().findByScoringSystem(ScoringSystem.MJP);
     }
 }

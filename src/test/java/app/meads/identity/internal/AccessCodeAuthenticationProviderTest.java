@@ -25,14 +25,26 @@ class AccessCodeAuthenticationProviderTest {
     @Mock UserDetailsService userDetailsService;
 
     @Test
-    void shouldReturnNullWhenTokenTypeIsNotAccessCode() {
-        // Arrange
-        var token = new UsernamePasswordAuthenticationToken("user", "pass");
+    void shouldAuthenticateWithUsernamePasswordToken() {
+        var token = new UsernamePasswordAuthenticationToken("user@example.com", "ABC123");
+        given(accessCodeValidator.validate("user@example.com", "ABC123")).willReturn(true);
+        var userDetails = new User("user@example.com", "", List.of());
+        given(userDetailsService.loadUserByUsername("user@example.com")).willReturn(userDetails);
 
-        // Act
         var result = provider.authenticate(token);
 
-        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.isAuthenticated()).isTrue();
+        assertThat(result.getName()).isEqualTo("user@example.com");
+    }
+
+    @Test
+    void shouldReturnNullForUsernamePasswordTokenWhenCodeInvalid() {
+        var token = new UsernamePasswordAuthenticationToken("user@example.com", "WRONG");
+        given(accessCodeValidator.validate("user@example.com", "WRONG")).willReturn(false);
+
+        var result = provider.authenticate(token);
+
         assertThat(result).isNull();
     }
 
@@ -65,8 +77,8 @@ class AccessCodeAuthenticationProviderTest {
     }
 
     @Test
-    void shouldSupportAccessCodeAuthenticationTokenOnly() {
+    void shouldSupportBothTokenTypes() {
         assertThat(provider.supports(AccessCodeAuthenticationToken.class)).isTrue();
-        assertThat(provider.supports(UsernamePasswordAuthenticationToken.class)).isFalse();
+        assertThat(provider.supports(UsernamePasswordAuthenticationToken.class)).isTrue();
     }
 }
