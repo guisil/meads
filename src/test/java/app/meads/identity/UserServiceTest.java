@@ -6,6 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
 import java.util.Optional;
@@ -26,6 +27,9 @@ class UserServiceTest {
 
     @Mock
     UserRepository userRepository;
+
+    @Mock
+    PasswordEncoder passwordEncoder;
 
     @Test
     void shouldSoftDeleteUserWhenStatusIsNotDisabled() {
@@ -209,5 +213,36 @@ class UserServiceTest {
         boolean result = userService.isEditingSelf(userId, "other@example.com");
 
         assertThat(result).isFalse();
+    }
+
+    // --- setPassword tests ---
+
+    @Test
+    void shouldSetPasswordHashOnUser() {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+        User user = new User(userId, "admin@example.com", "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
+        given(userRepository.findById(userId)).willReturn(Optional.of(user));
+        given(passwordEncoder.encode("rawPassword")).willReturn("$2a$10$encodedHash");
+        given(userRepository.save(any(User.class))).willAnswer(inv -> inv.getArgument(0));
+
+        // Act
+        userService.setPassword(userId, "rawPassword");
+
+        // Assert
+        assertThat(user.getPasswordHash()).isEqualTo("$2a$10$encodedHash");
+        then(userRepository).should().save(user);
+    }
+
+    @Test
+    void shouldThrowWhenSettingPasswordForNonExistentUser() {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+        given(userRepository.findById(userId)).willReturn(Optional.empty());
+
+        // Act & Assert
+        assertThatThrownBy(() -> userService.setPassword(userId, "rawPassword"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("User not found");
     }
 }
