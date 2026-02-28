@@ -8,32 +8,71 @@
 
 ## Branch
 
-`competition-module` (branched from main, no work started yet)
+`competition-module` (branched from main)
 
 ## Tests passing: 122
 
 ---
 
-## Next Work: Competition Module
+## Next Work: Competition Module — Implementation
 
-The competition module is the next module to build. It will cover events, competitions,
-scoring systems, categories, and competition admins. It will also provide the
-`AccessCodeValidator` implementation that plugs into the identity module's dormant
-access code authentication provider.
+**Design doc:** `docs/plans/2026-02-28-competition-module-design.md`
+**Status:** Design complete. Ready for implementation using `/build` workflow.
 
-**No design doc yet.** Start by creating one using the `/architect` workflow.
+### Implementation Sequence (from design doc)
 
-### Key integration points with identity module
+Start with Phase 1. Each item is a full RED-GREEN-REFACTOR TDD cycle.
 
-- `AccessCodeValidator` interface (in `app.meads.identity`) — competition module provides implementation
-- `UserService` — for looking up users during participant creation
-- Competition-scoped roles (JUDGE, STEWARD, ENTRANT, COMPETITION_ADMIN) live on
-  `CompetitionParticipant` records, not on `User.role`
-- `JwtMagicLinkService` — for generating magic links with competition-scoped expiry
+**Phase 1 — Module Skeleton and Event Entity**
+1. Create `package-info.java` with `allowedDependencies = {"identity"}`.
+2. Run `ModulithStructureTest` — must pass.
+3. Unit test: `EventTest` — `updateDetails()` validates date ordering.
+4. Repository test: `EventRepositoryTest` — save/find. Drives V5 migration.
+5. Unit test: `EventServiceTest` — `createEvent`, `deleteEvent` with mocked repository.
+6. Module integration test: `CompetitionModuleTest` — context boots.
+
+**Phase 2 — Competition Entity and Lifecycle**
+7–11. Competition entity, status machine, service, authorization.
+
+**Phase 3 — Participants and Access Codes**
+12–16. CompetitionParticipant entity, service methods, copy participants.
+
+**Phase 4 — AccessCodeValidator**
+17. Integration test for cross-module access code validation.
+
+**Phase 5 — Auth Flow Fix (Identity Module Change)**
+18–19. Make AccessCodeAuthenticationProvider support UsernamePasswordAuthenticationToken fallback.
+
+**Phase 6 — Categories**
+20–21. Category entity, MJP catalog seed (V8 migration).
+
+**Phase 7 — Views**
+22–25. EventListView, CompetitionListView, CompetitionDetailView, MainLayout nav.
+
+### Key Design Decisions
+
+- **Event → Competition hierarchy.** Event is a stateless container. Competition has 6-state lifecycle.
+- **Participants per competition** (not per event). Copy mechanism for convenience.
+- **CompetitionParticipant in public API** (like `User.java`). Future modules need it.
+- **No @OneToMany** on Competition → participants. Plain UUID references, service loads separately.
+- **Access code auth fallback:** Modify `AccessCodeAuthenticationProvider` to also support
+  `UsernamePasswordAuthenticationToken`. No LoginView UI changes needed.
+- **Access codes carried over** during `copyParticipants` (same judge, same code within event).
+- **MJP categories seeded by Flyway** (V8 migration). PRO-restricted categories deferred.
+- **Two services:** `EventService` + `CompetitionService`. No separate `CategoryService`.
+- **Authorization:** `requestingUserId` on mutating methods. SYSTEM_ADMIN bypasses;
+  COMPETITION_ADMIN checked per competition. Service-layer enforcement, not `@RolesAllowed`.
 
 ---
 
 ## Previously Completed
+
+### Competition Module Design (current session)
+
+**Design doc:** `docs/plans/2026-02-28-competition-module-design.md`
+**Status:** Complete. Covers entities, services, enums, migrations (V5–V8),
+AccessCodeValidator implementation, auth flow fix, MJP category catalog,
+and implementation sequence.
 
 ### Auth Redesign (merged to main via PR #3)
 
