@@ -1,12 +1,11 @@
 package app.meads.identity;
 
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.html.Hr;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.tabs.TabSheet;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.PasswordField;
-import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 import org.slf4j.Logger;
@@ -21,7 +20,11 @@ public class LoginView extends VerticalLayout {
     private static final Logger log = LoggerFactory.getLogger(LoginView.class);
 
     public LoginView(JwtMagicLinkService jwtMagicLinkService) {
-        // --- Magic link section ---
+        var tabSheet = new TabSheet();
+        tabSheet.setWidthFull();
+
+        // --- Magic Link tab ---
+        var magicLinkLayout = new VerticalLayout();
         var magicLinkEmail = new EmailField("Email");
         var magicLinkButton = new Button("Send Magic Link");
         magicLinkButton.addClickListener(e -> {
@@ -36,28 +39,17 @@ public class LoginView extends VerticalLayout {
             log.info("\n\n\tMagic link for {}: {}\n", emailValue, link);
             Notification.show("Magic link sent! Check the server logs.");
         });
-        add(magicLinkEmail, magicLinkButton);
+        magicLinkLayout.add(magicLinkEmail, magicLinkButton);
+        tabSheet.add("Magic Link", magicLinkLayout);
 
-        add(new Hr());
-
-        // --- Access code section ---
-        var accessCodeEmail = new EmailField("Access Code Email");
-        var accessCodeField = new TextField("Access Code");
-        var accessCodeButton = new Button("Login with Code");
-        accessCodeButton.addClickListener(e ->
-                Notification.show("Access code login is not yet available."));
-        add(accessCodeEmail, accessCodeField, accessCodeButton);
-
-        add(new Hr());
-
-        // --- Admin password section ---
-        var adminEmail = new EmailField("Admin Email");
-        adminEmail.getElement().setAttribute("name", "username");
-        var adminPassword = new PasswordField("Password");
-        adminPassword.getElement().setAttribute("name", "password");
-        var adminButton = new Button("Admin Login");
-        adminButton.addClickListener(e -> {
-            // Submit handled by Spring Security formLogin via native form POST
+        // --- Credentials tab (code / password) ---
+        var credentialsLayout = new VerticalLayout();
+        var credentialsEmail = new EmailField("Email");
+        credentialsEmail.getElement().setAttribute("name", "username");
+        var credentialsSecret = new PasswordField("Code / Password");
+        credentialsSecret.getElement().setAttribute("name", "password");
+        var credentialsButton = new Button("Login");
+        credentialsButton.addClickListener(e -> {
             getElement().executeJs(
                     "const form = document.createElement('form');" +
                     "form.method = 'POST';" +
@@ -80,8 +72,11 @@ public class LoginView extends VerticalLayout {
                     "}" +
                     "document.body.appendChild(form);" +
                     "form.submit();",
-                    adminEmail.getValue(), adminPassword.getValue());
+                    credentialsEmail.getValue(), credentialsSecret.getValue());
         });
-        add(adminEmail, adminPassword, adminButton);
+        credentialsLayout.add(credentialsEmail, credentialsSecret, credentialsButton);
+        tabSheet.add("Login with Credentials", credentialsLayout);
+
+        add(tabSheet);
     }
 }

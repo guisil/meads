@@ -6,9 +6,10 @@ import com.github.mvysny.kaributesting.v10.Routes;
 import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.tabs.Tab;
+import com.vaadin.flow.component.tabs.TabSheet;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.PasswordField;
-import com.vaadin.flow.component.textfield.TextField;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,21 +42,32 @@ class LoginViewTest {
     }
 
     @Test
-    void shouldDisplayMagicLinkSection() {
+    void shouldDisplayTabSheet() {
+        var tabSheet = _get(TabSheet.class);
+        assertThat(tabSheet).isNotNull();
+    }
+
+    @Test
+    void shouldDisplayMagicLinkTab() {
+        var tabSheet = _get(TabSheet.class);
+        var tabs = tabSheet.getChildren()
+                .filter(c -> c instanceof Tab)
+                .map(c -> (Tab) c)
+                .toList();
+        // TabSheet wraps tabs — check the tab label exists
         assertThat(_find(EmailField.class, spec -> spec.withLabel("Email"))).isNotEmpty();
         assertThat(_find(Button.class, spec -> spec.withText("Send Magic Link"))).isNotEmpty();
     }
 
     @Test
-    void shouldDisplayAdminLoginSection() {
-        assertThat(_find(PasswordField.class)).isNotEmpty();
-        assertThat(_find(Button.class, spec -> spec.withText("Admin Login"))).isNotEmpty();
-    }
+    void shouldDisplayCredentialsTab() {
+        // Select the credentials tab
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(1);
 
-    @Test
-    void shouldDisplayAccessCodeSection() {
-        assertThat(_find(TextField.class, spec -> spec.withLabel("Access Code"))).isNotEmpty();
-        assertThat(_find(Button.class, spec -> spec.withText("Login with Code"))).isNotEmpty();
+        assertThat(_find(EmailField.class, spec -> spec.withLabel("Email"))).isNotEmpty();
+        assertThat(_find(PasswordField.class, spec -> spec.withLabel("Code / Password"))).isNotEmpty();
+        assertThat(_find(Button.class, spec -> spec.withText("Login"))).isNotEmpty();
     }
 
     @Test
@@ -69,9 +81,11 @@ class LoginViewTest {
     }
 
     @Test
-    void shouldHaveUsernameAttributeOnAdminEmailField() {
-        var adminEmailFields = _find(EmailField.class, spec -> spec.withLabel("Admin Email"));
-        assertThat(adminEmailFields).isNotEmpty();
-        assertThat(adminEmailFields.get(0).getElement().getAttribute("name")).isEqualTo("username");
+    void shouldHaveFormAttributesOnCredentialsTab() {
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(1);
+
+        var emailField = _get(EmailField.class, spec -> spec.withLabel("Email"));
+        assertThat(emailField.getElement().getAttribute("name")).isEqualTo("username");
     }
 }
