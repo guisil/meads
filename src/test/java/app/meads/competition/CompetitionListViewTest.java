@@ -62,7 +62,7 @@ class CompetitionListViewTest {
     @BeforeEach
     void setup(TestInfo testInfo) {
         if (userRepository.findByEmail(ADMIN_EMAIL).isEmpty()) {
-            userRepository.save(new User(UUID.randomUUID(), ADMIN_EMAIL,
+            userRepository.save(new User(ADMIN_EMAIL,
                     "Comp Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN));
         }
 

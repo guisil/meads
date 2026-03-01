@@ -64,14 +64,10 @@ class UserListViewTest {
     }
 
     private Authentication resolveAuthentication(TestInfo testInfo) {
-        // Try SecurityContextHolder first (works when @WithMockUser pipeline is intact)
         var auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null) {
             return auth;
         }
-        // Fall back to reading @WithMockUser annotation directly.
-        // VaadinAwareSecurityContextHolderStrategy can lose the context set by
-        // @WithMockUser when other test classes modify the SecurityContextHolder strategy.
         var method = testInfo.getTestMethod().orElse(null);
         if (method == null) {
             return null;
@@ -140,10 +136,8 @@ class UserListViewTest {
     @WithMockUser(roles = "SYSTEM_ADMIN")
     void shouldOpenDialogWhenEditButtonClicked() {
         // Arrange - create a test user
-        var userId = UUID.randomUUID();
         var user = new User(
-                userId,
-                "edit-test-" + userId + "@example.com",
+                "edit-test-" + UUID.randomUUID() + "@example.com",
                 "Test User",
                 UserStatus.ACTIVE,
                 Role.USER
@@ -151,8 +145,6 @@ class UserListViewTest {
         userRepository.save(user);
 
         // Act - navigate and trigger edit dialog
-        // Note: Buttons in grid component columns aren't accessible via Karibu Testing locators,
-        // so we test the dialog opening logic directly
         UI.getCurrent().navigate("users");
         var view = _get(UserListView.class);
         view.openEditDialog(user);
@@ -166,10 +158,8 @@ class UserListViewTest {
     @WithMockUser(roles = "SYSTEM_ADMIN")
     void shouldDisplayFormFieldsInEditDialog() {
         // Arrange - create a test user
-        var userId = UUID.randomUUID();
         var user = new User(
-                userId,
-                "form-test-" + userId + "@example.com",
+                "form-test-" + UUID.randomUUID() + "@example.com",
                 "Test User",
                 UserStatus.ACTIVE,
                 Role.USER
@@ -195,10 +185,8 @@ class UserListViewTest {
     @WithMockUser(roles = "SYSTEM_ADMIN")
     void shouldUpdateUserWhenSaveButtonClicked() {
         // Arrange - create a test user
-        var userId = UUID.randomUUID();
         var user = new User(
-                userId,
-                "save-test-" + userId + "@example.com",
+                "save-test-" + UUID.randomUUID() + "@example.com",
                 "Original Name",
                 UserStatus.PENDING,
                 Role.USER
@@ -222,7 +210,7 @@ class UserListViewTest {
         _click(saveButton);
 
         // Assert - user should be updated in database and dialog closed
-        var updatedUser = userRepository.findById(userId).orElseThrow();
+        var updatedUser = userRepository.findById(user.getId()).orElseThrow();
         assertThat(updatedUser.getName()).isEqualTo("Updated Name");
         assertThat(updatedUser.getRole()).isEqualTo(Role.SYSTEM_ADMIN);
         assertThat(updatedUser.getStatus()).isEqualTo(UserStatus.ACTIVE);
@@ -235,10 +223,8 @@ class UserListViewTest {
     @WithMockUser(roles = "SYSTEM_ADMIN")
     void shouldCloseDialogWithoutSavingWhenCancelButtonClicked() {
         // Arrange - create a test user
-        var userId = UUID.randomUUID();
         var user = new User(
-                userId,
-                "cancel-test-" + userId + "@example.com",
+                "cancel-test-" + UUID.randomUUID() + "@example.com",
                 "Original Name",
                 UserStatus.PENDING,
                 Role.USER
@@ -262,7 +248,7 @@ class UserListViewTest {
         _click(cancelButton);
 
         // Assert - user should be unchanged in database and dialog closed
-        var unchangedUser = userRepository.findById(userId).orElseThrow();
+        var unchangedUser = userRepository.findById(user.getId()).orElseThrow();
         assertThat(unchangedUser.getName()).isEqualTo("Original Name");
         assertThat(unchangedUser.getRole()).isEqualTo(Role.USER);
         assertThat(unchangedUser.getStatus()).isEqualTo(UserStatus.PENDING);
@@ -275,10 +261,8 @@ class UserListViewTest {
     @WithMockUser(roles = "SYSTEM_ADMIN")
     void shouldNotSaveWhenNameFieldIsEmpty() {
         // Arrange - create a test user
-        var userId = UUID.randomUUID();
         var user = new User(
-                userId,
-                "validation-test-" + userId + "@example.com",
+                "validation-test-" + UUID.randomUUID() + "@example.com",
                 "Original Name",
                 UserStatus.PENDING,
                 Role.USER
@@ -297,7 +281,7 @@ class UserListViewTest {
         _click(saveButton);
 
         // Assert - user should be unchanged in database
-        var unchangedUser = userRepository.findById(userId).orElseThrow();
+        var unchangedUser = userRepository.findById(user.getId()).orElseThrow();
         assertThat(unchangedUser.getName()).isEqualTo("Original Name");
 
         // Dialog should still be open (save failed due to validation)
@@ -312,10 +296,8 @@ class UserListViewTest {
     @WithMockUser(roles = "SYSTEM_ADMIN")
     void shouldRefreshGridAfterSavingChanges() {
         // Arrange - create a test user
-        var userId = UUID.randomUUID();
         var user = new User(
-                userId,
-                "refresh-test-" + userId + "@example.com",
+                "refresh-test-" + UUID.randomUUID() + "@example.com",
                 "Original Name",
                 UserStatus.PENDING,
                 Role.USER
@@ -344,7 +326,7 @@ class UserListViewTest {
         // Assert - grid should display updated values
         var gridItems = grid.getListDataView().getItems().toList();
         var updatedUserInGrid = gridItems.stream()
-                .filter(u -> u.getId().equals(userId))
+                .filter(u -> u.getId().equals(user.getId()))
                 .findFirst()
                 .orElseThrow();
 
@@ -357,10 +339,8 @@ class UserListViewTest {
     @WithMockUser(roles = "SYSTEM_ADMIN")
     void shouldShowErrorWhenSaveFails() {
         // Arrange - create a test user
-        var userId = UUID.randomUUID();
         var user = new User(
-                userId,
-                "error-test-" + userId + "@example.com",
+                "error-test-" + UUID.randomUUID() + "@example.com",
                 "Original Name",
                 UserStatus.PENDING,
                 Role.USER
@@ -376,7 +356,7 @@ class UserListViewTest {
         nameField.setValue("Updated Name");
 
         // Delete the user while dialog is open (simulates concurrent deletion or database error)
-        userRepository.deleteById(userId);
+        userRepository.deleteById(user.getId());
 
         var saveButton = _get(Button.class, spec -> spec.withText("Save"));
         _click(saveButton);
@@ -394,10 +374,8 @@ class UserListViewTest {
     @WithMockUser(roles = "SYSTEM_ADMIN")
     void shouldShowSuccessNotificationAfterSaving() {
         // Arrange - create a test user
-        var userId = UUID.randomUUID();
         var user = new User(
-                userId,
-                "notification-test-" + userId + "@example.com",
+                "notification-test-" + UUID.randomUUID() + "@example.com",
                 "Original Name",
                 UserStatus.PENDING,
                 Role.USER
@@ -424,9 +402,7 @@ class UserListViewTest {
     @DirtiesContext
     void shouldDisableRoleAndStatusFieldsWhenEditingSelf() {
         // Arrange - create a user with the same email as the logged-in user
-        var userId = UUID.randomUUID();
         var currentUser = new User(
-                userId,
                 "admin@example.com",
                 "Admin User",
                 UserStatus.ACTIVE,
@@ -465,40 +441,36 @@ class UserListViewTest {
     @Test
     @WithMockUser(username = "admin@example.com", roles = "SYSTEM_ADMIN")
     @DirtiesContext
-    void shouldSoftDeleteUserWhenStatusIsNotDisabled() {
+    void shouldDeactivateUserWhenStatusIsNotInactive() {
         // Arrange - create a test user
-        var userId = UUID.randomUUID();
         var user = new User(
-                userId,
-                "delete-test-" + userId + "@example.com",
+                "delete-test-" + UUID.randomUUID() + "@example.com",
                 "Test User",
                 UserStatus.ACTIVE,
                 Role.USER
         );
         userRepository.save(user);
 
-        // Act - navigate and trigger delete
+        // Act - navigate and trigger remove
         UI.getCurrent().navigate("users");
         var view = _get(UserListView.class);
-        view.deleteUser(user);
+        view.removeUser(user);
 
-        // Assert - user should be soft deleted (status changed to DISABLED)
-        var deletedUser = userRepository.findById(userId).orElseThrow();
-        assertThat(deletedUser.getStatus()).isEqualTo(UserStatus.DISABLED);
-        assertThat(userRepository.findById(userId)).isPresent(); // Still in database
+        // Assert - user should be deactivated (status changed to INACTIVE)
+        var deactivatedUser = userRepository.findById(user.getId()).orElseThrow();
+        assertThat(deactivatedUser.getStatus()).isEqualTo(UserStatus.INACTIVE);
+        assertThat(userRepository.findById(user.getId())).isPresent(); // Still in database
     }
 
     @Test
     @WithMockUser(username = "admin@example.com", roles = "SYSTEM_ADMIN")
     @DirtiesContext
     void shouldShowConfirmationDialogBeforeHardDelete() {
-        // Arrange - create a DISABLED user
-        var userId = UUID.randomUUID();
+        // Arrange - create an INACTIVE user
         var user = new User(
-                userId,
-                "hard-delete-test-" + userId + "@example.com",
+                "hard-delete-test-" + UUID.randomUUID() + "@example.com",
                 "Test User",
-                UserStatus.DISABLED,
+                UserStatus.INACTIVE,
                 Role.USER
         );
         userRepository.save(user);
@@ -517,13 +489,11 @@ class UserListViewTest {
     @WithMockUser(username = "admin@example.com", roles = "SYSTEM_ADMIN")
     @DirtiesContext
     void shouldHardDeleteUserWhenConfirmed() {
-        // Arrange - create a DISABLED user
-        var userId = UUID.randomUUID();
+        // Arrange - create an INACTIVE user
         var user = new User(
-                userId,
-                "confirm-delete-test-" + userId + "@example.com",
+                "confirm-delete-test-" + UUID.randomUUID() + "@example.com",
                 "Test User",
-                UserStatus.DISABLED,
+                UserStatus.INACTIVE,
                 Role.USER
         );
         userRepository.save(user);
@@ -538,7 +508,7 @@ class UserListViewTest {
         _click(confirmButton);
 
         // Assert - user should be hard deleted (removed from database)
-        assertThat(userRepository.findById(userId)).isEmpty();
+        assertThat(userRepository.findById(user.getId())).isEmpty();
     }
 
     @Test
@@ -546,10 +516,8 @@ class UserListViewTest {
     @DirtiesContext
     void shouldSendMagicLinkWhenButtonClicked() {
         // Arrange - create a test user
-        var userId = UUID.randomUUID();
         var user = new User(
-                userId,
-                "magic-link-test-" + userId + "@example.com",
+                "magic-link-test-" + UUID.randomUUID() + "@example.com",
                 "Test User",
                 UserStatus.ACTIVE,
                 Role.USER
@@ -674,7 +642,6 @@ class UserListViewTest {
     void shouldNotCreateUserWhenEmailAlreadyExists() {
         // Arrange - create an existing user with a specific email
         var existingUser = new User(
-                UUID.randomUUID(),
                 "existing@example.com",
                 "Existing User",
                 UserStatus.ACTIVE,
@@ -860,25 +827,23 @@ class UserListViewTest {
     @Test
     @WithMockUser(username = "admin@example.com", roles = "SYSTEM_ADMIN")
     @DirtiesContext
-    void shouldShowDisabledMessageWhenSoftDeletingUser() {
-        var userId = UUID.randomUUID();
-        var user = new User(userId, "disable-msg-" + userId + "@example.com", "Test User", UserStatus.ACTIVE, Role.USER);
+    void shouldShowDeactivatedMessageWhenDeactivatingUser() {
+        var user = new User("deactivate-msg-" + UUID.randomUUID() + "@example.com", "Test User", UserStatus.ACTIVE, Role.USER);
         userRepository.save(user);
 
         UI.getCurrent().navigate("users");
         var view = _get(UserListView.class);
-        view.deleteUser(user);
+        view.removeUser(user);
 
         assertThat(_get(Notification.class).getElement().getProperty("text"))
-                .isEqualTo("User disabled successfully");
+                .isEqualTo("User deactivated successfully");
     }
 
     @Test
     @WithMockUser(username = "admin@example.com", roles = "SYSTEM_ADMIN")
     @DirtiesContext
     void shouldShowSuccessVariantOnMagicLinkNotification() {
-        var userId = UUID.randomUUID();
-        var user = new User(userId, "magic-variant-" + userId + "@example.com", "Test User", UserStatus.ACTIVE, Role.USER);
+        var user = new User("magic-variant-" + UUID.randomUUID() + "@example.com", "Test User", UserStatus.ACTIVE, Role.USER);
         userRepository.save(user);
 
         UI.getCurrent().navigate("users");
@@ -905,14 +870,13 @@ class UserListViewTest {
     @Test
     @WithMockUser(username = "admin@example.com", roles = "SYSTEM_ADMIN")
     @DirtiesContext
-    void shouldShowSuccessVariantOnDisableNotification() {
-        var userId = UUID.randomUUID();
-        var user = new User(userId, "disable-variant-" + userId + "@example.com", "Test User", UserStatus.ACTIVE, Role.USER);
+    void shouldShowSuccessVariantOnDeactivateNotification() {
+        var user = new User("deactivate-variant-" + UUID.randomUUID() + "@example.com", "Test User", UserStatus.ACTIVE, Role.USER);
         userRepository.save(user);
 
         UI.getCurrent().navigate("users");
         var view = _get(UserListView.class);
-        view.deleteUser(user);
+        view.removeUser(user);
 
         assertThat(_get(Notification.class).getThemeNames()).contains("success");
     }
@@ -921,8 +885,7 @@ class UserListViewTest {
     @WithMockUser(roles = "SYSTEM_ADMIN")
     @DirtiesContext
     void shouldShowSuccessVariantOnSaveNotification() {
-        var userId = UUID.randomUUID();
-        var user = new User(userId, "notify-test-" + userId + "@example.com", "Test User", UserStatus.PENDING, Role.USER);
+        var user = new User("notify-test-" + UUID.randomUUID() + "@example.com", "Test User", UserStatus.PENDING, Role.USER);
         userRepository.save(user);
 
         UI.getCurrent().navigate("users");

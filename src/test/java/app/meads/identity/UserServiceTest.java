@@ -32,35 +32,35 @@ class UserServiceTest {
     PasswordEncoder passwordEncoder;
 
     @Test
-    void shouldSoftDeleteUserWhenStatusIsNotDisabled() {
+    void shouldDeactivateUserWhenStatusIsNotInactive() {
         // Arrange
-        UUID userId = UUID.randomUUID();
-        User user = new User(userId, "user@example.com", "Test User", UserStatus.ACTIVE, Role.USER);
+        User user = new User("user@example.com", "Test User", UserStatus.ACTIVE, Role.USER);
+        UUID userId = user.getId();
         String currentUserEmail = "admin@example.com";
 
         given(userRepository.findById(userId)).willReturn(Optional.of(user));
         given(userRepository.save(any(User.class))).willAnswer(inv -> inv.getArgument(0));
 
         // Act
-        userService.deleteUser(userId, currentUserEmail);
+        userService.removeUser(userId, currentUserEmail);
 
         // Assert
-        assertThat(user.getStatus()).isEqualTo(UserStatus.DISABLED);
+        assertThat(user.getStatus()).isEqualTo(UserStatus.INACTIVE);
         then(userRepository).should().save(user);
         then(userRepository).shouldHaveNoMoreInteractions();
     }
 
     @Test
-    void shouldHardDeleteUserWhenStatusIsDisabled() {
+    void shouldHardDeleteUserWhenStatusIsInactive() {
         // Arrange
-        UUID userId = UUID.randomUUID();
-        User user = new User(userId, "user@example.com", "Test User", UserStatus.DISABLED, Role.USER);
+        User user = new User("user@example.com", "Test User", UserStatus.INACTIVE, Role.USER);
+        UUID userId = user.getId();
         String currentUserEmail = "admin@example.com";
 
         given(userRepository.findById(userId)).willReturn(Optional.of(user));
 
         // Act
-        userService.deleteUser(userId, currentUserEmail);
+        userService.removeUser(userId, currentUserEmail);
 
         // Assert
         then(userRepository).should().delete(user);
@@ -68,18 +68,18 @@ class UserServiceTest {
     }
 
     @Test
-    void shouldRejectDeletingOwnAccount() {
+    void shouldRejectRemovingOwnAccount() {
         // Arrange
-        UUID userId = UUID.randomUUID();
-        User user = new User(userId, "user@example.com", "Test User", UserStatus.ACTIVE, Role.USER);
+        User user = new User("user@example.com", "Test User", UserStatus.ACTIVE, Role.USER);
+        UUID userId = user.getId();
         String currentUserEmail = "user@example.com";
 
         given(userRepository.findById(userId)).willReturn(Optional.of(user));
 
         // Act & Assert
-        assertThatThrownBy(() -> userService.deleteUser(userId, currentUserEmail))
+        assertThatThrownBy(() -> userService.removeUser(userId, currentUserEmail))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Cannot disable or delete your own account");
+                .hasMessageContaining("Cannot deactivate or delete your own account");
     }
 
     // --- createUser tests ---
@@ -119,8 +119,8 @@ class UserServiceTest {
 
     @Test
     void shouldUpdateUserSuccessfully() {
-        UUID userId = UUID.randomUUID();
-        User user = new User(userId, "user@example.com", "Old Name", UserStatus.ACTIVE, Role.USER);
+        User user = new User("user@example.com", "Old Name", UserStatus.ACTIVE, Role.USER);
+        UUID userId = user.getId();
         String currentUserEmail = "admin@example.com";
         given(userRepository.findById(userId)).willReturn(Optional.of(user));
         given(userRepository.save(any(User.class))).willAnswer(inv -> inv.getArgument(0));
@@ -134,8 +134,8 @@ class UserServiceTest {
 
     @Test
     void shouldRejectSelfRoleChange() {
-        UUID userId = UUID.randomUUID();
-        User user = new User(userId, "admin@example.com", "Admin", UserStatus.ACTIVE, Role.USER);
+        User user = new User("admin@example.com", "Admin", UserStatus.ACTIVE, Role.USER);
+        UUID userId = user.getId();
         given(userRepository.findById(userId)).willReturn(Optional.of(user));
 
         assertThatThrownBy(() -> userService.updateUser(userId, "Admin", Role.SYSTEM_ADMIN, UserStatus.ACTIVE, "admin@example.com"))
@@ -145,11 +145,11 @@ class UserServiceTest {
 
     @Test
     void shouldRejectSelfStatusChange() {
-        UUID userId = UUID.randomUUID();
-        User user = new User(userId, "admin@example.com", "Admin", UserStatus.ACTIVE, Role.USER);
+        User user = new User("admin@example.com", "Admin", UserStatus.ACTIVE, Role.USER);
+        UUID userId = user.getId();
         given(userRepository.findById(userId)).willReturn(Optional.of(user));
 
-        assertThatThrownBy(() -> userService.updateUser(userId, "Admin", Role.USER, UserStatus.DISABLED, "admin@example.com"))
+        assertThatThrownBy(() -> userService.updateUser(userId, "Admin", Role.USER, UserStatus.INACTIVE, "admin@example.com"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Cannot change your own status");
     }
@@ -159,8 +159,8 @@ class UserServiceTest {
     @Test
     void shouldFindAllUsers() {
         var users = List.of(
-                new User(UUID.randomUUID(), "a@example.com", "A", UserStatus.ACTIVE, Role.USER),
-                new User(UUID.randomUUID(), "b@example.com", "B", UserStatus.PENDING, Role.SYSTEM_ADMIN)
+                new User("a@example.com", "A", UserStatus.ACTIVE, Role.USER),
+                new User("b@example.com", "B", UserStatus.PENDING, Role.SYSTEM_ADMIN)
         );
         given(userRepository.findAll()).willReturn(users);
 
@@ -172,8 +172,8 @@ class UserServiceTest {
 
     @Test
     void shouldFindUserById() {
-        UUID userId = UUID.randomUUID();
-        User user = new User(userId, "user@example.com", "User", UserStatus.ACTIVE, Role.USER);
+        User user = new User("user@example.com", "User", UserStatus.ACTIVE, Role.USER);
+        UUID userId = user.getId();
         given(userRepository.findById(userId)).willReturn(Optional.of(user));
 
         User result = userService.findById(userId);
@@ -195,8 +195,8 @@ class UserServiceTest {
 
     @Test
     void shouldReturnTrueWhenEditingSelf() {
-        UUID userId = UUID.randomUUID();
-        User user = new User(userId, "admin@example.com", "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
+        User user = new User("admin@example.com", "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
+        UUID userId = user.getId();
         given(userRepository.findById(userId)).willReturn(Optional.of(user));
 
         boolean result = userService.isEditingSelf(userId, "admin@example.com");
@@ -206,8 +206,8 @@ class UserServiceTest {
 
     @Test
     void shouldReturnFalseWhenNotEditingSelf() {
-        UUID userId = UUID.randomUUID();
-        User user = new User(userId, "user@example.com", "User", UserStatus.ACTIVE, Role.USER);
+        User user = new User("user@example.com", "User", UserStatus.ACTIVE, Role.USER);
+        UUID userId = user.getId();
         given(userRepository.findById(userId)).willReturn(Optional.of(user));
 
         boolean result = userService.isEditingSelf(userId, "other@example.com");
@@ -220,8 +220,8 @@ class UserServiceTest {
     @Test
     void shouldSetPasswordHashOnUser() {
         // Arrange
-        UUID userId = UUID.randomUUID();
-        User user = new User(userId, "admin@example.com", "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
+        User user = new User("admin@example.com", "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
+        UUID userId = user.getId();
         given(userRepository.findById(userId)).willReturn(Optional.of(user));
         given(passwordEncoder.encode("rawPassword")).willReturn("$2a$10$encodedHash");
         given(userRepository.save(any(User.class))).willAnswer(inv -> inv.getArgument(0));

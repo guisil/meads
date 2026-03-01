@@ -1,16 +1,15 @@
 package app.meads.identity;
 
 import jakarta.persistence.*;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import lombok.Getter;
+import lombok.Setter;
 
-import java.time.LocalDateTime;
-import java.util.Collection;
-import java.util.List;
+import java.time.Instant;
 import java.util.UUID;
 
 @Entity
 @Table(name = "users")
+@Getter
 public class User {
 
     @Id
@@ -30,18 +29,19 @@ public class User {
     @Column(nullable = false)
     private Role role;
 
+    @Setter
     @Column(name = "password_hash")
     private String passwordHash;
 
     @Column(nullable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     protected User() {} // JPA
 
-    public User(UUID id, String email, String name, UserStatus status, Role role) {
-        this.id = id;
+    public User(String email, String name, UserStatus status, Role role) {
+        this.id = UUID.randomUUID();
         this.email = email;
         this.name = name;
         this.status = status;
@@ -50,39 +50,20 @@ public class User {
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
+        createdAt = Instant.now();
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
-
-    public UUID getId() {
-        return id;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public UserStatus getStatus() {
-        return status;
-    }
-
-    public Role getRole() {
-        return role;
+        updatedAt = Instant.now();
     }
 
     public void activate() {
-        if (status == UserStatus.DISABLED || status == UserStatus.LOCKED) {
-            throw new IllegalStateException("Cannot activate user with status: " + status);
-        }
         this.status = UserStatus.ACTIVE;
+    }
+
+    public void deactivate() {
+        this.status = UserStatus.INACTIVE;
     }
 
     public void updateDetails(String name, Role role, UserStatus status) {
@@ -90,25 +71,4 @@ public class User {
         this.role = role;
         this.status = status;
     }
-
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
-    }
-
-    public String getPasswordHash() {
-        return passwordHash;
-    }
-
-    public void setPasswordHash(String passwordHash) {
-        this.passwordHash = passwordHash;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
 }

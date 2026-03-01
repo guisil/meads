@@ -49,7 +49,7 @@ class CompetitionParticipantRepositoryTest {
     }
 
     private User createAndSaveUser(String email) {
-        var user = new User(UUID.randomUUID(), email, "Test User",
+        var user = new User(email, "Test User",
                 UserStatus.ACTIVE, Role.USER);
         return userRepository.save(user);
     }

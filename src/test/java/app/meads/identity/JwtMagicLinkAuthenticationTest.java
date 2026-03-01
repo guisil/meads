@@ -12,8 +12,6 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
 import java.time.Duration;
-import java.util.UUID;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.authenticated;
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.unauthenticated;
@@ -48,7 +46,7 @@ class JwtMagicLinkAuthenticationTest {
     void shouldAuthenticateUserWhenValidJwtMagicLinkClicked() throws Exception {
         // Given — an active user exists and a JWT magic link is generated
         String email = "jwt-test@example.com";
-        var user = new User(UUID.randomUUID(), email, "JWT Test User", UserStatus.ACTIVE, Role.USER);
+        var user = new User(email, "JWT Test User", UserStatus.ACTIVE, Role.USER);
         userRepository.save(user);
 
         String link = jwtMagicLinkService.generateLink(email, Duration.ofDays(7));
@@ -74,7 +72,7 @@ class JwtMagicLinkAuthenticationTest {
     void shouldRejectAuthenticationWhenTokenIsExpired() throws Exception {
         // Given — a user exists and an expired token is generated
         String email = "expired-jwt@example.com";
-        var user = new User(UUID.randomUUID(), email, "Expired JWT User", UserStatus.ACTIVE, Role.USER);
+        var user = new User(email, "Expired JWT User", UserStatus.ACTIVE, Role.USER);
         userRepository.save(user);
 
         String link = jwtMagicLinkService.generateLink(email, Duration.ofSeconds(-1));
@@ -91,7 +89,7 @@ class JwtMagicLinkAuthenticationTest {
     void shouldActivatePendingUserWhenAuthenticatedViaJwtMagicLink() throws Exception {
         // Given — a pending user exists
         String email = "pending-jwt@example.com";
-        var user = new User(UUID.randomUUID(), email, "Pending JWT User", UserStatus.PENDING, Role.USER);
+        var user = new User(email, "Pending JWT User", UserStatus.PENDING, Role.USER);
         userRepository.save(user);
 
         String link = jwtMagicLinkService.generateLink(email, Duration.ofDays(7));

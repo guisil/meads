@@ -29,7 +29,7 @@ public class UserService {
         if (userRepository.existsByEmail(email)) {
             throw new IllegalArgumentException("Email already exists");
         }
-        User user = new User(UUID.randomUUID(), email, name, status, role);
+        User user = new User(email, name, status, role);
         return userRepository.save(user);
     }
 
@@ -75,16 +75,16 @@ public class UserService {
         userRepository.save(user);
     }
 
-    public void deleteUser(UUID userId, String currentUserEmail) {
+    public void removeUser(UUID userId, String currentUserEmail) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
         if (user.getEmail().equals(currentUserEmail)) {
-            throw new IllegalArgumentException("Cannot disable or delete your own account");
+            throw new IllegalArgumentException("Cannot deactivate or delete your own account");
         }
-        if (user.getStatus() == UserStatus.DISABLED) {
+        if (user.getStatus() == UserStatus.INACTIVE) {
             userRepository.delete(user);
         } else {
-            user.updateDetails(user.getName(), user.getRole(), UserStatus.DISABLED);
+            user.deactivate();
             userRepository.save(user);
         }
     }

@@ -14,8 +14,6 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.util.Arrays;
-import java.util.UUID;
-
 @Component
 class DevUserInitializer {
 
@@ -50,7 +48,7 @@ class DevUserInitializer {
             return;
         }
 
-        User user = new User(UUID.randomUUID(), email, name, status, role);
+        User user = new User(email, name, status, role);
         if (password != null) {
             user.setPasswordHash(passwordEncoder.encode(password));
             log.info("Created dev user {} with password: {}", email, password);

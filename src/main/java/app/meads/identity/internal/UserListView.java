@@ -56,7 +56,7 @@ public class UserListView extends VerticalLayout {
             Button editButton = new Button("Edit");
             editButton.addClickListener(e -> openEditDialog(user));
 
-            String deleteButtonText = user.getStatus() == UserStatus.DISABLED ? "Delete" : "Disable";
+            String deleteButtonText = user.getStatus() == UserStatus.INACTIVE ? "Delete" : "Deactivate";
             Button deleteButton = new Button(deleteButtonText);
             deleteButton.addClickListener(e -> handleDeleteClick(user));
 
@@ -137,13 +137,13 @@ public class UserListView extends VerticalLayout {
     }
 
     public void handleDeleteClick(User user) {
-        if (user.getStatus() == UserStatus.DISABLED) {
+        if (user.getStatus() == UserStatus.INACTIVE) {
             // Hard delete - show confirmation dialog
             showDeleteConfirmationDialog(user);
         } else {
             // Soft delete - no confirmation needed
             try {
-                deleteUser(user);
+                removeUser(user);
             } catch (IllegalArgumentException ex) {
                 Notification.show(ex.getMessage());
             }
@@ -161,7 +161,7 @@ public class UserListView extends VerticalLayout {
         Button confirmButton = new Button("Confirm");
         confirmButton.addClickListener(e -> {
             try {
-                deleteUser(user);
+                removeUser(user);
                 dialog.close();
             } catch (IllegalArgumentException ex) {
                 Notification.show(ex.getMessage());
@@ -179,15 +179,15 @@ public class UserListView extends VerticalLayout {
         dialog.open();
     }
 
-    public void deleteUser(User user) {
+    public void removeUser(User user) {
         String currentUserEmail = authenticationContext.getAuthenticatedUser(UserDetails.class)
                 .map(UserDetails::getUsername)
                 .orElse("");
 
-        boolean isSoftDelete = user.getStatus() != UserStatus.DISABLED;
-        userService.deleteUser(user.getId(), currentUserEmail);
+        boolean isSoftDelete = user.getStatus() != UserStatus.INACTIVE;
+        userService.removeUser(user.getId(), currentUserEmail);
         grid.setItems(userService.findAll());
-        var notification = Notification.show(isSoftDelete ? "User disabled successfully" : "User deleted successfully");
+        var notification = Notification.show(isSoftDelete ? "User deactivated successfully" : "User deleted successfully");
         notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
     }
 

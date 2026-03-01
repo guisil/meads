@@ -2,10 +2,15 @@ package app.meads.identity.internal;
 
 import app.meads.identity.User;
 import app.meads.identity.UserStatus;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+
+import java.util.Collection;
+import java.util.List;
 
 @Service
 class DatabaseUserDetailsService implements UserDetailsService {
@@ -23,9 +28,13 @@ class DatabaseUserDetailsService implements UserDetailsService {
         return org.springframework.security.core.userdetails.User.builder()
                 .username(user.getEmail())
                 .password(user.getPasswordHash() != null ? user.getPasswordHash() : "")
-                .authorities(user.getAuthorities())
-                .disabled(user.getStatus() == UserStatus.DISABLED)
+                .authorities(mapAuthorities(user))
+                .disabled(user.getStatus() == UserStatus.INACTIVE)
                 .accountLocked(user.getStatus() == UserStatus.LOCKED)
                 .build();
+    }
+
+    private Collection<? extends GrantedAuthority> mapAuthorities(User user) {
+        return List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
     }
 }

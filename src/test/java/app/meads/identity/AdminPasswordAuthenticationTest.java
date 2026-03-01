@@ -12,8 +12,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
-import java.util.UUID;
-
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.authenticated;
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.unauthenticated;
@@ -48,7 +46,7 @@ class AdminPasswordAuthenticationTest {
     void shouldAuthenticateAdminWithCorrectPassword() throws Exception {
         // Given — an active admin with a password
         String email = "admin-auth@example.com";
-        var admin = new User(UUID.randomUUID(), email, "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
+        var admin = new User(email, "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
         admin.setPasswordHash(passwordEncoder.encode("correctPassword"));
         userRepository.save(admin);
 
@@ -66,7 +64,7 @@ class AdminPasswordAuthenticationTest {
     void shouldRejectAdminWithWrongPassword() throws Exception {
         // Given — an active admin with a password
         String email = "admin-wrong@example.com";
-        var admin = new User(UUID.randomUUID(), email, "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
+        var admin = new User(email, "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
         admin.setPasswordHash(passwordEncoder.encode("correctPassword"));
         userRepository.save(admin);
 
@@ -84,7 +82,7 @@ class AdminPasswordAuthenticationTest {
     void shouldRejectUserWithoutPassword() throws Exception {
         // Given — a user with no password hash
         String email = "nopass@example.com";
-        var user = new User(UUID.randomUUID(), email, "No Password User", UserStatus.ACTIVE, Role.USER);
+        var user = new User(email, "No Password User", UserStatus.ACTIVE, Role.USER);
         userRepository.save(user);
 
         // When — POST /login with any password

@@ -32,12 +32,12 @@ class CompetitionAccessCodeValidatorTest {
 
     @Test
     void shouldValidateCorrectAccessCode() {
-        var userId = UUID.randomUUID();
+        var user = new User("judge@test.com", "Judge",
+                UserStatus.ACTIVE, Role.USER);
+        var userId = user.getId();
         var participant = new CompetitionParticipant(UUID.randomUUID(),
                 UUID.randomUUID(), userId, CompetitionRole.JUDGE);
         participant.assignAccessCode("AB3K9XYZ");
-        var user = new User(userId, "judge@test.com", "Judge",
-                UserStatus.ACTIVE, Role.USER);
         given(participantRepository.findByAccessCode("AB3K9XYZ"))
                 .willReturn(List.of(participant));
         given(userService.findById(userId)).willReturn(user);
@@ -55,12 +55,12 @@ class CompetitionAccessCodeValidatorTest {
 
     @Test
     void shouldRejectWhenEmailDoesNotMatch() {
-        var userId = UUID.randomUUID();
+        var user = new User("other@test.com", "Other",
+                UserStatus.ACTIVE, Role.USER);
+        var userId = user.getId();
         var participant = new CompetitionParticipant(UUID.randomUUID(),
                 UUID.randomUUID(), userId, CompetitionRole.JUDGE);
         participant.assignAccessCode("AB3K9XYZ");
-        var user = new User(userId, "other@test.com", "Other",
-                UserStatus.ACTIVE, Role.USER);
         given(participantRepository.findByAccessCode("AB3K9XYZ"))
                 .willReturn(List.of(participant));
         given(userService.findById(userId)).willReturn(user);
@@ -70,12 +70,12 @@ class CompetitionAccessCodeValidatorTest {
 
     @Test
     void shouldNormalizeCodeToUppercase() {
-        var userId = UUID.randomUUID();
+        var user = new User("judge@test.com", "Judge",
+                UserStatus.ACTIVE, Role.USER);
+        var userId = user.getId();
         var participant = new CompetitionParticipant(UUID.randomUUID(),
                 UUID.randomUUID(), userId, CompetitionRole.JUDGE);
         participant.assignAccessCode("AB3K9XYZ");
-        var user = new User(userId, "judge@test.com", "Judge",
-                UserStatus.ACTIVE, Role.USER);
         given(participantRepository.findByAccessCode("AB3K9XYZ"))
                 .willReturn(List.of(participant));
         given(userService.findById(userId)).willReturn(user);

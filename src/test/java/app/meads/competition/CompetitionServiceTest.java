@@ -57,12 +57,12 @@ class CompetitionServiceTest {
     }
 
     private User createAdmin() {
-        return new User(UUID.randomUUID(), "admin@example.com", "Admin",
+        return new User("admin@example.com", "Admin",
                 UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
     }
 
     private User createRegularUser() {
-        return new User(UUID.randomUUID(), "user@example.com", "User",
+        return new User("user@example.com", "User",
                 UserStatus.ACTIVE, Role.USER);
     }
 
@@ -229,7 +229,7 @@ class CompetitionServiceTest {
     @Test
     void shouldRejectAddParticipantWhenUserNotAuthorized() {
         var regularUser = createRegularUser();
-        var targetUser = new User(UUID.randomUUID(), "target@example.com", "Target",
+        var targetUser = new User("target@example.com", "Target",
                 UserStatus.ACTIVE, Role.USER);
         var competition = new Competition(UUID.randomUUID(), UUID.randomUUID(),
                 "Home", ScoringSystem.MJP);

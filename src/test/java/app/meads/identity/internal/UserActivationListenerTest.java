@@ -12,7 +12,6 @@ import org.springframework.security.authentication.event.AuthenticationSuccessEv
 import org.springframework.security.core.Authentication;
 
 import java.util.Optional;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.BDDMockito.*;
@@ -26,7 +25,7 @@ class UserActivationListenerTest {
     @Test
     void shouldActivatePendingUserWhenAuthenticationSucceeds() {
         // Arrange
-        var user = new User(UUID.randomUUID(), "pending@example.com", "Pending User", UserStatus.PENDING, Role.USER);
+        var user = new User("pending@example.com", "Pending User", UserStatus.PENDING, Role.USER);
         given(userRepository.findByEmail("pending@example.com")).willReturn(Optional.of(user));
 
         var authentication = mock(Authentication.class);
@@ -44,7 +43,7 @@ class UserActivationListenerTest {
     @Test
     void shouldNotSaveWhenUserIsAlreadyActive() {
         // Arrange
-        var user = new User(UUID.randomUUID(), "active@example.com", "Active User", UserStatus.ACTIVE, Role.USER);
+        var user = new User("active@example.com", "Active User", UserStatus.ACTIVE, Role.USER);
         given(userRepository.findByEmail("active@example.com")).willReturn(Optional.of(user));
 
         var authentication = mock(Authentication.class);

@@ -11,8 +11,6 @@ import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
-import java.util.UUID;
-
 @Component
 class AdminInitializer {
 
@@ -46,7 +44,6 @@ class AdminInitializer {
         }
 
         User admin = new User(
-                UUID.randomUUID(),
                 adminEmail,
                 "System Administrator",
                 UserStatus.ACTIVE,
