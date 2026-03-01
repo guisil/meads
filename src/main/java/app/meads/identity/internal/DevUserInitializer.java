@@ -4,8 +4,7 @@ import app.meads.identity.JwtMagicLinkService;
 import app.meads.identity.Role;
 import app.meads.identity.User;
 import app.meads.identity.UserStatus;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.env.Environment;
@@ -14,10 +13,9 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.util.Arrays;
+@Slf4j
 @Component
 class DevUserInitializer {
-
-    private static final Logger log = LoggerFactory.getLogger(DevUserInitializer.class);
 
     private final UserRepository userRepository;
     private final JwtMagicLinkService jwtMagicLinkService;

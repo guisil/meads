@@ -34,6 +34,6 @@ class AdminInitializerIntegrationTest {
         assertThat(admin.getEmail()).isEqualTo("admin@test.local");
         assertThat(admin.getStatus()).isEqualTo(UserStatus.ACTIVE);
         assertThat(admin.getRole()).isEqualTo(Role.SYSTEM_ADMIN);
-        assertThat(admin.getPasswordHash()).startsWith("$2a$");
+        assertThat(admin.getPasswordHash()).startsWith("$argon2");
     }
 }

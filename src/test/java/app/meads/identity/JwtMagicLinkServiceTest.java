@@ -36,7 +36,7 @@ class JwtMagicLinkServiceTest {
         String token = link.substring(link.indexOf("token=") + "token=".length());
 
         // Act
-        String email = jwtMagicLinkService.validateToken(token);
+        String email = jwtMagicLinkService.extractEmail(token);
 
         // Assert
         assertThat(email).isEqualTo("user@example.com");
@@ -49,7 +49,7 @@ class JwtMagicLinkServiceTest {
         String token = link.substring(link.indexOf("token=") + "token=".length());
 
         // Act & Assert
-        assertThatThrownBy(() -> jwtMagicLinkService.validateToken(token))
+        assertThatThrownBy(() -> jwtMagicLinkService.extractEmail(token))
                 .isInstanceOf(JwtException.class);
     }
 
@@ -61,7 +61,7 @@ class JwtMagicLinkServiceTest {
         String tampered = token.substring(0, token.length() - 5) + "XXXXX";
 
         // Act & Assert
-        assertThatThrownBy(() -> jwtMagicLinkService.validateToken(tampered))
+        assertThatThrownBy(() -> jwtMagicLinkService.extractEmail(tampered))
                 .isInstanceOf(JwtException.class);
     }
 
@@ -76,7 +76,7 @@ class JwtMagicLinkServiceTest {
                 .compact();
 
         // Act & Assert
-        assertThatThrownBy(() -> jwtMagicLinkService.validateToken(token))
+        assertThatThrownBy(() -> jwtMagicLinkService.extractEmail(token))
                 .isInstanceOf(JwtException.class);
     }
 
@@ -87,8 +87,8 @@ class JwtMagicLinkServiceTest {
         String token = link.substring(link.indexOf("token=") + "token=".length());
 
         // Act — validate the same token twice
-        String firstResult = jwtMagicLinkService.validateToken(token);
-        String secondResult = jwtMagicLinkService.validateToken(token);
+        String firstResult = jwtMagicLinkService.extractEmail(token);
+        String secondResult = jwtMagicLinkService.extractEmail(token);
 
         // Assert — stateless = reusable
         assertThat(firstResult).isEqualTo("user@example.com");

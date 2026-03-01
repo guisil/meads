@@ -3,18 +3,16 @@ package app.meads.identity.internal;
 import app.meads.identity.Role;
 import app.meads.identity.User;
 import app.meads.identity.UserStatus;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @Component
 class AdminInitializer {
-
-    private static final Logger log = LoggerFactory.getLogger(AdminInitializer.class);
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;

@@ -8,29 +8,21 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetailsService;
 
-class AccessCodeAuthenticationProvider implements AuthenticationProvider {
+class AccessCodeAwareAuthenticationProvider implements AuthenticationProvider {
 
     private final AccessCodeValidator accessCodeValidator;
     private final UserDetailsService userDetailsService;
 
-    AccessCodeAuthenticationProvider(AccessCodeValidator accessCodeValidator, UserDetailsService userDetailsService) {
+    AccessCodeAwareAuthenticationProvider(AccessCodeValidator accessCodeValidator, UserDetailsService userDetailsService) {
         this.accessCodeValidator = accessCodeValidator;
         this.userDetailsService = userDetailsService;
     }
 
     @Override
     public Authentication authenticate(Authentication authentication) throws AuthenticationException {
-        String email;
-        String code;
-        if (authentication instanceof AccessCodeAuthenticationToken token) {
-            email = (String) token.getPrincipal();
-            code = (String) token.getCredentials();
-        } else if (authentication instanceof UsernamePasswordAuthenticationToken token) {
-            email = (String) token.getPrincipal();
-            code = (String) token.getCredentials();
-        } else {
-            return null;
-        }
+        String email = (String) authentication.getPrincipal();
+        String code = (String) authentication.getCredentials();
+
         if (!accessCodeValidator.validate(email, code)) {
             if (authentication instanceof AccessCodeAuthenticationToken) {
                 throw new BadCredentialsException("Invalid access code");

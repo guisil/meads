@@ -18,9 +18,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 
 @ExtendWith(MockitoExtension.class)
-class AccessCodeAuthenticationProviderTest {
+class AccessCodeAwareAuthenticationProviderTest {
 
-    @InjectMocks AccessCodeAuthenticationProvider provider;
+    @InjectMocks AccessCodeAwareAuthenticationProvider provider;
     @Mock AccessCodeValidator accessCodeValidator;
     @Mock UserDetailsService userDetailsService;
 

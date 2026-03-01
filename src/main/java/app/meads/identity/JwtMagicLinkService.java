@@ -24,7 +24,7 @@ public class JwtMagicLinkService {
         this.baseUrl = baseUrl;
     }
 
-    public String validateToken(String token) {
+    public String extractEmail(String token) {
         return Jwts.parser()
                 .verifyWith(signingKey)
                 .build()

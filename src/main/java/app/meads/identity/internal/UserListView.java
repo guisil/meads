@@ -7,8 +7,7 @@ import app.meads.identity.User;
 import app.meads.identity.UserService;
 import app.meads.identity.UserStatus;
 import jakarta.validation.ConstraintViolationException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
@@ -26,11 +25,10 @@ import com.vaadin.flow.spring.security.AuthenticationContext;
 import jakarta.annotation.security.RolesAllowed;
 import org.springframework.security.core.userdetails.UserDetails;
 
+@Slf4j
 @Route(value = "users", layout = MainLayout.class)
 @RolesAllowed("SYSTEM_ADMIN")
 public class UserListView extends VerticalLayout {
-
-    private static final Logger log = LoggerFactory.getLogger(UserListView.class);
 
     private final UserService userService;
     private final JwtMagicLinkService jwtMagicLinkService;
