@@ -317,7 +317,7 @@ void tearDown() {
 ## Database & Migrations
 
 - **Location:** `src/main/resources/db/migration/V{N}__{description}.sql`
-- **Current highest version:** V6 (`V6__create_categories_table_and_seed_mjp.sql`)
+- **Current highest version:** V7 (`V7__create_categories_table_and_seed_mjp.sql`)
 - **Naming:** `V{next}__{snake_case_description}.sql` (double underscore)
 - Migrations are created in **Step 2** (GREEN), when a repository test needs a table.
 - **Never edit existing migrations.** Always create new ones.
