@@ -119,7 +119,7 @@ app.meads.competition                    ← Competition module public API
 ├── CompetitionStatus.java               ← Enum: DRAFT → REGISTRATION_OPEN → ... → RESULTS_PUBLISHED
 ├── CompetitionRole.java                 ← Enum: JUDGE, ENTRANT, COMPETITION_ADMIN
 ├── CompetitionParticipantStatus.java    ← Enum: ACTIVE, WITHDRAWN
-├── ScoringSystem.java                   ← Enum: MJP, BJCP
+├── ScoringSystem.java                   ← Enum: MJP
 ├── CompetitionService.java              ← Application service (public API)
 ├── CompetitionStatusAdvancedEvent.java  ← Spring application event
 └── internal/                            ← Module-private
@@ -129,8 +129,8 @@ app.meads.competition                    ← Competition module public API
     ├── CategoryRepository.java          ← JPA repository
     ├── CompetitionAccessCodeValidator.java  ← AccessCodeValidator implementation
     ├── EventListView.java               ← Events CRUD view (@RolesAllowed("SYSTEM_ADMIN"))
-    ├── CompetitionListView.java         ← Competitions list per event
-    └── CompetitionDetailView.java       ← Competition detail with tabs (participants, categories, settings)
+    ├── CompetitionListView.java         ← Competitions list per event (@PermitAll + beforeEnter auth)
+    └── CompetitionDetailView.java       ← Competition detail with tabs, breadcrumb (@PermitAll + beforeEnter auth)
 ```
 
 ### Module Rules
@@ -160,7 +160,7 @@ Read `.claude/skills/new-module.md` before creating a module.
 | Module | Status | Description |
 |--------|--------|-------------|
 | `identity` | **Exists** | User management, authentication (JWT magic links, admin passwords, access codes), roles, admin CRUD |
-| `competition` | **Exists** | Events, competitions, scoring systems (MJP/BJCP), categories, participants, access codes, status workflow |
+| `competition` | **Exists** | Events, competitions, scoring systems (MJP), categories, participants, access codes, status workflow, competition admin authorization |
 | `entry` | Planned | Entry credits (external webhook), mead registration, credit consumption |
 | `judging` | Planned | Judging sessions, tables, judge assignments, scoresheets (polymorphic via ScoreField child table) |
 | `awards` | Planned | Score aggregation, rankings, medal determination, results publication |
@@ -207,7 +207,10 @@ Read `.claude/skills/new-module.md` before creating a module.
 ### View Pattern
 **Reference:** `UserListView.java`, `LoginView.java`
 - `@Route(value = "path", layout = MainLayout.class)` for protected views
-- `@RolesAllowed("ROLE_NAME")` for access control
+- `@RolesAllowed("ROLE_NAME")` for simple role-based access control
+- `@PermitAll` + `beforeEnter()` auth check for finer-grained authorization (e.g., per-competition).
+  Use a service-level boolean helper (e.g., `isAuthorizedForCompetition()`). Forward unauthorized
+  users to `""` (root). Reference: `CompetitionDetailView.java`, `CompetitionListView.java`.
 - `@AnonymousAllowed` for public views (LoginView, RootView)
 - `transient AuthenticationContext` field for Spring Security context
 - Dialog-based forms for create/edit operations
