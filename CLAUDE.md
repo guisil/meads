@@ -5,8 +5,8 @@
 **MEADS (Mead Evaluation and Awards Data System)** is a Spring Boot 4 web application for
 managing mead competitions — from registration through judging and results. Built with
 Vaadin 25 (Java Flow, server-side), PostgreSQL 18 (Flyway-managed), and Spring Modulith
-for modular DDD architecture. The `identity` module is the reference implementation;
-future modules will follow the same patterns.
+for modular DDD architecture. The `identity` and `competition` modules are the reference
+implementations; future modules will follow the same patterns.
 
 ---
 
@@ -109,6 +109,28 @@ app.meads.identity                       ← Identity module public API
     ├── AdminInitializer.java            ← Seeds initial admin with password on startup
     ├── DevUserInitializer.java          ← Seeds dev users (dev profile only)
     └── UserActivationListener.java      ← PENDING → ACTIVE on first login
+
+app.meads.competition                    ← Competition module public API
+├── package-info.java                    ← @ApplicationModule(allowedDependencies = {"identity"})
+├── MeadEvent.java                       ← JPA entity (named MeadEvent to avoid Spring event collision)
+├── Competition.java                     ← JPA entity / aggregate root
+├── CompetitionParticipant.java          ← JPA entity
+├── Category.java                        ← JPA entity (read-only reference data)
+├── CompetitionStatus.java               ← Enum: DRAFT → REGISTRATION_OPEN → ... → RESULTS_PUBLISHED
+├── CompetitionRole.java                 ← Enum: JUDGE, ENTRANT, COMPETITION_ADMIN
+├── CompetitionParticipantStatus.java    ← Enum: ACTIVE, WITHDRAWN
+├── ScoringSystem.java                   ← Enum: MJP, BJCP
+├── CompetitionService.java              ← Application service (public API)
+├── CompetitionStatusAdvancedEvent.java  ← Spring application event
+└── internal/                            ← Module-private
+    ├── MeadEventRepository.java         ← JPA repository
+    ├── CompetitionRepository.java       ← JPA repository
+    ├── CompetitionParticipantRepository.java ← JPA repository
+    ├── CategoryRepository.java          ← JPA repository
+    ├── CompetitionAccessCodeValidator.java  ← AccessCodeValidator implementation
+    ├── EventListView.java               ← Events CRUD view (@RolesAllowed("SYSTEM_ADMIN"))
+    ├── CompetitionListView.java         ← Competitions list per event
+    └── CompetitionDetailView.java       ← Competition detail with tabs (participants, categories, settings)
 ```
 
 ### Module Rules
@@ -138,25 +160,27 @@ Read `.claude/skills/new-module.md` before creating a module.
 | Module | Status | Description |
 |--------|--------|-------------|
 | `identity` | **Exists** | User management, authentication (JWT magic links, admin passwords, access codes), roles, admin CRUD |
-| `competition` | Planned | Events, competitions, scoring systems (MJP/BJCP), categories, competition admins |
+| `competition` | **Exists** | Events, competitions, scoring systems (MJP/BJCP), categories, participants, access codes, status workflow |
 | `entry` | Planned | Entry credits (external webhook), mead registration, credit consumption |
 | `judging` | Planned | Judging sessions, tables, judge assignments, scoresheets (polymorphic via ScoreField child table) |
 | `awards` | Planned | Score aggregation, rankings, medal determination, results publication |
 
 ---
 
-## Code Conventions (from identity module)
+## Code Conventions (from identity and competition modules)
 
 ### Entity Pattern
-**Reference:** `User.java`
+**Reference:** `User.java`, `Competition.java`
 - JPA `@Entity` with `@Table(name = "...")` — explicit table naming
-- `UUID` primary key, assigned in constructor (not auto-generated)
+- `UUID` primary key, self-generated in constructor via `UUID.randomUUID()` (not passed as parameter)
+- `@Getter` (Lombok) for accessor methods — no manual getters
 - Enums stored as `@Enumerated(EnumType.STRING)`
+- `Instant` for timestamps (`createdAt`, `updatedAt`) with `TIMESTAMP WITH TIME ZONE` in DB
 - `@PrePersist` / `@PreUpdate` for automatic timestamps
 - Protected no-arg constructor for JPA
-- Public constructor with all required fields
-- Domain methods on the entity (e.g., `activate()`, `updateDetails()`)
-- No Lombok on entities — manual getters, no setters (immutable where possible)
+- Public constructor with required business fields (not including `id` — self-generated)
+- Domain methods on the entity (e.g., `activate()`, `updateDetails()`, `advanceStatus()`)
+- No setters — state changes via domain methods only
 
 ### Repository Pattern
 **Reference:** `UserRepository.java`
@@ -208,6 +232,22 @@ treated as canonical patterns for other modules:
 
 Auth-agnostic patterns that ARE canonical: `User.java`, `Role.java`, `UserStatus.java`,
 `UserService.java`, `UserListView.java`, `AdminInitializer.java`, `UserActivationListener.java`.
+
+### Enum Pattern
+**Reference:** `CompetitionStatus.java`
+- `@Getter` + `@RequiredArgsConstructor` (Lombok) for enums with fields
+- Display/UI methods on the enum (e.g., `getDisplayName()`, `getBadgeCssClass()`)
+- State machine helpers (e.g., `next()` returning `Optional`) for display; enforcement via entity domain methods
+
+### View Dialog Pattern
+**Reference:** `EventListView.openEventDialog()`
+- Combine create/edit dialogs into one method: `openDialog(Entity existing)` where `null` = create mode
+- Same pattern as `UserListView`
+
+### View-to-Service Persistence
+- Views must NEVER mutate detached entities and assume persistence
+- Always call a service method (e.g., `competitionService.updateCompetition(...)`) for state changes
+- Views keep basic `StringUtils.hasText()` checks for UX; delegate enforcement to services
 
 ---
 
@@ -277,7 +317,7 @@ void tearDown() {
 ## Database & Migrations
 
 - **Location:** `src/main/resources/db/migration/V{N}__{description}.sql`
-- **Current highest version:** V4 (`V4__add_password_hash_to_users.sql`)
+- **Current highest version:** V6 (`V6__create_categories_table_and_seed_mjp.sql`)
 - **Naming:** `V{next}__{snake_case_description}.sql` (double underscore)
 - Migrations are created in **Step 2** (GREEN), when a repository test needs a table.
 - **Never edit existing migrations.** Always create new ones.
@@ -343,8 +383,8 @@ Stay within the current module's package.
 
 - **No cross-module repository access.** Repositories are `internal/`. Use events or services.
 - **No `@Autowired` field injection.** Use constructor injection only.
-- **No `@Data` on entities.** Entities use manual getters, no setters. State changes via methods.
-- **No Lombok `@Builder` on entities.** Use explicit constructors.
+- **No `@Data` or `@Builder` on entities.** Use `@Getter` only. No setters — state changes via domain methods.
+- **No `@Setter` on entities.** State changes via domain methods only.
 - **No Selenium/browser-based UI tests.** Use Karibu Testing.
 - **No mocking the database in integration tests.** Use Testcontainers.
 - **No making `internal/` classes public for test access.** Test through the module's public API.
@@ -392,7 +432,8 @@ mvn spring-boot:run                                       # start app (needs Pos
 - Referencing another module's `internal` package. Use events.
 - Mocking the database in integration tests. Use Testcontainers.
 - Using Selenium for Vaadin tests. Use Karibu Testing.
-- Using generic Spring/Vaadin patterns instead of checking what the identity module actually does.
+- Mutating a detached entity in a view and assuming it persists. **Always call a service method.**
+- Using generic Spring/Vaadin patterns instead of checking what the existing modules actually do.
 - Treating auth-coupled code (LoginView, SecurityConfig, JwtMagicLinkService, MagicLinkAuthenticationFilter) as canonical patterns.
 - Reinventing Vaadin components in JavaScript. **Always check the Vaadin component catalog first** —
   e.g., use `LoginForm` instead of building a form POST with `executeJs()`, use `Upload` instead of
