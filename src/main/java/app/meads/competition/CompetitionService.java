@@ -3,6 +3,7 @@ package app.meads.competition;
 import app.meads.competition.internal.CategoryRepository;
 import app.meads.competition.internal.CompetitionParticipantRepository;
 import app.meads.competition.internal.CompetitionRepository;
+import app.meads.competition.internal.EventParticipantRepository;
 import app.meads.competition.internal.MeadEventRepository;
 import app.meads.identity.Role;
 import app.meads.identity.UserService;
@@ -15,7 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -30,6 +30,7 @@ public class CompetitionService {
 
     private final CompetitionRepository competitionRepository;
     private final CompetitionParticipantRepository participantRepository;
+    private final EventParticipantRepository eventParticipantRepository;
     private final CategoryRepository categoryRepository;
     private final MeadEventRepository meadEventRepository;
     private final UserService userService;
@@ -37,12 +38,14 @@ public class CompetitionService {
 
     CompetitionService(CompetitionRepository competitionRepository,
                        CompetitionParticipantRepository participantRepository,
+                       EventParticipantRepository eventParticipantRepository,
                        CategoryRepository categoryRepository,
                        MeadEventRepository meadEventRepository,
                        UserService userService,
                        ApplicationEventPublisher eventPublisher) {
         this.competitionRepository = competitionRepository;
         this.participantRepository = participantRepository;
+        this.eventParticipantRepository = eventParticipantRepository;
         this.categoryRepository = categoryRepository;
         this.meadEventRepository = meadEventRepository;
         this.userService = userService;
@@ -160,57 +163,77 @@ public class CompetitionService {
                                                   @NotNull UUID userId,
                                                   @NotNull CompetitionRole role,
                                                   @NotNull UUID requestingUserId) {
+        var competition = competitionRepository.findById(competitionId)
+                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
+        requireAuthorized(competition.getId(), requestingUserId);
+        userService.findById(userId);
+
+        var eventParticipant = eventParticipantRepository
+                .findByEventIdAndUserId(competition.getEventId(), userId)
+                .orElseGet(() -> {
+                    var ep = new EventParticipant(competition.getEventId(), userId);
+                    if (role.requiresAccessCode()) {
+                        ep.assignAccessCode(generateAccessCode());
+                    }
+                    return eventParticipantRepository.save(ep);
+                });
+
+        if (participantRepository.existsByCompetitionIdAndEventParticipantIdAndRole(
+                competitionId, eventParticipant.getId(), role)) {
+            throw new IllegalArgumentException(
+                    "User already has the " + role.name() + " role in this competition");
+        }
+
+        var cp = new CompetitionParticipant(competitionId, eventParticipant.getId(), role);
+        return participantRepository.save(cp);
+    }
+
+    public void withdrawParticipant(@NotNull UUID competitionId,
+                                     @NotNull UUID eventParticipantId,
+                                     @NotNull UUID requestingUserId) {
         competitionRepository.findById(competitionId)
                 .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
+        requireAuthorized(competitionId, requestingUserId);
+        var eventParticipant = eventParticipantRepository.findById(eventParticipantId)
+                .orElseThrow(() -> new IllegalArgumentException("Event participant not found"));
+        eventParticipant.withdraw();
+        eventParticipantRepository.save(eventParticipant);
+    }
+
+    public List<CompetitionParticipant> addParticipantToAllCompetitions(
+            @NotNull UUID eventId,
+            @NotNull UUID userId,
+            @NotNull CompetitionRole role,
+            @NotNull UUID requestingUserId) {
         requireSystemAdmin(requestingUserId);
         userService.findById(userId);
-        if (participantRepository.existsByCompetitionIdAndUserId(competitionId, userId)) {
-            throw new IllegalArgumentException("User is already a participant in this competition");
-        }
-        var participant = new CompetitionParticipant(competitionId, userId, role);
-        if (role.requiresAccessCode()) {
-            participant.assignAccessCode(generateAccessCode());
-        }
-        return participantRepository.save(participant);
-    }
 
-    public List<CompetitionParticipant> copyParticipants(@NotNull UUID sourceCompetitionId,
-                                                          @NotNull UUID targetCompetitionId,
-                                                          @NotNull UUID requestingUserId) {
-        var source = competitionRepository.findById(sourceCompetitionId)
-                .orElseThrow(() -> new IllegalArgumentException("Source competition not found"));
-        var target = competitionRepository.findById(targetCompetitionId)
-                .orElseThrow(() -> new IllegalArgumentException("Target competition not found"));
-        requireSystemAdmin(requestingUserId);
-        if (!source.getEventId().equals(target.getEventId())) {
-            throw new IllegalArgumentException("Competitions must belong to the same event");
-        }
-        var sourceParticipants = participantRepository.findByCompetitionId(sourceCompetitionId);
-        var copied = new ArrayList<CompetitionParticipant>();
-        for (var sp : sourceParticipants) {
-            if (participantRepository.existsByCompetitionIdAndUserId(targetCompetitionId, sp.getUserId())) {
+        var eventParticipant = eventParticipantRepository
+                .findByEventIdAndUserId(eventId, userId)
+                .orElseGet(() -> {
+                    var ep = new EventParticipant(eventId, userId);
+                    if (role.requiresAccessCode()) {
+                        ep.assignAccessCode(generateAccessCode());
+                    }
+                    return eventParticipantRepository.save(ep);
+                });
+
+        var competitions = competitionRepository.findByEventId(eventId);
+        var added = new java.util.ArrayList<CompetitionParticipant>();
+        for (var competition : competitions) {
+            if (participantRepository.existsByCompetitionIdAndEventParticipantIdAndRole(
+                    competition.getId(), eventParticipant.getId(), role)) {
                 continue;
             }
-            var newParticipant = new CompetitionParticipant(
-                    targetCompetitionId, sp.getUserId(), sp.getRole());
-            if (sp.getRole().requiresAccessCode()) {
-                newParticipant.assignAccessCode(generateAccessCode());
-            }
-            copied.add(participantRepository.save(newParticipant));
+            var cp = new CompetitionParticipant(
+                    competition.getId(), eventParticipant.getId(), role);
+            added.add(participantRepository.save(cp));
         }
-        return copied;
+        return added;
     }
 
-    public CompetitionParticipant withdrawParticipant(@NotNull UUID competitionId,
-                                                      @NotNull UUID participantId,
-                                                      @NotNull UUID requestingUserId) {
-        competitionRepository.findById(competitionId)
-                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
-        requireSystemAdmin(requestingUserId);
-        var participant = participantRepository.findById(participantId)
-                .orElseThrow(() -> new IllegalArgumentException("Participant not found"));
-        participant.withdraw();
-        return participantRepository.save(participant);
+    public List<EventParticipant> findEventParticipantsByEvent(@NotNull UUID eventId) {
+        return eventParticipantRepository.findByEventId(eventId);
     }
 
     private String generateAccessCode() {
@@ -226,5 +249,26 @@ public class CompetitionService {
         if (user.getRole() != Role.SYSTEM_ADMIN) {
             throw new IllegalArgumentException("User is not authorized to perform this action");
         }
+    }
+
+    private void requireAuthorized(UUID competitionId, UUID userId) {
+        var user = userService.findById(userId);
+        if (user.getRole() == Role.SYSTEM_ADMIN) {
+            return;
+        }
+        // Check if user is a COMPETITION_ADMIN for this competition
+        var competition = competitionRepository.findById(competitionId)
+                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
+        var ep = eventParticipantRepository
+                .findByEventIdAndUserId(competition.getEventId(), userId);
+        if (ep.isPresent()) {
+            var roles = participantRepository.findByCompetitionIdAndEventParticipantId(
+                    competitionId, ep.get().getId());
+            if (roles.stream().anyMatch(
+                    cp -> cp.getRole() == CompetitionRole.COMPETITION_ADMIN)) {
+                return;
+            }
+        }
+        throw new IllegalArgumentException("User is not authorized to perform this action");
     }
 }

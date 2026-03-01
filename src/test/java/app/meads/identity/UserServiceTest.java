@@ -215,6 +215,21 @@ class UserServiceTest {
         assertThat(result).isFalse();
     }
 
+    // --- findAllByIds ---
+
+    @Test
+    void shouldFindAllUsersByIds() {
+        var user1 = new User("a@example.com", "A", UserStatus.ACTIVE, Role.USER);
+        var user2 = new User("b@example.com", "B", UserStatus.ACTIVE, Role.USER);
+        var ids = List.of(user1.getId(), user2.getId());
+        given(userRepository.findAllById(ids)).willReturn(List.of(user1, user2));
+
+        var result = userService.findAllByIds(ids);
+
+        assertThat(result).hasSize(2);
+        then(userRepository).should().findAllById(ids);
+    }
+
     // --- setPassword tests ---
 
     @Test

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -55,6 +56,10 @@ public class UserService {
     public User findById(UUID userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
+    }
+
+    public List<User> findAllByIds(Collection<UUID> ids) {
+        return userRepository.findAllById(ids);
     }
 
     public User findByEmail(String email) {

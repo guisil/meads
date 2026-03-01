@@ -1,7 +1,7 @@
 package app.meads.competition.internal;
 
-import app.meads.competition.CompetitionParticipant;
-import app.meads.competition.CompetitionRole;
+import app.meads.competition.CompetitionParticipantStatus;
+import app.meads.competition.EventParticipant;
 import app.meads.identity.Role;
 import app.meads.identity.User;
 import app.meads.identity.UserService;
@@ -12,7 +12,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -25,7 +25,7 @@ class CompetitionAccessCodeValidatorTest {
     CompetitionAccessCodeValidator validator;
 
     @Mock
-    CompetitionParticipantRepository participantRepository;
+    EventParticipantRepository eventParticipantRepository;
 
     @Mock
     UserService userService;
@@ -34,51 +34,45 @@ class CompetitionAccessCodeValidatorTest {
     void shouldValidateCorrectAccessCode() {
         var user = new User("judge@test.com", "Judge",
                 UserStatus.ACTIVE, Role.USER);
-        var userId = user.getId();
-        var participant = new CompetitionParticipant(
-                UUID.randomUUID(), userId, CompetitionRole.JUDGE);
-        participant.assignAccessCode("AB3K9XYZ");
-        given(participantRepository.findByAccessCode("AB3K9XYZ"))
-                .willReturn(List.of(participant));
-        given(userService.findById(userId)).willReturn(user);
+        var ep = new EventParticipant(UUID.randomUUID(), user.getId());
+        ep.assignAccessCode("AB3K9XYZ");
+        given(eventParticipantRepository.findByAccessCode("AB3K9XYZ"))
+                .willReturn(Optional.of(ep));
+        given(userService.findById(user.getId())).willReturn(user);
 
         assertThat(validator.validate("judge@test.com", "AB3K9XYZ")).isTrue();
-    }
-
-    @Test
-    void shouldRejectWhenCodeDoesNotExist() {
-        given(participantRepository.findByAccessCode("NOTEXIST"))
-                .willReturn(List.of());
-
-        assertThat(validator.validate("judge@test.com", "NOTEXIST")).isFalse();
     }
 
     @Test
     void shouldRejectWhenEmailDoesNotMatch() {
         var user = new User("other@test.com", "Other",
                 UserStatus.ACTIVE, Role.USER);
-        var userId = user.getId();
-        var participant = new CompetitionParticipant(
-                UUID.randomUUID(), userId, CompetitionRole.JUDGE);
-        participant.assignAccessCode("AB3K9XYZ");
-        given(participantRepository.findByAccessCode("AB3K9XYZ"))
-                .willReturn(List.of(participant));
-        given(userService.findById(userId)).willReturn(user);
+        var ep = new EventParticipant(UUID.randomUUID(), user.getId());
+        ep.assignAccessCode("AB3K9XYZ");
+        given(eventParticipantRepository.findByAccessCode("AB3K9XYZ"))
+                .willReturn(Optional.of(ep));
+        given(userService.findById(user.getId())).willReturn(user);
 
         assertThat(validator.validate("judge@test.com", "AB3K9XYZ")).isFalse();
+    }
+
+    @Test
+    void shouldRejectWhenCodeDoesNotExist() {
+        given(eventParticipantRepository.findByAccessCode("NOTEXIST"))
+                .willReturn(Optional.empty());
+
+        assertThat(validator.validate("judge@test.com", "NOTEXIST")).isFalse();
     }
 
     @Test
     void shouldNormalizeCodeToUppercase() {
         var user = new User("judge@test.com", "Judge",
                 UserStatus.ACTIVE, Role.USER);
-        var userId = user.getId();
-        var participant = new CompetitionParticipant(
-                UUID.randomUUID(), userId, CompetitionRole.JUDGE);
-        participant.assignAccessCode("AB3K9XYZ");
-        given(participantRepository.findByAccessCode("AB3K9XYZ"))
-                .willReturn(List.of(participant));
-        given(userService.findById(userId)).willReturn(user);
+        var ep = new EventParticipant(UUID.randomUUID(), user.getId());
+        ep.assignAccessCode("AB3K9XYZ");
+        given(eventParticipantRepository.findByAccessCode("AB3K9XYZ"))
+                .willReturn(Optional.of(ep));
+        given(userService.findById(user.getId())).willReturn(user);
 
         assertThat(validator.validate("judge@test.com", "ab3k9xyz")).isTrue();
     }

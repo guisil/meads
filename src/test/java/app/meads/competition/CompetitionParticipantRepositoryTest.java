@@ -3,6 +3,7 @@ package app.meads.competition;
 import app.meads.TestcontainersConfiguration;
 import app.meads.competition.internal.CompetitionParticipantRepository;
 import app.meads.competition.internal.CompetitionRepository;
+import app.meads.competition.internal.EventParticipantRepository;
 import app.meads.competition.internal.MeadEventRepository;
 import app.meads.identity.Role;
 import app.meads.identity.User;
@@ -15,6 +16,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -27,6 +29,9 @@ class CompetitionParticipantRepositoryTest {
     CompetitionParticipantRepository participantRepository;
 
     @Autowired
+    EventParticipantRepository eventParticipantRepository;
+
+    @Autowired
     CompetitionRepository competitionRepository;
 
     @Autowired
@@ -36,74 +41,51 @@ class CompetitionParticipantRepositoryTest {
     UserRepository userRepository;
 
     private MeadEvent createAndSaveEvent() {
-        var event = new MeadEvent("Test Event",
-                LocalDate.of(2026, 6, 15), LocalDate.of(2026, 6, 17), "Porto");
-        return meadEventRepository.save(event);
+        return meadEventRepository.save(new MeadEvent("Test Event",
+                LocalDate.of(2026, 6, 15), LocalDate.of(2026, 6, 17), "Porto"));
     }
 
-    private Competition createAndSaveCompetition(java.util.UUID eventId) {
-        var competition = new Competition(eventId,
-                "Home", ScoringSystem.MJP);
-        return competitionRepository.save(competition);
+    private Competition createAndSaveCompetition(UUID eventId) {
+        return competitionRepository.save(new Competition(eventId,
+                "Home", ScoringSystem.MJP));
     }
 
-    private User createAndSaveUser(String email) {
-        var user = new User(email, "Test User",
-                UserStatus.ACTIVE, Role.USER);
-        return userRepository.save(user);
+    private EventParticipant createAndSaveEventParticipant(UUID eventId, String email) {
+        var user = userRepository.save(new User(email, "Test User",
+                UserStatus.ACTIVE, Role.USER));
+        return eventParticipantRepository.save(new EventParticipant(eventId, user.getId()));
     }
 
     @Test
-    void shouldSaveAndRetrieveParticipant() {
+    void shouldSaveAndRetrieve() {
         var event = createAndSaveEvent();
         var competition = createAndSaveCompetition(event.getId());
-        var user = createAndSaveUser("judge@test.com");
+        var ep = createAndSaveEventParticipant(event.getId(), "cp-save@test.com");
 
-        var participant = new CompetitionParticipant(
-                competition.getId(), user.getId(), CompetitionRole.JUDGE);
-        participant.assignAccessCode("AB3K9XYZ");
+        var cp = new CompetitionParticipant(
+                competition.getId(), ep.getId(), CompetitionRole.JUDGE);
+        participantRepository.save(cp);
 
-        participantRepository.save(participant);
-        var found = participantRepository.findById(participant.getId());
+        var found = participantRepository.findById(cp.getId());
 
         assertThat(found).isPresent();
         assertThat(found.get().getCompetitionId()).isEqualTo(competition.getId());
-        assertThat(found.get().getUserId()).isEqualTo(user.getId());
+        assertThat(found.get().getEventParticipantId()).isEqualTo(ep.getId());
         assertThat(found.get().getRole()).isEqualTo(CompetitionRole.JUDGE);
-        assertThat(found.get().getAccessCode()).isEqualTo("AB3K9XYZ");
-        assertThat(found.get().getStatus()).isEqualTo(CompetitionParticipantStatus.ACTIVE);
         assertThat(found.get().getCreatedAt()).isNotNull();
     }
 
     @Test
-    void shouldPersistWithdrawnStatus() {
+    void shouldFindByCompetitionId() {
         var event = createAndSaveEvent();
         var competition = createAndSaveCompetition(event.getId());
-        var user = createAndSaveUser("withdrawn@test.com");
-
-        var participant = new CompetitionParticipant(
-                competition.getId(), user.getId(), CompetitionRole.JUDGE);
-        participantRepository.save(participant);
-
-        participant.withdraw();
-        participantRepository.save(participant);
-
-        var found = participantRepository.findById(participant.getId());
-        assertThat(found).isPresent();
-        assertThat(found.get().getStatus()).isEqualTo(CompetitionParticipantStatus.WITHDRAWN);
-    }
-
-    @Test
-    void shouldFindParticipantsByCompetitionId() {
-        var event = createAndSaveEvent();
-        var competition = createAndSaveCompetition(event.getId());
-        var user1 = createAndSaveUser("judge1@test.com");
-        var user2 = createAndSaveUser("steward1@test.com");
+        var ep1 = createAndSaveEventParticipant(event.getId(), "cp-find1@test.com");
+        var ep2 = createAndSaveEventParticipant(event.getId(), "cp-find2@test.com");
 
         participantRepository.save(new CompetitionParticipant(
-                competition.getId(), user1.getId(), CompetitionRole.JUDGE));
+                competition.getId(), ep1.getId(), CompetitionRole.JUDGE));
         participantRepository.save(new CompetitionParticipant(
-                competition.getId(), user2.getId(), CompetitionRole.STEWARD));
+                competition.getId(), ep2.getId(), CompetitionRole.ENTRANT));
 
         var results = participantRepository.findByCompetitionId(competition.getId());
 
@@ -111,50 +93,36 @@ class CompetitionParticipantRepositoryTest {
     }
 
     @Test
-    void shouldFindByCompetitionIdAndUserId() {
+    void shouldCheckExistsByCompetitionIdAndEventParticipantIdAndRole() {
         var event = createAndSaveEvent();
         var competition = createAndSaveCompetition(event.getId());
-        var user = createAndSaveUser("find@test.com");
+        var ep = createAndSaveEventParticipant(event.getId(), "cp-exists@test.com");
 
         participantRepository.save(new CompetitionParticipant(
-                competition.getId(), user.getId(), CompetitionRole.ENTRANT));
+                competition.getId(), ep.getId(), CompetitionRole.JUDGE));
 
-        var found = participantRepository.findByCompetitionIdAndUserId(
-                competition.getId(), user.getId());
-
-        assertThat(found).isPresent();
-        assertThat(found.get().getRole()).isEqualTo(CompetitionRole.ENTRANT);
+        assertThat(participantRepository.existsByCompetitionIdAndEventParticipantIdAndRole(
+                competition.getId(), ep.getId(), CompetitionRole.JUDGE)).isTrue();
+        assertThat(participantRepository.existsByCompetitionIdAndEventParticipantIdAndRole(
+                competition.getId(), ep.getId(), CompetitionRole.ENTRANT)).isFalse();
     }
 
     @Test
-    void shouldFindByAccessCode() {
+    void shouldFindByCompetitionIdAndEventParticipantId() {
         var event = createAndSaveEvent();
         var competition = createAndSaveCompetition(event.getId());
-        var user = createAndSaveUser("code@test.com");
-
-        var participant = new CompetitionParticipant(
-                competition.getId(), user.getId(), CompetitionRole.JUDGE);
-        participant.assignAccessCode("TESTCODE");
-        participantRepository.save(participant);
-
-        var results = participantRepository.findByAccessCode("TESTCODE");
-
-        assertThat(results).hasSize(1);
-        assertThat(results.getFirst().getUserId()).isEqualTo(user.getId());
-    }
-
-    @Test
-    void shouldCheckExistsByCompetitionIdAndUserId() {
-        var event = createAndSaveEvent();
-        var competition = createAndSaveCompetition(event.getId());
-        var user = createAndSaveUser("exists@test.com");
+        var ep = createAndSaveEventParticipant(event.getId(), "cp-multi@test.com");
 
         participantRepository.save(new CompetitionParticipant(
-                competition.getId(), user.getId(), CompetitionRole.JUDGE));
+                competition.getId(), ep.getId(), CompetitionRole.JUDGE));
+        participantRepository.save(new CompetitionParticipant(
+                competition.getId(), ep.getId(), CompetitionRole.ENTRANT));
 
-        assertThat(participantRepository.existsByCompetitionIdAndUserId(
-                competition.getId(), user.getId())).isTrue();
-        assertThat(participantRepository.existsByCompetitionIdAndUserId(
-                competition.getId(), java.util.UUID.randomUUID())).isFalse();
+        var results = participantRepository.findByCompetitionIdAndEventParticipantId(
+                competition.getId(), ep.getId());
+
+        assertThat(results).hasSize(2);
+        assertThat(results).extracting(CompetitionParticipant::getRole)
+                .containsExactlyInAnyOrder(CompetitionRole.JUDGE, CompetitionRole.ENTRANT);
     }
 }

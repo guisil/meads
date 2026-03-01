@@ -25,7 +25,10 @@ import jakarta.annotation.security.RolesAllowed;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.util.StringUtils;
 
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Route(value = "competitions/:competitionId", layout = MainLayout.class)
 @RolesAllowed("SYSTEM_ADMIN")
@@ -40,6 +43,8 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
     private MeadEvent event;
     private Grid<CompetitionParticipant> participantsGrid;
     private Grid<Category> categoriesGrid;
+    private Map<UUID, EventParticipant> eventParticipantMap;
+    private Map<UUID, User> userMap;
 
     public CompetitionDetailView(CompetitionService competitionService,
                                   UserService userService,
@@ -116,34 +121,21 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
         var actions = new HorizontalLayout();
         var addButton = new Button("Add Participant", e -> openAddParticipantDialog());
-        var copyButton = new Button("Copy from Competition...", e -> openCopyParticipantsDialog());
-        actions.add(addButton, copyButton);
+        actions.add(addButton);
         tab.add(actions);
 
         participantsGrid = new Grid<>();
         participantsGrid.addColumn(p -> {
-            try {
-                return userService.findById(p.getUserId()).getName();
-            } catch (Exception e) {
-                return "Unknown";
-            }
+            var ep = eventParticipantMap.get(p.getEventParticipantId());
+            var user = ep != null ? userMap.get(ep.getUserId()) : null;
+            return user != null ? user.getName() : "Unknown";
         }).setHeader("Name");
         participantsGrid.addColumn(p -> {
-            try {
-                return userService.findById(p.getUserId()).getEmail();
-            } catch (Exception e) {
-                return "—";
-            }
+            var ep = eventParticipantMap.get(p.getEventParticipantId());
+            var user = ep != null ? userMap.get(ep.getUserId()) : null;
+            return user != null ? user.getEmail() : "—";
         }).setHeader("Email");
         participantsGrid.addColumn(p -> p.getRole().name()).setHeader("Role");
-        participantsGrid.addColumn(p -> p.getAccessCode() != null ? p.getAccessCode() : "—")
-                .setHeader("Access Code");
-        participantsGrid.addColumn(p -> p.getStatus().name()).setHeader("Status");
-        participantsGrid.addComponentColumn(p -> {
-            var withdrawButton = new Button("Withdraw", e -> withdrawParticipant(p));
-            withdrawButton.setEnabled(p.getStatus() == CompetitionParticipantStatus.ACTIVE);
-            return withdrawButton;
-        }).setHeader("Actions");
 
         refreshParticipantsGrid();
         tab.add(participantsGrid);
@@ -248,53 +240,6 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         dialog.open();
     }
 
-    private void openCopyParticipantsDialog() {
-        var dialog = new Dialog();
-        dialog.setHeaderTitle("Copy Participants");
-
-        var competitions = competitionService.findByEvent(event.getId()).stream()
-                .filter(c -> !c.getId().equals(competitionId))
-                .toList();
-
-        if (competitions.isEmpty()) {
-            dialog.add("No other competitions in this event to copy from.");
-            dialog.getFooter().add(new Button("Close", e -> dialog.close()));
-            dialog.open();
-            return;
-        }
-
-        var sourceSelect = new Select<Competition>();
-        sourceSelect.setLabel("Source Competition");
-        sourceSelect.setItems(competitions);
-        sourceSelect.setItemLabelGenerator(Competition::getName);
-
-        var copyButton = new Button("Copy", e -> {
-            if (sourceSelect.getValue() == null) {
-                return;
-            }
-            try {
-                var copied = competitionService.copyParticipants(
-                        sourceSelect.getValue().getId(),
-                        competitionId,
-                        getCurrentUserId());
-                refreshParticipantsGrid();
-                var notification = Notification.show("Copied " + copied.size() + " participants");
-                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-                dialog.close();
-            } catch (IllegalArgumentException ex) {
-                Notification.show(ex.getMessage());
-            }
-        });
-
-        var cancelButton = new Button("Cancel", e -> dialog.close());
-
-        var form = new VerticalLayout(sourceSelect);
-        form.setPadding(false);
-        dialog.add(form);
-        dialog.getFooter().add(cancelButton, copyButton);
-        dialog.open();
-    }
-
     private void advanceStatus() {
         var nextStatusName = competition.getStatus().next()
                 .map(CompetitionStatus::getDisplayName).orElse("—");
@@ -321,21 +266,21 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         dialog.open();
     }
 
-    private void withdrawParticipant(CompetitionParticipant participant) {
-        try {
-            competitionService.withdrawParticipant(
-                    competitionId, participant.getId(), getCurrentUserId());
-            refreshParticipantsGrid();
-            var notification = Notification.show("Participant withdrawn");
-            notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-        } catch (IllegalArgumentException | IllegalStateException ex) {
-            Notification.show(ex.getMessage());
-        }
-    }
-
     private void refreshParticipantsGrid() {
-        participantsGrid.setItems(
-                competitionService.findParticipantsByCompetition(competitionId));
+        var participants = competitionService.findParticipantsByCompetition(competitionId);
+
+        var eventParticipants = competitionService.findEventParticipantsByEvent(event.getId());
+        eventParticipantMap = eventParticipants.stream()
+                .collect(Collectors.toMap(EventParticipant::getId, Function.identity()));
+
+        var userIds = eventParticipants.stream()
+                .map(EventParticipant::getUserId)
+                .distinct()
+                .toList();
+        userMap = userService.findAllByIds(userIds).stream()
+                .collect(Collectors.toMap(User::getId, Function.identity()));
+
+        participantsGrid.setItems(participants);
     }
 
     private Span createStatusBadge(CompetitionStatus status) {

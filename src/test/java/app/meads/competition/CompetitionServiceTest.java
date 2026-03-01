@@ -3,6 +3,7 @@ package app.meads.competition;
 import app.meads.competition.internal.CategoryRepository;
 import app.meads.competition.internal.CompetitionParticipantRepository;
 import app.meads.competition.internal.CompetitionRepository;
+import app.meads.competition.internal.EventParticipantRepository;
 import app.meads.competition.internal.MeadEventRepository;
 import app.meads.identity.Role;
 import app.meads.identity.User;
@@ -23,6 +24,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
@@ -41,6 +43,9 @@ class CompetitionServiceTest {
 
     @Mock
     CategoryRepository categoryRepository;
+
+    @Mock
+    EventParticipantRepository eventParticipantRepository;
 
     @Mock
     MeadEventRepository meadEventRepository;
@@ -158,17 +163,21 @@ class CompetitionServiceTest {
     // --- addParticipant ---
 
     @Test
-    void shouldAddParticipantAndGenerateAccessCodeForJudge() {
+    void shouldAddParticipantAndCreateEventParticipant() {
         var admin = createAdmin();
         var user = createRegularUser();
-        var competition = new Competition(UUID.randomUUID(),
-                "Home", ScoringSystem.MJP);
+        var eventId = UUID.randomUUID();
+        var competition = new Competition(eventId, "Home", ScoringSystem.MJP);
         given(competitionRepository.findById(competition.getId()))
                 .willReturn(Optional.of(competition));
         given(userService.findById(admin.getId())).willReturn(admin);
         given(userService.findById(user.getId())).willReturn(user);
-        given(participantRepository.existsByCompetitionIdAndUserId(
-                competition.getId(), user.getId())).willReturn(false);
+        given(eventParticipantRepository.findByEventIdAndUserId(eventId, user.getId()))
+                .willReturn(Optional.empty());
+        given(eventParticipantRepository.save(any(EventParticipant.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(participantRepository.existsByCompetitionIdAndEventParticipantIdAndRole(
+                any(), any(), any())).willReturn(false);
         given(participantRepository.save(any(CompetitionParticipant.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 
@@ -176,25 +185,51 @@ class CompetitionServiceTest {
                 competition.getId(), user.getId(), CompetitionRole.JUDGE, admin.getId());
 
         assertThat(result.getCompetitionId()).isEqualTo(competition.getId());
-        assertThat(result.getUserId()).isEqualTo(user.getId());
         assertThat(result.getRole()).isEqualTo(CompetitionRole.JUDGE);
-        assertThat(result.getAccessCode()).isNotNull();
-        assertThat(result.getAccessCode()).hasSize(8);
+        then(eventParticipantRepository).should().save(any(EventParticipant.class));
         then(participantRepository).should().save(any(CompetitionParticipant.class));
     }
 
     @Test
-    void shouldAddParticipantWithoutAccessCodeForEntrant() {
+    void shouldReuseExistingEventParticipantWhenAdding() {
         var admin = createAdmin();
         var user = createRegularUser();
-        var competition = new Competition(UUID.randomUUID(),
-                "Home", ScoringSystem.MJP);
+        var eventId = UUID.randomUUID();
+        var competition = new Competition(eventId, "Home", ScoringSystem.MJP);
+        var existingEp = new EventParticipant(eventId, user.getId());
         given(competitionRepository.findById(competition.getId()))
                 .willReturn(Optional.of(competition));
         given(userService.findById(admin.getId())).willReturn(admin);
         given(userService.findById(user.getId())).willReturn(user);
-        given(participantRepository.existsByCompetitionIdAndUserId(
-                competition.getId(), user.getId())).willReturn(false);
+        given(eventParticipantRepository.findByEventIdAndUserId(eventId, user.getId()))
+                .willReturn(Optional.of(existingEp));
+        given(participantRepository.existsByCompetitionIdAndEventParticipantIdAndRole(
+                competition.getId(), existingEp.getId(), CompetitionRole.JUDGE)).willReturn(false);
+        given(participantRepository.save(any(CompetitionParticipant.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var result = competitionService.addParticipant(
+                competition.getId(), user.getId(), CompetitionRole.JUDGE, admin.getId());
+
+        assertThat(result.getEventParticipantId()).isEqualTo(existingEp.getId());
+        then(eventParticipantRepository).should(never()).save(any());
+    }
+
+    @Test
+    void shouldAllowMultipleRolesForSameUserInCompetition() {
+        var admin = createAdmin();
+        var user = createRegularUser();
+        var eventId = UUID.randomUUID();
+        var competition = new Competition(eventId, "Home", ScoringSystem.MJP);
+        var existingEp = new EventParticipant(eventId, user.getId());
+        given(competitionRepository.findById(competition.getId()))
+                .willReturn(Optional.of(competition));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(userService.findById(user.getId())).willReturn(user);
+        given(eventParticipantRepository.findByEventIdAndUserId(eventId, user.getId()))
+                .willReturn(Optional.of(existingEp));
+        given(participantRepository.existsByCompetitionIdAndEventParticipantIdAndRole(
+                competition.getId(), existingEp.getId(), CompetitionRole.ENTRANT)).willReturn(false);
         given(participantRepository.save(any(CompetitionParticipant.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 
@@ -202,44 +237,106 @@ class CompetitionServiceTest {
                 competition.getId(), user.getId(), CompetitionRole.ENTRANT, admin.getId());
 
         assertThat(result.getRole()).isEqualTo(CompetitionRole.ENTRANT);
-        assertThat(result.getAccessCode()).isNull();
+        then(participantRepository).should().save(any(CompetitionParticipant.class));
     }
 
     @Test
-    void shouldRejectAddParticipantWhenAlreadyExists() {
+    void shouldRejectDuplicateRoleForSameParticipant() {
         var admin = createAdmin();
         var user = createRegularUser();
-        var competition = new Competition(UUID.randomUUID(),
-                "Home", ScoringSystem.MJP);
+        var eventId = UUID.randomUUID();
+        var competition = new Competition(eventId, "Home", ScoringSystem.MJP);
+        var existingEp = new EventParticipant(eventId, user.getId());
         given(competitionRepository.findById(competition.getId()))
                 .willReturn(Optional.of(competition));
         given(userService.findById(admin.getId())).willReturn(admin);
         given(userService.findById(user.getId())).willReturn(user);
-        given(participantRepository.existsByCompetitionIdAndUserId(
-                competition.getId(), user.getId())).willReturn(true);
+        given(eventParticipantRepository.findByEventIdAndUserId(eventId, user.getId()))
+                .willReturn(Optional.of(existingEp));
+        given(participantRepository.existsByCompetitionIdAndEventParticipantIdAndRole(
+                competition.getId(), existingEp.getId(), CompetitionRole.JUDGE)).willReturn(true);
 
         assertThatThrownBy(() -> competitionService.addParticipant(
                 competition.getId(), user.getId(), CompetitionRole.JUDGE, admin.getId()))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("already a participant");
+                .hasMessageContaining("JUDGE");
 
         then(participantRepository).should(never()).save(any());
     }
 
     @Test
-    void shouldRejectAddParticipantWhenUserNotAuthorized() {
-        var regularUser = createRegularUser();
-        var targetUser = new User("target@example.com", "Target",
-                UserStatus.ACTIVE, Role.USER);
-        var competition = new Competition(UUID.randomUUID(),
-                "Home", ScoringSystem.MJP);
+    void shouldNotAssignAccessCodeForEntrant() {
+        var admin = createAdmin();
+        var user = createRegularUser();
+        var eventId = UUID.randomUUID();
+        var competition = new Competition(eventId, "Home", ScoringSystem.MJP);
         given(competitionRepository.findById(competition.getId()))
                 .willReturn(Optional.of(competition));
-        given(userService.findById(regularUser.getId())).willReturn(regularUser);
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(userService.findById(user.getId())).willReturn(user);
+        given(eventParticipantRepository.findByEventIdAndUserId(eventId, user.getId()))
+                .willReturn(Optional.empty());
+        given(eventParticipantRepository.save(any(EventParticipant.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(participantRepository.existsByCompetitionIdAndEventParticipantIdAndRole(
+                any(), any(), any())).willReturn(false);
+        given(participantRepository.save(any(CompetitionParticipant.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        competitionService.addParticipant(
+                competition.getId(), user.getId(), CompetitionRole.ENTRANT, admin.getId());
+
+        then(eventParticipantRepository).should().save(argThat(
+                (EventParticipant ep) -> ep.getAccessCode() == null));
+    }
+
+    @Test
+    void shouldAllowCompetitionAdminToAddParticipant() {
+        var compAdmin = createRegularUser();
+        var user = new User("target@example.com", "Target",
+                UserStatus.ACTIVE, Role.USER);
+        var eventId = UUID.randomUUID();
+        var competition = new Competition(eventId, "Home", ScoringSystem.MJP);
+        var compAdminEp = new EventParticipant(eventId, compAdmin.getId());
+        given(competitionRepository.findById(competition.getId()))
+                .willReturn(Optional.of(competition));
+        given(userService.findById(compAdmin.getId())).willReturn(compAdmin);
+        given(userService.findById(user.getId())).willReturn(user);
+        given(participantRepository.findByCompetitionIdAndEventParticipantId(
+                competition.getId(), compAdminEp.getId()))
+                .willReturn(List.of(new CompetitionParticipant(
+                        competition.getId(), compAdminEp.getId(),
+                        CompetitionRole.COMPETITION_ADMIN)));
+        given(eventParticipantRepository.findByEventIdAndUserId(eventId, compAdmin.getId()))
+                .willReturn(Optional.of(compAdminEp));
+        given(eventParticipantRepository.findByEventIdAndUserId(eventId, user.getId()))
+                .willReturn(Optional.empty());
+        given(eventParticipantRepository.save(any(EventParticipant.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(participantRepository.existsByCompetitionIdAndEventParticipantIdAndRole(
+                any(), any(), any())).willReturn(false);
+        given(participantRepository.save(any(CompetitionParticipant.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var result = competitionService.addParticipant(
+                competition.getId(), user.getId(), CompetitionRole.JUDGE, compAdmin.getId());
+
+        assertThat(result.getRole()).isEqualTo(CompetitionRole.JUDGE);
+    }
+
+    @Test
+    void shouldRejectUnauthorizedUserForCompetitionOperations() {
+        var user = createRegularUser();
+        var eventId = UUID.randomUUID();
+        var competition = new Competition(eventId, "Home", ScoringSystem.MJP);
+        given(competitionRepository.findById(competition.getId()))
+                .willReturn(Optional.of(competition));
+        given(userService.findById(user.getId())).willReturn(user);
+        given(eventParticipantRepository.findByEventIdAndUserId(eventId, user.getId()))
+                .willReturn(Optional.empty());
 
         assertThatThrownBy(() -> competitionService.addParticipant(
-                competition.getId(), targetUser.getId(), CompetitionRole.JUDGE,
-                regularUser.getId()))
+                competition.getId(), UUID.randomUUID(), CompetitionRole.JUDGE, user.getId()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("authorized");
 
@@ -249,146 +346,68 @@ class CompetitionServiceTest {
     // --- withdrawParticipant ---
 
     @Test
-    void shouldWithdrawParticipant() {
-        var admin = createAdmin();
-        var competition = new Competition(UUID.randomUUID(),
-                "Home", ScoringSystem.MJP);
-        var participant = new CompetitionParticipant(
-                competition.getId(), UUID.randomUUID(), CompetitionRole.JUDGE);
-        given(competitionRepository.findById(competition.getId()))
-                .willReturn(Optional.of(competition));
-        given(userService.findById(admin.getId())).willReturn(admin);
-        given(participantRepository.findById(participant.getId()))
-                .willReturn(Optional.of(participant));
-        given(participantRepository.save(any(CompetitionParticipant.class)))
-                .willAnswer(inv -> inv.getArgument(0));
-
-        var result = competitionService.withdrawParticipant(
-                competition.getId(), participant.getId(), admin.getId());
-
-        assertThat(result.getStatus()).isEqualTo(CompetitionParticipantStatus.WITHDRAWN);
-        then(participantRepository).should().save(participant);
-    }
-
-    @Test
-    void shouldWithdrawParticipantEvenAfterRegistrationClosed() {
-        var admin = createAdmin();
-        var competition = new Competition(UUID.randomUUID(),
-                "Home", ScoringSystem.MJP);
-        competition.advanceStatus(); // REGISTRATION_OPEN
-        competition.advanceStatus(); // REGISTRATION_CLOSED
-        var participant = new CompetitionParticipant(
-                competition.getId(), UUID.randomUUID(), CompetitionRole.JUDGE);
-        given(competitionRepository.findById(competition.getId()))
-                .willReturn(Optional.of(competition));
-        given(userService.findById(admin.getId())).willReturn(admin);
-        given(participantRepository.findById(participant.getId()))
-                .willReturn(Optional.of(participant));
-        given(participantRepository.save(any(CompetitionParticipant.class)))
-                .willAnswer(inv -> inv.getArgument(0));
-
-        var result = competitionService.withdrawParticipant(
-                competition.getId(), participant.getId(), admin.getId());
-
-        assertThat(result.getStatus()).isEqualTo(CompetitionParticipantStatus.WITHDRAWN);
-    }
-
-    @Test
-    void shouldRejectWithdrawParticipantWhenUserNotAuthorized() {
-        var user = createRegularUser();
-        var competition = new Competition(UUID.randomUUID(),
-                "Home", ScoringSystem.MJP);
-        var participantId = UUID.randomUUID();
-        given(competitionRepository.findById(competition.getId()))
-                .willReturn(Optional.of(competition));
-        given(userService.findById(user.getId())).willReturn(user);
-
-        assertThatThrownBy(() -> competitionService.withdrawParticipant(
-                competition.getId(), participantId, user.getId()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("authorized");
-
-        then(participantRepository).should(never()).save(any());
-    }
-
-    // --- copyParticipants ---
-
-    @Test
-    void shouldCopyParticipantsBetweenCompetitionsInSameEvent() {
+    void shouldWithdrawEventParticipant() {
         var admin = createAdmin();
         var eventId = UUID.randomUUID();
-        var source = new Competition(eventId, "Home", ScoringSystem.MJP);
-        var target = new Competition(eventId, "Pro", ScoringSystem.MJP);
-        var userId = UUID.randomUUID();
-        var sourceParticipant = new CompetitionParticipant(
-                source.getId(), userId, CompetitionRole.JUDGE);
-        given(competitionRepository.findById(source.getId()))
-                .willReturn(Optional.of(source));
-        given(competitionRepository.findById(target.getId()))
-                .willReturn(Optional.of(target));
+        var competition = new Competition(eventId, "Home", ScoringSystem.MJP);
+        var ep = new EventParticipant(eventId, UUID.randomUUID());
+        given(competitionRepository.findById(competition.getId()))
+                .willReturn(Optional.of(competition));
         given(userService.findById(admin.getId())).willReturn(admin);
-        given(participantRepository.findByCompetitionId(source.getId()))
-                .willReturn(List.of(sourceParticipant));
-        given(participantRepository.existsByCompetitionIdAndUserId(target.getId(), userId))
-                .willReturn(false);
+        given(eventParticipantRepository.findById(ep.getId()))
+                .willReturn(Optional.of(ep));
+        given(eventParticipantRepository.save(any(EventParticipant.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        competitionService.withdrawParticipant(
+                competition.getId(), ep.getId(), admin.getId());
+
+        assertThat(ep.getStatus()).isEqualTo(CompetitionParticipantStatus.WITHDRAWN);
+        then(eventParticipantRepository).should().save(ep);
+    }
+
+    // --- addParticipantToAllCompetitions ---
+
+    @Test
+    void shouldAddParticipantToAllCompetitionsInEvent() {
+        var admin = createAdmin();
+        var user = createRegularUser();
+        var eventId = UUID.randomUUID();
+        var comp1 = new Competition(eventId, "Home", ScoringSystem.MJP);
+        var comp2 = new Competition(eventId, "Pro", ScoringSystem.MJP);
+        var ep = new EventParticipant(eventId, user.getId());
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(userService.findById(user.getId())).willReturn(user);
+        given(eventParticipantRepository.findByEventIdAndUserId(eventId, user.getId()))
+                .willReturn(Optional.of(ep));
+        given(competitionRepository.findByEventId(eventId))
+                .willReturn(List.of(comp1, comp2));
+        given(participantRepository.existsByCompetitionIdAndEventParticipantIdAndRole(
+                comp1.getId(), ep.getId(), CompetitionRole.JUDGE)).willReturn(false);
+        given(participantRepository.existsByCompetitionIdAndEventParticipantIdAndRole(
+                comp2.getId(), ep.getId(), CompetitionRole.JUDGE)).willReturn(false);
         given(participantRepository.save(any(CompetitionParticipant.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 
-        var result = competitionService.copyParticipants(
-                source.getId(), target.getId(), admin.getId());
+        var result = competitionService.addParticipantToAllCompetitions(
+                eventId, user.getId(), CompetitionRole.JUDGE, admin.getId());
+
+        assertThat(result).hasSize(2);
+    }
+
+    // --- findEventParticipantsByEvent ---
+
+    @Test
+    void shouldFindEventParticipantsByEvent() {
+        var eventId = UUID.randomUUID();
+        var ep = new EventParticipant(eventId, UUID.randomUUID());
+        given(eventParticipantRepository.findByEventId(eventId))
+                .willReturn(List.of(ep));
+
+        var result = competitionService.findEventParticipantsByEvent(eventId);
 
         assertThat(result).hasSize(1);
-        assertThat(result.getFirst().getCompetitionId()).isEqualTo(target.getId());
-        assertThat(result.getFirst().getUserId()).isEqualTo(userId);
-        assertThat(result.getFirst().getRole()).isEqualTo(CompetitionRole.JUDGE);
-        assertThat(result.getFirst().getAccessCode()).isNotNull().hasSize(8);
-    }
-
-    @Test
-    void shouldSkipExistingParticipantsWhenCopying() {
-        var admin = createAdmin();
-        var eventId = UUID.randomUUID();
-        var source = new Competition(eventId, "Home", ScoringSystem.MJP);
-        var target = new Competition(eventId, "Pro", ScoringSystem.MJP);
-        var userId = UUID.randomUUID();
-        var sourceParticipant = new CompetitionParticipant(
-                source.getId(), userId, CompetitionRole.JUDGE);
-        given(competitionRepository.findById(source.getId()))
-                .willReturn(Optional.of(source));
-        given(competitionRepository.findById(target.getId()))
-                .willReturn(Optional.of(target));
-        given(userService.findById(admin.getId())).willReturn(admin);
-        given(participantRepository.findByCompetitionId(source.getId()))
-                .willReturn(List.of(sourceParticipant));
-        given(participantRepository.existsByCompetitionIdAndUserId(target.getId(), userId))
-                .willReturn(true);
-
-        var result = competitionService.copyParticipants(
-                source.getId(), target.getId(), admin.getId());
-
-        assertThat(result).isEmpty();
-        then(participantRepository).should(never()).save(any());
-    }
-
-    @Test
-    void shouldRejectCopyParticipantsBetweenDifferentEvents() {
-        var admin = createAdmin();
-        var source = new Competition(UUID.randomUUID(),
-                "Home", ScoringSystem.MJP);
-        var target = new Competition(UUID.randomUUID(),
-                "Pro", ScoringSystem.MJP);
-        given(competitionRepository.findById(source.getId()))
-                .willReturn(Optional.of(source));
-        given(competitionRepository.findById(target.getId()))
-                .willReturn(Optional.of(target));
-        given(userService.findById(admin.getId())).willReturn(admin);
-
-        assertThatThrownBy(() -> competitionService.copyParticipants(
-                source.getId(), target.getId(), admin.getId()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("same event");
-
-        then(participantRepository).should(never()).save(any());
+        then(eventParticipantRepository).should().findByEventId(eventId);
     }
 
     // --- createEvent ---
