@@ -230,6 +230,33 @@ class UserServiceTest {
         then(userRepository).should().findAllById(ids);
     }
 
+    // --- findOrCreateByEmail tests ---
+
+    @Test
+    void shouldReturnExistingUserWhenFindOrCreate() {
+        var existing = new User("existing@example.com", "Existing User", UserStatus.ACTIVE, Role.USER);
+        given(userRepository.findByEmail("existing@example.com")).willReturn(Optional.of(existing));
+
+        var result = userService.findOrCreateByEmail("existing@example.com");
+
+        assertThat(result).isSameAs(existing);
+        then(userRepository).should(never()).save(any());
+    }
+
+    @Test
+    void shouldCreatePendingUserWhenFindOrCreate() {
+        given(userRepository.findByEmail("new@example.com")).willReturn(Optional.empty());
+        given(userRepository.save(any(User.class))).willAnswer(inv -> inv.getArgument(0));
+
+        var result = userService.findOrCreateByEmail("new@example.com");
+
+        assertThat(result.getEmail()).isEqualTo("new@example.com");
+        assertThat(result.getName()).isEqualTo("new@example.com");
+        assertThat(result.getStatus()).isEqualTo(UserStatus.PENDING);
+        assertThat(result.getRole()).isEqualTo(Role.USER);
+        then(userRepository).should().save(any(User.class));
+    }
+
     // --- setPassword tests ---
 
     @Test

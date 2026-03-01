@@ -67,6 +67,14 @@ public class UserService {
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
     }
 
+    public User findOrCreateByEmail(@Email @NotBlank String email) {
+        return userRepository.findByEmail(email)
+                .orElseGet(() -> {
+                    var user = new User(email, email, UserStatus.PENDING, Role.USER);
+                    return userRepository.save(user);
+                });
+    }
+
     public boolean isEditingSelf(UUID userId, String currentUserEmail) {
         return userRepository.findById(userId)
                 .map(user -> user.getEmail().equals(currentUserEmail))

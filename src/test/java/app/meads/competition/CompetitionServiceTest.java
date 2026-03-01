@@ -410,6 +410,35 @@ class CompetitionServiceTest {
         then(eventParticipantRepository).should().findByEventId(eventId);
     }
 
+    // --- addParticipantByEmail ---
+
+    @Test
+    void shouldAddParticipantByEmailWhenUserExists() {
+        var admin = createAdmin();
+        var user = createRegularUser();
+        var eventId = UUID.randomUUID();
+        var competition = new Competition(eventId, "Home", ScoringSystem.MJP);
+        given(competitionRepository.findById(competition.getId()))
+                .willReturn(Optional.of(competition));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(userService.findOrCreateByEmail("user@example.com")).willReturn(user);
+        given(eventParticipantRepository.findByEventIdAndUserId(eventId, user.getId()))
+                .willReturn(Optional.empty());
+        given(eventParticipantRepository.save(any(EventParticipant.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(participantRepository.existsByCompetitionIdAndEventParticipantIdAndRole(
+                any(), any(), any())).willReturn(false);
+        given(participantRepository.save(any(CompetitionParticipant.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var result = competitionService.addParticipantByEmail(
+                competition.getId(), "user@example.com", CompetitionRole.JUDGE, admin.getId());
+
+        assertThat(result.getCompetitionId()).isEqualTo(competition.getId());
+        assertThat(result.getRole()).isEqualTo(CompetitionRole.JUDGE);
+        then(userService).should().findOrCreateByEmail("user@example.com");
+    }
+
     // --- createEvent ---
 
     @Test
@@ -563,6 +592,134 @@ class CompetitionServiceTest {
                 .hasMessageContaining("competitions");
 
         then(meadEventRepository).should(never()).delete(any());
+    }
+
+    // --- authorization: updateCompetition / advanceStatus ---
+
+    @Test
+    void shouldAllowCompetitionAdminToUpdateCompetition() {
+        var compAdmin = createRegularUser();
+        var eventId = UUID.randomUUID();
+        var competition = new Competition(eventId, "Home", ScoringSystem.MJP);
+        var compAdminEp = new EventParticipant(eventId, compAdmin.getId());
+        given(competitionRepository.findById(competition.getId()))
+                .willReturn(Optional.of(competition));
+        given(userService.findById(compAdmin.getId())).willReturn(compAdmin);
+        given(eventParticipantRepository.findByEventIdAndUserId(eventId, compAdmin.getId()))
+                .willReturn(Optional.of(compAdminEp));
+        given(participantRepository.findByCompetitionIdAndEventParticipantId(
+                competition.getId(), compAdminEp.getId()))
+                .willReturn(List.of(new CompetitionParticipant(
+                        competition.getId(), compAdminEp.getId(),
+                        CompetitionRole.COMPETITION_ADMIN)));
+        given(competitionRepository.save(any(Competition.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var result = competitionService.updateCompetition(
+                competition.getId(), "Updated", ScoringSystem.MJP, compAdmin.getId());
+
+        assertThat(result.getName()).isEqualTo("Updated");
+        then(competitionRepository).should().save(competition);
+    }
+
+    @Test
+    void shouldAllowCompetitionAdminToAdvanceStatus() {
+        var compAdmin = createRegularUser();
+        var eventId = UUID.randomUUID();
+        var competition = new Competition(eventId, "Home", ScoringSystem.MJP);
+        var compAdminEp = new EventParticipant(eventId, compAdmin.getId());
+        given(competitionRepository.findById(competition.getId()))
+                .willReturn(Optional.of(competition));
+        given(userService.findById(compAdmin.getId())).willReturn(compAdmin);
+        given(eventParticipantRepository.findByEventIdAndUserId(eventId, compAdmin.getId()))
+                .willReturn(Optional.of(compAdminEp));
+        given(participantRepository.findByCompetitionIdAndEventParticipantId(
+                competition.getId(), compAdminEp.getId()))
+                .willReturn(List.of(new CompetitionParticipant(
+                        competition.getId(), compAdminEp.getId(),
+                        CompetitionRole.COMPETITION_ADMIN)));
+        given(competitionRepository.save(any(Competition.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var result = competitionService.advanceStatus(
+                competition.getId(), compAdmin.getId());
+
+        assertThat(result.getStatus()).isEqualTo(CompetitionStatus.REGISTRATION_OPEN);
+        then(eventPublisher).should().publishEvent(any(CompetitionStatusAdvancedEvent.class));
+    }
+
+    // --- isAuthorizedForCompetition ---
+
+    @Test
+    void shouldReturnTrueWhenAuthorizedForCompetition() {
+        var admin = createAdmin();
+        var competition = new Competition(UUID.randomUUID(), "Home", ScoringSystem.MJP);
+        given(userService.findById(admin.getId())).willReturn(admin);
+
+        var result = competitionService.isAuthorizedForCompetition(
+                competition.getId(), admin.getId());
+
+        assertThat(result).isTrue();
+    }
+
+    @Test
+    void shouldReturnFalseWhenNotAuthorizedForCompetition() {
+        var user = createRegularUser();
+        var eventId = UUID.randomUUID();
+        var competition = new Competition(eventId, "Home", ScoringSystem.MJP);
+        given(userService.findById(user.getId())).willReturn(user);
+        given(competitionRepository.findById(competition.getId()))
+                .willReturn(Optional.of(competition));
+        given(eventParticipantRepository.findByEventIdAndUserId(eventId, user.getId()))
+                .willReturn(Optional.empty());
+
+        var result = competitionService.isAuthorizedForCompetition(
+                competition.getId(), user.getId());
+
+        assertThat(result).isFalse();
+    }
+
+    // --- findAuthorizedCompetitions ---
+
+    @Test
+    void shouldFindAuthorizedCompetitionsForSystemAdmin() {
+        var admin = createAdmin();
+        var eventId = UUID.randomUUID();
+        var comp1 = new Competition(eventId, "Home", ScoringSystem.MJP);
+        var comp2 = new Competition(eventId, "Pro", ScoringSystem.MJP);
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(competitionRepository.findByEventId(eventId))
+                .willReturn(List.of(comp1, comp2));
+
+        var result = competitionService.findAuthorizedCompetitions(
+                eventId, admin.getId());
+
+        assertThat(result).hasSize(2);
+    }
+
+    @Test
+    void shouldFindAuthorizedCompetitionsForCompetitionAdmin() {
+        var compAdmin = createRegularUser();
+        var eventId = UUID.randomUUID();
+        var comp1 = new Competition(eventId, "Home", ScoringSystem.MJP);
+        var comp2 = new Competition(eventId, "Pro", ScoringSystem.MJP);
+        var compAdminEp = new EventParticipant(eventId, compAdmin.getId());
+        var adminCp = new CompetitionParticipant(
+                comp1.getId(), compAdminEp.getId(), CompetitionRole.COMPETITION_ADMIN);
+        given(userService.findById(compAdmin.getId())).willReturn(compAdmin);
+        given(eventParticipantRepository.findByEventIdAndUserId(eventId, compAdmin.getId()))
+                .willReturn(Optional.of(compAdminEp));
+        given(participantRepository.findByEventParticipantIdAndRole(
+                compAdminEp.getId(), CompetitionRole.COMPETITION_ADMIN))
+                .willReturn(List.of(adminCp));
+        given(competitionRepository.findById(comp1.getId()))
+                .willReturn(Optional.of(comp1));
+
+        var result = competitionService.findAuthorizedCompetitions(
+                eventId, compAdmin.getId());
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().getId()).isEqualTo(comp1.getId());
     }
 
     // --- findCategoriesByScoringSystem ---

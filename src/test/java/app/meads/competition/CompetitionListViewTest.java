@@ -2,6 +2,9 @@ package app.meads.competition;
 
 import app.meads.TestcontainersConfiguration;
 import app.meads.competition.internal.CompetitionListView;
+import app.meads.competition.internal.CompetitionParticipantRepository;
+import app.meads.competition.internal.CompetitionRepository;
+import app.meads.competition.internal.EventParticipantRepository;
 import app.meads.competition.internal.MeadEventRepository;
 import app.meads.identity.Role;
 import app.meads.identity.User;
@@ -52,6 +55,15 @@ class CompetitionListViewTest {
 
     @Autowired
     MeadEventRepository meadEventRepository;
+
+    @Autowired
+    CompetitionRepository competitionRepository;
+
+    @Autowired
+    EventParticipantRepository eventParticipantRepository;
+
+    @Autowired
+    CompetitionParticipantRepository competitionParticipantRepository;
 
     @Autowired
     UserRepository userRepository;
@@ -164,6 +176,65 @@ class CompetitionListViewTest {
         assertThat(_find(Dialog.class)).isEmpty();
         assertThat(_get(Notification.class).getElement().getProperty("text"))
                 .contains("created");
+    }
+
+    @Test
+    @WithMockUser(username = "comp-admin@example.com", roles = "USER")
+    void shouldAllowCompetitionAdminAccess() {
+        var compAdminUser = userRepository.findByEmail("comp-admin@example.com")
+                .orElseGet(() -> userRepository.save(new User("comp-admin@example.com",
+                        "Comp Admin User", UserStatus.ACTIVE, Role.USER)));
+        var competition = competitionRepository.save(
+                new Competition(testEvent.getId(), "Home", ScoringSystem.MJP));
+        var ep = eventParticipantRepository.save(
+                new EventParticipant(testEvent.getId(), compAdminUser.getId()));
+        competitionParticipantRepository.save(
+                new CompetitionParticipant(competition.getId(), ep.getId(),
+                        CompetitionRole.COMPETITION_ADMIN));
+
+        UI.getCurrent().navigate("events/" + testEvent.getId() + "/competitions");
+
+        var heading = _get(H2.class, spec -> spec.withText("Test Event"));
+        assertThat(heading).isNotNull();
+    }
+
+    @Test
+    @WithMockUser(username = "unauthorized@example.com", roles = "USER")
+    void shouldRedirectUnauthorizedUser() {
+        userRepository.findByEmail("unauthorized@example.com")
+                .orElseGet(() -> userRepository.save(new User("unauthorized@example.com",
+                        "Unauthorized", UserStatus.ACTIVE, Role.USER)));
+
+        UI.getCurrent().navigate("events/" + testEvent.getId() + "/competitions");
+
+        var headings = _find(H2.class);
+        assertThat(headings).noneMatch(h -> h.getText().equals("Test Event"));
+    }
+
+    @Test
+    @WithMockUser(username = "comp-admin2@example.com", roles = "USER")
+    void shouldShowOnlyAdminCompetitionsForCompetitionAdmin() {
+        var compAdminUser = userRepository.findByEmail("comp-admin2@example.com")
+                .orElseGet(() -> userRepository.save(new User("comp-admin2@example.com",
+                        "Comp Admin 2", UserStatus.ACTIVE, Role.USER)));
+        var comp1 = competitionRepository.save(
+                new Competition(testEvent.getId(), "Comp One", ScoringSystem.MJP));
+        var comp2 = competitionRepository.save(
+                new Competition(testEvent.getId(), "Comp Two", ScoringSystem.MJP));
+        var ep = eventParticipantRepository.save(
+                new EventParticipant(testEvent.getId(), compAdminUser.getId()));
+        // Only admin for comp1, not comp2
+        competitionParticipantRepository.save(
+                new CompetitionParticipant(comp1.getId(), ep.getId(),
+                        CompetitionRole.COMPETITION_ADMIN));
+
+        UI.getCurrent().navigate("events/" + testEvent.getId() + "/competitions");
+
+        @SuppressWarnings("unchecked")
+        var grid = (Grid<Competition>) _find(Grid.class).getFirst();
+        var items = grid.getGenericDataView().getItems().toList();
+        assertThat(items).hasSize(1);
+        assertThat(items.getFirst().getName()).isEqualTo("Comp One");
     }
 
     @Test

@@ -22,7 +22,8 @@ import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.spring.security.AuthenticationContext;
-import jakarta.annotation.security.RolesAllowed;
+import app.meads.identity.Role;
+import jakarta.annotation.security.PermitAll;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.util.StringUtils;
 
@@ -31,7 +32,7 @@ import java.util.Locale;
 import java.util.UUID;
 
 @Route(value = "events/:eventId/competitions", layout = MainLayout.class)
-@RolesAllowed("SYSTEM_ADMIN")
+@PermitAll
 public class CompetitionListView extends VerticalLayout implements BeforeEnterObserver {
 
     private final CompetitionService competitionService;
@@ -40,6 +41,8 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
     private final Grid<Competition> grid;
 
     private UUID eventId;
+    private UUID currentUserId;
+    private boolean isSystemAdmin;
     private MeadEvent event;
 
     public CompetitionListView(CompetitionService competitionService,
@@ -82,6 +85,15 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
             return;
         }
 
+        currentUserId = getCurrentUserId();
+        var currentUser = userService.findById(currentUserId);
+        isSystemAdmin = currentUser.getRole() == Role.SYSTEM_ADMIN;
+        if (!isSystemAdmin
+                && competitionService.findAuthorizedCompetitions(eventId, currentUserId).isEmpty()) {
+            beforeEnterEvent.forwardTo("");
+            return;
+        }
+
         removeAll();
         add(createEventHeader());
         add(createActionBar());
@@ -120,10 +132,12 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
     }
 
     private HorizontalLayout createActionBar() {
-        var createButton = new Button("Create Competition", e -> openCreateDialog());
-        var bar = new HorizontalLayout(createButton);
+        var bar = new HorizontalLayout();
         bar.setWidthFull();
         bar.setJustifyContentMode(JustifyContentMode.END);
+        if (isSystemAdmin) {
+            bar.add(new Button("Create Competition", e -> openCreateDialog()));
+        }
         return bar;
     }
 
@@ -205,7 +219,7 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
     }
 
     private void refreshGrid() {
-        grid.setItems(competitionService.findByEvent(eventId));
+        grid.setItems(competitionService.findAuthorizedCompetitions(eventId, currentUserId));
     }
 
     private UUID getCurrentUserId() {

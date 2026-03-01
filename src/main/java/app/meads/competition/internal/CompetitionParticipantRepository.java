@@ -13,4 +13,8 @@ public interface CompetitionParticipantRepository extends JpaRepository<Competit
             UUID competitionId, UUID eventParticipantId, CompetitionRole role);
     List<CompetitionParticipant> findByCompetitionIdAndEventParticipantId(
             UUID competitionId, UUID eventParticipantId);
+    List<CompetitionParticipant> findByEventParticipantIdAndRole(
+            UUID eventParticipantId, CompetitionRole role);
+    boolean existsByEventParticipantIdAndRole(
+            UUID eventParticipantId, CompetitionRole role);
 }

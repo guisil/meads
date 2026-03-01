@@ -108,6 +108,44 @@ class CompetitionParticipantRepositoryTest {
     }
 
     @Test
+    void shouldCheckExistsByEventParticipantIdAndRole() {
+        var event = createAndSaveEvent();
+        var competition = createAndSaveCompetition(event.getId());
+        var ep = createAndSaveEventParticipant(event.getId(), "cp-ep-exists@test.com");
+
+        participantRepository.save(new CompetitionParticipant(
+                competition.getId(), ep.getId(), CompetitionRole.COMPETITION_ADMIN));
+
+        assertThat(participantRepository.existsByEventParticipantIdAndRole(
+                ep.getId(), CompetitionRole.COMPETITION_ADMIN)).isTrue();
+        assertThat(participantRepository.existsByEventParticipantIdAndRole(
+                ep.getId(), CompetitionRole.JUDGE)).isFalse();
+    }
+
+    @Test
+    void shouldFindByEventParticipantIdAndRole() {
+        var event = createAndSaveEvent();
+        var comp1 = createAndSaveCompetition(event.getId());
+        var comp2 = competitionRepository.save(new Competition(event.getId(),
+                "Pro", ScoringSystem.MJP));
+        var ep = createAndSaveEventParticipant(event.getId(), "cp-ep-find@test.com");
+
+        participantRepository.save(new CompetitionParticipant(
+                comp1.getId(), ep.getId(), CompetitionRole.COMPETITION_ADMIN));
+        participantRepository.save(new CompetitionParticipant(
+                comp2.getId(), ep.getId(), CompetitionRole.COMPETITION_ADMIN));
+        participantRepository.save(new CompetitionParticipant(
+                comp1.getId(), ep.getId(), CompetitionRole.JUDGE));
+
+        var results = participantRepository.findByEventParticipantIdAndRole(
+                ep.getId(), CompetitionRole.COMPETITION_ADMIN);
+
+        assertThat(results).hasSize(2);
+        assertThat(results).allMatch(
+                cp -> cp.getRole() == CompetitionRole.COMPETITION_ADMIN);
+    }
+
+    @Test
     void shouldFindByCompetitionIdAndEventParticipantId() {
         var event = createAndSaveEvent();
         var competition = createAndSaveCompetition(event.getId());

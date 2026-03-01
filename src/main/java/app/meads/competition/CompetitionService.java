@@ -7,6 +7,7 @@ import app.meads.competition.internal.EventParticipantRepository;
 import app.meads.competition.internal.MeadEventRepository;
 import app.meads.identity.Role;
 import app.meads.identity.UserService;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.security.SecureRandom;
@@ -127,7 +128,7 @@ public class CompetitionService {
                                       @NotNull UUID requestingUserId) {
         var competition = competitionRepository.findById(competitionId)
                 .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
-        requireSystemAdmin(requestingUserId);
+        requireAuthorized(competition.getId(), requestingUserId);
         var previousStatus = competition.getStatus();
         competition.advanceStatus();
         var saved = competitionRepository.save(competition);
@@ -142,7 +143,7 @@ public class CompetitionService {
                                           @NotNull UUID requestingUserId) {
         var competition = competitionRepository.findById(competitionId)
                 .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
-        requireSystemAdmin(requestingUserId);
+        requireAuthorized(competition.getId(), requestingUserId);
         competition.updateDetails(name, scoringSystem);
         return competitionRepository.save(competition);
     }
@@ -186,6 +187,14 @@ public class CompetitionService {
 
         var cp = new CompetitionParticipant(competitionId, eventParticipant.getId(), role);
         return participantRepository.save(cp);
+    }
+
+    public CompetitionParticipant addParticipantByEmail(@NotNull UUID competitionId,
+                                                         @NotBlank @Email String email,
+                                                         @NotNull CompetitionRole role,
+                                                         @NotNull UUID requestingUserId) {
+        var user = userService.findOrCreateByEmail(email);
+        return addParticipant(competitionId, user.getId(), role, requestingUserId);
     }
 
     public void withdrawParticipant(@NotNull UUID competitionId,
@@ -234,6 +243,34 @@ public class CompetitionService {
 
     public List<EventParticipant> findEventParticipantsByEvent(@NotNull UUID eventId) {
         return eventParticipantRepository.findByEventId(eventId);
+    }
+
+    public List<Competition> findAuthorizedCompetitions(@NotNull UUID eventId,
+                                                         @NotNull UUID userId) {
+        var user = userService.findById(userId);
+        if (user.getRole() == Role.SYSTEM_ADMIN) {
+            return competitionRepository.findByEventId(eventId);
+        }
+        var ep = eventParticipantRepository.findByEventIdAndUserId(eventId, userId);
+        if (ep.isEmpty()) {
+            return List.of();
+        }
+        var adminParticipants = participantRepository
+                .findByEventParticipantIdAndRole(ep.get().getId(), CompetitionRole.COMPETITION_ADMIN);
+        return adminParticipants.stream()
+                .map(cp -> competitionRepository.findById(cp.getCompetitionId()))
+                .flatMap(java.util.Optional::stream)
+                .toList();
+    }
+
+    public boolean isAuthorizedForCompetition(@NotNull UUID competitionId,
+                                                @NotNull UUID userId) {
+        try {
+            requireAuthorized(competitionId, userId);
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     private String generateAccessCode() {

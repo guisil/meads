@@ -15,10 +15,15 @@ import com.github.mvysny.kaributesting.v10.MockVaadin;
 import com.github.mvysny.kaributesting.v10.Routes;
 import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
 import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.Nav;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.router.RouterLink;
 import com.vaadin.flow.component.tabs.TabSheet;
+import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.server.VaadinServletRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -172,6 +177,65 @@ class CompetitionDetailViewTest {
 
         var grids = _find(Grid.class);
         assertThat(grids).hasSizeGreaterThanOrEqualTo(1);
+    }
+
+    @Test
+    @WithMockUser(username = "comp-admin@example.com", roles = "USER")
+    void shouldAllowCompetitionAdminAccess() {
+        var compAdminUser = userRepository.findByEmail("comp-admin@example.com")
+                .orElseGet(() -> userRepository.save(new User("comp-admin@example.com",
+                        "Comp Admin", UserStatus.ACTIVE, Role.USER)));
+        var ep = eventParticipantRepository.save(
+                new EventParticipant(testEvent.getId(), compAdminUser.getId()));
+        competitionParticipantRepository.save(
+                new CompetitionParticipant(testCompetition.getId(), ep.getId(),
+                        CompetitionRole.COMPETITION_ADMIN));
+
+        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+
+        var heading = _get(H2.class, spec -> spec.withText("Home"));
+        assertThat(heading).isNotNull();
+    }
+
+    @Test
+    @WithMockUser(username = "unauthorized@example.com", roles = "USER")
+    void shouldRedirectUnauthorizedUser() {
+        userRepository.findByEmail("unauthorized@example.com")
+                .orElseGet(() -> userRepository.save(new User("unauthorized@example.com",
+                        "Unauthorized", UserStatus.ACTIVE, Role.USER)));
+
+        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+
+        // Should have been forwarded away — no H2 heading should be present
+        var headings = _find(H2.class);
+        assertThat(headings).noneMatch(h -> h.getText().equals("Home"));
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldShowEmailFieldInAddDialog() {
+        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+
+        var addButton = _get(Button.class, spec -> spec.withText("Add Participant"));
+        _click(addButton);
+
+        var dialog = _get(Dialog.class);
+        assertThat(dialog).isNotNull();
+        var emailField = _get(dialog, TextField.class, spec -> spec.withCaption("Email"));
+        assertThat(emailField).isNotNull();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldDisplayBreadcrumb() {
+        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+
+        var nav = _get(Nav.class);
+        assertThat(nav).isNotNull();
+        var routerLink = _get(nav, RouterLink.class);
+        assertThat(routerLink.getText()).isEqualTo(testEvent.getName());
+        var competitionSpan = _find(nav, Span.class);
+        assertThat(competitionSpan).anyMatch(s -> s.getText().equals(testCompetition.getName()));
     }
 
     @Test

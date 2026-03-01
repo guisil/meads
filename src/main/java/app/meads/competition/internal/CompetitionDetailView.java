@@ -5,10 +5,10 @@ import app.meads.competition.*;
 import app.meads.identity.User;
 import app.meads.identity.UserService;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.Nav;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
@@ -20,8 +20,10 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.router.RouteParameters;
+import com.vaadin.flow.router.RouterLink;
 import com.vaadin.flow.spring.security.AuthenticationContext;
-import jakarta.annotation.security.RolesAllowed;
+import jakarta.annotation.security.PermitAll;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.util.StringUtils;
 
@@ -31,7 +33,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Route(value = "competitions/:competitionId", layout = MainLayout.class)
-@RolesAllowed("SYSTEM_ADMIN")
+@PermitAll
 public class CompetitionDetailView extends VerticalLayout implements BeforeEnterObserver {
 
     private final CompetitionService competitionService;
@@ -73,9 +75,25 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
             return;
         }
 
+        if (!competitionService.isAuthorizedForCompetition(competitionId, getCurrentUserId())) {
+            beforeEnterEvent.forwardTo("");
+            return;
+        }
+
         removeAll();
+        add(createBreadcrumb());
         add(createHeader());
         add(createTabSheet());
+    }
+
+    private Nav createBreadcrumb() {
+        var nav = new Nav();
+        var eventLink = new RouterLink(event.getName(), CompetitionListView.class,
+                new RouteParameters("eventId", event.getId().toString()));
+        nav.add(eventLink);
+        nav.add(new Span(" / "));
+        nav.add(new Span(competition.getName()));
+        return nav;
     }
 
     private HorizontalLayout createHeader() {
@@ -203,9 +221,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         var dialog = new Dialog();
         dialog.setHeaderTitle("Add Participant");
 
-        var userComboBox = new ComboBox<User>("User");
-        userComboBox.setItems(userService.findAll());
-        userComboBox.setItemLabelGenerator(u -> u.getName() + " (" + u.getEmail() + ")");
+        var emailField = new TextField("Email");
 
         var roleSelect = new Select<CompetitionRole>();
         roleSelect.setLabel("Role");
@@ -213,13 +229,15 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         roleSelect.setValue(CompetitionRole.JUDGE);
 
         var addButton = new Button("Add", e -> {
-            if (userComboBox.getValue() == null) {
+            if (!StringUtils.hasText(emailField.getValue())) {
+                emailField.setInvalid(true);
+                emailField.setErrorMessage("Email is required");
                 return;
             }
             try {
-                competitionService.addParticipant(
+                competitionService.addParticipantByEmail(
                         competitionId,
-                        userComboBox.getValue().getId(),
+                        emailField.getValue().trim(),
                         roleSelect.getValue(),
                         getCurrentUserId());
                 refreshParticipantsGrid();
@@ -233,7 +251,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
         var cancelButton = new Button("Cancel", e -> dialog.close());
 
-        var form = new VerticalLayout(userComboBox, roleSelect);
+        var form = new VerticalLayout(emailField, roleSelect);
         form.setPadding(false);
         dialog.add(form);
         dialog.getFooter().add(cancelButton, addButton);
