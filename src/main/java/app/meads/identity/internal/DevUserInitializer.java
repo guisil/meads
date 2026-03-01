@@ -6,36 +6,31 @@ import app.meads.identity.User;
 import app.meads.identity.UserStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.annotation.Profile;
 import org.springframework.context.event.EventListener;
-import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
-import java.util.Arrays;
+
 @Slf4j
 @Component
+@Profile("dev")
 class DevUserInitializer {
 
     private final UserRepository userRepository;
     private final JwtMagicLinkService jwtMagicLinkService;
     private final PasswordEncoder passwordEncoder;
-    private final Environment environment;
 
     DevUserInitializer(UserRepository userRepository, JwtMagicLinkService jwtMagicLinkService,
-                       PasswordEncoder passwordEncoder, Environment environment) {
+                       PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.jwtMagicLinkService = jwtMagicLinkService;
         this.passwordEncoder = passwordEncoder;
-        this.environment = environment;
     }
 
     @EventListener(ApplicationReadyEvent.class)
     void initializeDevUsers() {
-        if (!isDevProfile()) {
-            return;
-        }
-
         createDevUserIfAbsent("admin@localhost", "Dev Admin", Role.SYSTEM_ADMIN, UserStatus.ACTIVE, "admin");
         createDevUserIfAbsent("user@localhost", "Dev User", Role.USER, UserStatus.ACTIVE, null);
         createDevUserIfAbsent("pending@localhost", "Pending User", Role.USER, UserStatus.PENDING, null);
@@ -57,7 +52,4 @@ class DevUserInitializer {
         userRepository.save(user);
     }
 
-    private boolean isDevProfile() {
-        return Arrays.asList(environment.getActiveProfiles()).contains("dev");
-    }
 }

@@ -24,6 +24,7 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.spring.security.AuthenticationContext;
 import jakarta.annotation.security.RolesAllowed;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.util.StringUtils;
 
 @Slf4j
 @Route(value = "users", layout = MainLayout.class)
@@ -72,66 +73,7 @@ public class UserListView extends VerticalLayout {
     }
 
     public void openEditDialog(User user) {
-        Dialog dialog = new Dialog();
-
-        TextField nameField = new TextField("Name");
-        nameField.setValue(user.getName());
-        nameField.setRequired(true);
-
-        Select<Role> roleSelect = new Select<>();
-        roleSelect.setLabel("Role");
-        roleSelect.setItems(Role.values());
-        roleSelect.setValue(user.getRole());
-
-        Select<UserStatus> statusSelect = new Select<>();
-        statusSelect.setLabel("Status");
-        statusSelect.setItems(UserStatus.values());
-        statusSelect.setValue(user.getStatus());
-
-        // Prevent users from editing their own role or status
-        String currentUserEmail = authenticationContext.getAuthenticatedUser(UserDetails.class)
-                .map(UserDetails::getUsername)
-                .orElse("");
-        boolean isEditingSelf = userService.isEditingSelf(user.getId(), currentUserEmail);
-        if (isEditingSelf) {
-            roleSelect.setEnabled(false);
-            statusSelect.setEnabled(false);
-        }
-
-        Button saveButton = new Button("Save");
-        saveButton.addClickListener(e -> {
-            // Validate name field is not empty
-            if (nameField.getValue().isBlank()) {
-                nameField.setInvalid(true);
-                nameField.setErrorMessage("Name is required");
-                return;
-            }
-
-            try {
-                userService.updateUser(
-                    user.getId(),
-                    nameField.getValue(),
-                    roleSelect.getValue(),
-                    statusSelect.getValue(),
-                    currentUserEmail
-                );
-                grid.setItems(userService.findAll());
-                var notification = Notification.show("User saved successfully");
-                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-                dialog.close();
-            } catch (Exception ex) {
-                nameField.setInvalid(true);
-                nameField.setErrorMessage("Failed to save user. Please try again.");
-            }
-        });
-
-        Button cancelButton = new Button("Cancel");
-        cancelButton.addClickListener(e -> dialog.close());
-
-        VerticalLayout formLayout = new VerticalLayout(nameField, roleSelect, statusSelect, saveButton, cancelButton);
-        dialog.add(formLayout);
-
-        dialog.open();
+        openUserDialog(user);
     }
 
     public void handleDeleteClick(User user) {
@@ -178,9 +120,7 @@ public class UserListView extends VerticalLayout {
     }
 
     public void removeUser(User user) {
-        String currentUserEmail = authenticationContext.getAuthenticatedUser(UserDetails.class)
-                .map(UserDetails::getUsername)
-                .orElse("");
+        String currentUserEmail = getCurrentUserEmail();
 
         boolean isSoftDelete = user.getStatus() != UserStatus.INACTIVE;
         userService.removeUser(user.getId(), currentUserEmail);
@@ -197,10 +137,17 @@ public class UserListView extends VerticalLayout {
     }
 
     public void openCreateUserDialog() {
-        Dialog dialog = new Dialog();
+        openUserDialog(null);
+    }
 
-        EmailField emailField = new EmailField("Email");
-        emailField.setRequired(true);
+    private void openUserDialog(User existingUser) {
+        Dialog dialog = new Dialog();
+        boolean isCreate = existingUser == null;
+
+        EmailField emailField = isCreate ? new EmailField("Email") : null;
+        if (emailField != null) {
+            emailField.setRequired(true);
+        }
 
         TextField nameField = new TextField("Name");
         nameField.setRequired(true);
@@ -208,53 +155,78 @@ public class UserListView extends VerticalLayout {
         Select<Role> roleSelect = new Select<>();
         roleSelect.setLabel("Role");
         roleSelect.setItems(Role.values());
-        roleSelect.setValue(Role.USER);
 
         Select<UserStatus> statusSelect = new Select<>();
         statusSelect.setLabel("Status");
         statusSelect.setItems(UserStatus.values());
-        statusSelect.setValue(UserStatus.PENDING);
+
+        if (isCreate) {
+            roleSelect.setValue(Role.USER);
+            statusSelect.setValue(UserStatus.PENDING);
+        } else {
+            nameField.setValue(existingUser.getName());
+            roleSelect.setValue(existingUser.getRole());
+            statusSelect.setValue(existingUser.getStatus());
+
+            String currentUserEmail = getCurrentUserEmail();
+            if (userService.isEditingSelf(existingUser.getId(), currentUserEmail)) {
+                roleSelect.setEnabled(false);
+                statusSelect.setEnabled(false);
+            }
+        }
 
         Button saveButton = new Button("Save");
         saveButton.addClickListener(e -> {
-            // Validate email field is not empty
-            if (emailField.getValue().isBlank()) {
+            if (emailField != null && !StringUtils.hasText(emailField.getValue())) {
                 emailField.setInvalid(true);
                 emailField.setErrorMessage("Email is required");
                 return;
             }
-
-            // Validate name field is not empty
-            if (nameField.getValue().isBlank()) {
+            if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
                 nameField.setErrorMessage("Name is required");
                 return;
             }
-
-            // Validate role is selected
-            if (roleSelect.isEmpty()) {
+            if (isCreate && roleSelect.isEmpty()) {
                 roleSelect.setInvalid(true);
                 roleSelect.setErrorMessage("Role is required");
                 return;
             }
 
             try {
-                userService.createUser(
-                    emailField.getValue(),
-                    nameField.getValue(),
-                    statusSelect.getValue(),
-                    roleSelect.getValue()
-                );
+                if (isCreate) {
+                    userService.createUser(
+                        emailField.getValue(),
+                        nameField.getValue(),
+                        statusSelect.getValue(),
+                        roleSelect.getValue()
+                    );
+                } else {
+                    userService.updateUser(
+                        existingUser.getId(),
+                        nameField.getValue(),
+                        roleSelect.getValue(),
+                        statusSelect.getValue(),
+                        getCurrentUserEmail()
+                    );
+                }
                 grid.setItems(userService.findAll());
-                var notification = Notification.show("User created successfully");
+                var notification = Notification.show(isCreate ? "User created successfully" : "User saved successfully");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (IllegalArgumentException ex) {
-                emailField.setInvalid(true);
-                emailField.setErrorMessage(ex.getMessage());
+                if (emailField != null) {
+                    emailField.setInvalid(true);
+                    emailField.setErrorMessage(ex.getMessage());
+                } else {
+                    nameField.setInvalid(true);
+                    nameField.setErrorMessage("Failed to save user. Please try again.");
+                }
             } catch (ConstraintViolationException ex) {
-                emailField.setInvalid(true);
-                emailField.setErrorMessage("Please enter a valid email address");
+                if (emailField != null) {
+                    emailField.setInvalid(true);
+                    emailField.setErrorMessage("Please enter a valid email address");
+                }
             } catch (Exception ex) {
                 Notification.show("Failed to save user. Please try again.");
             }
@@ -263,9 +235,19 @@ public class UserListView extends VerticalLayout {
         Button cancelButton = new Button("Cancel");
         cancelButton.addClickListener(e -> dialog.close());
 
-        VerticalLayout formLayout = new VerticalLayout(emailField, nameField, roleSelect, statusSelect, saveButton, cancelButton);
+        VerticalLayout formLayout = new VerticalLayout();
+        if (emailField != null) {
+            formLayout.add(emailField);
+        }
+        formLayout.add(nameField, roleSelect, statusSelect, saveButton, cancelButton);
         dialog.add(formLayout);
 
         dialog.open();
+    }
+
+    private String getCurrentUserEmail() {
+        return authenticationContext.getAuthenticatedUser(UserDetails.class)
+                .map(UserDetails::getUsername)
+                .orElse("");
     }
 }

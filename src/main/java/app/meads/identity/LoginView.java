@@ -12,6 +12,7 @@ import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.util.StringUtils;
 
 import java.time.Duration;
 
@@ -32,7 +33,7 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
         var magicLinkButton = new Button("Send Magic Link");
         magicLinkButton.addClickListener(e -> {
             String emailValue = magicLinkEmail.getValue();
-            if (emailValue == null || emailValue.isBlank()) {
+            if (!StringUtils.hasText(emailValue)) {
                 magicLinkEmail.setInvalid(true);
                 magicLinkEmail.setErrorMessage("Please enter a valid email address");
                 return;

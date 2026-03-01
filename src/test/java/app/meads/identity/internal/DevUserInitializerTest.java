@@ -10,7 +10,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
@@ -30,20 +29,9 @@ class DevUserInitializerTest {
     @Mock UserRepository userRepository;
     @Mock JwtMagicLinkService jwtMagicLinkService;
     @Mock PasswordEncoder passwordEncoder;
-    @Mock Environment environment;
-
-    @Test
-    void shouldNotCreateDevUsersWhenDevProfileNotActive() {
-        given(environment.getActiveProfiles()).willReturn(new String[]{});
-
-        devUserInitializer.initializeDevUsers();
-
-        then(userRepository).should(never()).save(any());
-    }
 
     @Test
     void shouldCreateThreeDevUsersWhenDevProfileActive() {
-        given(environment.getActiveProfiles()).willReturn(new String[]{"dev"});
         given(userRepository.existsByEmail(any())).willReturn(false);
         given(passwordEncoder.encode("admin")).willReturn("$2a$10$adminHash");
 
@@ -72,7 +60,6 @@ class DevUserInitializerTest {
 
     @Test
     void shouldSkipUsersWhenTheyAlreadyExist() {
-        given(environment.getActiveProfiles()).willReturn(new String[]{"dev"});
         given(userRepository.existsByEmail("admin@localhost")).willReturn(true);
         given(userRepository.existsByEmail("user@localhost")).willReturn(false);
         given(userRepository.existsByEmail("pending@localhost")).willReturn(true);
@@ -85,7 +72,6 @@ class DevUserInitializerTest {
 
     @Test
     void shouldGenerateMagicLinksForNonAdminDevUsers() {
-        given(environment.getActiveProfiles()).willReturn(new String[]{"dev"});
         given(userRepository.existsByEmail(any())).willReturn(false);
         given(passwordEncoder.encode("admin")).willReturn("$2a$10$adminHash");
 
