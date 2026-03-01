@@ -1,6 +1,7 @@
 package app.meads.competition;
 
 import app.meads.competition.internal.CategoryRepository;
+import app.meads.competition.internal.CompetitionCategoryRepository;
 import app.meads.competition.internal.CompetitionParticipantRepository;
 import app.meads.competition.internal.CompetitionRepository;
 import app.meads.competition.internal.EventParticipantRepository;
@@ -40,6 +41,9 @@ class CompetitionServiceTest {
 
     @Mock
     CompetitionParticipantRepository participantRepository;
+
+    @Mock
+    CompetitionCategoryRepository competitionCategoryRepository;
 
     @Mock
     CategoryRepository categoryRepository;
@@ -91,6 +95,36 @@ class CompetitionServiceTest {
         assertThat(result.getStatus()).isEqualTo(CompetitionStatus.DRAFT);
         assertThat(result.getScoringSystem()).isEqualTo(ScoringSystem.MJP);
         then(competitionRepository).should().save(any(Competition.class));
+    }
+
+    @Test
+    void shouldInitializeCategoriesOnCompetitionCreation() {
+        var event = createEvent();
+        var admin = createAdmin();
+        var cat1 = org.mockito.Mockito.mock(Category.class);
+        var cat2 = org.mockito.Mockito.mock(Category.class);
+        given(cat1.getId()).willReturn(UUID.randomUUID());
+        given(cat1.getCode()).willReturn("M1A");
+        given(cat1.getName()).willReturn("Traditional Mead");
+        given(cat1.getDescription()).willReturn("A traditional mead");
+        given(cat2.getId()).willReturn(UUID.randomUUID());
+        given(cat2.getCode()).willReturn("M1B");
+        given(cat2.getName()).willReturn("Semi-Sweet Mead");
+        given(cat2.getDescription()).willReturn("A semi-sweet mead");
+        given(meadEventRepository.findById(event.getId())).willReturn(Optional.of(event));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(competitionRepository.save(any(Competition.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(categoryRepository.findByScoringSystem(ScoringSystem.MJP))
+                .willReturn(List.of(cat1, cat2));
+        given(competitionCategoryRepository.save(any(CompetitionCategory.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        competitionService.createCompetition(
+                event.getId(), "Home", ScoringSystem.MJP, admin.getId());
+
+        then(competitionCategoryRepository).should(org.mockito.Mockito.times(2))
+                .save(any(CompetitionCategory.class));
     }
 
     @Test
@@ -771,5 +805,265 @@ class CompetitionServiceTest {
                 .hasMessageContaining("authorized");
 
         then(competitionRepository).should(never()).save(any());
+    }
+
+    // --- initializeCompetitionCategories ---
+
+    // --- findCompetitionCategories ---
+
+    @Test
+    void shouldFindCompetitionCategories() {
+        var competitionId = UUID.randomUUID();
+        var cc1 = new CompetitionCategory(competitionId, null,
+                "M1A", "Traditional Mead", "A traditional mead", null, 0);
+        var cc2 = new CompetitionCategory(competitionId, null,
+                "M1B", "Semi-Sweet Mead", "A semi-sweet mead", null, 1);
+        given(competitionCategoryRepository.findByCompetitionIdOrderBySortOrder(competitionId))
+                .willReturn(List.of(cc1, cc2));
+
+        var result = competitionService.findCompetitionCategories(competitionId);
+
+        assertThat(result).hasSize(2);
+        then(competitionCategoryRepository).should()
+                .findByCompetitionIdOrderBySortOrder(competitionId);
+    }
+
+    // --- addCatalogCategory ---
+
+    @Test
+    void shouldAddCatalogCategoryToCompetition() {
+        var admin = createAdmin();
+        var competition = new Competition(UUID.randomUUID(),
+                "Home", ScoringSystem.MJP);
+        var catalogCat = new Category();
+        given(competitionRepository.findById(competition.getId()))
+                .willReturn(Optional.of(competition));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(categoryRepository.findById(catalogCat.getId()))
+                .willReturn(Optional.of(catalogCat));
+        given(competitionCategoryRepository.existsByCompetitionIdAndCatalogCategoryId(
+                competition.getId(), catalogCat.getId())).willReturn(false);
+        given(competitionCategoryRepository.save(any(CompetitionCategory.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var result = competitionService.addCatalogCategory(
+                competition.getId(), catalogCat.getId(), admin.getId());
+
+        assertThat(result).isNotNull();
+        assertThat(result.getCompetitionId()).isEqualTo(competition.getId());
+        assertThat(result.getCatalogCategoryId()).isEqualTo(catalogCat.getId());
+        then(competitionCategoryRepository).should().save(any(CompetitionCategory.class));
+    }
+
+    @Test
+    void shouldRejectDuplicateCatalogCategory() {
+        var admin = createAdmin();
+        var competition = new Competition(UUID.randomUUID(),
+                "Home", ScoringSystem.MJP);
+        var catalogCat = new Category();
+        given(competitionRepository.findById(competition.getId()))
+                .willReturn(Optional.of(competition));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(categoryRepository.findById(catalogCat.getId()))
+                .willReturn(Optional.of(catalogCat));
+        given(competitionCategoryRepository.existsByCompetitionIdAndCatalogCategoryId(
+                competition.getId(), catalogCat.getId())).willReturn(true);
+
+        assertThatThrownBy(() -> competitionService.addCatalogCategory(
+                competition.getId(), catalogCat.getId(), admin.getId()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("already added");
+
+        then(competitionCategoryRepository).should(never()).save(any());
+    }
+
+    // --- addCustomCategory ---
+
+    @Test
+    void shouldAddCustomCategory() {
+        var admin = createAdmin();
+        var competition = new Competition(UUID.randomUUID(),
+                "Home", ScoringSystem.MJP);
+        given(competitionRepository.findById(competition.getId()))
+                .willReturn(Optional.of(competition));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(competitionCategoryRepository.existsByCompetitionIdAndCode(
+                competition.getId(), "CUSTOM1")).willReturn(false);
+        given(competitionCategoryRepository.save(any(CompetitionCategory.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var result = competitionService.addCustomCategory(
+                competition.getId(), "CUSTOM1", "Best Local Honey",
+                "Mead made with local honey", null, admin.getId());
+
+        assertThat(result).isNotNull();
+        assertThat(result.getCompetitionId()).isEqualTo(competition.getId());
+        assertThat(result.getCatalogCategoryId()).isNull();
+        assertThat(result.getCode()).isEqualTo("CUSTOM1");
+        assertThat(result.getName()).isEqualTo("Best Local Honey");
+        assertThat(result.getParentId()).isNull();
+        then(competitionCategoryRepository).should().save(any(CompetitionCategory.class));
+    }
+
+    @Test
+    void shouldAddCustomSubcategory() {
+        var admin = createAdmin();
+        var competition = new Competition(UUID.randomUUID(),
+                "Home", ScoringSystem.MJP);
+        var parent = new CompetitionCategory(competition.getId(), null,
+                "M2E", "Other Fruit Melomel", "Other fruits", null, 0);
+        given(competitionRepository.findById(competition.getId()))
+                .willReturn(Optional.of(competition));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(competitionCategoryRepository.existsByCompetitionIdAndCode(
+                competition.getId(), "M2E-T")).willReturn(false);
+        given(competitionCategoryRepository.findById(parent.getId()))
+                .willReturn(Optional.of(parent));
+        given(competitionCategoryRepository.save(any(CompetitionCategory.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var result = competitionService.addCustomCategory(
+                competition.getId(), "M2E-T", "Tropical",
+                "Tropical fruit melomel", parent.getId(), admin.getId());
+
+        assertThat(result.getParentId()).isEqualTo(parent.getId());
+        assertThat(result.getCatalogCategoryId()).isNull();
+        then(competitionCategoryRepository).should().save(any(CompetitionCategory.class));
+    }
+
+    // --- removeCompetitionCategory ---
+
+    @Test
+    void shouldRemoveCompetitionCategory() {
+        var admin = createAdmin();
+        var competition = new Competition(UUID.randomUUID(),
+                "Home", ScoringSystem.MJP);
+        var cc = new CompetitionCategory(competition.getId(), null,
+                "M1A", "Traditional Mead", "A traditional mead", null, 0);
+        given(competitionRepository.findById(competition.getId()))
+                .willReturn(Optional.of(competition));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(competitionCategoryRepository.findById(cc.getId()))
+                .willReturn(Optional.of(cc));
+        given(competitionCategoryRepository.findByParentId(cc.getId()))
+                .willReturn(List.of());
+
+        competitionService.removeCompetitionCategory(
+                competition.getId(), cc.getId(), admin.getId());
+
+        then(competitionCategoryRepository).should().delete(cc);
+    }
+
+    @Test
+    void shouldRemoveCompetitionCategoryWithSubcategories() {
+        var admin = createAdmin();
+        var competition = new Competition(UUID.randomUUID(),
+                "Home", ScoringSystem.MJP);
+        var parent = new CompetitionCategory(competition.getId(), null,
+                "M2E", "Other Fruit Melomel", "Other fruits", null, 0);
+        var child = new CompetitionCategory(competition.getId(), null,
+                "M2E-T", "Tropical", "Tropical fruit melomel", parent.getId(), 1);
+        given(competitionRepository.findById(competition.getId()))
+                .willReturn(Optional.of(competition));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(competitionCategoryRepository.findById(parent.getId()))
+                .willReturn(Optional.of(parent));
+        given(competitionCategoryRepository.findByParentId(parent.getId()))
+                .willReturn(List.of(child));
+
+        competitionService.removeCompetitionCategory(
+                competition.getId(), parent.getId(), admin.getId());
+
+        then(competitionCategoryRepository).should().deleteAll(List.of(child));
+        then(competitionCategoryRepository).should().delete(parent);
+    }
+
+    // --- status guard ---
+
+    @Test
+    void shouldRejectCategoryChangeAfterRegistrationClosed() {
+        var admin = createAdmin();
+        var competition = new Competition(UUID.randomUUID(),
+                "Home", ScoringSystem.MJP);
+        // Advance to REGISTRATION_OPEN then REGISTRATION_CLOSED
+        competition.advanceStatus(); // DRAFT -> REGISTRATION_OPEN
+        competition.advanceStatus(); // REGISTRATION_OPEN -> REGISTRATION_CLOSED
+        given(competitionRepository.findById(competition.getId()))
+                .willReturn(Optional.of(competition));
+        given(userService.findById(admin.getId())).willReturn(admin);
+
+        assertThatThrownBy(() -> competitionService.addCustomCategory(
+                competition.getId(), "CUSTOM", "Custom",
+                "A custom category", null, admin.getId()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("cannot be modified");
+
+        assertThatThrownBy(() -> competitionService.addCatalogCategory(
+                competition.getId(), UUID.randomUUID(), admin.getId()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("cannot be modified");
+
+        assertThatThrownBy(() -> competitionService.removeCompetitionCategory(
+                competition.getId(), UUID.randomUUID(), admin.getId()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("cannot be modified");
+
+        then(competitionCategoryRepository).should(never()).save(any());
+        then(competitionCategoryRepository).should(never()).delete(any());
+    }
+
+    // --- findAvailableCatalogCategories ---
+
+    @Test
+    void shouldFindAvailableCatalogCategories() {
+        var cat1Id = UUID.randomUUID();
+        var cat2Id = UUID.randomUUID();
+        var cat3Id = UUID.randomUUID();
+        var cat1 = org.mockito.Mockito.mock(Category.class);
+        var cat2 = org.mockito.Mockito.mock(Category.class);
+        var cat3 = org.mockito.Mockito.mock(Category.class);
+        given(cat1.getId()).willReturn(cat1Id);
+        given(cat2.getId()).willReturn(cat2Id);
+        given(cat3.getId()).willReturn(cat3Id);
+        var competition = new Competition(UUID.randomUUID(),
+                "Home", ScoringSystem.MJP);
+        given(competitionRepository.findById(competition.getId()))
+                .willReturn(Optional.of(competition));
+        given(categoryRepository.findByScoringSystem(ScoringSystem.MJP))
+                .willReturn(List.of(cat1, cat2, cat3));
+        // cat1 already added, cat2 and cat3 not
+        given(competitionCategoryRepository.existsByCompetitionIdAndCatalogCategoryId(
+                competition.getId(), cat1Id)).willReturn(true);
+        given(competitionCategoryRepository.existsByCompetitionIdAndCatalogCategoryId(
+                competition.getId(), cat2Id)).willReturn(false);
+        given(competitionCategoryRepository.existsByCompetitionIdAndCatalogCategoryId(
+                competition.getId(), cat3Id)).willReturn(false);
+
+        var result = competitionService.findAvailableCatalogCategories(competition.getId());
+
+        assertThat(result).hasSize(2);
+        assertThat(result).contains(cat2, cat3);
+        assertThat(result).doesNotContain(cat1);
+    }
+
+    // --- initializeCompetitionCategories ---
+
+    @Test
+    void shouldInitializeCategoriesFromCatalog() {
+        var competition = new Competition(UUID.randomUUID(),
+                "Home", ScoringSystem.MJP);
+        var cat1 = new Category();
+        var cat2 = new Category();
+        given(competitionRepository.findById(competition.getId()))
+                .willReturn(Optional.of(competition));
+        given(categoryRepository.findByScoringSystem(ScoringSystem.MJP))
+                .willReturn(List.of(cat1, cat2));
+        given(competitionCategoryRepository.save(any(CompetitionCategory.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        competitionService.initializeCompetitionCategories(competition.getId());
+
+        then(competitionCategoryRepository).should(org.mockito.Mockito.times(2))
+                .save(any(CompetitionCategory.class));
     }
 }

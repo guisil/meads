@@ -1,6 +1,8 @@
 package app.meads.competition;
 
 import app.meads.TestcontainersConfiguration;
+import app.meads.competition.internal.CategoryRepository;
+import app.meads.competition.internal.CompetitionCategoryRepository;
 import app.meads.competition.internal.CompetitionDetailView;
 import app.meads.competition.internal.CompetitionParticipantRepository;
 import app.meads.competition.internal.CompetitionRepository;
@@ -23,6 +25,7 @@ import com.vaadin.flow.component.html.Nav;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.router.RouterLink;
 import com.vaadin.flow.component.tabs.TabSheet;
+import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.server.VaadinServletRequest;
 import org.junit.jupiter.api.AfterEach;
@@ -67,6 +70,12 @@ class CompetitionDetailViewTest {
 
     @Autowired
     CompetitionParticipantRepository competitionParticipantRepository;
+
+    @Autowired
+    CompetitionCategoryRepository competitionCategoryRepository;
+
+    @Autowired
+    CategoryRepository categoryRepository;
 
     @Autowired
     UserRepository userRepository;
@@ -236,6 +245,138 @@ class CompetitionDetailViewTest {
         assertThat(routerLink.getText()).isEqualTo(testEvent.getName());
         var competitionSpan = _find(nav, Span.class);
         assertThat(competitionSpan).anyMatch(s -> s.getText().equals(testCompetition.getName()));
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldDisplayCompetitionCategoriesInGrid() {
+        competitionCategoryRepository.save(new CompetitionCategory(
+                testCompetition.getId(), null,
+                "M1A", "Traditional Mead", "A traditional mead", null, 0));
+        competitionCategoryRepository.save(new CompetitionCategory(
+                testCompetition.getId(), null,
+                "M1B", "Semi-Sweet Mead", "A semi-sweet mead", null, 1));
+
+        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+
+        // Select the Categories tab to make its content visible
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(1);
+
+        @SuppressWarnings("unchecked")
+        var grid = (Grid<CompetitionCategory>) _get(Grid.class,
+                spec -> spec.withId("categories-grid"));
+        var headerNames = grid.getColumns().stream()
+                .map(c -> c.getHeaderText())
+                .toList();
+        assertThat(headerNames).contains("Code", "Name", "Description");
+
+        var items = grid.getGenericDataView().getItems().toList();
+        assertThat(items).hasSize(2);
+        assertThat(items.get(0).getCode()).isEqualTo("M1A");
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldShowRemoveColumnInCategoriesGrid() {
+        competitionCategoryRepository.save(new CompetitionCategory(
+                testCompetition.getId(), null,
+                "M1A", "Traditional Mead", "A traditional mead", null, 0));
+
+        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(1);
+
+        @SuppressWarnings("unchecked")
+        var grid = (Grid<CompetitionCategory>) _get(Grid.class,
+                spec -> spec.withId("categories-grid"));
+        // Grid should have 4 columns: Code, Name, Description, and the component column (Remove)
+        assertThat(grid.getColumns()).hasSize(4);
+        var headerNames = grid.getColumns().stream()
+                .map(c -> c.getHeaderText())
+                .toList();
+        assertThat(headerNames).containsExactly("Code", "Name", "Description", "");
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldShowAddCategoryButton() {
+        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(1);
+
+        var addButton = _get(Button.class, spec -> spec.withText("Add Category"));
+        assertThat(addButton).isNotNull();
+        assertThat(addButton.isEnabled()).isTrue();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldAddCatalogCategoryViaDialog() {
+        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(1);
+
+        var addButton = _get(Button.class, spec -> spec.withText("Add Category"));
+        _click(addButton);
+
+        var dialog = _get(Dialog.class);
+        assertThat(dialog.getHeaderTitle()).isEqualTo("Add Category");
+
+        // Select a catalog category from the "From Catalog" tab
+        @SuppressWarnings("unchecked")
+        var catalogSelect = (Select<Category>) _get(dialog, Select.class,
+                spec -> spec.withCaption("Catalog Category"));
+        var availableCategories = categoryRepository.findByScoringSystem(ScoringSystem.MJP);
+        catalogSelect.setValue(availableCategories.getFirst());
+
+        var submitButton = _get(dialog, Button.class, spec -> spec.withText("Add"));
+        _click(submitButton);
+
+        // Verify category was added
+        var categories = competitionCategoryRepository
+                .findByCompetitionIdOrderBySortOrder(testCompetition.getId());
+        assertThat(categories).hasSize(1);
+        assertThat(categories.getFirst().getCatalogCategoryId())
+                .isEqualTo(availableCategories.getFirst().getId());
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldAddCustomCategoryViaDialog() {
+        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(1);
+
+        var addButton = _get(Button.class, spec -> spec.withText("Add Category"));
+        _click(addButton);
+
+        var dialog = _get(Dialog.class);
+        // Switch to Custom tab inside the dialog
+        var dialogTabSheet = _get(dialog, TabSheet.class);
+        dialogTabSheet.setSelectedIndex(1);
+
+        var codeField = _get(dialog, TextField.class, spec -> spec.withCaption("Code"));
+        codeField.setValue("CUSTOM1");
+        var nameField = _get(dialog, TextField.class, spec -> spec.withCaption("Name"));
+        nameField.setValue("Best Local Honey");
+        var descField = _get(dialog, TextField.class, spec -> spec.withCaption("Description"));
+        descField.setValue("Mead made with local honey");
+
+        // The visible Add button is the Custom tab's (From Catalog tab is hidden)
+        var customAddButton = _get(dialog, Button.class, spec -> spec.withText("Add"));
+        _click(customAddButton);
+
+        var categories = competitionCategoryRepository
+                .findByCompetitionIdOrderBySortOrder(testCompetition.getId());
+        assertThat(categories).hasSize(1);
+        assertThat(categories.getFirst().getCode()).isEqualTo("CUSTOM1");
+        assertThat(categories.getFirst().getName()).isEqualTo("Best Local Honey");
+        assertThat(categories.getFirst().getCatalogCategoryId()).isNull();
     }
 
     @Test

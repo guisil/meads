@@ -1,6 +1,7 @@
 package app.meads.competition;
 
 import app.meads.competition.internal.CategoryRepository;
+import app.meads.competition.internal.CompetitionCategoryRepository;
 import app.meads.competition.internal.CompetitionParticipantRepository;
 import app.meads.competition.internal.CompetitionRepository;
 import app.meads.competition.internal.EventParticipantRepository;
@@ -31,6 +32,7 @@ public class CompetitionService {
 
     private final CompetitionRepository competitionRepository;
     private final CompetitionParticipantRepository participantRepository;
+    private final CompetitionCategoryRepository competitionCategoryRepository;
     private final EventParticipantRepository eventParticipantRepository;
     private final CategoryRepository categoryRepository;
     private final MeadEventRepository meadEventRepository;
@@ -39,6 +41,7 @@ public class CompetitionService {
 
     CompetitionService(CompetitionRepository competitionRepository,
                        CompetitionParticipantRepository participantRepository,
+                       CompetitionCategoryRepository competitionCategoryRepository,
                        EventParticipantRepository eventParticipantRepository,
                        CategoryRepository categoryRepository,
                        MeadEventRepository meadEventRepository,
@@ -46,6 +49,7 @@ public class CompetitionService {
                        ApplicationEventPublisher eventPublisher) {
         this.competitionRepository = competitionRepository;
         this.participantRepository = participantRepository;
+        this.competitionCategoryRepository = competitionCategoryRepository;
         this.eventParticipantRepository = eventParticipantRepository;
         this.categoryRepository = categoryRepository;
         this.meadEventRepository = meadEventRepository;
@@ -116,7 +120,9 @@ public class CompetitionService {
                 .orElseThrow(() -> new IllegalArgumentException("Event not found"));
         requireSystemAdmin(requestingUserId);
         var competition = new Competition(eventId, name, scoringSystem);
-        return competitionRepository.save(competition);
+        var saved = competitionRepository.save(competition);
+        initializeCategories(saved);
+        return saved;
     }
 
     public Competition findById(@NotNull UUID competitionId) {
@@ -158,6 +164,102 @@ public class CompetitionService {
 
     public List<Category> findCategoriesByScoringSystem(@NotNull ScoringSystem scoringSystem) {
         return categoryRepository.findByScoringSystem(scoringSystem);
+    }
+
+    public List<CompetitionCategory> findCompetitionCategories(@NotNull UUID competitionId) {
+        return competitionCategoryRepository.findByCompetitionIdOrderBySortOrder(competitionId);
+    }
+
+    public CompetitionCategory addCatalogCategory(@NotNull UUID competitionId,
+                                                     @NotNull UUID catalogCategoryId,
+                                                     @NotNull UUID requestingUserId) {
+        var competition = competitionRepository.findById(competitionId)
+                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
+        requireAuthorized(competition.getId(), requestingUserId);
+        if (!competition.getStatus().allowsCategoryModification()) {
+            throw new IllegalArgumentException("Categories cannot be modified in status: "
+                    + competition.getStatus().getDisplayName());
+        }
+        var catalogCategory = categoryRepository.findById(catalogCategoryId)
+                .orElseThrow(() -> new IllegalArgumentException("Catalog category not found"));
+        if (competitionCategoryRepository.existsByCompetitionIdAndCatalogCategoryId(
+                competitionId, catalogCategoryId)) {
+            throw new IllegalArgumentException("Catalog category already added to this competition");
+        }
+        var cc = new CompetitionCategory(competitionId, catalogCategory.getId(),
+                catalogCategory.getCode(), catalogCategory.getName(),
+                catalogCategory.getDescription(), null, 0);
+        return competitionCategoryRepository.save(cc);
+    }
+
+    public CompetitionCategory addCustomCategory(@NotNull UUID competitionId,
+                                                    @NotBlank String code,
+                                                    @NotBlank String name,
+                                                    @NotBlank String description,
+                                                    UUID parentId,
+                                                    @NotNull UUID requestingUserId) {
+        var competition = competitionRepository.findById(competitionId)
+                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
+        requireAuthorized(competition.getId(), requestingUserId);
+        if (!competition.getStatus().allowsCategoryModification()) {
+            throw new IllegalArgumentException("Categories cannot be modified in status: "
+                    + competition.getStatus().getDisplayName());
+        }
+        if (competitionCategoryRepository.existsByCompetitionIdAndCode(competitionId, code)) {
+            throw new IllegalArgumentException("Category code already exists in this competition: " + code);
+        }
+        if (parentId != null) {
+            competitionCategoryRepository.findById(parentId)
+                    .orElseThrow(() -> new IllegalArgumentException("Parent category not found"));
+        }
+        var cc = new CompetitionCategory(competitionId, null, code, name, description, parentId, 0);
+        return competitionCategoryRepository.save(cc);
+    }
+
+    public void removeCompetitionCategory(@NotNull UUID competitionId,
+                                            @NotNull UUID categoryId,
+                                            @NotNull UUID requestingUserId) {
+        var competition = competitionRepository.findById(competitionId)
+                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
+        requireAuthorized(competition.getId(), requestingUserId);
+        if (!competition.getStatus().allowsCategoryModification()) {
+            throw new IllegalArgumentException("Categories cannot be modified in status: "
+                    + competition.getStatus().getDisplayName());
+        }
+        var category = competitionCategoryRepository.findById(categoryId)
+                .orElseThrow(() -> new IllegalArgumentException("Competition category not found"));
+        var children = competitionCategoryRepository.findByParentId(categoryId);
+        if (!children.isEmpty()) {
+            competitionCategoryRepository.deleteAll(children);
+        }
+        competitionCategoryRepository.delete(category);
+    }
+
+    public List<Category> findAvailableCatalogCategories(@NotNull UUID competitionId) {
+        var competition = competitionRepository.findById(competitionId)
+                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
+        var allCatalog = categoryRepository.findByScoringSystem(competition.getScoringSystem());
+        return allCatalog.stream()
+                .filter(cat -> !competitionCategoryRepository
+                        .existsByCompetitionIdAndCatalogCategoryId(competitionId, cat.getId()))
+                .toList();
+    }
+
+    public void initializeCompetitionCategories(@NotNull UUID competitionId) {
+        var competition = competitionRepository.findById(competitionId)
+                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
+        initializeCategories(competition);
+    }
+
+    private void initializeCategories(Competition competition) {
+        var catalogCategories = categoryRepository.findByScoringSystem(
+                competition.getScoringSystem());
+        int sortOrder = 0;
+        for (var cat : catalogCategories) {
+            var cc = new CompetitionCategory(competition.getId(), cat.getId(),
+                    cat.getCode(), cat.getName(), cat.getDescription(), null, sortOrder++);
+            competitionCategoryRepository.save(cc);
+        }
     }
 
     public CompetitionParticipant addParticipant(@NotNull UUID competitionId,

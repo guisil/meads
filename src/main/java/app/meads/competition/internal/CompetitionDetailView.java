@@ -44,7 +44,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
     private Competition competition;
     private MeadEvent event;
     private Grid<CompetitionParticipant> participantsGrid;
-    private Grid<Category> categoriesGrid;
+    private Grid<CompetitionCategory> categoriesGrid;
     private Map<UUID, EventParticipant> eventParticipantMap;
     private Map<UUID, User> userMap;
 
@@ -164,15 +164,145 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         var tab = new VerticalLayout();
         tab.setPadding(false);
 
-        categoriesGrid = new Grid<>(Category.class, false);
-        categoriesGrid.addColumn(Category::getCode).setHeader("Code").setSortable(true);
-        categoriesGrid.addColumn(Category::getName).setHeader("Name");
-        categoriesGrid.addColumn(Category::getDescription).setHeader("Description");
+        boolean allowModification = competition.getStatus().allowsCategoryModification();
 
-        categoriesGrid.setItems(
-                competitionService.findCategoriesByScoringSystem(competition.getScoringSystem()));
+        var actions = new HorizontalLayout();
+        var addCategoryButton = new Button("Add Category",
+                e -> openAddCategoryDialog());
+        addCategoryButton.setEnabled(allowModification);
+        actions.add(addCategoryButton);
+        tab.add(actions);
+
+        categoriesGrid = new Grid<>(CompetitionCategory.class, false);
+        categoriesGrid.setId("categories-grid");
+        categoriesGrid.addColumn(CompetitionCategory::getCode).setHeader("Code").setSortable(true);
+        categoriesGrid.addColumn(CompetitionCategory::getName).setHeader("Name");
+        categoriesGrid.addColumn(CompetitionCategory::getDescription).setHeader("Description");
+
+        categoriesGrid.addComponentColumn(cc -> {
+            var removeButton = new Button("Remove", e -> {
+                try {
+                    competitionService.removeCompetitionCategory(
+                            competitionId, cc.getId(), getCurrentUserId());
+                    refreshCategoriesGrid();
+                    var notification = Notification.show("Category removed");
+                    notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                } catch (IllegalArgumentException ex) {
+                    Notification.show(ex.getMessage());
+                }
+            });
+            removeButton.setEnabled(allowModification);
+            return removeButton;
+        }).setHeader("");
+
+        refreshCategoriesGrid();
         tab.add(categoriesGrid);
         return tab;
+    }
+
+    private void refreshCategoriesGrid() {
+        categoriesGrid.setItems(
+                competitionService.findCompetitionCategories(competitionId));
+    }
+
+    private void openAddCategoryDialog() {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle("Add Category");
+
+        var dialogTabs = new TabSheet();
+        dialogTabs.setWidthFull();
+
+        // --- From Catalog tab ---
+        var catalogLayout = new VerticalLayout();
+        catalogLayout.setPadding(false);
+
+        var catalogSelect = new Select<Category>();
+        catalogSelect.setLabel("Catalog Category");
+        catalogSelect.setItemLabelGenerator(cat ->
+                cat.getCode() + " — " + cat.getName());
+        catalogSelect.setItems(
+                competitionService.findAvailableCatalogCategories(competitionId));
+
+        var catalogAddButton = new Button("Add", e -> {
+            if (catalogSelect.getValue() == null) {
+                return;
+            }
+            try {
+                competitionService.addCatalogCategory(
+                        competitionId, catalogSelect.getValue().getId(), getCurrentUserId());
+                refreshCategoriesGrid();
+                var notification = Notification.show("Category added");
+                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                dialog.close();
+            } catch (IllegalArgumentException ex) {
+                Notification.show(ex.getMessage());
+            }
+        });
+
+        catalogLayout.add(catalogSelect, catalogAddButton);
+        dialogTabs.add("From Catalog", catalogLayout);
+
+        // --- Custom tab ---
+        var customLayout = new VerticalLayout();
+        customLayout.setPadding(false);
+
+        var codeField = new TextField("Code");
+        var nameField = new TextField("Name");
+        var descriptionField = new TextField("Description");
+
+        var parentSelect = new Select<CompetitionCategory>();
+        parentSelect.setLabel("Parent Category (optional)");
+        parentSelect.setEmptySelectionAllowed(true);
+        parentSelect.setEmptySelectionCaption("None");
+        parentSelect.setItemLabelGenerator(cc ->
+                cc != null ? cc.getCode() + " — " + cc.getName() : "");
+        var topLevel = competitionService.findCompetitionCategories(competitionId).stream()
+                .filter(cc -> cc.getParentId() == null)
+                .toList();
+        parentSelect.setItems(topLevel);
+
+        var customAddButton = new Button("Add", e -> {
+            if (!StringUtils.hasText(codeField.getValue())
+                    || !StringUtils.hasText(nameField.getValue())
+                    || !StringUtils.hasText(descriptionField.getValue())) {
+                if (!StringUtils.hasText(codeField.getValue())) {
+                    codeField.setInvalid(true);
+                    codeField.setErrorMessage("Code is required");
+                }
+                if (!StringUtils.hasText(nameField.getValue())) {
+                    nameField.setInvalid(true);
+                    nameField.setErrorMessage("Name is required");
+                }
+                if (!StringUtils.hasText(descriptionField.getValue())) {
+                    descriptionField.setInvalid(true);
+                    descriptionField.setErrorMessage("Description is required");
+                }
+                return;
+            }
+            try {
+                UUID parentId = parentSelect.getValue() != null
+                        ? parentSelect.getValue().getId() : null;
+                competitionService.addCustomCategory(
+                        competitionId, codeField.getValue().trim(),
+                        nameField.getValue().trim(),
+                        descriptionField.getValue().trim(),
+                        parentId, getCurrentUserId());
+                refreshCategoriesGrid();
+                var notification = Notification.show("Custom category added");
+                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                dialog.close();
+            } catch (IllegalArgumentException ex) {
+                Notification.show(ex.getMessage());
+            }
+        });
+
+        customLayout.add(codeField, nameField, descriptionField, parentSelect, customAddButton);
+        dialogTabs.add("Custom", customLayout);
+
+        var cancelButton = new Button("Cancel", e -> dialog.close());
+        dialog.add(dialogTabs);
+        dialog.getFooter().add(cancelButton);
+        dialog.open();
     }
 
     private VerticalLayout createSettingsTab() {

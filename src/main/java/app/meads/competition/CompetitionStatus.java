@@ -18,6 +18,10 @@ public enum CompetitionStatus {
     private final String displayName;
     private final String badgeCssClass;
 
+    public boolean allowsCategoryModification() {
+        return this == DRAFT || this == REGISTRATION_OPEN;
+    }
+
     public Optional<CompetitionStatus> next() {
         var values = values();
         int nextOrdinal = ordinal() + 1;
