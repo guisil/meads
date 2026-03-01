@@ -4,7 +4,7 @@ import app.meads.MainLayout;
 import app.meads.competition.Competition;
 import app.meads.competition.CompetitionService;
 import app.meads.competition.CompetitionStatus;
-import app.meads.competition.Event;
+import app.meads.competition.MeadEvent;
 import app.meads.competition.ScoringSystem;
 import app.meads.identity.UserService;
 import com.vaadin.flow.component.button.Button;
@@ -24,6 +24,7 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.spring.security.AuthenticationContext;
 import jakarta.annotation.security.RolesAllowed;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.util.StringUtils;
 
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
@@ -39,7 +40,7 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
     private final Grid<Competition> grid;
 
     private UUID eventId;
-    private Event event;
+    private MeadEvent event;
 
     public CompetitionListView(CompetitionService competitionService,
                                 UserService userService,
@@ -139,7 +140,7 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
         scoringSelect.setValue(ScoringSystem.MJP);
 
         var createButton = new Button("Create", e -> {
-            if (nameField.getValue().isBlank()) {
+            if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
                 nameField.setErrorMessage("Name is required");
                 return;
@@ -172,9 +173,11 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
     private void advanceStatus(Competition competition) {
         var dialog = new Dialog();
         dialog.setHeaderTitle("Advance Status");
+        var nextStatus = competition.getStatus().next()
+                .map(CompetitionStatus::getDisplayName).orElse("—");
         dialog.add("Advance competition '" + competition.getName() + "' from "
-                + formatStatus(competition.getStatus()) + " to "
-                + formatStatus(nextStatus(competition.getStatus())) + "?");
+                + competition.getStatus().getDisplayName() + " to "
+                + nextStatus + "?");
 
         var confirmButton = new Button("Advance", e -> {
             try {
@@ -195,39 +198,10 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
     }
 
     private Span createStatusBadge(CompetitionStatus status) {
-        var badge = new Span(formatStatus(status));
+        var badge = new Span(status.getDisplayName());
         badge.getElement().getThemeList().add("badge pill small");
-        badge.addClassName(switch (status) {
-            case DRAFT -> "badge-draft";
-            case REGISTRATION_OPEN -> "badge-registration-open";
-            case REGISTRATION_CLOSED -> "badge-registration-closed";
-            case JUDGING -> "badge-judging";
-            case DELIBERATION -> "badge-deliberation";
-            case RESULTS_PUBLISHED -> "badge-results-published";
-        });
+        badge.addClassName(status.getBadgeCssClass());
         return badge;
-    }
-
-    private String formatStatus(CompetitionStatus status) {
-        return switch (status) {
-            case DRAFT -> "Draft";
-            case REGISTRATION_OPEN -> "Registration Open";
-            case REGISTRATION_CLOSED -> "Registration Closed";
-            case JUDGING -> "Judging";
-            case DELIBERATION -> "Deliberation";
-            case RESULTS_PUBLISHED -> "Results Published";
-        };
-    }
-
-    private CompetitionStatus nextStatus(CompetitionStatus status) {
-        return switch (status) {
-            case DRAFT -> CompetitionStatus.REGISTRATION_OPEN;
-            case REGISTRATION_OPEN -> CompetitionStatus.REGISTRATION_CLOSED;
-            case REGISTRATION_CLOSED -> CompetitionStatus.JUDGING;
-            case JUDGING -> CompetitionStatus.DELIBERATION;
-            case DELIBERATION -> CompetitionStatus.RESULTS_PUBLISHED;
-            case RESULTS_PUBLISHED -> status;
-        };
     }
 
     private void refreshGrid() {

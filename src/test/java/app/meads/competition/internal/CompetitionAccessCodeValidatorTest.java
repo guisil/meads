@@ -35,7 +35,7 @@ class CompetitionAccessCodeValidatorTest {
         var user = new User("judge@test.com", "Judge",
                 UserStatus.ACTIVE, Role.USER);
         var userId = user.getId();
-        var participant = new CompetitionParticipant(UUID.randomUUID(),
+        var participant = new CompetitionParticipant(
                 UUID.randomUUID(), userId, CompetitionRole.JUDGE);
         participant.assignAccessCode("AB3K9XYZ");
         given(participantRepository.findByAccessCode("AB3K9XYZ"))
@@ -58,7 +58,7 @@ class CompetitionAccessCodeValidatorTest {
         var user = new User("other@test.com", "Other",
                 UserStatus.ACTIVE, Role.USER);
         var userId = user.getId();
-        var participant = new CompetitionParticipant(UUID.randomUUID(),
+        var participant = new CompetitionParticipant(
                 UUID.randomUUID(), userId, CompetitionRole.JUDGE);
         participant.assignAccessCode("AB3K9XYZ");
         given(participantRepository.findByAccessCode("AB3K9XYZ"))
@@ -73,7 +73,7 @@ class CompetitionAccessCodeValidatorTest {
         var user = new User("judge@test.com", "Judge",
                 UserStatus.ACTIVE, Role.USER);
         var userId = user.getId();
-        var participant = new CompetitionParticipant(UUID.randomUUID(),
+        var participant = new CompetitionParticipant(
                 UUID.randomUUID(), userId, CompetitionRole.JUDGE);
         participant.assignAccessCode("AB3K9XYZ");
         given(participantRepository.findByAccessCode("AB3K9XYZ"))

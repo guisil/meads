@@ -1,13 +1,15 @@
 package app.meads.competition;
 
 import jakarta.persistence.*;
+import lombok.Getter;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 @Entity
 @Table(name = "competition_participants",
         uniqueConstraints = @UniqueConstraint(columnNames = {"competition_id", "user_id"}))
+@Getter
 public class CompetitionParticipant {
 
     @Id
@@ -31,12 +33,12 @@ public class CompetitionParticipant {
     private String accessCode;
 
     @Column(nullable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     protected CompetitionParticipant() {} // JPA
 
-    public CompetitionParticipant(UUID id, UUID competitionId, UUID userId, CompetitionRole role) {
-        this.id = id;
+    public CompetitionParticipant(UUID competitionId, UUID userId, CompetitionRole role) {
+        this.id = UUID.randomUUID();
         this.competitionId = competitionId;
         this.userId = userId;
         this.role = role;
@@ -45,7 +47,7 @@ public class CompetitionParticipant {
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
+        createdAt = Instant.now();
     }
 
     public void assignAccessCode(String code) {
@@ -64,33 +66,5 @@ public class CompetitionParticipant {
             throw new IllegalStateException("Participant is already withdrawn");
         }
         this.status = CompetitionParticipantStatus.WITHDRAWN;
-    }
-
-    public UUID getId() {
-        return id;
-    }
-
-    public UUID getCompetitionId() {
-        return competitionId;
-    }
-
-    public UUID getUserId() {
-        return userId;
-    }
-
-    public CompetitionRole getRole() {
-        return role;
-    }
-
-    public CompetitionParticipantStatus getStatus() {
-        return status;
-    }
-
-    public String getAccessCode() {
-        return accessCode;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
     }
 }

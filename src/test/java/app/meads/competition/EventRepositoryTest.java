@@ -1,7 +1,7 @@
 package app.meads.competition;
 
 import app.meads.TestcontainersConfiguration;
-import app.meads.competition.internal.EventRepository;
+import app.meads.competition.internal.MeadEventRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -9,7 +9,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -19,15 +18,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 class EventRepositoryTest {
 
     @Autowired
-    EventRepository eventRepository;
+    MeadEventRepository meadEventRepository;
 
     @Test
     void shouldSaveAndRetrieveEvent() {
-        var event = new Event(UUID.randomUUID(), "Regional Mead Festival",
+        var event = new MeadEvent("Regional Mead Festival",
                 LocalDate.of(2026, 6, 15), LocalDate.of(2026, 6, 17), "Porto");
 
-        eventRepository.save(event);
-        var found = eventRepository.findById(event.getId());
+        meadEventRepository.save(event);
+        var found = meadEventRepository.findById(event.getId());
 
         assertThat(found).isPresent();
         assertThat(found.get().getName()).isEqualTo("Regional Mead Festival");
@@ -40,13 +39,13 @@ class EventRepositoryTest {
 
     @Test
     void shouldSaveAndRetrieveEventWithLogo() {
-        var event = new Event(UUID.randomUUID(), "Festival with Logo",
+        var event = new MeadEvent("Festival with Logo",
                 LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 3), null);
         byte[] logo = new byte[]{1, 2, 3, 4, 5};
         event.updateLogo(logo, "image/png");
 
-        eventRepository.save(event);
-        var found = eventRepository.findById(event.getId());
+        meadEventRepository.save(event);
+        var found = meadEventRepository.findById(event.getId());
 
         assertThat(found).isPresent();
         assertThat(found.get().hasLogo()).isTrue();
@@ -56,11 +55,11 @@ class EventRepositoryTest {
 
     @Test
     void shouldSaveEventWithNullLocation() {
-        var event = new Event(UUID.randomUUID(), "No Location Event",
+        var event = new MeadEvent("No Location Event",
                 LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 1), null);
 
-        eventRepository.save(event);
-        var found = eventRepository.findById(event.getId());
+        meadEventRepository.save(event);
+        var found = meadEventRepository.findById(event.getId());
 
         assertThat(found).isPresent();
         assertThat(found.get().getLocation()).isNull();

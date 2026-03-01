@@ -3,7 +3,7 @@ package app.meads.competition;
 import app.meads.TestcontainersConfiguration;
 import app.meads.competition.internal.CompetitionDetailView;
 import app.meads.competition.internal.CompetitionRepository;
-import app.meads.competition.internal.EventRepository;
+import app.meads.competition.internal.MeadEventRepository;
 import app.meads.identity.Role;
 import app.meads.identity.User;
 import app.meads.identity.UserStatus;
@@ -35,7 +35,6 @@ import org.springframework.test.annotation.DirtiesContext;
 
 import java.time.LocalDate;
 import java.util.Arrays;
-import java.util.UUID;
 
 import static com.github.mvysny.kaributesting.v10.LocatorJ.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -51,7 +50,7 @@ class CompetitionDetailViewTest {
     ApplicationContext ctx;
 
     @Autowired
-    EventRepository eventRepository;
+    MeadEventRepository meadEventRepository;
 
     @Autowired
     CompetitionRepository competitionRepository;
@@ -68,10 +67,10 @@ class CompetitionDetailViewTest {
                     "Detail Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN));
         }
 
-        var event = eventRepository.save(new Event(UUID.randomUUID(), "Test Event",
+        var event = meadEventRepository.save(new MeadEvent("Test Event",
                 LocalDate.of(2026, 6, 15), LocalDate.of(2026, 6, 17), "Porto"));
         testCompetition = competitionRepository.save(new Competition(
-                UUID.randomUUID(), event.getId(), "Home", ScoringSystem.MJP));
+                event.getId(), "Home", ScoringSystem.MJP));
 
         var routes = new Routes().autoDiscoverViews("app.meads");
         var servlet = new MockSpringServlet(routes, ctx, UI::new);

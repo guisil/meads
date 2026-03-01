@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class CompetitionTest {
 
     private Competition createDraftCompetition() {
-        return new Competition(UUID.randomUUID(), UUID.randomUUID(),
+        return new Competition(UUID.randomUUID(),
                 "Home Competition", ScoringSystem.MJP);
     }
 

@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class CompetitionParticipantTest {
 
     private CompetitionParticipant createParticipant(CompetitionRole role) {
-        return new CompetitionParticipant(UUID.randomUUID(),
+        return new CompetitionParticipant(
                 UUID.randomUUID(), UUID.randomUUID(), role);
     }
 

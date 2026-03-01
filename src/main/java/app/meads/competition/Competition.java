@@ -1,12 +1,14 @@
 package app.meads.competition;
 
 import jakarta.persistence.*;
+import lombok.Getter;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 @Entity
 @Table(name = "competitions")
+@Getter
 public class Competition {
 
     @Id
@@ -27,14 +29,14 @@ public class Competition {
     private ScoringSystem scoringSystem;
 
     @Column(nullable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     protected Competition() {} // JPA
 
-    public Competition(UUID id, UUID eventId, String name, ScoringSystem scoringSystem) {
-        this.id = id;
+    public Competition(UUID eventId, String name, ScoringSystem scoringSystem) {
+        this.id = UUID.randomUUID();
         this.eventId = eventId;
         this.name = name;
         this.scoringSystem = scoringSystem;
@@ -43,12 +45,12 @@ public class Competition {
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
+        createdAt = Instant.now();
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        updatedAt = Instant.now();
     }
 
     public void advanceStatus() {
@@ -69,33 +71,5 @@ public class Competition {
         }
         this.name = name;
         this.scoringSystem = scoringSystem;
-    }
-
-    public UUID getId() {
-        return id;
-    }
-
-    public UUID getEventId() {
-        return eventId;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public CompetitionStatus getStatus() {
-        return status;
-    }
-
-    public ScoringSystem getScoringSystem() {
-        return scoringSystem;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
     }
 }

@@ -3,15 +3,14 @@ package app.meads.competition;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class EventTest {
 
-    private Event createEvent() {
-        return new Event(UUID.randomUUID(), "Test Event",
+    private MeadEvent createEvent() {
+        return new MeadEvent("Test Event",
                 LocalDate.of(2026, 6, 15), LocalDate.of(2026, 6, 17), null);
     }
 

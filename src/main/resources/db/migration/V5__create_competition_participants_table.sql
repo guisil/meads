@@ -3,8 +3,9 @@ CREATE TABLE competition_participants (
     competition_id UUID        NOT NULL REFERENCES competitions(id),
     user_id        UUID        NOT NULL REFERENCES users(id),
     role           VARCHAR(50) NOT NULL,
+    status         VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
     access_code    VARCHAR(8),
-    created_at     TIMESTAMP   NOT NULL,
+    created_at     TIMESTAMP WITH TIME ZONE NOT NULL,
     CONSTRAINT uq_competition_participant UNIQUE (competition_id, user_id)
 );
 

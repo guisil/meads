@@ -2,7 +2,7 @@ package app.meads.competition;
 
 import app.meads.TestcontainersConfiguration;
 import app.meads.competition.internal.CompetitionListView;
-import app.meads.competition.internal.EventRepository;
+import app.meads.competition.internal.MeadEventRepository;
 import app.meads.identity.Role;
 import app.meads.identity.User;
 import app.meads.identity.UserStatus;
@@ -36,7 +36,6 @@ import org.springframework.test.annotation.DirtiesContext;
 
 import java.time.LocalDate;
 import java.util.Arrays;
-import java.util.UUID;
 
 import static com.github.mvysny.kaributesting.v10.LocatorJ.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -52,12 +51,12 @@ class CompetitionListViewTest {
     ApplicationContext ctx;
 
     @Autowired
-    EventRepository eventRepository;
+    MeadEventRepository meadEventRepository;
 
     @Autowired
     UserRepository userRepository;
 
-    private Event testEvent;
+    private MeadEvent testEvent;
 
     @BeforeEach
     void setup(TestInfo testInfo) {
@@ -66,7 +65,7 @@ class CompetitionListViewTest {
                     "Comp Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN));
         }
 
-        testEvent = eventRepository.save(new Event(UUID.randomUUID(), "Test Event",
+        testEvent = meadEventRepository.save(new MeadEvent("Test Event",
                 LocalDate.of(2026, 6, 15), LocalDate.of(2026, 6, 17), "Porto"));
 
         var routes = new Routes().autoDiscoverViews("app.meads");
@@ -171,7 +170,7 @@ class CompetitionListViewTest {
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldDisplayCompetitionsInGrid() {
         var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
-        var competition = new Competition(UUID.randomUUID(), testEvent.getId(),
+        var competition = new Competition(testEvent.getId(),
                 "Home", ScoringSystem.MJP);
 
         // Save directly via service to populate grid

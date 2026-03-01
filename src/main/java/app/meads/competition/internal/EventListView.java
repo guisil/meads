@@ -2,7 +2,7 @@ package app.meads.competition.internal;
 
 import app.meads.MainLayout;
 import app.meads.competition.CompetitionService;
-import app.meads.competition.Event;
+import app.meads.competition.MeadEvent;
 import app.meads.identity.UserService;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.datepicker.DatePicker;
@@ -18,8 +18,8 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.spring.security.AuthenticationContext;
 import jakarta.annotation.security.RolesAllowed;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.util.StringUtils;
 
-import java.time.LocalDate;
 import java.util.UUID;
 
 @Route(value = "events", layout = MainLayout.class)
@@ -29,7 +29,7 @@ public class EventListView extends VerticalLayout {
     private final CompetitionService competitionService;
     private final UserService userService;
     private final transient AuthenticationContext authenticationContext;
-    private final Grid<Event> grid;
+    private final Grid<MeadEvent> grid;
 
     public EventListView(CompetitionService competitionService,
                           UserService userService,
@@ -46,19 +46,19 @@ public class EventListView extends VerticalLayout {
 
         header.add(new H2("Events"));
 
-        var createButton = new Button("Create Event", e -> openCreateDialog());
+        var createButton = new Button("Create Event", e -> openEventDialog(null));
         header.add(createButton);
 
         add(header);
 
-        grid = new Grid<>(Event.class, false);
-        grid.addColumn(Event::getName).setHeader("Name").setSortable(true);
-        grid.addColumn(Event::getStartDate).setHeader("Start Date").setSortable(true);
-        grid.addColumn(Event::getEndDate).setHeader("End Date").setSortable(true);
+        grid = new Grid<>(MeadEvent.class, false);
+        grid.addColumn(MeadEvent::getName).setHeader("Name").setSortable(true);
+        grid.addColumn(MeadEvent::getStartDate).setHeader("Start Date").setSortable(true);
+        grid.addColumn(MeadEvent::getEndDate).setHeader("End Date").setSortable(true);
         grid.addColumn(event -> event.getLocation() != null ? event.getLocation() : "—")
                 .setHeader("Location");
         grid.addComponentColumn(event -> {
-            var editButton = new Button("Edit", e -> openEditDialog(event));
+            var editButton = new Button("Edit", e -> openEventDialog(event));
             var deleteButton = new Button("Delete", e -> openDeleteDialog(event));
             return new HorizontalLayout(editButton, deleteButton);
         }).setHeader("Actions");
@@ -71,9 +71,10 @@ public class EventListView extends VerticalLayout {
         add(grid);
     }
 
-    private void openCreateDialog() {
+    private void openEventDialog(MeadEvent existing) {
+        boolean isEdit = existing != null;
         var dialog = new Dialog();
-        dialog.setHeaderTitle("Create Event");
+        dialog.setHeaderTitle(isEdit ? "Edit Event" : "Create Event");
 
         var nameField = new TextField("Name");
         nameField.setRequired(true);
@@ -86,8 +87,15 @@ public class EventListView extends VerticalLayout {
 
         var locationField = new TextField("Location");
 
-        var createButton = new Button("Create", e -> {
-            if (nameField.getValue().isBlank()) {
+        if (isEdit) {
+            nameField.setValue(existing.getName());
+            startDatePicker.setValue(existing.getStartDate());
+            endDatePicker.setValue(existing.getEndDate());
+            locationField.setValue(existing.getLocation() != null ? existing.getLocation() : "");
+        }
+
+        var submitButton = new Button(isEdit ? "Save" : "Create", e -> {
+            if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
                 nameField.setErrorMessage("Name is required");
                 return;
@@ -104,14 +112,20 @@ public class EventListView extends VerticalLayout {
             }
 
             try {
-                competitionService.createEvent(
-                        nameField.getValue(),
-                        startDatePicker.getValue(),
-                        endDatePicker.getValue(),
-                        locationField.getValue().isBlank() ? null : locationField.getValue(),
-                        getCurrentUserId());
+                var location = StringUtils.hasText(locationField.getValue())
+                        ? locationField.getValue() : null;
+                if (isEdit) {
+                    competitionService.updateEvent(existing.getId(),
+                            nameField.getValue(), startDatePicker.getValue(),
+                            endDatePicker.getValue(), location, getCurrentUserId());
+                } else {
+                    competitionService.createEvent(nameField.getValue(),
+                            startDatePicker.getValue(), endDatePicker.getValue(),
+                            location, getCurrentUserId());
+                }
                 refreshGrid();
-                var notification = Notification.show("Event created successfully");
+                var notification = Notification.show(
+                        isEdit ? "Event updated successfully" : "Event created successfully");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (IllegalArgumentException ex) {
@@ -124,66 +138,11 @@ public class EventListView extends VerticalLayout {
         var form = new VerticalLayout(nameField, startDatePicker, endDatePicker, locationField);
         form.setPadding(false);
         dialog.add(form);
-        dialog.getFooter().add(cancelButton, createButton);
+        dialog.getFooter().add(cancelButton, submitButton);
         dialog.open();
     }
 
-    public void openEditDialog(Event event) {
-        var dialog = new Dialog();
-        dialog.setHeaderTitle("Edit Event");
-
-        var nameField = new TextField("Name");
-        nameField.setValue(event.getName());
-        nameField.setRequired(true);
-
-        var startDatePicker = new DatePicker("Start Date");
-        startDatePicker.setValue(event.getStartDate());
-        startDatePicker.setRequired(true);
-
-        var endDatePicker = new DatePicker("End Date");
-        endDatePicker.setValue(event.getEndDate());
-        endDatePicker.setRequired(true);
-
-        var locationField = new TextField("Location");
-        locationField.setValue(event.getLocation() != null ? event.getLocation() : "");
-
-        var saveButton = new Button("Save", e -> {
-            if (nameField.getValue().isBlank()) {
-                nameField.setInvalid(true);
-                nameField.setErrorMessage("Name is required");
-                return;
-            }
-            if (startDatePicker.getValue() == null || endDatePicker.getValue() == null) {
-                return;
-            }
-
-            try {
-                competitionService.updateEvent(
-                        event.getId(),
-                        nameField.getValue(),
-                        startDatePicker.getValue(),
-                        endDatePicker.getValue(),
-                        locationField.getValue().isBlank() ? null : locationField.getValue(),
-                        getCurrentUserId());
-                refreshGrid();
-                var notification = Notification.show("Event updated successfully");
-                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-                dialog.close();
-            } catch (IllegalArgumentException ex) {
-                Notification.show(ex.getMessage());
-            }
-        });
-
-        var cancelButton = new Button("Cancel", e -> dialog.close());
-
-        var form = new VerticalLayout(nameField, startDatePicker, endDatePicker, locationField);
-        form.setPadding(false);
-        dialog.add(form);
-        dialog.getFooter().add(cancelButton, saveButton);
-        dialog.open();
-    }
-
-    private void openDeleteDialog(Event event) {
+    private void openDeleteDialog(MeadEvent event) {
         var dialog = new Dialog();
         dialog.setHeaderTitle("Delete Event");
         dialog.add("Are you sure you want to delete \"" + event.getName() + "\"?");

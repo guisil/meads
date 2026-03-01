@@ -3,7 +3,7 @@ package app.meads.competition;
 import app.meads.competition.internal.CategoryRepository;
 import app.meads.competition.internal.CompetitionParticipantRepository;
 import app.meads.competition.internal.CompetitionRepository;
-import app.meads.competition.internal.EventRepository;
+import app.meads.competition.internal.MeadEventRepository;
 import app.meads.identity.Role;
 import app.meads.identity.UserService;
 import jakarta.validation.constraints.NotBlank;
@@ -31,87 +31,87 @@ public class CompetitionService {
     private final CompetitionRepository competitionRepository;
     private final CompetitionParticipantRepository participantRepository;
     private final CategoryRepository categoryRepository;
-    private final EventRepository eventRepository;
+    private final MeadEventRepository meadEventRepository;
     private final UserService userService;
     private final ApplicationEventPublisher eventPublisher;
 
     CompetitionService(CompetitionRepository competitionRepository,
                        CompetitionParticipantRepository participantRepository,
                        CategoryRepository categoryRepository,
-                       EventRepository eventRepository,
+                       MeadEventRepository meadEventRepository,
                        UserService userService,
                        ApplicationEventPublisher eventPublisher) {
         this.competitionRepository = competitionRepository;
         this.participantRepository = participantRepository;
         this.categoryRepository = categoryRepository;
-        this.eventRepository = eventRepository;
+        this.meadEventRepository = meadEventRepository;
         this.userService = userService;
         this.eventPublisher = eventPublisher;
     }
 
-    public Event createEvent(@NotBlank String name,
+    public MeadEvent createEvent(@NotBlank String name,
                              @NotNull LocalDate startDate,
                              @NotNull LocalDate endDate,
                              String location,
                              @NotNull UUID requestingUserId) {
         requireSystemAdmin(requestingUserId);
-        var event = new Event(UUID.randomUUID(), name, startDate, endDate, location);
-        return eventRepository.save(event);
+        var event = new MeadEvent(name, startDate, endDate, location);
+        return meadEventRepository.save(event);
     }
 
-    public Event findEventById(@NotNull UUID eventId) {
-        return eventRepository.findById(eventId)
+    public MeadEvent findEventById(@NotNull UUID eventId) {
+        return meadEventRepository.findById(eventId)
                 .orElseThrow(() -> new IllegalArgumentException("Event not found"));
     }
 
-    public List<Event> findAllEvents() {
-        return eventRepository.findAll();
+    public List<MeadEvent> findAllEvents() {
+        return meadEventRepository.findAll();
     }
 
-    public Event updateEvent(@NotNull UUID eventId,
+    public MeadEvent updateEvent(@NotNull UUID eventId,
                               @NotBlank String name,
                               @NotNull LocalDate startDate,
                               @NotNull LocalDate endDate,
                               String location,
                               @NotNull UUID requestingUserId) {
-        var event = eventRepository.findById(eventId)
+        var event = meadEventRepository.findById(eventId)
                 .orElseThrow(() -> new IllegalArgumentException("Event not found"));
         requireSystemAdmin(requestingUserId);
         event.updateDetails(name, startDate, endDate, location);
-        return eventRepository.save(event);
+        return meadEventRepository.save(event);
     }
 
-    public Event updateEventLogo(@NotNull UUID eventId,
+    public MeadEvent updateEventLogo(@NotNull UUID eventId,
                                   byte[] logo,
                                   String contentType,
                                   @NotNull UUID requestingUserId) {
-        var event = eventRepository.findById(eventId)
+        var event = meadEventRepository.findById(eventId)
                 .orElseThrow(() -> new IllegalArgumentException("Event not found"));
         requireSystemAdmin(requestingUserId);
         event.updateLogo(logo, contentType);
-        return eventRepository.save(event);
+        return meadEventRepository.save(event);
     }
 
     public void deleteEvent(@NotNull UUID eventId,
                              @NotNull UUID requestingUserId) {
-        var event = eventRepository.findById(eventId)
+        var event = meadEventRepository.findById(eventId)
                 .orElseThrow(() -> new IllegalArgumentException("Event not found"));
         requireSystemAdmin(requestingUserId);
         var competitions = competitionRepository.findByEventId(eventId);
         if (!competitions.isEmpty()) {
             throw new IllegalArgumentException("Cannot delete event with competitions");
         }
-        eventRepository.delete(event);
+        meadEventRepository.delete(event);
     }
 
     public Competition createCompetition(@NotNull UUID eventId,
                                          @NotBlank String name,
                                          @NotNull ScoringSystem scoringSystem,
                                          @NotNull UUID requestingUserId) {
-        eventRepository.findById(eventId)
+        meadEventRepository.findById(eventId)
                 .orElseThrow(() -> new IllegalArgumentException("Event not found"));
         requireSystemAdmin(requestingUserId);
-        var competition = new Competition(UUID.randomUUID(), eventId, name, scoringSystem);
+        var competition = new Competition(eventId, name, scoringSystem);
         return competitionRepository.save(competition);
     }
 
@@ -131,6 +131,17 @@ public class CompetitionService {
         eventPublisher.publishEvent(new CompetitionStatusAdvancedEvent(
                 competitionId, previousStatus, saved.getStatus()));
         return saved;
+    }
+
+    public Competition updateCompetition(@NotNull UUID competitionId,
+                                          @NotBlank String name,
+                                          @NotNull ScoringSystem scoringSystem,
+                                          @NotNull UUID requestingUserId) {
+        var competition = competitionRepository.findById(competitionId)
+                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
+        requireSystemAdmin(requestingUserId);
+        competition.updateDetails(name, scoringSystem);
+        return competitionRepository.save(competition);
     }
 
     public List<Competition> findByEvent(@NotNull UUID eventId) {
@@ -156,7 +167,7 @@ public class CompetitionService {
         if (participantRepository.existsByCompetitionIdAndUserId(competitionId, userId)) {
             throw new IllegalArgumentException("User is already a participant in this competition");
         }
-        var participant = new CompetitionParticipant(UUID.randomUUID(), competitionId, userId, role);
+        var participant = new CompetitionParticipant(competitionId, userId, role);
         if (role.requiresAccessCode()) {
             participant.assignAccessCode(generateAccessCode());
         }
@@ -181,7 +192,7 @@ public class CompetitionService {
                 continue;
             }
             var newParticipant = new CompetitionParticipant(
-                    UUID.randomUUID(), targetCompetitionId, sp.getUserId(), sp.getRole());
+                    targetCompetitionId, sp.getUserId(), sp.getRole());
             if (sp.getRole().requiresAccessCode()) {
                 newParticipant.assignAccessCode(generateAccessCode());
             }

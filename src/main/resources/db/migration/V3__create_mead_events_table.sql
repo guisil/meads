@@ -1,4 +1,4 @@
-CREATE TABLE events (
+CREATE TABLE mead_events (
     id                 UUID         PRIMARY KEY,
     name               VARCHAR(255) NOT NULL,
     start_date         DATE         NOT NULL,
@@ -6,6 +6,6 @@ CREATE TABLE events (
     location           VARCHAR(500),
     logo               BYTEA,
     logo_content_type  VARCHAR(100),
-    created_at         TIMESTAMP    NOT NULL,
-    updated_at         TIMESTAMP
+    created_at         TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at         TIMESTAMP WITH TIME ZONE
 );

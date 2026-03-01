@@ -2,7 +2,7 @@ package app.meads.competition;
 
 import app.meads.TestcontainersConfiguration;
 import app.meads.competition.internal.EventListView;
-import app.meads.competition.internal.EventRepository;
+import app.meads.competition.internal.MeadEventRepository;
 import app.meads.identity.Role;
 import app.meads.identity.User;
 import app.meads.identity.UserStatus;
@@ -37,7 +37,6 @@ import org.springframework.test.annotation.DirtiesContext;
 
 import java.time.LocalDate;
 import java.util.Arrays;
-import java.util.UUID;
 
 import static com.github.mvysny.kaributesting.v10.LocatorJ.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -54,7 +53,7 @@ class EventListViewTest {
     ApplicationContext ctx;
 
     @Autowired
-    EventRepository eventRepository;
+    MeadEventRepository meadEventRepository;
 
     @Autowired
     UserRepository userRepository;
@@ -185,7 +184,7 @@ class EventListViewTest {
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldDisplayEventsInGrid() {
-        eventRepository.save(new Event(UUID.randomUUID(), "Test Event",
+        meadEventRepository.save(new MeadEvent("Test Event",
                 LocalDate.of(2026, 6, 15), LocalDate.of(2026, 6, 17), "Porto"));
 
         UI.getCurrent().navigate("events");

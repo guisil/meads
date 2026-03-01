@@ -2,7 +2,7 @@ package app.meads.competition;
 
 import app.meads.TestcontainersConfiguration;
 import app.meads.competition.internal.CompetitionRepository;
-import app.meads.competition.internal.EventRepository;
+import app.meads.competition.internal.MeadEventRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -10,7 +10,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -23,18 +22,18 @@ class CompetitionRepositoryTest {
     CompetitionRepository competitionRepository;
 
     @Autowired
-    EventRepository eventRepository;
+    MeadEventRepository meadEventRepository;
 
-    private Event createAndSaveEvent() {
-        var event = new Event(UUID.randomUUID(), "Test Event",
+    private MeadEvent createAndSaveEvent() {
+        var event = new MeadEvent("Test Event",
                 LocalDate.of(2026, 6, 15), LocalDate.of(2026, 6, 17), "Porto");
-        return eventRepository.save(event);
+        return meadEventRepository.save(event);
     }
 
     @Test
     void shouldSaveAndRetrieveCompetition() {
         var event = createAndSaveEvent();
-        var competition = new Competition(UUID.randomUUID(), event.getId(),
+        var competition = new Competition(event.getId(),
                 "Home Competition", ScoringSystem.MJP);
 
         competitionRepository.save(competition);
@@ -51,14 +50,14 @@ class CompetitionRepositoryTest {
     @Test
     void shouldFindCompetitionsByEventId() {
         var event = createAndSaveEvent();
-        competitionRepository.save(new Competition(UUID.randomUUID(), event.getId(),
+        competitionRepository.save(new Competition(event.getId(),
                 "Home", ScoringSystem.MJP));
-        competitionRepository.save(new Competition(UUID.randomUUID(), event.getId(),
+        competitionRepository.save(new Competition(event.getId(),
                 "Professional", ScoringSystem.MJP));
 
-        var otherEvent = eventRepository.save(new Event(UUID.randomUUID(), "Other",
+        var otherEvent = meadEventRepository.save(new MeadEvent("Other",
                 LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 2), null));
-        competitionRepository.save(new Competition(UUID.randomUUID(), otherEvent.getId(),
+        competitionRepository.save(new Competition(otherEvent.getId(),
                 "Unrelated", ScoringSystem.MJP));
 
         var results = competitionRepository.findByEventId(event.getId());

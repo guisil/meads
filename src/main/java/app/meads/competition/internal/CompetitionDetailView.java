@@ -23,6 +23,7 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.spring.security.AuthenticationContext;
 import jakarta.annotation.security.RolesAllowed;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.util.StringUtils;
 
 import java.util.UUID;
 
@@ -36,7 +37,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
     private UUID competitionId;
     private Competition competition;
-    private Event event;
+    private MeadEvent event;
     private Grid<CompetitionParticipant> participantsGrid;
     private Grid<Category> categoriesGrid;
 
@@ -181,21 +182,22 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         scoringSelect.setEnabled(isDraft);
 
         var statusField = new TextField("Status");
-        statusField.setValue(formatStatus(competition.getStatus()));
+        statusField.setValue(competition.getStatus().getDisplayName());
         statusField.setReadOnly(true);
 
         var saveButton = new Button("Save", e -> {
-            if (nameField.getValue().isBlank()) {
+            if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
                 nameField.setErrorMessage("Name is required");
                 return;
             }
             try {
-                competition.updateDetails(nameField.getValue(), scoringSelect.getValue());
-                // Save through a service method — for now reuse findById pattern
-                // The entity is managed, so saving through any repo method works
-                Notification.show("Settings saved — reload to see changes");
-            } catch (IllegalStateException ex) {
+                competition = competitionService.updateCompetition(
+                        competitionId, nameField.getValue(),
+                        scoringSelect.getValue(), getCurrentUserId());
+                var notification = Notification.show("Settings saved successfully");
+                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (IllegalStateException | IllegalArgumentException ex) {
                 Notification.show(ex.getMessage());
             }
         });
@@ -294,19 +296,13 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
     }
 
     private void advanceStatus() {
-        var nextStatus = switch (competition.getStatus()) {
-            case DRAFT -> CompetitionStatus.REGISTRATION_OPEN;
-            case REGISTRATION_OPEN -> CompetitionStatus.REGISTRATION_CLOSED;
-            case REGISTRATION_CLOSED -> CompetitionStatus.JUDGING;
-            case JUDGING -> CompetitionStatus.DELIBERATION;
-            case DELIBERATION -> CompetitionStatus.RESULTS_PUBLISHED;
-            case RESULTS_PUBLISHED -> competition.getStatus();
-        };
+        var nextStatusName = competition.getStatus().next()
+                .map(CompetitionStatus::getDisplayName).orElse("—");
 
         var dialog = new Dialog();
         dialog.setHeaderTitle("Advance Status");
-        dialog.add("Advance from " + formatStatus(competition.getStatus())
-                + " to " + formatStatus(nextStatus) + "?");
+        dialog.add("Advance from " + competition.getStatus().getDisplayName()
+                + " to " + nextStatusName + "?");
 
         var confirmButton = new Button("Advance", e -> {
             try {
@@ -343,28 +339,10 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
     }
 
     private Span createStatusBadge(CompetitionStatus status) {
-        var badge = new Span(formatStatus(status));
+        var badge = new Span(status.getDisplayName());
         badge.getElement().getThemeList().add("badge pill small");
-        badge.addClassName(switch (status) {
-            case DRAFT -> "badge-draft";
-            case REGISTRATION_OPEN -> "badge-registration-open";
-            case REGISTRATION_CLOSED -> "badge-registration-closed";
-            case JUDGING -> "badge-judging";
-            case DELIBERATION -> "badge-deliberation";
-            case RESULTS_PUBLISHED -> "badge-results-published";
-        });
+        badge.addClassName(status.getBadgeCssClass());
         return badge;
-    }
-
-    private String formatStatus(CompetitionStatus status) {
-        return switch (status) {
-            case DRAFT -> "Draft";
-            case REGISTRATION_OPEN -> "Registration Open";
-            case REGISTRATION_CLOSED -> "Registration Closed";
-            case JUDGING -> "Judging";
-            case DELIBERATION -> "Deliberation";
-            case RESULTS_PUBLISHED -> "Results Published";
-        };
     }
 
     private UUID getCurrentUserId() {

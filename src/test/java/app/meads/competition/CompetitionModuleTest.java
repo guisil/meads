@@ -13,14 +13,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 class CompetitionModuleTest {
 
     @Autowired
-    EventService eventService;
-
-    @Autowired
     CompetitionService competitionService;
 
     @Test
     void shouldBootstrapCompetitionModule() {
-        assertThat(eventService).isNotNull();
         assertThat(competitionService).isNotNull();
     }
 }

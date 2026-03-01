@@ -1,11 +1,13 @@
 package app.meads.competition;
 
 import jakarta.persistence.*;
+import lombok.Getter;
 
 import java.util.UUID;
 
 @Entity
 @Table(name = "categories")
+@Getter
 public class Category {
 
     @Id
@@ -25,24 +27,4 @@ public class Category {
     private ScoringSystem scoringSystem;
 
     protected Category() {} // JPA
-
-    public UUID getId() {
-        return id;
-    }
-
-    public String getCode() {
-        return code;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public ScoringSystem getScoringSystem() {
-        return scoringSystem;
-    }
 }

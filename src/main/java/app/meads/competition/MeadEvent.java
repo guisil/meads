@@ -1,15 +1,17 @@
 package app.meads.competition;
 
 import jakarta.persistence.*;
+import lombok.Getter;
 
+import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.UUID;
 
 @Entity
-@Table(name = "events")
-public class Event {
+@Table(name = "mead_events")
+@Getter
+public class MeadEvent {
 
     private static final int MAX_LOGO_SIZE = 512 * 1024;
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of("image/png", "image/jpeg");
@@ -36,15 +38,15 @@ public class Event {
     private String logoContentType;
 
     @Column(nullable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
-    protected Event() {} // JPA
+    protected MeadEvent() {} // JPA
 
-    public Event(UUID id, String name, LocalDate startDate, LocalDate endDate, String location) {
+    public MeadEvent(String name, LocalDate startDate, LocalDate endDate, String location) {
         validateDateOrdering(startDate, endDate);
-        this.id = id;
+        this.id = UUID.randomUUID();
         this.name = name;
         this.startDate = startDate;
         this.endDate = endDate;
@@ -53,12 +55,12 @@ public class Event {
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
+        createdAt = Instant.now();
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        updatedAt = Instant.now();
     }
 
     public void updateDetails(String name, LocalDate startDate, LocalDate endDate, String location) {
@@ -73,34 +75,6 @@ public class Event {
         if (endDate.isBefore(startDate)) {
             throw new IllegalArgumentException("End date must not be before start date");
         }
-    }
-
-    public UUID getId() {
-        return id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public LocalDate getStartDate() {
-        return startDate;
-    }
-
-    public LocalDate getEndDate() {
-        return endDate;
-    }
-
-    public String getLocation() {
-        return location;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
     }
 
     public void updateLogo(byte[] logo, String contentType) {
@@ -121,13 +95,5 @@ public class Event {
 
     public boolean hasLogo() {
         return logo != null;
-    }
-
-    public byte[] getLogo() {
-        return logo;
-    }
-
-    public String getLogoContentType() {
-        return logoContentType;
     }
 }
