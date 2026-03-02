@@ -14,6 +14,8 @@ import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.component.upload.Upload;
+import com.vaadin.flow.server.streams.UploadHandler;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.spring.security.AuthenticationContext;
 import jakarta.annotation.security.RolesAllowed;
@@ -55,7 +57,7 @@ public class MeadEventListView extends VerticalLayout {
         grid.addColumn(MeadEvent::getName).setHeader("Name").setSortable(true);
         grid.addColumn(MeadEvent::getStartDate).setHeader("Start Date").setSortable(true);
         grid.addColumn(MeadEvent::getEndDate).setHeader("End Date").setSortable(true);
-        grid.addColumn(event -> event.getLocation() != null ? event.getLocation() : "—")
+        grid.addColumn(meadEvent -> meadEvent.getLocation() != null ? meadEvent.getLocation() : "—")
                 .setHeader("Location");
         grid.addComponentColumn(meadEvent -> {
             var editButton = new Button("Edit", e -> openMeadEventDialog(meadEvent));
@@ -87,11 +89,42 @@ public class MeadEventListView extends VerticalLayout {
 
         var locationField = new TextField("Location");
 
+        var logoData = new byte[1][];
+        var logoContentType = new String[1];
+
+        var uploadHandler = UploadHandler.inMemory((metadata, data) -> {
+            logoData[0] = data;
+            logoContentType[0] = metadata.contentType();
+        });
+        var upload = new Upload(uploadHandler);
+        upload.setMaxFiles(1);
+        upload.setMaxFileSize(512 * 1024);
+        upload.setAcceptedFileTypes("image/png", "image/jpeg");
+
+        var logoSection = new HorizontalLayout();
+        logoSection.setDefaultVerticalComponentAlignment(Alignment.CENTER);
+        logoSection.add(upload);
+
         if (isEdit) {
             nameField.setValue(existing.getName());
             startDatePicker.setValue(existing.getStartDate());
             endDatePicker.setValue(existing.getEndDate());
             locationField.setValue(existing.getLocation() != null ? existing.getLocation() : "");
+
+            if (existing.hasLogo()) {
+                var removeLogoButton = new Button("Remove Logo", e -> {
+                    try {
+                        competitionService.updateMeadEventLogo(
+                                existing.getId(), null, null, getCurrentUserId());
+                        logoSection.remove(e.getSource());
+                        var notification = Notification.show("Logo removed");
+                        notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                    } catch (IllegalArgumentException ex) {
+                        Notification.show(ex.getMessage());
+                    }
+                });
+                logoSection.add(removeLogoButton);
+            }
         }
 
         var submitButton = new Button(isEdit ? "Save" : "Create", e -> {
@@ -114,14 +147,20 @@ public class MeadEventListView extends VerticalLayout {
             try {
                 var location = StringUtils.hasText(locationField.getValue())
                         ? locationField.getValue() : null;
+                MeadEvent saved;
                 if (isEdit) {
-                    competitionService.updateMeadEvent(existing.getId(),
+                    saved = competitionService.updateMeadEvent(existing.getId(),
                             nameField.getValue(), startDatePicker.getValue(),
                             endDatePicker.getValue(), location, getCurrentUserId());
                 } else {
-                    competitionService.createMeadEvent(nameField.getValue(),
+                    saved = competitionService.createMeadEvent(nameField.getValue(),
                             startDatePicker.getValue(), endDatePicker.getValue(),
                             location, getCurrentUserId());
+                }
+                if (logoData[0] != null) {
+                    competitionService.updateMeadEventLogo(
+                            saved.getId(), logoData[0], logoContentType[0],
+                            getCurrentUserId());
                 }
                 refreshGrid();
                 var notification = Notification.show(
@@ -135,7 +174,7 @@ public class MeadEventListView extends VerticalLayout {
 
         var cancelButton = new Button("Cancel", e -> dialog.close());
 
-        var form = new VerticalLayout(nameField, startDatePicker, endDatePicker, locationField);
+        var form = new VerticalLayout(nameField, startDatePicker, endDatePicker, locationField, logoSection);
         form.setPadding(false);
         dialog.add(form);
         dialog.getFooter().add(cancelButton, submitButton);

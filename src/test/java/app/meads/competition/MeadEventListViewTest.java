@@ -19,6 +19,7 @@ import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.component.upload.Upload;
 import com.vaadin.flow.server.VaadinServletRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -179,6 +180,22 @@ class MeadEventListViewTest {
         assertThat(_find(Dialog.class)).isEmpty();
         assertThat(_get(Notification.class).getElement().getProperty("text"))
                 .contains("created");
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldShowLogoUploadInMeadEventDialog() {
+        UI.getCurrent().navigate("events");
+
+        var createButton = _get(Button.class, spec -> spec.withText("Create Event"));
+        _click(createButton);
+
+        var dialog = _get(Dialog.class);
+        assertThat(dialog.isOpened()).isTrue();
+
+        var uploads = _find(Upload.class);
+        assertThat(uploads).hasSize(1);
+        assertThat(uploads.getFirst().getMaxFileSize()).isEqualTo(512 * 1024);
     }
 
     @Test
