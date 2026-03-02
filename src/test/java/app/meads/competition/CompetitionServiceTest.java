@@ -715,6 +715,8 @@ class CompetitionServiceTest {
     void shouldReturnTrueWhenAuthorizedForCompetition() {
         var admin = createAdmin();
         var competition = new Competition(UUID.randomUUID(), "Home", ScoringSystem.MJP);
+        given(competitionRepository.findById(competition.getId()))
+                .willReturn(Optional.of(competition));
         given(userService.findById(admin.getId())).willReturn(admin);
 
         var result = competitionService.isAuthorizedForCompetition(

@@ -130,7 +130,7 @@ public class CompetitionService {
                                       @NotNull UUID requestingUserId) {
         var competition = competitionRepository.findById(competitionId)
                 .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
-        requireAuthorized(competition.getId(), requestingUserId);
+        requireAuthorized(competition, requestingUserId);
         var previousStatus = competition.getStatus();
         competition.advanceStatus();
         var saved = competitionRepository.save(competition);
@@ -145,7 +145,7 @@ public class CompetitionService {
                                           @NotNull UUID requestingUserId) {
         var competition = competitionRepository.findById(competitionId)
                 .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
-        requireAuthorized(competition.getId(), requestingUserId);
+        requireAuthorized(competition, requestingUserId);
         competition.updateDetails(name, scoringSystem);
         return competitionRepository.save(competition);
     }
@@ -154,7 +154,7 @@ public class CompetitionService {
                                     @NotNull UUID requestingUserId) {
         var competition = competitionRepository.findById(competitionId)
                 .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
-        requireAuthorized(competition.getId(), requestingUserId);
+        requireAuthorized(competition, requestingUserId);
         participantRepository.deleteAll(
                 participantRepository.findByCompetitionId(competitionId));
         competitionCategoryRepository.deleteAll(
@@ -175,7 +175,7 @@ public class CompetitionService {
                                                      @NotNull UUID requestingUserId) {
         var competition = competitionRepository.findById(competitionId)
                 .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
-        requireAuthorized(competition.getId(), requestingUserId);
+        requireAuthorized(competition, requestingUserId);
         if (!competition.getStatus().allowsCategoryModification()) {
             throw new IllegalArgumentException("Categories cannot be modified in status: "
                     + competition.getStatus().getDisplayName());
@@ -200,7 +200,7 @@ public class CompetitionService {
                                                     @NotNull UUID requestingUserId) {
         var competition = competitionRepository.findById(competitionId)
                 .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
-        requireAuthorized(competition.getId(), requestingUserId);
+        requireAuthorized(competition, requestingUserId);
         if (!competition.getStatus().allowsCategoryModification()) {
             throw new IllegalArgumentException("Categories cannot be modified in status: "
                     + competition.getStatus().getDisplayName());
@@ -224,7 +224,7 @@ public class CompetitionService {
                                                            @NotNull UUID requestingUserId) {
         var competition = competitionRepository.findById(competitionId)
                 .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
-        requireAuthorized(competition.getId(), requestingUserId);
+        requireAuthorized(competition, requestingUserId);
         if (!competition.getStatus().allowsCategoryModification()) {
             throw new IllegalArgumentException("Categories cannot be modified in status: "
                     + competition.getStatus().getDisplayName());
@@ -240,7 +240,7 @@ public class CompetitionService {
                                             @NotNull UUID requestingUserId) {
         var competition = competitionRepository.findById(competitionId)
                 .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
-        requireAuthorized(competition.getId(), requestingUserId);
+        requireAuthorized(competition, requestingUserId);
         if (!competition.getStatus().allowsCategoryModification()) {
             throw new IllegalArgumentException("Categories cannot be modified in status: "
                     + competition.getStatus().getDisplayName());
@@ -281,7 +281,7 @@ public class CompetitionService {
                                           @NotNull UUID requestingUserId) {
         var competition = competitionRepository.findById(competitionId)
                 .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
-        requireAuthorized(competition.getId(), requestingUserId);
+        requireAuthorized(competition, requestingUserId);
         userService.findById(userId);
 
         var eventParticipant = findOrCreateEventParticipant(
@@ -308,9 +308,9 @@ public class CompetitionService {
     public void removeParticipant(@NotNull UUID competitionId,
                                     @NotNull UUID eventParticipantId,
                                     @NotNull UUID requestingUserId) {
-        competitionRepository.findById(competitionId)
+        var competition = competitionRepository.findById(competitionId)
                 .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
-        requireAuthorized(competitionId, requestingUserId);
+        requireAuthorized(competition, requestingUserId);
         var participants = participantRepository.findByCompetitionIdAndEventParticipantId(
                 competitionId, eventParticipantId);
         if (participants.isEmpty()) {
@@ -367,12 +367,11 @@ public class CompetitionService {
 
     public boolean isAuthorizedForCompetition(@NotNull UUID competitionId,
                                                 @NotNull UUID userId) {
-        try {
-            requireAuthorized(competitionId, userId);
-            return true;
-        } catch (IllegalArgumentException e) {
+        var competition = competitionRepository.findById(competitionId).orElse(null);
+        if (competition == null) {
             return false;
         }
+        return isAuthorized(competition, userId);
     }
 
     private String generateAccessCode() {
@@ -403,24 +402,27 @@ public class CompetitionService {
                 });
     }
 
-    private void requireAuthorized(UUID competitionId, UUID userId) {
+    private void requireAuthorized(Competition competition, UUID userId) {
+        if (!isAuthorized(competition, userId)) {
+            throw new IllegalArgumentException("User is not authorized to perform this action");
+        }
+    }
+
+    private boolean isAuthorized(Competition competition, UUID userId) {
         var user = userService.findById(userId);
         if (user.getRole() == Role.SYSTEM_ADMIN) {
-            return;
+            return true;
         }
-        // Check if user is a COMPETITION_ADMIN for this competition
-        var competition = competitionRepository.findById(competitionId)
-                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
         var ep = eventParticipantRepository
                 .findByEventIdAndUserId(competition.getEventId(), userId);
         if (ep.isPresent()) {
             var roles = participantRepository.findByCompetitionIdAndEventParticipantId(
-                    competitionId, ep.get().getId());
+                    competition.getId(), ep.get().getId());
             if (roles.stream().anyMatch(
                     cp -> cp.getRole() == CompetitionRole.COMPETITION_ADMIN)) {
-                return;
+                return true;
             }
         }
-        throw new IllegalArgumentException("User is not authorized to perform this action");
+        return false;
     }
 }
