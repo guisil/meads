@@ -394,8 +394,31 @@ class CompetitionDetailViewTest {
 
         @SuppressWarnings("unchecked")
         var grid = (Grid<CompetitionParticipant>) _find(Grid.class).getFirst();
-        // Should have 4 columns: Name, Email, Role, and Remove (component column)
-        assertThat(grid.getColumns()).hasSize(4);
+        // Should have 5 columns: Name, Email, Role, Access Code, and Remove (component column)
+        assertThat(grid.getColumns()).hasSize(5);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldDisplayAccessCodeColumnInParticipantsGrid() {
+        var judge = userRepository.save(new User("judge-code@test.com",
+                "Judge Code", UserStatus.ACTIVE, Role.USER));
+        var ep = eventParticipantRepository.save(
+                new EventParticipant(testEvent.getId(), judge.getId()));
+        ep.assignAccessCode("ABCD1234");
+        eventParticipantRepository.save(ep);
+        competitionParticipantRepository.save(
+                new CompetitionParticipant(testCompetition.getId(), ep.getId(),
+                        CompetitionRole.JUDGE));
+
+        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+
+        @SuppressWarnings("unchecked")
+        var grid = (Grid<CompetitionParticipant>) _find(Grid.class).getFirst();
+        var headerNames = grid.getColumns().stream()
+                .map(c -> c.getHeaderText())
+                .toList();
+        assertThat(headerNames).contains("Access Code");
     }
 
     @Test

@@ -154,6 +154,10 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
             return user != null ? user.getEmail() : "—";
         }).setHeader("Email");
         participantsGrid.addColumn(p -> p.getRole().name()).setHeader("Role");
+        participantsGrid.addColumn(p -> {
+            var ep = eventParticipantMap.get(p.getEventParticipantId());
+            return ep != null && ep.getAccessCode() != null ? ep.getAccessCode() : "—";
+        }).setHeader("Access Code");
         participantsGrid.addComponentColumn(p -> {
             var removeButton = new Button("Remove", e -> {
                 try {
