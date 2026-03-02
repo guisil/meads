@@ -290,16 +290,18 @@ public class CompetitionService {
         return addParticipant(competitionId, user.getId(), role, requestingUserId);
     }
 
-    public void withdrawParticipant(@NotNull UUID competitionId,
-                                     @NotNull UUID eventParticipantId,
-                                     @NotNull UUID requestingUserId) {
+    public void removeParticipant(@NotNull UUID competitionId,
+                                    @NotNull UUID eventParticipantId,
+                                    @NotNull UUID requestingUserId) {
         competitionRepository.findById(competitionId)
                 .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
         requireAuthorized(competitionId, requestingUserId);
-        var eventParticipant = eventParticipantRepository.findById(eventParticipantId)
-                .orElseThrow(() -> new IllegalArgumentException("Event participant not found"));
-        eventParticipant.withdraw();
-        eventParticipantRepository.save(eventParticipant);
+        var participants = participantRepository.findByCompetitionIdAndEventParticipantId(
+                competitionId, eventParticipantId);
+        if (participants.isEmpty()) {
+            throw new IllegalArgumentException("Participant not found in this competition");
+        }
+        participantRepository.deleteAll(participants);
     }
 
     public List<CompetitionParticipant> addParticipantToAllCompetitions(

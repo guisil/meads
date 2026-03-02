@@ -377,27 +377,26 @@ class CompetitionServiceTest {
         then(participantRepository).should(never()).save(any());
     }
 
-    // --- withdrawParticipant ---
+    // --- removeParticipant ---
 
     @Test
-    void shouldWithdrawEventParticipant() {
+    void shouldRemoveParticipantFromCompetition() {
         var admin = createAdmin();
         var eventId = UUID.randomUUID();
         var competition = new Competition(eventId, "Home", ScoringSystem.MJP);
         var ep = new EventParticipant(eventId, UUID.randomUUID());
+        var cp = new CompetitionParticipant(competition.getId(), ep.getId(), CompetitionRole.JUDGE);
         given(competitionRepository.findById(competition.getId()))
                 .willReturn(Optional.of(competition));
         given(userService.findById(admin.getId())).willReturn(admin);
-        given(eventParticipantRepository.findById(ep.getId()))
-                .willReturn(Optional.of(ep));
-        given(eventParticipantRepository.save(any(EventParticipant.class)))
-                .willAnswer(inv -> inv.getArgument(0));
+        given(participantRepository.findByCompetitionIdAndEventParticipantId(
+                competition.getId(), ep.getId()))
+                .willReturn(List.of(cp));
 
-        competitionService.withdrawParticipant(
+        competitionService.removeParticipant(
                 competition.getId(), ep.getId(), admin.getId());
 
-        assertThat(ep.getStatus()).isEqualTo(CompetitionParticipantStatus.WITHDRAWN);
-        then(eventParticipantRepository).should().save(ep);
+        then(participantRepository).should().deleteAll(List.of(cp));
     }
 
     // --- addParticipantToAllCompetitions ---

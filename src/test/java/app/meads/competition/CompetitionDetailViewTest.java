@@ -381,6 +381,25 @@ class CompetitionDetailViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldShowRemoveColumnInParticipantsGrid() {
+        var judge = userRepository.save(new User("judge-col@test.com",
+                "Judge Col", UserStatus.ACTIVE, Role.USER));
+        var ep = eventParticipantRepository.save(
+                new EventParticipant(testEvent.getId(), judge.getId()));
+        competitionParticipantRepository.save(
+                new CompetitionParticipant(testCompetition.getId(), ep.getId(),
+                        CompetitionRole.JUDGE));
+
+        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+
+        @SuppressWarnings("unchecked")
+        var grid = (Grid<CompetitionParticipant>) _find(Grid.class).getFirst();
+        // Should have 4 columns: Name, Email, Role, and Remove (component column)
+        assertThat(grid.getColumns()).hasSize(4);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldDisplayParticipantWithNameAndEmail() {
         var judge = userRepository.save(new User("judge@test.com",
                 "Judge Person", UserStatus.ACTIVE, Role.USER));

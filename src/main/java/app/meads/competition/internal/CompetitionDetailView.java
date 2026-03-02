@@ -154,6 +154,20 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
             return user != null ? user.getEmail() : "—";
         }).setHeader("Email");
         participantsGrid.addColumn(p -> p.getRole().name()).setHeader("Role");
+        participantsGrid.addComponentColumn(p -> {
+            var removeButton = new Button("Remove", e -> {
+                try {
+                    competitionService.removeParticipant(
+                            competitionId, p.getEventParticipantId(), getCurrentUserId());
+                    refreshParticipantsGrid();
+                    var notification = Notification.show("Participant removed");
+                    notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                } catch (IllegalArgumentException ex) {
+                    Notification.show(ex.getMessage());
+                }
+            });
+            return removeButton;
+        }).setHeader("");
 
         refreshParticipantsGrid();
         tab.add(participantsGrid);
