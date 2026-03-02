@@ -944,6 +944,35 @@ class CompetitionServiceTest {
         then(competitionCategoryRepository).should().save(any(CompetitionCategory.class));
     }
 
+    // --- updateCompetitionCategory ---
+
+    @Test
+    void shouldUpdateCompetitionCategory() {
+        var admin = createAdmin();
+        var competition = new Competition(UUID.randomUUID(),
+                "Home", ScoringSystem.MJP);
+        var catalogCategoryId = UUID.randomUUID();
+        var cc = new CompetitionCategory(competition.getId(), catalogCategoryId,
+                "M1A", "Traditional Mead", "A traditional mead", null, 0);
+        given(competitionRepository.findById(competition.getId()))
+                .willReturn(Optional.of(competition));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(competitionCategoryRepository.findById(cc.getId()))
+                .willReturn(Optional.of(cc));
+        given(competitionCategoryRepository.save(any(CompetitionCategory.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var result = competitionService.updateCompetitionCategory(
+                competition.getId(), cc.getId(),
+                "M1A-C", "Custom Trad Mead", "A custom description",
+                admin.getId());
+
+        assertThat(result.getCode()).isEqualTo("M1A-C");
+        assertThat(result.getName()).isEqualTo("Custom Trad Mead");
+        assertThat(result.getDescription()).isEqualTo("A custom description");
+        assertThat(result.getCatalogCategoryId()).isNull();
+    }
+
     // --- removeCompetitionCategory ---
 
     @Test

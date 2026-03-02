@@ -55,6 +55,13 @@ public class CompetitionCategory {
         this.sortOrder = sortOrder;
     }
 
+    public void updateDetails(String code, String name, String description) {
+        this.code = code;
+        this.name = name;
+        this.description = description;
+        this.catalogCategoryId = null;
+    }
+
     @PrePersist
     protected void onCreate() {
         createdAt = Instant.now();

@@ -216,6 +216,25 @@ public class CompetitionService {
         return competitionCategoryRepository.save(cc);
     }
 
+    public CompetitionCategory updateCompetitionCategory(@NotNull UUID competitionId,
+                                                           @NotNull UUID categoryId,
+                                                           @NotBlank String code,
+                                                           @NotBlank String name,
+                                                           @NotBlank String description,
+                                                           @NotNull UUID requestingUserId) {
+        var competition = competitionRepository.findById(competitionId)
+                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
+        requireAuthorized(competition.getId(), requestingUserId);
+        if (!competition.getStatus().allowsCategoryModification()) {
+            throw new IllegalArgumentException("Categories cannot be modified in status: "
+                    + competition.getStatus().getDisplayName());
+        }
+        var category = competitionCategoryRepository.findById(categoryId)
+                .orElseThrow(() -> new IllegalArgumentException("Competition category not found"));
+        category.updateDetails(code, name, description);
+        return competitionCategoryRepository.save(category);
+    }
+
     public void removeCompetitionCategory(@NotNull UUID competitionId,
                                             @NotNull UUID categoryId,
                                             @NotNull UUID requestingUserId) {

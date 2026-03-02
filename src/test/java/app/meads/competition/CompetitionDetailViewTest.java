@@ -20,6 +20,7 @@ import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.treegrid.TreeGrid;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Nav;
 import com.vaadin.flow.component.html.Span;
@@ -264,16 +265,38 @@ class CompetitionDetailViewTest {
         tabSheet.setSelectedIndex(1);
 
         @SuppressWarnings("unchecked")
-        var grid = (Grid<CompetitionCategory>) _get(Grid.class,
+        var grid = (TreeGrid<CompetitionCategory>) _get(TreeGrid.class,
                 spec -> spec.withId("categories-grid"));
         var headerNames = grid.getColumns().stream()
                 .map(c -> c.getHeaderText())
                 .toList();
         assertThat(headerNames).contains("Code", "Name", "Description");
 
-        var items = grid.getGenericDataView().getItems().toList();
-        assertThat(items).hasSize(2);
-        assertThat(items.get(0).getCode()).isEqualTo("M1A");
+        var dataProvider = grid.getDataProvider();
+        var rootItems = dataProvider.fetchChildren(
+                new com.vaadin.flow.data.provider.hierarchy.HierarchicalQuery<>(
+                        null, null)).toList();
+        assertThat(rootItems).hasSize(2);
+        assertThat(rootItems.get(0).getCode()).isEqualTo("M1A");
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldDisplayCategoriesInTreeGrid() {
+        var parent = competitionCategoryRepository.save(new CompetitionCategory(
+                testCompetition.getId(), null,
+                "M1", "Traditional Mead", "Traditional mead category", null, 0));
+        competitionCategoryRepository.save(new CompetitionCategory(
+                testCompetition.getId(), null,
+                "M1A", "Traditional Mead (Dry)", "Dry traditional mead", parent.getId(), 0));
+
+        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(1);
+
+        var treeGrid = _get(TreeGrid.class, spec -> spec.withId("categories-grid"));
+        assertThat(treeGrid).isNotNull();
     }
 
     @Test
@@ -289,7 +312,7 @@ class CompetitionDetailViewTest {
         tabSheet.setSelectedIndex(1);
 
         @SuppressWarnings("unchecked")
-        var grid = (Grid<CompetitionCategory>) _get(Grid.class,
+        var grid = (TreeGrid<CompetitionCategory>) _get(TreeGrid.class,
                 spec -> spec.withId("categories-grid"));
         // Grid should have 4 columns: Code, Name, Description, and the component column (Remove)
         assertThat(grid.getColumns()).hasSize(4);

@@ -7,6 +7,7 @@ import app.meads.identity.UserService;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.treegrid.TreeGrid;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Nav;
 import com.vaadin.flow.component.html.Span;
@@ -44,7 +45,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
     private Competition competition;
     private MeadEvent meadEvent;
     private Grid<CompetitionParticipant> participantsGrid;
-    private Grid<CompetitionCategory> categoriesGrid;
+    private TreeGrid<CompetitionCategory> categoriesGrid;
     private Map<UUID, EventParticipant> eventParticipantMap;
     private Map<UUID, User> userMap;
 
@@ -191,9 +192,9 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         actions.add(addCategoryButton);
         tab.add(actions);
 
-        categoriesGrid = new Grid<>(CompetitionCategory.class, false);
+        categoriesGrid = new TreeGrid<>(CompetitionCategory.class, false);
         categoriesGrid.setId("categories-grid");
-        categoriesGrid.addColumn(CompetitionCategory::getCode).setHeader("Code").setSortable(true);
+        categoriesGrid.addHierarchyColumn(CompetitionCategory::getCode).setHeader("Code").setSortable(true);
         categoriesGrid.addColumn(CompetitionCategory::getName).setHeader("Name");
         categoriesGrid.addColumn(CompetitionCategory::getDescription).setHeader("Description");
 
@@ -219,8 +220,14 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
     }
 
     private void refreshCategoriesGrid() {
-        categoriesGrid.setItems(
-                competitionService.findCompetitionCategories(competitionId));
+        var allCategories = competitionService.findCompetitionCategories(competitionId);
+        var rootCategories = allCategories.stream()
+                .filter(cc -> cc.getParentId() == null)
+                .toList();
+        categoriesGrid.setItems(rootCategories,
+                parent -> allCategories.stream()
+                        .filter(cc -> parent.getId().equals(cc.getParentId()))
+                        .toList());
     }
 
     private void openAddCategoryDialog() {
