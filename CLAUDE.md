@@ -164,7 +164,7 @@ Read `.claude/skills/new-module.md` before creating a module.
 |--------|--------|-------------|
 | `identity` | **Exists** | User management, authentication (JWT magic links, admin passwords, access codes), roles, admin CRUD |
 | `competition` | **Exists** | Events, competitions, scoring systems (MJP), categories, participants, access codes, status workflow, competition admin authorization |
-| `entry` | Planned | Entry credits (external webhook), mead registration, credit consumption |
+| `entry` | **Designed** | Jumpseller webhook, entry credits (ledger), mead entry registration, admin management. Design: `docs/plans/2026-03-02-entry-module-design.md` |
 | `judging` | Planned | Judging sessions, tables, judge assignments, scoresheets (polymorphic via ScoreField child table) |
 | `awards` | Planned | Score aggregation, rankings, medal determination, results publication |
 
@@ -323,7 +323,7 @@ void tearDown() {
 ## Database & Migrations
 
 - **Location:** `src/main/resources/db/migration/V{N}__{description}.sql`
-- **Current highest version:** V8 (`V8__create_competition_categories_table.sql`). V5–V8 are pre-deployment; V9 was merged back into V5.
+- **Current highest version:** V8 (`V8__create_competition_categories_table.sql`). V5–V8 are pre-deployment; V9 was merged back into V5. Entry module will use V9–V14.
 - **Naming:** `V{next}__{snake_case_description}.sql` (double underscore)
 - Migrations are created in **Step 2** (GREEN), when a repository test needs a table.
 - **Never edit existing migrations.** Always create new ones.
