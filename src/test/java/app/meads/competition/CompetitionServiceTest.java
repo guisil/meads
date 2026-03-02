@@ -645,7 +645,7 @@ class CompetitionServiceTest {
 
         var category = new CompetitionCategory(
                 competition.getId(), UUID.randomUUID(), "T1", "Trad", "Trad mead", null, 0);
-        given(competitionCategoryRepository.findByCompetitionIdOrderBySortOrder(competition.getId()))
+        given(competitionCategoryRepository.findByCompetitionIdOrderByCode(competition.getId()))
                 .willReturn(List.of(category));
 
         competitionService.deleteCompetition(competition.getId(), admin.getId());
@@ -783,20 +783,6 @@ class CompetitionServiceTest {
         assertThat(result.getFirst().getId()).isEqualTo(comp1.getId());
     }
 
-    // --- findCategoriesByScoringSystem ---
-
-    @Test
-    void shouldFindCategoriesByScoringSystem() {
-        var category = new Category();
-        given(categoryRepository.findByScoringSystem(ScoringSystem.MJP))
-                .willReturn(List.of(category));
-
-        var result = competitionService.findCategoriesByScoringSystem(ScoringSystem.MJP);
-
-        assertThat(result).hasSize(1);
-        then(categoryRepository).should().findByScoringSystem(ScoringSystem.MJP);
-    }
-
     // --- updateCompetition ---
 
     @Test
@@ -845,14 +831,14 @@ class CompetitionServiceTest {
                 "M1A", "Traditional Mead", "A traditional mead", null, 0);
         var cc2 = new CompetitionCategory(competitionId, null,
                 "M1B", "Semi-Sweet Mead", "A semi-sweet mead", null, 1);
-        given(competitionCategoryRepository.findByCompetitionIdOrderBySortOrder(competitionId))
+        given(competitionCategoryRepository.findByCompetitionIdOrderByCode(competitionId))
                 .willReturn(List.of(cc1, cc2));
 
         var result = competitionService.findCompetitionCategories(competitionId);
 
         assertThat(result).hasSize(2);
         then(competitionCategoryRepository).should()
-                .findByCompetitionIdOrderBySortOrder(competitionId);
+                .findByCompetitionIdOrderByCode(competitionId);
     }
 
     // --- addCatalogCategory ---

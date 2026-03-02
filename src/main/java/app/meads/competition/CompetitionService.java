@@ -158,7 +158,7 @@ public class CompetitionService {
         participantRepository.deleteAll(
                 participantRepository.findByCompetitionId(competitionId));
         competitionCategoryRepository.deleteAll(
-                competitionCategoryRepository.findByCompetitionIdOrderBySortOrder(competitionId));
+                competitionCategoryRepository.findByCompetitionIdOrderByCode(competitionId));
         competitionRepository.delete(competition);
     }
 
@@ -166,12 +166,8 @@ public class CompetitionService {
         return participantRepository.findByCompetitionId(competitionId);
     }
 
-    public List<Category> findCategoriesByScoringSystem(@NotNull ScoringSystem scoringSystem) {
-        return categoryRepository.findByScoringSystem(scoringSystem);
-    }
-
     public List<CompetitionCategory> findCompetitionCategories(@NotNull UUID competitionId) {
-        return competitionCategoryRepository.findByCompetitionIdOrderBySortOrder(competitionId);
+        return competitionCategoryRepository.findByCompetitionIdOrderByCode(competitionId);
     }
 
     public CompetitionCategory addCatalogCategory(@NotNull UUID competitionId,

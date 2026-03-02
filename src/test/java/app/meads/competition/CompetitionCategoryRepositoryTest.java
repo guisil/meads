@@ -56,7 +56,7 @@ class CompetitionCategoryRepositoryTest {
         competitionCategoryRepository.save(cat2);
 
         var found = competitionCategoryRepository
-                .findByCompetitionIdOrderBySortOrder(competition.getId());
+                .findByCompetitionIdOrderByCode(competition.getId());
 
         assertThat(found).hasSize(2);
         assertThat(found.get(0).getCode()).isEqualTo("M1A");

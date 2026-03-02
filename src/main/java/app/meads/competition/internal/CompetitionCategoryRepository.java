@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface CompetitionCategoryRepository extends JpaRepository<CompetitionCategory, UUID> {
-    List<CompetitionCategory> findByCompetitionIdOrderBySortOrder(UUID competitionId);
+    List<CompetitionCategory> findByCompetitionIdOrderByCode(UUID competitionId);
     boolean existsByCompetitionIdAndCode(UUID competitionId, String code);
     boolean existsByCompetitionIdAndCatalogCategoryId(UUID competitionId, UUID catalogCategoryId);
     List<CompetitionCategory> findByParentId(UUID parentId);

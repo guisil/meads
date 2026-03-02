@@ -338,7 +338,7 @@ class CompetitionDetailViewTest {
 
         // Verify category was added
         var categories = competitionCategoryRepository
-                .findByCompetitionIdOrderBySortOrder(testCompetition.getId());
+                .findByCompetitionIdOrderByCode(testCompetition.getId());
         assertThat(categories).hasSize(1);
         assertThat(categories.getFirst().getCatalogCategoryId())
                 .isEqualTo(availableCategories.getFirst().getId());
@@ -372,7 +372,7 @@ class CompetitionDetailViewTest {
         _click(customAddButton);
 
         var categories = competitionCategoryRepository
-                .findByCompetitionIdOrderBySortOrder(testCompetition.getId());
+                .findByCompetitionIdOrderByCode(testCompetition.getId());
         assertThat(categories).hasSize(1);
         assertThat(categories.getFirst().getCode()).isEqualTo("CUSTOM1");
         assertThat(categories.getFirst().getName()).isEqualTo("Best Local Honey");
