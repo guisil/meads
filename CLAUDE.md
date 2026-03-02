@@ -114,21 +114,24 @@ app.meads.competition                    ← Competition module public API
 ├── package-info.java                    ← @ApplicationModule(allowedDependencies = {"identity"})
 ├── MeadEvent.java                       ← JPA entity (named MeadEvent to avoid Spring event collision)
 ├── Competition.java                     ← JPA entity / aggregate root
-├── CompetitionParticipant.java          ← JPA entity
+├── EventParticipant.java               ← JPA entity (event-scoped, holds access code)
+├── CompetitionParticipant.java          ← JPA entity (references EventParticipant, per-competition role)
 ├── Category.java                        ← JPA entity (read-only reference data)
+├── CompetitionCategory.java             ← JPA entity (per-competition category, optional parent for hierarchy)
 ├── CompetitionStatus.java               ← Enum: DRAFT → REGISTRATION_OPEN → ... → RESULTS_PUBLISHED
-├── CompetitionRole.java                 ← Enum: JUDGE, ENTRANT, COMPETITION_ADMIN
-├── CompetitionParticipantStatus.java    ← Enum: ACTIVE, WITHDRAWN
+├── CompetitionRole.java                 ← Enum: JUDGE, STEWARD, ENTRANT, COMPETITION_ADMIN
 ├── ScoringSystem.java                   ← Enum: MJP
 ├── CompetitionService.java              ← Application service (public API)
 ├── CompetitionStatusAdvancedEvent.java  ← Spring application event
 └── internal/                            ← Module-private
     ├── MeadEventRepository.java         ← JPA repository
     ├── CompetitionRepository.java       ← JPA repository
+    ├── EventParticipantRepository.java  ← JPA repository
     ├── CompetitionParticipantRepository.java ← JPA repository
     ├── CategoryRepository.java          ← JPA repository
+    ├── CompetitionCategoryRepository.java ← JPA repository
     ├── CompetitionAccessCodeValidator.java  ← AccessCodeValidator implementation
-    ├── MeadEventListView.java            ← MeadEvents CRUD view (@RolesAllowed("SYSTEM_ADMIN"))
+    ├── MeadEventListView.java           ← MeadEvents CRUD view (@RolesAllowed("SYSTEM_ADMIN"))
     ├── CompetitionListView.java         ← Competitions list per event (@PermitAll + beforeEnter auth)
     └── CompetitionDetailView.java       ← Competition detail with tabs, breadcrumb (@PermitAll + beforeEnter auth)
 ```
@@ -320,7 +323,7 @@ void tearDown() {
 ## Database & Migrations
 
 - **Location:** `src/main/resources/db/migration/V{N}__{description}.sql`
-- **Current highest version:** V8 (`V8__create_competition_categories_table.sql`)
+- **Current highest version:** V8 (`V8__create_competition_categories_table.sql`). V5–V8 are pre-deployment; V9 was merged back into V5.
 - **Naming:** `V{next}__{snake_case_description}.sql` (double underscore)
 - Migrations are created in **Step 2** (GREEN), when a repository test needs a table.
 - **Never edit existing migrations.** Always create new ones.
