@@ -301,6 +301,15 @@ class CompetitionListViewTest {
         assertThat(view).isNotNull();
     }
 
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldDisplayAddParticipantToAllButton() {
+        UI.getCurrent().navigate("events/" + testEvent.getId() + "/competitions");
+
+        var button = _get(Button.class, spec -> spec.withText("Add Participant to All"));
+        assertThat(button).isNotNull();
+    }
+
     private UUID getCurrentUserId() {
         return userRepository.findByEmail(ADMIN_EMAIL).orElseThrow().getId();
     }

@@ -3,6 +3,7 @@ package app.meads.competition.internal;
 import app.meads.MainLayout;
 import app.meads.competition.Competition;
 import app.meads.competition.CompetitionService;
+import app.meads.competition.CompetitionRole;
 import app.meads.competition.CompetitionStatus;
 import app.meads.competition.MeadEvent;
 import app.meads.competition.ScoringSystem;
@@ -145,6 +146,8 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
         bar.setWidthFull();
         bar.setJustifyContentMode(JustifyContentMode.END);
         if (isSystemAdmin) {
+            bar.add(new Button("Add Participant to All",
+                    e -> openAddParticipantToAllDialog()));
             bar.add(new Button("Create Competition", e -> openCreateDialog()));
         }
         return bar;
@@ -190,6 +193,45 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
         form.setPadding(false);
         dialog.add(form);
         dialog.getFooter().add(cancelButton, createButton);
+        dialog.open();
+    }
+
+    private void openAddParticipantToAllDialog() {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle("Add Participant to All Competitions");
+
+        var emailField = new TextField("Email");
+
+        var roleSelect = new Select<CompetitionRole>();
+        roleSelect.setLabel("Role");
+        roleSelect.setItems(CompetitionRole.values());
+        roleSelect.setValue(CompetitionRole.JUDGE);
+
+        var addButton = new Button("Add", e -> {
+            if (!StringUtils.hasText(emailField.getValue())) {
+                emailField.setInvalid(true);
+                emailField.setErrorMessage("Email is required");
+                return;
+            }
+            try {
+                var user = userService.findOrCreateByEmail(emailField.getValue().trim());
+                var added = competitionService.addParticipantToAllCompetitions(
+                        eventId, user.getId(), roleSelect.getValue(), getCurrentUserId());
+                var notification = Notification.show(
+                        "Participant added to " + added.size() + " competition(s)");
+                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                dialog.close();
+            } catch (IllegalArgumentException ex) {
+                Notification.show(ex.getMessage());
+            }
+        });
+
+        var cancelButton = new Button("Cancel", e -> dialog.close());
+
+        var form = new VerticalLayout(emailField, roleSelect);
+        form.setPadding(false);
+        dialog.add(form);
+        dialog.getFooter().add(cancelButton, addButton);
         dialog.open();
     }
 
