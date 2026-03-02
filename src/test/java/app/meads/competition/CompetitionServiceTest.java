@@ -628,6 +628,34 @@ class CompetitionServiceTest {
         then(meadEventRepository).should(never()).delete(any());
     }
 
+    // --- deleteCompetition ---
+
+    @Test
+    void shouldDeleteCompetitionAndCleanUpRelatedData() {
+        var admin = createAdmin();
+        var competition = new Competition(UUID.randomUUID(),
+                "Home", ScoringSystem.MJP);
+        given(competitionRepository.findById(competition.getId()))
+                .willReturn(Optional.of(competition));
+        given(userService.findById(admin.getId())).willReturn(admin);
+
+        var participant = new CompetitionParticipant(
+                competition.getId(), UUID.randomUUID(), CompetitionRole.JUDGE);
+        given(participantRepository.findByCompetitionId(competition.getId()))
+                .willReturn(List.of(participant));
+
+        var category = new CompetitionCategory(
+                competition.getId(), UUID.randomUUID(), "T1", "Trad", "Trad mead", null, 0);
+        given(competitionCategoryRepository.findByCompetitionIdOrderBySortOrder(competition.getId()))
+                .willReturn(List.of(category));
+
+        competitionService.deleteCompetition(competition.getId(), admin.getId());
+
+        then(participantRepository).should().deleteAll(List.of(participant));
+        then(competitionCategoryRepository).should().deleteAll(List.of(category));
+        then(competitionRepository).should().delete(competition);
+    }
+
     // --- authorization: updateCompetition / advanceStatus ---
 
     @Test

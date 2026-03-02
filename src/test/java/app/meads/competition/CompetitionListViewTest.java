@@ -19,6 +19,7 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.server.VaadinServletRequest;
@@ -39,6 +40,7 @@ import org.springframework.test.annotation.DirtiesContext;
 
 import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.UUID;
 
 import static com.github.mvysny.kaributesting.v10.LocatorJ.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -52,6 +54,9 @@ class CompetitionListViewTest {
 
     @Autowired
     ApplicationContext ctx;
+
+    @Autowired
+    CompetitionService competitionService;
 
     @Autowired
     MeadEventRepository meadEventRepository;
@@ -239,6 +244,49 @@ class CompetitionListViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldDisplayEventLogoInHeaderWhenLogoExists() {
+        testEvent.updateLogo(new byte[]{1, 2, 3}, "image/png");
+        meadEventRepository.save(testEvent);
+
+        UI.getCurrent().navigate("events/" + testEvent.getId() + "/competitions");
+
+        var images = _find(Image.class);
+        assertThat(images).hasSize(1);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldNotDisplayEventLogoInHeaderWhenNoLogo() {
+        UI.getCurrent().navigate("events/" + testEvent.getId() + "/competitions");
+
+        var images = _find(Image.class);
+        assertThat(images).isEmpty();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldRemoveCompetitionFromGridAfterDeletion() {
+        var competition = competitionRepository.save(
+                new Competition(testEvent.getId(), "To Delete", ScoringSystem.MJP));
+
+        UI.getCurrent().navigate("events/" + testEvent.getId() + "/competitions");
+
+        @SuppressWarnings("unchecked")
+        var grid = (Grid<Competition>) _find(Grid.class).getFirst();
+        assertThat(grid.getGenericDataView().getItems().count()).isEqualTo(1);
+
+        competitionService.deleteCompetition(competition.getId(), getCurrentUserId());
+
+        // Re-navigate to refresh
+        UI.getCurrent().navigate("events/" + testEvent.getId() + "/competitions");
+
+        @SuppressWarnings("unchecked")
+        var refreshedGrid = (Grid<Competition>) _find(Grid.class).getFirst();
+        assertThat(refreshedGrid.getGenericDataView().getItems().count()).isZero();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldDisplayCompetitionsInGrid() {
         var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
         var competition = new Competition(testEvent.getId(),
@@ -251,5 +299,9 @@ class CompetitionListViewTest {
         // We need to use the service for proper creation
         var view = _get(CompetitionListView.class);
         assertThat(view).isNotNull();
+    }
+
+    private UUID getCurrentUserId() {
+        return userRepository.findByEmail(ADMIN_EMAIL).orElseThrow().getId();
     }
 }

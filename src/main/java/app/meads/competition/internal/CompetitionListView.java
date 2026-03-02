@@ -11,6 +11,7 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
@@ -63,7 +64,8 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
                             ui.navigate("competitions/" + comp.getId())));
             var advanceButton = new Button("Advance", e -> advanceStatus(comp));
             advanceButton.setEnabled(comp.getStatus() != CompetitionStatus.RESULTS_PUBLISHED);
-            return new HorizontalLayout(viewButton, advanceButton);
+            var deleteButton = new Button("Delete", e -> openDeleteDialog(comp));
+            return new HorizontalLayout(viewButton, advanceButton, deleteButton);
         }).setHeader("Actions");
     }
 
@@ -105,6 +107,13 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
         var header = new HorizontalLayout();
         header.setDefaultVerticalComponentAlignment(Alignment.CENTER);
         header.setWidthFull();
+
+        if (meadEvent.hasLogo()) {
+            var logo = new Image(meadEvent.getLogo(),
+                    meadEvent.getName() + " logo");
+            logo.setHeight("64px");
+            header.add(logo);
+        }
 
         var textBlock = new VerticalLayout();
         textBlock.setPadding(false);
@@ -201,6 +210,30 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (IllegalArgumentException | IllegalStateException ex) {
+                Notification.show(ex.getMessage());
+                dialog.close();
+            }
+        });
+
+        var cancelButton = new Button("Cancel", e -> dialog.close());
+        dialog.getFooter().add(cancelButton, confirmButton);
+        dialog.open();
+    }
+
+    private void openDeleteDialog(Competition competition) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle("Delete Competition");
+        dialog.add("Are you sure you want to delete \"" + competition.getName() + "\"? "
+                + "This will also remove all participants and categories.");
+
+        var confirmButton = new Button("Delete", e -> {
+            try {
+                competitionService.deleteCompetition(competition.getId(), getCurrentUserId());
+                refreshGrid();
+                var notification = Notification.show("Competition deleted successfully");
+                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                dialog.close();
+            } catch (IllegalArgumentException ex) {
                 Notification.show(ex.getMessage());
                 dialog.close();
             }

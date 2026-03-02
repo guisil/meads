@@ -154,6 +154,18 @@ public class CompetitionService {
         return competitionRepository.save(competition);
     }
 
+    public void deleteCompetition(@NotNull UUID competitionId,
+                                    @NotNull UUID requestingUserId) {
+        var competition = competitionRepository.findById(competitionId)
+                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
+        requireAuthorized(competition.getId(), requestingUserId);
+        participantRepository.deleteAll(
+                participantRepository.findByCompetitionId(competitionId));
+        competitionCategoryRepository.deleteAll(
+                competitionCategoryRepository.findByCompetitionIdOrderBySortOrder(competitionId));
+        competitionRepository.delete(competition);
+    }
+
     public List<CompetitionParticipant> findParticipantsByCompetition(@NotNull UUID competitionId) {
         return participantRepository.findByCompetitionId(competitionId);
     }
