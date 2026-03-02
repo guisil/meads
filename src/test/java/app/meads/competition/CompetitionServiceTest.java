@@ -60,7 +60,7 @@ class CompetitionServiceTest {
     @Mock
     ApplicationEventPublisher eventPublisher;
 
-    private MeadEvent createEvent() {
+    private MeadEvent createMeadEvent() {
         return new MeadEvent("Test Event",
                 LocalDate.of(2026, 6, 15), LocalDate.of(2026, 6, 17), "Porto");
     }
@@ -79,19 +79,19 @@ class CompetitionServiceTest {
 
     @Test
     void shouldCreateCompetitionWhenRequestedBySystemAdmin() {
-        var event = createEvent();
+        var meadEvent = createMeadEvent();
         var admin = createAdmin();
-        given(meadEventRepository.findById(event.getId())).willReturn(Optional.of(event));
+        given(meadEventRepository.findById(meadEvent.getId())).willReturn(Optional.of(meadEvent));
         given(userService.findById(admin.getId())).willReturn(admin);
         given(competitionRepository.save(any(Competition.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 
         var result = competitionService.createCompetition(
-                event.getId(), "Home", ScoringSystem.MJP, admin.getId());
+                meadEvent.getId(), "Home", ScoringSystem.MJP, admin.getId());
 
         assertThat(result).isNotNull();
         assertThat(result.getName()).isEqualTo("Home");
-        assertThat(result.getEventId()).isEqualTo(event.getId());
+        assertThat(result.getEventId()).isEqualTo(meadEvent.getId());
         assertThat(result.getStatus()).isEqualTo(CompetitionStatus.DRAFT);
         assertThat(result.getScoringSystem()).isEqualTo(ScoringSystem.MJP);
         then(competitionRepository).should().save(any(Competition.class));
@@ -99,7 +99,7 @@ class CompetitionServiceTest {
 
     @Test
     void shouldInitializeCategoriesOnCompetitionCreation() {
-        var event = createEvent();
+        var meadEvent = createMeadEvent();
         var admin = createAdmin();
         var cat1 = org.mockito.Mockito.mock(Category.class);
         var cat2 = org.mockito.Mockito.mock(Category.class);
@@ -111,7 +111,7 @@ class CompetitionServiceTest {
         given(cat2.getCode()).willReturn("M1B");
         given(cat2.getName()).willReturn("Semi-Sweet Mead");
         given(cat2.getDescription()).willReturn("A semi-sweet mead");
-        given(meadEventRepository.findById(event.getId())).willReturn(Optional.of(event));
+        given(meadEventRepository.findById(meadEvent.getId())).willReturn(Optional.of(meadEvent));
         given(userService.findById(admin.getId())).willReturn(admin);
         given(competitionRepository.save(any(Competition.class)))
                 .willAnswer(inv -> inv.getArgument(0));
@@ -121,7 +121,7 @@ class CompetitionServiceTest {
                 .willAnswer(inv -> inv.getArgument(0));
 
         competitionService.createCompetition(
-                event.getId(), "Home", ScoringSystem.MJP, admin.getId());
+                meadEvent.getId(), "Home", ScoringSystem.MJP, admin.getId());
 
         then(competitionCategoryRepository).should(org.mockito.Mockito.times(2))
                 .save(any(CompetitionCategory.class));
@@ -143,13 +143,13 @@ class CompetitionServiceTest {
 
     @Test
     void shouldRejectCreateCompetitionWhenUserNotSystemAdmin() {
-        var event = createEvent();
+        var meadEvent = createMeadEvent();
         var user = createRegularUser();
-        given(meadEventRepository.findById(event.getId())).willReturn(Optional.of(event));
+        given(meadEventRepository.findById(meadEvent.getId())).willReturn(Optional.of(meadEvent));
         given(userService.findById(user.getId())).willReturn(user);
 
         assertThatThrownBy(() -> competitionService.createCompetition(
-                event.getId(), "Home", ScoringSystem.MJP, user.getId()))
+                meadEvent.getId(), "Home", ScoringSystem.MJP, user.getId()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("authorized");
 
@@ -473,16 +473,16 @@ class CompetitionServiceTest {
         then(userService).should().findOrCreateByEmail("user@example.com");
     }
 
-    // --- createEvent ---
+    // --- createMeadEvent ---
 
     @Test
-    void shouldCreateEventWhenRequestedBySystemAdmin() {
+    void shouldCreateMeadEventWhenRequestedBySystemAdmin() {
         var admin = createAdmin();
         given(userService.findById(admin.getId())).willReturn(admin);
         given(meadEventRepository.save(any(MeadEvent.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 
-        var result = competitionService.createEvent(
+        var result = competitionService.createMeadEvent(
                 "Regional 2026", LocalDate.of(2026, 6, 15),
                 LocalDate.of(2026, 6, 17), "Porto", admin.getId());
 
@@ -495,11 +495,11 @@ class CompetitionServiceTest {
     }
 
     @Test
-    void shouldRejectCreateEventWhenUserNotSystemAdmin() {
+    void shouldRejectCreateMeadEventWhenUserNotSystemAdmin() {
         var user = createRegularUser();
         given(userService.findById(user.getId())).willReturn(user);
 
-        assertThatThrownBy(() -> competitionService.createEvent(
+        assertThatThrownBy(() -> competitionService.createMeadEvent(
                 "Regional 2026", LocalDate.of(2026, 6, 15),
                 LocalDate.of(2026, 6, 17), "Porto", user.getId()))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -508,49 +508,49 @@ class CompetitionServiceTest {
         then(meadEventRepository).should(never()).save(any());
     }
 
-    // --- findAllEvents ---
+    // --- findAllMeadEvents ---
 
     @Test
-    void shouldFindAllEvents() {
-        var event = createEvent();
-        given(meadEventRepository.findAll()).willReturn(List.of(event));
+    void shouldFindAllMeadEvents() {
+        var meadEvent = createMeadEvent();
+        given(meadEventRepository.findAll()).willReturn(List.of(meadEvent));
 
-        var result = competitionService.findAllEvents();
+        var result = competitionService.findAllMeadEvents();
 
         assertThat(result).hasSize(1);
         assertThat(result.getFirst().getName()).isEqualTo("Test Event");
     }
 
-    // --- updateEvent ---
+    // --- updateMeadEvent ---
 
     @Test
-    void shouldUpdateEventWhenRequestedBySystemAdmin() {
+    void shouldUpdateMeadEventWhenRequestedBySystemAdmin() {
         var admin = createAdmin();
-        var event = createEvent();
-        given(meadEventRepository.findById(event.getId())).willReturn(Optional.of(event));
+        var meadEvent = createMeadEvent();
+        given(meadEventRepository.findById(meadEvent.getId())).willReturn(Optional.of(meadEvent));
         given(userService.findById(admin.getId())).willReturn(admin);
         given(meadEventRepository.save(any(MeadEvent.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 
-        var result = competitionService.updateEvent(
-                event.getId(), "Updated Name", LocalDate.of(2026, 7, 1),
+        var result = competitionService.updateMeadEvent(
+                meadEvent.getId(), "Updated Name", LocalDate.of(2026, 7, 1),
                 LocalDate.of(2026, 7, 3), "Lisbon", admin.getId());
 
         assertThat(result.getName()).isEqualTo("Updated Name");
         assertThat(result.getStartDate()).isEqualTo(LocalDate.of(2026, 7, 1));
         assertThat(result.getLocation()).isEqualTo("Lisbon");
-        then(meadEventRepository).should().save(event);
+        then(meadEventRepository).should().save(meadEvent);
     }
 
     @Test
-    void shouldRejectUpdateEventWhenUserNotSystemAdmin() {
+    void shouldRejectUpdateMeadEventWhenUserNotSystemAdmin() {
         var user = createRegularUser();
-        var event = createEvent();
-        given(meadEventRepository.findById(event.getId())).willReturn(Optional.of(event));
+        var meadEvent = createMeadEvent();
+        given(meadEventRepository.findById(meadEvent.getId())).willReturn(Optional.of(meadEvent));
         given(userService.findById(user.getId())).willReturn(user);
 
-        assertThatThrownBy(() -> competitionService.updateEvent(
-                event.getId(), "Updated", LocalDate.of(2026, 7, 1),
+        assertThatThrownBy(() -> competitionService.updateMeadEvent(
+                meadEvent.getId(), "Updated", LocalDate.of(2026, 7, 1),
                 LocalDate.of(2026, 7, 3), "Lisbon", user.getId()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("authorized");
@@ -558,70 +558,70 @@ class CompetitionServiceTest {
         then(meadEventRepository).should(never()).save(any());
     }
 
-    // --- updateEventLogo ---
+    // --- updateMeadEventLogo ---
 
     @Test
-    void shouldUpdateEventLogoWhenRequestedBySystemAdmin() {
+    void shouldUpdateMeadEventLogoWhenRequestedBySystemAdmin() {
         var admin = createAdmin();
-        var event = createEvent();
-        given(meadEventRepository.findById(event.getId())).willReturn(Optional.of(event));
+        var meadEvent = createMeadEvent();
+        given(meadEventRepository.findById(meadEvent.getId())).willReturn(Optional.of(meadEvent));
         given(userService.findById(admin.getId())).willReturn(admin);
         given(meadEventRepository.save(any(MeadEvent.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 
         var logo = new byte[]{1, 2, 3};
-        var result = competitionService.updateEventLogo(
-                event.getId(), logo, "image/png", admin.getId());
+        var result = competitionService.updateMeadEventLogo(
+                meadEvent.getId(), logo, "image/png", admin.getId());
 
         assertThat(result.hasLogo()).isTrue();
         assertThat(result.getLogoContentType()).isEqualTo("image/png");
-        then(meadEventRepository).should().save(event);
+        then(meadEventRepository).should().save(meadEvent);
     }
 
     @Test
-    void shouldClearEventLogoWhenNullProvided() {
+    void shouldClearMeadEventLogoWhenNullProvided() {
         var admin = createAdmin();
-        var event = createEvent();
-        event.updateLogo(new byte[]{1, 2, 3}, "image/png");
-        given(meadEventRepository.findById(event.getId())).willReturn(Optional.of(event));
+        var meadEvent = createMeadEvent();
+        meadEvent.updateLogo(new byte[]{1, 2, 3}, "image/png");
+        given(meadEventRepository.findById(meadEvent.getId())).willReturn(Optional.of(meadEvent));
         given(userService.findById(admin.getId())).willReturn(admin);
         given(meadEventRepository.save(any(MeadEvent.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 
-        var result = competitionService.updateEventLogo(
-                event.getId(), null, null, admin.getId());
+        var result = competitionService.updateMeadEventLogo(
+                meadEvent.getId(), null, null, admin.getId());
 
         assertThat(result.hasLogo()).isFalse();
     }
 
-    // --- deleteEvent ---
+    // --- deleteMeadEvent ---
 
     @Test
-    void shouldDeleteEventWhenNoCompetitionsExist() {
+    void shouldDeleteMeadEventWhenNoCompetitionsExist() {
         var admin = createAdmin();
-        var event = createEvent();
-        given(meadEventRepository.findById(event.getId())).willReturn(Optional.of(event));
+        var meadEvent = createMeadEvent();
+        given(meadEventRepository.findById(meadEvent.getId())).willReturn(Optional.of(meadEvent));
         given(userService.findById(admin.getId())).willReturn(admin);
-        given(competitionRepository.findByEventId(event.getId())).willReturn(List.of());
+        given(competitionRepository.findByEventId(meadEvent.getId())).willReturn(List.of());
 
-        competitionService.deleteEvent(event.getId(), admin.getId());
+        competitionService.deleteMeadEvent(meadEvent.getId(), admin.getId());
 
-        then(meadEventRepository).should().delete(event);
+        then(meadEventRepository).should().delete(meadEvent);
     }
 
     @Test
-    void shouldRejectDeleteEventWhenCompetitionsExist() {
+    void shouldRejectDeleteMeadEventWhenCompetitionsExist() {
         var admin = createAdmin();
-        var event = createEvent();
-        var competition = new Competition(event.getId(),
+        var meadEvent = createMeadEvent();
+        var competition = new Competition(meadEvent.getId(),
                 "Home", ScoringSystem.MJP);
-        given(meadEventRepository.findById(event.getId())).willReturn(Optional.of(event));
+        given(meadEventRepository.findById(meadEvent.getId())).willReturn(Optional.of(meadEvent));
         given(userService.findById(admin.getId())).willReturn(admin);
-        given(competitionRepository.findByEventId(event.getId()))
+        given(competitionRepository.findByEventId(meadEvent.getId()))
                 .willReturn(List.of(competition));
 
-        assertThatThrownBy(() -> competitionService.deleteEvent(
-                event.getId(), admin.getId()))
+        assertThatThrownBy(() -> competitionService.deleteMeadEvent(
+                meadEvent.getId(), admin.getId()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("competitions");
 

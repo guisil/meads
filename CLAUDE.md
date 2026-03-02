@@ -128,7 +128,7 @@ app.meads.competition                    ← Competition module public API
     ├── CompetitionParticipantRepository.java ← JPA repository
     ├── CategoryRepository.java          ← JPA repository
     ├── CompetitionAccessCodeValidator.java  ← AccessCodeValidator implementation
-    ├── EventListView.java               ← Events CRUD view (@RolesAllowed("SYSTEM_ADMIN"))
+    ├── MeadEventListView.java            ← MeadEvents CRUD view (@RolesAllowed("SYSTEM_ADMIN"))
     ├── CompetitionListView.java         ← Competitions list per event (@PermitAll + beforeEnter auth)
     └── CompetitionDetailView.java       ← Competition detail with tabs, breadcrumb (@PermitAll + beforeEnter auth)
 ```
@@ -243,7 +243,7 @@ Auth-agnostic patterns that ARE canonical: `User.java`, `Role.java`, `UserStatus
 - State machine helpers (e.g., `next()` returning `Optional`) for display; enforcement via entity domain methods
 
 ### View Dialog Pattern
-**Reference:** `EventListView.openEventDialog()`
+**Reference:** `MeadEventListView.openMeadEventDialog()`
 - Combine create/edit dialogs into one method: `openDialog(Entity existing)` where `null` = create mode
 - Same pattern as `UserListView`
 

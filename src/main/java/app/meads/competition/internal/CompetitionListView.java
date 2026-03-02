@@ -43,7 +43,7 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
     private UUID eventId;
     private UUID currentUserId;
     private boolean isSystemAdmin;
-    private MeadEvent event;
+    private MeadEvent meadEvent;
 
     public CompetitionListView(CompetitionService competitionService,
                                 UserService userService,
@@ -79,7 +79,7 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
         }
 
         try {
-            event = competitionService.findEventById(eventId);
+            meadEvent = competitionService.findMeadEventById(eventId);
         } catch (IllegalArgumentException e) {
             beforeEnterEvent.forwardTo("events");
             return;
@@ -95,13 +95,13 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
         }
 
         removeAll();
-        add(createEventHeader());
+        add(createMeadEventHeader());
         add(createActionBar());
         refreshGrid();
         add(grid);
     }
 
-    private HorizontalLayout createEventHeader() {
+    private HorizontalLayout createMeadEventHeader() {
         var header = new HorizontalLayout();
         header.setDefaultVerticalComponentAlignment(Alignment.CENTER);
         header.setWidthFull();
@@ -109,10 +109,10 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
         var textBlock = new VerticalLayout();
         textBlock.setPadding(false);
         textBlock.setSpacing(false);
-        textBlock.add(new H2(event.getName()));
+        textBlock.add(new H2(meadEvent.getName()));
 
         var details = formatDateRange() +
-                (event.getLocation() != null ? "  ·  " + event.getLocation() : "");
+                (meadEvent.getLocation() != null ? "  ·  " + meadEvent.getLocation() : "");
         textBlock.add(new Span(details));
 
         header.add(textBlock);
@@ -120,8 +120,8 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
     }
 
     private String formatDateRange() {
-        var start = event.getStartDate();
-        var end = event.getEndDate();
+        var start = meadEvent.getStartDate();
+        var end = meadEvent.getEndDate();
         var formatter = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.ENGLISH);
 
         if (start.getMonth() == end.getMonth() && start.getYear() == end.getYear()) {

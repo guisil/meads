@@ -57,59 +57,59 @@ public class CompetitionService {
         this.eventPublisher = eventPublisher;
     }
 
-    public MeadEvent createEvent(@NotBlank String name,
+    public MeadEvent createMeadEvent(@NotBlank String name,
                              @NotNull LocalDate startDate,
                              @NotNull LocalDate endDate,
                              String location,
                              @NotNull UUID requestingUserId) {
         requireSystemAdmin(requestingUserId);
-        var event = new MeadEvent(name, startDate, endDate, location);
-        return meadEventRepository.save(event);
+        var meadEvent = new MeadEvent(name, startDate, endDate, location);
+        return meadEventRepository.save(meadEvent);
     }
 
-    public MeadEvent findEventById(@NotNull UUID eventId) {
+    public MeadEvent findMeadEventById(@NotNull UUID eventId) {
         return meadEventRepository.findById(eventId)
                 .orElseThrow(() -> new IllegalArgumentException("Event not found"));
     }
 
-    public List<MeadEvent> findAllEvents() {
+    public List<MeadEvent> findAllMeadEvents() {
         return meadEventRepository.findAll();
     }
 
-    public MeadEvent updateEvent(@NotNull UUID eventId,
+    public MeadEvent updateMeadEvent(@NotNull UUID eventId,
                               @NotBlank String name,
                               @NotNull LocalDate startDate,
                               @NotNull LocalDate endDate,
                               String location,
                               @NotNull UUID requestingUserId) {
-        var event = meadEventRepository.findById(eventId)
+        var meadEvent = meadEventRepository.findById(eventId)
                 .orElseThrow(() -> new IllegalArgumentException("Event not found"));
         requireSystemAdmin(requestingUserId);
-        event.updateDetails(name, startDate, endDate, location);
-        return meadEventRepository.save(event);
+        meadEvent.updateDetails(name, startDate, endDate, location);
+        return meadEventRepository.save(meadEvent);
     }
 
-    public MeadEvent updateEventLogo(@NotNull UUID eventId,
+    public MeadEvent updateMeadEventLogo(@NotNull UUID eventId,
                                   byte[] logo,
                                   String contentType,
                                   @NotNull UUID requestingUserId) {
-        var event = meadEventRepository.findById(eventId)
+        var meadEvent = meadEventRepository.findById(eventId)
                 .orElseThrow(() -> new IllegalArgumentException("Event not found"));
         requireSystemAdmin(requestingUserId);
-        event.updateLogo(logo, contentType);
-        return meadEventRepository.save(event);
+        meadEvent.updateLogo(logo, contentType);
+        return meadEventRepository.save(meadEvent);
     }
 
-    public void deleteEvent(@NotNull UUID eventId,
+    public void deleteMeadEvent(@NotNull UUID eventId,
                              @NotNull UUID requestingUserId) {
-        var event = meadEventRepository.findById(eventId)
+        var meadEvent = meadEventRepository.findById(eventId)
                 .orElseThrow(() -> new IllegalArgumentException("Event not found"));
         requireSystemAdmin(requestingUserId);
         var competitions = competitionRepository.findByEventId(eventId);
         if (!competitions.isEmpty()) {
             throw new IllegalArgumentException("Cannot delete event with competitions");
         }
-        meadEventRepository.delete(event);
+        meadEventRepository.delete(meadEvent);
     }
 
     public Competition createCompetition(@NotNull UUID eventId,

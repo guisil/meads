@@ -50,7 +50,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 #### Service — `CompetitionService` (public API)
 Key methods:
-- **Events:** createEvent, findEventById, findAllEvents, updateEvent, updateEventLogo, deleteEvent
+- **MeadEvents:** createMeadEvent, findMeadEventById, findAllMeadEvents, updateMeadEvent, updateMeadEventLogo, deleteMeadEvent
 - **Competitions:** createCompetition (auto-inits categories), findById, findByEvent, updateCompetition, advanceStatus
 - **Participants:** addParticipant, addParticipantByEmail, withdrawParticipant, addParticipantToAllCompetitions, findParticipantsByCompetition, findEventParticipantsByEvent
 - **Categories:** findCategoriesByScoringSystem, findCompetitionCategories, addCatalogCategory, addCustomCategory, removeCompetitionCategory (cascades children), findAvailableCatalogCategories, initializeCompetitionCategories
@@ -66,7 +66,7 @@ Key methods:
 - `CompetitionCategoryRepository` — findByCompetitionIdOrderBySortOrder, existsByCompetitionIdAndCode, existsByCompetitionIdAndCatalogCategoryId, findByParentId
 
 #### Views (internal)
-- `EventListView` — `/events`, `@RolesAllowed("SYSTEM_ADMIN")`, CRUD grid for events with logo upload
+- `MeadEventListView` — `/events`, `@RolesAllowed("SYSTEM_ADMIN")`, CRUD grid for events with logo upload
 - `CompetitionListView` — `/events/:eventId/competitions`, `@PermitAll` + beforeEnter auth, grid filtered by `findAuthorizedCompetitions()`, "Create Competition" button (SYSTEM_ADMIN only)
 - `CompetitionDetailView` — `/competitions/:competitionId`, `@PermitAll` + beforeEnter auth, TabSheet with:
   - **Participants tab:** Grid with Name/Email/Role columns, "Add Participant" button → dialog with email + role
@@ -92,21 +92,21 @@ Key methods:
 - `CompetitionServiceTest.java` — 45 tests: service methods with mocked repos
 - `CompetitionTest.java` — entity domain logic
 - `CompetitionStatusTest.java` — enum helpers
-- `EventTest.java` — MeadEvent domain logic
+- `MeadEventTest.java` — MeadEvent domain logic
 - `EventParticipantTest.java` — EventParticipant domain logic
 - `CompetitionParticipantTest.java` — CompetitionParticipant domain logic
 - `CompetitionAccessCodeValidatorTest.java` — access code validation
 
 ### Repository tests (`@SpringBootTest` + `@Transactional` + Testcontainers)
 - `CompetitionRepositoryTest.java` — save/retrieve, findByEventId
-- `EventRepositoryTest.java` — save/retrieve
+- `MeadEventRepositoryTest.java` — save/retrieve
 - `EventParticipantRepositoryTest.java` — various query methods
 - `CompetitionParticipantRepositoryTest.java` — 6 tests: save, find, exists queries
 - `CategoryRepositoryTest.java` — findByScoringSystem
 - `CompetitionCategoryRepositoryTest.java` — 4 tests: save/find, exists, findByParentId
 
 ### UI tests (`@SpringBootTest` + Karibu + `@DirtiesContext`)
-- `EventListViewTest.java` — event CRUD grid
+- `MeadEventListViewTest.java` — event CRUD grid
 - `CompetitionDetailViewTest.java` — 14 tests: header, tabs, participants, categories, breadcrumb, auth
 - `CompetitionListViewTest.java` — competition list, auth filtering
 
@@ -127,7 +127,7 @@ area, show the user the relevant view, service method(s), repository, entity,
 and migration together so they can understand the full flow and decide on changes.
 
 Suggested slice order:
-1. **Events** — MeadEvent entity → MeadEventRepository → CompetitionService event methods → EventListView
+1. **MeadEvents** — MeadEvent entity → MeadEventRepository → CompetitionService mead event methods → MeadEventListView
 2. **Competitions** — Competition entity → CompetitionRepository → CompetitionService competition methods → CompetitionListView
 3. **Participants** — EventParticipant + CompetitionParticipant entities → repos → service participant methods → CompetitionDetailView participants tab
 4. **Categories** — Category + CompetitionCategory entities → repos → service category methods → CompetitionDetailView categories tab
@@ -145,11 +145,11 @@ Go through each test file and for each test:
 - Identify any gaps (behaviors not tested, edge cases missing)
 
 Test files to review (in order):
-1. Entity unit tests (CompetitionTest, EventTest, EventParticipantTest, CompetitionParticipantTest, CompetitionStatusTest)
+1. Entity unit tests (CompetitionTest, MeadEventTest, EventParticipantTest, CompetitionParticipantTest, CompetitionStatusTest)
 2. CompetitionAccessCodeValidatorTest
 3. Repository tests (all 6 files)
 4. CompetitionServiceTest (45 tests)
-5. UI tests (EventListViewTest, CompetitionListViewTest, CompetitionDetailViewTest)
+5. UI tests (MeadEventListViewTest, CompetitionListViewTest, CompetitionDetailViewTest)
 6. CompetitionModuleTest + ModulithStructureTest
 
 For manual testing guidance:

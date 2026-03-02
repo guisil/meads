@@ -24,14 +24,14 @@ import java.util.UUID;
 
 @Route(value = "events", layout = MainLayout.class)
 @RolesAllowed("SYSTEM_ADMIN")
-public class EventListView extends VerticalLayout {
+public class MeadEventListView extends VerticalLayout {
 
     private final CompetitionService competitionService;
     private final UserService userService;
     private final transient AuthenticationContext authenticationContext;
     private final Grid<MeadEvent> grid;
 
-    public EventListView(CompetitionService competitionService,
+    public MeadEventListView(CompetitionService competitionService,
                           UserService userService,
                           AuthenticationContext authenticationContext) {
         this.competitionService = competitionService;
@@ -46,7 +46,7 @@ public class EventListView extends VerticalLayout {
 
         header.add(new H2("Events"));
 
-        var createButton = new Button("Create Event", e -> openEventDialog(null));
+        var createButton = new Button("Create Event", e -> openMeadEventDialog(null));
         header.add(createButton);
 
         add(header);
@@ -57,9 +57,9 @@ public class EventListView extends VerticalLayout {
         grid.addColumn(MeadEvent::getEndDate).setHeader("End Date").setSortable(true);
         grid.addColumn(event -> event.getLocation() != null ? event.getLocation() : "—")
                 .setHeader("Location");
-        grid.addComponentColumn(event -> {
-            var editButton = new Button("Edit", e -> openEventDialog(event));
-            var deleteButton = new Button("Delete", e -> openDeleteDialog(event));
+        grid.addComponentColumn(meadEvent -> {
+            var editButton = new Button("Edit", e -> openMeadEventDialog(meadEvent));
+            var deleteButton = new Button("Delete", e -> openDeleteMeadEventDialog(meadEvent));
             return new HorizontalLayout(editButton, deleteButton);
         }).setHeader("Actions");
 
@@ -71,7 +71,7 @@ public class EventListView extends VerticalLayout {
         add(grid);
     }
 
-    private void openEventDialog(MeadEvent existing) {
+    private void openMeadEventDialog(MeadEvent existing) {
         boolean isEdit = existing != null;
         var dialog = new Dialog();
         dialog.setHeaderTitle(isEdit ? "Edit Event" : "Create Event");
@@ -115,11 +115,11 @@ public class EventListView extends VerticalLayout {
                 var location = StringUtils.hasText(locationField.getValue())
                         ? locationField.getValue() : null;
                 if (isEdit) {
-                    competitionService.updateEvent(existing.getId(),
+                    competitionService.updateMeadEvent(existing.getId(),
                             nameField.getValue(), startDatePicker.getValue(),
                             endDatePicker.getValue(), location, getCurrentUserId());
                 } else {
-                    competitionService.createEvent(nameField.getValue(),
+                    competitionService.createMeadEvent(nameField.getValue(),
                             startDatePicker.getValue(), endDatePicker.getValue(),
                             location, getCurrentUserId());
                 }
@@ -142,14 +142,14 @@ public class EventListView extends VerticalLayout {
         dialog.open();
     }
 
-    private void openDeleteDialog(MeadEvent event) {
+    private void openDeleteMeadEventDialog(MeadEvent meadEvent) {
         var dialog = new Dialog();
         dialog.setHeaderTitle("Delete Event");
-        dialog.add("Are you sure you want to delete \"" + event.getName() + "\"?");
+        dialog.add("Are you sure you want to delete \"" + meadEvent.getName() + "\"?");
 
         var confirmButton = new Button("Delete", e -> {
             try {
-                competitionService.deleteEvent(event.getId(), getCurrentUserId());
+                competitionService.deleteMeadEvent(meadEvent.getId(), getCurrentUserId());
                 refreshGrid();
                 var notification = Notification.show("Event deleted successfully");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
@@ -166,7 +166,7 @@ public class EventListView extends VerticalLayout {
     }
 
     private void refreshGrid() {
-        grid.setItems(competitionService.findAllEvents());
+        grid.setItems(competitionService.findAllMeadEvents());
     }
 
     private UUID getCurrentUserId() {

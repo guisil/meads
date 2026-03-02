@@ -1,7 +1,7 @@
 package app.meads.competition;
 
 import app.meads.TestcontainersConfiguration;
-import app.meads.competition.internal.EventListView;
+import app.meads.competition.internal.MeadEventListView;
 import app.meads.competition.internal.MeadEventRepository;
 import app.meads.identity.Role;
 import app.meads.identity.User;
@@ -45,7 +45,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
 @DirtiesContext
-class EventListViewTest {
+class MeadEventListViewTest {
 
     private static final String ADMIN_EMAIL = "eventview-admin@example.com";
 
@@ -122,7 +122,7 @@ class EventListViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldDisplayEventListViewWithGrid() {
+    void shouldDisplayMeadEventListViewWithGrid() {
         UI.getCurrent().navigate("events");
 
         var grid = _get(Grid.class);
@@ -131,14 +131,14 @@ class EventListViewTest {
 
     @Test
     @WithMockUser(roles = "USER")
-    void shouldDenyAccessToEventsViewForRegularUser() {
+    void shouldDenyAccessToMeadEventsViewForRegularUser() {
         assertThatThrownBy(() -> UI.getCurrent().navigate("events"))
                 .isInstanceOf(MockAccessDeniedException.class);
     }
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldDisplayCreateEventButton() {
+    void shouldDisplayCreateMeadEventButton() {
         UI.getCurrent().navigate("events");
 
         var createButton = _get(Button.class, spec -> spec.withText("Create Event"));
@@ -147,7 +147,7 @@ class EventListViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldOpenCreateDialogWhenCreateButtonClicked() {
+    void shouldOpenCreateMeadEventDialogWhenCreateButtonClicked() {
         UI.getCurrent().navigate("events");
 
         var createButton = _get(Button.class, spec -> spec.withText("Create Event"));
@@ -160,7 +160,7 @@ class EventListViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldCreateEventWhenFormSubmitted() {
+    void shouldCreateMeadEventWhenFormSubmitted() {
         UI.getCurrent().navigate("events");
 
         var createButton = _get(Button.class, spec -> spec.withText("Create Event"));
@@ -183,7 +183,7 @@ class EventListViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldDisplayEventsInGrid() {
+    void shouldDisplayMeadEventsInGrid() {
         meadEventRepository.save(new MeadEvent("Test Event",
                 LocalDate.of(2026, 6, 15), LocalDate.of(2026, 6, 17), "Porto"));
 

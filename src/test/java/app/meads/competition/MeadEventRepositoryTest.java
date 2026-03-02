@@ -15,18 +15,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
 @Transactional
-class EventRepositoryTest {
+class MeadEventRepositoryTest {
 
     @Autowired
     MeadEventRepository meadEventRepository;
 
     @Test
-    void shouldSaveAndRetrieveEvent() {
-        var event = new MeadEvent("Regional Mead Festival",
+    void shouldSaveAndRetrieveMeadEvent() {
+        var meadEvent = new MeadEvent("Regional Mead Festival",
                 LocalDate.of(2026, 6, 15), LocalDate.of(2026, 6, 17), "Porto");
 
-        meadEventRepository.save(event);
-        var found = meadEventRepository.findById(event.getId());
+        meadEventRepository.save(meadEvent);
+        var found = meadEventRepository.findById(meadEvent.getId());
 
         assertThat(found).isPresent();
         assertThat(found.get().getName()).isEqualTo("Regional Mead Festival");
@@ -38,14 +38,14 @@ class EventRepositoryTest {
     }
 
     @Test
-    void shouldSaveAndRetrieveEventWithLogo() {
-        var event = new MeadEvent("Festival with Logo",
+    void shouldSaveAndRetrieveMeadEventWithLogo() {
+        var meadEvent = new MeadEvent("Festival with Logo",
                 LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 3), null);
         byte[] logo = new byte[]{1, 2, 3, 4, 5};
-        event.updateLogo(logo, "image/png");
+        meadEvent.updateLogo(logo, "image/png");
 
-        meadEventRepository.save(event);
-        var found = meadEventRepository.findById(event.getId());
+        meadEventRepository.save(meadEvent);
+        var found = meadEventRepository.findById(meadEvent.getId());
 
         assertThat(found).isPresent();
         assertThat(found.get().hasLogo()).isTrue();
@@ -54,12 +54,12 @@ class EventRepositoryTest {
     }
 
     @Test
-    void shouldSaveEventWithNullLocation() {
-        var event = new MeadEvent("No Location Event",
+    void shouldSaveMeadEventWithNullLocation() {
+        var meadEvent = new MeadEvent("No Location Event",
                 LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 1), null);
 
-        meadEventRepository.save(event);
-        var found = meadEventRepository.findById(event.getId());
+        meadEventRepository.save(meadEvent);
+        var found = meadEventRepository.findById(meadEvent.getId());
 
         assertThat(found).isPresent();
         assertThat(found.get().getLocation()).isNull();

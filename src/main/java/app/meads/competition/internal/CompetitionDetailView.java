@@ -42,7 +42,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
     private UUID competitionId;
     private Competition competition;
-    private MeadEvent event;
+    private MeadEvent meadEvent;
     private Grid<CompetitionParticipant> participantsGrid;
     private Grid<CompetitionCategory> categoriesGrid;
     private Map<UUID, EventParticipant> eventParticipantMap;
@@ -69,7 +69,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
         try {
             competition = competitionService.findById(competitionId);
-            event = competitionService.findEventById(competition.getEventId());
+            meadEvent = competitionService.findMeadEventById(competition.getEventId());
         } catch (IllegalArgumentException e) {
             beforeEnterEvent.forwardTo("events");
             return;
@@ -88,8 +88,8 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
     private Nav createBreadcrumb() {
         var nav = new Nav();
-        var eventLink = new RouterLink(event.getName(), CompetitionListView.class,
-                new RouteParameters("eventId", event.getId().toString()));
+        var eventLink = new RouterLink(meadEvent.getName(), CompetitionListView.class,
+                new RouteParameters("eventId", meadEvent.getId().toString()));
         nav.add(eventLink);
         nav.add(new Span(" / "));
         nav.add(new Span(competition.getName()));
@@ -417,7 +417,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
     private void refreshParticipantsGrid() {
         var participants = competitionService.findParticipantsByCompetition(competitionId);
 
-        var eventParticipants = competitionService.findEventParticipantsByEvent(event.getId());
+        var eventParticipants = competitionService.findEventParticipantsByEvent(meadEvent.getId());
         eventParticipantMap = eventParticipants.stream()
                 .collect(Collectors.toMap(EventParticipant::getId, Function.identity()));
 
