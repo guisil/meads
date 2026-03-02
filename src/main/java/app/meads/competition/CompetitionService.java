@@ -154,10 +154,6 @@ public class CompetitionService {
         return competitionRepository.save(competition);
     }
 
-    public List<Competition> findByEvent(@NotNull UUID eventId) {
-        return competitionRepository.findByEventId(eventId);
-    }
-
     public List<CompetitionParticipant> findParticipantsByCompetition(@NotNull UUID competitionId) {
         return participantRepository.findByCompetitionId(competitionId);
     }
@@ -243,12 +239,6 @@ public class CompetitionService {
                 .filter(cat -> !competitionCategoryRepository
                         .existsByCompetitionIdAndCatalogCategoryId(competitionId, cat.getId()))
                 .toList();
-    }
-
-    public void initializeCompetitionCategories(@NotNull UUID competitionId) {
-        var competition = competitionRepository.findById(competitionId)
-                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
-        initializeCategories(competition);
     }
 
     private void initializeCategories(Competition competition) {

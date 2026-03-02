@@ -1046,24 +1046,4 @@ class CompetitionServiceTest {
         assertThat(result).doesNotContain(cat1);
     }
 
-    // --- initializeCompetitionCategories ---
-
-    @Test
-    void shouldInitializeCategoriesFromCatalog() {
-        var competition = new Competition(UUID.randomUUID(),
-                "Home", ScoringSystem.MJP);
-        var cat1 = new Category();
-        var cat2 = new Category();
-        given(competitionRepository.findById(competition.getId()))
-                .willReturn(Optional.of(competition));
-        given(categoryRepository.findByScoringSystem(ScoringSystem.MJP))
-                .willReturn(List.of(cat1, cat2));
-        given(competitionCategoryRepository.save(any(CompetitionCategory.class)))
-                .willAnswer(inv -> inv.getArgument(0));
-
-        competitionService.initializeCompetitionCategories(competition.getId());
-
-        then(competitionCategoryRepository).should(org.mockito.Mockito.times(2))
-                .save(any(CompetitionCategory.class));
-    }
 }
