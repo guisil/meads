@@ -54,7 +54,6 @@ class EventParticipantRepositoryTest {
         assertThat(found).isPresent();
         assertThat(found.get().getEventId()).isEqualTo(event.getId());
         assertThat(found.get().getUserId()).isEqualTo(user.getId());
-        assertThat(found.get().getStatus()).isEqualTo(CompetitionParticipantStatus.ACTIVE);
         assertThat(found.get().getAccessCode()).isNull();
         assertThat(found.get().getCreatedAt()).isNotNull();
     }

@@ -14,7 +14,7 @@ class EventParticipantTest {
     }
 
     @Test
-    void shouldCreateWithActiveStatus() {
+    void shouldCreateEventParticipant() {
         var eventId = UUID.randomUUID();
         var userId = UUID.randomUUID();
 
@@ -23,7 +23,6 @@ class EventParticipantTest {
         assertThat(participant.getId()).isNotNull();
         assertThat(participant.getEventId()).isEqualTo(eventId);
         assertThat(participant.getUserId()).isEqualTo(userId);
-        assertThat(participant.getStatus()).isEqualTo(CompetitionParticipantStatus.ACTIVE);
         assertThat(participant.getAccessCode()).isNull();
     }
 
@@ -52,24 +51,5 @@ class EventParticipantTest {
         participant.assignAccessCode("ab3k9xyz");
 
         assertThat(participant.getAccessCode()).isEqualTo("AB3K9XYZ");
-    }
-
-    @Test
-    void shouldWithdrawEventParticipant() {
-        var participant = createParticipant();
-
-        participant.withdraw();
-
-        assertThat(participant.getStatus()).isEqualTo(CompetitionParticipantStatus.WITHDRAWN);
-    }
-
-    @Test
-    void shouldThrowWhenWithdrawingAlreadyWithdrawn() {
-        var participant = createParticipant();
-        participant.withdraw();
-
-        assertThatThrownBy(() -> participant.withdraw())
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("already withdrawn");
     }
 }

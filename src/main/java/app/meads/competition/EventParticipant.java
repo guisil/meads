@@ -20,10 +20,6 @@ public class EventParticipant {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private CompetitionParticipantStatus status;
-
     @Column(name = "access_code", length = 8)
     private String accessCode;
 
@@ -36,7 +32,6 @@ public class EventParticipant {
         this.id = UUID.randomUUID();
         this.eventId = eventId;
         this.userId = userId;
-        this.status = CompetitionParticipantStatus.ACTIVE;
     }
 
     @PrePersist
@@ -49,12 +44,5 @@ public class EventParticipant {
             throw new IllegalArgumentException("Access code must be exactly 8 characters");
         }
         this.accessCode = code.toUpperCase();
-    }
-
-    public void withdraw() {
-        if (this.status == CompetitionParticipantStatus.WITHDRAWN) {
-            throw new IllegalStateException("Participant is already withdrawn");
-        }
-        this.status = CompetitionParticipantStatus.WITHDRAWN;
     }
 }

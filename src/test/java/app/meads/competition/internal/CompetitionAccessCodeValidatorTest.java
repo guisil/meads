@@ -1,6 +1,5 @@
 package app.meads.competition.internal;
 
-import app.meads.competition.CompetitionParticipantStatus;
 import app.meads.competition.EventParticipant;
 import app.meads.identity.Role;
 import app.meads.identity.User;
