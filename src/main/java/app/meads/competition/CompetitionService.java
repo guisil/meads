@@ -374,12 +374,18 @@ public class CompetitionService {
         return isAuthorized(competition, userId);
     }
 
-    private String generateAccessCode() {
-        var sb = new StringBuilder(ACCESS_CODE_LENGTH);
-        for (int i = 0; i < ACCESS_CODE_LENGTH; i++) {
-            sb.append(ACCESS_CODE_CHARS.charAt(RANDOM.nextInt(ACCESS_CODE_CHARS.length())));
+    private String generateUniqueAccessCode() {
+        for (int attempt = 0; attempt < 10; attempt++) {
+            var sb = new StringBuilder(ACCESS_CODE_LENGTH);
+            for (int i = 0; i < ACCESS_CODE_LENGTH; i++) {
+                sb.append(ACCESS_CODE_CHARS.charAt(RANDOM.nextInt(ACCESS_CODE_CHARS.length())));
+            }
+            var code = sb.toString();
+            if (!eventParticipantRepository.existsByAccessCode(code)) {
+                return code;
+            }
         }
-        return sb.toString();
+        throw new IllegalStateException("Unable to generate a unique access code");
     }
 
     private void requireSystemAdmin(UUID userId) {
@@ -396,7 +402,7 @@ public class CompetitionService {
                 .orElseGet(() -> {
                     var ep = new EventParticipant(eventId, userId);
                     if (role.requiresAccessCode()) {
-                        ep.assignAccessCode(generateAccessCode());
+                        ep.assignAccessCode(generateUniqueAccessCode());
                     }
                     return eventParticipantRepository.save(ep);
                 });

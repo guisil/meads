@@ -28,6 +28,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
@@ -375,6 +376,38 @@ class CompetitionServiceTest {
                 .hasMessageContaining("authorized");
 
         then(participantRepository).should(never()).save(any());
+    }
+
+    @Test
+    void shouldRegenerateAccessCodeWhenCollisionDetected() {
+        var admin = createAdmin();
+        var user = createRegularUser();
+        var eventId = UUID.randomUUID();
+        var competition = new Competition(eventId, "Home", ScoringSystem.MJP);
+        given(competitionRepository.findById(competition.getId()))
+                .willReturn(Optional.of(competition));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(userService.findById(user.getId())).willReturn(user);
+        given(eventParticipantRepository.findByEventIdAndUserId(eventId, user.getId()))
+                .willReturn(Optional.empty());
+        // First generated code collides, second does not
+        given(eventParticipantRepository.existsByAccessCode(any()))
+                .willReturn(true)
+                .willReturn(false);
+        given(eventParticipantRepository.save(any(EventParticipant.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(participantRepository.existsByCompetitionIdAndEventParticipantIdAndRole(
+                any(), any(), any())).willReturn(false);
+        given(participantRepository.save(any(CompetitionParticipant.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        competitionService.addParticipant(
+                competition.getId(), user.getId(), CompetitionRole.JUDGE, admin.getId());
+
+        // existsByAccessCode should have been called at least twice (collision + success)
+        then(eventParticipantRepository).should(atLeast(2)).existsByAccessCode(any());
+        then(eventParticipantRepository).should().save(argThat(
+                (EventParticipant ep) -> ep.getAccessCode() != null));
     }
 
     // --- removeParticipant ---
