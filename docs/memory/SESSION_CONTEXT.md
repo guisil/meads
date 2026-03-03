@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `competition-module`
-**Tests:** 361 passing (`mvn test -Dsurefire.useFile=false`)
+**Tests:** 364 passing (`mvn test -Dsurefire.useFile=false`)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -111,9 +111,39 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 ## What's Next
 
-1. **Code review** of both competition and entry modules (slice by slice)
-2. **Test review** (guided, with UI verification) of both modules
-3. **Judging module** — design and implementation
+1. **Manual UI walkthrough** — `docs/walkthrough/manual-ui-test.md` (ready to execute)
+2. **Code review** of both competition and entry modules (slice by slice)
+3. **Test review** (guided, with UI verification) of both modules
+4. **Judging module** — design and implementation
+
+---
+
+## All Test Files (entry module)
+
+### Unit tests
+- `EntryServiceTest.java` — product mapping CRUD + credit methods + entry CRUD + submission + limits
+- `WebhookServiceTest.java` — HMAC verification + processOrderPaid variants
+- `JumpsellerOrderTest.java` — entity domain methods
+- `JumpsellerOrderLineItemTest.java` — entity domain methods
+- `EntryTest.java` — entry entity domain methods (constructor, submit, markReceived, withdraw, updateDetails, assignFinalCategory, getEffectiveCategoryId)
+- `RegistrationClosedListenerTest.java` — event listener unit tests
+
+### Repository tests
+- `ProductMappingRepositoryTest.java`
+- `JumpsellerOrderRepositoryTest.java`
+- `JumpsellerOrderLineItemRepositoryTest.java`
+- `EntryCreditRepositoryTest.java`
+- `EntryRepositoryTest.java`
+
+### Controller test
+- `JumpsellerWebhookControllerTest.java` — standalone MockMvc (valid signature → 200, invalid → 401)
+
+### Module integration test
+- `EntryModuleTest.java` — bootstrap + full credit → entry → submit workflow
+
+### UI tests
+- `MyEntriesViewTest.java` — credits display, entry grid, authorization redirect
+- `DivisionEntryAdminViewTest.java` — admin tabs rendering
 
 ---
 

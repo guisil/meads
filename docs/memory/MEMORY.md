@@ -24,7 +24,7 @@ assertThat(_get(Notification.class).getElement().getProperty("text"))
 ## Current state
 
 Branch: `competition-module`
-Tests passing: 361
+Tests passing: 364
 Current highest migration: V15 (`V15__add_entry_limits_to_divisions.sql`).
 Migrations V3–V8 are competition module (pre-deployment). V9–V15 are entry module.
 
@@ -50,9 +50,10 @@ Migrations V3–V8 are competition module (pre-deployment). V9–V15 are entry m
 
 ### What's next — ORDERED
 
-1. **Code review** of both competition and entry modules (slice by slice)
-2. **Test review** (guided, with UI verification) of both modules
-3. **Judging module** — design and implementation
+1. **Manual UI walkthrough** — `docs/walkthrough/manual-ui-test.md` (ready to execute)
+2. **Code review** of both competition and entry modules (slice by slice)
+3. **Test review** (guided, with UI verification) of both modules
+4. **Judging module** — design and implementation
 
 ### Deferred
 
@@ -178,3 +179,9 @@ Key rules that drive design:
 | CompetitionCategory | DivisionCategory | competition_categories | division_categories |
 | CompetitionStatus | DivisionStatus | — | — |
 | COMPETITION_ADMIN | ADMIN | — | — |
+
+## Hibernate schema validation quirk
+
+PostgreSQL `CHAR(N)` maps to `bpchar` type internally, but Hibernate expects `varchar(N)`.
+Always use `VARCHAR(N)` in Flyway migrations, never `CHAR(N)`, to avoid schema validation
+failures at startup.

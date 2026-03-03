@@ -457,6 +457,26 @@ mvn spring-boot:run                                       # start app (needs Pos
 
 ---
 
+## Commit Hygiene — Documentation & Memory Sync
+
+Every commit must include updates to all relevant project files. Before committing:
+
+1. **`docs/SESSION_CONTEXT.md`** — Update test count, "What's Next" section, and any module
+   status changes. This file is the primary bootstrap for resuming work on a different machine.
+2. **`CLAUDE.md`** — Update if conventions, module map, package layout, or migration versions changed.
+3. **Design docs** (`docs/plans/`, `docs/specs/`) — Update if the committed work changes or
+   completes a planned feature.
+4. **Memory sync** — Copy the local auto-memory files from `~/.claude/projects/.../memory/`
+   to `docs/memory/` so they are committed to git and available on other machines. The key files:
+   - `docs/memory/MEMORY.md` — synced copy of local `MEMORY.md`
+   - `docs/memory/SESSION_CONTEXT.md` — synced copy of `docs/SESSION_CONTEXT.md`
+5. **Walkthrough** (`docs/walkthrough/manual-ui-test.md`) — Update if UI behavior changed.
+
+The `docs/memory/` directory is the **committed mirror** of the local auto-memory. On a new
+machine, copy `docs/memory/MEMORY.md` to the local auto-memory path to restore context.
+
+---
+
 ## Common Pitfalls
 
 - Creating production classes during Step 1. **The test must fail first.**
