@@ -620,19 +620,28 @@ Add the new `isAuthorizedForDivision` method and update DivisionDetailView to us
 
 ## Post-Rework TODO
 
-After the rework and entry module implementation, review which competition rules should be
-configurable and enforced by the application. Examples:
-- Maximum entries per participant (per division)
-- Maximum entries per category (per participant or total)
-- Entry fee structure (credits per entry, variable by category)
-- Registration deadlines (auto-close registration)
-- Minimum/maximum ABV ranges per category
-- Required fields per category (e.g., "malt used" for braggot)
-- Mutual exclusivity rules (currently hardcoded: one division per competition per entrant —
-  could be configurable)
+### Resolved (based on CHIP rules review — `docs/reference/chip-competition-rules.md`)
 
-This should be a design discussion before the judging module, once the entry module is complete
-and real usage patterns are clearer.
+Entry limits designed into entry module:
+- `maxEntriesPerSubcategory` (nullable Integer) on Division — CHIP: 3
+- `maxEntriesPerMainCategory` (nullable Integer) on Division — CHIP: 5
+- Enforced in `EntryService.createEntry()`, migration V16
+- See entry module design doc Section "Entry Limits"
+
+To review later (not needed for CHIP, but may be relevant for other competitions):
+- Entry fee structure — currently handled externally via Jumpseller
+- Registration deadlines — currently covered by DivisionStatus workflow
+- ABV ranges per category — CHIP requires declaration only, no enforcement
+- Required fields per category — CHIP uses same fields for all entries
+- Mutual exclusivity configurability — currently hardcoded (always enforced)
+
+### Remaining (future modules)
+
+- **[Judging]** Conflict of interest: judges can't evaluate own entries/company
+- **[Judging]** Minimum 2 judges per table
+- **[Awards]** Medal withholding: judge discretion, not purely score-threshold-based
+- **[Awards]** BOS structure: variable number of places per division (CHIP: 3 Amadora, 1 Pro)
+- **[Awards]** Head Judge tie-breaking authority for BOS
 
 ---
 

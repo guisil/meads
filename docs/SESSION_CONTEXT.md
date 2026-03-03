@@ -116,52 +116,29 @@ Key methods:
 
 ---
 
-## Next Session Plan
+## Next Steps — Ordered
 
-### BEFORE continuing with new features, the user wants:
+### Step 1: Competition Scope Rework — NEXT
 
-#### Step 1: Competition Module Code Review (vertical slices)
+**Design doc:** `docs/plans/2026-03-03-competition-scope-rework.md`
 
-Walk through the competition module code in vertical slices. For each feature
-area, show the user the relevant view, service method(s), repository, entity,
-and migration together so they can understand the full flow and decide on changes.
+Phases: R0 (atomic rename) → R1 (division auth) → R2 (view restructure) → R3 (doc update)
 
-Suggested slice order:
-1. **MeadEvents** — MeadEvent entity → MeadEventRepository → CompetitionService mead event methods → MeadEventListView
-2. **Competitions** — Competition entity → CompetitionRepository → CompetitionService competition methods → CompetitionListView
-3. **Participants** — EventParticipant + CompetitionParticipant entities → repos → service participant methods → CompetitionDetailView participants tab
-4. **Categories** — Category + CompetitionCategory entities → repos → service category methods → CompetitionDetailView categories tab
-5. **Authorization** — requireAuthorized/requireSystemAdmin → isAuthorizedForCompetition → beforeEnter checks in views
-6. **Access codes** — CompetitionAccessCodeValidator → AccessCodeValidator interface → identity module integration
+### Step 2: Entry Module Implementation (TDD)
 
-For each slice, read the files and present them to the user for review. Let them
-decide if changes are needed before moving on.
+**Design doc:** `docs/plans/2026-03-02-entry-module-design.md` (revised 2026-03-03)
 
-#### Step 2: Test Review
+12 phases, ~53 TDD cycles. Migrations V10–V16.
+Entry limits (CHIP rules): `maxEntriesPerSubcategory` + `maxEntriesPerMainCategory` per division.
 
-Go through each test file and for each test:
-- Explain what the test verifies
-- Help the user understand how to manually test the same behavior
-- Identify any gaps (behaviors not tested, edge cases missing)
+### Step 3: Code Review (slice by slice)
 
-Test files to review (in order):
-1. Entity unit tests (CompetitionTest, MeadEventTest, EventParticipantTest, CompetitionParticipantTest, CompetitionStatusTest)
-2. CompetitionAccessCodeValidatorTest
-3. Repository tests (all 6 files)
-4. CompetitionServiceTest (45 tests)
-5. UI tests (MeadEventListViewTest, CompetitionListViewTest, CompetitionDetailViewTest)
-6. CompetitionModuleTest + ModulithStructureTest
+### Step 4: Test Review (guided, with UI verification)
 
-For manual testing guidance:
-- App runs with `mvn spring-boot:run` (needs PostgreSQL via docker-compose)
-- Admin login: admin@meads.app / admin (seeded by AdminInitializer)
-- Dev users seeded by DevUserInitializer (dev profile)
-- Access code login available for judges/stewards
+## Reference
 
-#### Step 3: After review is complete
-
-Continue with the next feature — likely the `entry` module (credits, mead
-registration). See `memory/mvp-flow.md` for full MVP requirements.
+**CHIP competition rules:** `docs/reference/chip-competition-rules.md`
+First competition to support. Drives entry limits, judging, and awards design decisions.
 
 ---
 

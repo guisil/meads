@@ -645,6 +645,56 @@ notifications. Skeleton listener in place.
 
 ---
 
+## Entry Limits (CHIP Rules — Section 5)
+
+**Reference:** `docs/reference/chip-competition-rules.md`
+
+CHIP enforces per-participant entry limits at two category levels:
+- **Max 3 entries per subcategory** (e.g., max 3 in M2A)
+- **Max 5 entries per main category** (e.g., max 5 total across M2A + M2B + M2C)
+- **No overall limit** per participant (subject to per-category limits)
+
+These limits are **configurable per division** (nullable = unlimited):
+
+### Division Entity Changes
+
+Add two optional fields to the `Division` entity (competition module):
+
+| Field | Type | DB Column | Default | Notes |
+|-------|------|-----------|---------|-------|
+| `maxEntriesPerSubcategory` | `Integer` | `max_entries_per_subcategory` | NULL (unlimited) | Per participant per leaf category |
+| `maxEntriesPerMainCategory` | `Integer` | `max_entries_per_main_category` | NULL (unlimited) | Per participant per top-level category |
+
+**Migration:** `V16__add_entry_limits_to_divisions.sql`
+
+```sql
+ALTER TABLE divisions ADD COLUMN max_entries_per_subcategory INT;
+ALTER TABLE divisions ADD COLUMN max_entries_per_main_category INT;
+```
+
+### Enforcement
+
+In `EntryService.createEntry()`:
+
+1. **Subcategory limit:** Count active entries by this user in the same leaf category
+   (matching `initialCategoryId`). Reject if count >= `maxEntriesPerSubcategory`.
+
+2. **Main category limit:** Resolve the entry's main category (parent of the selected
+   subcategory, or the category itself if it has no parent). Count active entries by this
+   user across all subcategories of that main category. Reject if count >=
+   `maxEntriesPerMainCategory`.
+
+Both checks only count non-WITHDRAWN entries.
+
+### UI
+
+- **DivisionDetailView Settings tab:** Two optional NumberFields for the limits
+- **MyEntriesView:** Show remaining slots per category when limits are configured
+- **DivisionEntryAdminView:** Admin bypass — admins can override limits (they manage
+  entries directly via `adminUpdateEntry`)
+
+---
+
 ## Changes to Existing Modules
 
 ### Identity Module
@@ -657,11 +707,17 @@ notifications. Skeleton listener in place.
 
 ### Competition Module
 
-- **`DivisionDetailView.java`:** Add "Manage Entries" button/link using string-based
-  navigation (`UI.getCurrent().navigate("divisions/" + divisionId + "/entry-admin")`) —
+- **`Division.java`:** Add `maxEntriesPerSubcategory` and `maxEntriesPerMainCategory`
+  nullable Integer fields + `updateEntryLimits(Integer, Integer)` domain method
+- **`V16__add_entry_limits_to_divisions.sql`:** Add columns to divisions table
+- **`DivisionDetailView.java`:** Add entry limit NumberFields to Settings tab; add
+  "Manage Entries" button/link using string-based navigation
+  (`UI.getCurrent().navigate("divisions/" + divisionId + "/entry-admin")`) —
   no import from entry module
 - **`CompetitionService.java`:** `findDivisionsByCompetition(UUID competitionId)` method
-  (already added in rework) — used for mutual exclusivity checks by the entry module
+  (already added in rework) — used for mutual exclusivity checks by the entry module;
+  `updateDivisionEntryLimits(divisionId, maxPerSubcategory, maxPerMainCategory, userId)`
+  method for updating limits
 
 ---
 
@@ -698,6 +754,13 @@ to link to the entry admin view without importing any entry module classes.
 
 `entryNumber` (sequential, per division) for logistics and tracking. `entryCode` (random
 6-char alphanumeric) for blind judging — judges see only the code, never the entrant name.
+
+### 7. Entry Limits as Division-Level Configuration
+
+Entry limits (per subcategory, per main category) are nullable Integer fields on Division
+rather than hardcoded constants. This allows different competitions to set different rules
+(or no limits at all). CHIP uses 3/5; other competitions may differ. Null = unlimited.
+See `docs/reference/chip-competition-rules.md` Section 5.
 
 ---
 
@@ -752,21 +815,24 @@ Each numbered phase contains multiple RED-GREEN-REFACTOR cycles.
 8. Unit test: getEffectiveCategoryId()
 9. Repository test → drives V14 migration
 
-### Phase 6 — Entry Service (14 cycles)
+### Phase 6 — Entry Service (17 cycles)
 1. Unit test: createEntry — validates credits > active entries
 2. Unit test: createEntry — rejects if division not REGISTRATION_OPEN
 3. Unit test: createEntry — sequential entry number
 4. Unit test: createEntry — unique entry code
-5. Unit test: updateEntry — only owning user, only DRAFT
-6. Unit test: deleteEntry — only DRAFT
-7. Unit test: submitAllDrafts — batch submit + event publication
-8. Unit test: submitAllDrafts — no drafts = no-op
-9. Unit test: markReceived — admin only
-10. Unit test: withdrawEntry — admin only
-11. Unit test: adminUpdateEntry — any non-WITHDRAWN
-12. Unit test: findEntriesByDivisionAndUser
-13. Unit test: countActiveEntries
-14. Unit test: deleteEntry frees credit slot
+5. Unit test: createEntry — rejects if subcategory limit exceeded
+6. Unit test: createEntry — rejects if main category limit exceeded (across subcategories)
+7. Unit test: createEntry — allows entry when limits are null (unlimited)
+8. Unit test: updateEntry — only owning user, only DRAFT
+9. Unit test: deleteEntry — only DRAFT
+10. Unit test: submitAllDrafts — batch submit + event publication
+11. Unit test: submitAllDrafts — no drafts = no-op
+12. Unit test: markReceived — admin only
+13. Unit test: withdrawEntry — admin only
+14. Unit test: adminUpdateEntry — any non-WITHDRAWN
+15. Unit test: findEntriesByDivisionAndUser
+16. Unit test: countActiveEntries
+17. Unit test: deleteEntry frees credit slot
 
 ### Phase 7 — User.meaderyName (3 cycles)
 1. Unit test: User.updateMeaderyName() domain method
@@ -800,7 +866,7 @@ Each numbered phase contains multiple RED-GREEN-REFACTOR cycles.
 | Notification for lingering drafts near registration close | Deferred |
 | Automatic discard of unsubmitted drafts when registration closes | Deferred — listener skeleton |
 | PRO division detection (show meadery name field) | Implementation detail |
-| Per-division entry limits (max entries per entrant) | Not in requirements |
+| Per-division entry limits (per subcategory, per main category) | Entry module Phase 6 — see Entry Limits section |
 | Webhook retry handling beyond idempotency | Not needed |
 | Entry credit refunds | Admin removes credits manually |
 | Per-category custom fields (e.g., "malt used" for braggot) | Future — TODO |

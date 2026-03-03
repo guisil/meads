@@ -164,9 +164,9 @@ Read `.claude/skills/new-module.md` before creating a module.
 |--------|--------|-------------|
 | `identity` | **Exists** | User management, authentication (JWT magic links, admin passwords, access codes), roles, admin CRUD |
 | `competition` | **Exists** | Events, competitions, scoring systems (MJP), categories, participants, access codes, status workflow, competition admin authorization |
-| `entry` | **Designed** | Jumpseller webhook, entry credits (ledger), mead entry registration, admin management. Design: `docs/plans/2026-03-02-entry-module-design.md` |
-| `judging` | Planned | Judging sessions, tables, judge assignments, scoresheets (polymorphic via ScoreField child table) |
-| `awards` | Planned | Score aggregation, rankings, medal determination, results publication |
+| `entry` | **Designed** | Jumpseller webhook, entry credits (ledger), mead entry registration, entry limits, admin management. Design: `docs/plans/2026-03-02-entry-module-design.md` |
+| `judging` | Planned | Judging sessions, tables, judge assignments, scoresheets, conflict of interest. Reference: `docs/reference/chip-competition-rules.md` |
+| `awards` | Planned | Score aggregation, rankings, medal determination (withholding), BOS (variable places), results publication. Reference: `docs/reference/chip-competition-rules.md` |
 
 ---
 
