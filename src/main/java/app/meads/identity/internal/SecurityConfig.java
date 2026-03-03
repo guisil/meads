@@ -34,6 +34,7 @@ public class SecurityConfig {
         http
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/login/magic").permitAll()
+                .requestMatchers("/api/webhooks/**").permitAll()
             )
             .with(vaadin(), vaadin -> vaadin
                 .loginView(LoginView.class)
