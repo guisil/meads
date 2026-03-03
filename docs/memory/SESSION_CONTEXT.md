@@ -15,9 +15,8 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `competition-module`
-**Tests:** 264 passing (`mvn test -Dsurefire.useFile=false`)
-**TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md` and
-`.claude/skills/tdd-cycle.md`
+**Tests:** 301 passing (`mvn test -Dsurefire.useFile=false`)
+**TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
 
@@ -27,91 +26,133 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 - User entity (UUID, email, name, status, role, optional password)
 - JWT magic link authentication + admin password login + access code login
 - UserService (public API), SecurityConfig, UserListView (admin CRUD)
+- **Status:** Complete
 
 ### competition module (`app.meads.competition`)
 - **Depends on:** identity
-- **Status:** Fully implemented + code reviewed. PENDING REWORK (see below).
+- **Status:** Complete (fully implemented + code reviewed + scope rework done)
 
-#### Current Entities (PRE-REWORK names — will change)
-| Entity | New Name (post-rework) |
-|--------|----------------------|
-| `MeadEvent` | `Competition` |
-| `Competition` | `Division` |
-| `EventParticipant` | `Participant` |
-| `CompetitionParticipant` | `ParticipantRole` |
-| `CompetitionCategory` | `DivisionCategory` |
-| `Category` | `Category` (unchanged) |
+#### Entities (public API)
+| Entity | Table | Description |
+|--------|-------|-------------|
+| `Competition` | `competitions` | Top-level: name, dates, location, logo |
+| `Division` | `divisions` | Sub-level: competitionId, name, scoringSystem, status |
+| `Participant` | `participants` | Competition-scoped: userId, accessCode |
+| `ParticipantRole` | `participant_roles` | Role per participant: JUDGE, STEWARD, ENTRANT, ADMIN |
+| `Category` | `categories` | Read-only catalog: code, name, scoringSystem |
+| `DivisionCategory` | `division_categories` | Per-division category with optional parent |
 
-#### Current Enums (PRE-REWORK)
-- `CompetitionRole`: JUDGE, STEWARD, ENTRANT, COMPETITION_ADMIN → ADMIN
-- `CompetitionStatus` → `DivisionStatus` (same values)
-- `ScoringSystem` (unchanged)
+#### Key enums
+- `DivisionStatus`: DRAFT → REGISTRATION_OPEN → REGISTRATION_CLOSED → JUDGING → DELIBERATION → RESULTS_PUBLISHED
+- `CompetitionRole`: JUDGE, STEWARD, ENTRANT, ADMIN
+- `ScoringSystem`: MJP
 
-#### Current Service — `CompetitionService` (public API)
-Key methods — see `CLAUDE.md` package layout for full list.
+#### Service — `CompetitionService` (public API)
+- Competition CRUD, Division CRUD, Participant management, Category management
+- Authorization: `isAuthorizedForCompetition()`, `isAuthorizedForDivision()`
+- Events: `DivisionStatusAdvancedEvent`
 
-#### Migrations (V3–V8)
-- V3: mead_events table
-- V4: competitions table
-- V5: event_participants table
-- V6: competition_participants table
-- V7: categories table + MJP seed data
-- V8: competition_categories table
+#### Migrations: V3–V8
+
+### entry module (`app.meads.entry`) — IN PROGRESS
+
+- **Depends on:** competition, identity
+- **Status:** Phases 0–4 complete, Phase 5 next
+
+#### Entities implemented (public API)
+| Entity | Table | Migration | Description |
+|--------|-------|-----------|-------------|
+| `ProductMapping` | `product_mappings` | V9 | Jumpseller product → division mapping |
+| `JumpsellerOrder` | `jumpseller_orders` | V10 | Webhook order storage, idempotency |
+| `JumpsellerOrderLineItem` | `jumpseller_order_line_items` | V11 | Per-product line items |
+| `EntryCredit` | `entry_credits` | V12 | Append-only credit ledger |
+
+#### Enums implemented
+- `EntryStatus`: DRAFT, SUBMITTED, RECEIVED, WITHDRAWN
+- `Sweetness`: DRY, MEDIUM, SWEET
+- `Strength`: HYDROMEL, STANDARD, SACK
+- `Carbonation`: STILL, PETILLANT, SPARKLING
+- `OrderStatus`: PROCESSED, PARTIALLY_PROCESSED, NEEDS_REVIEW, UNPROCESSED
+- `LineItemStatus`: PROCESSED, NEEDS_REVIEW, IGNORED, UNPROCESSED
+
+#### Services implemented
+- **EntryService** — Product mapping CRUD, credit management (getCreditBalance, addCredits, removeCredits, hasCreditsInOtherDivision)
+- **WebhookService** — HMAC signature verification, `processOrderPaid` (JSON parsing, idempotency, mutual exclusivity, credit creation)
+
+#### Events
+- `CreditsAwardedEvent(divisionId, userId, amount, source)`
+
+#### Entities NOT yet implemented
+- `Entry` (entries table, V13) — Phase 5
+- `User.meaderyName` field (V14) — Phase 7
+
+#### Config added
+- `app.jumpseller.hooks-token` in `application.properties`
 
 ---
 
-## Next Steps — Ordered
+## What's Next — Resume at Phase 5
 
-### Step 1: Competition Scope Rework — NEXT
+**Design doc:** `docs/plans/2026-03-02-entry-module-design.md`
 
-**Design doc:** `docs/plans/2026-03-03-competition-scope-rework.md`
+### Phase 5 — Entry Entity (9 TDD cycles)
+1. Unit test: create entry (constructor, DRAFT status)
+2. Unit test: submit() — DRAFT → SUBMITTED
+3. Unit test: submit() rejects non-DRAFT
+4. Unit test: markReceived() — SUBMITTED → RECEIVED
+5. Unit test: withdraw() from various statuses
+6. Unit test: updateDetails() — only DRAFT
+7. Unit test: assignFinalCategory()
+8. Unit test: getEffectiveCategoryId()
+9. Repository test → drives V13 migration
 
-**What:** Rename entities to match domain language + make all participant roles
-competition-scoped (not division-scoped). Full DB table rename.
+### Phase 6 — Entry Service (17 cycles)
+Entry creation, updates, deletion, submission, limits enforcement, admin operations.
 
-**Key changes:**
-- MeadEvent → Competition, Competition → Division
-- EventParticipant → Participant, CompetitionParticipant → ParticipantRole
-- COMPETITION_ADMIN → ADMIN
-- All roles (ADMIN, ENTRANT, JUDGE, STEWARD) are competition-scoped
-- ParticipantRole drops division reference
-- New CompetitionDetailView (divisions + participants + settings tabs)
-- DivisionDetailView (was CompetitionDetailView, loses participants tab)
-- "Add Participant to All" removed (no longer needed)
+### Phase 7 — User.meaderyName (3 cycles)
+Add meaderyName field to User entity + V14 migration.
 
-**Implementation phases:**
-- **R0:** Atomic rename + V9 migration (Fast Cycle, ~1 batch)
-- **R1:** Division-level authorization (Full TDD, ~4 cycles)
-- **R2:** View restructure (Full TDD, ~6 cycles)
-- **R3:** Update entry module design docs
+### Phase 8 — Webhook REST Controller (2 cycles)
+MockMvc tests + SecurityConfig change for `/api/webhooks/**`.
 
-### Step 2: Entry Module Implementation (TDD)
+### Phase 9 — Module Integration Test (1 cycle)
+Full context, real DB, credit → entry workflow.
 
-**Design doc:** `docs/plans/2026-03-02-entry-module-design.md` (revised 2026-03-03)
+### Phase 10 — Event Listener (1 cycle)
+DivisionStatusAdvancedEvent listener skeleton.
 
-After the rework, implement the entry module following the 12-phase TDD sequence
-in the design doc. Uses the new naming (divisions, not competitions for sub-level).
+### Phase 11 — Views (4 cycles)
+MyEntriesView, DivisionEntryAdminView, navigation links.
 
-Key: Migrations V10–V15 (V9 is the rework migration).
+---
 
-### Step 3: Code Review (slice by slice)
+## All Test Files (entry module — current)
 
-After entry module is complete, thorough code review of BOTH competition and
-entry modules in vertical slices.
+### Unit tests
+- `EntryServiceTest.java` — 17 tests: product mapping CRUD + credit methods
+- `WebhookServiceTest.java` — 9 tests: HMAC verification + processOrderPaid variants
+- `JumpsellerOrderTest.java` — 5 tests: entity domain methods
+- `JumpsellerOrderLineItemTest.java` — 4 tests: entity domain methods
 
-### Step 4: Test Review (guided, with UI verification)
+### Repository tests
+- `ProductMappingRepositoryTest.java` — 4 tests
+- `JumpsellerOrderRepositoryTest.java` — 3 tests
+- `JumpsellerOrderLineItemRepositoryTest.java` — 3 tests
+- `EntryCreditRepositoryTest.java` — 4 tests
 
-After code review, guided test review with UI verification for BOTH modules.
+### Module test
+- `EntryModuleTest.java` — bootstrap test
 
 ---
 
 ## Key Technical Notes
 
-- Karibu TabSheet: content is lazy-loaded. Must call `tabSheet.setSelectedIndex(N)` before finding components in non-default tabs
-- Karibu component columns: buttons inside Grid `addComponentColumn` are not found by `_find(Button.class)` — they render lazily per row
-- `Category` has only a protected no-arg constructor (read-only catalog entity). In unit tests, use `Mockito.mock(Category.class)` with stubbed `getId()` when distinct IDs are needed
-- `Select.setEmptySelectionAllowed(true)` passes `null` to `setItemLabelGenerator` — must handle null in the lambda
-- `CompetitionService` constructor is package-private (convention)
+- Karibu TabSheet: content is lazy-loaded. Must call `tabSheet.setSelectedIndex(N)` before finding components
+- Karibu component columns: buttons inside Grid `addComponentColumn` are not found by `_find(Button.class)`
+- `Category` has only protected no-arg constructor — use `Mockito.mock()` in unit tests
+- `Select.setEmptySelectionAllowed(true)` passes `null` to `setItemLabelGenerator` — must handle null
+- Service constructors are package-private (convention)
 - `@DirtiesContext` required on UI tests that modify security context strategy
-- TreeGrid: use `addHierarchyColumn()` for expand/collapse column, `setItems(roots, childrenProvider)` for data
-- `HierarchicalQuery` for asserting TreeGrid data in tests (not `getGenericDataView()`)
+- `EntryCredit` is append-only ledger — balance computed as `SUM(amount)` via JPQL
+- `WebhookService` constructor takes `@Value("${app.jumpseller.hooks-token}")` — property must exist
+- Mutual exclusivity: user cannot have credits in two different divisions of same competition

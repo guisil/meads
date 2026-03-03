@@ -15,9 +15,8 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `competition-module`
-**Tests:** 257 passing (`mvn test -Dsurefire.useFile=false`)
-**TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md` and
-`.claude/skills/tdd-cycle.md`
+**Tests:** 301 passing (`mvn test -Dsurefire.useFile=false`)
+**TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
 
@@ -27,126 +26,133 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 - User entity (UUID, email, name, status, role, optional password)
 - JWT magic link authentication + admin password login + access code login
 - UserService (public API), SecurityConfig, UserListView (admin CRUD)
+- **Status:** Complete
 
 ### competition module (`app.meads.competition`)
 - **Depends on:** identity
+- **Status:** Complete (fully implemented + code reviewed + scope rework done)
 
-#### Entities (public API — `app.meads.competition`)
-| Entity | Key fields | Table |
-|--------|-----------|-------|
-| `MeadEvent` | name, startDate, endDate, location, logo | `events` |
-| `Competition` | eventId, name, scoringSystem, status | `competitions` |
-| `EventParticipant` | eventId, userId, accessCode, status | `event_participants` |
-| `CompetitionParticipant` | competitionId, eventParticipantId, role | `competition_participants` |
-| `Category` | code, name, description, scoringSystem | `categories` (read-only catalog) |
-| `CompetitionCategory` | competitionId, catalogCategoryId, code, name, description, parentId, sortOrder | `competition_categories` |
+#### Entities (public API)
+| Entity | Table | Description |
+|--------|-------|-------------|
+| `Competition` | `competitions` | Top-level: name, dates, location, logo |
+| `Division` | `divisions` | Sub-level: competitionId, name, scoringSystem, status |
+| `Participant` | `participants` | Competition-scoped: userId, accessCode |
+| `ParticipantRole` | `participant_roles` | Role per participant: JUDGE, STEWARD, ENTRANT, ADMIN |
+| `Category` | `categories` | Read-only catalog: code, name, scoringSystem |
+| `DivisionCategory` | `division_categories` | Per-division category with optional parent |
 
-#### Enums (public API)
-- `CompetitionStatus`: DRAFT → REGISTRATION_OPEN → REGISTRATION_CLOSED → JUDGING → DELIBERATION → RESULTS_PUBLISHED
-  - `allowsCategoryModification()` — true for DRAFT, REGISTRATION_OPEN
-- `CompetitionRole`: JUDGE, STEWARD, ENTRANT, COMPETITION_ADMIN
-- `CompetitionParticipantStatus`: ACTIVE, WITHDRAWN
+#### Key enums
+- `DivisionStatus`: DRAFT → REGISTRATION_OPEN → REGISTRATION_CLOSED → JUDGING → DELIBERATION → RESULTS_PUBLISHED
+- `CompetitionRole`: JUDGE, STEWARD, ENTRANT, ADMIN
 - `ScoringSystem`: MJP
 
 #### Service — `CompetitionService` (public API)
-Key methods:
-- **MeadEvents:** createMeadEvent, findMeadEventById, findAllMeadEvents, updateMeadEvent, updateMeadEventLogo, deleteMeadEvent
-- **Competitions:** createCompetition (auto-inits categories), findById, findByEvent, updateCompetition, advanceStatus
-- **Participants:** addParticipant, addParticipantByEmail, withdrawParticipant, addParticipantToAllCompetitions, findParticipantsByCompetition, findEventParticipantsByEvent
-- **Categories:** findCategoriesByScoringSystem, findCompetitionCategories, addCatalogCategory, addCustomCategory, removeCompetitionCategory (cascades children), findAvailableCatalogCategories, initializeCompetitionCategories
-- **Auth:** isAuthorizedForCompetition, findAuthorizedCompetitions
-- Private helpers: requireSystemAdmin, requireAuthorized, generateAccessCode, initializeCategories
+- Competition CRUD, Division CRUD, Participant management, Category management
+- Authorization: `isAuthorizedForCompetition()`, `isAuthorizedForDivision()`
+- Events: `DivisionStatusAdvancedEvent`
 
-#### Repositories (internal — `app.meads.competition.internal`)
-- `MeadEventRepository`
-- `CompetitionRepository` — findByEventId
-- `EventParticipantRepository` — findByEventId, findByEventIdAndUserId, findByUserId
-- `CompetitionParticipantRepository` — findByCompetitionId, existsByCompetitionIdAndEventParticipantIdAndRole, findByCompetitionIdAndEventParticipantId, findByEventParticipantIdAndRole, existsByEventParticipantIdAndRole
-- `CategoryRepository` — findByScoringSystem
-- `CompetitionCategoryRepository` — findByCompetitionIdOrderBySortOrder, existsByCompetitionIdAndCode, existsByCompetitionIdAndCatalogCategoryId, findByParentId
+#### Migrations: V3–V8
 
-#### Views (internal)
-- `MeadEventListView` — `/events`, `@RolesAllowed("SYSTEM_ADMIN")`, CRUD grid for events with logo upload
-- `CompetitionListView` — `/events/:eventId/competitions`, `@PermitAll` + beforeEnter auth, grid filtered by `findAuthorizedCompetitions()`, "Create Competition" button (SYSTEM_ADMIN only)
-- `CompetitionDetailView` — `/competitions/:competitionId`, `@PermitAll` + beforeEnter auth, TabSheet with:
-  - **Participants tab:** Grid with Name/Email/Role columns, "Add Participant" button → dialog with email + role
-  - **Categories tab:** `Grid<CompetitionCategory>` with Code/Name/Description/Remove columns, "Add Category" button → two-tab dialog (From Catalog / Custom with optional parent)
-  - **Settings tab:** Name, Scoring System, Status fields, Save button (DRAFT only)
+### entry module (`app.meads.entry`) — IN PROGRESS
 
-#### Other internal classes
-- `CompetitionAccessCodeValidator` — implements `AccessCodeValidator` (identity module interface), queries EventParticipantRepository
+- **Depends on:** competition, identity
+- **Status:** Phases 0–4 complete, Phase 5 next
 
-#### Migrations (V3–V8)
-- V3: events table
-- V4: competitions table
-- V5: event_participants table
-- V6: competition_participants table
-- V7: categories table + MJP seed data (18 categories)
-- V8: competition_categories table
+#### Entities implemented (public API)
+| Entity | Table | Migration | Description |
+|--------|-------|-----------|-------------|
+| `ProductMapping` | `product_mappings` | V9 | Jumpseller product → division mapping |
+| `JumpsellerOrder` | `jumpseller_orders` | V10 | Webhook order storage, idempotency |
+| `JumpsellerOrderLineItem` | `jumpseller_order_line_items` | V11 | Per-product line items |
+| `EntryCredit` | `entry_credits` | V12 | Append-only credit ledger |
 
----
+#### Enums implemented
+- `EntryStatus`: DRAFT, SUBMITTED, RECEIVED, WITHDRAWN
+- `Sweetness`: DRY, MEDIUM, SWEET
+- `Strength`: HYDROMEL, STANDARD, SACK
+- `Carbonation`: STILL, PETILLANT, SPARKLING
+- `OrderStatus`: PROCESSED, PARTIALLY_PROCESSED, NEEDS_REVIEW, UNPROCESSED
+- `LineItemStatus`: PROCESSED, NEEDS_REVIEW, IGNORED, UNPROCESSED
 
-## All Test Files (competition module)
+#### Services implemented
+- **EntryService** — Product mapping CRUD, credit management (getCreditBalance, addCredits, removeCredits, hasCreditsInOtherDivision)
+- **WebhookService** — HMAC signature verification, `processOrderPaid` (JSON parsing, idempotency, mutual exclusivity, credit creation)
 
-### Unit tests (`@ExtendWith(MockitoExtension.class)`)
-- `CompetitionServiceTest.java` — 45 tests: service methods with mocked repos
-- `CompetitionTest.java` — entity domain logic
-- `CompetitionStatusTest.java` — enum helpers
-- `MeadEventTest.java` — MeadEvent domain logic
-- `EventParticipantTest.java` — EventParticipant domain logic
-- `CompetitionParticipantTest.java` — CompetitionParticipant domain logic
-- `CompetitionAccessCodeValidatorTest.java` — access code validation
+#### Events
+- `CreditsAwardedEvent(divisionId, userId, amount, source)`
 
-### Repository tests (`@SpringBootTest` + `@Transactional` + Testcontainers)
-- `CompetitionRepositoryTest.java` — save/retrieve, findByEventId
-- `MeadEventRepositoryTest.java` — save/retrieve
-- `EventParticipantRepositoryTest.java` — various query methods
-- `CompetitionParticipantRepositoryTest.java` — 6 tests: save, find, exists queries
-- `CategoryRepositoryTest.java` — findByScoringSystem
-- `CompetitionCategoryRepositoryTest.java` — 4 tests: save/find, exists, findByParentId
+#### Entities NOT yet implemented
+- `Entry` (entries table, V13) — Phase 5
+- `User.meaderyName` field (V14) — Phase 7
 
-### UI tests (`@SpringBootTest` + Karibu + `@DirtiesContext`)
-- `MeadEventListViewTest.java` — event CRUD grid
-- `CompetitionDetailViewTest.java` — 14 tests: header, tabs, participants, categories, breadcrumb, auth
-- `CompetitionListViewTest.java` — competition list, auth filtering
-
-### Module/structure tests
-- `CompetitionModuleTest.java` — `@ApplicationModuleTest` bootstrap
-- `ModulithStructureTest.java` — `ApplicationModules.verify()`
+#### Config added
+- `app.jumpseller.hooks-token` in `application.properties`
 
 ---
 
-## Next Steps — Ordered
+## What's Next — Resume at Phase 5
 
-### Step 1: Competition Scope Rework — NEXT
+**Design doc:** `docs/plans/2026-03-02-entry-module-design.md`
 
-**Design doc:** `docs/plans/2026-03-03-competition-scope-rework.md`
+### Phase 5 — Entry Entity (9 TDD cycles)
+1. Unit test: create entry (constructor, DRAFT status)
+2. Unit test: submit() — DRAFT → SUBMITTED
+3. Unit test: submit() rejects non-DRAFT
+4. Unit test: markReceived() — SUBMITTED → RECEIVED
+5. Unit test: withdraw() from various statuses
+6. Unit test: updateDetails() — only DRAFT
+7. Unit test: assignFinalCategory()
+8. Unit test: getEffectiveCategoryId()
+9. Repository test → drives V13 migration
 
-Phases: R0 (atomic rename) → R1 (division auth) → R2 (view restructure) → R3 (doc update)
+### Phase 6 — Entry Service (17 cycles)
+Entry creation, updates, deletion, submission, limits enforcement, admin operations.
 
-### Step 2: Entry Module Implementation (TDD)
+### Phase 7 — User.meaderyName (3 cycles)
+Add meaderyName field to User entity + V14 migration.
 
-**Design doc:** `docs/plans/2026-03-02-entry-module-design.md` (revised 2026-03-03)
+### Phase 8 — Webhook REST Controller (2 cycles)
+MockMvc tests + SecurityConfig change for `/api/webhooks/**`.
 
-12 phases, ~53 TDD cycles. Migrations V10–V16.
-Entry limits (CHIP rules): `maxEntriesPerSubcategory` + `maxEntriesPerMainCategory` per division.
+### Phase 9 — Module Integration Test (1 cycle)
+Full context, real DB, credit → entry workflow.
 
-### Step 3: Code Review (slice by slice)
+### Phase 10 — Event Listener (1 cycle)
+DivisionStatusAdvancedEvent listener skeleton.
 
-### Step 4: Test Review (guided, with UI verification)
+### Phase 11 — Views (4 cycles)
+MyEntriesView, DivisionEntryAdminView, navigation links.
 
-## Reference
+---
 
-**CHIP competition rules:** `docs/reference/chip-competition-rules.md`
-First competition to support. Drives entry limits, judging, and awards design decisions.
+## All Test Files (entry module — current)
+
+### Unit tests
+- `EntryServiceTest.java` — 17 tests: product mapping CRUD + credit methods
+- `WebhookServiceTest.java` — 9 tests: HMAC verification + processOrderPaid variants
+- `JumpsellerOrderTest.java` — 5 tests: entity domain methods
+- `JumpsellerOrderLineItemTest.java` — 4 tests: entity domain methods
+
+### Repository tests
+- `ProductMappingRepositoryTest.java` — 4 tests
+- `JumpsellerOrderRepositoryTest.java` — 3 tests
+- `JumpsellerOrderLineItemRepositoryTest.java` — 3 tests
+- `EntryCreditRepositoryTest.java` — 4 tests
+
+### Module test
+- `EntryModuleTest.java` — bootstrap test
 
 ---
 
 ## Key Technical Notes
 
-- Karibu TabSheet: content is lazy-loaded. Must call `tabSheet.setSelectedIndex(N)` before finding components in non-default tabs
-- Karibu component columns: buttons inside Grid `addComponentColumn` are not found by `_find(Button.class)` — they render lazily per row
-- `Category` has only a protected no-arg constructor (read-only catalog entity). In unit tests, use `Mockito.mock(Category.class)` with stubbed `getId()` when distinct IDs are needed
-- `Select.setEmptySelectionAllowed(true)` passes `null` to `setItemLabelGenerator` — must handle null in the lambda
-- `CompetitionService` constructor is package-private (convention)
+- Karibu TabSheet: content is lazy-loaded. Must call `tabSheet.setSelectedIndex(N)` before finding components
+- Karibu component columns: buttons inside Grid `addComponentColumn` are not found by `_find(Button.class)`
+- `Category` has only protected no-arg constructor — use `Mockito.mock()` in unit tests
+- `Select.setEmptySelectionAllowed(true)` passes `null` to `setItemLabelGenerator` — must handle null
+- Service constructors are package-private (convention)
 - `@DirtiesContext` required on UI tests that modify security context strategy
+- `EntryCredit` is append-only ledger — balance computed as `SUM(amount)` via JPQL
+- `WebhookService` constructor takes `@Value("${app.jumpseller.hooks-token}")` — property must exist
+- Mutual exclusivity: user cannot have credits in two different divisions of same competition

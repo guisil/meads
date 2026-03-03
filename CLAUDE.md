@@ -134,6 +134,26 @@ app.meads.competition                    ← Competition module public API
     ├── CompetitionListView.java         ← Competitions CRUD view (@RolesAllowed("SYSTEM_ADMIN"))
     ├── CompetitionDetailView.java       ← Competition detail with Divisions/Participants/Settings tabs (@PermitAll + beforeEnter auth)
     └── DivisionDetailView.java          ← Division detail with Categories/Settings tabs, breadcrumb (@PermitAll + beforeEnter auth)
+app.meads.entry                              ← Entry module public API
+├── package-info.java                        ← @ApplicationModule(allowedDependencies = {"competition", "identity"})
+├── ProductMapping.java                      ← JPA entity (product-to-division mapping)
+├── JumpsellerOrder.java                     ← JPA entity (webhook order storage, idempotency)
+├── JumpsellerOrderLineItem.java             ← JPA entity (individual line items)
+├── EntryCredit.java                         ← JPA entity (credits per user per division, append-only ledger)
+├── EntryStatus.java                         ← Enum: DRAFT, SUBMITTED, RECEIVED, WITHDRAWN
+├── Sweetness.java                           ← Enum: DRY, MEDIUM, SWEET
+├── Strength.java                            ← Enum: HYDROMEL, STANDARD, SACK
+├── Carbonation.java                         ← Enum: STILL, PETILLANT, SPARKLING
+├── OrderStatus.java                         ← Enum: PROCESSED, PARTIALLY_PROCESSED, NEEDS_REVIEW, UNPROCESSED
+├── LineItemStatus.java                      ← Enum: PROCESSED, NEEDS_REVIEW, IGNORED, UNPROCESSED
+├── EntryService.java                        ← Application service (public API)
+├── WebhookService.java                      ← Webhook processing service (public API)
+├── CreditsAwardedEvent.java                 ← Spring application event (record)
+└── internal/                                ← Module-private
+    ├── ProductMappingRepository.java        ← JPA repository
+    ├── JumpsellerOrderRepository.java       ← JPA repository
+    ├── JumpsellerOrderLineItemRepository.java ← JPA repository
+    └── EntryCreditRepository.java           ← JPA repository
 ```
 
 ### Module Rules
@@ -164,7 +184,7 @@ Read `.claude/skills/new-module.md` before creating a module.
 |--------|--------|-------------|
 | `identity` | **Exists** | User management, authentication (JWT magic links, admin passwords, access codes), roles, admin CRUD |
 | `competition` | **Exists** | Events, competitions, scoring systems (MJP), categories, participants, access codes, status workflow, competition admin authorization |
-| `entry` | **Designed** | Jumpseller webhook, entry credits (ledger), mead entry registration, entry limits, admin management. Design: `docs/plans/2026-03-02-entry-module-design.md` |
+| `entry` | **In Progress** | Jumpseller webhook, entry credits (ledger), mead entry registration, entry limits, admin management. Phases 0–4 done, Phase 5 next. Design: `docs/plans/2026-03-02-entry-module-design.md` |
 | `judging` | Planned | Judging sessions, tables, judge assignments, scoresheets, conflict of interest. Reference: `docs/reference/chip-competition-rules.md` |
 | `awards` | Planned | Score aggregation, rankings, medal determination (withholding), BOS (variable places), results publication. Reference: `docs/reference/chip-competition-rules.md` |
 
@@ -323,7 +343,7 @@ void tearDown() {
 ## Database & Migrations
 
 - **Location:** `src/main/resources/db/migration/V{N}__{description}.sql`
-- **Current highest version:** V8 (`V8__create_competition_categories_table.sql`). V5–V8 are pre-deployment; V9 was merged back into V5. Entry module will use V9–V14.
+- **Current highest version:** V12 (`V12__create_entry_credits_table.sql`). V5–V8 are pre-deployment (competition module). V9–V12 are entry module (in progress). Entry module will use V9–V14.
 - **Naming:** `V{next}__{snake_case_description}.sql` (double underscore)
 - Migrations are created in **Step 2** (GREEN), when a repository test needs a table.
 - **Never edit existing migrations.** Always create new ones.
