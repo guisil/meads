@@ -1,6 +1,6 @@
-CREATE TABLE competitions (
+CREATE TABLE divisions (
     id             UUID         PRIMARY KEY,
-    event_id       UUID         NOT NULL REFERENCES mead_events(id),
+    competition_id UUID         NOT NULL REFERENCES competitions(id),
     name           VARCHAR(255) NOT NULL,
     status         VARCHAR(50)  NOT NULL,
     scoring_system VARCHAR(50)  NOT NULL,
@@ -8,4 +8,4 @@ CREATE TABLE competitions (
     updated_at     TIMESTAMP WITH TIME ZONE
 );
 
-CREATE INDEX idx_competitions_event_id ON competitions(event_id);
+CREATE INDEX idx_divisions_competition_id ON divisions(competition_id);

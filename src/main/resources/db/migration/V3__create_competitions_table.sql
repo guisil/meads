@@ -1,4 +1,4 @@
-CREATE TABLE mead_events (
+CREATE TABLE competitions (
     id                 UUID         PRIMARY KEY,
     name               VARCHAR(255) NOT NULL,
     start_date         DATE         NOT NULL,
