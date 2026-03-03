@@ -57,4 +57,27 @@ class UserRepositoryTest {
         assertThat(found).isPresent();
         assertThat(found.get().getPasswordHash()).isNull();
     }
+
+    @Test
+    void shouldPersistMeaderyName() {
+        var user = new User("meadery@repository.com", "Meadery Owner", UserStatus.ACTIVE, Role.USER);
+        user.updateMeaderyName("Golden Meadery");
+
+        userRepository.save(user);
+        var found = userRepository.findByEmail("meadery@repository.com");
+
+        assertThat(found).isPresent();
+        assertThat(found.get().getMeaderyName()).isEqualTo("Golden Meadery");
+    }
+
+    @Test
+    void shouldPersistUserWithNullMeaderyName() {
+        var user = new User("nomeadery@repository.com", "No Meadery", UserStatus.ACTIVE, Role.USER);
+
+        userRepository.save(user);
+        var found = userRepository.findByEmail("nomeadery@repository.com");
+
+        assertThat(found).isPresent();
+        assertThat(found.get().getMeaderyName()).isNull();
+    }
 }

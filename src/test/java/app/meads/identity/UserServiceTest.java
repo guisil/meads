@@ -276,6 +276,20 @@ class UserServiceTest {
         then(userRepository).should().save(user);
     }
 
+    // --- updateMeaderyName tests ---
+
+    @Test
+    void shouldUpdateMeaderyName() {
+        var user = new User("user@example.com", "User", UserStatus.ACTIVE, Role.USER);
+        given(userRepository.findById(user.getId())).willReturn(Optional.of(user));
+        given(userRepository.save(any(User.class))).willAnswer(inv -> inv.getArgument(0));
+
+        var result = userService.updateMeaderyName(user.getId(), "Golden Meadery");
+
+        assertThat(result.getMeaderyName()).isEqualTo("Golden Meadery");
+        then(userRepository).should().save(user);
+    }
+
     @Test
     void shouldThrowWhenSettingPasswordForNonExistentUser() {
         // Arrange

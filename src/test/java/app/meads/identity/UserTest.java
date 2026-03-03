@@ -86,6 +86,22 @@ class UserTest {
     }
 
     @Test
+    void shouldUpdateMeaderyName() {
+        var user = new User("user@example.com", "Test User", UserStatus.ACTIVE, Role.USER);
+
+        user.updateMeaderyName("Golden Meadery");
+
+        assertThat(user.getMeaderyName()).isEqualTo("Golden Meadery");
+    }
+
+    @Test
+    void shouldHaveNullMeaderyNameByDefault() {
+        var user = new User("user@example.com", "Test User", UserStatus.ACTIVE, Role.USER);
+
+        assertThat(user.getMeaderyName()).isNull();
+    }
+
+    @Test
     void shouldUpdateDetailsWhenValidDataProvided() {
         // Arrange
         var user = new User(

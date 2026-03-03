@@ -36,6 +36,9 @@ public class User {
     @Column(nullable = false)
     private Instant createdAt;
 
+    @Column(name = "meadery_name")
+    private String meaderyName;
+
     private Instant updatedAt;
 
     protected User() {} // JPA
@@ -64,6 +67,10 @@ public class User {
 
     public void deactivate() {
         this.status = UserStatus.INACTIVE;
+    }
+
+    public void updateMeaderyName(String meaderyName) {
+        this.meaderyName = meaderyName;
     }
 
     public void updateDetails(String name, Role role, UserStatus status) {

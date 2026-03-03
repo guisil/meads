@@ -75,6 +75,13 @@ public class UserService {
                 });
     }
 
+    public User updateMeaderyName(@NotNull UUID userId, String meaderyName) {
+        var user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        user.updateMeaderyName(meaderyName);
+        return userRepository.save(user);
+    }
+
     public boolean isEditingSelf(UUID userId, String currentUserEmail) {
         return userRepository.findById(userId)
                 .map(user -> user.getEmail().equals(currentUserEmail))
