@@ -202,6 +202,35 @@ class EntryTest {
                 .hasMessageContaining("Wood ageing details");
     }
 
+    // --- adminUpdateDetails() ---
+
+    @Test
+    void shouldAdminUpdateDetailsWhenSubmitted() {
+        var entry = createDefaultEntry();
+        entry.submit();
+        var newCategoryId = UUID.randomUUID();
+
+        entry.adminUpdateDetails("Admin Updated", newCategoryId, Sweetness.SWEET,
+                Strength.SACK, new BigDecimal("18.0"), Carbonation.SPARKLING,
+                "Orange blossom", "Spices", true, "Oak barrel, 6 months",
+                "Special batch");
+
+        assertThat(entry.getMeadName()).isEqualTo("Admin Updated");
+        assertThat(entry.getInitialCategoryId()).isEqualTo(newCategoryId);
+    }
+
+    @Test
+    void shouldRejectAdminUpdateDetailsWhenWithdrawn() {
+        var entry = createDefaultEntry();
+        entry.withdraw();
+
+        assertThatThrownBy(() -> entry.adminUpdateDetails("Updated", CATEGORY_ID,
+                Sweetness.DRY, Strength.STANDARD, new BigDecimal("12.5"),
+                Carbonation.STILL, "Wildflower honey", null, false, null, null))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("withdrawn");
+    }
+
     // --- Cycle 7: assignFinalCategory() ---
 
     @Test

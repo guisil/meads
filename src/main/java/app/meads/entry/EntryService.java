@@ -3,7 +3,10 @@ package app.meads.entry;
 import app.meads.competition.CompetitionRole;
 import app.meads.competition.CompetitionService;
 import app.meads.competition.Division;
+import app.meads.competition.DivisionCategory;
+import app.meads.competition.DivisionStatus;
 import app.meads.entry.internal.EntryCreditRepository;
+import app.meads.entry.internal.EntryRepository;
 import app.meads.entry.internal.ProductMappingRepository;
 import app.meads.identity.Role;
 import app.meads.identity.UserService;
@@ -15,6 +18,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
+import java.math.BigDecimal;
+import java.security.SecureRandom;
 import java.util.List;
 import java.util.UUID;
 
@@ -23,19 +28,26 @@ import java.util.UUID;
 @Validated
 public class EntryService {
 
+    private static final String ENTRY_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    private static final int ENTRY_CODE_LENGTH = 6;
+    private static final SecureRandom RANDOM = new SecureRandom();
+
     private final ProductMappingRepository productMappingRepository;
     private final EntryCreditRepository creditRepository;
+    private final EntryRepository entryRepository;
     private final CompetitionService competitionService;
     private final UserService userService;
     private final ApplicationEventPublisher eventPublisher;
 
     EntryService(ProductMappingRepository productMappingRepository,
                  EntryCreditRepository creditRepository,
+                 EntryRepository entryRepository,
                  CompetitionService competitionService,
                  UserService userService,
                  ApplicationEventPublisher eventPublisher) {
         this.productMappingRepository = productMappingRepository;
         this.creditRepository = creditRepository;
+        this.entryRepository = entryRepository;
         this.competitionService = competitionService;
         this.userService = userService;
         this.eventPublisher = eventPublisher;
@@ -146,6 +158,160 @@ public class EntryService {
         return hasCreditConflict(userId, divisionId, competitionId);
     }
 
+    // --- Entry methods ---
+
+    public Entry createEntry(@NotNull UUID divisionId,
+                              @NotNull UUID userId,
+                              @NotBlank String meadName,
+                              @NotNull UUID initialCategoryId,
+                              @NotNull Sweetness sweetness,
+                              @NotNull Strength strength,
+                              @NotNull BigDecimal abv,
+                              @NotNull Carbonation carbonation,
+                              @NotBlank String honeyVarieties,
+                              String otherIngredients,
+                              boolean woodAged,
+                              String woodAgeingDetails,
+                              String additionalInformation) {
+        var division = competitionService.findDivisionById(divisionId);
+
+        // Division must be open for registration
+        if (division.getStatus() != DivisionStatus.REGISTRATION_OPEN) {
+            throw new IllegalArgumentException("Division is not open for registration");
+        }
+
+        // Credit check: must have available credits
+        var creditBalance = creditRepository.sumAmountByDivisionIdAndUserId(divisionId, userId);
+        var activeEntries = entryRepository.countByDivisionIdAndUserIdAndStatusNot(
+                divisionId, userId, EntryStatus.WITHDRAWN);
+        if (creditBalance <= activeEntries) {
+            throw new IllegalArgumentException(
+                    "No available credits — balance: " + creditBalance
+                    + ", active entries: " + activeEntries);
+        }
+
+        // Entry limits
+        checkEntryLimits(divisionId, userId, initialCategoryId, division);
+
+        // Generate entry number and code
+        var entryNumber = entryRepository.findMaxEntryNumberByDivisionId(divisionId) + 1;
+        var entryCode = generateEntryCode(divisionId);
+
+        var entry = new Entry(divisionId, userId, entryNumber, entryCode,
+                meadName, initialCategoryId, sweetness, strength, abv, carbonation,
+                honeyVarieties, otherIngredients, woodAged, woodAgeingDetails,
+                additionalInformation);
+        return entryRepository.save(entry);
+    }
+
+    public Entry updateEntry(@NotNull UUID entryId,
+                              @NotNull UUID userId,
+                              @NotBlank String meadName,
+                              @NotNull UUID initialCategoryId,
+                              @NotNull Sweetness sweetness,
+                              @NotNull Strength strength,
+                              @NotNull BigDecimal abv,
+                              @NotNull Carbonation carbonation,
+                              @NotBlank String honeyVarieties,
+                              String otherIngredients,
+                              boolean woodAged,
+                              String woodAgeingDetails,
+                              String additionalInformation) {
+        var entry = entryRepository.findById(entryId)
+                .orElseThrow(() -> new IllegalArgumentException("Entry not found"));
+        if (!entry.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("User is not the owner of this entry");
+        }
+        entry.updateDetails(meadName, initialCategoryId, sweetness, strength, abv,
+                carbonation, honeyVarieties, otherIngredients, woodAged,
+                woodAgeingDetails, additionalInformation);
+        return entryRepository.save(entry);
+    }
+
+    public void deleteEntry(@NotNull UUID entryId, @NotNull UUID userId) {
+        var entry = entryRepository.findById(entryId)
+                .orElseThrow(() -> new IllegalArgumentException("Entry not found"));
+        if (!entry.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("User is not the owner of this entry");
+        }
+        if (entry.getStatus() != EntryStatus.DRAFT) {
+            throw new IllegalArgumentException("Can only delete entries in DRAFT status — "
+                    + "entry is " + entry.getStatus());
+        }
+        entryRepository.delete(entry);
+    }
+
+    public void submitAllDrafts(@NotNull UUID divisionId, @NotNull UUID userId) {
+        var drafts = entryRepository.findByDivisionIdAndUserIdAndStatus(
+                divisionId, userId, EntryStatus.DRAFT);
+        if (drafts.isEmpty()) {
+            return;
+        }
+        for (var entry : drafts) {
+            entry.submit();
+            entryRepository.save(entry);
+        }
+        eventPublisher.publishEvent(new EntriesSubmittedEvent(
+                divisionId, userId, drafts.size()));
+    }
+
+    public Entry markReceived(@NotNull UUID entryId, @NotNull UUID requestingUserId) {
+        var entry = entryRepository.findById(entryId)
+                .orElseThrow(() -> new IllegalArgumentException("Entry not found"));
+        requireAuthorizedForDivision(entry.getDivisionId(), requestingUserId);
+        entry.markReceived();
+        return entryRepository.save(entry);
+    }
+
+    public Entry withdrawEntry(@NotNull UUID entryId, @NotNull UUID requestingUserId) {
+        var entry = entryRepository.findById(entryId)
+                .orElseThrow(() -> new IllegalArgumentException("Entry not found"));
+        requireAuthorizedForDivision(entry.getDivisionId(), requestingUserId);
+        entry.withdraw();
+        return entryRepository.save(entry);
+    }
+
+    public Entry adminUpdateEntry(@NotNull UUID entryId,
+                                    @NotBlank String meadName,
+                                    @NotNull UUID initialCategoryId,
+                                    @NotNull Sweetness sweetness,
+                                    @NotNull Strength strength,
+                                    @NotNull BigDecimal abv,
+                                    @NotNull Carbonation carbonation,
+                                    @NotBlank String honeyVarieties,
+                                    String otherIngredients,
+                                    boolean woodAged,
+                                    String woodAgeingDetails,
+                                    String additionalInformation,
+                                    @NotNull UUID requestingUserId) {
+        var entry = entryRepository.findById(entryId)
+                .orElseThrow(() -> new IllegalArgumentException("Entry not found"));
+        requireAuthorizedForDivision(entry.getDivisionId(), requestingUserId);
+        entry.adminUpdateDetails(meadName, initialCategoryId, sweetness, strength, abv,
+                carbonation, honeyVarieties, otherIngredients, woodAged,
+                woodAgeingDetails, additionalInformation);
+        return entryRepository.save(entry);
+    }
+
+    public List<Entry> findEntriesByDivision(@NotNull UUID divisionId) {
+        return entryRepository.findByDivisionId(divisionId);
+    }
+
+    public List<Entry> findEntriesByDivisionAndUser(@NotNull UUID divisionId,
+                                                      @NotNull UUID userId) {
+        return entryRepository.findByDivisionIdAndUserId(divisionId, userId);
+    }
+
+    public Entry findEntryById(@NotNull UUID entryId) {
+        return entryRepository.findById(entryId)
+                .orElseThrow(() -> new IllegalArgumentException("Entry not found"));
+    }
+
+    public long countActiveEntries(@NotNull UUID divisionId, @NotNull UUID userId) {
+        return entryRepository.countByDivisionIdAndUserIdAndStatusNot(
+                divisionId, userId, EntryStatus.WITHDRAWN);
+    }
+
     // --- Private helpers ---
 
     private void requireAuthorizedForDivision(UUID divisionId, UUID userId) {
@@ -172,5 +338,58 @@ public class EntryService {
                 .toList();
         return existingDivisionIds.stream()
                 .anyMatch(id -> competitionDivisionIds.contains(id) && !id.equals(divisionId));
+    }
+
+    private void checkEntryLimits(UUID divisionId, UUID userId,
+                                   UUID initialCategoryId, Division division) {
+        // Subcategory limit
+        if (division.getMaxEntriesPerSubcategory() != null) {
+            var count = entryRepository.countByDivisionIdAndUserIdAndInitialCategoryIdAndStatusNot(
+                    divisionId, userId, initialCategoryId, EntryStatus.WITHDRAWN);
+            if (count >= division.getMaxEntriesPerSubcategory()) {
+                throw new IllegalArgumentException(
+                        "Entry limit reached for this subcategory (max "
+                        + division.getMaxEntriesPerSubcategory() + ")");
+            }
+        }
+
+        // Main category limit
+        if (division.getMaxEntriesPerMainCategory() != null) {
+            var categories = competitionService.findDivisionCategories(divisionId);
+            var category = categories.stream()
+                    .filter(c -> c.getId().equals(initialCategoryId))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Category not found"));
+
+            var mainCategoryId = category.getParentId() != null
+                    ? category.getParentId() : category.getId();
+            var mainCategoryGroupIds = categories.stream()
+                    .filter(c -> c.getId().equals(mainCategoryId)
+                            || mainCategoryId.equals(c.getParentId()))
+                    .map(DivisionCategory::getId)
+                    .toList();
+
+            var count = entryRepository.countByDivisionIdAndUserIdAndInitialCategoryIdInAndStatusNot(
+                    divisionId, userId, mainCategoryGroupIds, EntryStatus.WITHDRAWN);
+            if (count >= division.getMaxEntriesPerMainCategory()) {
+                throw new IllegalArgumentException(
+                        "Entry limit reached for this main category (max "
+                        + division.getMaxEntriesPerMainCategory() + ")");
+            }
+        }
+    }
+
+    private String generateEntryCode(UUID divisionId) {
+        for (int attempt = 0; attempt < 10; attempt++) {
+            var sb = new StringBuilder(ENTRY_CODE_LENGTH);
+            for (int i = 0; i < ENTRY_CODE_LENGTH; i++) {
+                sb.append(ENTRY_CODE_CHARS.charAt(RANDOM.nextInt(ENTRY_CODE_CHARS.length())));
+            }
+            var code = sb.toString();
+            if (!entryRepository.existsByDivisionIdAndEntryCode(divisionId, code)) {
+                return code;
+            }
+        }
+        throw new IllegalStateException("Unable to generate a unique entry code");
     }
 }

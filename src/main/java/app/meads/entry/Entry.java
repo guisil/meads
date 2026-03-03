@@ -160,6 +160,30 @@ public class Entry {
         this.additionalInformation = additionalInformation;
     }
 
+    public void adminUpdateDetails(String meadName, UUID initialCategoryId,
+                                    Sweetness sweetness, Strength strength,
+                                    BigDecimal abv, Carbonation carbonation,
+                                    String honeyVarieties, String otherIngredients,
+                                    boolean woodAged, String woodAgeingDetails,
+                                    String additionalInformation) {
+        if (status == EntryStatus.WITHDRAWN) {
+            throw new IllegalStateException(
+                    "Cannot update details — entry is withdrawn");
+        }
+        validateWoodAgeing(woodAged, woodAgeingDetails);
+        this.meadName = meadName;
+        this.initialCategoryId = initialCategoryId;
+        this.sweetness = sweetness;
+        this.strength = strength;
+        this.abv = abv;
+        this.carbonation = carbonation;
+        this.honeyVarieties = honeyVarieties;
+        this.otherIngredients = otherIngredients;
+        this.woodAged = woodAged;
+        this.woodAgeingDetails = woodAgeingDetails;
+        this.additionalInformation = additionalInformation;
+    }
+
     public void assignFinalCategory(UUID finalCategoryId) {
         if (status == EntryStatus.WITHDRAWN) {
             throw new IllegalStateException(

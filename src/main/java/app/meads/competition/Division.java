@@ -31,6 +31,12 @@ public class Division {
     @Column(nullable = false)
     private Instant createdAt;
 
+    @Column(name = "max_entries_per_subcategory")
+    private Integer maxEntriesPerSubcategory;
+
+    @Column(name = "max_entries_per_main_category")
+    private Integer maxEntriesPerMainCategory;
+
     private Instant updatedAt;
 
     protected Division() {} // JPA
@@ -63,6 +69,12 @@ public class Division {
             case RESULTS_PUBLISHED ->
                     throw new IllegalStateException("Cannot advance past RESULTS_PUBLISHED");
         };
+    }
+
+    public void updateEntryLimits(Integer maxEntriesPerSubcategory,
+                                  Integer maxEntriesPerMainCategory) {
+        this.maxEntriesPerSubcategory = maxEntriesPerSubcategory;
+        this.maxEntriesPerMainCategory = maxEntriesPerMainCategory;
     }
 
     public void updateDetails(String name, ScoringSystem scoringSystem) {
