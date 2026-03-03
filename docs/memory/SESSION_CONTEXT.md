@@ -30,113 +30,78 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 ### competition module (`app.meads.competition`)
 - **Depends on:** identity
+- **Status:** Fully implemented + code reviewed. PENDING REWORK (see below).
 
-#### Entities (public API — `app.meads.competition`)
-| Entity | Key fields | Table |
-|--------|-----------|-------|
-| `MeadEvent` | name, startDate, endDate, location, logo | `mead_events` |
-| `Competition` | eventId, name, scoringSystem, status | `competitions` |
-| `EventParticipant` | eventId, userId, accessCode | `event_participants` |
-| `CompetitionParticipant` | competitionId, eventParticipantId, role | `competition_participants` |
-| `Category` | code, name, description, scoringSystem | `categories` (read-only catalog) |
-| `CompetitionCategory` | competitionId, catalogCategoryId, code, name, description, parentId, sortOrder | `competition_categories` |
+#### Current Entities (PRE-REWORK names — will change)
+| Entity | New Name (post-rework) |
+|--------|----------------------|
+| `MeadEvent` | `Competition` |
+| `Competition` | `Division` |
+| `EventParticipant` | `Participant` |
+| `CompetitionParticipant` | `ParticipantRole` |
+| `CompetitionCategory` | `DivisionCategory` |
+| `Category` | `Category` (unchanged) |
 
-#### Enums (public API)
-- `CompetitionStatus`: DRAFT → REGISTRATION_OPEN → REGISTRATION_CLOSED → JUDGING → DELIBERATION → RESULTS_PUBLISHED
-  - `allowsCategoryModification()` — true for DRAFT, REGISTRATION_OPEN
-- `CompetitionRole`: JUDGE, STEWARD, ENTRANT, COMPETITION_ADMIN
-- `ScoringSystem`: MJP
+#### Current Enums (PRE-REWORK)
+- `CompetitionRole`: JUDGE, STEWARD, ENTRANT, COMPETITION_ADMIN → ADMIN
+- `CompetitionStatus` → `DivisionStatus` (same values)
+- `ScoringSystem` (unchanged)
 
-#### Service — `CompetitionService` (public API)
-Key methods:
-- **MeadEvents:** createMeadEvent, findMeadEventById, findAllMeadEvents, updateMeadEvent, updateMeadEventLogo, deleteMeadEvent
-- **Competitions:** createCompetition (auto-inits categories), findById, updateCompetition, advanceStatus, deleteCompetition
-- **Participants:** addParticipant (package-private), addParticipantByEmail, removeParticipant, addParticipantToAllCompetitions, findParticipantsByCompetition, findEventParticipantsByEvent
-- **Categories:** findCompetitionCategories, addCatalogCategory, addCustomCategory, updateCompetitionCategory, removeCompetitionCategory (cascades children), findAvailableCatalogCategories
-- **Auth:** isAuthorizedForCompetition, findAuthorizedCompetitions
-- Private helpers: requireSystemAdmin, requireAuthorized(Competition, UUID), isAuthorized(Competition, UUID), generateUniqueAccessCode, findOrCreateEventParticipant, initializeCategories
-
-#### Repositories (internal — `app.meads.competition.internal`)
-- `MeadEventRepository`
-- `CompetitionRepository` — findByEventId
-- `EventParticipantRepository` — findByEventId, findByEventIdAndUserId, findByAccessCode, existsByAccessCode
-- `CompetitionParticipantRepository` — findByCompetitionId, existsByCompetitionIdAndEventParticipantIdAndRole, findByCompetitionIdAndEventParticipantId, findByEventParticipantIdAndRole
-- `CategoryRepository` — findByScoringSystem
-- `CompetitionCategoryRepository` — findByCompetitionIdOrderByCode, existsByCompetitionIdAndCode, existsByCompetitionIdAndCatalogCategoryId, findByParentId
-
-#### Views (internal)
-- `MeadEventListView` — `/events`, `@RolesAllowed("SYSTEM_ADMIN")`, CRUD grid for events with logo upload
-- `CompetitionListView` — `/events/:eventId/competitions`, `@PermitAll` + beforeEnter auth, grid filtered by `findAuthorizedCompetitions()`, "Create Competition"/"Add Participant to All" buttons (SYSTEM_ADMIN only), Delete/Advance actions per competition
-- `CompetitionDetailView` — `/competitions/:competitionId`, `@PermitAll` + beforeEnter auth, TabSheet with:
-  - **Participants tab:** Grid with Name/Email/Role/Access Code/Remove columns, "Add Participant" button → dialog with email + role
-  - **Categories tab:** `TreeGrid<CompetitionCategory>` with Code (hierarchy)/Name/Description/Remove columns, "Add Category" button → two-tab dialog (From Catalog / Custom with optional parent)
-  - **Settings tab:** Name, Scoring System, Status fields, Save button (DRAFT only)
+#### Current Service — `CompetitionService` (public API)
+Key methods — see `CLAUDE.md` package layout for full list.
 
 #### Migrations (V3–V8)
 - V3: mead_events table
 - V4: competitions table
-- V5: event_participants table (V9 merged back in — status column removed pre-deployment)
+- V5: event_participants table
 - V6: competition_participants table
-- V7: categories table + MJP seed data (18 categories)
+- V7: categories table + MJP seed data
 - V8: competition_categories table
 
 ---
 
-## Code Review — Completed
+## Next Steps — Ordered
 
-The competition module code review was completed across 6 vertical slices:
+### Step 1: Competition Scope Rework — NEXT
 
-1. **MeadEvents** — Renamed Event→MeadEvent, added logo upload/remove, added logo display in CompetitionListView
-2. **Competitions** — Added deleteCompetition with cascade cleanup (participants, categories)
-3. **Participants** — Made addParticipant package-private, extracted findOrCreateEventParticipant helper, replaced event-level withdraw with competition-level removeParticipant, added Access Code column, added "Add Participant to All" UI
-4. **Categories** — Removed dead code, changed sort by code, added updateCompetitionCategory (catalog→custom conversion), converted Grid to TreeGrid for hierarchy
-5. **Authorization** — Extracted isAuthorized boolean helper, requireAuthorized now accepts Competition object (eliminates redundant findById), removed exception-based control flow
-6. **Access codes** — Removed dead withdraw/CompetitionParticipantStatus, added access code uniqueness check with retry, merged V9 into V5
+**Design doc:** `docs/plans/2026-03-03-competition-scope-rework.md`
 
----
+**What:** Rename entities to match domain language + make all participant roles
+competition-scoped (not division-scoped). Full DB table rename.
 
-## Next Session Plan
+**Key changes:**
+- MeadEvent → Competition, Competition → Division
+- EventParticipant → Participant, CompetitionParticipant → ParticipantRole
+- COMPETITION_ADMIN → ADMIN
+- All roles (ADMIN, ENTRANT, JUDGE, STEWARD) are competition-scoped
+- ParticipantRole drops division reference
+- New CompetitionDetailView (divisions + participants + settings tabs)
+- DivisionDetailView (was CompetitionDetailView, loses participants tab)
+- "Add Participant to All" removed (no longer needed)
 
-### Phase 1: Entry Module Design Discussion — COMPLETED
+**Implementation phases:**
+- **R0:** Atomic rename + V9 migration (Fast Cycle, ~1 batch)
+- **R1:** Division-level authorization (Full TDD, ~4 cycles)
+- **R2:** View restructure (Full TDD, ~6 cycles)
+- **R3:** Update entry module design docs
 
-Design doc written: `docs/plans/2026-03-02-entry-module-design.md`
+### Step 2: Entry Module Implementation (TDD)
 
-Key decisions made:
-- 5 entities: ProductMapping, JumpsellerOrder, JumpsellerOrderLineItem, EntryCredit, Entry
-- 6 enums: EntryStatus, Sweetness, Strength, Carbonation, OrderStatus, LineItemStatus
-- 6 migrations: V9–V14
-- 2 services: EntryService (credits + entries), WebhookService (Jumpseller webhook)
-- 2 views: MyEntriesView (entrant), CompetitionEntryAdminView (admin, separate route)
-- Append-only credit ledger (balance = SUM of amounts)
-- Mutual exclusivity enforced at credit time (per event)
-- Webhook returns 200 after signature verification, errors in DB statuses
-- Entry admin is a separate view (not CompetitionDetailView tab) to avoid circular module dependency
-- User.meaderyName added to identity module (V14)
-- SecurityConfig updated for /api/webhooks/** permitAll
+**Design doc:** `docs/plans/2026-03-02-entry-module-design.md` (revised 2026-03-03)
 
-### Phase 2: Implementation (TDD) — NEXT
+After the rework, implement the entry module following the 12-phase TDD sequence
+in the design doc. Uses the new naming (divisions, not competitions for sub-level).
 
-After design discussion, implement following the multi-layer TDD sequence from CLAUDE.md:
-1. Unit tests for domain logic
-2. Repository tests for persistence
-3. Module integration tests
-4. UI tests (Karibu)
+Key: Migrations V10–V15 (V9 is the rework migration).
 
-### Phase 3: Code Review (slice by slice)
+### Step 3: Code Review (slice by slice)
 
-After entry module is complete, do another thorough code review:
-- Walk through the entry module in vertical slices (same approach as competition review)
-- Cover: webhook endpoint, credits, entries, admin views, authorization
-- Fix issues found during review
+After entry module is complete, thorough code review of BOTH competition and
+entry modules in vertical slices.
 
-### Phase 4: Test Review (guided, with UI verification)
+### Step 4: Test Review (guided, with UI verification)
 
-After code review, do a guided test review:
-- For each test: explain what behavior it verifies
-- User checks the test code
-- User verifies the behavior in the running UI
-- Identify gaps (behaviors not tested, edge cases missing)
-- Cover BOTH competition and entry modules
+After code review, guided test review with UI verification for BOTH modules.
 
 ---
 

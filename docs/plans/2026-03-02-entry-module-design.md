@@ -1,8 +1,25 @@
 # Entry Module — Design Document
 
-**Date:** 2026-03-02
+**Date:** 2026-03-02 (revised 2026-03-03 for competition scope rework)
 **Branch:** `competition-module`
 **Status:** Design complete, awaiting implementation
+**Prerequisite:** Competition scope rework (`docs/plans/2026-03-03-competition-scope-rework.md`)
+
+---
+
+## Revision Notes (2026-03-03)
+
+Updated for the competition scope rework:
+- MeadEvent → Competition (top-level), Competition → Division (sub-level)
+- All `competitionId` fields on division-scoped entities → `divisionId`
+- All `competition_id` DB columns on division-scoped tables → `division_id`
+- Migration numbers shifted +1 (V10–V15, since V9 is the rework migration)
+- Routes: `/divisions/:divisionId/...` instead of `/competitions/:competitionId/...`
+- `CompetitionEntryAdminView` → `DivisionEntryAdminView`
+- `COMPETITION_ADMIN` → `ADMIN`
+- Mutual exclusivity: "same competition" instead of "same event"
+- Webhook creates Participant at competition level (top-level)
+- Listens for `DivisionStatusAdvancedEvent` (was `CompetitionStatusAdvancedEvent`)
 
 ---
 
@@ -23,9 +40,9 @@ handles:
 
 1. Jumpseller sends **Order Paid** POST with HMAC-SHA256 signature
 2. Store the raw order + individual line items in DB (idempotent via order ID)
-3. Map each line item's product to a competition via **admin-managed mapping table**
-4. **Mutual exclusivity check** (per event): if user already has credits for a different
-   competition in the same event, process the valid credits and flag the conflicting ones
+3. Map each line item's product to a division via **admin-managed mapping table**
+4. **Mutual exclusivity check** (per competition): if user already has credits for a different
+   division in the same competition, process the valid credits and flag the conflicting ones
    as NEEDS_REVIEW
 5. If no user exists for the email, create a PENDING user
 6. Create credits for valid line items, mark order lines as PROCESSED
@@ -38,19 +55,19 @@ with a mapping in the `product_mappings` table are stored alongside the order.
 ### Credit Model
 
 - 1 credit = 1 entry, always
-- Stored as append-only ledger per user per competition (balance = SUM of amounts)
+- Stored as append-only ledger per user per division (balance = SUM of amounts)
 - Admin can add, remove, or view credit balances
 - No automatic entry-to-credit conversion; admin withdraws entry + manually adds credit
 
 ### Mutual Exclusivity
 
-A user cannot register entries in both competitions of the same event (e.g., PRO and HOME are
-mutually exclusive). Checked at credit time — process valid credits first, flag conflicting
+A user cannot register entries in both divisions of the same competition (e.g., PRO and HOME
+are mutually exclusive). Checked at credit time — process valid credits first, flag conflicting
 ones as NEEDS_REVIEW.
 
 ### Entry Data Model
 
-- **Entry number**: sequential per competition (1, 2, 3...)
+- **Entry number**: sequential per division (1, 2, 3...)
 - **Entry code**: 6-char random alphanumeric (for judges, opaque)
 - **Fields**: mead name, initial category/subcategory, sweetness (enum), strength (enum),
   ABV (decimal %), carbonation (enum), honey varieties (text), other ingredients (text),
@@ -69,24 +86,24 @@ ones as NEEDS_REVIEW.
 
 ### Entrant View
 
-- Route: `/competitions/:competitionId/my-entries`
+- Route: `/divisions/:divisionId/my-entries`
 - After magic link login, land directly here
 - Shows: credit balance, list of entries with status, "Add Entry" button (if credits remaining)
-- Meadery name field for PRO competitions
+- Meadery name field for PRO divisions
 - After submission: read-only list with statuses
 
 ### Admin Views
 
 - **Credit management**: grid of entrants (email, credit count, entry count), add/remove credits
 - **Entry management**: view all entries, modify details, change status
-- **Product mapping**: map Jumpseller product IDs/SKUs to this competition
+- **Product mapping**: map Jumpseller product IDs/SKUs to this division
 - **Invalid orders**: flagged order lines needing review
-- Both SYSTEM_ADMIN and COMPETITION_ADMIN can manage
+- Both SYSTEM_ADMIN and ADMIN (competition-level) can manage
 
 ### Module Boundaries
 
 - `entry` module, `allowedDependencies = {"competition", "identity"}`
-- Uses `CompetitionService` for competitions, categories, participants
+- Uses `CompetitionService` for divisions, categories, participants
 - Uses `UserService` and `JwtMagicLinkService` for user creation and magic links
 - Dependency direction: `entry → competition → identity → root`
 
@@ -97,10 +114,10 @@ ones as NEEDS_REVIEW.
 ```
 app.meads.entry                                ← Module root (public API)
 ├── package-info.java                          ← @ApplicationModule(allowedDependencies = {"competition", "identity"})
-├── ProductMapping.java                        ← JPA entity (product-to-competition mapping)
+├── ProductMapping.java                        ← JPA entity (product-to-division mapping)
 ├── JumpsellerOrder.java                       ← JPA entity (webhook order storage, idempotency)
 ├── JumpsellerOrderLineItem.java               ← JPA entity (individual line items)
-├── EntryCredit.java                           ← JPA entity (credits per user per competition)
+├── EntryCredit.java                           ← JPA entity (credits per user per division)
 ├── Entry.java                                 ← JPA entity / aggregate root
 ├── EntryStatus.java                           ← Enum: DRAFT, SUBMITTED, RECEIVED, WITHDRAWN
 ├── Sweetness.java                             ← Enum: DRY, MEDIUM, SWEET
@@ -120,7 +137,7 @@ app.meads.entry                                ← Module root (public API)
     ├── EntryRepository.java                   ← JpaRepository
     ├── JumpsellerWebhookController.java       ← @RestController (REST endpoint)
     ├── MyEntriesView.java                     ← Entrant-facing view
-    └── CompetitionEntryAdminView.java         ← Admin view (separate route, not CompetitionDetailView tab)
+    └── DivisionEntryAdminView.java            ← Admin view (separate route, not DivisionDetailView tab)
 ```
 
 ---
@@ -134,17 +151,17 @@ app.meads.entry                                ← Module root (public API)
 | Field | Type | DB Column | Constraints | Notes |
 |-------|------|-----------|-------------|-------|
 | `id` | `UUID` | `id` | PK, self-generated | |
-| `competitionId` | `UUID` | `competition_id` | NOT NULL, FK → competitions | |
+| `divisionId` | `UUID` | `division_id` | NOT NULL, FK → divisions | |
 | `jumpsellerProductId` | `String` | `jumpseller_product_id` | NOT NULL | Jumpseller's product ID |
 | `jumpsellerSku` | `String` | `jumpseller_sku` | nullable | Optional SKU for display |
 | `productName` | `String` | `product_name` | NOT NULL | Human-readable name |
 | `creditsPerUnit` | `int` | `credits_per_unit` | NOT NULL, default 1 | Credits per quantity unit |
 | `createdAt` | `Instant` | `created_at` | NOT NULL, @PrePersist | |
 
-**Unique constraint:** `(competition_id, jumpseller_product_id)`
+**Unique constraint:** `(division_id, jumpseller_product_id)`
 
 **Domain methods:**
-- Constructor: `ProductMapping(UUID competitionId, String jumpsellerProductId, String jumpsellerSku, String productName, int creditsPerUnit)`
+- Constructor: `ProductMapping(UUID divisionId, String jumpsellerProductId, String jumpsellerSku, String productName, int creditsPerUnit)`
 - `updateDetails(String productName, int creditsPerUnit)`
 
 ### JumpsellerOrder
@@ -183,14 +200,14 @@ app.meads.entry                                ← Module root (public API)
 | `productName` | `String` | `product_name` | NOT NULL | |
 | `quantity` | `int` | `quantity` | NOT NULL | |
 | `status` | `LineItemStatus` | `status` | NOT NULL, STRING | |
-| `competitionId` | `UUID` | `competition_id` | nullable, FK → competitions | Set when mapped |
+| `divisionId` | `UUID` | `division_id` | nullable, FK → divisions | Set when mapped |
 | `creditsAwarded` | `int` | `credits_awarded` | NOT NULL, default 0 | |
 | `reviewReason` | `String` | `review_reason` | nullable | Why it needs review |
 | `createdAt` | `Instant` | `created_at` | NOT NULL, @PrePersist | |
 
 **Domain methods:**
 - Constructor: `JumpsellerOrderLineItem(UUID orderId, String jumpsellerProductId, String jumpsellerSku, String productName, int quantity)` — sets status = UNPROCESSED, creditsAwarded = 0
-- `markProcessed(UUID competitionId, int creditsAwarded)`
+- `markProcessed(UUID divisionId, int creditsAwarded)`
 - `markNeedsReview(String reason)`
 - `markIgnored()` — non-mapped product
 
@@ -198,13 +215,13 @@ app.meads.entry                                ← Module root (public API)
 
 **Table:** `entry_credits`
 
-**Design:** Append-only ledger. Balance = `SUM(amount)` grouped by `(competition_id, user_id)`.
-No unique constraint on `(competition_id, user_id)` — multiple records per pair.
+**Design:** Append-only ledger. Balance = `SUM(amount)` grouped by `(division_id, user_id)`.
+No unique constraint on `(division_id, user_id)` — multiple records per pair.
 
 | Field | Type | DB Column | Constraints | Notes |
 |-------|------|-----------|-------------|-------|
 | `id` | `UUID` | `id` | PK, self-generated | |
-| `competitionId` | `UUID` | `competition_id` | NOT NULL, FK → competitions | |
+| `divisionId` | `UUID` | `division_id` | NOT NULL, FK → divisions | |
 | `userId` | `UUID` | `user_id` | NOT NULL, FK → users | |
 | `amount` | `int` | `amount` | NOT NULL | Can be negative for removals |
 | `sourceType` | `String` | `source_type` | NOT NULL | "WEBHOOK" or "ADMIN" |
@@ -215,7 +232,7 @@ No unique constraint on `(competition_id, user_id)` — multiple records per pai
 loss on adjustments.
 
 **Domain methods:**
-- Constructor: `EntryCredit(UUID competitionId, UUID userId, int amount, String sourceType, String sourceReference)` — validates amount != 0
+- Constructor: `EntryCredit(UUID divisionId, UUID userId, int amount, String sourceType, String sourceReference)` — validates amount != 0
 
 ### Entry
 
@@ -224,13 +241,13 @@ loss on adjustments.
 | Field | Type | DB Column | Constraints | Notes |
 |-------|------|-----------|-------------|-------|
 | `id` | `UUID` | `id` | PK, self-generated | |
-| `competitionId` | `UUID` | `competition_id` | NOT NULL, FK → competitions | |
+| `divisionId` | `UUID` | `division_id` | NOT NULL, FK → divisions | |
 | `userId` | `UUID` | `user_id` | NOT NULL, FK → users | |
-| `entryNumber` | `int` | `entry_number` | NOT NULL | Sequential per competition |
+| `entryNumber` | `int` | `entry_number` | NOT NULL | Sequential per division |
 | `entryCode` | `String` | `entry_code` | NOT NULL, CHAR(6) | Random alphanumeric for judges |
 | `meadName` | `String` | `mead_name` | NOT NULL | |
-| `initialCategoryId` | `UUID` | `initial_category_id` | NOT NULL, FK → competition_categories | |
-| `finalCategoryId` | `UUID` | `final_category_id` | nullable, FK → competition_categories | Set by admin |
+| `initialCategoryId` | `UUID` | `initial_category_id` | NOT NULL, FK → division_categories | |
+| `finalCategoryId` | `UUID` | `final_category_id` | nullable, FK → division_categories | Set by admin |
 | `sweetness` | `Sweetness` | `sweetness` | NOT NULL, STRING | |
 | `strength` | `Strength` | `strength` | NOT NULL, STRING | |
 | `abv` | `BigDecimal` | `abv` | NOT NULL, DECIMAL(4,1) | e.g., 12.5 |
@@ -244,12 +261,12 @@ loss on adjustments.
 | `createdAt` | `Instant` | `created_at` | NOT NULL, @PrePersist | |
 | `updatedAt` | `Instant` | `updated_at` | nullable, @PreUpdate | |
 
-**Unique constraints:** `(competition_id, entry_number)`, `(competition_id, entry_code)`
+**Unique constraints:** `(division_id, entry_number)`, `(division_id, entry_code)`
 
 **Entry code:** 6-char, uppercase, character set `ABCDEFGHJKLMNPQRSTUVWXYZ23456789`
 (same as access codes — excludes 0, O, 1, I to avoid confusion).
 
-**Entry number:** `MAX(entry_number) + 1` per competition, assigned in a transaction.
+**Entry number:** `MAX(entry_number) + 1` per division, assigned in a transaction.
 
 **Domain methods:**
 - Constructor with all required fields — sets status = DRAFT, validates woodAged/woodAgeingDetails consistency
@@ -333,29 +350,29 @@ public enum LineItemStatus {
 
 ---
 
-## Database Migrations (V9–V14)
+## Database Migrations (V10–V15)
 
-### V9 — `V9__create_product_mappings_table.sql`
+### V10 — `V10__create_product_mappings_table.sql`
 
 ```sql
 CREATE TABLE product_mappings (
     id              UUID            PRIMARY KEY,
-    competition_id  UUID            NOT NULL REFERENCES competitions(id),
+    division_id     UUID            NOT NULL REFERENCES divisions(id),
     jumpseller_product_id VARCHAR(255) NOT NULL,
     jumpseller_sku  VARCHAR(255),
     product_name    VARCHAR(255)    NOT NULL,
     credits_per_unit INT            NOT NULL DEFAULT 1,
     created_at      TIMESTAMP WITH TIME ZONE NOT NULL,
 
-    CONSTRAINT uq_product_mappings_competition_product
-        UNIQUE (competition_id, jumpseller_product_id)
+    CONSTRAINT uq_product_mappings_division_product
+        UNIQUE (division_id, jumpseller_product_id)
 );
 
-CREATE INDEX idx_product_mappings_competition_id ON product_mappings(competition_id);
+CREATE INDEX idx_product_mappings_division_id ON product_mappings(division_id);
 CREATE INDEX idx_product_mappings_jumpseller_product_id ON product_mappings(jumpseller_product_id);
 ```
 
-### V10 — `V10__create_jumpseller_orders_table.sql`
+### V11 — `V11__create_jumpseller_orders_table.sql`
 
 ```sql
 CREATE TABLE jumpseller_orders (
@@ -373,7 +390,7 @@ CREATE TABLE jumpseller_orders (
 CREATE INDEX idx_jumpseller_orders_status ON jumpseller_orders(status);
 ```
 
-### V11 — `V11__create_jumpseller_order_line_items_table.sql`
+### V12 — `V12__create_jumpseller_order_line_items_table.sql`
 
 ```sql
 CREATE TABLE jumpseller_order_line_items (
@@ -384,7 +401,7 @@ CREATE TABLE jumpseller_order_line_items (
     product_name            VARCHAR(255)    NOT NULL,
     quantity                INT             NOT NULL,
     status                  VARCHAR(50)     NOT NULL,
-    competition_id          UUID            REFERENCES competitions(id),
+    division_id             UUID            REFERENCES divisions(id),
     credits_awarded         INT             NOT NULL DEFAULT 0,
     review_reason           TEXT,
     created_at              TIMESTAMP WITH TIME ZONE NOT NULL
@@ -393,12 +410,12 @@ CREATE TABLE jumpseller_order_line_items (
 CREATE INDEX idx_jumpseller_order_line_items_order_id ON jumpseller_order_line_items(order_id);
 ```
 
-### V12 — `V12__create_entry_credits_table.sql`
+### V13 — `V13__create_entry_credits_table.sql`
 
 ```sql
 CREATE TABLE entry_credits (
     id                UUID            PRIMARY KEY,
-    competition_id    UUID            NOT NULL REFERENCES competitions(id),
+    division_id       UUID            NOT NULL REFERENCES divisions(id),
     user_id           UUID            NOT NULL REFERENCES users(id),
     amount            INT             NOT NULL,
     source_type       VARCHAR(50)     NOT NULL,
@@ -406,21 +423,21 @@ CREATE TABLE entry_credits (
     created_at        TIMESTAMP WITH TIME ZONE NOT NULL
 );
 
-CREATE INDEX idx_entry_credits_competition_user ON entry_credits(competition_id, user_id);
+CREATE INDEX idx_entry_credits_division_user ON entry_credits(division_id, user_id);
 ```
 
-### V13 — `V13__create_entries_table.sql`
+### V14 — `V14__create_entries_table.sql`
 
 ```sql
 CREATE TABLE entries (
     id                      UUID            PRIMARY KEY,
-    competition_id          UUID            NOT NULL REFERENCES competitions(id),
+    division_id             UUID            NOT NULL REFERENCES divisions(id),
     user_id                 UUID            NOT NULL REFERENCES users(id),
     entry_number            INT             NOT NULL,
     entry_code              CHAR(6)         NOT NULL,
     mead_name               VARCHAR(255)    NOT NULL,
-    initial_category_id     UUID            NOT NULL REFERENCES competition_categories(id),
-    final_category_id       UUID            REFERENCES competition_categories(id),
+    initial_category_id     UUID            NOT NULL REFERENCES division_categories(id),
+    final_category_id       UUID            REFERENCES division_categories(id),
     sweetness               VARCHAR(50)     NOT NULL,
     strength                VARCHAR(50)     NOT NULL,
     abv                     DECIMAL(4,1)    NOT NULL,
@@ -435,12 +452,12 @@ CREATE TABLE entries (
     updated_at              TIMESTAMP WITH TIME ZONE
 );
 
-CREATE UNIQUE INDEX uq_entries_competition_number ON entries(competition_id, entry_number);
-CREATE UNIQUE INDEX uq_entries_competition_code ON entries(competition_id, entry_code);
-CREATE INDEX idx_entries_competition_user ON entries(competition_id, user_id);
+CREATE UNIQUE INDEX uq_entries_division_number ON entries(division_id, entry_number);
+CREATE UNIQUE INDEX uq_entries_division_code ON entries(division_id, entry_code);
+CREATE INDEX idx_entries_division_user ON entries(division_id, user_id);
 ```
 
-### V14 — `V14__add_meadery_name_to_users.sql`
+### V15 — `V15__add_meadery_name_to_users.sql`
 
 ```sql
 ALTER TABLE users ADD COLUMN meadery_name VARCHAR(255);
@@ -455,34 +472,34 @@ ALTER TABLE users ADD COLUMN meadery_name VARCHAR(255);
 `@Service @Transactional @Validated` — public API in `app.meads.entry`
 
 **Product Mappings:**
-- `createProductMapping(competitionId, jumpsellerProductId, jumpsellerSku, productName, creditsPerUnit, requestingUserId)` — validates authorization, rejects duplicates
+- `createProductMapping(divisionId, jumpsellerProductId, jumpsellerSku, productName, creditsPerUnit, requestingUserId)` — validates authorization, rejects duplicates
 - `updateProductMapping(mappingId, productName, creditsPerUnit, requestingUserId)`
 - `removeProductMapping(mappingId, requestingUserId)`
-- `findProductMappings(competitionId)`
+- `findProductMappings(divisionId)`
 - `findProductMappingsByProductId(jumpsellerProductId)`
 
 **Credits:**
-- `getCreditBalance(competitionId, userId)` — SUM(amount) query
-- `addCredits(competitionId, userEmail, amount, requestingUserId)` — validates authorization,
+- `getCreditBalance(divisionId, userId)` — SUM(amount) query
+- `addCredits(divisionId, userEmail, amount, requestingUserId)` — validates authorization,
   mutual exclusivity, adds ENTRANT participant if needed, publishes CreditsAwardedEvent
-- `removeCredits(competitionId, userId, amount, requestingUserId)` — creates negative record,
+- `removeCredits(divisionId, userId, amount, requestingUserId)` — creates negative record,
   validates balance >= 0
-- `findEntrantCreditSummaries(competitionId)` — returns list of
+- `findEntrantCreditSummaries(divisionId)` — returns list of
   `EntrantCreditSummary(userId, email, name, creditBalance, entryCount)`
-- `hasCreditsInOtherCompetition(eventId, competitionId, userId)` — mutual exclusivity check
+- `hasCreditsInOtherDivision(competitionId, divisionId, userId)` — mutual exclusivity check
 
 **Entries:**
-- `createEntry(competitionId, userId, meadName, initialCategoryId, sweetness, strength, abv, carbonation, honeyVarieties, otherIngredients, woodAged, woodAgeingDetails, additionalInformation)` — validates credits > active entries, competition REGISTRATION_OPEN, generates entry_number and entry_code
+- `createEntry(divisionId, userId, meadName, initialCategoryId, sweetness, strength, abv, carbonation, honeyVarieties, otherIngredients, woodAged, woodAgeingDetails, additionalInformation)` — validates credits > active entries, division REGISTRATION_OPEN, generates entry_number and entry_code
 - `updateEntry(entryId, userId, ...)` — only owning user, only DRAFT
 - `deleteEntry(entryId, userId)` — only DRAFT, frees credit
-- `submitAllDrafts(competitionId, userId)` — batch DRAFT → SUBMITTED, publishes EntriesSubmittedEvent
+- `submitAllDrafts(divisionId, userId)` — batch DRAFT → SUBMITTED, publishes EntriesSubmittedEvent
 - `markReceived(entryId, requestingUserId)` — admin only
 - `withdrawEntry(entryId, requestingUserId)` — admin only
 - `adminUpdateEntry(entryId, ..., requestingUserId)` — can modify any field, any non-WITHDRAWN status
-- `findEntriesByCompetition(competitionId)`
-- `findEntriesByCompetitionAndUser(competitionId, userId)`
+- `findEntriesByDivision(divisionId)`
+- `findEntriesByDivisionAndUser(divisionId, userId)`
 - `findEntryById(entryId)`
-- `countActiveEntries(competitionId, userId)` — non-WITHDRAWN
+- `countActiveEntries(divisionId, userId)` — non-WITHDRAWN
 
 **DTOs:**
 - `EntrantCreditSummary` — `record EntrantCreditSummary(UUID userId, String email, String name, int creditBalance, long entryCount)`
@@ -497,10 +514,10 @@ parsing, idempotency, Jumpseller-specific logic).
 - `verifySignature(payload, signature)` — HMAC-SHA256 with `app.jumpseller.hooks-token` property
 - `processOrderPaid(rawPayload)` — parse, check idempotency, for each line item: look up
   mapping → IGNORED if none, check exclusivity → create credits or NEEDS_REVIEW, determine
-  order status, create user if not exists, add ENTRANT participant
+  order status, create user if not exists, add ENTRANT participant at competition level
 - `findOrders(status)` — optionally filtered by status
 - `findLineItems(orderId)`
-- `resolveLineItem(lineItemId, competitionId, requestingUserId)` — admin resolves flagged item
+- `resolveLineItem(lineItemId, divisionId, requestingUserId)` — admin resolves flagged item
 
 ---
 
@@ -540,13 +557,13 @@ public ResponseEntity<Void> handleOrderPaid(
 
 ### MyEntriesView
 
-**Route:** `/competitions/:competitionId/my-entries`
-**Access:** `@PermitAll` + `beforeEnter` — verify current user is ENTRANT for this competition,
-competition status >= REGISTRATION_OPEN
+**Route:** `/divisions/:divisionId/my-entries`
+**Access:** `@PermitAll` + `beforeEnter` — verify current user is ENTRANT for this division's
+competition (competition-level role), division status >= REGISTRATION_OPEN
 
 **Layout:**
-1. **Header:** Competition name, credit balance ("Credits: X remaining (Y total, Z used)"),
-   meadery name TextField for PRO competitions
+1. **Header:** Division name, credit balance ("Credits: X remaining (Y total, Z used)"),
+   meadery name TextField for PRO divisions
 2. **Entries Grid:** columns — Entry #, Mead Name, Category, Status, Actions (Edit/Delete for
    DRAFT only)
 3. **Action buttons:** "Add Entry" (when credits > active entries and REGISTRATION_OPEN),
@@ -554,7 +571,7 @@ competition status >= REGISTRATION_OPEN
 
 **Add/Edit Entry Dialog:**
 - meadName (TextField)
-- initialCategoryId (Select — competition categories)
+- initialCategoryId (Select — division categories)
 - sweetness (Select — enum values)
 - strength (Select — enum values)
 - abv (NumberField, step 0.1, suffix %)
@@ -567,14 +584,14 @@ competition status >= REGISTRATION_OPEN
 
 **Submit All confirmation:** "Submit X entries? This cannot be undone."
 
-### CompetitionEntryAdminView
+### DivisionEntryAdminView
 
-**Route:** `/competitions/:competitionId/entry-admin`
-**Access:** `@PermitAll` + `beforeEnter` — verify COMPETITION_ADMIN or SYSTEM_ADMIN
+**Route:** `/divisions/:divisionId/entry-admin`
+**Access:** `@PermitAll` + `beforeEnter` — verify ADMIN (competition-level) or SYSTEM_ADMIN
 
 **Why separate view:** Spring Modulith forbids circular dependencies. Adding tabs to
-`CompetitionDetailView` (competition module) from the entry module would create a circular
-dependency. Instead, `CompetitionDetailView` adds a string-based navigation link
+`DivisionDetailView` (competition module) from the entry module would create a circular
+dependency. Instead, `DivisionDetailView` adds a string-based navigation link
 ("Manage Entries") — no import from entry module required.
 
 **Layout:** Breadcrumb, back link, TabSheet with 4 tabs:
@@ -607,7 +624,7 @@ dependency. Instead, `CompetitionDetailView` adds a string-based navigation link
 ### CreditsAwardedEvent
 
 ```java
-public record CreditsAwardedEvent(UUID competitionId, UUID userId, int amount, String source) {}
+public record CreditsAwardedEvent(UUID divisionId, UUID userId, int amount, String source) {}
 ```
 
 Published by `addCredits()` and `processOrderPaid()`. No listeners yet — future: notification
@@ -616,12 +633,12 @@ email to entrant.
 ### EntriesSubmittedEvent
 
 ```java
-public record EntriesSubmittedEvent(UUID competitionId, UUID userId, int entryCount) {}
+public record EntriesSubmittedEvent(UUID divisionId, UUID userId, int entryCount) {}
 ```
 
 Published by `submitAllDrafts()`. Future: confirmation email.
 
-### CompetitionStatusAdvancedEvent listener
+### DivisionStatusAdvancedEvent listener
 
 Entry module listens for REGISTRATION_CLOSED — future: discard unsubmitted drafts, send
 notifications. Skeleton listener in place.
@@ -640,11 +657,11 @@ notifications. Skeleton listener in place.
 
 ### Competition Module
 
-- **`CompetitionDetailView.java`:** Add "Manage Entries" button/link using string-based
-  navigation (`UI.getCurrent().navigate("competitions/" + competitionId + "/entry-admin")`) —
+- **`DivisionDetailView.java`:** Add "Manage Entries" button/link using string-based
+  navigation (`UI.getCurrent().navigate("divisions/" + divisionId + "/entry-admin")`) —
   no import from entry module
-- **`CompetitionService.java`:** Add `findCompetitionsByEvent(UUID eventId)` method (unfiltered
-  list for mutual exclusivity checks by the entry module)
+- **`CompetitionService.java`:** `findDivisionsByCompetition(UUID competitionId)` method
+  (already added in rework) — used for mutual exclusivity checks by the entry module
 
 ---
 
@@ -653,13 +670,13 @@ notifications. Skeleton listener in place.
 ### 1. Credit Ledger vs Balance Field
 
 Append-only ledger for audit trail, race condition avoidance, and no history loss on
-adjustments. Balance computed as `SUM(amount)` grouped by `(competition_id, user_id)`.
+adjustments. Balance computed as `SUM(amount)` grouped by `(division_id, user_id)`.
 
 ### 2. Mutual Exclusivity at Credit Time
 
 Catches conflicts early (at purchase, not at entry creation), allows admin resolution before
 entrant sees issues, aligns with the business rule that a user cannot compete in both
-competitions of the same event.
+divisions of the same competition.
 
 ### 3. Webhook Returns 200 After Signature Verification
 
@@ -674,12 +691,12 @@ different authorization requirements (webhook is anonymous, entry service requir
 ### 5. Entry Admin as Separate View
 
 Spring Modulith forbids circular dependencies. The entry module depends on competition, so
-competition cannot depend back on entry. `CompetitionDetailView` uses string-based navigation
+competition cannot depend back on entry. `DivisionDetailView` uses string-based navigation
 to link to the entry admin view without importing any entry module classes.
 
 ### 6. Entry Code vs Entry Number
 
-`entryNumber` (sequential, per competition) for logistics and tracking. `entryCode` (random
+`entryNumber` (sequential, per division) for logistics and tracking. `entryCode` (random
 6-char alphanumeric) for blind judging — judges see only the code, never the entrant name.
 
 ---
@@ -699,30 +716,30 @@ Each numbered phase contains multiple RED-GREEN-REFACTOR cycles.
 ### Phase 2 — Product Mapping (4 cycles)
 1. Unit test: create product mapping, reject duplicate
 2. Unit test: update product mapping details
-3. Unit test: find product mappings by competition
-4. Repository test → drives V9 migration
+3. Unit test: find product mappings by division
+4. Repository test → drives V10 migration
 
 ### Phase 3 — Webhook Order Storage (4 cycles)
 1. Unit test: JumpsellerOrder domain methods (markProcessed, markNeedsReview, etc.)
 2. Unit test: JumpsellerOrderLineItem domain methods
-3. Repository test for JumpsellerOrder → drives V10 migration
-4. Repository test for JumpsellerOrderLineItem → drives V11 migration
+3. Repository test for JumpsellerOrder → drives V11 migration
+4. Repository test for JumpsellerOrderLineItem → drives V12 migration
 
 ### Phase 4 — Credits (14 cycles)
 1. Unit test: HMAC signature verification
-2. Unit test: processOrderPaid — valid order, single competition
+2. Unit test: processOrderPaid — valid order, single division
 3. Unit test: processOrderPaid — ignored (non-mapped) products
 4. Unit test: processOrderPaid — mutual exclusivity (valid + flagged)
 5. Unit test: processOrderPaid — user creation for unknown email
 6. Unit test: processOrderPaid — all items invalid
 7. Unit test: processOrderPaid — idempotency (duplicate order ID)
-8. Repository test for EntryCredit → drives V12 migration
+8. Repository test for EntryCredit → drives V13 migration
 9. Unit test: getCreditBalance
 10. Unit test: addCredits — manual, with mutual exclusivity check
 11. Unit test: addCredits — creates ENTRANT participant if needed
 12. Unit test: removeCredits — validates balance >= 0
 13. Unit test: findEntrantCreditSummaries
-14. Unit test: hasCreditsInOtherCompetition
+14. Unit test: hasCreditsInOtherDivision
 
 ### Phase 5 — Entry Entity (9 cycles)
 1. Unit test: create entry (constructor, DRAFT status)
@@ -733,11 +750,11 @@ Each numbered phase contains multiple RED-GREEN-REFACTOR cycles.
 6. Unit test: updateDetails() — only DRAFT
 7. Unit test: assignFinalCategory()
 8. Unit test: getEffectiveCategoryId()
-9. Repository test → drives V13 migration
+9. Repository test → drives V14 migration
 
 ### Phase 6 — Entry Service (14 cycles)
 1. Unit test: createEntry — validates credits > active entries
-2. Unit test: createEntry — rejects if competition not REGISTRATION_OPEN
+2. Unit test: createEntry — rejects if division not REGISTRATION_OPEN
 3. Unit test: createEntry — sequential entry number
 4. Unit test: createEntry — unique entry code
 5. Unit test: updateEntry — only owning user, only DRAFT
@@ -747,14 +764,14 @@ Each numbered phase contains multiple RED-GREEN-REFACTOR cycles.
 9. Unit test: markReceived — admin only
 10. Unit test: withdrawEntry — admin only
 11. Unit test: adminUpdateEntry — any non-WITHDRAWN
-12. Unit test: findEntriesByCompetitionAndUser
+12. Unit test: findEntriesByDivisionAndUser
 13. Unit test: countActiveEntries
 14. Unit test: deleteEntry frees credit slot
 
 ### Phase 7 — User.meaderyName (3 cycles)
 1. Unit test: User.updateMeaderyName() domain method
 2. Unit test: UserService.updateMeaderyName()
-3. Repository test → drives V14 migration
+3. Repository test → drives V15 migration
 
 ### Phase 8 — Webhook REST Controller (2 cycles)
 1. MockMvc test: valid signature → 200
@@ -765,12 +782,12 @@ Each numbered phase contains multiple RED-GREEN-REFACTOR cycles.
 - Full context, real DB, credit → entry workflow
 
 ### Phase 10 — Event Listener (1 cycle)
-- Async test for CompetitionStatusAdvancedEvent (REGISTRATION_CLOSED) — skeleton listener
+- Async test for DivisionStatusAdvancedEvent (REGISTRATION_CLOSED) — skeleton listener
 
 ### Phase 11 — Views (4 cycles)
 1. Karibu test: MyEntriesView — renders, shows credits, entry grid, add entry dialog
-2. Karibu test: CompetitionEntryAdminView — tabs render, credit/entry/product/order grids
-3. Karibu test: "Manage Entries" link in CompetitionDetailView
+2. Karibu test: DivisionEntryAdminView — tabs render, credit/entry/product/order grids
+3. Karibu test: "Manage Entries" link in DivisionDetailView
 4. Karibu test: "My Entries" navigation for entrant role
 
 ---
@@ -782,8 +799,8 @@ Each numbered phase contains multiple RED-GREEN-REFACTOR cycles.
 | Magic link email to entrants after credit assignment | Deferred — log for now |
 | Notification for lingering drafts near registration close | Deferred |
 | Automatic discard of unsubmitted drafts when registration closes | Deferred — listener skeleton |
-| PRO competition detection (show meadery name field) | Implementation detail |
-| Per-competition entry limits (max entries per entrant) | Not in requirements |
+| PRO division detection (show meadery name field) | Implementation detail |
+| Per-division entry limits (max entries per entrant) | Not in requirements |
 | Webhook retry handling beyond idempotency | Not needed |
 | Entry credit refunds | Admin removes credits manually |
 | Per-category custom fields (e.g., "malt used" for braggot) | Future — TODO |
