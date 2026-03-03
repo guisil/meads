@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `competition-module`
-**Tests:** 361 passing (`mvn test -Dsurefire.useFile=false`)
+**Tests:** 364 passing (`mvn test -Dsurefire.useFile=false`)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -111,9 +111,10 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 ## What's Next
 
-1. **Code review** of both competition and entry modules (slice by slice)
-2. **Test review** (guided, with UI verification) of both modules
-3. **Judging module** — design and implementation
+1. **Manual UI walkthrough** — `docs/walkthrough/manual-ui-test.md` (ready to execute)
+2. **Code review** of both competition and entry modules (slice by slice)
+3. **Test review** (guided, with UI verification) of both modules
+4. **Judging module** — design and implementation
 
 ---
 
