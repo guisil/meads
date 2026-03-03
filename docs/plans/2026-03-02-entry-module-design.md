@@ -13,7 +13,7 @@ Updated for the competition scope rework:
 - MeadEvent → Competition (top-level), Competition → Division (sub-level)
 - All `competitionId` fields on division-scoped entities → `divisionId`
 - All `competition_id` DB columns on division-scoped tables → `division_id`
-- Migration numbers shifted +1 (V10–V15, since V9 is the rework migration)
+- Migration numbers: V9–V14 (rework migration was merged into V3–V8 pre-deployment)
 - Routes: `/divisions/:divisionId/...` instead of `/competitions/:competitionId/...`
 - `CompetitionEntryAdminView` → `DivisionEntryAdminView`
 - `COMPETITION_ADMIN` → `ADMIN`
@@ -350,9 +350,9 @@ public enum LineItemStatus {
 
 ---
 
-## Database Migrations (V10–V15)
+## Database Migrations (V9–V14)
 
-### V10 — `V10__create_product_mappings_table.sql`
+### V9 — `V9__create_product_mappings_table.sql`
 
 ```sql
 CREATE TABLE product_mappings (
@@ -372,7 +372,7 @@ CREATE INDEX idx_product_mappings_division_id ON product_mappings(division_id);
 CREATE INDEX idx_product_mappings_jumpseller_product_id ON product_mappings(jumpseller_product_id);
 ```
 
-### V11 — `V11__create_jumpseller_orders_table.sql`
+### V10 — `V10__create_jumpseller_orders_table.sql`
 
 ```sql
 CREATE TABLE jumpseller_orders (
@@ -390,7 +390,7 @@ CREATE TABLE jumpseller_orders (
 CREATE INDEX idx_jumpseller_orders_status ON jumpseller_orders(status);
 ```
 
-### V12 — `V12__create_jumpseller_order_line_items_table.sql`
+### V11 — `V11__create_jumpseller_order_line_items_table.sql`
 
 ```sql
 CREATE TABLE jumpseller_order_line_items (
@@ -410,7 +410,7 @@ CREATE TABLE jumpseller_order_line_items (
 CREATE INDEX idx_jumpseller_order_line_items_order_id ON jumpseller_order_line_items(order_id);
 ```
 
-### V13 — `V13__create_entry_credits_table.sql`
+### V12 — `V12__create_entry_credits_table.sql`
 
 ```sql
 CREATE TABLE entry_credits (
@@ -426,7 +426,7 @@ CREATE TABLE entry_credits (
 CREATE INDEX idx_entry_credits_division_user ON entry_credits(division_id, user_id);
 ```
 
-### V14 — `V14__create_entries_table.sql`
+### V13 — `V13__create_entries_table.sql`
 
 ```sql
 CREATE TABLE entries (
@@ -457,7 +457,7 @@ CREATE UNIQUE INDEX uq_entries_division_code ON entries(division_id, entry_code)
 CREATE INDEX idx_entries_division_user ON entries(division_id, user_id);
 ```
 
-### V15 — `V15__add_meadery_name_to_users.sql`
+### V14 — `V14__add_meadery_name_to_users.sql`
 
 ```sql
 ALTER TABLE users ADD COLUMN meadery_name VARCHAR(255);
@@ -665,7 +665,7 @@ Add two optional fields to the `Division` entity (competition module):
 | `maxEntriesPerSubcategory` | `Integer` | `max_entries_per_subcategory` | NULL (unlimited) | Per participant per leaf category |
 | `maxEntriesPerMainCategory` | `Integer` | `max_entries_per_main_category` | NULL (unlimited) | Per participant per top-level category |
 
-**Migration:** `V16__add_entry_limits_to_divisions.sql`
+**Migration:** `V15__add_entry_limits_to_divisions.sql`
 
 ```sql
 ALTER TABLE divisions ADD COLUMN max_entries_per_subcategory INT;
@@ -709,7 +709,7 @@ Both checks only count non-WITHDRAWN entries.
 
 - **`Division.java`:** Add `maxEntriesPerSubcategory` and `maxEntriesPerMainCategory`
   nullable Integer fields + `updateEntryLimits(Integer, Integer)` domain method
-- **`V16__add_entry_limits_to_divisions.sql`:** Add columns to divisions table
+- **`V15__add_entry_limits_to_divisions.sql`:** Add columns to divisions table
 - **`DivisionDetailView.java`:** Add entry limit NumberFields to Settings tab; add
   "Manage Entries" button/link using string-based navigation
   (`UI.getCurrent().navigate("divisions/" + divisionId + "/entry-admin")`) —
@@ -780,13 +780,13 @@ Each numbered phase contains multiple RED-GREEN-REFACTOR cycles.
 1. Unit test: create product mapping, reject duplicate
 2. Unit test: update product mapping details
 3. Unit test: find product mappings by division
-4. Repository test → drives V10 migration
+4. Repository test → drives V9 migration
 
 ### Phase 3 — Webhook Order Storage (4 cycles)
 1. Unit test: JumpsellerOrder domain methods (markProcessed, markNeedsReview, etc.)
 2. Unit test: JumpsellerOrderLineItem domain methods
-3. Repository test for JumpsellerOrder → drives V11 migration
-4. Repository test for JumpsellerOrderLineItem → drives V12 migration
+3. Repository test for JumpsellerOrder → drives V10 migration
+4. Repository test for JumpsellerOrderLineItem → drives V11 migration
 
 ### Phase 4 — Credits (14 cycles)
 1. Unit test: HMAC signature verification
@@ -796,7 +796,7 @@ Each numbered phase contains multiple RED-GREEN-REFACTOR cycles.
 5. Unit test: processOrderPaid — user creation for unknown email
 6. Unit test: processOrderPaid — all items invalid
 7. Unit test: processOrderPaid — idempotency (duplicate order ID)
-8. Repository test for EntryCredit → drives V13 migration
+8. Repository test for EntryCredit → drives V12 migration
 9. Unit test: getCreditBalance
 10. Unit test: addCredits — manual, with mutual exclusivity check
 11. Unit test: addCredits — creates ENTRANT participant if needed
@@ -813,7 +813,7 @@ Each numbered phase contains multiple RED-GREEN-REFACTOR cycles.
 6. Unit test: updateDetails() — only DRAFT
 7. Unit test: assignFinalCategory()
 8. Unit test: getEffectiveCategoryId()
-9. Repository test → drives V14 migration
+9. Repository test → drives V13 migration
 
 ### Phase 6 — Entry Service (17 cycles)
 1. Unit test: createEntry — validates credits > active entries
@@ -837,7 +837,7 @@ Each numbered phase contains multiple RED-GREEN-REFACTOR cycles.
 ### Phase 7 — User.meaderyName (3 cycles)
 1. Unit test: User.updateMeaderyName() domain method
 2. Unit test: UserService.updateMeaderyName()
-3. Repository test → drives V15 migration
+3. Repository test → drives V14 migration
 
 ### Phase 8 — Webhook REST Controller (2 cycles)
 1. MockMvc test: valid signature → 200

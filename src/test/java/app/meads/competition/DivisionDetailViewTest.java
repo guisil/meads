@@ -4,7 +4,6 @@ import app.meads.TestcontainersConfiguration;
 import app.meads.competition.internal.CategoryRepository;
 import app.meads.competition.internal.CompetitionRepository;
 import app.meads.competition.internal.DivisionCategoryRepository;
-import app.meads.competition.internal.DivisionDetailView;
 import app.meads.competition.internal.DivisionRepository;
 import app.meads.competition.internal.ParticipantRepository;
 import app.meads.competition.internal.ParticipantRoleRepository;
@@ -19,7 +18,6 @@ import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.dialog.Dialog;
-import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.treegrid.TreeGrid;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Nav;
@@ -181,15 +179,6 @@ class DivisionDetailViewTest {
     }
 
     @Test
-    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldDisplayParticipantsGrid() {
-        UI.getCurrent().navigate("divisions/" + testDivision.getId());
-
-        var grids = _find(Grid.class);
-        assertThat(grids).hasSizeGreaterThanOrEqualTo(1);
-    }
-
-    @Test
     @WithMockUser(username = "comp-admin@example.com", roles = "USER")
     void shouldAllowCompetitionAdminAccess() {
         var compAdminUser = userRepository.findByEmail("comp-admin@example.com")
@@ -222,20 +211,6 @@ class DivisionDetailViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldShowEmailFieldInAddDialog() {
-        UI.getCurrent().navigate("divisions/" + testDivision.getId());
-
-        var addButton = _get(Button.class, spec -> spec.withText("Add Participant"));
-        _click(addButton);
-
-        var dialog = _get(Dialog.class);
-        assertThat(dialog).isNotNull();
-        var emailField = _get(dialog, TextField.class, spec -> spec.withCaption("Email"));
-        assertThat(emailField).isNotNull();
-    }
-
-    @Test
-    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldDisplayBreadcrumb() {
         UI.getCurrent().navigate("divisions/" + testDivision.getId());
 
@@ -259,10 +234,7 @@ class DivisionDetailViewTest {
 
         UI.getCurrent().navigate("divisions/" + testDivision.getId());
 
-        // Select the Categories tab to make its content visible
-        var tabSheet = _get(TabSheet.class);
-        tabSheet.setSelectedIndex(1);
-
+        // Categories tab is now the first tab (index 0) — selected by default
         @SuppressWarnings("unchecked")
         var grid = (TreeGrid<DivisionCategory>) _get(TreeGrid.class,
                 spec -> spec.withId("categories-grid"));
@@ -291,9 +263,7 @@ class DivisionDetailViewTest {
 
         UI.getCurrent().navigate("divisions/" + testDivision.getId());
 
-        var tabSheet = _get(TabSheet.class);
-        tabSheet.setSelectedIndex(1);
-
+        // Categories tab is the first tab (index 0) — selected by default
         var treeGrid = _get(TreeGrid.class, spec -> spec.withId("categories-grid"));
         assertThat(treeGrid).isNotNull();
     }
@@ -307,9 +277,7 @@ class DivisionDetailViewTest {
 
         UI.getCurrent().navigate("divisions/" + testDivision.getId());
 
-        var tabSheet = _get(TabSheet.class);
-        tabSheet.setSelectedIndex(1);
-
+        // Categories tab is the first tab (index 0) — selected by default
         @SuppressWarnings("unchecked")
         var grid = (TreeGrid<DivisionCategory>) _get(TreeGrid.class,
                 spec -> spec.withId("categories-grid"));
@@ -326,9 +294,7 @@ class DivisionDetailViewTest {
     void shouldShowAddCategoryButton() {
         UI.getCurrent().navigate("divisions/" + testDivision.getId());
 
-        var tabSheet = _get(TabSheet.class);
-        tabSheet.setSelectedIndex(1);
-
+        // Categories tab is the first tab (index 0) — selected by default
         var addButton = _get(Button.class, spec -> spec.withText("Add Category"));
         assertThat(addButton).isNotNull();
         assertThat(addButton.isEnabled()).isTrue();
@@ -339,9 +305,7 @@ class DivisionDetailViewTest {
     void shouldAddCatalogCategoryViaDialog() {
         UI.getCurrent().navigate("divisions/" + testDivision.getId());
 
-        var tabSheet = _get(TabSheet.class);
-        tabSheet.setSelectedIndex(1);
-
+        // Categories tab is the first tab (index 0) — selected by default
         var addButton = _get(Button.class, spec -> spec.withText("Add Category"));
         _click(addButton);
 
@@ -371,9 +335,7 @@ class DivisionDetailViewTest {
     void shouldAddCustomCategoryViaDialog() {
         UI.getCurrent().navigate("divisions/" + testDivision.getId());
 
-        var tabSheet = _get(TabSheet.class);
-        tabSheet.setSelectedIndex(1);
-
+        // Categories tab is the first tab (index 0) — selected by default
         var addButton = _get(Button.class, spec -> spec.withText("Add Category"));
         _click(addButton);
 
@@ -399,67 +361,5 @@ class DivisionDetailViewTest {
         assertThat(categories.getFirst().getCode()).isEqualTo("CUSTOM1");
         assertThat(categories.getFirst().getName()).isEqualTo("Best Local Honey");
         assertThat(categories.getFirst().getCatalogCategoryId()).isNull();
-    }
-
-    @Test
-    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldShowRemoveColumnInParticipantsGrid() {
-        var judge = userRepository.save(new User("judge-col@test.com",
-                "Judge Col", UserStatus.ACTIVE, Role.USER));
-        var participant = participantRepository.save(
-                new Participant(testCompetition.getId(), judge.getId()));
-        participantRoleRepository.save(
-                new ParticipantRole(participant.getId(), CompetitionRole.JUDGE));
-
-        UI.getCurrent().navigate("divisions/" + testDivision.getId());
-
-        @SuppressWarnings("unchecked")
-        var grid = (Grid<ParticipantRole>) _find(Grid.class).getFirst();
-        // Should have 5 columns: Name, Email, Role, Access Code, and Remove (component column)
-        assertThat(grid.getColumns()).hasSize(5);
-    }
-
-    @Test
-    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldDisplayAccessCodeColumnInParticipantsGrid() {
-        var judge = userRepository.save(new User("judge-code@test.com",
-                "Judge Code", UserStatus.ACTIVE, Role.USER));
-        var participant = participantRepository.save(
-                new Participant(testCompetition.getId(), judge.getId()));
-        participant.assignAccessCode("ABCD1234");
-        participantRepository.save(participant);
-        participantRoleRepository.save(
-                new ParticipantRole(participant.getId(), CompetitionRole.JUDGE));
-
-        UI.getCurrent().navigate("divisions/" + testDivision.getId());
-
-        @SuppressWarnings("unchecked")
-        var grid = (Grid<ParticipantRole>) _find(Grid.class).getFirst();
-        var headerNames = grid.getColumns().stream()
-                .map(c -> c.getHeaderText())
-                .toList();
-        assertThat(headerNames).contains("Access Code");
-    }
-
-    @Test
-    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldDisplayParticipantWithNameAndEmail() {
-        var judge = userRepository.save(new User("judge@test.com",
-                "Judge Person", UserStatus.ACTIVE, Role.USER));
-        var participant = participantRepository.save(
-                new Participant(testCompetition.getId(), judge.getId()));
-        participantRoleRepository.save(
-                new ParticipantRole(participant.getId(), CompetitionRole.JUDGE));
-
-        UI.getCurrent().navigate("divisions/" + testDivision.getId());
-
-        @SuppressWarnings("unchecked")
-        var grid = (Grid<ParticipantRole>) _find(Grid.class).getFirst();
-        var columns = grid.getColumns();
-        var headerNames = columns.stream()
-                .map(c -> c.getHeaderText())
-                .toList();
-
-        assertThat(headerNames).contains("Name", "Email", "Role");
     }
 }

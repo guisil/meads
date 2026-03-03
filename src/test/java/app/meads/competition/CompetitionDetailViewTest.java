@@ -15,12 +15,13 @@ import com.github.mvysny.kaributesting.v10.Routes;
 import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.dialog.Dialog;
+import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H2;
-import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.tabs.TabSheet;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.component.upload.Upload;
 import com.vaadin.flow.server.VaadinServletRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,7 +40,6 @@ import org.springframework.test.annotation.DirtiesContext;
 
 import java.time.LocalDate;
 import java.util.Arrays;
-import java.util.UUID;
 
 import static com.github.mvysny.kaributesting.v10.LocatorJ.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -47,15 +47,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
 @DirtiesContext
-class DivisionListViewTest {
+class CompetitionDetailViewTest {
 
-    private static final String ADMIN_EMAIL = "divlistview-admin@example.com";
+    private static final String ADMIN_EMAIL = "compdetail-admin@example.com";
 
     @Autowired
     ApplicationContext ctx;
-
-    @Autowired
-    CompetitionService competitionService;
 
     @Autowired
     CompetitionRepository competitionRepository;
@@ -78,7 +75,7 @@ class DivisionListViewTest {
     void setup(TestInfo testInfo) {
         if (userRepository.findByEmail(ADMIN_EMAIL).isEmpty()) {
             userRepository.save(new User(ADMIN_EMAIL,
-                    "Div List Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN));
+                    "Comp Detail Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN));
         }
 
         testCompetition = competitionRepository.save(new Competition("Test Competition",
@@ -141,130 +138,75 @@ class DivisionListViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldDisplayDivisionListViewWithCompetitionHeader() {
-        UI.getCurrent().navigate("competitions/" + testCompetition.getId() + "/divisions");
+    void shouldDisplayCompetitionHeaderAndDivisionsTab() {
+        divisionRepository.save(new Division(testCompetition.getId(), "Home", ScoringSystem.MJP));
+
+        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
 
         var heading = _get(H2.class, spec -> spec.withText("Test Competition"));
         assertThat(heading).isNotNull();
-    }
 
-    @Test
-    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldDisplayDivisionGrid() {
-        UI.getCurrent().navigate("competitions/" + testCompetition.getId() + "/divisions");
+        var tabSheet = _get(TabSheet.class);
+        assertThat(tabSheet).isNotNull();
 
-        var grid = _get(Grid.class);
-        assertThat(grid).isNotNull();
-    }
-
-    @Test
-    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldDisplayCreateDivisionButton() {
-        UI.getCurrent().navigate("competitions/" + testCompetition.getId() + "/divisions");
-
-        var button = _get(Button.class, spec -> spec.withText("Create Division"));
-        assertThat(button).isNotNull();
-    }
-
-    @Test
-    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldCreateDivisionViaDialog() {
-        UI.getCurrent().navigate("competitions/" + testCompetition.getId() + "/divisions");
-
-        _click(_get(Button.class, spec -> spec.withText("Create Division")));
-
-        _get(TextField.class, spec -> spec.withLabel("Name")).setValue("Home");
-
-        _click(_get(Button.class, spec -> spec.withText("Create")));
-
-        assertThat(_find(Dialog.class)).isEmpty();
-        assertThat(_get(Notification.class).getElement().getProperty("text"))
-                .contains("created");
-    }
-
-    @Test
-    @WithMockUser(username = "comp-admin@example.com", roles = "USER")
-    void shouldAllowCompetitionAdminAccess() {
-        var compAdminUser = userRepository.findByEmail("comp-admin@example.com")
-                .orElseGet(() -> userRepository.save(new User("comp-admin@example.com",
-                        "Comp Admin User", UserStatus.ACTIVE, Role.USER)));
-        var participant = participantRepository.save(
-                new Participant(testCompetition.getId(), compAdminUser.getId()));
-        participantRoleRepository.save(
-                new ParticipantRole(participant.getId(), CompetitionRole.ADMIN));
-
-        UI.getCurrent().navigate("competitions/" + testCompetition.getId() + "/divisions");
-
-        var heading = _get(H2.class, spec -> spec.withText("Test Competition"));
-        assertThat(heading).isNotNull();
-    }
-
-    @Test
-    @WithMockUser(username = "unauthorized@example.com", roles = "USER")
-    void shouldRedirectUnauthorizedUser() {
-        userRepository.findByEmail("unauthorized@example.com")
-                .orElseGet(() -> userRepository.save(new User("unauthorized@example.com",
-                        "Unauthorized", UserStatus.ACTIVE, Role.USER)));
-
-        UI.getCurrent().navigate("competitions/" + testCompetition.getId() + "/divisions");
-
-        var headings = _find(H2.class);
-        assertThat(headings).noneMatch(h -> h.getText().equals("Test Competition"));
-    }
-
-    @Test
-    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldDisplayCompetitionLogoInHeaderWhenLogoExists() {
-        testCompetition.updateLogo(new byte[]{1, 2, 3}, "image/png");
-        competitionRepository.save(testCompetition);
-
-        UI.getCurrent().navigate("competitions/" + testCompetition.getId() + "/divisions");
-
-        var images = _find(Image.class);
-        assertThat(images).hasSize(1);
-    }
-
-    @Test
-    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldNotDisplayCompetitionLogoInHeaderWhenNoLogo() {
-        UI.getCurrent().navigate("competitions/" + testCompetition.getId() + "/divisions");
-
-        var images = _find(Image.class);
-        assertThat(images).isEmpty();
-    }
-
-    @Test
-    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldRemoveDivisionFromGridAfterDeletion() {
-        var division = divisionRepository.save(
-                new Division(testCompetition.getId(), "To Delete", ScoringSystem.MJP));
-
-        UI.getCurrent().navigate("competitions/" + testCompetition.getId() + "/divisions");
-
+        // Divisions tab is selected by default (index 0)
         @SuppressWarnings("unchecked")
-        var grid = (Grid<Division>) _find(Grid.class).getFirst();
+        var grid = (Grid<Division>) _get(Grid.class);
+        var headers = grid.getColumns().stream()
+                .map(c -> c.getHeaderText())
+                .toList();
+        assertThat(headers).contains("Name", "Status", "Scoring");
         assertThat(grid.getGenericDataView().getItems().count()).isEqualTo(1);
-
-        competitionService.deleteDivision(division.getId(), getCurrentUserId());
-
-        // Re-navigate to refresh
-        UI.getCurrent().navigate("competitions/" + testCompetition.getId() + "/divisions");
-
-        @SuppressWarnings("unchecked")
-        var refreshedGrid = (Grid<Division>) _find(Grid.class).getFirst();
-        assertThat(refreshedGrid.getGenericDataView().getItems().count()).isZero();
     }
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldDisplayAddParticipantButton() {
-        UI.getCurrent().navigate("competitions/" + testCompetition.getId() + "/divisions");
+    void shouldDisplayParticipantsTab() {
+        var judge = userRepository.findByEmail("judge-detail@test.com")
+                .orElseGet(() -> userRepository.save(new User("judge-detail@test.com",
+                        "Judge Person", UserStatus.ACTIVE, Role.USER)));
+        var participant = participantRepository.save(
+                new Participant(testCompetition.getId(), judge.getId()));
+        participantRoleRepository.save(
+                new ParticipantRole(participant.getId(), CompetitionRole.JUDGE));
 
-        var button = _get(Button.class, spec -> spec.withText("Add Participant"));
-        assertThat(button).isNotNull();
+        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(1); // Participants tab
+
+        @SuppressWarnings("unchecked")
+        var grid = (Grid<ParticipantRole>) _find(Grid.class).stream()
+                .filter(g -> !(g instanceof com.vaadin.flow.component.treegrid.TreeGrid))
+                .reduce((first, second) -> second) // get the last non-TreeGrid
+                .orElseThrow();
+        var headers = grid.getColumns().stream()
+                .map(c -> c.getHeaderText())
+                .toList();
+        assertThat(headers).contains("Name", "Email", "Role", "Access Code");
     }
 
-    private UUID getCurrentUserId() {
-        return userRepository.findByEmail(ADMIN_EMAIL).orElseThrow().getId();
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldDisplaySettingsTab() {
+        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(2); // Settings tab
+
+        var nameField = _get(TextField.class, spec -> spec.withLabel("Name"));
+        assertThat(nameField.getValue()).isEqualTo("Test Competition");
+
+        var startDate = _get(DatePicker.class, spec -> spec.withLabel("Start Date"));
+        assertThat(startDate.getValue()).isEqualTo(LocalDate.of(2026, 6, 15));
+
+        var endDate = _get(DatePicker.class, spec -> spec.withLabel("End Date"));
+        assertThat(endDate.getValue()).isEqualTo(LocalDate.of(2026, 6, 17));
+
+        var locationField = _get(TextField.class, spec -> spec.withLabel("Location"));
+        assertThat(locationField.getValue()).isEqualTo("Porto");
+
+        var uploads = _find(Upload.class);
+        assertThat(uploads).hasSize(1);
     }
 }

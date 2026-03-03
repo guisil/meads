@@ -112,28 +112,28 @@ app.meads.identity                       ← Identity module public API
 
 app.meads.competition                    ← Competition module public API
 ├── package-info.java                    ← @ApplicationModule(allowedDependencies = {"identity"})
-├── MeadEvent.java                       ← JPA entity (named MeadEvent to avoid Spring event collision)
-├── Competition.java                     ← JPA entity / aggregate root
-├── EventParticipant.java               ← JPA entity (event-scoped, holds access code)
-├── CompetitionParticipant.java          ← JPA entity (references EventParticipant, per-competition role)
+├── Competition.java                     ← JPA entity / aggregate root (top-level)
+├── Division.java                        ← JPA entity (sub-level, belongs to competition)
+├── Participant.java                     ← JPA entity (competition-scoped, holds access code)
+├── ParticipantRole.java                 ← JPA entity (references Participant, competition-scoped role)
 ├── Category.java                        ← JPA entity (read-only reference data)
-├── CompetitionCategory.java             ← JPA entity (per-competition category, optional parent for hierarchy)
-├── CompetitionStatus.java               ← Enum: DRAFT → REGISTRATION_OPEN → ... → RESULTS_PUBLISHED
-├── CompetitionRole.java                 ← Enum: JUDGE, STEWARD, ENTRANT, COMPETITION_ADMIN
+├── DivisionCategory.java               ← JPA entity (per-division category, optional parent for hierarchy)
+├── DivisionStatus.java                  ← Enum: DRAFT → REGISTRATION_OPEN → ... → RESULTS_PUBLISHED
+├── CompetitionRole.java                 ← Enum: JUDGE, STEWARD, ENTRANT, ADMIN
 ├── ScoringSystem.java                   ← Enum: MJP
 ├── CompetitionService.java              ← Application service (public API)
-├── CompetitionStatusAdvancedEvent.java  ← Spring application event
+├── DivisionStatusAdvancedEvent.java     ← Spring application event
 └── internal/                            ← Module-private
-    ├── MeadEventRepository.java         ← JPA repository
     ├── CompetitionRepository.java       ← JPA repository
-    ├── EventParticipantRepository.java  ← JPA repository
-    ├── CompetitionParticipantRepository.java ← JPA repository
+    ├── DivisionRepository.java          ← JPA repository
+    ├── ParticipantRepository.java       ← JPA repository
+    ├── ParticipantRoleRepository.java   ← JPA repository
     ├── CategoryRepository.java          ← JPA repository
-    ├── CompetitionCategoryRepository.java ← JPA repository
+    ├── DivisionCategoryRepository.java  ← JPA repository
     ├── CompetitionAccessCodeValidator.java  ← AccessCodeValidator implementation
-    ├── MeadEventListView.java           ← MeadEvents CRUD view (@RolesAllowed("SYSTEM_ADMIN"))
-    ├── CompetitionListView.java         ← Competitions list per event (@PermitAll + beforeEnter auth)
-    └── CompetitionDetailView.java       ← Competition detail with tabs, breadcrumb (@PermitAll + beforeEnter auth)
+    ├── CompetitionListView.java         ← Competitions CRUD view (@RolesAllowed("SYSTEM_ADMIN"))
+    ├── CompetitionDetailView.java       ← Competition detail with Divisions/Participants/Settings tabs (@PermitAll + beforeEnter auth)
+    └── DivisionDetailView.java          ← Division detail with Categories/Settings tabs, breadcrumb (@PermitAll + beforeEnter auth)
 ```
 
 ### Module Rules

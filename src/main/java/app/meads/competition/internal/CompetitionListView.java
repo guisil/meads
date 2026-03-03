@@ -67,7 +67,7 @@ public class CompetitionListView extends VerticalLayout {
 
         grid.addItemClickListener(e ->
                 e.getSource().getUI().ifPresent(ui ->
-                        ui.navigate("competitions/" + e.getItem().getId() + "/divisions")));
+                        ui.navigate("competitions/" + e.getItem().getId())));
 
         refreshGrid();
         add(grid);

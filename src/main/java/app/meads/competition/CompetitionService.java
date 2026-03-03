@@ -163,6 +163,10 @@ public class CompetitionService {
         divisionRepository.delete(division);
     }
 
+    public List<Division> findDivisionsByCompetition(@NotNull UUID competitionId) {
+        return divisionRepository.findByCompetitionId(competitionId);
+    }
+
     // --- Division Category methods ---
 
     public List<DivisionCategory> findDivisionCategories(@NotNull UUID divisionId) {

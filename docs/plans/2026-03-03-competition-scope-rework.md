@@ -475,18 +475,18 @@ All `competitionId` fields that reference the sub-level entity become `divisionI
 | `EntryCredit` | `competitionId` → `divisionId` |
 | `Entry` | `competitionId` → `divisionId` |
 
-### Migration number shift
+### Migration numbers
 
-V9 is now the rework migration. Entry module migrations shift +1:
+V9 rework migration was merged into V3–V8 (pre-deployment). Entry module uses V9–V14:
 
-| Original | New | Description |
-|----------|-----|-------------|
-| V9 | V10 | create_product_mappings_table |
-| V10 | V11 | create_jumpseller_orders_table |
-| V11 | V12 | create_jumpseller_order_line_items_table |
-| V12 | V13 | create_entry_credits_table |
-| V13 | V14 | create_entries_table |
-| V14 | V15 | add_meadery_name_to_users |
+| Version | Description |
+|---------|-------------|
+| V9 | create_product_mappings_table |
+| V10 | create_jumpseller_orders_table |
+| V11 | create_jumpseller_order_line_items_table |
+| V12 | create_entry_credits_table |
+| V13 | create_entries_table |
+| V14 | add_meadery_name_to_users |
 
 DB column changes: `competition_id` → `division_id` in all entry module tables.
 FK targets: `divisions(id)` instead of `competitions(id)`.
@@ -625,7 +625,7 @@ Add the new `isAuthorizedForDivision` method and update DivisionDetailView to us
 Entry limits designed into entry module:
 - `maxEntriesPerSubcategory` (nullable Integer) on Division — CHIP: 3
 - `maxEntriesPerMainCategory` (nullable Integer) on Division — CHIP: 5
-- Enforced in `EntryService.createEntry()`, migration V16
+- Enforced in `EntryService.createEntry()`, migration V15
 - See entry module design doc Section "Entry Limits"
 
 To review later (not needed for CHIP, but may be relevant for other competitions):

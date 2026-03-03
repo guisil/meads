@@ -768,6 +768,67 @@ class CompetitionServiceTest {
         assertThat(result).isFalse();
     }
 
+    // --- findDivisionsByCompetition ---
+
+    @Test
+    void shouldFindDivisionsByCompetition() {
+        var competitionId = UUID.randomUUID();
+        var div1 = new Division(competitionId, "Home", ScoringSystem.MJP);
+        var div2 = new Division(competitionId, "Pro", ScoringSystem.MJP);
+        given(divisionRepository.findByCompetitionId(competitionId))
+                .willReturn(List.of(div1, div2));
+
+        var result = competitionService.findDivisionsByCompetition(competitionId);
+
+        assertThat(result).hasSize(2);
+        then(divisionRepository).should().findByCompetitionId(competitionId);
+    }
+
+    // --- isAuthorizedForDivision ---
+
+    @Test
+    void shouldReturnTrueWhenUserIsAdminForDivisionCompetition() {
+        var admin = createAdmin();
+        var division = new Division(UUID.randomUUID(), "Home", ScoringSystem.MJP);
+        given(divisionRepository.findById(division.getId()))
+                .willReturn(Optional.of(division));
+        given(userService.findById(admin.getId())).willReturn(admin);
+
+        var result = competitionService.isAuthorizedForDivision(
+                division.getId(), admin.getId());
+
+        assertThat(result).isTrue();
+    }
+
+    @Test
+    void shouldReturnFalseWhenUserIsNotAdminForDivisionCompetition() {
+        var user = createRegularUser();
+        var division = new Division(UUID.randomUUID(), "Home", ScoringSystem.MJP);
+        given(divisionRepository.findById(division.getId()))
+                .willReturn(Optional.of(division));
+        given(userService.findById(user.getId())).willReturn(user);
+        given(participantRepository.findByCompetitionIdAndUserId(
+                division.getCompetitionId(), user.getId()))
+                .willReturn(Optional.empty());
+
+        var result = competitionService.isAuthorizedForDivision(
+                division.getId(), user.getId());
+
+        assertThat(result).isFalse();
+    }
+
+    @Test
+    void shouldReturnFalseWhenDivisionNotFound() {
+        var user = createRegularUser();
+        var divisionId = UUID.randomUUID();
+        given(divisionRepository.findById(divisionId)).willReturn(Optional.empty());
+
+        var result = competitionService.isAuthorizedForDivision(
+                divisionId, user.getId());
+
+        assertThat(result).isFalse();
+    }
+
     // --- findAuthorizedDivisions ---
 
     @Test

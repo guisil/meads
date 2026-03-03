@@ -2,11 +2,9 @@ package app.meads.competition.internal;
 
 import app.meads.MainLayout;
 import app.meads.competition.*;
-import app.meads.identity.User;
 import app.meads.identity.UserService;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.dialog.Dialog;
-import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.treegrid.TreeGrid;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Nav;
@@ -28,10 +26,7 @@ import jakarta.annotation.security.PermitAll;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.util.StringUtils;
 
-import java.util.Map;
 import java.util.UUID;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Route(value = "divisions/:divisionId", layout = MainLayout.class)
 @PermitAll
@@ -44,10 +39,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
     private UUID divisionId;
     private Division division;
     private Competition competition;
-    private Grid<ParticipantRole> participantsGrid;
     private TreeGrid<DivisionCategory> categoriesGrid;
-    private Map<UUID, Participant> participantMap;
-    private Map<UUID, User> userMap;
 
     public DivisionDetailView(CompetitionService competitionService,
                                UserService userService,
@@ -76,7 +68,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
             return;
         }
 
-        if (!competitionService.isAuthorizedForCompetition(competition.getId(), getCurrentUserId())) {
+        if (!competitionService.isAuthorizedForDivision(divisionId, getCurrentUserId())) {
             beforeEnterEvent.forwardTo("");
             return;
         }
@@ -89,7 +81,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
 
     private Nav createBreadcrumb() {
         var nav = new Nav();
-        var competitionLink = new RouterLink(competition.getName(), DivisionListView.class,
+        var competitionLink = new RouterLink(competition.getName(), CompetitionDetailView.class,
                 new RouteParameters("competitionId", competition.getId().toString()));
         nav.add(competitionLink);
         nav.add(new Span(" / "));
@@ -127,57 +119,10 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         var tabSheet = new TabSheet();
         tabSheet.setWidthFull();
 
-        tabSheet.add("Participants", createParticipantsTab());
         tabSheet.add("Categories", createCategoriesTab());
         tabSheet.add("Settings", createSettingsTab());
 
         return tabSheet;
-    }
-
-    private VerticalLayout createParticipantsTab() {
-        var tab = new VerticalLayout();
-        tab.setPadding(false);
-
-        var actions = new HorizontalLayout();
-        var addButton = new Button("Add Participant", e -> openAddParticipantDialog());
-        actions.add(addButton);
-        tab.add(actions);
-
-        participantsGrid = new Grid<>();
-        participantsGrid.addColumn(pr -> {
-            var participant = participantMap.get(pr.getParticipantId());
-            var user = participant != null ? userMap.get(participant.getUserId()) : null;
-            return user != null ? user.getName() : "Unknown";
-        }).setHeader("Name");
-        participantsGrid.addColumn(pr -> {
-            var participant = participantMap.get(pr.getParticipantId());
-            var user = participant != null ? userMap.get(participant.getUserId()) : null;
-            return user != null ? user.getEmail() : "—";
-        }).setHeader("Email");
-        participantsGrid.addColumn(pr -> pr.getRole().getDisplayName()).setHeader("Role");
-        participantsGrid.addColumn(pr -> {
-            var participant = participantMap.get(pr.getParticipantId());
-            return participant != null && participant.getAccessCode() != null
-                    ? participant.getAccessCode() : "—";
-        }).setHeader("Access Code");
-        participantsGrid.addComponentColumn(pr -> {
-            var removeButton = new Button("Remove", e -> {
-                try {
-                    competitionService.removeParticipant(
-                            competition.getId(), pr.getParticipantId(), getCurrentUserId());
-                    refreshParticipantsGrid();
-                    var notification = Notification.show("Participant removed");
-                    notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-                } catch (IllegalArgumentException ex) {
-                    Notification.show(ex.getMessage());
-                }
-            });
-            return removeButton;
-        }).setHeader("");
-
-        refreshParticipantsGrid();
-        tab.add(participantsGrid);
-        return tab;
     }
 
     private VerticalLayout createCategoriesTab() {
@@ -373,47 +318,6 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         return tab;
     }
 
-    private void openAddParticipantDialog() {
-        var dialog = new Dialog();
-        dialog.setHeaderTitle("Add Participant");
-
-        var emailField = new TextField("Email");
-
-        var roleSelect = new Select<CompetitionRole>();
-        roleSelect.setLabel("Role");
-        roleSelect.setItems(CompetitionRole.values());
-        roleSelect.setValue(CompetitionRole.JUDGE);
-
-        var addButton = new Button("Add", e -> {
-            if (!StringUtils.hasText(emailField.getValue())) {
-                emailField.setInvalid(true);
-                emailField.setErrorMessage("Email is required");
-                return;
-            }
-            try {
-                competitionService.addParticipantByEmail(
-                        competition.getId(),
-                        emailField.getValue().trim(),
-                        roleSelect.getValue(),
-                        getCurrentUserId());
-                refreshParticipantsGrid();
-                var notification = Notification.show("Participant added successfully");
-                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-                dialog.close();
-            } catch (IllegalArgumentException ex) {
-                Notification.show(ex.getMessage());
-            }
-        });
-
-        var cancelButton = new Button("Cancel", e -> dialog.close());
-
-        var form = new VerticalLayout(emailField, roleSelect);
-        form.setPadding(false);
-        dialog.add(form);
-        dialog.getFooter().add(cancelButton, addButton);
-        dialog.open();
-    }
-
     private void advanceStatus() {
         var nextStatusName = division.getStatus().next()
                 .map(DivisionStatus::getDisplayName).orElse("—");
@@ -438,23 +342,6 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         var cancelButton = new Button("Cancel", e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
         dialog.open();
-    }
-
-    private void refreshParticipantsGrid() {
-        var roles = competitionService.findRolesByCompetition(competition.getId());
-
-        var participants = competitionService.findParticipantsByCompetition(competition.getId());
-        participantMap = participants.stream()
-                .collect(Collectors.toMap(Participant::getId, Function.identity()));
-
-        var userIds = participants.stream()
-                .map(Participant::getUserId)
-                .distinct()
-                .toList();
-        userMap = userService.findAllByIds(userIds).stream()
-                .collect(Collectors.toMap(User::getId, Function.identity()));
-
-        participantsGrid.setItems(roles);
     }
 
     private Span createStatusBadge(DivisionStatus status) {
