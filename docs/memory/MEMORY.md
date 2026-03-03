@@ -17,46 +17,42 @@ assertThat(_get(Notification.class).getElement().getProperty("text"))
 - `app.meads.identity.internal` — module-private (views, repos, services, `SecurityConfig`)
 - `app.meads.competition` — competition module public API (allowedDependencies = {"identity"})
 - `app.meads.competition.internal` — module-private (repos, AccessCodeValidator impl, views)
-- Dependency direction: `competition → identity → root`
 - `app.meads.entry` — entry module public API (allowedDependencies = {"competition", "identity"})
-- `app.meads.entry.internal` — module-private (repos)
+- `app.meads.entry.internal` — module-private (repos, views, controller, listener)
+- Dependency direction: `entry → competition → identity → root`
 
 ## Current state
 
 Branch: `competition-module`
-Tests passing: 301
-Current highest migration: V12 (`V12__create_entry_credits_table.sql`).
-Migrations V3–V8 are competition module (pre-deployment). V9–V12 are entry module (in progress).
+Tests passing: 361
+Current highest migration: V15 (`V15__add_entry_limits_to_divisions.sql`).
+Migrations V3–V8 are competition module (pre-deployment). V9–V15 are entry module.
 
 ### What's done
 
 - **identity module**: complete (users, auth, roles, admin CRUD)
 - **competition module**: fully implemented + code reviewed
 - **Competition scope rework**: ALL PHASES COMPLETE (R0–R3)
-- **Entry module Phases 0–4**: COMPLETE
+- **Entry module**: ALL 11 PHASES COMPLETE
   - Phase 0: Module skeleton (package-info, EntryModuleTest, empty EntryService)
   - Phase 1: All 6 enums (EntryStatus, Sweetness, Strength, Carbonation, OrderStatus, LineItemStatus)
   - Phase 2: ProductMapping entity + CRUD service methods + V9 migration
   - Phase 3: JumpsellerOrder + JumpsellerOrderLineItem entities + V10-V11 migrations
   - Phase 4: EntryCredit entity + WebhookService (HMAC, processOrderPaid) + credit methods on EntryService + V12 migration
+  - Phase 5: Entry entity + domain methods (submit, markReceived, withdraw, updateDetails, assignFinalCategory) + V13 migration
+  - Phase 6: Entry service methods (createEntry, updateEntry, deleteEntry, submitAllDrafts, limits enforcement, admin operations) + EntriesSubmittedEvent
+  - Phase 7: User.meaderyName field + V14 migration
+  - Phase 8: JumpsellerWebhookController (standalone MockMvc) + SecurityConfig webhook permitAll
+  - Phase 9: Module integration test (full credit → entry → submit workflow)
+  - Phase 10: RegistrationClosedListener (DivisionStatusAdvancedEvent skeleton)
+  - Phase 11: Views (MyEntriesView, DivisionEntryAdminView, "Manage Entries" link in DivisionDetailView, authorization)
+  - Entry limits on Division: maxEntriesPerSubcategory + maxEntriesPerMainCategory (V15)
 
 ### What's next — ORDERED
 
-1. **Entry module implementation (TDD) — RESUME AT PHASE 5**
-   - Design: `docs/plans/2026-03-02-entry-module-design.md` (revised 2026-03-03)
-   - 12 phases total, Phases 0–4 done, Phases 5–11 remaining
-   - Phase 5: Entry entity (9 cycles) — constructor, submit, markReceived, withdraw, updateDetails, assignFinalCategory, getEffectiveCategoryId, repository + V13 migration
-   - Phase 6: Entry service methods (17 cycles) — createEntry, updateEntry, deleteEntry, submitAllDrafts, markReceived, withdrawEntry, adminUpdateEntry, entry limits
-   - Phase 7: User.meaderyName (3 cycles) + V14 migration
-   - Phase 8: Webhook REST controller (2 cycles) + SecurityConfig change
-   - Phase 9: Module integration test
-   - Phase 10: Event listener skeleton (DivisionStatusAdvancedEvent)
-   - Phase 11: Views (4 cycles) — MyEntriesView, DivisionEntryAdminView
-   - Remaining migrations: V13 (entries), V14 (meadery_name), V15 (entry limits on divisions)
-
-2. **Code review** of both competition and entry modules (slice by slice)
-
-3. **Test review** (guided, with UI verification) of both modules
+1. **Code review** of both competition and entry modules (slice by slice)
+2. **Test review** (guided, with UI verification) of both modules
+3. **Judging module** — design and implementation
 
 ### Deferred
 
@@ -79,7 +75,7 @@ Migrations V3–V8 are competition module (pre-deployment). V9–V12 are entry m
 
 ### Resolved TODOs
 
-- ~~Entry limits per participant~~ → Designed: `maxEntriesPerSubcategory` + `maxEntriesPerMainCategory` on Division (entry module Phase 6)
+- ~~Entry limits per participant~~ → Implemented: `maxEntriesPerSubcategory` + `maxEntriesPerMainCategory` on Division (V15)
 
 ### To Review Later (not needed for CHIP, but may be relevant for other competitions)
 
@@ -101,7 +97,7 @@ Use the Vaadin MCP tools (`search_vaadin_docs`, `get_component_java_api`) to che
 needs the type for constructor injection. Java's package-private is per-package, not per-module.
 Spring Modulith's `verify()` enforces the cross-module boundary instead.
 
-## Entity conventions (confirmed across both modules)
+## Entity conventions (confirmed across all three modules)
 
 - UUID self-generated in constructor (`this.id = UUID.randomUUID()`), not passed as parameter
 - `@Getter` (Lombok) on entities — no manual getters
@@ -109,12 +105,14 @@ Spring Modulith's `verify()` enforces the cross-module boundary instead.
 - `@Getter` + `@RequiredArgsConstructor` on enums with fields (e.g., `DivisionStatus`)
 - No `@Data`, `@Builder`, or `@Setter` — state changes via domain methods
 
-## View structure (post-rework)
+## View structure (post entry module)
 
 - `CompetitionListView` (`/competitions`) — SYSTEM_ADMIN only, grid of all competitions
 - `CompetitionDetailView` (`/competitions/:competitionId`) — tabs: Divisions, Participants, Settings
-- `DivisionDetailView` (`/divisions/:divisionId`) — tabs: Categories, Settings (no participants)
-- Navigation: CompetitionListView → CompetitionDetailView → DivisionDetailView (via breadcrumb back)
+- `DivisionDetailView` (`/divisions/:divisionId`) — tabs: Categories, Settings + "Manage Entries" link
+- `DivisionEntryAdminView` (`/divisions/:divisionId/entry-admin`) — tabs: Credits, Entries, Products, Orders
+- `MyEntriesView` (`/divisions/:divisionId/my-entries`) — entrant-facing, credits + entry grid + submit
+- Navigation: CompetitionListView → CompetitionDetailView → DivisionDetailView → DivisionEntryAdminView
 
 ## View authorization pattern (@PermitAll + beforeEnter)
 
@@ -124,6 +122,8 @@ For views that need finer-grained auth than role-based (e.g., ADMIN per competit
 - Forward unauthorized users to `""` (root)
 - `CompetitionDetailView` uses `isAuthorizedForCompetition(competitionId, userId)`
 - `DivisionDetailView` uses `isAuthorizedForDivision(divisionId, userId)`
+- `DivisionEntryAdminView` uses `isAuthorizedForDivision(divisionId, userId)`
+- `MyEntriesView` uses `SYSTEM_ADMIN || isAuthorizedForDivision || getCreditBalance > 0`
 
 ## Karibu testing — TabSheet, component columns, TreeGrid
 
@@ -134,6 +134,20 @@ For views that need finer-grained auth than role-based (e.g., ADMIN per competit
 - **Grid ID for lookup.** Set `grid.setId("my-grid")` and find with `_get(Grid.class, spec -> spec.withId("my-grid"))`.
 - **Select empty selection.** `setEmptySelectionAllowed(true)` passes `null` to `setItemLabelGenerator` — always null-check.
 - **TreeGrid data assertions.** Use `HierarchicalQuery` to fetch root/child items — `getGenericDataView()` is not supported by TreeGrid.
+
+## MockMvc testing in Vaadin projects
+
+`@WebMvcTest` doesn't work in this Vaadin project due to auto-configuration interference
+(Vaadin's servlet config conflicts with MockMvc controller discovery — always 404).
+Use `MockMvcBuilders.standaloneSetup(controller)` with `@ExtendWith(MockitoExtension.class)` instead.
+
+## Cross-module navigation pattern
+
+Use string-based `Anchor` component for links between modules. This avoids import dependencies
+that would violate Spring Modulith module boundaries:
+```java
+var link = new Anchor("divisions/" + divisionId + "/entry-admin", "Manage Entries");
+```
 
 ## Detached entity persistence pitfall
 

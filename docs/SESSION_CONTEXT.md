@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `competition-module`
-**Tests:** 301 passing (`mvn test -Dsurefire.useFile=false`)
+**Tests:** 361 passing (`mvn test -Dsurefire.useFile=false`)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -23,7 +23,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 ## Modules Implemented
 
 ### identity module (`app.meads.identity`)
-- User entity (UUID, email, name, status, role, optional password)
+- User entity (UUID, email, name, status, role, optional password, optional meaderyName)
 - JWT magic link authentication + admin password login + access code login
 - UserService (public API), SecurityConfig, UserListView (admin CRUD)
 - **Status:** Complete
@@ -36,7 +36,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 | Entity | Table | Description |
 |--------|-------|-------------|
 | `Competition` | `competitions` | Top-level: name, dates, location, logo |
-| `Division` | `divisions` | Sub-level: competitionId, name, scoringSystem, status |
+| `Division` | `divisions` | Sub-level: competitionId, name, scoringSystem, status, entry limits |
 | `Participant` | `participants` | Competition-scoped: userId, accessCode |
 | `ParticipantRole` | `participant_roles` | Role per participant: JUDGE, STEWARD, ENTRANT, ADMIN |
 | `Category` | `categories` | Read-only catalog: code, name, scoringSystem |
@@ -54,20 +54,22 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 #### Migrations: V3–V8
 
-### entry module (`app.meads.entry`) — IN PROGRESS
+### entry module (`app.meads.entry`) — COMPLETE
 
 - **Depends on:** competition, identity
-- **Status:** Phases 0–4 complete, Phase 5 next
+- **Status:** All 11 phases complete
+- **Design:** `docs/plans/2026-03-02-entry-module-design.md`
 
-#### Entities implemented (public API)
+#### Entities (public API)
 | Entity | Table | Migration | Description |
 |--------|-------|-----------|-------------|
 | `ProductMapping` | `product_mappings` | V9 | Jumpseller product → division mapping |
 | `JumpsellerOrder` | `jumpseller_orders` | V10 | Webhook order storage, idempotency |
 | `JumpsellerOrderLineItem` | `jumpseller_order_line_items` | V11 | Per-product line items |
 | `EntryCredit` | `entry_credits` | V12 | Append-only credit ledger |
+| `Entry` | `entries` | V13 | Mead entry aggregate root |
 
-#### Enums implemented
+#### Enums
 - `EntryStatus`: DRAFT, SUBMITTED, RECEIVED, WITHDRAWN
 - `Sweetness`: DRY, MEDIUM, SWEET
 - `Strength`: HYDROMEL, STANDARD, SACK
@@ -75,73 +77,72 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 - `OrderStatus`: PROCESSED, PARTIALLY_PROCESSED, NEEDS_REVIEW, UNPROCESSED
 - `LineItemStatus`: PROCESSED, NEEDS_REVIEW, IGNORED, UNPROCESSED
 
-#### Services implemented
-- **EntryService** — Product mapping CRUD, credit management (getCreditBalance, addCredits, removeCredits, hasCreditsInOtherDivision)
+#### Services
+- **EntryService** — Product mapping CRUD, credit management, entry CRUD, submission, limits enforcement
 - **WebhookService** — HMAC signature verification, `processOrderPaid` (JSON parsing, idempotency, mutual exclusivity, credit creation)
 
 #### Events
 - `CreditsAwardedEvent(divisionId, userId, amount, source)`
+- `EntriesSubmittedEvent(divisionId, userId, entryCount)`
 
-#### Entities NOT yet implemented
-- `Entry` (entries table, V13) — Phase 5
-- `User.meaderyName` field (V14) — Phase 7
+#### DTOs
+- `EntrantCreditSummary(userId, email, name, creditBalance, entryCount)`
 
-#### Config added
-- `app.jumpseller.hooks-token` in `application.properties`
+#### Views
+- `MyEntriesView` (`/divisions/:divisionId/my-entries`) — entrant-facing, credits display, entry grid, add/edit dialog, submit all
+- `DivisionEntryAdminView` (`/divisions/:divisionId/entry-admin`) — admin tabs: Credits, Entries, Products, Orders
 
----
+#### REST
+- `JumpsellerWebhookController` — `POST /api/webhooks/jumpseller/order-paid` (HMAC-verified)
 
-## What's Next — Resume at Phase 5
+#### Event Listener
+- `RegistrationClosedListener` — skeleton for `DivisionStatusAdvancedEvent` (REGISTRATION_CLOSED)
 
-**Design doc:** `docs/plans/2026-03-02-entry-module-design.md`
+#### Changes to other modules
+- `SecurityConfig` — added `.requestMatchers("/api/webhooks/**").permitAll()`
+- `User.java` — added `meaderyName` field (V14)
+- `Division.java` — added `maxEntriesPerSubcategory`, `maxEntriesPerMainCategory` (V15)
+- `DivisionDetailView` — added "Manage Entries" Anchor link (string-based, no entry module import)
+- `application.properties` — added `app.jumpseller.hooks-token`
 
-### Phase 5 — Entry Entity (9 TDD cycles)
-1. Unit test: create entry (constructor, DRAFT status)
-2. Unit test: submit() — DRAFT → SUBMITTED
-3. Unit test: submit() rejects non-DRAFT
-4. Unit test: markReceived() — SUBMITTED → RECEIVED
-5. Unit test: withdraw() from various statuses
-6. Unit test: updateDetails() — only DRAFT
-7. Unit test: assignFinalCategory()
-8. Unit test: getEffectiveCategoryId()
-9. Repository test → drives V13 migration
-
-### Phase 6 — Entry Service (17 cycles)
-Entry creation, updates, deletion, submission, limits enforcement, admin operations.
-
-### Phase 7 — User.meaderyName (3 cycles)
-Add meaderyName field to User entity + V14 migration.
-
-### Phase 8 — Webhook REST Controller (2 cycles)
-MockMvc tests + SecurityConfig change for `/api/webhooks/**`.
-
-### Phase 9 — Module Integration Test (1 cycle)
-Full context, real DB, credit → entry workflow.
-
-### Phase 10 — Event Listener (1 cycle)
-DivisionStatusAdvancedEvent listener skeleton.
-
-### Phase 11 — Views (4 cycles)
-MyEntriesView, DivisionEntryAdminView, navigation links.
+#### Migrations: V9–V15
 
 ---
 
-## All Test Files (entry module — current)
+## What's Next
+
+1. **Code review** of both competition and entry modules (slice by slice)
+2. **Test review** (guided, with UI verification) of both modules
+3. **Judging module** — design and implementation
+
+---
+
+## All Test Files (entry module)
 
 ### Unit tests
-- `EntryServiceTest.java` — 17 tests: product mapping CRUD + credit methods
-- `WebhookServiceTest.java` — 9 tests: HMAC verification + processOrderPaid variants
-- `JumpsellerOrderTest.java` — 5 tests: entity domain methods
-- `JumpsellerOrderLineItemTest.java` — 4 tests: entity domain methods
+- `EntryServiceTest.java` — product mapping CRUD + credit methods + entry CRUD + submission + limits
+- `WebhookServiceTest.java` — HMAC verification + processOrderPaid variants
+- `JumpsellerOrderTest.java` — entity domain methods
+- `JumpsellerOrderLineItemTest.java` — entity domain methods
+- `EntryTest.java` — entry entity domain methods (constructor, submit, markReceived, withdraw, updateDetails, assignFinalCategory, getEffectiveCategoryId)
+- `RegistrationClosedListenerTest.java` — event listener unit tests
 
 ### Repository tests
-- `ProductMappingRepositoryTest.java` — 4 tests
-- `JumpsellerOrderRepositoryTest.java` — 3 tests
-- `JumpsellerOrderLineItemRepositoryTest.java` — 3 tests
-- `EntryCreditRepositoryTest.java` — 4 tests
+- `ProductMappingRepositoryTest.java`
+- `JumpsellerOrderRepositoryTest.java`
+- `JumpsellerOrderLineItemRepositoryTest.java`
+- `EntryCreditRepositoryTest.java`
+- `EntryRepositoryTest.java`
 
-### Module test
-- `EntryModuleTest.java` — bootstrap test
+### Controller test
+- `JumpsellerWebhookControllerTest.java` — standalone MockMvc (valid signature → 200, invalid → 401)
+
+### Module integration test
+- `EntryModuleTest.java` — bootstrap + full credit → entry → submit workflow
+
+### UI tests
+- `MyEntriesViewTest.java` — credits display, entry grid, authorization redirect
+- `DivisionEntryAdminViewTest.java` — admin tabs rendering
 
 ---
 
@@ -156,3 +157,5 @@ MyEntriesView, DivisionEntryAdminView, navigation links.
 - `EntryCredit` is append-only ledger — balance computed as `SUM(amount)` via JPQL
 - `WebhookService` constructor takes `@Value("${app.jumpseller.hooks-token}")` — property must exist
 - Mutual exclusivity: user cannot have credits in two different divisions of same competition
+- `@WebMvcTest` doesn't work in this Vaadin project — use `MockMvcBuilders.standaloneSetup(controller)` with `@ExtendWith(MockitoExtension.class)` instead
+- String-based `Anchor` navigation for cross-module links (avoids Spring Modulith circular dependencies)

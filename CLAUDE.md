@@ -5,8 +5,8 @@
 **MEADS (Mead Evaluation and Awards Data System)** is a Spring Boot 4 web application for
 managing mead competitions — from registration through judging and results. Built with
 Vaadin 25 (Java Flow, server-side), PostgreSQL 18 (Flyway-managed), and Spring Modulith
-for modular DDD architecture. The `identity` and `competition` modules are the reference
-implementations; future modules will follow the same patterns.
+for modular DDD architecture. The `identity`, `competition`, and `entry` modules are the
+reference implementations; future modules will follow the same patterns.
 
 ---
 
@@ -140,6 +140,7 @@ app.meads.entry                              ← Entry module public API
 ├── JumpsellerOrder.java                     ← JPA entity (webhook order storage, idempotency)
 ├── JumpsellerOrderLineItem.java             ← JPA entity (individual line items)
 ├── EntryCredit.java                         ← JPA entity (credits per user per division, append-only ledger)
+├── Entry.java                               ← JPA entity / aggregate root (mead entry)
 ├── EntryStatus.java                         ← Enum: DRAFT, SUBMITTED, RECEIVED, WITHDRAWN
 ├── Sweetness.java                           ← Enum: DRY, MEDIUM, SWEET
 ├── Strength.java                            ← Enum: HYDROMEL, STANDARD, SACK
@@ -149,11 +150,18 @@ app.meads.entry                              ← Entry module public API
 ├── EntryService.java                        ← Application service (public API)
 ├── WebhookService.java                      ← Webhook processing service (public API)
 ├── CreditsAwardedEvent.java                 ← Spring application event (record)
+├── EntriesSubmittedEvent.java               ← Spring application event (record)
+├── EntrantCreditSummary.java                ← DTO record (userId, email, name, creditBalance, entryCount)
 └── internal/                                ← Module-private
     ├── ProductMappingRepository.java        ← JPA repository
     ├── JumpsellerOrderRepository.java       ← JPA repository
     ├── JumpsellerOrderLineItemRepository.java ← JPA repository
-    └── EntryCreditRepository.java           ← JPA repository
+    ├── EntryCreditRepository.java           ← JPA repository
+    ├── EntryRepository.java                 ← JPA repository
+    ├── JumpsellerWebhookController.java     ← @RestController (webhook endpoint)
+    ├── RegistrationClosedListener.java      ← @ApplicationModuleListener (DivisionStatusAdvancedEvent)
+    ├── MyEntriesView.java                   ← Entrant-facing view (@PermitAll + beforeEnter auth)
+    └── DivisionEntryAdminView.java          ← Admin view with Credits/Entries/Products/Orders tabs
 ```
 
 ### Module Rules
@@ -184,7 +192,7 @@ Read `.claude/skills/new-module.md` before creating a module.
 |--------|--------|-------------|
 | `identity` | **Exists** | User management, authentication (JWT magic links, admin passwords, access codes), roles, admin CRUD |
 | `competition` | **Exists** | Events, competitions, scoring systems (MJP), categories, participants, access codes, status workflow, competition admin authorization |
-| `entry` | **In Progress** | Jumpseller webhook, entry credits (ledger), mead entry registration, entry limits, admin management. Phases 0–4 done, Phase 5 next. Design: `docs/plans/2026-03-02-entry-module-design.md` |
+| `entry` | **Exists** | Jumpseller webhook, entry credits (ledger), mead entry registration, entry limits, admin management. Design: `docs/plans/2026-03-02-entry-module-design.md` |
 | `judging` | Planned | Judging sessions, tables, judge assignments, scoresheets, conflict of interest. Reference: `docs/reference/chip-competition-rules.md` |
 | `awards` | Planned | Score aggregation, rankings, medal determination (withholding), BOS (variable places), results publication. Reference: `docs/reference/chip-competition-rules.md` |
 
@@ -343,7 +351,7 @@ void tearDown() {
 ## Database & Migrations
 
 - **Location:** `src/main/resources/db/migration/V{N}__{description}.sql`
-- **Current highest version:** V12 (`V12__create_entry_credits_table.sql`). V5–V8 are pre-deployment (competition module). V9–V12 are entry module (in progress). Entry module will use V9–V14.
+- **Current highest version:** V15 (`V15__add_entry_limits_to_divisions.sql`). V5–V8 are competition module (pre-deployment). V9–V15 are entry module.
 - **Naming:** `V{next}__{snake_case_description}.sql` (double underscore)
 - Migrations are created in **Step 2** (GREEN), when a repository test needs a table.
 - **Never edit existing migrations.** Always create new ones.
