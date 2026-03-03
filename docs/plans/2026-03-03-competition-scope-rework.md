@@ -618,6 +618,24 @@ Add the new `isAuthorizedForDivision` method and update DivisionDetailView to us
 
 ---
 
+## Post-Rework TODO
+
+After the rework and entry module implementation, review which competition rules should be
+configurable and enforced by the application. Examples:
+- Maximum entries per participant (per division)
+- Maximum entries per category (per participant or total)
+- Entry fee structure (credits per entry, variable by category)
+- Registration deadlines (auto-close registration)
+- Minimum/maximum ABV ranges per category
+- Required fields per category (e.g., "malt used" for braggot)
+- Mutual exclusivity rules (currently hardcoded: one division per competition per entrant —
+  could be configurable)
+
+This should be a design discussion before the judging module, once the entry module is complete
+and real usage patterns are clearer.
+
+---
+
 ## Summary of Removed Features
 
 | Feature | Reason |

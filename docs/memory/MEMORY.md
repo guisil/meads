@@ -68,6 +68,10 @@ Migrations V5–V8 are pre-deployment (V9 was merged back into V5).
 - Entry conflict checks when removing categories (requires entry module)
 - Bulk category operations (remove all, reset to catalog defaults)
 - Application-wide logging audit
+- **[Post entry module]** Competition rules enforcement: review which rules should be configurable
+  in the app (max entries per participant, max per category, entry fee structure, registration
+  deadlines, ABV ranges, required fields per category, mutual exclusivity configurability).
+  Design discussion before judging module.
 
 ## Vaadin components over custom JS
 
