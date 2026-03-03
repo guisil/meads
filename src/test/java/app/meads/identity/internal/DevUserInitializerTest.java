@@ -31,14 +31,14 @@ class DevUserInitializerTest {
     @Mock PasswordEncoder passwordEncoder;
 
     @Test
-    void shouldCreateThreeDevUsersWhenDevProfileActive() {
+    void shouldCreateSixDevUsersWhenDevProfileActive() {
         given(userRepository.existsByEmail(any())).willReturn(false);
         given(passwordEncoder.encode("admin")).willReturn("$2a$10$adminHash");
 
         devUserInitializer.initializeDevUsers();
 
         var captor = ArgumentCaptor.forClass(User.class);
-        then(userRepository).should(times(3)).save(captor.capture());
+        then(userRepository).should(times(6)).save(captor.capture());
         List<User> savedUsers = captor.getAllValues();
 
         // Admin user
@@ -56,6 +56,21 @@ class DevUserInitializerTest {
         var pending = savedUsers.stream().filter(u -> u.getEmail().equals("pending@localhost")).findFirst().orElseThrow();
         assertThat(pending.getRole()).isEqualTo(Role.USER);
         assertThat(pending.getStatus()).isEqualTo(UserStatus.PENDING);
+
+        // Judge user
+        var judge = savedUsers.stream().filter(u -> u.getEmail().equals("judge@localhost")).findFirst().orElseThrow();
+        assertThat(judge.getRole()).isEqualTo(Role.USER);
+        assertThat(judge.getStatus()).isEqualTo(UserStatus.ACTIVE);
+
+        // Steward user
+        var steward = savedUsers.stream().filter(u -> u.getEmail().equals("steward@localhost")).findFirst().orElseThrow();
+        assertThat(steward.getRole()).isEqualTo(Role.USER);
+        assertThat(steward.getStatus()).isEqualTo(UserStatus.ACTIVE);
+
+        // Entrant user
+        var entrant = savedUsers.stream().filter(u -> u.getEmail().equals("entrant@localhost")).findFirst().orElseThrow();
+        assertThat(entrant.getRole()).isEqualTo(Role.USER);
+        assertThat(entrant.getStatus()).isEqualTo(UserStatus.ACTIVE);
     }
 
     @Test
@@ -63,6 +78,9 @@ class DevUserInitializerTest {
         given(userRepository.existsByEmail("admin@localhost")).willReturn(true);
         given(userRepository.existsByEmail("user@localhost")).willReturn(false);
         given(userRepository.existsByEmail("pending@localhost")).willReturn(true);
+        given(userRepository.existsByEmail("judge@localhost")).willReturn(true);
+        given(userRepository.existsByEmail("steward@localhost")).willReturn(true);
+        given(userRepository.existsByEmail("entrant@localhost")).willReturn(true);
 
         devUserInitializer.initializeDevUsers();
 
@@ -77,9 +95,12 @@ class DevUserInitializerTest {
 
         devUserInitializer.initializeDevUsers();
 
-        // Magic links for user@localhost and pending@localhost, not admin@localhost
+        // Magic links for all non-admin users, not admin@localhost
         then(jwtMagicLinkService).should().generateLink(eq("user@localhost"), any());
         then(jwtMagicLinkService).should().generateLink(eq("pending@localhost"), any());
+        then(jwtMagicLinkService).should().generateLink(eq("judge@localhost"), any());
+        then(jwtMagicLinkService).should().generateLink(eq("steward@localhost"), any());
+        then(jwtMagicLinkService).should().generateLink(eq("entrant@localhost"), any());
         then(jwtMagicLinkService).should(never()).generateLink(eq("admin@localhost"), any());
     }
 }

@@ -167,6 +167,16 @@ public class CompetitionService {
         return divisionRepository.findByCompetitionId(competitionId);
     }
 
+    public Division updateDivisionEntryLimits(@NotNull UUID divisionId,
+                                              Integer maxEntriesPerSubcategory,
+                                              Integer maxEntriesPerMainCategory,
+                                              @NotNull UUID requestingUserId) {
+        var division = findDivisionById(divisionId);
+        requireAuthorized(division.getCompetitionId(), requestingUserId);
+        division.updateEntryLimits(maxEntriesPerSubcategory, maxEntriesPerMainCategory);
+        return divisionRepository.save(division);
+    }
+
     // --- Division Category methods ---
 
     public List<DivisionCategory> findDivisionCategories(@NotNull UUID divisionId) {

@@ -11,6 +11,8 @@ import org.springframework.context.event.EventListener;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import org.springframework.core.annotation.Order;
+
 import java.time.Duration;
 
 @Slf4j
@@ -29,11 +31,15 @@ class DevUserInitializer {
         this.passwordEncoder = passwordEncoder;
     }
 
+    @Order(1)
     @EventListener(ApplicationReadyEvent.class)
     void initializeDevUsers() {
         createDevUserIfAbsent("admin@localhost", "Dev Admin", Role.SYSTEM_ADMIN, UserStatus.ACTIVE, "admin");
         createDevUserIfAbsent("user@localhost", "Dev User", Role.USER, UserStatus.ACTIVE, null);
         createDevUserIfAbsent("pending@localhost", "Pending User", Role.USER, UserStatus.PENDING, null);
+        createDevUserIfAbsent("judge@localhost", "Dev Judge", Role.USER, UserStatus.ACTIVE, null);
+        createDevUserIfAbsent("steward@localhost", "Dev Steward", Role.USER, UserStatus.ACTIVE, null);
+        createDevUserIfAbsent("entrant@localhost", "Dev Entrant", Role.USER, UserStatus.ACTIVE, null);
     }
 
     private void createDevUserIfAbsent(String email, String name, Role role, UserStatus status, String password) {

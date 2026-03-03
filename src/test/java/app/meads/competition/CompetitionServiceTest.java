@@ -1150,4 +1150,25 @@ class CompetitionServiceTest {
         assertThat(result).doesNotContain(cat1);
     }
 
+    // --- updateDivisionEntryLimits ---
+
+    @Test
+    void shouldUpdateDivisionEntryLimitsWhenRequestedByAdmin() {
+        var admin = createAdmin();
+        var division = new Division(UUID.randomUUID(),
+                "Amadora", ScoringSystem.MJP);
+        given(divisionRepository.findById(division.getId()))
+                .willReturn(Optional.of(division));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(divisionRepository.save(any(Division.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var result = competitionService.updateDivisionEntryLimits(
+                division.getId(), 3, 5, admin.getId());
+
+        assertThat(result.getMaxEntriesPerSubcategory()).isEqualTo(3);
+        assertThat(result.getMaxEntriesPerMainCategory()).isEqualTo(5);
+        then(divisionRepository).should().save(division);
+    }
+
 }
