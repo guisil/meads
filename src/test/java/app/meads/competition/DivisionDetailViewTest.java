@@ -18,6 +18,7 @@ import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.dialog.Dialog;
+import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.treegrid.TreeGrid;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Nav;
@@ -361,5 +362,19 @@ class DivisionDetailViewTest {
         assertThat(categories.getFirst().getCode()).isEqualTo("CUSTOM1");
         assertThat(categories.getFirst().getName()).isEqualTo("Best Local Honey");
         assertThat(categories.getFirst().getCatalogCategoryId()).isNull();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldDisplayManageEntriesLink() {
+        UI.getCurrent().navigate("divisions/" + testDivision.getId());
+
+        var anchors = _find(Anchor.class);
+        var manageEntries = anchors.stream()
+                .filter(a -> a.getText().equals("Manage Entries"))
+                .findFirst();
+        assertThat(manageEntries).isPresent();
+        assertThat(manageEntries.get().getHref())
+                .isEqualTo("divisions/" + testDivision.getId() + "/entry-admin");
     }
 }

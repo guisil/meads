@@ -5,6 +5,7 @@ import app.meads.competition.*;
 import app.meads.identity.UserService;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.dialog.Dialog;
+import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.treegrid.TreeGrid;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Nav;
@@ -106,6 +107,10 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         textBlock.add(details);
 
         header.add(textBlock);
+
+        var manageEntriesLink = new Anchor(
+                "divisions/" + divisionId + "/entry-admin", "Manage Entries");
+        header.add(manageEntriesLink);
 
         if (division.getStatus() != DivisionStatus.RESULTS_PUBLISHED) {
             var advanceButton = new Button("Advance Status", e -> advanceStatus());
