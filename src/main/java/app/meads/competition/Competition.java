@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -11,22 +13,29 @@ import java.util.UUID;
 @Getter
 public class Competition {
 
+    private static final int MAX_LOGO_SIZE = 512 * 1024;
+    private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of("image/png", "image/jpeg");
+
     @Id
     private UUID id;
-
-    @Column(name = "event_id", nullable = false)
-    private UUID eventId;
 
     @Column(nullable = false)
     private String name;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private CompetitionStatus status;
+    @Column(name = "start_date", nullable = false)
+    private LocalDate startDate;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "scoring_system", nullable = false)
-    private ScoringSystem scoringSystem;
+    @Column(name = "end_date", nullable = false)
+    private LocalDate endDate;
+
+    private String location;
+
+    @Basic(fetch = FetchType.LAZY)
+    @Column(length = 524288)
+    private byte[] logo;
+
+    @Column(name = "logo_content_type", length = 100)
+    private String logoContentType;
 
     @Column(nullable = false)
     private Instant createdAt;
@@ -35,12 +44,13 @@ public class Competition {
 
     protected Competition() {} // JPA
 
-    public Competition(UUID eventId, String name, ScoringSystem scoringSystem) {
+    public Competition(String name, LocalDate startDate, LocalDate endDate, String location) {
+        validateDateOrdering(startDate, endDate);
         this.id = UUID.randomUUID();
-        this.eventId = eventId;
         this.name = name;
-        this.scoringSystem = scoringSystem;
-        this.status = CompetitionStatus.DRAFT;
+        this.startDate = startDate;
+        this.endDate = endDate;
+        this.location = location;
     }
 
     @PrePersist
@@ -53,23 +63,37 @@ public class Competition {
         updatedAt = Instant.now();
     }
 
-    public void advanceStatus() {
-        this.status = switch (status) {
-            case DRAFT -> CompetitionStatus.REGISTRATION_OPEN;
-            case REGISTRATION_OPEN -> CompetitionStatus.REGISTRATION_CLOSED;
-            case REGISTRATION_CLOSED -> CompetitionStatus.JUDGING;
-            case JUDGING -> CompetitionStatus.DELIBERATION;
-            case DELIBERATION -> CompetitionStatus.RESULTS_PUBLISHED;
-            case RESULTS_PUBLISHED ->
-                    throw new IllegalStateException("Cannot advance past RESULTS_PUBLISHED");
-        };
+    public void updateDetails(String name, LocalDate startDate, LocalDate endDate, String location) {
+        validateDateOrdering(startDate, endDate);
+        this.name = name;
+        this.startDate = startDate;
+        this.endDate = endDate;
+        this.location = location;
     }
 
-    public void updateDetails(String name, ScoringSystem scoringSystem) {
-        if (status != CompetitionStatus.DRAFT) {
-            throw new IllegalStateException("Can only update details in DRAFT status");
+    private static void validateDateOrdering(LocalDate startDate, LocalDate endDate) {
+        if (endDate.isBefore(startDate)) {
+            throw new IllegalArgumentException("End date must not be before start date");
         }
-        this.name = name;
-        this.scoringSystem = scoringSystem;
+    }
+
+    public void updateLogo(byte[] logo, String contentType) {
+        if (logo == null) {
+            this.logo = null;
+            this.logoContentType = null;
+            return;
+        }
+        if (logo.length > MAX_LOGO_SIZE) {
+            throw new IllegalArgumentException("Logo must not exceed 512 KB");
+        }
+        if (!ALLOWED_CONTENT_TYPES.contains(contentType)) {
+            throw new IllegalArgumentException("Logo content type must be image/png or image/jpeg");
+        }
+        this.logo = logo;
+        this.logoContentType = contentType;
+    }
+
+    public boolean hasLogo() {
+        return logo != null;
     }
 }

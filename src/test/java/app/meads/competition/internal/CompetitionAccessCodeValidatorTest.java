@@ -1,6 +1,6 @@
 package app.meads.competition.internal;
 
-import app.meads.competition.EventParticipant;
+import app.meads.competition.Participant;
 import app.meads.identity.Role;
 import app.meads.identity.User;
 import app.meads.identity.UserService;
@@ -24,7 +24,7 @@ class CompetitionAccessCodeValidatorTest {
     CompetitionAccessCodeValidator validator;
 
     @Mock
-    EventParticipantRepository eventParticipantRepository;
+    ParticipantRepository participantRepository;
 
     @Mock
     UserService userService;
@@ -33,10 +33,10 @@ class CompetitionAccessCodeValidatorTest {
     void shouldValidateCorrectAccessCode() {
         var user = new User("judge@test.com", "Judge",
                 UserStatus.ACTIVE, Role.USER);
-        var ep = new EventParticipant(UUID.randomUUID(), user.getId());
-        ep.assignAccessCode("AB3K9XYZ");
-        given(eventParticipantRepository.findByAccessCode("AB3K9XYZ"))
-                .willReturn(Optional.of(ep));
+        var participant = new Participant(UUID.randomUUID(), user.getId());
+        participant.assignAccessCode("AB3K9XYZ");
+        given(participantRepository.findByAccessCode("AB3K9XYZ"))
+                .willReturn(Optional.of(participant));
         given(userService.findById(user.getId())).willReturn(user);
 
         assertThat(validator.validate("judge@test.com", "AB3K9XYZ")).isTrue();
@@ -46,10 +46,10 @@ class CompetitionAccessCodeValidatorTest {
     void shouldRejectWhenEmailDoesNotMatch() {
         var user = new User("other@test.com", "Other",
                 UserStatus.ACTIVE, Role.USER);
-        var ep = new EventParticipant(UUID.randomUUID(), user.getId());
-        ep.assignAccessCode("AB3K9XYZ");
-        given(eventParticipantRepository.findByAccessCode("AB3K9XYZ"))
-                .willReturn(Optional.of(ep));
+        var participant = new Participant(UUID.randomUUID(), user.getId());
+        participant.assignAccessCode("AB3K9XYZ");
+        given(participantRepository.findByAccessCode("AB3K9XYZ"))
+                .willReturn(Optional.of(participant));
         given(userService.findById(user.getId())).willReturn(user);
 
         assertThat(validator.validate("judge@test.com", "AB3K9XYZ")).isFalse();
@@ -57,7 +57,7 @@ class CompetitionAccessCodeValidatorTest {
 
     @Test
     void shouldRejectWhenCodeDoesNotExist() {
-        given(eventParticipantRepository.findByAccessCode("NOTEXIST"))
+        given(participantRepository.findByAccessCode("NOTEXIST"))
                 .willReturn(Optional.empty());
 
         assertThat(validator.validate("judge@test.com", "NOTEXIST")).isFalse();
@@ -67,10 +67,10 @@ class CompetitionAccessCodeValidatorTest {
     void shouldNormalizeCodeToUppercase() {
         var user = new User("judge@test.com", "Judge",
                 UserStatus.ACTIVE, Role.USER);
-        var ep = new EventParticipant(UUID.randomUUID(), user.getId());
-        ep.assignAccessCode("AB3K9XYZ");
-        given(eventParticipantRepository.findByAccessCode("AB3K9XYZ"))
-                .willReturn(Optional.of(ep));
+        var participant = new Participant(UUID.randomUUID(), user.getId());
+        participant.assignAccessCode("AB3K9XYZ");
+        given(participantRepository.findByAccessCode("AB3K9XYZ"))
+                .willReturn(Optional.of(participant));
         given(userService.findById(user.getId())).willReturn(user);
 
         assertThat(validator.validate("judge@test.com", "ab3k9xyz")).isTrue();

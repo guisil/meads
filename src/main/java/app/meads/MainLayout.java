@@ -40,7 +40,7 @@ public class MainLayout extends AppLayout {
         nav.addItem(new SideNavItem("Home", "", VaadinIcon.HOME.create()));
 
         if (authenticationContext.hasRole("SYSTEM_ADMIN")) {
-            nav.addItem(new SideNavItem("Events", "events", VaadinIcon.CALENDAR.create()));
+            nav.addItem(new SideNavItem("Competitions", "competitions", VaadinIcon.CALENDAR.create()));
             nav.addItem(new SideNavItem("Users", "users", VaadinIcon.USERS.create()));
         }
 

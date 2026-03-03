@@ -2,7 +2,6 @@ package app.meads.competition;
 
 import app.meads.TestcontainersConfiguration;
 import app.meads.competition.internal.CompetitionRepository;
-import app.meads.competition.internal.MeadEventRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -21,49 +20,49 @@ class CompetitionRepositoryTest {
     @Autowired
     CompetitionRepository competitionRepository;
 
-    @Autowired
-    MeadEventRepository meadEventRepository;
-
-    private MeadEvent createAndSaveEvent() {
-        var event = new MeadEvent("Test Event",
-                LocalDate.of(2026, 6, 15), LocalDate.of(2026, 6, 17), "Porto");
-        return meadEventRepository.save(event);
-    }
-
     @Test
     void shouldSaveAndRetrieveCompetition() {
-        var event = createAndSaveEvent();
-        var competition = new Competition(event.getId(),
-                "Home Competition", ScoringSystem.MJP);
+        var competition = new Competition("Regional Mead Festival",
+                LocalDate.of(2026, 6, 15), LocalDate.of(2026, 6, 17), "Porto");
 
         competitionRepository.save(competition);
         var found = competitionRepository.findById(competition.getId());
 
         assertThat(found).isPresent();
-        assertThat(found.get().getName()).isEqualTo("Home Competition");
-        assertThat(found.get().getEventId()).isEqualTo(event.getId());
-        assertThat(found.get().getStatus()).isEqualTo(CompetitionStatus.DRAFT);
-        assertThat(found.get().getScoringSystem()).isEqualTo(ScoringSystem.MJP);
+        assertThat(found.get().getName()).isEqualTo("Regional Mead Festival");
+        assertThat(found.get().getStartDate()).isEqualTo(LocalDate.of(2026, 6, 15));
+        assertThat(found.get().getEndDate()).isEqualTo(LocalDate.of(2026, 6, 17));
+        assertThat(found.get().getLocation()).isEqualTo("Porto");
         assertThat(found.get().getCreatedAt()).isNotNull();
+        assertThat(found.get().getUpdatedAt()).isNull();
     }
 
     @Test
-    void shouldFindCompetitionsByEventId() {
-        var event = createAndSaveEvent();
-        competitionRepository.save(new Competition(event.getId(),
-                "Home", ScoringSystem.MJP));
-        competitionRepository.save(new Competition(event.getId(),
-                "Professional", ScoringSystem.MJP));
+    void shouldSaveAndRetrieveCompetitionWithLogo() {
+        var competition = new Competition("Festival with Logo",
+                LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 3), null);
+        byte[] logo = new byte[]{1, 2, 3, 4, 5};
+        competition.updateLogo(logo, "image/png");
 
-        var otherEvent = meadEventRepository.save(new MeadEvent("Other",
-                LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 2), null));
-        competitionRepository.save(new Competition(otherEvent.getId(),
-                "Unrelated", ScoringSystem.MJP));
+        competitionRepository.save(competition);
+        var found = competitionRepository.findById(competition.getId());
 
-        var results = competitionRepository.findByEventId(event.getId());
+        assertThat(found).isPresent();
+        assertThat(found.get().hasLogo()).isTrue();
+        assertThat(found.get().getLogo()).isEqualTo(logo);
+        assertThat(found.get().getLogoContentType()).isEqualTo("image/png");
+    }
 
-        assertThat(results).hasSize(2);
-        assertThat(results).extracting(Competition::getName)
-                .containsExactlyInAnyOrder("Home", "Professional");
+    @Test
+    void shouldSaveCompetitionWithNullLocation() {
+        var competition = new Competition("No Location Competition",
+                LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 1), null);
+
+        competitionRepository.save(competition);
+        var found = competitionRepository.findById(competition.getId());
+
+        assertThat(found).isPresent();
+        assertThat(found.get().getLocation()).isNull();
+        assertThat(found.get().hasLogo()).isFalse();
     }
 }

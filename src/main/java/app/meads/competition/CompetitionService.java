@@ -13,7 +13,6 @@ import org.springframework.validation.annotation.Validated;
 
 import java.security.SecureRandom;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -27,352 +26,322 @@ public class CompetitionService {
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final CompetitionRepository competitionRepository;
-    private final CompetitionParticipantRepository participantRepository;
-    private final CompetitionCategoryRepository competitionCategoryRepository;
-    private final EventParticipantRepository eventParticipantRepository;
+    private final DivisionRepository divisionRepository;
+    private final ParticipantRepository participantRepository;
+    private final ParticipantRoleRepository participantRoleRepository;
+    private final DivisionCategoryRepository divisionCategoryRepository;
     private final CategoryRepository categoryRepository;
-    private final MeadEventRepository meadEventRepository;
     private final UserService userService;
     private final ApplicationEventPublisher eventPublisher;
 
     CompetitionService(CompetitionRepository competitionRepository,
-                       CompetitionParticipantRepository participantRepository,
-                       CompetitionCategoryRepository competitionCategoryRepository,
-                       EventParticipantRepository eventParticipantRepository,
+                       DivisionRepository divisionRepository,
+                       ParticipantRepository participantRepository,
+                       ParticipantRoleRepository participantRoleRepository,
+                       DivisionCategoryRepository divisionCategoryRepository,
                        CategoryRepository categoryRepository,
-                       MeadEventRepository meadEventRepository,
                        UserService userService,
                        ApplicationEventPublisher eventPublisher) {
         this.competitionRepository = competitionRepository;
+        this.divisionRepository = divisionRepository;
         this.participantRepository = participantRepository;
-        this.competitionCategoryRepository = competitionCategoryRepository;
-        this.eventParticipantRepository = eventParticipantRepository;
+        this.participantRoleRepository = participantRoleRepository;
+        this.divisionCategoryRepository = divisionCategoryRepository;
         this.categoryRepository = categoryRepository;
-        this.meadEventRepository = meadEventRepository;
         this.userService = userService;
         this.eventPublisher = eventPublisher;
     }
 
-    public MeadEvent createMeadEvent(@NotBlank String name,
-                             @NotNull LocalDate startDate,
-                             @NotNull LocalDate endDate,
-                             String location,
-                             @NotNull UUID requestingUserId) {
+    // --- Competition methods (were MeadEvent methods) ---
+
+    public Competition createCompetition(@NotBlank String name,
+                                          @NotNull LocalDate startDate,
+                                          @NotNull LocalDate endDate,
+                                          String location,
+                                          @NotNull UUID requestingUserId) {
         requireSystemAdmin(requestingUserId);
-        var meadEvent = new MeadEvent(name, startDate, endDate, location);
-        return meadEventRepository.save(meadEvent);
+        var competition = new Competition(name, startDate, endDate, location);
+        return competitionRepository.save(competition);
     }
 
-    public MeadEvent findMeadEventById(@NotNull UUID eventId) {
-        return meadEventRepository.findById(eventId)
-                .orElseThrow(() -> new IllegalArgumentException("Event not found"));
-    }
-
-    public List<MeadEvent> findAllMeadEvents() {
-        return meadEventRepository.findAll();
-    }
-
-    public MeadEvent updateMeadEvent(@NotNull UUID eventId,
-                              @NotBlank String name,
-                              @NotNull LocalDate startDate,
-                              @NotNull LocalDate endDate,
-                              String location,
-                              @NotNull UUID requestingUserId) {
-        var meadEvent = meadEventRepository.findById(eventId)
-                .orElseThrow(() -> new IllegalArgumentException("Event not found"));
-        requireSystemAdmin(requestingUserId);
-        meadEvent.updateDetails(name, startDate, endDate, location);
-        return meadEventRepository.save(meadEvent);
-    }
-
-    public MeadEvent updateMeadEventLogo(@NotNull UUID eventId,
-                                  byte[] logo,
-                                  String contentType,
-                                  @NotNull UUID requestingUserId) {
-        var meadEvent = meadEventRepository.findById(eventId)
-                .orElseThrow(() -> new IllegalArgumentException("Event not found"));
-        requireSystemAdmin(requestingUserId);
-        meadEvent.updateLogo(logo, contentType);
-        return meadEventRepository.save(meadEvent);
-    }
-
-    public void deleteMeadEvent(@NotNull UUID eventId,
-                             @NotNull UUID requestingUserId) {
-        var meadEvent = meadEventRepository.findById(eventId)
-                .orElseThrow(() -> new IllegalArgumentException("Event not found"));
-        requireSystemAdmin(requestingUserId);
-        var competitions = competitionRepository.findByEventId(eventId);
-        if (!competitions.isEmpty()) {
-            throw new IllegalArgumentException("Cannot delete event with competitions");
-        }
-        meadEventRepository.delete(meadEvent);
-    }
-
-    public Competition createCompetition(@NotNull UUID eventId,
-                                         @NotBlank String name,
-                                         @NotNull ScoringSystem scoringSystem,
-                                         @NotNull UUID requestingUserId) {
-        meadEventRepository.findById(eventId)
-                .orElseThrow(() -> new IllegalArgumentException("Event not found"));
-        requireSystemAdmin(requestingUserId);
-        var competition = new Competition(eventId, name, scoringSystem);
-        var saved = competitionRepository.save(competition);
-        initializeCategories(saved);
-        return saved;
-    }
-
-    public Competition findById(@NotNull UUID competitionId) {
+    public Competition findCompetitionById(@NotNull UUID competitionId) {
         return competitionRepository.findById(competitionId)
                 .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
     }
 
-    public Competition advanceStatus(@NotNull UUID competitionId,
-                                      @NotNull UUID requestingUserId) {
-        var competition = competitionRepository.findById(competitionId)
-                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
-        requireAuthorized(competition, requestingUserId);
-        var previousStatus = competition.getStatus();
-        competition.advanceStatus();
-        var saved = competitionRepository.save(competition);
-        eventPublisher.publishEvent(new CompetitionStatusAdvancedEvent(
-                competitionId, previousStatus, saved.getStatus()));
-        return saved;
+    public List<Competition> findAllCompetitions() {
+        return competitionRepository.findAll();
     }
 
     public Competition updateCompetition(@NotNull UUID competitionId,
                                           @NotBlank String name,
-                                          @NotNull ScoringSystem scoringSystem,
+                                          @NotNull LocalDate startDate,
+                                          @NotNull LocalDate endDate,
+                                          String location,
                                           @NotNull UUID requestingUserId) {
         var competition = competitionRepository.findById(competitionId)
                 .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
-        requireAuthorized(competition, requestingUserId);
-        competition.updateDetails(name, scoringSystem);
+        requireSystemAdmin(requestingUserId);
+        competition.updateDetails(name, startDate, endDate, location);
+        return competitionRepository.save(competition);
+    }
+
+    public Competition updateCompetitionLogo(@NotNull UUID competitionId,
+                                              byte[] logo,
+                                              String contentType,
+                                              @NotNull UUID requestingUserId) {
+        var competition = competitionRepository.findById(competitionId)
+                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
+        requireSystemAdmin(requestingUserId);
+        competition.updateLogo(logo, contentType);
         return competitionRepository.save(competition);
     }
 
     public void deleteCompetition(@NotNull UUID competitionId,
-                                    @NotNull UUID requestingUserId) {
+                                   @NotNull UUID requestingUserId) {
         var competition = competitionRepository.findById(competitionId)
                 .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
-        requireAuthorized(competition, requestingUserId);
-        participantRepository.deleteAll(
-                participantRepository.findByCompetitionId(competitionId));
-        competitionCategoryRepository.deleteAll(
-                competitionCategoryRepository.findByCompetitionIdOrderByCode(competitionId));
+        requireSystemAdmin(requestingUserId);
+        var divisions = divisionRepository.findByCompetitionId(competitionId);
+        if (!divisions.isEmpty()) {
+            throw new IllegalArgumentException("Cannot delete competition with divisions");
+        }
         competitionRepository.delete(competition);
     }
 
-    public List<CompetitionParticipant> findParticipantsByCompetition(@NotNull UUID competitionId) {
-        return participantRepository.findByCompetitionId(competitionId);
-    }
+    // --- Division methods (were Competition methods) ---
 
-    public List<CompetitionCategory> findCompetitionCategories(@NotNull UUID competitionId) {
-        return competitionCategoryRepository.findByCompetitionIdOrderByCode(competitionId);
-    }
-
-    public CompetitionCategory addCatalogCategory(@NotNull UUID competitionId,
-                                                     @NotNull UUID catalogCategoryId,
-                                                     @NotNull UUID requestingUserId) {
-        var competition = competitionRepository.findById(competitionId)
+    public Division createDivision(@NotNull UUID competitionId,
+                                    @NotBlank String name,
+                                    @NotNull ScoringSystem scoringSystem,
+                                    @NotNull UUID requestingUserId) {
+        competitionRepository.findById(competitionId)
                 .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
-        requireAuthorized(competition, requestingUserId);
-        if (!competition.getStatus().allowsCategoryModification()) {
+        requireAuthorized(competitionId, requestingUserId);
+        var division = new Division(competitionId, name, scoringSystem);
+        var saved = divisionRepository.save(division);
+        initializeCategories(saved);
+        return saved;
+    }
+
+    public Division findDivisionById(@NotNull UUID divisionId) {
+        return divisionRepository.findById(divisionId)
+                .orElseThrow(() -> new IllegalArgumentException("Division not found"));
+    }
+
+    public Division advanceDivisionStatus(@NotNull UUID divisionId,
+                                           @NotNull UUID requestingUserId) {
+        var division = divisionRepository.findById(divisionId)
+                .orElseThrow(() -> new IllegalArgumentException("Division not found"));
+        requireAuthorized(division.getCompetitionId(), requestingUserId);
+        var previousStatus = division.getStatus();
+        division.advanceStatus();
+        var saved = divisionRepository.save(division);
+        eventPublisher.publishEvent(new DivisionStatusAdvancedEvent(
+                divisionId, previousStatus, saved.getStatus()));
+        return saved;
+    }
+
+    public Division updateDivision(@NotNull UUID divisionId,
+                                    @NotBlank String name,
+                                    @NotNull ScoringSystem scoringSystem,
+                                    @NotNull UUID requestingUserId) {
+        var division = divisionRepository.findById(divisionId)
+                .orElseThrow(() -> new IllegalArgumentException("Division not found"));
+        requireAuthorized(division.getCompetitionId(), requestingUserId);
+        division.updateDetails(name, scoringSystem);
+        return divisionRepository.save(division);
+    }
+
+    public void deleteDivision(@NotNull UUID divisionId,
+                                @NotNull UUID requestingUserId) {
+        var division = divisionRepository.findById(divisionId)
+                .orElseThrow(() -> new IllegalArgumentException("Division not found"));
+        requireAuthorized(division.getCompetitionId(), requestingUserId);
+        divisionCategoryRepository.deleteAll(
+                divisionCategoryRepository.findByDivisionIdOrderByCode(divisionId));
+        divisionRepository.delete(division);
+    }
+
+    // --- Division Category methods ---
+
+    public List<DivisionCategory> findDivisionCategories(@NotNull UUID divisionId) {
+        return divisionCategoryRepository.findByDivisionIdOrderByCode(divisionId);
+    }
+
+    public DivisionCategory addCatalogCategory(@NotNull UUID divisionId,
+                                                @NotNull UUID catalogCategoryId,
+                                                @NotNull UUID requestingUserId) {
+        var division = divisionRepository.findById(divisionId)
+                .orElseThrow(() -> new IllegalArgumentException("Division not found"));
+        requireAuthorized(division.getCompetitionId(), requestingUserId);
+        if (!division.getStatus().allowsCategoryModification()) {
             throw new IllegalArgumentException("Categories cannot be modified in status: "
-                    + competition.getStatus().getDisplayName());
+                    + division.getStatus().getDisplayName());
         }
         var catalogCategory = categoryRepository.findById(catalogCategoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Catalog category not found"));
-        if (competitionCategoryRepository.existsByCompetitionIdAndCatalogCategoryId(
-                competitionId, catalogCategoryId)) {
-            throw new IllegalArgumentException("Catalog category already added to this competition");
+        if (divisionCategoryRepository.existsByDivisionIdAndCatalogCategoryId(
+                divisionId, catalogCategoryId)) {
+            throw new IllegalArgumentException("Catalog category already added to this division");
         }
-        var cc = new CompetitionCategory(competitionId, catalogCategory.getId(),
+        var dc = new DivisionCategory(divisionId, catalogCategory.getId(),
                 catalogCategory.getCode(), catalogCategory.getName(),
                 catalogCategory.getDescription(), null, 0);
-        return competitionCategoryRepository.save(cc);
+        return divisionCategoryRepository.save(dc);
     }
 
-    public CompetitionCategory addCustomCategory(@NotNull UUID competitionId,
-                                                    @NotBlank String code,
-                                                    @NotBlank String name,
-                                                    @NotBlank String description,
-                                                    UUID parentId,
-                                                    @NotNull UUID requestingUserId) {
-        var competition = competitionRepository.findById(competitionId)
-                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
-        requireAuthorized(competition, requestingUserId);
-        if (!competition.getStatus().allowsCategoryModification()) {
+    public DivisionCategory addCustomCategory(@NotNull UUID divisionId,
+                                               @NotBlank String code,
+                                               @NotBlank String name,
+                                               @NotBlank String description,
+                                               UUID parentId,
+                                               @NotNull UUID requestingUserId) {
+        var division = divisionRepository.findById(divisionId)
+                .orElseThrow(() -> new IllegalArgumentException("Division not found"));
+        requireAuthorized(division.getCompetitionId(), requestingUserId);
+        if (!division.getStatus().allowsCategoryModification()) {
             throw new IllegalArgumentException("Categories cannot be modified in status: "
-                    + competition.getStatus().getDisplayName());
+                    + division.getStatus().getDisplayName());
         }
-        if (competitionCategoryRepository.existsByCompetitionIdAndCode(competitionId, code)) {
-            throw new IllegalArgumentException("Category code already exists in this competition: " + code);
+        if (divisionCategoryRepository.existsByDivisionIdAndCode(divisionId, code)) {
+            throw new IllegalArgumentException("Category code already exists in this division: " + code);
         }
         if (parentId != null) {
-            competitionCategoryRepository.findById(parentId)
+            divisionCategoryRepository.findById(parentId)
                     .orElseThrow(() -> new IllegalArgumentException("Parent category not found"));
         }
-        var cc = new CompetitionCategory(competitionId, null, code, name, description, parentId, 0);
-        return competitionCategoryRepository.save(cc);
+        var dc = new DivisionCategory(divisionId, null, code, name, description, parentId, 0);
+        return divisionCategoryRepository.save(dc);
     }
 
-    public CompetitionCategory updateCompetitionCategory(@NotNull UUID competitionId,
-                                                           @NotNull UUID categoryId,
-                                                           @NotBlank String code,
-                                                           @NotBlank String name,
-                                                           @NotBlank String description,
-                                                           @NotNull UUID requestingUserId) {
-        var competition = competitionRepository.findById(competitionId)
-                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
-        requireAuthorized(competition, requestingUserId);
-        if (!competition.getStatus().allowsCategoryModification()) {
+    public DivisionCategory updateDivisionCategory(@NotNull UUID divisionId,
+                                                     @NotNull UUID categoryId,
+                                                     @NotBlank String code,
+                                                     @NotBlank String name,
+                                                     @NotBlank String description,
+                                                     @NotNull UUID requestingUserId) {
+        var division = divisionRepository.findById(divisionId)
+                .orElseThrow(() -> new IllegalArgumentException("Division not found"));
+        requireAuthorized(division.getCompetitionId(), requestingUserId);
+        if (!division.getStatus().allowsCategoryModification()) {
             throw new IllegalArgumentException("Categories cannot be modified in status: "
-                    + competition.getStatus().getDisplayName());
+                    + division.getStatus().getDisplayName());
         }
-        var category = competitionCategoryRepository.findById(categoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Competition category not found"));
+        var category = divisionCategoryRepository.findById(categoryId)
+                .orElseThrow(() -> new IllegalArgumentException("Division category not found"));
         category.updateDetails(code, name, description);
-        return competitionCategoryRepository.save(category);
+        return divisionCategoryRepository.save(category);
     }
 
-    public void removeCompetitionCategory(@NotNull UUID competitionId,
-                                            @NotNull UUID categoryId,
-                                            @NotNull UUID requestingUserId) {
-        var competition = competitionRepository.findById(competitionId)
-                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
-        requireAuthorized(competition, requestingUserId);
-        if (!competition.getStatus().allowsCategoryModification()) {
+    public void removeDivisionCategory(@NotNull UUID divisionId,
+                                        @NotNull UUID categoryId,
+                                        @NotNull UUID requestingUserId) {
+        var division = divisionRepository.findById(divisionId)
+                .orElseThrow(() -> new IllegalArgumentException("Division not found"));
+        requireAuthorized(division.getCompetitionId(), requestingUserId);
+        if (!division.getStatus().allowsCategoryModification()) {
             throw new IllegalArgumentException("Categories cannot be modified in status: "
-                    + competition.getStatus().getDisplayName());
+                    + division.getStatus().getDisplayName());
         }
-        var category = competitionCategoryRepository.findById(categoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Competition category not found"));
-        var children = competitionCategoryRepository.findByParentId(categoryId);
+        var category = divisionCategoryRepository.findById(categoryId)
+                .orElseThrow(() -> new IllegalArgumentException("Division category not found"));
+        var children = divisionCategoryRepository.findByParentId(categoryId);
         if (!children.isEmpty()) {
-            competitionCategoryRepository.deleteAll(children);
+            divisionCategoryRepository.deleteAll(children);
         }
-        competitionCategoryRepository.delete(category);
+        divisionCategoryRepository.delete(category);
     }
 
-    public List<Category> findAvailableCatalogCategories(@NotNull UUID competitionId) {
-        var competition = competitionRepository.findById(competitionId)
-                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
-        var allCatalog = categoryRepository.findByScoringSystem(competition.getScoringSystem());
+    public List<Category> findAvailableCatalogCategories(@NotNull UUID divisionId) {
+        var division = divisionRepository.findById(divisionId)
+                .orElseThrow(() -> new IllegalArgumentException("Division not found"));
+        var allCatalog = categoryRepository.findByScoringSystem(division.getScoringSystem());
         return allCatalog.stream()
-                .filter(cat -> !competitionCategoryRepository
-                        .existsByCompetitionIdAndCatalogCategoryId(competitionId, cat.getId()))
+                .filter(cat -> !divisionCategoryRepository
+                        .existsByDivisionIdAndCatalogCategoryId(divisionId, cat.getId()))
                 .toList();
     }
 
-    private void initializeCategories(Competition competition) {
-        var catalogCategories = categoryRepository.findByScoringSystem(
-                competition.getScoringSystem());
-        int sortOrder = 0;
-        for (var cat : catalogCategories) {
-            var cc = new CompetitionCategory(competition.getId(), cat.getId(),
-                    cat.getCode(), cat.getName(), cat.getDescription(), null, sortOrder++);
-            competitionCategoryRepository.save(cc);
-        }
-    }
+    // --- Participant methods ---
 
-    CompetitionParticipant addParticipant(@NotNull UUID competitionId,
-                                          @NotNull UUID userId,
-                                          @NotNull CompetitionRole role,
-                                          @NotNull UUID requestingUserId) {
-        var competition = competitionRepository.findById(competitionId)
+    ParticipantRole addParticipant(@NotNull UUID competitionId,
+                                    @NotNull UUID userId,
+                                    @NotNull CompetitionRole role,
+                                    @NotNull UUID requestingUserId) {
+        competitionRepository.findById(competitionId)
                 .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
-        requireAuthorized(competition, requestingUserId);
+        requireAuthorized(competitionId, requestingUserId);
         userService.findById(userId);
 
-        var eventParticipant = findOrCreateEventParticipant(
-                competition.getEventId(), userId, role);
+        var participant = findOrCreateParticipant(competitionId, userId, role);
 
-        if (participantRepository.existsByCompetitionIdAndEventParticipantIdAndRole(
-                competitionId, eventParticipant.getId(), role)) {
+        if (participantRoleRepository.existsByParticipantIdAndRole(participant.getId(), role)) {
             throw new IllegalArgumentException(
                     "User already has the " + role.name() + " role in this competition");
         }
 
-        var cp = new CompetitionParticipant(competitionId, eventParticipant.getId(), role);
-        return participantRepository.save(cp);
+        var pr = new ParticipantRole(participant.getId(), role);
+        return participantRoleRepository.save(pr);
     }
 
-    public CompetitionParticipant addParticipantByEmail(@NotNull UUID competitionId,
-                                                         @NotBlank @Email String email,
-                                                         @NotNull CompetitionRole role,
-                                                         @NotNull UUID requestingUserId) {
+    public ParticipantRole addParticipantByEmail(@NotNull UUID competitionId,
+                                                   @NotBlank @Email String email,
+                                                   @NotNull CompetitionRole role,
+                                                   @NotNull UUID requestingUserId) {
         var user = userService.findOrCreateByEmail(email);
         return addParticipant(competitionId, user.getId(), role, requestingUserId);
     }
 
     public void removeParticipant(@NotNull UUID competitionId,
-                                    @NotNull UUID eventParticipantId,
-                                    @NotNull UUID requestingUserId) {
-        var competition = competitionRepository.findById(competitionId)
-                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
-        requireAuthorized(competition, requestingUserId);
-        var participants = participantRepository.findByCompetitionIdAndEventParticipantId(
-                competitionId, eventParticipantId);
-        if (participants.isEmpty()) {
-            throw new IllegalArgumentException("Participant not found in this competition");
+                                   @NotNull UUID participantId,
+                                   @NotNull UUID requestingUserId) {
+        requireAuthorized(competitionId, requestingUserId);
+        var participant = participantRepository.findById(participantId)
+                .orElseThrow(() -> new IllegalArgumentException("Participant not found"));
+        if (!participant.getCompetitionId().equals(competitionId)) {
+            throw new IllegalArgumentException("Participant does not belong to this competition");
         }
-        participantRepository.deleteAll(participants);
+        var roles = participantRoleRepository.findByParticipantId(participantId);
+        participantRoleRepository.deleteAll(roles);
     }
 
-    public List<CompetitionParticipant> addParticipantToAllCompetitions(
-            @NotNull UUID eventId,
-            @NotNull UUID userId,
-            @NotNull CompetitionRole role,
-            @NotNull UUID requestingUserId) {
-        requireSystemAdmin(requestingUserId);
-        userService.findById(userId);
-
-        var eventParticipant = findOrCreateEventParticipant(eventId, userId, role);
-
-        var competitions = competitionRepository.findByEventId(eventId);
-        var added = new ArrayList<CompetitionParticipant>();
-        for (var competition : competitions) {
-            if (participantRepository.existsByCompetitionIdAndEventParticipantIdAndRole(
-                    competition.getId(), eventParticipant.getId(), role)) {
-                continue;
-            }
-            var cp = new CompetitionParticipant(
-                    competition.getId(), eventParticipant.getId(), role);
-            added.add(participantRepository.save(cp));
-        }
-        return added;
+    public List<Participant> findParticipantsByCompetition(@NotNull UUID competitionId) {
+        return participantRepository.findByCompetitionId(competitionId);
     }
 
-    public List<EventParticipant> findEventParticipantsByEvent(@NotNull UUID eventId) {
-        return eventParticipantRepository.findByEventId(eventId);
-    }
-
-    public List<Competition> findAuthorizedCompetitions(@NotNull UUID eventId,
-                                                         @NotNull UUID userId) {
-        var user = userService.findById(userId);
-        if (user.getRole() == Role.SYSTEM_ADMIN) {
-            return competitionRepository.findByEventId(eventId);
-        }
-        var ep = eventParticipantRepository.findByEventIdAndUserId(eventId, userId);
-        if (ep.isEmpty()) {
-            return List.of();
-        }
-        var adminParticipants = participantRepository
-                .findByEventParticipantIdAndRole(ep.get().getId(), CompetitionRole.COMPETITION_ADMIN);
-        return adminParticipants.stream()
-                .map(cp -> competitionRepository.findById(cp.getCompetitionId()))
-                .flatMap(java.util.Optional::stream)
+    public List<ParticipantRole> findRolesByCompetition(@NotNull UUID competitionId) {
+        var participants = participantRepository.findByCompetitionId(competitionId);
+        return participants.stream()
+                .flatMap(p -> participantRoleRepository.findByParticipantId(p.getId()).stream())
                 .toList();
+    }
+
+    // --- Authorization methods ---
+
+    public List<Division> findAuthorizedDivisions(@NotNull UUID competitionId,
+                                                    @NotNull UUID userId) {
+        if (isAuthorized(competitionId, userId)) {
+            return divisionRepository.findByCompetitionId(competitionId);
+        }
+        return List.of();
     }
 
     public boolean isAuthorizedForCompetition(@NotNull UUID competitionId,
                                                 @NotNull UUID userId) {
-        var competition = competitionRepository.findById(competitionId).orElse(null);
-        if (competition == null) {
+        return isAuthorized(competitionId, userId);
+    }
+
+    public boolean isAuthorizedForDivision(@NotNull UUID divisionId,
+                                            @NotNull UUID userId) {
+        var division = divisionRepository.findById(divisionId).orElse(null);
+        if (division == null) {
             return false;
         }
-        return isAuthorized(competition, userId);
+        return isAuthorized(division.getCompetitionId(), userId);
     }
+
+    // --- Private helpers ---
 
     private String generateUniqueAccessCode() {
         for (int attempt = 0; attempt < 10; attempt++) {
@@ -381,7 +350,7 @@ public class CompetitionService {
                 sb.append(ACCESS_CODE_CHARS.charAt(RANDOM.nextInt(ACCESS_CODE_CHARS.length())));
             }
             var code = sb.toString();
-            if (!eventParticipantRepository.existsByAccessCode(code)) {
+            if (!participantRepository.existsByAccessCode(code)) {
                 return code;
             }
         }
@@ -395,40 +364,44 @@ public class CompetitionService {
         }
     }
 
-    private EventParticipant findOrCreateEventParticipant(UUID eventId, UUID userId,
-                                                            CompetitionRole role) {
-        return eventParticipantRepository
-                .findByEventIdAndUserId(eventId, userId)
+    private Participant findOrCreateParticipant(UUID competitionId, UUID userId,
+                                                  CompetitionRole role) {
+        return participantRepository
+                .findByCompetitionIdAndUserId(competitionId, userId)
                 .orElseGet(() -> {
-                    var ep = new EventParticipant(eventId, userId);
+                    var p = new Participant(competitionId, userId);
                     if (role.requiresAccessCode()) {
-                        ep.assignAccessCode(generateUniqueAccessCode());
+                        p.assignAccessCode(generateUniqueAccessCode());
                     }
-                    return eventParticipantRepository.save(ep);
+                    return participantRepository.save(p);
                 });
     }
 
-    private void requireAuthorized(Competition competition, UUID userId) {
-        if (!isAuthorized(competition, userId)) {
+    private void initializeCategories(Division division) {
+        var catalogCategories = categoryRepository.findByScoringSystem(
+                division.getScoringSystem());
+        int sortOrder = 0;
+        for (var cat : catalogCategories) {
+            var dc = new DivisionCategory(division.getId(), cat.getId(),
+                    cat.getCode(), cat.getName(), cat.getDescription(), null, sortOrder++);
+            divisionCategoryRepository.save(dc);
+        }
+    }
+
+    private void requireAuthorized(UUID competitionId, UUID userId) {
+        if (!isAuthorized(competitionId, userId)) {
             throw new IllegalArgumentException("User is not authorized to perform this action");
         }
     }
 
-    private boolean isAuthorized(Competition competition, UUID userId) {
+    private boolean isAuthorized(UUID competitionId, UUID userId) {
         var user = userService.findById(userId);
         if (user.getRole() == Role.SYSTEM_ADMIN) {
             return true;
         }
-        var ep = eventParticipantRepository
-                .findByEventIdAndUserId(competition.getEventId(), userId);
-        if (ep.isPresent()) {
-            var roles = participantRepository.findByCompetitionIdAndEventParticipantId(
-                    competition.getId(), ep.get().getId());
-            if (roles.stream().anyMatch(
-                    cp -> cp.getRole() == CompetitionRole.COMPETITION_ADMIN)) {
-                return true;
-            }
-        }
-        return false;
+        return participantRepository.findByCompetitionIdAndUserId(competitionId, userId)
+                .map(participant -> participantRoleRepository.existsByParticipantIdAndRole(
+                        participant.getId(), CompetitionRole.ADMIN))
+                .orElse(false);
     }
 }

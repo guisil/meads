@@ -7,17 +7,17 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "competition_categories",
+@Table(name = "division_categories",
         uniqueConstraints = @UniqueConstraint(
-                columnNames = {"competition_id", "code"}))
+                columnNames = {"division_id", "code"}))
 @Getter
-public class CompetitionCategory {
+public class DivisionCategory {
 
     @Id
     private UUID id;
 
-    @Column(name = "competition_id", nullable = false)
-    private UUID competitionId;
+    @Column(name = "division_id", nullable = false)
+    private UUID divisionId;
 
     @Column(name = "catalog_category_id")
     private UUID catalogCategoryId;
@@ -40,13 +40,13 @@ public class CompetitionCategory {
     @Column(nullable = false)
     private Instant createdAt;
 
-    protected CompetitionCategory() {} // JPA
+    protected DivisionCategory() {} // JPA
 
-    public CompetitionCategory(UUID competitionId, UUID catalogCategoryId,
-                               String code, String name, String description,
-                               UUID parentId, int sortOrder) {
+    public DivisionCategory(UUID divisionId, UUID catalogCategoryId,
+                             String code, String name, String description,
+                             UUID parentId, int sortOrder) {
         this.id = UUID.randomUUID();
-        this.competitionId = competitionId;
+        this.divisionId = divisionId;
         this.catalogCategoryId = catalogCategoryId;
         this.code = code;
         this.name = name;

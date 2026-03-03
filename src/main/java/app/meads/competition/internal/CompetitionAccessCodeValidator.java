@@ -7,20 +7,20 @@ import org.springframework.stereotype.Component;
 @Component
 class CompetitionAccessCodeValidator implements AccessCodeValidator {
 
-    private final EventParticipantRepository eventParticipantRepository;
+    private final ParticipantRepository participantRepository;
     private final UserService userService;
 
-    CompetitionAccessCodeValidator(EventParticipantRepository eventParticipantRepository,
+    CompetitionAccessCodeValidator(ParticipantRepository participantRepository,
                                    UserService userService) {
-        this.eventParticipantRepository = eventParticipantRepository;
+        this.participantRepository = participantRepository;
         this.userService = userService;
     }
 
     @Override
     public boolean validate(String email, String code) {
-        return eventParticipantRepository.findByAccessCode(code.toUpperCase())
-                .map(ep -> {
-                    var user = userService.findById(ep.getUserId());
+        return participantRepository.findByAccessCode(code.toUpperCase())
+                .map(participant -> {
+                    var user = userService.findById(participant.getUserId());
                     return user.getEmail().equalsIgnoreCase(email);
                 })
                 .orElse(false);

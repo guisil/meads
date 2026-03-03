@@ -7,7 +7,7 @@ import java.util.Optional;
 
 @Getter
 @RequiredArgsConstructor
-public enum CompetitionStatus {
+public enum DivisionStatus {
     DRAFT("Draft", "badge-draft"),
     REGISTRATION_OPEN("Registration Open", "badge-registration-open"),
     REGISTRATION_CLOSED("Registration Closed", "badge-registration-closed"),
@@ -22,7 +22,7 @@ public enum CompetitionStatus {
         return this == DRAFT || this == REGISTRATION_OPEN;
     }
 
-    public Optional<CompetitionStatus> next() {
+    public Optional<DivisionStatus> next() {
         var values = values();
         int nextOrdinal = ordinal() + 1;
         if (nextOrdinal >= values.length) {

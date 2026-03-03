@@ -2,75 +2,67 @@ package app.meads.competition;
 
 import org.junit.jupiter.api.Test;
 
-import java.util.UUID;
+import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class CompetitionTest {
 
-    private Competition createDraftCompetition() {
-        return new Competition(UUID.randomUUID(),
-                "Home Competition", ScoringSystem.MJP);
+    private Competition createCompetition() {
+        return new Competition("Test Competition",
+                LocalDate.of(2026, 6, 15), LocalDate.of(2026, 6, 17), null);
     }
 
     @Test
-    void shouldStartInDraftStatus() {
-        var competition = createDraftCompetition();
+    void shouldThrowWhenEndDateBeforeStartDate() {
+        var competition = createCompetition();
 
-        assertThat(competition.getStatus()).isEqualTo(CompetitionStatus.DRAFT);
+        assertThatThrownBy(() -> competition.updateDetails("Updated",
+                LocalDate.of(2026, 7, 10), LocalDate.of(2026, 7, 5), null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("start date");
     }
 
     @Test
-    void shouldAdvanceThroughAllStatusesSequentially() {
-        var competition = createDraftCompetition();
+    void shouldThrowWhenLogoExceedsMaxSize() {
+        var competition = createCompetition();
+        byte[] oversizedLogo = new byte[512 * 1024 + 1]; // 512KB + 1 byte
 
-        competition.advanceStatus();
-        assertThat(competition.getStatus()).isEqualTo(CompetitionStatus.REGISTRATION_OPEN);
-
-        competition.advanceStatus();
-        assertThat(competition.getStatus()).isEqualTo(CompetitionStatus.REGISTRATION_CLOSED);
-
-        competition.advanceStatus();
-        assertThat(competition.getStatus()).isEqualTo(CompetitionStatus.JUDGING);
-
-        competition.advanceStatus();
-        assertThat(competition.getStatus()).isEqualTo(CompetitionStatus.DELIBERATION);
-
-        competition.advanceStatus();
-        assertThat(competition.getStatus()).isEqualTo(CompetitionStatus.RESULTS_PUBLISHED);
+        assertThatThrownBy(() -> competition.updateLogo(oversizedLogo, "image/png"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("512");
     }
 
     @Test
-    void shouldUpdateDetailsWhenInDraft() {
-        var competition = createDraftCompetition();
+    void shouldThrowWhenLogoContentTypeInvalid() {
+        var competition = createCompetition();
+        byte[] logo = new byte[1024];
 
-        competition.updateDetails("Updated Name", ScoringSystem.MJP);
-
-        assertThat(competition.getName()).isEqualTo("Updated Name");
+        assertThatThrownBy(() -> competition.updateLogo(logo, "image/gif"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("content type");
     }
 
     @Test
-    void shouldThrowWhenUpdatingDetailsAfterDraft() {
-        var competition = createDraftCompetition();
-        competition.advanceStatus(); // REGISTRATION_OPEN
+    void shouldUpdateLogoWhenValid() {
+        var competition = createCompetition();
+        byte[] logo = new byte[1024];
 
-        assertThatThrownBy(() -> competition.updateDetails("New Name", ScoringSystem.MJP))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("DRAFT");
+        competition.updateLogo(logo, "image/png");
+
+        assertThat(competition.hasLogo()).isTrue();
+        assertThat(competition.getLogo()).isEqualTo(logo);
+        assertThat(competition.getLogoContentType()).isEqualTo("image/png");
     }
 
     @Test
-    void shouldThrowWhenAdvancingPastTerminalStatus() {
-        var competition = createDraftCompetition();
-        competition.advanceStatus(); // REGISTRATION_OPEN
-        competition.advanceStatus(); // REGISTRATION_CLOSED
-        competition.advanceStatus(); // JUDGING
-        competition.advanceStatus(); // DELIBERATION
-        competition.advanceStatus(); // RESULTS_PUBLISHED
+    void shouldRemoveLogoWhenNullPassed() {
+        var competition = createCompetition();
+        competition.updateLogo(new byte[1024], "image/jpeg");
 
-        assertThatThrownBy(competition::advanceStatus)
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("RESULTS_PUBLISHED");
+        competition.updateLogo(null, null);
+
+        assertThat(competition.hasLogo()).isFalse();
     }
 }

@@ -7,15 +7,15 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "event_participants")
+@Table(name = "participants")
 @Getter
-public class EventParticipant {
+public class Participant {
 
     @Id
     private UUID id;
 
-    @Column(name = "event_id", nullable = false)
-    private UUID eventId;
+    @Column(name = "competition_id", nullable = false)
+    private UUID competitionId;
 
     @Column(name = "user_id", nullable = false)
     private UUID userId;
@@ -26,11 +26,11 @@ public class EventParticipant {
     @Column(nullable = false)
     private Instant createdAt;
 
-    protected EventParticipant() {} // JPA
+    protected Participant() {} // JPA
 
-    public EventParticipant(UUID eventId, UUID userId) {
+    public Participant(UUID competitionId, UUID userId) {
         this.id = UUID.randomUUID();
-        this.eventId = eventId;
+        this.competitionId = competitionId;
         this.userId = userId;
     }
 

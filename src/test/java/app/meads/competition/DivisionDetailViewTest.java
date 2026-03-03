@@ -2,12 +2,12 @@ package app.meads.competition;
 
 import app.meads.TestcontainersConfiguration;
 import app.meads.competition.internal.CategoryRepository;
-import app.meads.competition.internal.CompetitionCategoryRepository;
-import app.meads.competition.internal.CompetitionDetailView;
-import app.meads.competition.internal.CompetitionParticipantRepository;
 import app.meads.competition.internal.CompetitionRepository;
-import app.meads.competition.internal.EventParticipantRepository;
-import app.meads.competition.internal.MeadEventRepository;
+import app.meads.competition.internal.DivisionCategoryRepository;
+import app.meads.competition.internal.DivisionDetailView;
+import app.meads.competition.internal.DivisionRepository;
+import app.meads.competition.internal.ParticipantRepository;
+import app.meads.competition.internal.ParticipantRoleRepository;
 import app.meads.identity.Role;
 import app.meads.identity.User;
 import app.meads.identity.UserStatus;
@@ -53,7 +53,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
 @DirtiesContext
-class CompetitionDetailViewTest {
+class DivisionDetailViewTest {
 
     private static final String ADMIN_EMAIL = "detailview-admin@example.com";
 
@@ -61,19 +61,19 @@ class CompetitionDetailViewTest {
     ApplicationContext ctx;
 
     @Autowired
-    MeadEventRepository meadEventRepository;
-
-    @Autowired
     CompetitionRepository competitionRepository;
 
     @Autowired
-    EventParticipantRepository eventParticipantRepository;
+    DivisionRepository divisionRepository;
 
     @Autowired
-    CompetitionParticipantRepository competitionParticipantRepository;
+    ParticipantRepository participantRepository;
 
     @Autowired
-    CompetitionCategoryRepository competitionCategoryRepository;
+    ParticipantRoleRepository participantRoleRepository;
+
+    @Autowired
+    DivisionCategoryRepository divisionCategoryRepository;
 
     @Autowired
     CategoryRepository categoryRepository;
@@ -81,8 +81,8 @@ class CompetitionDetailViewTest {
     @Autowired
     UserRepository userRepository;
 
+    private Division testDivision;
     private Competition testCompetition;
-    private MeadEvent testEvent;
 
     @BeforeEach
     void setup(TestInfo testInfo) {
@@ -91,10 +91,10 @@ class CompetitionDetailViewTest {
                     "Detail Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN));
         }
 
-        testEvent = meadEventRepository.save(new MeadEvent("Test Event",
+        testCompetition = competitionRepository.save(new Competition("Test Competition",
                 LocalDate.of(2026, 6, 15), LocalDate.of(2026, 6, 17), "Porto"));
-        testCompetition = competitionRepository.save(new Competition(
-                testEvent.getId(), "Home", ScoringSystem.MJP));
+        testDivision = divisionRepository.save(new Division(
+                testCompetition.getId(), "Home", ScoringSystem.MJP));
 
         var routes = new Routes().autoDiscoverViews("app.meads");
         var servlet = new MockSpringServlet(routes, ctx, UI::new);
@@ -153,8 +153,8 @@ class CompetitionDetailViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldDisplayCompetitionHeader() {
-        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+    void shouldDisplayDivisionHeader() {
+        UI.getCurrent().navigate("divisions/" + testDivision.getId());
 
         var heading = _get(H2.class, spec -> spec.withText("Home"));
         assertThat(heading).isNotNull();
@@ -163,7 +163,7 @@ class CompetitionDetailViewTest {
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldDisplayStatusBadge() {
-        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+        UI.getCurrent().navigate("divisions/" + testDivision.getId());
 
         var badges = _find(Span.class);
         assertThat(badges).anyMatch(span ->
@@ -174,7 +174,7 @@ class CompetitionDetailViewTest {
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldDisplayTabSheet() {
-        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+        UI.getCurrent().navigate("divisions/" + testDivision.getId());
 
         var tabSheet = _get(TabSheet.class);
         assertThat(tabSheet).isNotNull();
@@ -183,7 +183,7 @@ class CompetitionDetailViewTest {
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldDisplayParticipantsGrid() {
-        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+        UI.getCurrent().navigate("divisions/" + testDivision.getId());
 
         var grids = _find(Grid.class);
         assertThat(grids).hasSizeGreaterThanOrEqualTo(1);
@@ -195,13 +195,12 @@ class CompetitionDetailViewTest {
         var compAdminUser = userRepository.findByEmail("comp-admin@example.com")
                 .orElseGet(() -> userRepository.save(new User("comp-admin@example.com",
                         "Comp Admin", UserStatus.ACTIVE, Role.USER)));
-        var ep = eventParticipantRepository.save(
-                new EventParticipant(testEvent.getId(), compAdminUser.getId()));
-        competitionParticipantRepository.save(
-                new CompetitionParticipant(testCompetition.getId(), ep.getId(),
-                        CompetitionRole.COMPETITION_ADMIN));
+        var participant = participantRepository.save(
+                new Participant(testCompetition.getId(), compAdminUser.getId()));
+        participantRoleRepository.save(
+                new ParticipantRole(participant.getId(), CompetitionRole.ADMIN));
 
-        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+        UI.getCurrent().navigate("divisions/" + testDivision.getId());
 
         var heading = _get(H2.class, spec -> spec.withText("Home"));
         assertThat(heading).isNotNull();
@@ -214,7 +213,7 @@ class CompetitionDetailViewTest {
                 .orElseGet(() -> userRepository.save(new User("unauthorized@example.com",
                         "Unauthorized", UserStatus.ACTIVE, Role.USER)));
 
-        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+        UI.getCurrent().navigate("divisions/" + testDivision.getId());
 
         // Should have been forwarded away — no H2 heading should be present
         var headings = _find(H2.class);
@@ -224,7 +223,7 @@ class CompetitionDetailViewTest {
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldShowEmailFieldInAddDialog() {
-        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+        UI.getCurrent().navigate("divisions/" + testDivision.getId());
 
         var addButton = _get(Button.class, spec -> spec.withText("Add Participant"));
         _click(addButton);
@@ -238,34 +237,34 @@ class CompetitionDetailViewTest {
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldDisplayBreadcrumb() {
-        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+        UI.getCurrent().navigate("divisions/" + testDivision.getId());
 
         var nav = _get(Nav.class);
         assertThat(nav).isNotNull();
         var routerLink = _get(nav, RouterLink.class);
-        assertThat(routerLink.getText()).isEqualTo(testEvent.getName());
-        var competitionSpan = _find(nav, Span.class);
-        assertThat(competitionSpan).anyMatch(s -> s.getText().equals(testCompetition.getName()));
+        assertThat(routerLink.getText()).isEqualTo(testCompetition.getName());
+        var divisionSpan = _find(nav, Span.class);
+        assertThat(divisionSpan).anyMatch(s -> s.getText().equals(testDivision.getName()));
     }
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldDisplayCompetitionCategoriesInGrid() {
-        competitionCategoryRepository.save(new CompetitionCategory(
-                testCompetition.getId(), null,
+    void shouldDisplayDivisionCategoriesInGrid() {
+        divisionCategoryRepository.save(new DivisionCategory(
+                testDivision.getId(), null,
                 "M1A", "Traditional Mead", "A traditional mead", null, 0));
-        competitionCategoryRepository.save(new CompetitionCategory(
-                testCompetition.getId(), null,
+        divisionCategoryRepository.save(new DivisionCategory(
+                testDivision.getId(), null,
                 "M1B", "Semi-Sweet Mead", "A semi-sweet mead", null, 1));
 
-        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+        UI.getCurrent().navigate("divisions/" + testDivision.getId());
 
         // Select the Categories tab to make its content visible
         var tabSheet = _get(TabSheet.class);
         tabSheet.setSelectedIndex(1);
 
         @SuppressWarnings("unchecked")
-        var grid = (TreeGrid<CompetitionCategory>) _get(TreeGrid.class,
+        var grid = (TreeGrid<DivisionCategory>) _get(TreeGrid.class,
                 spec -> spec.withId("categories-grid"));
         var headerNames = grid.getColumns().stream()
                 .map(c -> c.getHeaderText())
@@ -283,14 +282,14 @@ class CompetitionDetailViewTest {
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldDisplayCategoriesInTreeGrid() {
-        var parent = competitionCategoryRepository.save(new CompetitionCategory(
-                testCompetition.getId(), null,
+        var parent = divisionCategoryRepository.save(new DivisionCategory(
+                testDivision.getId(), null,
                 "M1", "Traditional Mead", "Traditional mead category", null, 0));
-        competitionCategoryRepository.save(new CompetitionCategory(
-                testCompetition.getId(), null,
+        divisionCategoryRepository.save(new DivisionCategory(
+                testDivision.getId(), null,
                 "M1A", "Traditional Mead (Dry)", "Dry traditional mead", parent.getId(), 0));
 
-        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+        UI.getCurrent().navigate("divisions/" + testDivision.getId());
 
         var tabSheet = _get(TabSheet.class);
         tabSheet.setSelectedIndex(1);
@@ -302,17 +301,17 @@ class CompetitionDetailViewTest {
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldShowRemoveColumnInCategoriesGrid() {
-        competitionCategoryRepository.save(new CompetitionCategory(
-                testCompetition.getId(), null,
+        divisionCategoryRepository.save(new DivisionCategory(
+                testDivision.getId(), null,
                 "M1A", "Traditional Mead", "A traditional mead", null, 0));
 
-        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+        UI.getCurrent().navigate("divisions/" + testDivision.getId());
 
         var tabSheet = _get(TabSheet.class);
         tabSheet.setSelectedIndex(1);
 
         @SuppressWarnings("unchecked")
-        var grid = (TreeGrid<CompetitionCategory>) _get(TreeGrid.class,
+        var grid = (TreeGrid<DivisionCategory>) _get(TreeGrid.class,
                 spec -> spec.withId("categories-grid"));
         // Grid should have 4 columns: Code, Name, Description, and the component column (Remove)
         assertThat(grid.getColumns()).hasSize(4);
@@ -325,7 +324,7 @@ class CompetitionDetailViewTest {
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldShowAddCategoryButton() {
-        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+        UI.getCurrent().navigate("divisions/" + testDivision.getId());
 
         var tabSheet = _get(TabSheet.class);
         tabSheet.setSelectedIndex(1);
@@ -338,7 +337,7 @@ class CompetitionDetailViewTest {
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldAddCatalogCategoryViaDialog() {
-        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+        UI.getCurrent().navigate("divisions/" + testDivision.getId());
 
         var tabSheet = _get(TabSheet.class);
         tabSheet.setSelectedIndex(1);
@@ -360,8 +359,8 @@ class CompetitionDetailViewTest {
         _click(submitButton);
 
         // Verify category was added
-        var categories = competitionCategoryRepository
-                .findByCompetitionIdOrderByCode(testCompetition.getId());
+        var categories = divisionCategoryRepository
+                .findByDivisionIdOrderByCode(testDivision.getId());
         assertThat(categories).hasSize(1);
         assertThat(categories.getFirst().getCatalogCategoryId())
                 .isEqualTo(availableCategories.getFirst().getId());
@@ -370,7 +369,7 @@ class CompetitionDetailViewTest {
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldAddCustomCategoryViaDialog() {
-        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+        UI.getCurrent().navigate("divisions/" + testDivision.getId());
 
         var tabSheet = _get(TabSheet.class);
         tabSheet.setSelectedIndex(1);
@@ -394,8 +393,8 @@ class CompetitionDetailViewTest {
         var customAddButton = _get(dialog, Button.class, spec -> spec.withText("Add"));
         _click(customAddButton);
 
-        var categories = competitionCategoryRepository
-                .findByCompetitionIdOrderByCode(testCompetition.getId());
+        var categories = divisionCategoryRepository
+                .findByDivisionIdOrderByCode(testDivision.getId());
         assertThat(categories).hasSize(1);
         assertThat(categories.getFirst().getCode()).isEqualTo("CUSTOM1");
         assertThat(categories.getFirst().getName()).isEqualTo("Best Local Honey");
@@ -407,16 +406,15 @@ class CompetitionDetailViewTest {
     void shouldShowRemoveColumnInParticipantsGrid() {
         var judge = userRepository.save(new User("judge-col@test.com",
                 "Judge Col", UserStatus.ACTIVE, Role.USER));
-        var ep = eventParticipantRepository.save(
-                new EventParticipant(testEvent.getId(), judge.getId()));
-        competitionParticipantRepository.save(
-                new CompetitionParticipant(testCompetition.getId(), ep.getId(),
-                        CompetitionRole.JUDGE));
+        var participant = participantRepository.save(
+                new Participant(testCompetition.getId(), judge.getId()));
+        participantRoleRepository.save(
+                new ParticipantRole(participant.getId(), CompetitionRole.JUDGE));
 
-        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+        UI.getCurrent().navigate("divisions/" + testDivision.getId());
 
         @SuppressWarnings("unchecked")
-        var grid = (Grid<CompetitionParticipant>) _find(Grid.class).getFirst();
+        var grid = (Grid<ParticipantRole>) _find(Grid.class).getFirst();
         // Should have 5 columns: Name, Email, Role, Access Code, and Remove (component column)
         assertThat(grid.getColumns()).hasSize(5);
     }
@@ -426,18 +424,17 @@ class CompetitionDetailViewTest {
     void shouldDisplayAccessCodeColumnInParticipantsGrid() {
         var judge = userRepository.save(new User("judge-code@test.com",
                 "Judge Code", UserStatus.ACTIVE, Role.USER));
-        var ep = eventParticipantRepository.save(
-                new EventParticipant(testEvent.getId(), judge.getId()));
-        ep.assignAccessCode("ABCD1234");
-        eventParticipantRepository.save(ep);
-        competitionParticipantRepository.save(
-                new CompetitionParticipant(testCompetition.getId(), ep.getId(),
-                        CompetitionRole.JUDGE));
+        var participant = participantRepository.save(
+                new Participant(testCompetition.getId(), judge.getId()));
+        participant.assignAccessCode("ABCD1234");
+        participantRepository.save(participant);
+        participantRoleRepository.save(
+                new ParticipantRole(participant.getId(), CompetitionRole.JUDGE));
 
-        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+        UI.getCurrent().navigate("divisions/" + testDivision.getId());
 
         @SuppressWarnings("unchecked")
-        var grid = (Grid<CompetitionParticipant>) _find(Grid.class).getFirst();
+        var grid = (Grid<ParticipantRole>) _find(Grid.class).getFirst();
         var headerNames = grid.getColumns().stream()
                 .map(c -> c.getHeaderText())
                 .toList();
@@ -449,16 +446,15 @@ class CompetitionDetailViewTest {
     void shouldDisplayParticipantWithNameAndEmail() {
         var judge = userRepository.save(new User("judge@test.com",
                 "Judge Person", UserStatus.ACTIVE, Role.USER));
-        var ep = eventParticipantRepository.save(
-                new EventParticipant(testEvent.getId(), judge.getId()));
-        competitionParticipantRepository.save(
-                new CompetitionParticipant(testCompetition.getId(), ep.getId(),
-                        CompetitionRole.JUDGE));
+        var participant = participantRepository.save(
+                new Participant(testCompetition.getId(), judge.getId()));
+        participantRoleRepository.save(
+                new ParticipantRole(participant.getId(), CompetitionRole.JUDGE));
 
-        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+        UI.getCurrent().navigate("divisions/" + testDivision.getId());
 
         @SuppressWarnings("unchecked")
-        var grid = (Grid<CompetitionParticipant>) _find(Grid.class).getFirst();
+        var grid = (Grid<ParticipantRole>) _find(Grid.class).getFirst();
         var columns = grid.getColumns();
         var headerNames = columns.stream()
                 .map(c -> c.getHeaderText())

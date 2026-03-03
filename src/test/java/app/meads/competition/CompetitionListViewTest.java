@@ -2,26 +2,24 @@ package app.meads.competition;
 
 import app.meads.TestcontainersConfiguration;
 import app.meads.competition.internal.CompetitionListView;
-import app.meads.competition.internal.CompetitionParticipantRepository;
 import app.meads.competition.internal.CompetitionRepository;
-import app.meads.competition.internal.EventParticipantRepository;
-import app.meads.competition.internal.MeadEventRepository;
 import app.meads.identity.Role;
 import app.meads.identity.User;
 import app.meads.identity.UserStatus;
 import app.meads.identity.internal.UserRepository;
 import com.github.mvysny.fakeservlet.FakeRequest;
+import com.github.mvysny.kaributesting.v10.MockAccessDeniedException;
 import com.github.mvysny.kaributesting.v10.MockVaadin;
 import com.github.mvysny.kaributesting.v10.Routes;
 import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
-import com.vaadin.flow.component.html.H2;
-import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.component.upload.Upload;
 import com.vaadin.flow.server.VaadinServletRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,50 +38,33 @@ import org.springframework.test.annotation.DirtiesContext;
 
 import java.time.LocalDate;
 import java.util.Arrays;
-import java.util.UUID;
 
 import static com.github.mvysny.kaributesting.v10.LocatorJ.*;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
 @DirtiesContext
 class CompetitionListViewTest {
 
-    private static final String ADMIN_EMAIL = "compview-admin@example.com";
+    private static final String ADMIN_EMAIL = "complistview-admin@example.com";
 
     @Autowired
     ApplicationContext ctx;
 
     @Autowired
-    CompetitionService competitionService;
-
-    @Autowired
-    MeadEventRepository meadEventRepository;
-
-    @Autowired
     CompetitionRepository competitionRepository;
 
     @Autowired
-    EventParticipantRepository eventParticipantRepository;
-
-    @Autowired
-    CompetitionParticipantRepository competitionParticipantRepository;
-
-    @Autowired
     UserRepository userRepository;
-
-    private MeadEvent testEvent;
 
     @BeforeEach
     void setup(TestInfo testInfo) {
         if (userRepository.findByEmail(ADMIN_EMAIL).isEmpty()) {
             userRepository.save(new User(ADMIN_EMAIL,
-                    "Comp Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN));
+                    "Comp List Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN));
         }
-
-        testEvent = meadEventRepository.save(new MeadEvent("Test Event",
-                LocalDate.of(2026, 6, 15), LocalDate.of(2026, 6, 17), "Porto"));
 
         var routes = new Routes().autoDiscoverViews("app.meads");
         var servlet = new MockSpringServlet(routes, ctx, UI::new);
@@ -142,41 +123,59 @@ class CompetitionListViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldDisplayCompetitionListViewWithEventHeader() {
-        UI.getCurrent().navigate("events/" + testEvent.getId() + "/competitions");
-
-        var heading = _get(H2.class, spec -> spec.withText("Test Event"));
-        assertThat(heading).isNotNull();
-    }
-
-    @Test
-    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldDisplayCompetitionGrid() {
-        UI.getCurrent().navigate("events/" + testEvent.getId() + "/competitions");
+    void shouldDisplayCompetitionListViewWithGrid() {
+        UI.getCurrent().navigate("competitions");
 
         var grid = _get(Grid.class);
         assertThat(grid).isNotNull();
     }
 
     @Test
-    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldDisplayCreateCompetitionButton() {
-        UI.getCurrent().navigate("events/" + testEvent.getId() + "/competitions");
-
-        var button = _get(Button.class, spec -> spec.withText("Create Competition"));
-        assertThat(button).isNotNull();
+    @WithMockUser(roles = "USER")
+    void shouldDenyAccessToCompetitionsViewForRegularUser() {
+        assertThatThrownBy(() -> UI.getCurrent().navigate("competitions"))
+                .isInstanceOf(MockAccessDeniedException.class);
     }
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldCreateCompetitionViaDialog() {
-        UI.getCurrent().navigate("events/" + testEvent.getId() + "/competitions");
+    void shouldDisplayCreateCompetitionButton() {
+        UI.getCurrent().navigate("competitions");
 
-        _click(_get(Button.class, spec -> spec.withText("Create Competition")));
+        var createButton = _get(Button.class, spec -> spec.withText("Create Competition"));
+        assertThat(createButton).isNotNull();
+    }
 
-        _get(TextField.class, spec -> spec.withLabel("Name")).setValue("Home");
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldOpenCreateCompetitionDialogWhenCreateButtonClicked() {
+        UI.getCurrent().navigate("competitions");
 
-        _click(_get(Button.class, spec -> spec.withText("Create")));
+        var createButton = _get(Button.class, spec -> spec.withText("Create Competition"));
+        _click(createButton);
+
+        var dialog = _get(Dialog.class);
+        assertThat(dialog.isOpened()).isTrue();
+        assertThat(_find(TextField.class, spec -> spec.withLabel("Name"))).hasSize(1);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldCreateCompetitionWhenFormSubmitted() {
+        UI.getCurrent().navigate("competitions");
+
+        var createButton = _get(Button.class, spec -> spec.withText("Create Competition"));
+        _click(createButton);
+
+        _get(TextField.class, spec -> spec.withLabel("Name")).setValue("Regional 2026");
+        _get(DatePicker.class, spec -> spec.withLabel("Start Date"))
+                .setValue(LocalDate.of(2026, 6, 15));
+        _get(DatePicker.class, spec -> spec.withLabel("End Date"))
+                .setValue(LocalDate.of(2026, 6, 17));
+        _get(TextField.class, spec -> spec.withLabel("Location")).setValue("Porto");
+
+        var saveButton = _get(Button.class, spec -> spec.withText("Create"));
+        _click(saveButton);
 
         assertThat(_find(Dialog.class)).isEmpty();
         assertThat(_get(Notification.class).getElement().getProperty("text"))
@@ -184,133 +183,30 @@ class CompetitionListViewTest {
     }
 
     @Test
-    @WithMockUser(username = "comp-admin@example.com", roles = "USER")
-    void shouldAllowCompetitionAdminAccess() {
-        var compAdminUser = userRepository.findByEmail("comp-admin@example.com")
-                .orElseGet(() -> userRepository.save(new User("comp-admin@example.com",
-                        "Comp Admin User", UserStatus.ACTIVE, Role.USER)));
-        var competition = competitionRepository.save(
-                new Competition(testEvent.getId(), "Home", ScoringSystem.MJP));
-        var ep = eventParticipantRepository.save(
-                new EventParticipant(testEvent.getId(), compAdminUser.getId()));
-        competitionParticipantRepository.save(
-                new CompetitionParticipant(competition.getId(), ep.getId(),
-                        CompetitionRole.COMPETITION_ADMIN));
-
-        UI.getCurrent().navigate("events/" + testEvent.getId() + "/competitions");
-
-        var heading = _get(H2.class, spec -> spec.withText("Test Event"));
-        assertThat(heading).isNotNull();
-    }
-
-    @Test
-    @WithMockUser(username = "unauthorized@example.com", roles = "USER")
-    void shouldRedirectUnauthorizedUser() {
-        userRepository.findByEmail("unauthorized@example.com")
-                .orElseGet(() -> userRepository.save(new User("unauthorized@example.com",
-                        "Unauthorized", UserStatus.ACTIVE, Role.USER)));
-
-        UI.getCurrent().navigate("events/" + testEvent.getId() + "/competitions");
-
-        var headings = _find(H2.class);
-        assertThat(headings).noneMatch(h -> h.getText().equals("Test Event"));
-    }
-
-    @Test
-    @WithMockUser(username = "comp-admin2@example.com", roles = "USER")
-    void shouldShowOnlyAdminCompetitionsForCompetitionAdmin() {
-        var compAdminUser = userRepository.findByEmail("comp-admin2@example.com")
-                .orElseGet(() -> userRepository.save(new User("comp-admin2@example.com",
-                        "Comp Admin 2", UserStatus.ACTIVE, Role.USER)));
-        var comp1 = competitionRepository.save(
-                new Competition(testEvent.getId(), "Comp One", ScoringSystem.MJP));
-        var comp2 = competitionRepository.save(
-                new Competition(testEvent.getId(), "Comp Two", ScoringSystem.MJP));
-        var ep = eventParticipantRepository.save(
-                new EventParticipant(testEvent.getId(), compAdminUser.getId()));
-        // Only admin for comp1, not comp2
-        competitionParticipantRepository.save(
-                new CompetitionParticipant(comp1.getId(), ep.getId(),
-                        CompetitionRole.COMPETITION_ADMIN));
-
-        UI.getCurrent().navigate("events/" + testEvent.getId() + "/competitions");
-
-        @SuppressWarnings("unchecked")
-        var grid = (Grid<Competition>) _find(Grid.class).getFirst();
-        var items = grid.getGenericDataView().getItems().toList();
-        assertThat(items).hasSize(1);
-        assertThat(items.getFirst().getName()).isEqualTo("Comp One");
-    }
-
-    @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldDisplayEventLogoInHeaderWhenLogoExists() {
-        testEvent.updateLogo(new byte[]{1, 2, 3}, "image/png");
-        meadEventRepository.save(testEvent);
+    void shouldShowLogoUploadInCompetitionDialog() {
+        UI.getCurrent().navigate("competitions");
 
-        UI.getCurrent().navigate("events/" + testEvent.getId() + "/competitions");
+        var createButton = _get(Button.class, spec -> spec.withText("Create Competition"));
+        _click(createButton);
 
-        var images = _find(Image.class);
-        assertThat(images).hasSize(1);
-    }
+        var dialog = _get(Dialog.class);
+        assertThat(dialog.isOpened()).isTrue();
 
-    @Test
-    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldNotDisplayEventLogoInHeaderWhenNoLogo() {
-        UI.getCurrent().navigate("events/" + testEvent.getId() + "/competitions");
-
-        var images = _find(Image.class);
-        assertThat(images).isEmpty();
-    }
-
-    @Test
-    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldRemoveCompetitionFromGridAfterDeletion() {
-        var competition = competitionRepository.save(
-                new Competition(testEvent.getId(), "To Delete", ScoringSystem.MJP));
-
-        UI.getCurrent().navigate("events/" + testEvent.getId() + "/competitions");
-
-        @SuppressWarnings("unchecked")
-        var grid = (Grid<Competition>) _find(Grid.class).getFirst();
-        assertThat(grid.getGenericDataView().getItems().count()).isEqualTo(1);
-
-        competitionService.deleteCompetition(competition.getId(), getCurrentUserId());
-
-        // Re-navigate to refresh
-        UI.getCurrent().navigate("events/" + testEvent.getId() + "/competitions");
-
-        @SuppressWarnings("unchecked")
-        var refreshedGrid = (Grid<Competition>) _find(Grid.class).getFirst();
-        assertThat(refreshedGrid.getGenericDataView().getItems().count()).isZero();
+        var uploads = _find(Upload.class);
+        assertThat(uploads).hasSize(1);
+        assertThat(uploads.getFirst().getMaxFileSize()).isEqualTo(512 * 1024);
     }
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldDisplayCompetitionsInGrid() {
-        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
-        var competition = new Competition(testEvent.getId(),
-                "Home", ScoringSystem.MJP);
+        competitionRepository.save(new Competition("Test Competition",
+                LocalDate.of(2026, 6, 15), LocalDate.of(2026, 6, 17), "Porto"));
 
-        // Save directly via service to populate grid
-        UI.getCurrent().navigate("events/" + testEvent.getId() + "/competitions");
+        UI.getCurrent().navigate("competitions");
 
-        // Navigate after creating competition via repository
-        // We need to use the service for proper creation
-        var view = _get(CompetitionListView.class);
-        assertThat(view).isNotNull();
-    }
-
-    @Test
-    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldDisplayAddParticipantToAllButton() {
-        UI.getCurrent().navigate("events/" + testEvent.getId() + "/competitions");
-
-        var button = _get(Button.class, spec -> spec.withText("Add Participant to All"));
-        assertThat(button).isNotNull();
-    }
-
-    private UUID getCurrentUserId() {
-        return userRepository.findByEmail(ADMIN_EMAIL).orElseThrow().getId();
+        var grid = _get(Grid.class);
+        assertThat(grid.getGenericDataView().getItems().count()).isGreaterThanOrEqualTo(1);
     }
 }

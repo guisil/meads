@@ -7,21 +7,21 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class EventParticipantTest {
+class ParticipantTest {
 
-    private EventParticipant createParticipant() {
-        return new EventParticipant(UUID.randomUUID(), UUID.randomUUID());
+    private Participant createParticipant() {
+        return new Participant(UUID.randomUUID(), UUID.randomUUID());
     }
 
     @Test
-    void shouldCreateEventParticipant() {
-        var eventId = UUID.randomUUID();
+    void shouldCreateParticipant() {
+        var competitionId = UUID.randomUUID();
         var userId = UUID.randomUUID();
 
-        var participant = new EventParticipant(eventId, userId);
+        var participant = new Participant(competitionId, userId);
 
         assertThat(participant.getId()).isNotNull();
-        assertThat(participant.getEventId()).isEqualTo(eventId);
+        assertThat(participant.getCompetitionId()).isEqualTo(competitionId);
         assertThat(participant.getUserId()).isEqualTo(userId);
         assertThat(participant.getAccessCode()).isNull();
     }

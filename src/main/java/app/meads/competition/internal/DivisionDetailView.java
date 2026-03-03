@@ -33,25 +33,25 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-@Route(value = "competitions/:competitionId", layout = MainLayout.class)
+@Route(value = "divisions/:divisionId", layout = MainLayout.class)
 @PermitAll
-public class CompetitionDetailView extends VerticalLayout implements BeforeEnterObserver {
+public class DivisionDetailView extends VerticalLayout implements BeforeEnterObserver {
 
     private final CompetitionService competitionService;
     private final UserService userService;
     private final transient AuthenticationContext authenticationContext;
 
-    private UUID competitionId;
+    private UUID divisionId;
+    private Division division;
     private Competition competition;
-    private MeadEvent meadEvent;
-    private Grid<CompetitionParticipant> participantsGrid;
-    private TreeGrid<CompetitionCategory> categoriesGrid;
-    private Map<UUID, EventParticipant> eventParticipantMap;
+    private Grid<ParticipantRole> participantsGrid;
+    private TreeGrid<DivisionCategory> categoriesGrid;
+    private Map<UUID, Participant> participantMap;
     private Map<UUID, User> userMap;
 
-    public CompetitionDetailView(CompetitionService competitionService,
-                                  UserService userService,
-                                  AuthenticationContext authenticationContext) {
+    public DivisionDetailView(CompetitionService competitionService,
+                               UserService userService,
+                               AuthenticationContext authenticationContext) {
         this.competitionService = competitionService;
         this.userService = userService;
         this.authenticationContext = authenticationContext;
@@ -59,24 +59,24 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
     @Override
     public void beforeEnter(BeforeEnterEvent beforeEnterEvent) {
-        competitionId = beforeEnterEvent.getRouteParameters().get("competitionId")
+        divisionId = beforeEnterEvent.getRouteParameters().get("divisionId")
                 .map(UUID::fromString)
                 .orElse(null);
 
-        if (competitionId == null) {
-            beforeEnterEvent.forwardTo("events");
+        if (divisionId == null) {
+            beforeEnterEvent.forwardTo("competitions");
             return;
         }
 
         try {
-            competition = competitionService.findById(competitionId);
-            meadEvent = competitionService.findMeadEventById(competition.getEventId());
+            division = competitionService.findDivisionById(divisionId);
+            competition = competitionService.findCompetitionById(division.getCompetitionId());
         } catch (IllegalArgumentException e) {
-            beforeEnterEvent.forwardTo("events");
+            beforeEnterEvent.forwardTo("competitions");
             return;
         }
 
-        if (!competitionService.isAuthorizedForCompetition(competitionId, getCurrentUserId())) {
+        if (!competitionService.isAuthorizedForCompetition(competition.getId(), getCurrentUserId())) {
             beforeEnterEvent.forwardTo("");
             return;
         }
@@ -89,11 +89,11 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
     private Nav createBreadcrumb() {
         var nav = new Nav();
-        var eventLink = new RouterLink(meadEvent.getName(), CompetitionListView.class,
-                new RouteParameters("eventId", meadEvent.getId().toString()));
-        nav.add(eventLink);
+        var competitionLink = new RouterLink(competition.getName(), DivisionListView.class,
+                new RouteParameters("competitionId", competition.getId().toString()));
+        nav.add(competitionLink);
         nav.add(new Span(" / "));
-        nav.add(new Span(competition.getName()));
+        nav.add(new Span(division.getName()));
         return nav;
     }
 
@@ -105,17 +105,17 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         var textBlock = new VerticalLayout();
         textBlock.setPadding(false);
         textBlock.setSpacing(false);
-        textBlock.add(new H2(competition.getName()));
+        textBlock.add(new H2(division.getName()));
 
         var details = new HorizontalLayout();
         details.setDefaultVerticalComponentAlignment(Alignment.CENTER);
-        details.add(new Span(competition.getScoringSystem().name()));
-        details.add(createStatusBadge(competition.getStatus()));
+        details.add(new Span(division.getScoringSystem().name()));
+        details.add(createStatusBadge(division.getStatus()));
         textBlock.add(details);
 
         header.add(textBlock);
 
-        if (competition.getStatus() != CompetitionStatus.RESULTS_PUBLISHED) {
+        if (division.getStatus() != DivisionStatus.RESULTS_PUBLISHED) {
             var advanceButton = new Button("Advance Status", e -> advanceStatus());
             header.add(advanceButton);
         }
@@ -144,26 +144,27 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         tab.add(actions);
 
         participantsGrid = new Grid<>();
-        participantsGrid.addColumn(p -> {
-            var ep = eventParticipantMap.get(p.getEventParticipantId());
-            var user = ep != null ? userMap.get(ep.getUserId()) : null;
+        participantsGrid.addColumn(pr -> {
+            var participant = participantMap.get(pr.getParticipantId());
+            var user = participant != null ? userMap.get(participant.getUserId()) : null;
             return user != null ? user.getName() : "Unknown";
         }).setHeader("Name");
-        participantsGrid.addColumn(p -> {
-            var ep = eventParticipantMap.get(p.getEventParticipantId());
-            var user = ep != null ? userMap.get(ep.getUserId()) : null;
+        participantsGrid.addColumn(pr -> {
+            var participant = participantMap.get(pr.getParticipantId());
+            var user = participant != null ? userMap.get(participant.getUserId()) : null;
             return user != null ? user.getEmail() : "—";
         }).setHeader("Email");
-        participantsGrid.addColumn(p -> p.getRole().name()).setHeader("Role");
-        participantsGrid.addColumn(p -> {
-            var ep = eventParticipantMap.get(p.getEventParticipantId());
-            return ep != null && ep.getAccessCode() != null ? ep.getAccessCode() : "—";
+        participantsGrid.addColumn(pr -> pr.getRole().getDisplayName()).setHeader("Role");
+        participantsGrid.addColumn(pr -> {
+            var participant = participantMap.get(pr.getParticipantId());
+            return participant != null && participant.getAccessCode() != null
+                    ? participant.getAccessCode() : "—";
         }).setHeader("Access Code");
-        participantsGrid.addComponentColumn(p -> {
+        participantsGrid.addComponentColumn(pr -> {
             var removeButton = new Button("Remove", e -> {
                 try {
                     competitionService.removeParticipant(
-                            competitionId, p.getEventParticipantId(), getCurrentUserId());
+                            competition.getId(), pr.getParticipantId(), getCurrentUserId());
                     refreshParticipantsGrid();
                     var notification = Notification.show("Participant removed");
                     notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
@@ -183,7 +184,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         var tab = new VerticalLayout();
         tab.setPadding(false);
 
-        boolean allowModification = competition.getStatus().allowsCategoryModification();
+        boolean allowModification = division.getStatus().allowsCategoryModification();
 
         var actions = new HorizontalLayout();
         var addCategoryButton = new Button("Add Category",
@@ -192,17 +193,17 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         actions.add(addCategoryButton);
         tab.add(actions);
 
-        categoriesGrid = new TreeGrid<>(CompetitionCategory.class, false);
+        categoriesGrid = new TreeGrid<>(DivisionCategory.class, false);
         categoriesGrid.setId("categories-grid");
-        categoriesGrid.addHierarchyColumn(CompetitionCategory::getCode).setHeader("Code").setSortable(true);
-        categoriesGrid.addColumn(CompetitionCategory::getName).setHeader("Name");
-        categoriesGrid.addColumn(CompetitionCategory::getDescription).setHeader("Description");
+        categoriesGrid.addHierarchyColumn(DivisionCategory::getCode).setHeader("Code").setSortable(true);
+        categoriesGrid.addColumn(DivisionCategory::getName).setHeader("Name");
+        categoriesGrid.addColumn(DivisionCategory::getDescription).setHeader("Description");
 
-        categoriesGrid.addComponentColumn(cc -> {
+        categoriesGrid.addComponentColumn(dc -> {
             var removeButton = new Button("Remove", e -> {
                 try {
-                    competitionService.removeCompetitionCategory(
-                            competitionId, cc.getId(), getCurrentUserId());
+                    competitionService.removeDivisionCategory(
+                            divisionId, dc.getId(), getCurrentUserId());
                     refreshCategoriesGrid();
                     var notification = Notification.show("Category removed");
                     notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
@@ -220,13 +221,13 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
     }
 
     private void refreshCategoriesGrid() {
-        var allCategories = competitionService.findCompetitionCategories(competitionId);
+        var allCategories = competitionService.findDivisionCategories(divisionId);
         var rootCategories = allCategories.stream()
-                .filter(cc -> cc.getParentId() == null)
+                .filter(dc -> dc.getParentId() == null)
                 .toList();
         categoriesGrid.setItems(rootCategories,
                 parent -> allCategories.stream()
-                        .filter(cc -> parent.getId().equals(cc.getParentId()))
+                        .filter(dc -> parent.getId().equals(dc.getParentId()))
                         .toList());
     }
 
@@ -246,7 +247,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         catalogSelect.setItemLabelGenerator(cat ->
                 cat.getCode() + " — " + cat.getName());
         catalogSelect.setItems(
-                competitionService.findAvailableCatalogCategories(competitionId));
+                competitionService.findAvailableCatalogCategories(divisionId));
 
         var catalogAddButton = new Button("Add", e -> {
             if (catalogSelect.getValue() == null) {
@@ -254,7 +255,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
             }
             try {
                 competitionService.addCatalogCategory(
-                        competitionId, catalogSelect.getValue().getId(), getCurrentUserId());
+                        divisionId, catalogSelect.getValue().getId(), getCurrentUserId());
                 refreshCategoriesGrid();
                 var notification = Notification.show("Category added");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
@@ -275,14 +276,14 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         var nameField = new TextField("Name");
         var descriptionField = new TextField("Description");
 
-        var parentSelect = new Select<CompetitionCategory>();
+        var parentSelect = new Select<DivisionCategory>();
         parentSelect.setLabel("Parent Category (optional)");
         parentSelect.setEmptySelectionAllowed(true);
         parentSelect.setEmptySelectionCaption("None");
-        parentSelect.setItemLabelGenerator(cc ->
-                cc != null ? cc.getCode() + " — " + cc.getName() : "");
-        var topLevel = competitionService.findCompetitionCategories(competitionId).stream()
-                .filter(cc -> cc.getParentId() == null)
+        parentSelect.setItemLabelGenerator(dc ->
+                dc != null ? dc.getCode() + " — " + dc.getName() : "");
+        var topLevel = competitionService.findDivisionCategories(divisionId).stream()
+                .filter(dc -> dc.getParentId() == null)
                 .toList();
         parentSelect.setItems(topLevel);
 
@@ -308,7 +309,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 UUID parentId = parentSelect.getValue() != null
                         ? parentSelect.getValue().getId() : null;
                 competitionService.addCustomCategory(
-                        competitionId, codeField.getValue().trim(),
+                        divisionId, codeField.getValue().trim(),
                         nameField.getValue().trim(),
                         descriptionField.getValue().trim(),
                         parentId, getCurrentUserId());
@@ -334,20 +335,20 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         var tab = new VerticalLayout();
         tab.setPadding(false);
 
-        boolean isDraft = competition.getStatus() == CompetitionStatus.DRAFT;
+        boolean isDraft = division.getStatus() == DivisionStatus.DRAFT;
 
         var nameField = new TextField("Name");
-        nameField.setValue(competition.getName());
+        nameField.setValue(division.getName());
         nameField.setEnabled(isDraft);
 
         var scoringSelect = new Select<ScoringSystem>();
         scoringSelect.setLabel("Scoring System");
         scoringSelect.setItems(ScoringSystem.values());
-        scoringSelect.setValue(competition.getScoringSystem());
+        scoringSelect.setValue(division.getScoringSystem());
         scoringSelect.setEnabled(isDraft);
 
         var statusField = new TextField("Status");
-        statusField.setValue(competition.getStatus().getDisplayName());
+        statusField.setValue(division.getStatus().getDisplayName());
         statusField.setReadOnly(true);
 
         var saveButton = new Button("Save", e -> {
@@ -357,8 +358,8 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 return;
             }
             try {
-                competition = competitionService.updateCompetition(
-                        competitionId, nameField.getValue(),
+                division = competitionService.updateDivision(
+                        divisionId, nameField.getValue(),
                         scoringSelect.getValue(), getCurrentUserId());
                 var notification = Notification.show("Settings saved successfully");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
@@ -391,7 +392,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
             }
             try {
                 competitionService.addParticipantByEmail(
-                        competitionId,
+                        competition.getId(),
                         emailField.getValue().trim(),
                         roleSelect.getValue(),
                         getCurrentUserId());
@@ -414,19 +415,19 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
     }
 
     private void advanceStatus() {
-        var nextStatusName = competition.getStatus().next()
-                .map(CompetitionStatus::getDisplayName).orElse("—");
+        var nextStatusName = division.getStatus().next()
+                .map(DivisionStatus::getDisplayName).orElse("—");
 
         var dialog = new Dialog();
         dialog.setHeaderTitle("Advance Status");
-        dialog.add("Advance from " + competition.getStatus().getDisplayName()
+        dialog.add("Advance from " + division.getStatus().getDisplayName()
                 + " to " + nextStatusName + "?");
 
         var confirmButton = new Button("Advance", e -> {
             try {
-                competition = competitionService.advanceStatus(competitionId, getCurrentUserId());
+                division = competitionService.advanceDivisionStatus(divisionId, getCurrentUserId());
                 getUI().ifPresent(ui -> ui.navigate(
-                        "competitions/" + competitionId));
+                        "divisions/" + divisionId));
                 dialog.close();
             } catch (IllegalArgumentException | IllegalStateException ex) {
                 Notification.show(ex.getMessage());
@@ -440,23 +441,23 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
     }
 
     private void refreshParticipantsGrid() {
-        var participants = competitionService.findParticipantsByCompetition(competitionId);
+        var roles = competitionService.findRolesByCompetition(competition.getId());
 
-        var eventParticipants = competitionService.findEventParticipantsByEvent(meadEvent.getId());
-        eventParticipantMap = eventParticipants.stream()
-                .collect(Collectors.toMap(EventParticipant::getId, Function.identity()));
+        var participants = competitionService.findParticipantsByCompetition(competition.getId());
+        participantMap = participants.stream()
+                .collect(Collectors.toMap(Participant::getId, Function.identity()));
 
-        var userIds = eventParticipants.stream()
-                .map(EventParticipant::getUserId)
+        var userIds = participants.stream()
+                .map(Participant::getUserId)
                 .distinct()
                 .toList();
         userMap = userService.findAllByIds(userIds).stream()
                 .collect(Collectors.toMap(User::getId, Function.identity()));
 
-        participantsGrid.setItems(participants);
+        participantsGrid.setItems(roles);
     }
 
-    private Span createStatusBadge(CompetitionStatus status) {
+    private Span createStatusBadge(DivisionStatus status) {
         var badge = new Span(status.getDisplayName());
         badge.getElement().getThemeList().add("badge pill small");
         badge.addClassName(status.getBadgeCssClass());
