@@ -141,9 +141,9 @@ docs/
 
 ## What's Next
 
-1. **Manual UI walkthrough** — Section 2 (authentication) complete. Resume from Section 3
-   (navigation & layout). Walkthrough includes Section 11 (multi-role & cross-competition
-   edge cases) for exploratory testing and design decisions.
+1. **Manual UI walkthrough** — Resume from Section 2 (authentication), test 2.15 (set password
+   via token link). Walkthrough includes Section 11 (multi-role & cross-competition edge cases)
+   for exploratory testing and design decisions.
 2. **Code review** of both competition and entry modules (slice by slice)
 3. **Test review** (guided, with UI verification) of both modules
 4. **Judging module** — design and implementation
