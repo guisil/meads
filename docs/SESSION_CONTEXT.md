@@ -140,6 +140,8 @@ docs/
 
 1. **Manual UI walkthrough** — Restarting from Section 2 (authentication). Sections 2.1–2.6
    verified OK in current run. Paused at access code login step to implement My Competitions view.
+   Walkthrough now includes Section 11 (multi-role & cross-competition edge cases) for
+   exploratory testing and design decisions.
 2. **Code review** of both competition and entry modules (slice by slice)
 3. **Test review** (guided, with UI verification) of both modules
 4. **Judging module** — design and implementation

@@ -766,6 +766,73 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 ---
 
+## 11. Multi-Role & Cross-Competition Edge Cases
+
+**Goal:** Test combinations of roles across competitions and identify gaps in
+credential management and authorization. Some of these are exploratory — note
+the actual behavior and decide whether it needs to change.
+
+### Same competition: multiple roles
+
+- [ ] Log in as `compadmin@example.com`
+- [ ] Navigate to CHIP 2026 > Participants tab
+- [ ] Add `judge@example.com` as ENTRANT (judge is already a JUDGE in CHIP)
+- [ ] **Observe:** Does the system allow a user to be both JUDGE and ENTRANT?
+- [ ] **Decide:** Should this be allowed? (CHIP rules say judges cannot judge their own entries, but they might enter in a different category/division)
+- [ ] If allowed: verify `judge@example.com` can access both My Entries and any future judge views
+- [ ] Clean up: remove the ENTRANT role from `judge@example.com` if needed
+
+### Cross-competition: entrant becomes competition admin
+
+This is the most important edge case. A user who is an ENTRANT in one competition
+may be invited as a competition ADMIN for a different competition.
+
+- [ ] Log in as `admin@example.com` (SYSTEM_ADMIN)
+- [ ] Create a new competition (e.g., "Regional 2026")
+- [ ] Add `entrant@example.com` as ADMIN of "Regional 2026"
+- [ ] Log out
+- [ ] **Test:** How does `entrant@example.com` log in?
+  - They have no password (magic link only)
+  - They have no access code (access codes are for JUDGE/STEWARD roles)
+  - As competition admin, they need reliable access (magic links expire)
+- [ ] **Decide:** What's the credential setup flow when a user becomes a competition admin?
+  - Option A: SYSTEM_ADMIN sets a password for them via the Users page
+  - Option B: Automatic password setup email/link when added as ADMIN
+  - Option C: Competition admins can also use magic links (current behavior)
+- [ ] **Test navigation:** If `entrant@example.com` logs in via magic link:
+  - Do they see "My Competitions" in the sidebar? (Should show "Regional 2026")
+  - Can they still access their entries in CHIP 2026 Amadora?
+
+### Cross-competition: competition admin is also entrant/judge elsewhere
+
+- [ ] Log in as `compadmin@example.com`
+- [ ] Navigate to CHIP 2026 > Participants tab
+- [ ] Add credits for `compadmin@example.com` in Amadora (makes them an ENTRANT)
+- [ ] Log out, log back in as `compadmin@example.com`
+- [ ] **Test:** Can they access both:
+  - "My Competitions" to manage CHIP 2026 (as ADMIN)?
+  - `/divisions/{amadoraId}/my-entries` to manage their entries (as ENTRANT)?
+- [ ] **Observe:** Is the navigation clear? Can they tell which "hat" they're wearing?
+- [ ] Clean up if needed
+
+### Login mechanism with mixed credentials
+
+- [ ] A user with both a password and a magic link should be able to use either
+- [ ] A user with an access code (JUDGE/STEWARD) and a password (competition ADMIN in another competition) should be able to use either
+- [ ] **Test:** Log in as `judge@example.com` with their access code -- does it still work after they've been made ADMIN of another competition?
+- [ ] **Decide:** Should access codes work across competitions or only for the competition that issued them?
+
+### Summary of decisions needed
+
+After running the above tests, document decisions on:
+
+1. **Multiple roles in same competition** — allowed or not? Any restrictions?
+2. **Credential setup for new competition admins** — what's the flow?
+3. **Navigation clarity** — does the UI make it clear when a user has multiple roles?
+4. **Access code scope** — per-competition or per-user?
+
+---
+
 ## Appendix: Coverage Mapping
 
 | Walkthrough Section | Automated Tests |
