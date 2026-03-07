@@ -72,7 +72,10 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
         credentialsForm.getStyle().set("display", "none");
         credentialsForm.appendChild(usernameInput, passwordInput);
 
-        var credentialsContent = new VerticalLayout(passwordRow);
+        var forgotPasswordButton = new Button("Forgot password?");
+        forgotPasswordButton.addClickListener(e -> sendPasswordResetLink());
+
+        var credentialsContent = new VerticalLayout(passwordRow, forgotPasswordButton);
         credentialsContent.getElement().appendChild(credentialsForm);
         var credentialsDetails = new Details("Login with credentials", credentialsContent);
 
@@ -103,6 +106,23 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
             log.info("Magic link requested for non-existent email: {}", emailValue);
         }
         Notification.show("If this email is registered, a login link has been sent.");
+    }
+
+    private void sendPasswordResetLink() {
+        String emailValue = emailField.getValue();
+        if (!StringUtils.hasText(emailValue) || emailField.isInvalid()) {
+            emailField.setInvalid(true);
+            emailField.setErrorMessage("Please enter a valid email address");
+            return;
+        }
+        try {
+            userService.findByEmail(emailValue);
+            String link = jwtMagicLinkService.generatePasswordSetupLink(emailValue, Duration.ofDays(7));
+            log.info("\n\n\tPassword reset link for {}: {}\n", emailValue, link);
+        } catch (IllegalArgumentException ex) {
+            log.info("Password reset requested for non-existent email: {}", emailValue);
+        }
+        Notification.show("If this email is registered, a password reset link has been sent.");
     }
 
     private void loginWithCredentials() {

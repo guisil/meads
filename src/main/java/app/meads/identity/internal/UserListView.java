@@ -62,7 +62,10 @@ public class UserListView extends VerticalLayout {
             Button magicLinkButton = new Button("Send Magic Link");
             magicLinkButton.addClickListener(e -> sendMagicLink(user));
 
-            HorizontalLayout actions = new HorizontalLayout(editButton, deleteButton, magicLinkButton);
+            Button passwordResetButton = new Button("Password Reset");
+            passwordResetButton.addClickListener(e -> sendPasswordResetLink(user));
+
+            HorizontalLayout actions = new HorizontalLayout(editButton, deleteButton, magicLinkButton, passwordResetButton);
             actions.setSpacing(true);
             return actions;
         }).setHeader("Actions");
@@ -133,6 +136,13 @@ public class UserListView extends VerticalLayout {
         String link = jwtMagicLinkService.generateLink(user.getEmail(), Duration.ofDays(7));
         log.info("\n\n\tMagic link for {}: {}\n", user.getEmail(), link);
         var notification = Notification.show("Magic link sent successfully");
+        notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+    }
+
+    public void sendPasswordResetLink(User user) {
+        String link = jwtMagicLinkService.generatePasswordSetupLink(user.getEmail(), Duration.ofDays(7));
+        log.info("\n\n\tPassword reset link for {}: {}\n", user.getEmail(), link);
+        var notification = Notification.show("Password reset link generated (check server logs)");
         notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
     }
 

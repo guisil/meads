@@ -58,8 +58,9 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 ## 2. Authentication
 
-**Covers:** `LoginViewTest`, `AdminPasswordAuthenticationTest`, `JwtMagicLinkAuthenticationTest`,
-`RootUrlRedirectTest`, `LogoutFlowTest`, `UserActivationListenerTest`, `SecurityConfigTest`
+**Covers:** `LoginViewTest`, `SetPasswordViewTest`, `AdminPasswordAuthenticationTest`,
+`JwtMagicLinkAuthenticationTest`, `RootUrlRedirectTest`, `LogoutFlowTest`,
+`UserActivationListenerTest`, `SecurityConfigTest`
 
 ### Password login (system admin)
 
@@ -128,6 +129,33 @@ Wait for startup to complete. The console will show magic links for dev users.
 - [ ] Enter password: `wrong`
 - [ ] Click "Login"
 - [ ] **Expected:** Error notification "Invalid email or password. Please try again."
+
+### Forgot password?
+
+- [ ] Navigate to `/login`
+- [ ] Enter email: `user@example.com`
+- [ ] Expand "Login with credentials" section
+- [ ] Click "Forgot password?"
+- [ ] **Expected:** Notification "If this email is registered, a password reset link has been sent."
+- [ ] Check server logs for the password setup link URL
+- [ ] **Expected:** Link format `http://localhost:8080/set-password?token=...`
+
+### Forgot password? (non-existent email — no enumeration)
+
+- [ ] Navigate to `/login`
+- [ ] Enter email: `nonexistent@example.com`
+- [ ] Expand "Login with credentials" section
+- [ ] Click "Forgot password?"
+- [ ] **Expected:** Same notification "If this email is registered, a password reset link has been sent."
+- [ ] **Expected:** No link in server logs (user doesn't exist)
+
+### Forgot password? (blank email)
+
+- [ ] Navigate to `/login`
+- [ ] Leave email blank
+- [ ] Expand "Login with credentials" section
+- [ ] Click "Forgot password?"
+- [ ] **Expected:** Email field shows error "Please enter a valid email address"
 
 ### PENDING user activation on first login
 
@@ -292,6 +320,22 @@ Wait for startup to complete. The console will show magic links for dev users.
 - [ ] Click "Send Magic Link"
 - [ ] **Expected:** Notification "Magic link sent successfully" (green)
 - [ ] **Expected:** Magic link URL logged in server console
+
+### Send password reset link
+
+- [ ] Find any user in the grid
+- [ ] Click "Password Reset"
+- [ ] **Expected:** Notification "Password reset link generated (check server logs)" (green)
+- [ ] **Expected:** Password setup link URL logged in server console (format: `.../set-password?token=...`)
+
+### Password setup link on SYSTEM_ADMIN creation
+
+- [ ] Click "Create User"
+- [ ] Fill: email `newadmin@test.com`, name `New Admin`, role `SYSTEM_ADMIN`
+- [ ] Click "Save"
+- [ ] **Expected:** "User created successfully" notification (green)
+- [ ] **Expected:** "Password setup link generated (check server logs)" notification
+- [ ] **Expected:** Password setup link logged in server console
 
 ### Self-delete prevention
 

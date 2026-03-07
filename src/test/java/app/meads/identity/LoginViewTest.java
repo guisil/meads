@@ -8,6 +8,7 @@ import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.details.Details;
+import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.PasswordField;
 import org.junit.jupiter.api.AfterEach;
@@ -154,5 +155,46 @@ class LoginViewTest {
         assertThat(getNotifications()).isEmpty();
         assertThat(emailField.isInvalid()).isFalse();
         assertThat(passwordField.isInvalid()).isFalse();
+    }
+
+    @Test
+    void shouldShowForgotPasswordButton() {
+        _get(Details.class).setOpened(true);
+        assertThat(_find(Button.class, spec -> spec.withText("Forgot password?"))).isNotEmpty();
+    }
+
+    @Test
+    void shouldSendPasswordResetLinkWhenForgotPasswordClicked() {
+        var emailField = _get(EmailField.class, spec -> spec.withLabel("Email"));
+        emailField.setValue("user@example.com");
+
+        _get(Details.class).setOpened(true);
+        _click(_get(Button.class, spec -> spec.withText("Forgot password?")));
+
+        assertThat(getNotifications()).hasSize(1);
+        assertThat(getNotifications().getFirst().getElement().getProperty("text"))
+                .isEqualTo("If this email is registered, a password reset link has been sent.");
+    }
+
+    @Test
+    void shouldShowSameMessageWhenForgotPasswordEmailDoesNotExist() {
+        var emailField = _get(EmailField.class, spec -> spec.withLabel("Email"));
+        emailField.setValue("nonexistent@example.com");
+
+        _get(Details.class).setOpened(true);
+        _click(_get(Button.class, spec -> spec.withText("Forgot password?")));
+
+        assertThat(getNotifications()).hasSize(1);
+        assertThat(getNotifications().getFirst().getElement().getProperty("text"))
+                .isEqualTo("If this email is registered, a password reset link has been sent.");
+    }
+
+    @Test
+    void shouldShowValidationErrorWhenForgotPasswordEmailIsBlank() {
+        _get(Details.class).setOpened(true);
+        _click(_get(Button.class, spec -> spec.withText("Forgot password?")));
+
+        var emailField = _get(EmailField.class, spec -> spec.withLabel("Email"));
+        assertThat(emailField.isInvalid()).isTrue();
     }
 }

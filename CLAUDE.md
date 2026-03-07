@@ -259,7 +259,8 @@ Read `.claude/skills/new-module.md` before creating a module.
 ### Auth-Coupled Code (NOT reference patterns for other modules)
 The following are specific to the authentication mechanism and should NOT be
 treated as canonical patterns for other modules:
-- `LoginView.java` — auth-mechanism-specific UI (TabSheet: magic link tab + LoginForm credentials tab)
+- `LoginView.java` — auth-mechanism-specific UI (email + magic link, collapsible credentials + forgot password)
+- `SetPasswordView.java` — token-based password setup (`@AnonymousAllowed`)
 - `SecurityConfig.java` — formLogin + JWT filter + access code provider configuration
 - `JwtMagicLinkService.java` — JWT token generation/validation
 - `MagicLinkAuthenticationFilter.java` — JWT magic link filter

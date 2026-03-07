@@ -889,6 +889,22 @@ class UserListViewTest {
     }
 
     @Test
+    @WithMockUser(username = "admin@example.com", roles = "SYSTEM_ADMIN")
+    @DirtiesContext
+    void shouldSendPasswordResetLinkWhenButtonClicked() {
+        var user = new User("resetpw-" + UUID.randomUUID() + "@example.com", "Reset User", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
+        userRepository.save(user);
+
+        UI.getCurrent().navigate("users");
+        var view = _get(UserListView.class);
+        view.sendPasswordResetLink(user);
+
+        var notification = _get(Notification.class);
+        assertThat(notification.getElement().getProperty("text")).contains("Password reset link");
+        assertThat(notification.getThemeNames()).contains("success");
+    }
+
+    @Test
     @WithMockUser(roles = "SYSTEM_ADMIN")
     @DirtiesContext
     void shouldLogPasswordSetupLinkWhenCreatingSystemAdmin() {

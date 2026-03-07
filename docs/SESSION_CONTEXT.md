@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `competition-module`
-**Tests:** 391 passing (`mvn test -Dsurefire.useFile=false`)
+**Tests:** 396 passing (`mvn test -Dsurefire.useFile=false`)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -26,6 +26,8 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 - User entity (UUID, email, name, status, role, optional password, optional meaderyName)
 - JWT magic link authentication + admin password login + access code login
 - UserService (public API), SecurityConfig, UserListView (admin CRUD)
+- Password setup & reset: `SetPasswordView`, `setPasswordByToken()`, `generatePasswordSetupLink()`,
+  `hasPassword()`, triggers on admin role assignment, "Forgot password?" on login, admin "Password Reset"
 - **Status:** Complete
 
 ### competition module (`app.meads.competition`)
@@ -123,7 +125,8 @@ docs/
 ├── SESSION_CONTEXT.md          ← This file (primary context for resuming work)
 ├── examples/                   ← Test & domain model examples (referenced by CLAUDE.md)
 ├── plans/
-│   └── 2026-03-02-entry-module-design.md  ← Retained as reference for future module designs
+│   ├── 2026-03-02-entry-module-design.md  ← Retained as reference for future module designs
+│   └── 2026-03-07-password-setup-reset.md ← Password setup & reset design (ALL PHASES COMPLETE)
 ├── reference/
 │   └── chip-competition-rules.md          ← CHIP competition rules (active reference)
 ├── specs/
@@ -138,19 +141,20 @@ docs/
 
 ## What's Next
 
-1. **Password setup & reset — Phase 3** (forgot password + admin-triggered reset) — see `docs/plans/2026-03-07-password-setup-reset.md`
-3. **Manual UI walkthrough** — Restarting from Section 2 (authentication). Walkthrough includes
+1. **Manual UI walkthrough** — Restarting from Section 2 (authentication). Walkthrough includes
    Section 11 (multi-role & cross-competition edge cases) for exploratory testing and design decisions.
-4. **Code review** of both competition and entry modules (slice by slice)
-5. **Test review** (guided, with UI verification) of both modules
-6. **Judging module** — design and implementation
+2. **Code review** of both competition and entry modules (slice by slice)
+3. **Test review** (guided, with UI verification) of both modules
+4. **Judging module** — design and implementation
 
 ### Recent changes (this session)
-- **Password setup Phases 1 & 2 complete**: `SetPasswordView` at `/set-password`, password validation
-  (min 8 chars), `setPasswordByToken()` on `UserService`, `generatePasswordSetupLink()` on
-  `JwtMagicLinkService`, `hasPassword()` on `UserService`, auto-generation of setup links when
-  creating/editing SYSTEM_ADMIN users or adding competition ADMIN participants.
-  Design: `docs/plans/2026-03-07-password-setup-reset.md`
+- **Password setup & reset — ALL 3 PHASES COMPLETE**:
+  - Phase 1: `SetPasswordView` at `/set-password`, password validation (min 8 chars),
+    `setPasswordByToken()` on `UserService`, `generatePasswordSetupLink()` on `JwtMagicLinkService`
+  - Phase 2: `hasPassword()` on `UserService`, auto-generation of setup links when
+    creating/editing SYSTEM_ADMIN users or adding competition ADMIN participants
+  - Phase 3: "Forgot password?" button on LoginView, "Password Reset" button on UserListView
+  - Design: `docs/plans/2026-03-07-password-setup-reset.md`
 - Added `compadmin@example.com` dev user (USER role, password: `compadmin`) as dedicated competition admin
 - SYSTEM_ADMIN (`admin@example.com`) creates competitions; `compadmin@example.com` manages them
 - Added `MyCompetitionsView` at `/my-competitions` — competition admins can navigate to their competitions

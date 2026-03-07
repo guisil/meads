@@ -2,7 +2,7 @@
 
 **Date:** 2026-03-07
 **Branch:** `competition-module`
-**Status:** Planning
+**Status:** COMPLETE (all 3 phases)
 **Modules affected:** `identity` (primary), `competition` (triggers)
 
 ---
@@ -112,12 +112,12 @@ if too short. The Set Password view also enforces matching confirmation field.
    user has no password, generate and log the setup link
 4. ✅ Tests: `UserServiceTest` (2 new), `UserListViewTest` (3 new), `CompetitionDetailViewTest` (1 new)
 
-### Phase 3: Forgot password + admin-triggered reset
+### Phase 3: Forgot password + admin-triggered reset ✅ DONE
 
-1. Login page: "Forgot password?" flow
-2. Users page: "Send Password Reset" button (replaces or augments "Send Magic Link"
-   for users with admin roles)
-3. Tests: forgot password flow, admin reset trigger
+1. ✅ Login page: "Forgot password?" button in credentials section, reuses email field,
+   generates password setup link (same anti-enumeration pattern as magic link)
+2. ✅ Users page: "Password Reset" button per user in actions column
+3. ✅ Tests: `LoginViewTest` (4 new), `UserListViewTest` (1 new)
 
 ---
 
