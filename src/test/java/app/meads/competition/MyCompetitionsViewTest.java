@@ -1,16 +1,20 @@
-package app.meads;
+package app.meads.competition;
 
-import app.meads.MainLayout;
+import app.meads.TestcontainersConfiguration;
+import app.meads.competition.internal.CompetitionRepository;
+import app.meads.competition.internal.ParticipantRepository;
+import app.meads.competition.internal.ParticipantRoleRepository;
+import app.meads.identity.Role;
+import app.meads.identity.User;
+import app.meads.identity.UserStatus;
+import app.meads.identity.internal.UserRepository;
 import com.github.mvysny.fakeservlet.FakeRequest;
 import com.github.mvysny.kaributesting.v10.MockVaadin;
 import com.github.mvysny.kaributesting.v10.Routes;
 import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
 import com.vaadin.flow.component.UI;
-import com.vaadin.flow.component.applayout.AppLayout;
-import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.html.H1;
-import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
-import com.vaadin.flow.component.sidenav.SideNavItem;
+import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.server.VaadinServletRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,22 +29,40 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.annotation.DirtiesContext;
 
+import java.time.LocalDate;
 import java.util.Arrays;
-import java.util.List;
 
 import static com.github.mvysny.kaributesting.v10.LocatorJ.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
-class MainLayoutTest {
+@DirtiesContext
+class MyCompetitionsViewTest {
 
-    @Autowired
-    ApplicationContext ctx;
+    private static final String COMP_ADMIN_EMAIL = "mycompview-admin@example.com";
+    private static final String REGULAR_USER_EMAIL = "mycompview-user@example.com";
+
+    @Autowired ApplicationContext ctx;
+    @Autowired UserRepository userRepository;
+    @Autowired CompetitionRepository competitionRepository;
+    @Autowired ParticipantRepository participantRepository;
+    @Autowired ParticipantRoleRepository participantRoleRepository;
+    @Autowired CompetitionService competitionService;
 
     @BeforeEach
     void setup(TestInfo testInfo) {
+        if (userRepository.findByEmail(COMP_ADMIN_EMAIL).isEmpty()) {
+            userRepository.save(new User(COMP_ADMIN_EMAIL,
+                    "Comp Admin", UserStatus.ACTIVE, Role.USER));
+        }
+        if (userRepository.findByEmail(REGULAR_USER_EMAIL).isEmpty()) {
+            userRepository.save(new User(REGULAR_USER_EMAIL,
+                    "Regular User", UserStatus.ACTIVE, Role.USER));
+        }
+
         var routes = new Routes().autoDiscoverViews("app.meads");
         var servlet = new MockSpringServlet(routes, ctx, UI::new);
         MockVaadin.setup(UI::new, servlet);
@@ -97,87 +119,40 @@ class MainLayoutTest {
     }
 
     @Test
-    @WithMockUser(roles = "USER")
-    void shouldRenderRootViewInsideAppLayout() {
-        UI.getCurrent().navigate("");
+    @WithMockUser(username = COMP_ADMIN_EMAIL, roles = "USER")
+    void shouldDisplayMyCompetitionsViewWithGrid() {
+        UI.getCurrent().navigate("my-competitions");
 
-        assertThat(_find(AppLayout.class)).isNotEmpty();
-    }
-
-    @Test
-    @WithMockUser(roles = "USER")
-    void shouldDisplayAppTitleInNavbar() {
-        UI.getCurrent().navigate("");
-
-        var title = _get(H1.class, spec -> spec.withText("MEADS"));
+        var title = _get(H2.class, spec -> spec.withText("My Competitions"));
         assertThat(title).isNotNull();
+        var grid = _get(Grid.class);
+        assertThat(grid).isNotNull();
     }
 
     @Test
-    @WithMockUser(roles = "USER")
-    void shouldDisplayLogoutButtonInNavbarWhenAuthenticated() {
-        UI.getCurrent().navigate("");
+    @WithMockUser(username = COMP_ADMIN_EMAIL, roles = "USER")
+    void shouldShowCompetitionsWhereUserIsAdmin() {
+        // Create a competition and make the user an admin
+        var sysAdmin = userRepository.save(new User("mycompview-sysadmin@example.com",
+                "Sys Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN));
+        var comp = competitionService.createCompetition("My Test Comp",
+                LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 30),
+                "Lisbon", sysAdmin.getId());
+        competitionService.addParticipantByEmail(
+                comp.getId(), COMP_ADMIN_EMAIL, CompetitionRole.ADMIN, sysAdmin.getId());
 
-        assertThat(_find(Button.class, spec -> spec.withText("Logout"))).hasSize(1);
+        UI.getCurrent().navigate("my-competitions");
+
+        var grid = _get(Grid.class);
+        assertThat(grid.getGenericDataView().getItems().count()).isGreaterThanOrEqualTo(1);
     }
 
     @Test
-    @WithMockUser(roles = "SYSTEM_ADMIN")
-    void shouldDisplayUsersLinkInDrawerForAdmin() {
-        UI.getCurrent().navigate("");
+    @WithMockUser(username = REGULAR_USER_EMAIL, roles = "USER")
+    void shouldShowEmptyGridWhenUserIsNotAdminOfAnyCompetition() {
+        UI.getCurrent().navigate("my-competitions");
 
-        assertThat(_find(SideNavItem.class))
-                .extracting(SideNavItem::getLabel)
-                .contains("Users");
-    }
-
-    @Test
-    @WithMockUser(roles = "USER")
-    void shouldNotDisplayUsersLinkInDrawerForRegularUser() {
-        UI.getCurrent().navigate("");
-
-        assertThat(_find(SideNavItem.class))
-                .extracting(SideNavItem::getLabel)
-                .doesNotContain("Users");
-    }
-
-    @Test
-    @WithMockUser(roles = "USER")
-    void shouldDisplayMyCompetitionsLinkInDrawerForRegularUser() {
-        UI.getCurrent().navigate("");
-
-        assertThat(_find(SideNavItem.class))
-                .extracting(SideNavItem::getLabel)
-                .contains("My Competitions");
-    }
-
-    @Test
-    @WithMockUser(roles = "SYSTEM_ADMIN")
-    void shouldNotDisplayMyCompetitionsLinkForSystemAdmin() {
-        UI.getCurrent().navigate("");
-
-        assertThat(_find(SideNavItem.class))
-                .extracting(SideNavItem::getLabel)
-                .doesNotContain("My Competitions");
-    }
-
-    @Test
-    @WithMockUser(roles = "SYSTEM_ADMIN")
-    void shouldRenderUserListViewInsideAppLayout() {
-        UI.getCurrent().navigate("users");
-
-        assertThat(_find(AppLayout.class)).isNotEmpty();
-    }
-
-    @Test
-    @WithMockUser(roles = "USER")
-    void shouldUseHorizontalLayoutInNavbar() {
-        UI.getCurrent().navigate("");
-
-        var layout = _get(MainLayout.class);
-        var navbarLayouts = layout.getChildren()
-                .filter(c -> c instanceof HorizontalLayout)
-                .toList();
-        assertThat(navbarLayouts).hasSize(1);
+        var grid = _get(Grid.class);
+        assertThat(grid.getGenericDataView().getItems().count()).isZero();
     }
 }

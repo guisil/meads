@@ -12,4 +12,5 @@ public interface ParticipantRepository extends JpaRepository<Participant, UUID> 
     Optional<Participant> findByAccessCode(String accessCode);
     boolean existsByAccessCode(String accessCode);
     Optional<Participant> findByCompetitionIdAndUserId(UUID competitionId, UUID userId);
+    List<Participant> findByUserId(UUID userId);
 }

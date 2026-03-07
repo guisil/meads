@@ -768,6 +768,59 @@ class CompetitionServiceTest {
         assertThat(result).isFalse();
     }
 
+    // --- findCompetitionsByAdmin ---
+
+    @Test
+    void shouldFindCompetitionsWhereUserIsAdmin() {
+        var user = createRegularUser();
+        var comp1 = createCompetition();
+        var comp2 = new Competition("Other Competition",
+                LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30), "Porto");
+        var participant1 = new Participant(comp1.getId(), user.getId());
+        var participant2 = new Participant(comp2.getId(), user.getId());
+        given(participantRepository.findByUserId(user.getId()))
+                .willReturn(List.of(participant1, participant2));
+        given(participantRoleRepository.existsByParticipantIdAndRole(
+                participant1.getId(), CompetitionRole.ADMIN)).willReturn(true);
+        given(participantRoleRepository.existsByParticipantIdAndRole(
+                participant2.getId(), CompetitionRole.ADMIN)).willReturn(true);
+        given(competitionRepository.findById(comp1.getId()))
+                .willReturn(Optional.of(comp1));
+        given(competitionRepository.findById(comp2.getId()))
+                .willReturn(Optional.of(comp2));
+
+        var result = competitionService.findCompetitionsByAdmin(user.getId());
+
+        assertThat(result).hasSize(2);
+        assertThat(result).containsExactlyInAnyOrder(comp1, comp2);
+    }
+
+    @Test
+    void shouldReturnEmptyWhenUserIsNotAdminOfAnyCompetition() {
+        var user = createRegularUser();
+        var comp = createCompetition();
+        var participant = new Participant(comp.getId(), user.getId());
+        given(participantRepository.findByUserId(user.getId()))
+                .willReturn(List.of(participant));
+        given(participantRoleRepository.existsByParticipantIdAndRole(
+                participant.getId(), CompetitionRole.ADMIN)).willReturn(false);
+
+        var result = competitionService.findCompetitionsByAdmin(user.getId());
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void shouldReturnEmptyWhenUserHasNoParticipations() {
+        var user = createRegularUser();
+        given(participantRepository.findByUserId(user.getId()))
+                .willReturn(List.of());
+
+        var result = competitionService.findCompetitionsByAdmin(user.getId());
+
+        assertThat(result).isEmpty();
+    }
+
     // --- findDivisionsByCompetition ---
 
     @Test

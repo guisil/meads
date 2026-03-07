@@ -14,6 +14,7 @@ import org.springframework.validation.annotation.Validated;
 import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -71,6 +72,15 @@ public class CompetitionService {
 
     public List<Competition> findAllCompetitions() {
         return competitionRepository.findAll();
+    }
+
+    public List<Competition> findCompetitionsByAdmin(@NotNull UUID userId) {
+        return participantRepository.findByUserId(userId).stream()
+                .filter(p -> participantRoleRepository.existsByParticipantIdAndRole(
+                        p.getId(), CompetitionRole.ADMIN))
+                .map(p -> competitionRepository.findById(p.getCompetitionId()))
+                .flatMap(Optional::stream)
+                .toList();
     }
 
     public Competition updateCompetition(@NotNull UUID competitionId,

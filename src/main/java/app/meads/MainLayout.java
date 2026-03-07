@@ -42,6 +42,8 @@ public class MainLayout extends AppLayout {
         if (authenticationContext.hasRole("SYSTEM_ADMIN")) {
             nav.addItem(new SideNavItem("Competitions", "competitions", VaadinIcon.CALENDAR.create()));
             nav.addItem(new SideNavItem("Users", "users", VaadinIcon.USERS.create()));
+        } else if (authenticationContext.isAuthenticated()) {
+            nav.addItem(new SideNavItem("My Competitions", "my-competitions", VaadinIcon.CALENDAR.create()));
         }
 
         var scroller = new Scroller(nav);
