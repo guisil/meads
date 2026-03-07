@@ -84,6 +84,12 @@ public class UserService {
         return userRepository.save(user);
     }
 
+    public boolean hasPassword(@NotNull UUID userId) {
+        return userRepository.findById(userId)
+                .map(user -> user.getPasswordHash() != null)
+                .orElse(false);
+    }
+
     public boolean isEditingSelf(UUID userId, String currentUserEmail) {
         return userRepository.findById(userId)
                 .map(user -> user.getEmail().equals(currentUserEmail))

@@ -196,15 +196,16 @@ public class UserListView extends VerticalLayout {
             }
 
             try {
+                User savedUser;
                 if (isCreate) {
-                    userService.createUser(
+                    savedUser = userService.createUser(
                         emailField.getValue(),
                         nameField.getValue(),
                         UserStatus.PENDING,
                         roleSelect.getValue()
                     );
                 } else {
-                    userService.updateUser(
+                    savedUser = userService.updateUser(
                         existingUser.getId(),
                         nameField.getValue(),
                         roleSelect.getValue(),
@@ -215,6 +216,7 @@ public class UserListView extends VerticalLayout {
                 grid.setItems(userService.findAll());
                 var notification = Notification.show(isCreate ? "User created successfully" : "User saved successfully");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                generatePasswordSetupLinkIfNeeded(savedUser);
                 dialog.close();
             } catch (IllegalArgumentException ex) {
                 if (emailField != null) {
@@ -249,6 +251,14 @@ public class UserListView extends VerticalLayout {
         dialog.add(formLayout);
 
         dialog.open();
+    }
+
+    private void generatePasswordSetupLinkIfNeeded(User user) {
+        if (user.getRole() == Role.SYSTEM_ADMIN && !userService.hasPassword(user.getId())) {
+            String link = jwtMagicLinkService.generatePasswordSetupLink(user.getEmail(), Duration.ofDays(7));
+            log.info("\n\n\tPassword setup link for {}: {}\n", user.getEmail(), link);
+            Notification.show("Password setup link generated (check server logs)");
+        }
     }
 
     private String getCurrentUserEmail() {

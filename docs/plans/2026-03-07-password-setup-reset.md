@@ -103,14 +103,14 @@ if too short. The Set Password view also enforces matching confirmation field.
 4. ✅ Add password validation (min 8 chars) to `UserService.setPassword()` and `setPasswordByToken()`
 5. ✅ Tests: `UserServiceTest` (3 new), `JwtMagicLinkServiceTest` (1 new), `SetPasswordViewTest` (4 new)
 
-### Phase 2: Admin role assignment triggers
+### Phase 2: Admin role assignment triggers ✅ DONE
 
-1. `UserListView` — when creating/editing a user with SYSTEM_ADMIN role and no password,
+1. ✅ `UserService.hasPassword(userId)` — public API method for views to check
+2. ✅ `UserListView` — when creating/editing a user with SYSTEM_ADMIN role and no password,
    generate and log the setup link after save
-2. `CompetitionDetailView` (Participants tab) — when adding a competition ADMIN and the
+3. ✅ `CompetitionDetailView` (Participants tab) — when adding a competition ADMIN and the
    user has no password, generate and log the setup link
-3. `UserService.hasPassword(userId)` — public API method for views to check
-4. Tests: verify link generation on role assignment
+4. ✅ Tests: `UserServiceTest` (2 new), `UserListViewTest` (3 new), `CompetitionDetailViewTest` (1 new)
 
 ### Phase 3: Forgot password + admin-triggered reset
 

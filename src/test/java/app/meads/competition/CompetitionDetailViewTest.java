@@ -19,6 +19,7 @@ import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.tabs.TabSheet;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.upload.Upload;
@@ -208,5 +209,32 @@ class CompetitionDetailViewTest {
 
         var uploads = _find(Upload.class);
         assertThat(uploads).hasSize(1);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldLogPasswordSetupLinkWhenAddingCompetitionAdminWithoutPassword() {
+        // Create a user without a password who will become competition admin
+        var newAdmin = userRepository.findByEmail("newcompadmin@example.com")
+                .orElseGet(() -> userRepository.save(new User("newcompadmin@example.com",
+                        "New Comp Admin", UserStatus.ACTIVE, Role.USER)));
+        assertThat(newAdmin.getPasswordHash()).isNull();
+
+        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(1); // Participants tab
+
+        _click(_get(Button.class, spec -> spec.withText("Add Participant")));
+
+        _get(TextField.class, spec -> spec.withLabel("Email")).setValue("newcompadmin@example.com");
+        _get(Select.class, spec -> spec.withLabel("Role")).setValue(CompetitionRole.ADMIN);
+        _click(_get(Button.class, spec -> spec.withText("Add")));
+
+        var notifications = _find(Notification.class);
+        var notificationTexts = notifications.stream()
+                .map(n -> n.getElement().getProperty("text"))
+                .toList();
+        assertThat(notificationTexts).anyMatch(t -> t != null && t.contains("Password setup link"));
     }
 }

@@ -40,6 +40,8 @@ import static com.github.mvysny.kaributesting.v10.LocatorJ.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import app.meads.identity.JwtMagicLinkService;
+
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
 class UserListViewTest {
@@ -49,6 +51,9 @@ class UserListViewTest {
 
     @Autowired
     UserRepository userRepository;
+
+    @Autowired
+    UserService userService;
 
     @BeforeEach
     void setup(TestInfo testInfo) {
@@ -881,5 +886,70 @@ class UserListViewTest {
         _click(_get(Button.class, spec -> spec.withText("Save")));
 
         assertThat(_get(Notification.class).getThemeNames()).contains("success");
+    }
+
+    @Test
+    @WithMockUser(roles = "SYSTEM_ADMIN")
+    @DirtiesContext
+    void shouldLogPasswordSetupLinkWhenCreatingSystemAdmin() {
+        UI.getCurrent().navigate("users");
+        _click(_get(Button.class, spec -> spec.withText("Create User")));
+
+        _get(EmailField.class, spec -> spec.withLabel("Email")).setValue("newadmin@example.com");
+        _get(TextField.class, spec -> spec.withLabel("Name")).setValue("New Admin");
+        _get(Select.class, spec -> spec.withLabel("Role")).setValue(Role.SYSTEM_ADMIN);
+        _click(_get(Button.class, spec -> spec.withText("Save")));
+
+        // Should show both "User created" and "Password setup link" notifications
+        var notifications = _find(Notification.class);
+        assertThat(notifications).hasSizeGreaterThanOrEqualTo(2);
+        var notificationTexts = notifications.stream()
+                .map(n -> n.getElement().getProperty("text"))
+                .toList();
+        assertThat(notificationTexts).anyMatch(t -> t.contains("Password setup link"));
+
+        // User should have no password
+        var createdUser = userRepository.findByEmail("newadmin@example.com").orElseThrow();
+        assertThat(createdUser.getPasswordHash()).isNull();
+    }
+
+    @Test
+    @WithMockUser(roles = "SYSTEM_ADMIN")
+    @DirtiesContext
+    void shouldLogPasswordSetupLinkWhenEditingUserToSystemAdmin() {
+        var user = new User("promote-test-" + UUID.randomUUID() + "@example.com", "User To Promote", UserStatus.ACTIVE, Role.USER);
+        userRepository.save(user);
+
+        UI.getCurrent().navigate("users");
+        var view = _get(UserListView.class);
+        view.openEditDialog(user);
+        _get(Select.class, spec -> spec.withLabel("Role")).setValue(Role.SYSTEM_ADMIN);
+        _click(_get(Button.class, spec -> spec.withText("Save")));
+
+        var notifications = _find(Notification.class);
+        var notificationTexts = notifications.stream()
+                .map(n -> n.getElement().getProperty("text"))
+                .toList();
+        assertThat(notificationTexts).anyMatch(t -> t.contains("Password setup link"));
+    }
+
+    @Test
+    @WithMockUser(roles = "SYSTEM_ADMIN")
+    @DirtiesContext
+    void shouldNotLogPasswordSetupLinkWhenCreatingRegularUser() {
+        UI.getCurrent().navigate("users");
+        _click(_get(Button.class, spec -> spec.withText("Create User")));
+
+        _get(EmailField.class, spec -> spec.withLabel("Email")).setValue("regularuser@example.com");
+        _get(TextField.class, spec -> spec.withLabel("Name")).setValue("Regular User");
+        _get(Select.class, spec -> spec.withLabel("Role")).setValue(Role.USER);
+        _click(_get(Button.class, spec -> spec.withText("Save")));
+
+        // Should only show "User created" notification, not a password setup link
+        var notifications = _find(Notification.class);
+        var notificationTexts = notifications.stream()
+                .map(n -> n.getElement().getProperty("text"))
+                .toList();
+        assertThat(notificationTexts).noneMatch(t -> t != null && t.contains("Password setup link"));
     }
 }

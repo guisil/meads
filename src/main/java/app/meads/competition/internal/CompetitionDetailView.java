@@ -2,6 +2,7 @@ package app.meads.competition.internal;
 
 import app.meads.MainLayout;
 import app.meads.competition.*;
+import app.meads.identity.JwtMagicLinkService;
 import app.meads.identity.User;
 import app.meads.identity.UserService;
 import com.vaadin.flow.component.button.Button;
@@ -26,20 +27,24 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.spring.security.AuthenticationContext;
 import jakarta.annotation.security.PermitAll;
 import org.springframework.security.core.userdetails.UserDetails;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
 
+import java.time.Duration;
 import java.util.Base64;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Route(value = "competitions/:competitionId", layout = MainLayout.class)
 @PermitAll
 public class CompetitionDetailView extends VerticalLayout implements BeforeEnterObserver {
 
     private final CompetitionService competitionService;
     private final UserService userService;
+    private final JwtMagicLinkService jwtMagicLinkService;
     private final transient AuthenticationContext authenticationContext;
 
     private UUID competitionId;
@@ -51,9 +56,11 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
     public CompetitionDetailView(CompetitionService competitionService,
                                   UserService userService,
+                                  JwtMagicLinkService jwtMagicLinkService,
                                   AuthenticationContext authenticationContext) {
         this.competitionService = competitionService;
         this.userService = userService;
+        this.jwtMagicLinkService = jwtMagicLinkService;
         this.authenticationContext = authenticationContext;
     }
 
@@ -230,14 +237,14 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 return;
             }
             try {
+                var email = emailField.getValue().trim();
+                var role = roleSelect.getValue();
                 competitionService.addParticipantByEmail(
-                        competitionId,
-                        emailField.getValue().trim(),
-                        roleSelect.getValue(),
-                        getCurrentUserId());
+                        competitionId, email, role, getCurrentUserId());
                 refreshParticipantsGrid();
                 var notification = Notification.show("Participant added successfully");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                generatePasswordSetupLinkIfNeeded(email, role);
                 dialog.close();
             } catch (IllegalArgumentException ex) {
                 Notification.show(ex.getMessage());
@@ -458,6 +465,22 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
     private void refreshDivisionsGrid() {
         divisionsGrid.setItems(competitionService.findDivisionsByCompetition(competitionId));
+    }
+
+    private void generatePasswordSetupLinkIfNeeded(String email, CompetitionRole role) {
+        if (role == CompetitionRole.ADMIN) {
+            try {
+                var user = userService.findByEmail(email);
+                if (!userService.hasPassword(user.getId())) {
+                    var link = jwtMagicLinkService.generatePasswordSetupLink(
+                            email, Duration.ofDays(7));
+                    log.info("\n\n\tPassword setup link for {}: {}\n", email, link);
+                    Notification.show("Password setup link generated (check server logs)");
+                }
+            } catch (IllegalArgumentException ignored) {
+                // User not found — shouldn't happen since we just added them
+            }
+        }
     }
 
     private UUID getCurrentUserId() {

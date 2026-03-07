@@ -345,4 +345,23 @@ class UserServiceTest {
 
         then(userRepository).should(never()).save(any());
     }
+
+    // --- hasPassword tests ---
+
+    @Test
+    void shouldReturnTrueWhenUserHasPassword() {
+        User user = new User("admin@example.com", "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
+        user.setPasswordHash("$2a$10$someHash");
+        given(userRepository.findById(user.getId())).willReturn(Optional.of(user));
+
+        assertThat(userService.hasPassword(user.getId())).isTrue();
+    }
+
+    @Test
+    void shouldReturnFalseWhenUserHasNoPassword() {
+        User user = new User("user@example.com", "User", UserStatus.ACTIVE, Role.USER);
+        given(userRepository.findById(user.getId())).willReturn(Optional.of(user));
+
+        assertThat(userService.hasPassword(user.getId())).isFalse();
+    }
 }
