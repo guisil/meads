@@ -81,6 +81,16 @@ class JwtMagicLinkServiceTest {
     }
 
     @Test
+    void shouldGeneratePasswordSetupLinkWithCorrectUrl() {
+        String link = jwtMagicLinkService.generatePasswordSetupLink("admin@example.com", Duration.ofDays(7));
+
+        assertThat(link).startsWith(BASE_URL + "/set-password?token=");
+        String token = link.substring(link.indexOf("token=") + "token=".length());
+        String email = jwtMagicLinkService.extractEmail(token);
+        assertThat(email).isEqualTo("admin@example.com");
+    }
+
+    @Test
     void shouldAllowReusingValidToken() {
         // Arrange
         String link = jwtMagicLinkService.generateLink("user@example.com", Duration.ofDays(7));

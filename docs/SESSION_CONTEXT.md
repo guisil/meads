@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `competition-module`
-**Tests:** 377 passing (`mvn test -Dsurefire.useFile=false`)
+**Tests:** 385 passing (`mvn test -Dsurefire.useFile=false`)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -138,15 +138,18 @@ docs/
 
 ## What's Next
 
-1. **Manual UI walkthrough** — Restarting from Section 2 (authentication). Sections 2.1–2.6
-   verified OK in current run. Paused at access code login step to implement My Competitions view.
-   Walkthrough now includes Section 11 (multi-role & cross-competition edge cases) for
-   exploratory testing and design decisions.
-2. **Code review** of both competition and entry modules (slice by slice)
-3. **Test review** (guided, with UI verification) of both modules
-4. **Judging module** — design and implementation
+1. **Password setup & reset — Phase 2** (admin role assignment triggers) — see `docs/plans/2026-03-07-password-setup-reset.md`
+2. **Password setup & reset — Phase 3** (forgot password + admin-triggered reset)
+3. **Manual UI walkthrough** — Restarting from Section 2 (authentication). Walkthrough includes
+   Section 11 (multi-role & cross-competition edge cases) for exploratory testing and design decisions.
+4. **Code review** of both competition and entry modules (slice by slice)
+5. **Test review** (guided, with UI verification) of both modules
+6. **Judging module** — design and implementation
 
 ### Recent changes (this session)
+- **Password setup Phase 1 complete**: `SetPasswordView` at `/set-password`, password validation
+  (min 8 chars), `setPasswordByToken()` on `UserService`, `generatePasswordSetupLink()` on
+  `JwtMagicLinkService`. Design: `docs/plans/2026-03-07-password-setup-reset.md`
 - Added `compadmin@example.com` dev user (USER role, password: `compadmin`) as dedicated competition admin
 - SYSTEM_ADMIN (`admin@example.com`) creates competitions; `compadmin@example.com` manages them
 - Added `MyCompetitionsView` at `/my-competitions` — competition admins can navigate to their competitions

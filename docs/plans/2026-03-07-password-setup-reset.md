@@ -80,7 +80,13 @@ Add a "Forgot password?" link near the credentials section. Clicking it:
 - Generates a password setup link for that email
 - Shows the same "If this email is registered..." message (no enumeration)
 
-#### 5. User entity change
+#### 5. Password validation
+
+Minimum 8 characters. No composition rules (following NIST SP 800-63B).
+Validated in `UserService.setPassword()` — throws `IllegalArgumentException`
+if too short. The Set Password view also enforces matching confirmation field.
+
+#### 6. User entity change
 
 `User` already has `passwordHash` field. No schema change needed. The
 `hasPassword()` check is simply `passwordHash != null`.
@@ -89,12 +95,13 @@ Add a "Forgot password?" link near the credentials section. Clicking it:
 
 ## Implementation Phases
 
-### Phase 1: Set Password view + token generation
+### Phase 1: Set Password view + token generation ✅ DONE
 
-1. Add `generatePasswordSetupLink(email, duration)` to `JwtMagicLinkService`
-2. Create `SetPasswordView` at `/set-password` (`@AnonymousAllowed`)
-3. Add `setPassword(token, newPassword)` to `UserService`
-4. Tests: token validation, password set, redirect, expired token, mismatched passwords
+1. ✅ Add `generatePasswordSetupLink(email, duration)` to `JwtMagicLinkService`
+2. ✅ Create `SetPasswordView` at `/set-password` (`@AnonymousAllowed`)
+3. ✅ Add `setPasswordByToken(token, newPassword)` to `UserService`
+4. ✅ Add password validation (min 8 chars) to `UserService.setPassword()` and `setPasswordByToken()`
+5. ✅ Tests: `UserServiceTest` (3 new), `JwtMagicLinkServiceTest` (1 new), `SetPasswordViewTest` (4 new)
 
 ### Phase 2: Admin role assignment triggers
 

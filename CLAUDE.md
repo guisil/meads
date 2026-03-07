@@ -108,6 +108,7 @@ app.meads.identity                       ← Identity module public API
     ├── UserListView.java                ← Admin CRUD view (@RolesAllowed("SYSTEM_ADMIN"))
     ├── AdminInitializer.java            ← Seeds initial admin with password on startup
     ├── DevUserInitializer.java          ← Seeds dev users (dev profile only)
+    ├── SetPasswordView.java              ← Set password via token (@AnonymousAllowed)
     └── UserActivationListener.java      ← PENDING → ACTIVE on first login
 
 app.meads.competition                    ← Competition module public API

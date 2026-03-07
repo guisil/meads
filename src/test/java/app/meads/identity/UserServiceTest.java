@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.mockito.ArgumentMatchers.eq;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -27,6 +29,9 @@ class UserServiceTest {
 
     @Mock
     UserRepository userRepository;
+
+    @Mock
+    JwtMagicLinkService jwtMagicLinkService;
 
     @Mock
     PasswordEncoder passwordEncoder;
@@ -291,6 +296,18 @@ class UserServiceTest {
     }
 
     @Test
+    void shouldRejectPasswordShorterThanEightCharacters() {
+        UUID userId = UUID.randomUUID();
+
+        assertThatThrownBy(() -> userService.setPassword(userId, "short"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("at least 8 characters");
+
+        then(passwordEncoder).shouldHaveNoInteractions();
+        then(userRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
     void shouldThrowWhenSettingPasswordForNonExistentUser() {
         // Arrange
         UUID userId = UUID.randomUUID();
@@ -300,5 +317,32 @@ class UserServiceTest {
         assertThatThrownBy(() -> userService.setPassword(userId, "rawPassword"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("User not found");
+    }
+
+    // --- setPasswordByToken tests ---
+
+    @Test
+    void shouldSetPasswordByToken() {
+        User user = new User("admin@example.com", "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
+        given(jwtMagicLinkService.extractEmail("valid-token")).willReturn("admin@example.com");
+        given(userRepository.findByEmail("admin@example.com")).willReturn(Optional.of(user));
+        given(passwordEncoder.encode("newPassword123")).willReturn("$2a$10$encoded");
+        given(userRepository.save(any(User.class))).willAnswer(inv -> inv.getArgument(0));
+
+        userService.setPasswordByToken("valid-token", "newPassword123");
+
+        assertThat(user.getPasswordHash()).isEqualTo("$2a$10$encoded");
+        then(userRepository).should().save(user);
+    }
+
+    @Test
+    void shouldRejectShortPasswordByToken() {
+        given(jwtMagicLinkService.extractEmail("valid-token")).willReturn("admin@example.com");
+
+        assertThatThrownBy(() -> userService.setPasswordByToken("valid-token", "short"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("at least 8 characters");
+
+        then(userRepository).should(never()).save(any());
     }
 }

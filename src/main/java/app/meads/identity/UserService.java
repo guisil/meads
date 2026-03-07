@@ -19,10 +19,12 @@ import java.util.UUID;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final JwtMagicLinkService jwtMagicLinkService;
     private final PasswordEncoder passwordEncoder;
 
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository userRepository, JwtMagicLinkService jwtMagicLinkService, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.jwtMagicLinkService = jwtMagicLinkService;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -89,10 +91,26 @@ public class UserService {
     }
 
     public void setPassword(UUID userId, String rawPassword) {
+        validatePassword(rawPassword);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
         user.setPasswordHash(passwordEncoder.encode(rawPassword));
         userRepository.save(user);
+    }
+
+    public void setPasswordByToken(String token, String rawPassword) {
+        String email = jwtMagicLinkService.extractEmail(token);
+        validatePassword(rawPassword);
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        user.setPasswordHash(passwordEncoder.encode(rawPassword));
+        userRepository.save(user);
+    }
+
+    private void validatePassword(String rawPassword) {
+        if (rawPassword == null || rawPassword.length() < 8) {
+            throw new IllegalArgumentException("Password must be at least 8 characters");
+        }
     }
 
     public void removeUser(UUID userId, String currentUserEmail) {
