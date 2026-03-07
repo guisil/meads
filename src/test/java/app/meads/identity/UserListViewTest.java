@@ -4,7 +4,6 @@ import app.meads.TestcontainersConfiguration;
 import app.meads.identity.internal.UserListView;
 import app.meads.identity.internal.UserRepository;
 import com.github.mvysny.fakeservlet.FakeRequest;
-import com.github.mvysny.kaributesting.v10.MockAccessDeniedException;
 import com.github.mvysny.kaributesting.v10.MockVaadin;
 import com.github.mvysny.kaributesting.v10.Routes;
 import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
@@ -38,7 +37,6 @@ import java.util.UUID;
 
 import static com.github.mvysny.kaributesting.v10.LocatorJ.*;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import app.meads.identity.JwtMagicLinkService;
 
@@ -123,9 +121,10 @@ class UserListViewTest {
 
     @Test
     @WithMockUser(roles = "USER")
-    void shouldDenyAccessToUsersViewForRegularUser() {
-        assertThatThrownBy(() -> UI.getCurrent().navigate("users"))
-                .isInstanceOf(MockAccessDeniedException.class);
+    void shouldRedirectToRootWhenRegularUserAccessesUsersView() {
+        UI.getCurrent().navigate("users");
+
+        assertThat(UI.getCurrent().getInternals().getActiveViewLocation().getPath()).isEmpty();
     }
 
     @Test

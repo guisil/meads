@@ -20,16 +20,18 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.router.BeforeEnterEvent;
+import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.spring.security.AuthenticationContext;
-import jakarta.annotation.security.RolesAllowed;
+import jakarta.annotation.security.PermitAll;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.util.StringUtils;
 
 @Slf4j
 @Route(value = "users", layout = MainLayout.class)
-@RolesAllowed("SYSTEM_ADMIN")
-public class UserListView extends VerticalLayout {
+@PermitAll
+public class UserListView extends VerticalLayout implements BeforeEnterObserver {
 
     private final UserService userService;
     private final JwtMagicLinkService jwtMagicLinkService;
@@ -77,6 +79,17 @@ public class UserListView extends VerticalLayout {
         grid.setItems(userService.findAll());
 
         add(grid);
+    }
+
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        var isAdmin = authenticationContext.getAuthenticatedUser(UserDetails.class)
+                .map(user -> user.getAuthorities().stream()
+                        .anyMatch(a -> a.getAuthority().equals("ROLE_SYSTEM_ADMIN")))
+                .orElse(false);
+        if (!isAdmin) {
+            event.forwardTo("");
+        }
     }
 
     public void openEditDialog(User user) {

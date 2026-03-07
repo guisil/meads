@@ -379,7 +379,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 - [ ] Log in as `user@example.com`
 - [ ] Navigate to `/competitions`
-- [ ] **Expected:** Access denied (redirected away from the page)
+- [ ] **Expected:** Redirected to `/` (root) -- not an error page
 
 ### Create competition -- success
 

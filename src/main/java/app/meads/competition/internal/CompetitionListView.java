@@ -16,17 +16,19 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.upload.Upload;
 import com.vaadin.flow.server.streams.UploadHandler;
+import com.vaadin.flow.router.BeforeEnterEvent;
+import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.spring.security.AuthenticationContext;
-import jakarta.annotation.security.RolesAllowed;
+import jakarta.annotation.security.PermitAll;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.util.StringUtils;
 
 import java.util.UUID;
 
 @Route(value = "competitions", layout = MainLayout.class)
-@RolesAllowed("SYSTEM_ADMIN")
-public class CompetitionListView extends VerticalLayout {
+@PermitAll
+public class CompetitionListView extends VerticalLayout implements BeforeEnterObserver {
 
     private final CompetitionService competitionService;
     private final UserService userService;
@@ -71,6 +73,17 @@ public class CompetitionListView extends VerticalLayout {
 
         refreshGrid();
         add(grid);
+    }
+
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        var isAdmin = authenticationContext.getAuthenticatedUser(UserDetails.class)
+                .map(user -> user.getAuthorities().stream()
+                        .anyMatch(a -> a.getAuthority().equals("ROLE_SYSTEM_ADMIN")))
+                .orElse(false);
+        if (!isAdmin) {
+            event.forwardTo("");
+        }
     }
 
     private void openCompetitionDialog(Competition existing) {

@@ -8,7 +8,6 @@ import app.meads.identity.User;
 import app.meads.identity.UserStatus;
 import app.meads.identity.internal.UserRepository;
 import com.github.mvysny.fakeservlet.FakeRequest;
-import com.github.mvysny.kaributesting.v10.MockAccessDeniedException;
 import com.github.mvysny.kaributesting.v10.MockVaadin;
 import com.github.mvysny.kaributesting.v10.Routes;
 import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
@@ -41,7 +40,6 @@ import java.util.Arrays;
 
 import static com.github.mvysny.kaributesting.v10.LocatorJ.*;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
@@ -132,9 +130,10 @@ class CompetitionListViewTest {
 
     @Test
     @WithMockUser(roles = "USER")
-    void shouldDenyAccessToCompetitionsViewForRegularUser() {
-        assertThatThrownBy(() -> UI.getCurrent().navigate("competitions"))
-                .isInstanceOf(MockAccessDeniedException.class);
+    void shouldRedirectToRootWhenRegularUserAccessesCompetitionsView() {
+        UI.getCurrent().navigate("competitions");
+
+        assertThat(UI.getCurrent().getInternals().getActiveViewLocation().getPath()).isEmpty();
     }
 
     @Test

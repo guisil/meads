@@ -141,13 +141,19 @@ docs/
 
 ## What's Next
 
-1. **Manual UI walkthrough** — Restarting from Section 2 (authentication). Walkthrough includes
-   Section 11 (multi-role & cross-competition edge cases) for exploratory testing and design decisions.
+1. **Manual UI walkthrough** — Section 2 (authentication) complete. Resume from Section 3
+   (navigation & layout). Walkthrough includes Section 11 (multi-role & cross-competition
+   edge cases) for exploratory testing and design decisions.
 2. **Code review** of both competition and entry modules (slice by slice)
 3. **Test review** (guided, with UI verification) of both modules
 4. **Judging module** — design and implementation
 
 ### Recent changes (this session)
+- **Friendly redirect on access denied** — `UserListView` and `CompetitionListView` now use
+  `@PermitAll` + `beforeEnter()` instead of `@RolesAllowed("SYSTEM_ADMIN")`. Unauthorized
+  users are forwarded to `/` instead of seeing a 403 error.
+- **SetPasswordView Enter key** — pressing Enter submits the form, EAGER value change mode on both fields
+- **UserListView Actions column** — `.setAutoWidth(true)` to prevent button clipping
 - **Magic link blocked for password users** — defense in depth:
   - `MagicLinkAuthenticationFilter` rejects magic link auth for users with passwords (redirects to `/login?error`)
   - `LoginView.sendMagicLink()` skips link generation for password users (logs credential reminder instead)
