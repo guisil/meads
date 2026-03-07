@@ -35,6 +35,7 @@ class DevUserInitializer {
     @EventListener(ApplicationReadyEvent.class)
     void initializeDevUsers() {
         createDevUserIfAbsent("admin@example.com", "Dev Admin", Role.SYSTEM_ADMIN, UserStatus.ACTIVE, "admin");
+        createDevUserIfAbsent("compadmin@example.com", "Competition Admin", Role.USER, UserStatus.ACTIVE, "compadmin");
         createDevUserIfAbsent("user@example.com", "Dev User", Role.USER, UserStatus.ACTIVE, null);
         createDevUserIfAbsent("pending@example.com", "Pending User", Role.USER, UserStatus.PENDING, null);
         createDevUserIfAbsent("judge@example.com", "Dev Judge", Role.USER, UserStatus.ACTIVE, null);

@@ -40,78 +40,82 @@ class DevDataInitializer {
             return;
         }
 
-        var admin = userService.findByEmail("admin@example.com");
-        var adminId = admin.getId();
+        var sysAdmin = userService.findByEmail("admin@example.com");
+        var sysAdminId = sysAdmin.getId();
+        var compAdmin = userService.findByEmail("compadmin@example.com");
+        var compAdminId = compAdmin.getId();
 
-        seedChip2026(adminId);
-        seedTestCompetition(adminId);
+        seedChip2026(sysAdminId, compAdminId);
+        seedTestCompetition(sysAdminId, compAdminId);
 
         log.info("Dev data initialization complete");
     }
 
-    private void seedChip2026(UUID adminId) {
-        // 1. Create competition
+    private void seedChip2026(UUID sysAdminId, UUID compAdminId) {
+        // 1. Create competition (requires SYSTEM_ADMIN)
         var chip = competitionService.createCompetition(
                 "CHIP 2026",
                 java.time.LocalDate.of(2026, 6, 1),
                 java.time.LocalDate.of(2026, 6, 30),
                 "Lisbon, Portugal",
-                adminId);
+                sysAdminId);
         log.info("Created competition: {}", chip.getName());
 
-        // 2. Create divisions
+        // 2. Add competition admin (requires SYSTEM_ADMIN since no comp admin yet)
+        competitionService.addParticipantByEmail(
+                chip.getId(), "compadmin@example.com", CompetitionRole.ADMIN, sysAdminId);
+
+        // 3. Create divisions (competition admin can do this)
         var amadora = competitionService.createDivision(
-                chip.getId(), "Amadora", ScoringSystem.MJP, adminId);
+                chip.getId(), "Amadora", ScoringSystem.MJP, compAdminId);
         var profissional = competitionService.createDivision(
-                chip.getId(), "Profissional", ScoringSystem.MJP, adminId);
+                chip.getId(), "Profissional", ScoringSystem.MJP, compAdminId);
         log.info("Created divisions: Amadora ({}), Profissional ({})",
                 amadora.getId(), profissional.getId());
 
-        // 3. Remove excluded categories (M4B, M4D) from both divisions
-        removeCategory(amadora.getId(), "M4B", adminId);
-        removeCategory(amadora.getId(), "M4D", adminId);
-        removeCategory(profissional.getId(), "M4B", adminId);
-        removeCategory(profissional.getId(), "M4D", adminId);
+        // 4. Remove excluded categories (M4B, M4D) from both divisions
+        removeCategory(amadora.getId(), "M4B", compAdminId);
+        removeCategory(amadora.getId(), "M4D", compAdminId);
+        removeCategory(profissional.getId(), "M4B", compAdminId);
+        removeCategory(profissional.getId(), "M4D", compAdminId);
         log.info("Removed M4B and M4D categories from CHIP divisions");
 
-        // 4. Set entry limits
+        // 5. Set entry limits
         competitionService.updateDivisionEntryLimits(
-                amadora.getId(), 3, 5, adminId);
+                amadora.getId(), 3, 5, compAdminId);
         competitionService.updateDivisionEntryLimits(
-                profissional.getId(), 3, 5, adminId);
+                profissional.getId(), 3, 5, compAdminId);
         log.info("Set entry limits: 3 per subcategory, 5 per main category");
 
-        // 5. Advance CHIP divisions: DRAFT → REGISTRATION_OPEN
-        competitionService.advanceDivisionStatus(amadora.getId(), adminId);
-        competitionService.advanceDivisionStatus(profissional.getId(), adminId);
+        // 6. Advance CHIP divisions: DRAFT → REGISTRATION_OPEN
+        competitionService.advanceDivisionStatus(amadora.getId(), compAdminId);
+        competitionService.advanceDivisionStatus(profissional.getId(), compAdminId);
         log.info("Advanced CHIP divisions to REGISTRATION_OPEN");
 
-        // 6. Add participants (non-ENTRANT roles only — ENTRANT is added by addCredits)
+        // 7. Add participants (non-ENTRANT roles only — ENTRANT is added by addCredits)
         competitionService.addParticipantByEmail(
-                chip.getId(), "admin@example.com", CompetitionRole.ADMIN, adminId);
+                chip.getId(), "judge@example.com", CompetitionRole.JUDGE, compAdminId);
         competitionService.addParticipantByEmail(
-                chip.getId(), "judge@example.com", CompetitionRole.JUDGE, adminId);
-        competitionService.addParticipantByEmail(
-                chip.getId(), "steward@example.com", CompetitionRole.STEWARD, adminId);
+                chip.getId(), "steward@example.com", CompetitionRole.STEWARD, compAdminId);
         log.info("Added participants to CHIP 2026");
 
-        // 7. Create product mappings
+        // 8. Create product mappings
         entryService.createProductMapping(
                 amadora.getId(), "1001", "CHIP-AMA",
-                "CHIP Amadora Entry", 1, adminId);
+                "CHIP Amadora Entry", 1, compAdminId);
         entryService.createProductMapping(
                 profissional.getId(), "1002", "CHIP-PRO",
-                "CHIP Profissional Entry", 1, adminId);
+                "CHIP Profissional Entry", 1, compAdminId);
         log.info("Created product mappings for CHIP divisions");
 
-        // 8. Add credits (also adds ENTRANT participant role automatically)
+        // 9. Add credits (also adds ENTRANT participant role automatically)
         var devUser = userService.findByEmail("user@example.com");
         var devEntrant = userService.findByEmail("entrant@example.com");
-        entryService.addCredits(amadora.getId(), "user@example.com", 5, adminId);
-        entryService.addCredits(amadora.getId(), "entrant@example.com", 3, adminId);
+        entryService.addCredits(amadora.getId(), "user@example.com", 5, compAdminId);
+        entryService.addCredits(amadora.getId(), "entrant@example.com", 3, compAdminId);
         log.info("Added credits: user@example.com=5, entrant@example.com=3");
 
-        // 9. Create entries
+        // 10. Create entries
         var categories = competitionService.findDivisionCategories(amadora.getId());
         var m1a = findCategoryByCode(categories, "M1A"); // Traditional Mead
         var m2c = findCategoryByCode(categories, "M2C"); // Berry Melomel
@@ -161,30 +165,30 @@ class DevDataInitializer {
         log.info("Created entries for CHIP Amadora");
     }
 
-    private void seedTestCompetition(UUID adminId) {
+    private void seedTestCompetition(UUID sysAdminId, UUID compAdminId) {
         var test = competitionService.createCompetition(
                 "Test Competition 2026",
                 java.time.LocalDate.of(2026, 9, 1),
                 java.time.LocalDate.of(2026, 9, 30),
                 "Porto, Portugal",
-                adminId);
-
-        competitionService.createDivision(
-                test.getId(), "Open", ScoringSystem.MJP, adminId);
+                sysAdminId);
 
         competitionService.addParticipantByEmail(
-                test.getId(), "admin@example.com", CompetitionRole.ADMIN, adminId);
+                test.getId(), "compadmin@example.com", CompetitionRole.ADMIN, sysAdminId);
+
+        competitionService.createDivision(
+                test.getId(), "Open", ScoringSystem.MJP, compAdminId);
 
         log.info("Created competition: {} with Open division", test.getName());
     }
 
-    private void removeCategory(UUID divisionId, String code, UUID adminId) {
+    private void removeCategory(UUID divisionId, String code, UUID compAdminId) {
         var categories = competitionService.findDivisionCategories(divisionId);
         categories.stream()
                 .filter(c -> code.equals(c.getCode()))
                 .findFirst()
                 .ifPresent(c -> competitionService.removeDivisionCategory(
-                        divisionId, c.getId(), adminId));
+                        divisionId, c.getId(), compAdminId));
     }
 
     private DivisionCategory findCategoryByCode(

@@ -31,14 +31,15 @@ class DevUserInitializerTest {
     @Mock PasswordEncoder passwordEncoder;
 
     @Test
-    void shouldCreateSixDevUsersWhenDevProfileActive() {
+    void shouldCreateSevenDevUsersWhenDevProfileActive() {
         given(userRepository.existsByEmail(any())).willReturn(false);
         given(passwordEncoder.encode("admin")).willReturn("$2a$10$adminHash");
+        given(passwordEncoder.encode("compadmin")).willReturn("$2a$10$compadminHash");
 
         devUserInitializer.initializeDevUsers();
 
         var captor = ArgumentCaptor.forClass(User.class);
-        then(userRepository).should(times(6)).save(captor.capture());
+        then(userRepository).should(times(7)).save(captor.capture());
         List<User> savedUsers = captor.getAllValues();
 
         // Admin user
@@ -46,6 +47,12 @@ class DevUserInitializerTest {
         assertThat(admin.getRole()).isEqualTo(Role.SYSTEM_ADMIN);
         assertThat(admin.getStatus()).isEqualTo(UserStatus.ACTIVE);
         assertThat(admin.getPasswordHash()).isEqualTo("$2a$10$adminHash");
+
+        // Competition admin user
+        var compAdmin = savedUsers.stream().filter(u -> u.getEmail().equals("compadmin@example.com")).findFirst().orElseThrow();
+        assertThat(compAdmin.getRole()).isEqualTo(Role.USER);
+        assertThat(compAdmin.getStatus()).isEqualTo(UserStatus.ACTIVE);
+        assertThat(compAdmin.getPasswordHash()).isEqualTo("$2a$10$compadminHash");
 
         // Active user
         var user = savedUsers.stream().filter(u -> u.getEmail().equals("user@example.com")).findFirst().orElseThrow();
@@ -76,6 +83,7 @@ class DevUserInitializerTest {
     @Test
     void shouldSkipUsersWhenTheyAlreadyExist() {
         given(userRepository.existsByEmail("admin@example.com")).willReturn(true);
+        given(userRepository.existsByEmail("compadmin@example.com")).willReturn(true);
         given(userRepository.existsByEmail("user@example.com")).willReturn(false);
         given(userRepository.existsByEmail("pending@example.com")).willReturn(true);
         given(userRepository.existsByEmail("judge@example.com")).willReturn(true);
@@ -95,12 +103,13 @@ class DevUserInitializerTest {
 
         devUserInitializer.initializeDevUsers();
 
-        // Magic links for all non-admin users, not admin@example.com
+        // Magic links for non-password users only
         then(jwtMagicLinkService).should().generateLink(eq("user@example.com"), any());
         then(jwtMagicLinkService).should().generateLink(eq("pending@example.com"), any());
         then(jwtMagicLinkService).should().generateLink(eq("judge@example.com"), any());
         then(jwtMagicLinkService).should().generateLink(eq("steward@example.com"), any());
         then(jwtMagicLinkService).should().generateLink(eq("entrant@example.com"), any());
         then(jwtMagicLinkService).should(never()).generateLink(eq("admin@example.com"), any());
+        then(jwtMagicLinkService).should(never()).generateLink(eq("compadmin@example.com"), any());
     }
 }
