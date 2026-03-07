@@ -133,7 +133,8 @@ app.meads.competition                    ← Competition module public API
     ├── CompetitionAccessCodeValidator.java  ← AccessCodeValidator implementation
     ├── CompetitionListView.java         ← Competitions CRUD view (@RolesAllowed("SYSTEM_ADMIN"))
     ├── CompetitionDetailView.java       ← Competition detail with Divisions/Participants/Settings tabs (@PermitAll + beforeEnter auth)
-    └── DivisionDetailView.java          ← Division detail with Categories/Settings tabs, breadcrumb (@PermitAll + beforeEnter auth)
+    ├── DivisionDetailView.java          ← Division detail with Categories/Settings tabs, breadcrumb (@PermitAll + beforeEnter auth)
+    └── MyCompetitionsView.java          ← Competitions where user is ADMIN (@PermitAll)
 app.meads.entry                              ← Entry module public API
 ├── package-info.java                        ← @ApplicationModule(allowedDependencies = {"competition", "identity"})
 ├── ProductMapping.java                      ← JPA entity (product-to-division mapping)

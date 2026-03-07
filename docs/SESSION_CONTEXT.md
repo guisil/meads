@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `competition-module`
-**Tests:** 369 passing (`mvn test -Dsurefire.useFile=false`)
+**Tests:** 377 passing (`mvn test -Dsurefire.useFile=false`)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -50,7 +50,14 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 #### Service — `CompetitionService` (public API)
 - Competition CRUD, Division CRUD, Participant management, Category management
 - Authorization: `isAuthorizedForCompetition()`, `isAuthorizedForDivision()`
+- `findCompetitionsByAdmin(userId)` — finds competitions where user has ADMIN participant role
 - Events: `DivisionStatusAdvancedEvent`
+
+#### Views
+- `CompetitionListView` (`/competitions`) — SYSTEM_ADMIN only, all competitions grid with CRUD
+- `CompetitionDetailView` (`/competitions/:competitionId`) — tabs: Divisions, Participants, Settings
+- `DivisionDetailView` (`/divisions/:divisionId`) — tabs: Categories, Settings + "Manage Entries" link
+- `MyCompetitionsView` (`/my-competitions`) — `@PermitAll`, shows competitions where user is ADMIN
 
 #### Migrations: V3–V8
 
@@ -131,11 +138,18 @@ docs/
 
 ## What's Next
 
-1. **Manual UI walkthrough** — Resume from Section 2 (failed login, step 2.7 in walkthrough).
-   Sections 2.1–2.6 verified OK.
+1. **Manual UI walkthrough** — Restarting from Section 2 (authentication). Sections 2.1–2.6
+   verified OK in current run. Paused at access code login step to implement My Competitions view.
 2. **Code review** of both competition and entry modules (slice by slice)
 3. **Test review** (guided, with UI verification) of both modules
 4. **Judging module** — design and implementation
+
+### Recent changes (this session)
+- Added `compadmin@example.com` dev user (USER role, password: `compadmin`) as dedicated competition admin
+- SYSTEM_ADMIN (`admin@example.com`) creates competitions; `compadmin@example.com` manages them
+- Added `MyCompetitionsView` at `/my-competitions` — competition admins can navigate to their competitions
+- MainLayout sidebar: SYSTEM_ADMIN sees "Competitions" + "Users"; regular users see "My Competitions"
+- Create user dialog no longer shows status field — always creates with PENDING status
 
 ### Known UX items (deferred)
 - After failed credentials login, page reloads at `/login?error` and shows error notification,

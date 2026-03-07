@@ -4,7 +4,7 @@ Comprehensive manual test plan for MEADS. Covers every user-facing behavior acro
 identity, competition, and entry modules. Organized by workflow area with checkboxes
 for progress tracking.
 
-**Date:** 2026-03-03
+**Date:** 2026-03-07
 **Seeded data:** Dev profile (`spring.profiles.active=dev`)
 
 ---
@@ -25,6 +25,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 | Email | Name | Role | Status | Credential |
 |-------|------|------|--------|------------|
 | `admin@example.com` | Dev Admin | SYSTEM_ADMIN | ACTIVE | Password: `admin` |
+| `compadmin@example.com` | Competition Admin | USER | ACTIVE | Password: `compadmin` |
 | `user@example.com` | Dev User | USER | ACTIVE | Magic link (see logs) |
 | `pending@example.com` | Pending User | USER | PENDING | Magic link (see logs) |
 | `judge@example.com` | Dev Judge | USER | ACTIVE | Magic link (see logs) |
@@ -38,7 +39,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 - **Entry limits:** 3 per subcategory, 5 per main category (both divisions)
 - **Categories:** Full MJP catalog minus M4B and M4D
 - **Participants:**
-  - `admin@example.com` -- ADMIN
+  - `compadmin@example.com` -- ADMIN
   - `judge@example.com` -- JUDGE (has access code)
   - `steward@example.com` -- STEWARD (has access code)
   - `user@example.com` -- ENTRANT (5 credits in Amadora)
@@ -51,7 +52,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 - **Competition:** Test Competition 2026 (September 1-30, 2026, Porto, Portugal)
 - **Division:** Open (MJP, REGISTRATION_OPEN, full catalog)
-- **Participants:** `admin@example.com` -- ADMIN
+- **Participants:** `compadmin@example.com` -- ADMIN
 
 ---
 
@@ -60,7 +61,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 **Covers:** `LoginViewTest`, `AdminPasswordAuthenticationTest`, `JwtMagicLinkAuthenticationTest`,
 `RootUrlRedirectTest`, `LogoutFlowTest`, `UserActivationListenerTest`, `SecurityConfigTest`
 
-### Password login (admin)
+### Password login (system admin)
 
 - [ ] Navigate to `http://localhost:8080`
 - [ ] **Expected:** Redirected to `/login`
@@ -69,6 +70,15 @@ Wait for startup to complete. The console will show magic links for dev users.
 - [ ] Enter password: `admin`
 - [ ] Click "Login"
 - [ ] **Expected:** Redirected to `/` with "Welcome admin@example.com"
+
+### Password login (competition admin)
+
+- [ ] Log out
+- [ ] Enter email: `compadmin@example.com`
+- [ ] Expand "Login with credentials" section
+- [ ] Enter password: `compadmin`
+- [ ] Click "Login"
+- [ ] **Expected:** Redirected to `/` with "Welcome compadmin@example.com"
 
 ### Magic link login
 
@@ -89,8 +99,8 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 ### Access code login (judge)
 
-- [ ] Log in as `admin@example.com`
-- [ ] Navigate to `/competitions`, click CHIP 2026 row
+- [ ] Log in as `compadmin@example.com` (password: `compadmin`)
+- [ ] Navigate to "My Competitions" in the sidebar, click CHIP 2026 row
 - [ ] Click the "Participants" tab
 - [ ] Find `judge@example.com` in the grid, note the 8-character access code
 - [ ] Log out
@@ -152,8 +162,13 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 - [ ] While logged in as `admin@example.com` (SYSTEM_ADMIN)
 - [ ] **Expected:** Side nav shows "Home", "Competitions", "Users"
-- [ ] Log out, log in as `user@example.com` (regular USER)
-- [ ] **Expected:** Side nav shows "Home" only -- no "Competitions" or "Users"
+
+### Regular user nav items
+
+- [ ] Log out, log in as `compadmin@example.com` (competition admin, regular USER)
+- [ ] **Expected:** Side nav shows "Home", "My Competitions" -- no "Competitions" or "Users"
+- [ ] Log out, log in as `user@example.com` (regular USER, not competition admin)
+- [ ] **Expected:** Side nav shows "Home", "My Competitions" -- no "Competitions" or "Users"
 
 ### Home link
 
@@ -174,12 +189,12 @@ Wait for startup to complete. The console will show magic links for dev users.
 - [ ] Navigate to `/users`
 - [ ] **Expected:** Page title "Users"
 - [ ] **Expected:** Grid with columns: Email, Name, Role, Status, (Actions)
-- [ ] **Expected:** Grid contains at least 6 dev users (admin, user, pending/active, judge, steward, entrant)
+- [ ] **Expected:** Grid contains at least 7 dev users (admin, compadmin, user, pending/active, judge, steward, entrant)
 
 ### Create user -- success
 
 - [ ] Click "Create User"
-- [ ] **Expected:** Dialog with fields: Email, Name, Role (default: USER), Status (default: PENDING)
+- [ ] **Expected:** Dialog with fields: Email, Name, Role (default: USER) -- no Status field (always PENDING)
 - [ ] Enter email: `newuser@test.com`, name: `New User`
 - [ ] Click "Save"
 - [ ] **Expected:** Notification "User created successfully" (green)
@@ -345,11 +360,11 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 **Covers:** `CompetitionDetailViewTest`, `CompetitionServiceTest` (divisions, participants, settings)
 
-*Log in as `admin@example.com` for all steps unless noted.*
+*Log in as `compadmin@example.com` for all steps unless noted (competition admin, not system admin).*
 
 ### Header
 
-- [ ] Navigate to CHIP 2026 detail page
+- [ ] Navigate to CHIP 2026 via "My Competitions" in the sidebar, click CHIP 2026 row
 - [ ] **Expected:** Competition name "CHIP 2026" displayed
 - [ ] **Expected:** Date range "Jun 1 - 30, 2026" (or similar formatted range)
 - [ ] **Expected:** Location "Lisbon, Portugal"
@@ -397,7 +412,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 - [ ] Click the "Participants" tab
 - [ ] **Expected:** Grid with columns: Name, Email, Role, Access Code, (Remove)
-- [ ] **Expected:** Rows for admin (Admin, no code), judge (Judge, 8-char code), steward (Steward, 8-char code), user (Entrant, no code), entrant (Entrant, no code)
+- [ ] **Expected:** Rows for compadmin (Admin, no code), judge (Judge, 8-char code), steward (Steward, 8-char code), user (Entrant, no code), entrant (Entrant, no code)
 
 ### Add participant
 
@@ -443,7 +458,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 **Covers:** `DivisionDetailViewTest`, `CompetitionServiceTest` (categories, settings, status)
 
-*Log in as `admin@example.com` for all steps unless noted.*
+*Log in as `compadmin@example.com` for all steps unless noted.*
 
 ### Header
 
@@ -528,7 +543,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 **Covers:** `DivisionEntryAdminViewTest`, `EntryServiceTest` (credits, entries, products)
 
-*Log in as `admin@example.com` for all steps.*
+*Log in as `compadmin@example.com` for all steps.*
 
 ### Navigate to Entry Admin
 
@@ -697,7 +712,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 **Covers:** `EntryServiceTest` (shouldRejectAddCreditsWhenMutualExclusivityViolated)
 
-- [ ] Log in as `admin@example.com`
+- [ ] Log in as `compadmin@example.com`
 - [ ] Navigate to Profissional division entry-admin
 - [ ] Click "Add Credits", enter email: `entrant@example.com` (who has Amadora credits), amount: 1
 - [ ] Click "Add"
@@ -732,8 +747,8 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 **Covers:** `CompetitionServiceTest` (category modification restrictions)
 
-- [ ] Log in as `admin@example.com`
-- [ ] Navigate to Test Competition 2026 > Open division detail
+- [ ] Log in as `compadmin@example.com`
+- [ ] Navigate to Test Competition 2026 > Open division detail (via My Competitions)
 - [ ] Verify the Open division is in DRAFT status
 - [ ] **Expected:** "Add Category" button is enabled, "Remove" buttons are enabled
 - [ ] Advance status to REGISTRATION_OPEN
@@ -756,7 +771,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 | Walkthrough Section | Automated Tests |
 |---|---|
 | 2. Authentication | `LoginViewTest`, `AdminPasswordAuthenticationTest`, `JwtMagicLinkAuthenticationTest`, `RootUrlRedirectTest`, `LogoutFlowTest`, `UserActivationListenerTest`, `SecurityConfigTest`, `AccessCodeAwareAuthenticationProviderTest`, `DevUserInitializerTest` |
-| 3. Navigation & Layout | `MainLayoutTest`, `RootUrlRedirectTest` |
+| 3. Navigation & Layout | `MainLayoutTest`, `RootUrlRedirectTest`, `MyCompetitionsViewTest` |
 | 4. User Management | `UserListViewTest`, `UserServiceTest`, `UserServiceValidationTest`, `UserTest`, `AdminInitializerTest` |
 | 5. Competition Management | `CompetitionListViewTest`, `CompetitionServiceTest`, `CompetitionTest` |
 | 6. Competition Detail | `CompetitionDetailViewTest`, `CompetitionServiceTest`, `DivisionTest`, `ParticipantTest`, `ParticipantRoleTest` |
