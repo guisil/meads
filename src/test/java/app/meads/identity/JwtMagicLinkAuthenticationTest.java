@@ -11,6 +11,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
+
 import java.time.Duration;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.authenticated;
@@ -31,6 +33,9 @@ class JwtMagicLinkAuthenticationTest {
 
     @Autowired
     UserRepository userRepository;
+
+    @Autowired
+    PasswordEncoder passwordEncoder;
 
     MockMvc mockMvc;
 
@@ -103,5 +108,23 @@ class JwtMagicLinkAuthenticationTest {
         // Then — user should now be ACTIVE
         var activatedUser = userRepository.findByEmail(email).orElseThrow();
         assertThat(activatedUser.getStatus()).isEqualTo(UserStatus.ACTIVE);
+    }
+
+    @Test
+    void shouldRejectMagicLinkWhenUserHasPassword() throws Exception {
+        // Given — a user with a password set
+        String email = "password-user@example.com";
+        var user = new User(email, "Password User", UserStatus.ACTIVE, Role.USER);
+        user.setPasswordHash(passwordEncoder.encode("securepassword"));
+        userRepository.save(user);
+
+        String link = jwtMagicLinkService.generateLink(email, Duration.ofDays(7));
+        String token = link.substring(link.indexOf("token=") + "token=".length());
+
+        // When — the magic link is clicked
+        mockMvc.perform(get("/login/magic").param("token", token))
+                // Then — user should not be authenticated (redirected to login with error)
+                .andExpect(status().is3xxRedirection())
+                .andExpect(unauthenticated());
     }
 }

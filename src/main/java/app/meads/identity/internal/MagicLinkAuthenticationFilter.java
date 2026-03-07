@@ -50,6 +50,13 @@ class MagicLinkAuthenticationFilter extends OncePerRequestFilter {
         try {
             String email = jwtMagicLinkService.extractEmail(token);
             var userDetails = userDetailsService.loadUserByUsername(email);
+
+            if (!userDetails.getPassword().isEmpty()) {
+                log.debug("Magic link rejected for user with password: {}", email);
+                response.sendRedirect("/login?error");
+                return;
+            }
+
             var authentication = new UsernamePasswordAuthenticationToken(
                     userDetails, null, userDetails.getAuthorities());
 

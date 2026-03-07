@@ -59,13 +59,17 @@ public class UserListView extends VerticalLayout {
             Button deleteButton = new Button(deleteButtonText);
             deleteButton.addClickListener(e -> handleDeleteClick(user));
 
-            Button magicLinkButton = new Button("Send Magic Link");
-            magicLinkButton.addClickListener(e -> sendMagicLink(user));
+            HorizontalLayout actions = new HorizontalLayout(editButton, deleteButton);
+
+            if (user.getPasswordHash() == null) {
+                Button magicLinkButton = new Button("Send Magic Link");
+                magicLinkButton.addClickListener(e -> sendMagicLink(user));
+                actions.add(magicLinkButton);
+            }
 
             Button passwordResetButton = new Button("Password Reset");
             passwordResetButton.addClickListener(e -> sendPasswordResetLink(user));
-
-            HorizontalLayout actions = new HorizontalLayout(editButton, deleteButton, magicLinkButton, passwordResetButton);
+            actions.add(passwordResetButton);
             actions.setSpacing(true);
             return actions;
         }).setHeader("Actions");

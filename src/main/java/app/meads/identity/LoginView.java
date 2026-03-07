@@ -99,9 +99,13 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
             return;
         }
         try {
-            userService.findByEmail(emailValue);
-            String link = jwtMagicLinkService.generateLink(emailValue, Duration.ofDays(7));
-            log.info("\n\n\tMagic link for {}: {}\n", emailValue, link);
+            var user = userService.findByEmail(emailValue);
+            if (user.getPasswordHash() != null) {
+                log.info("\n\n\tUser {} has a password — please log in with your credentials\n", emailValue);
+            } else {
+                String link = jwtMagicLinkService.generateLink(emailValue, Duration.ofDays(7));
+                log.info("\n\n\tMagic link for {}: {}\n", emailValue, link);
+            }
         } catch (IllegalArgumentException ex) {
             log.info("Magic link requested for non-existent email: {}", emailValue);
         }

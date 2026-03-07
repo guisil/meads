@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `competition-module`
-**Tests:** 396 passing (`mvn test -Dsurefire.useFile=false`)
+**Tests:** 397 passing (`mvn test -Dsurefire.useFile=false`)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -148,6 +148,11 @@ docs/
 4. **Judging module** — design and implementation
 
 ### Recent changes (this session)
+- **Magic link blocked for password users** — defense in depth:
+  - `MagicLinkAuthenticationFilter` rejects magic link auth for users with passwords (redirects to `/login?error`)
+  - `LoginView.sendMagicLink()` skips link generation for password users (logs credential reminder instead)
+  - `UserListView` hides "Send Magic Link" button for users with passwords
+  - New test: `shouldRejectMagicLinkWhenUserHasPassword` in `JwtMagicLinkAuthenticationTest`
 - **Password setup & reset — ALL 3 PHASES COMPLETE**:
   - Phase 1: `SetPasswordView` at `/set-password`, password validation (min 8 chars),
     `setPasswordByToken()` on `UserService`, `generatePasswordSetupLink()` on `JwtMagicLinkService`

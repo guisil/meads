@@ -92,6 +92,16 @@ Wait for startup to complete. The console will show magic links for dev users.
 - [ ] Paste the URL in the browser
 - [ ] **Expected:** Authenticated as `user@example.com`, redirected to `/` with "Welcome user@example.com"
 
+### Magic link blocked for password user
+
+- [ ] Log out (or open incognito window)
+- [ ] Navigate to `/login`
+- [ ] Enter email: `admin@example.com` (has a password)
+- [ ] Click "Get Login Link"
+- [ ] **Expected:** Same notification "If this email is registered, a login link has been sent."
+- [ ] **Expected:** Server logs show "User admin@example.com has a password — please log in with your credentials" (NOT a magic link URL)
+- [ ] If a magic link URL were somehow generated, navigating to it should redirect to `/login?error` (filter blocks it)
+
 ### Magic link validation (blank email)
 
 - [ ] Navigate to `/login`
@@ -314,12 +324,20 @@ Wait for startup to complete. The console will show magic links for dev users.
 - [ ] **Expected:** Notification "User deleted successfully" (green)
 - [ ] **Expected:** User removed from grid
 
-### Send magic link
+### Send magic link (no-password user)
 
-- [ ] Find `user@example.com` in the grid
+- [ ] Find `user@example.com` in the grid (no password set)
+- [ ] **Expected:** "Send Magic Link" button is visible
 - [ ] Click "Send Magic Link"
 - [ ] **Expected:** Notification "Magic link sent successfully" (green)
 - [ ] **Expected:** Magic link URL logged in server console
+
+### Send magic link button hidden for password users
+
+- [ ] Find `admin@example.com` in the grid (has password)
+- [ ] **Expected:** "Send Magic Link" button is NOT visible (only Edit, Deactivate, Password Reset)
+- [ ] Find `compadmin@example.com` in the grid (has password)
+- [ ] **Expected:** "Send Magic Link" button is NOT visible
 
 ### Send password reset link
 
