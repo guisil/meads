@@ -555,16 +555,15 @@ class UserListViewTest {
         var createButton = _get(Button.class, spec -> spec.withText("Create User"));
         _click(createButton);
 
-        // Assert - form fields should be present (email/name empty, role defaults to USER, status defaults to PENDING)
+        // Assert - form fields should be present (email/name empty, role defaults to USER, no status field)
         var emailField = _get(EmailField.class, spec -> spec.withLabel("Email"));
         var nameField = _get(TextField.class, spec -> spec.withLabel("Name"));
         var roleSelect = _get(Select.class, spec -> spec.withLabel("Role"));
-        var statusSelect = _get(Select.class, spec -> spec.withLabel("Status"));
 
         assertThat(emailField.getValue()).isEmpty();
         assertThat(nameField.getValue()).isEmpty();
         assertThat(roleSelect.getValue()).isEqualTo(Role.USER);
-        assertThat(statusSelect.getValue()).isEqualTo(UserStatus.PENDING);
+        assertThat(_find(Select.class, spec -> spec.withLabel("Status"))).isEmpty();
     }
 
     @Test
@@ -579,22 +578,20 @@ class UserListViewTest {
         var emailField = _get(EmailField.class, spec -> spec.withLabel("Email"));
         var nameField = _get(TextField.class, spec -> spec.withLabel("Name"));
         var roleSelect = _get(Select.class, spec -> spec.withLabel("Role"));
-        var statusSelect = _get(Select.class, spec -> spec.withLabel("Status"));
 
         emailField.setValue("newuser@example.com");
         nameField.setValue("New User");
         roleSelect.setValue(Role.USER);
-        statusSelect.setValue(UserStatus.ACTIVE);
 
         var saveButton = _get(Button.class, spec -> spec.withText("Save"));
         _click(saveButton);
 
-        // Assert - user should be created in database
+        // Assert - user should be created in database with PENDING status
         var createdUser = userRepository.findByEmail("newuser@example.com");
         assertThat(createdUser).isPresent();
         assertThat(createdUser.get().getName()).isEqualTo("New User");
         assertThat(createdUser.get().getRole()).isEqualTo(Role.USER);
-        assertThat(createdUser.get().getStatus()).isEqualTo(UserStatus.ACTIVE);
+        assertThat(createdUser.get().getStatus()).isEqualTo(UserStatus.PENDING);
 
         // Dialog should be closed
         assertThat(_find(Dialog.class)).isEmpty();
@@ -615,12 +612,10 @@ class UserListViewTest {
         var emailField = _get(EmailField.class, spec -> spec.withLabel("Email"));
         var nameField = _get(TextField.class, spec -> spec.withLabel("Name"));
         var roleSelect = _get(Select.class, spec -> spec.withLabel("Role"));
-        var statusSelect = _get(Select.class, spec -> spec.withLabel("Status"));
 
         // Leave email empty
         nameField.setValue("Test User");
         roleSelect.setValue(Role.USER);
-        statusSelect.setValue(UserStatus.ACTIVE);
 
         var saveButton = _get(Button.class, spec -> spec.withText("Save"));
         _click(saveButton);
@@ -657,12 +652,10 @@ class UserListViewTest {
         var emailField = _get(EmailField.class, spec -> spec.withLabel("Email"));
         var nameField = _get(TextField.class, spec -> spec.withLabel("Name"));
         var roleSelect = _get(Select.class, spec -> spec.withLabel("Role"));
-        var statusSelect = _get(Select.class, spec -> spec.withLabel("Status"));
 
         emailField.setValue("existing@example.com");
         nameField.setValue("New User");
         roleSelect.setValue(Role.USER);
-        statusSelect.setValue(UserStatus.ACTIVE);
 
         var saveButton = _get(Button.class, spec -> spec.withText("Save"));
         _click(saveButton);
@@ -694,12 +687,10 @@ class UserListViewTest {
         var emailField = _get(EmailField.class, spec -> spec.withLabel("Email"));
         var nameField = _get(TextField.class, spec -> spec.withLabel("Name"));
         var roleSelect = _get(Select.class, spec -> spec.withLabel("Role"));
-        var statusSelect = _get(Select.class, spec -> spec.withLabel("Status"));
 
         emailField.setValue("notanemail");
         nameField.setValue("Test User");
         roleSelect.setValue(Role.USER);
-        statusSelect.setValue(UserStatus.ACTIVE);
 
         var saveButton = _get(Button.class, spec -> spec.withText("Save"));
         _click(saveButton);
@@ -731,12 +722,10 @@ class UserListViewTest {
         var emailField = _get(EmailField.class, spec -> spec.withLabel("Email"));
         var nameField = _get(TextField.class, spec -> spec.withLabel("Name"));
         var roleSelect = _get(Select.class, spec -> spec.withLabel("Role"));
-        var statusSelect = _get(Select.class, spec -> spec.withLabel("Status"));
 
         emailField.setValue("validuser@example.com");
         // Leave name empty
         roleSelect.setValue(Role.USER);
-        statusSelect.setValue(UserStatus.ACTIVE);
 
         var saveButton = _get(Button.class, spec -> spec.withText("Save"));
         _click(saveButton);
@@ -767,13 +756,11 @@ class UserListViewTest {
         var emailField = _get(EmailField.class, spec -> spec.withLabel("Email"));
         var nameField = _get(TextField.class, spec -> spec.withLabel("Name"));
         var roleSelect = _get(Select.class, spec -> spec.withLabel("Role"));
-        var statusSelect = _get(Select.class, spec -> spec.withLabel("Status"));
 
         emailField.setValue("validuser@example.com");
         nameField.setValue("Valid User");
         // Clear the default role to test validation
         roleSelect.clear();
-        statusSelect.setValue(UserStatus.ACTIVE);
 
         var saveButton = _get(Button.class, spec -> spec.withText("Save"));
         _click(saveButton);
@@ -791,15 +778,14 @@ class UserListViewTest {
 
     @Test
     @WithMockUser(roles = "SYSTEM_ADMIN")
-    void shouldDefaultStatusToPendingInCreateDialog() {
+    void shouldNotShowStatusFieldInCreateDialog() {
         // Act - navigate and open create dialog
         UI.getCurrent().navigate("users");
         var createButton = _get(Button.class, spec -> spec.withText("Create User"));
         _click(createButton);
 
-        // Assert - status field should default to PENDING
-        var statusSelect = _get(Select.class, spec -> spec.withLabel("Status"));
-        assertThat(statusSelect.getValue()).isEqualTo(UserStatus.PENDING);
+        // Assert - status field should not be present (always PENDING on create)
+        assertThat(_find(Select.class, spec -> spec.withLabel("Status"))).isEmpty();
     }
 
     @Test

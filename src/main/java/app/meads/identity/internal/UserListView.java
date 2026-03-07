@@ -156,14 +156,15 @@ public class UserListView extends VerticalLayout {
         roleSelect.setLabel("Role");
         roleSelect.setItems(Role.values());
 
-        Select<UserStatus> statusSelect = new Select<>();
-        statusSelect.setLabel("Status");
-        statusSelect.setItems(UserStatus.values());
+        Select<UserStatus> statusSelect = null;
 
         if (isCreate) {
             roleSelect.setValue(Role.USER);
-            statusSelect.setValue(UserStatus.PENDING);
         } else {
+            statusSelect = new Select<>();
+            statusSelect.setLabel("Status");
+            statusSelect.setItems(UserStatus.values());
+
             nameField.setValue(existingUser.getName());
             roleSelect.setValue(existingUser.getRole());
             statusSelect.setValue(existingUser.getStatus());
@@ -175,6 +176,7 @@ public class UserListView extends VerticalLayout {
             }
         }
 
+        var statusSelectRef = statusSelect;
         Button saveButton = new Button("Save");
         saveButton.addClickListener(e -> {
             if (emailField != null && !StringUtils.hasText(emailField.getValue())) {
@@ -198,7 +200,7 @@ public class UserListView extends VerticalLayout {
                     userService.createUser(
                         emailField.getValue(),
                         nameField.getValue(),
-                        statusSelect.getValue(),
+                        UserStatus.PENDING,
                         roleSelect.getValue()
                     );
                 } else {
@@ -206,7 +208,7 @@ public class UserListView extends VerticalLayout {
                         existingUser.getId(),
                         nameField.getValue(),
                         roleSelect.getValue(),
-                        statusSelect.getValue(),
+                        statusSelectRef.getValue(),
                         getCurrentUserEmail()
                     );
                 }
@@ -239,7 +241,11 @@ public class UserListView extends VerticalLayout {
         if (emailField != null) {
             formLayout.add(emailField);
         }
-        formLayout.add(nameField, roleSelect, statusSelect, saveButton, cancelButton);
+        formLayout.add(nameField, roleSelect);
+        if (statusSelect != null) {
+            formLayout.add(statusSelect);
+        }
+        formLayout.add(saveButton, cancelButton);
         dialog.add(formLayout);
 
         dialog.open();
