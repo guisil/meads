@@ -3,7 +3,7 @@
 // Already present in src/test as TestcontainersConfiguration.java.
 // Usage: @Import(TestcontainersConfiguration.class) on any integration test.
 
-package com.example.app;
+package app.meads;
 
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -18,9 +18,6 @@ public class TestcontainersConfiguration {
     @Bean
     @ServiceConnection
     PostgreSQLContainer<?> postgresContainer() {
-        return new PostgreSQLContainer<>("postgres:18-alpine")
-                .withDatabaseName("testdb")
-                .withUsername("test")
-                .withPassword("test");
+        return new PostgreSQLContainer<>("postgres:18-alpine");
     }
 }

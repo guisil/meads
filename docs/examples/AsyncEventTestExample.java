@@ -1,10 +1,11 @@
 // == AsyncEventTestExample.java ==
 // Testing inter-module event publication and handling.
 // USE WHEN: Verifying events are published, or that handlers react correctly.
+// REFERENCE: EntryModuleTest.java, RegistrationClosedListenerTest.java
 
-package com.example.app.order;
+package app.meads.order;
 
-import com.example.app.TestcontainersConfiguration;
+import app.meads.TestcontainersConfiguration;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,7 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 // --- Pattern 1: Verify event PUBLICATION (synchronous) ---
 
-@ApplicationModuleTest
+@ApplicationModuleTest(mode = BootstrapMode.DIRECT_DEPENDENCIES)
 @Import(TestcontainersConfiguration.class)
 class OrderEventPublicationTest {
 
@@ -29,17 +30,17 @@ class OrderEventPublicationTest {
 
     @Test
     void shouldPublishOrderCreatedEvent(PublishedEvents events) {
-        var order = orderService.createOrder(new CreateOrderRequest(/* ... */));
+        var order = orderService.createOrder("Test order");
 
         assertThat(events.ofType(OrderCreatedEvent.class)
-                .matching(e -> e.orderId().equals(order.id())))
+                .matching(e -> e.orderId().equals(order.getId())))
                 .hasSize(1);
     }
 }
 
 // --- Pattern 2: Cross-module workflow with Scenario ---
 
-@ApplicationModuleTest(BootstrapMode.DIRECT_DEPENDENCIES)
+@ApplicationModuleTest(mode = BootstrapMode.DIRECT_DEPENDENCIES)
 @Import(TestcontainersConfiguration.class)
 class OrderInventoryScenarioTest {
 
@@ -47,7 +48,7 @@ class OrderInventoryScenarioTest {
     void shouldReserveStockWhenOrderCreated(Scenario scenario) {
         var orderId = UUID.randomUUID();
 
-        scenario.publish(new OrderCreatedEvent(orderId, /* items */))
+        scenario.publish(new OrderCreatedEvent(orderId, "Test order"))
                 .andWaitForEventOfType(StockReservedEvent.class)
                 .matching(e -> e.orderId().equals(orderId))
                 .toArriveAndVerify(e -> assertThat(e.success()).isTrue());
@@ -56,7 +57,7 @@ class OrderInventoryScenarioTest {
 
 // --- Pattern 3: Async handler with Awaitility ---
 
-@ApplicationModuleTest
+@ApplicationModuleTest(mode = BootstrapMode.DIRECT_DEPENDENCIES)
 @Import(TestcontainersConfiguration.class)
 class AsyncHandlerTest {
 
@@ -65,16 +66,17 @@ class AsyncHandlerTest {
 
     @Test
     void shouldUpdateReadModelAfterOrderCreated() {
-        var order = orderService.createOrder(new CreateOrderRequest(/* ... */));
+        var order = orderService.createOrder("Test order");
 
         Awaitility.await()
                 .atMost(Duration.ofSeconds(5))
                 .pollInterval(Duration.ofMillis(100))
                 .untilAsserted(() -> {
-                    var summary = queryService.findOrderSummary(order.id());
+                    var summary = queryService.findOrderSummary(order.getId());
                     assertThat(summary).isPresent();
                 });
     }
 }
 
 // PREFERENCE: PublishedEvents > Scenario > Awaitility (simplest first).
+// Always use BootstrapMode.DIRECT_DEPENDENCIES to respect module isolation.

@@ -457,23 +457,62 @@ mvn spring-boot:run                                       # start app (needs Pos
 
 ---
 
-## Commit Hygiene — Documentation & Memory Sync
+## Resuming Work (New Session or New Machine)
 
-Every commit must include updates to all relevant project files. Before committing:
+The project is designed so that work can be resumed from any machine with a cleared context,
+as long as the repository is up to date. On a new session:
 
-1. **`docs/SESSION_CONTEXT.md`** — Update test count, "What's Next" section, and any module
-   status changes. This file is the primary bootstrap for resuming work on a different machine.
-2. **`CLAUDE.md`** — Update if conventions, module map, package layout, or migration versions changed.
-3. **Design docs** (`docs/plans/`, `docs/specs/`) — Update if the committed work changes or
-   completes a planned feature.
-4. **Memory sync** — Copy the local auto-memory files from `~/.claude/projects/.../memory/`
-   to `docs/memory/` so they are committed to git and available on other machines. The key files:
-   - `docs/memory/MEMORY.md` — synced copy of local `MEMORY.md`
-   - `docs/memory/SESSION_CONTEXT.md` — synced copy of `docs/SESSION_CONTEXT.md`
-5. **Walkthrough** (`docs/walkthrough/manual-ui-test.md`) — Update if UI behavior changed.
+1. **Read `docs/SESSION_CONTEXT.md` first** — this is the primary bootstrap file. It contains
+   the current state of all modules, what's done, what's next, in-progress work details,
+   and key technical notes. Everything needed to continue is here.
+2. **`CLAUDE.md`** (this file) is auto-loaded and provides conventions, architecture, and
+   workflow rules.
+3. No other files need to be read to resume — all accumulated knowledge is captured in
+   these two files plus the codebase itself.
 
-The `docs/memory/` directory is the **committed mirror** of the local auto-memory. On a new
-machine, copy `docs/memory/MEMORY.md` to the local auto-memory path to restore context.
+---
+
+## Commit Hygiene — Documentation Freshness & Session Portability
+
+Every commit must include updates to all relevant documentation. **All docs must stay
+up-to-date with the code at all times.** The goal is **session portability**: after every
+commit-and-push, anyone (including the same developer on a different machine with a cleared
+context) must be able to resume work with no loss of context by reading
+`docs/SESSION_CONTEXT.md` and `CLAUDE.md`.
+
+Before committing, check each of these:
+
+1. **`docs/SESSION_CONTEXT.md`** — The most critical file. Update:
+   - Test count (run `mvn test -Dsurefire.useFile=false` and record the number)
+   - Module status changes (new entities, services, views added)
+   - "What's Next" section (reorder or add items as work progresses)
+   - **In-progress work** — If the commit is mid-feature, document what's done and what
+     remains with enough detail to continue without prior conversation context. Include
+     the current TDD step (RED/GREEN/REFACTOR), which test is being worked on, and any
+     decisions or blockers discovered during the session.
+   - Documentation structure (if files were added or removed)
+2. **`CLAUDE.md`** — Update if conventions, module map, package layout, or migration versions
+   changed. Any new pattern or quirk discovered during development should be added to the
+   relevant section (Testing Conventions, Code Conventions, Common Pitfalls) so it's available
+   in future sessions.
+3. **Module specs** (`docs/specs/`) — Update if the committed work changes or completes a
+   planned feature. Delete specs for completed modules (the implementation is the source of
+   truth). Keep specs for unimplemented modules current with the latest naming and conventions.
+4. **Design docs** (`docs/plans/`) — Delete design docs for fully implemented features.
+   Only keep active/in-progress plans. The codebase is the source of truth for completed work.
+5. **Walkthrough** (`docs/walkthrough/manual-ui-test.md`) — **Must be updated with every UI
+   change.** This is a living document: add test steps for new features, update existing steps
+   if behavior changed, and keep the coverage mapping appendix current. The walkthrough must
+   always be executable end-to-end against the current codebase.
+6. **Example files** (`docs/examples/`) — Update if testing or domain model conventions changed.
+   Examples must always reflect the actual patterns used in the codebase.
+
+**Cleanup rule:** Documentation for completed work should be removed rather than left to go stale.
+The entry module design doc (`docs/plans/2026-03-02-entry-module-design.md`) is retained as
+a reference for how to structure future module designs.
+
+**Self-check before committing:** _"If I clear my context right now and start fresh on another
+machine, can I resume this work by reading `docs/SESSION_CONTEXT.md`?"_ If no, update it.
 
 ---
 

@@ -1,8 +1,9 @@
 // == ModulithStructureTestExample.java ==
 // Verifies modular architecture. Catches illegal cross-module dependencies.
 // Already present in src/test as ModulithStructureTest.java.
+// REFERENCE: ModulithStructureTest.java
 
-package com.example.app;
+package app.meads;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.modulith.core.ApplicationModules;
@@ -10,7 +11,7 @@ import org.springframework.modulith.docs.Documenter;
 
 class ModulithStructureTest {
 
-    private final ApplicationModules modules = ApplicationModules.of(Application.class);
+    private final ApplicationModules modules = ApplicationModules.of(MeadsApplication.class);
 
     @Test
     void shouldHaveValidModularStructure() {

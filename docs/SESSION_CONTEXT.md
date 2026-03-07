@@ -109,6 +109,26 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 ---
 
+## Documentation Structure
+
+```
+docs/
+├── SESSION_CONTEXT.md          ← This file (primary context for resuming work)
+├── examples/                   ← Test & domain model examples (referenced by CLAUDE.md)
+├── plans/
+│   └── 2026-03-02-entry-module-design.md  ← Retained as reference for future module designs
+├── reference/
+│   └── chip-competition-rules.md          ← CHIP competition rules (active reference)
+├── specs/
+│   ├── _template.md                       ← Template for new module specs
+│   ├── judging.md                         ← Preliminary spec (post-rework naming)
+│   └── awards.md                          ← Preliminary spec (post-rework naming)
+└── walkthrough/
+    └── manual-ui-test.md                  ← Living test plan (must be updated with every UI change)
+```
+
+---
+
 ## What's Next
 
 1. **Manual UI walkthrough** — `docs/walkthrough/manual-ui-test.md` (ready to execute)
