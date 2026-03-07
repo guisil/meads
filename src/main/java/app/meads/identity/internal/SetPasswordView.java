@@ -9,6 +9,7 @@ import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.PasswordField;
+import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
@@ -48,9 +49,11 @@ public class SetPasswordView extends VerticalLayout implements BeforeEnterObserv
 
         passwordField = new PasswordField("Password");
         passwordField.setWidthFull();
+        passwordField.setValueChangeMode(ValueChangeMode.EAGER);
 
         confirmField = new PasswordField("Confirm Password");
         confirmField.setWidthFull();
+        confirmField.setValueChangeMode(ValueChangeMode.EAGER);
 
         var submitButton = new Button("Set Password");
         submitButton.addClickListener(e -> handleSubmit());
