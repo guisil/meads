@@ -55,6 +55,11 @@ When uncertain, default to **full cycle**.
 **Step 3: REFACTOR**
 - Review both test and production code.
 - Run: `mvn test -Dsurefire.useFile=false` (full suite)
+- **Update all affected docs before suggesting a commit message** (see Commit Hygiene):
+  1. `docs/SESSION_CONTEXT.md` — test count, module status, what's next
+  2. `docs/walkthrough/manual-ui-test.md` — if any UI changed
+  3. `CLAUDE.md` — if conventions, patterns, or migrations changed
+  4. Clean up completed plans/specs
 - Suggest a commit message. State what to test next.
 - **STOP. Wait for confirmation before next cycle.**
 
@@ -64,7 +69,8 @@ When uncertain, default to **full cycle**.
 2. Make the change.
 3. Run: `mvn test -Dsurefire.useFile=false` (full suite)
 4. If any test breaks, stop and escalate to full cycle.
-5. Suggest a commit message.
+5. **Update all affected docs** (see Commit Hygiene).
+6. Suggest a commit message.
 
 Multiple related fast-cycle changes can be batched in one response.
 
@@ -477,13 +483,13 @@ as long as the repository is up to date. On a new session:
 
 ## Commit Hygiene — Documentation Freshness & Session Portability
 
-Every commit must include updates to all relevant documentation. **All docs must stay
-up-to-date with the code at all times.** The goal is **session portability**: after every
-commit-and-push, anyone (including the same developer on a different machine with a cleared
-context) must be able to resume work with no loss of context by reading
-`docs/SESSION_CONTEXT.md` and `CLAUDE.md`.
+Doc updates are part of Step 3 (REFACTOR) and Fast Cycle step 5 — not a post-commit task.
+**Do NOT suggest a commit message until all affected docs are updated.** The goal is
+**session portability**: after every commit-and-push, anyone (including the same developer
+on a different machine with a cleared context) must be able to resume work with no loss of
+context by reading `docs/SESSION_CONTEXT.md` and `CLAUDE.md`.
 
-Before committing, check each of these:
+Checklist — update each if affected:
 
 1. **`docs/SESSION_CONTEXT.md`** — The most critical file. Update:
    - Test count (run `mvn test -Dsurefire.useFile=false` and record the number)
