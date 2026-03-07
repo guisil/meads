@@ -150,6 +150,12 @@ vaadin-app-layout::part(drawer) {
   flex-shrink: 0;
 }
 
+/* --- Login view --- */
+.login-view {
+  max-width: 400px;
+  margin: 0 auto;
+}
+
 /* --- Summary cards (stats row) --- */
 .summary-cards {
   display: flex;

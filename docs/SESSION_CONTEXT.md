@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `competition-module`
-**Tests:** 364 passing (`mvn test -Dsurefire.useFile=false`)
+**Tests:** 369 passing (`mvn test -Dsurefire.useFile=false`)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -131,10 +131,15 @@ docs/
 
 ## What's Next
 
-1. **Manual UI walkthrough** — `docs/walkthrough/manual-ui-test.md` (ready to execute)
+1. **Manual UI walkthrough** — Resume from Section 2 (failed login, step 2.7 in walkthrough).
+   Sections 2.1–2.6 verified OK.
 2. **Code review** of both competition and entry modules (slice by slice)
 3. **Test review** (guided, with UI verification) of both modules
 4. **Judging module** — design and implementation
+
+### Known UX items (deferred)
+- After failed credentials login, page reloads at `/login?error` and shows error notification,
+  but password field is cleared (expected browser behavior for form POST). Not blocking.
 
 ---
 

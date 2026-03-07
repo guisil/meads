@@ -40,7 +40,7 @@ class DevDataInitializer {
             return;
         }
 
-        var admin = userService.findByEmail("admin@localhost");
+        var admin = userService.findByEmail("admin@example.com");
         var adminId = admin.getId();
 
         seedChip2026(adminId);
@@ -88,11 +88,11 @@ class DevDataInitializer {
 
         // 6. Add participants (non-ENTRANT roles only — ENTRANT is added by addCredits)
         competitionService.addParticipantByEmail(
-                chip.getId(), "admin@localhost", CompetitionRole.ADMIN, adminId);
+                chip.getId(), "admin@example.com", CompetitionRole.ADMIN, adminId);
         competitionService.addParticipantByEmail(
-                chip.getId(), "judge@localhost", CompetitionRole.JUDGE, adminId);
+                chip.getId(), "judge@example.com", CompetitionRole.JUDGE, adminId);
         competitionService.addParticipantByEmail(
-                chip.getId(), "steward@localhost", CompetitionRole.STEWARD, adminId);
+                chip.getId(), "steward@example.com", CompetitionRole.STEWARD, adminId);
         log.info("Added participants to CHIP 2026");
 
         // 7. Create product mappings
@@ -105,11 +105,11 @@ class DevDataInitializer {
         log.info("Created product mappings for CHIP divisions");
 
         // 8. Add credits (also adds ENTRANT participant role automatically)
-        var devUser = userService.findByEmail("user@localhost");
-        var devEntrant = userService.findByEmail("entrant@localhost");
-        entryService.addCredits(amadora.getId(), "user@localhost", 5, adminId);
-        entryService.addCredits(amadora.getId(), "entrant@localhost", 3, adminId);
-        log.info("Added credits: user@localhost=5, entrant@localhost=3");
+        var devUser = userService.findByEmail("user@example.com");
+        var devEntrant = userService.findByEmail("entrant@example.com");
+        entryService.addCredits(amadora.getId(), "user@example.com", 5, adminId);
+        entryService.addCredits(amadora.getId(), "entrant@example.com", 3, adminId);
+        log.info("Added credits: user@example.com=5, entrant@example.com=3");
 
         // 9. Create entries
         var categories = competitionService.findDivisionCategories(amadora.getId());
@@ -117,7 +117,7 @@ class DevDataInitializer {
         var m2c = findCategoryByCode(categories, "M2C"); // Berry Melomel
         var m3b = findCategoryByCode(categories, "M3B"); // Metheglin
 
-        // Entry 1 for user@localhost: Traditional Mead (DRAFT)
+        // Entry 1 for user@example.com: Traditional Mead (DRAFT)
         entryService.createEntry(
                 amadora.getId(), devUser.getId(),
                 "Wildflower Traditional",
@@ -127,7 +127,7 @@ class DevDataInitializer {
                 "Wildflower honey",
                 null, false, null, null);
 
-        // Entry 2 for user@localhost: Berry Melomel — submit it
+        // Entry 2 for user@example.com: Berry Melomel — submit it
         entryService.createEntry(
                 amadora.getId(), devUser.getId(),
                 "Blueberry Bliss",
@@ -138,7 +138,7 @@ class DevDataInitializer {
                 "Fresh blueberries", false, null, null);
         entryService.submitAllDrafts(amadora.getId(), devUser.getId());
 
-        // Entry 3 for user@localhost: another draft after submitting
+        // Entry 3 for user@example.com: another draft after submitting
         entryService.createEntry(
                 amadora.getId(), devUser.getId(),
                 "Oak-Aged Bochet",
@@ -148,7 +148,7 @@ class DevDataInitializer {
                 "Caramelized wildflower honey",
                 null, true, "French oak, 6 months", null);
 
-        // Entry 1 for entrant@localhost: Metheglin (DRAFT)
+        // Entry 1 for entrant@example.com: Metheglin (DRAFT)
         entryService.createEntry(
                 amadora.getId(), devEntrant.getId(),
                 "Lavender Metheglin",
@@ -173,7 +173,7 @@ class DevDataInitializer {
                 test.getId(), "Open", ScoringSystem.MJP, adminId);
 
         competitionService.addParticipantByEmail(
-                test.getId(), "admin@localhost", CompetitionRole.ADMIN, adminId);
+                test.getId(), "admin@example.com", CompetitionRole.ADMIN, adminId);
 
         log.info("Created competition: {} with Open division", test.getName());
     }

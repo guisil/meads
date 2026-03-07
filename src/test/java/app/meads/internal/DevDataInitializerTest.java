@@ -55,8 +55,8 @@ class DevDataInitializerTest {
         assertThat(participants).hasSizeGreaterThanOrEqualTo(5);
 
         // Credits
-        var devUser = userService.findByEmail("user@localhost");
-        var devEntrant = userService.findByEmail("entrant@localhost");
+        var devUser = userService.findByEmail("user@example.com");
+        var devEntrant = userService.findByEmail("entrant@example.com");
         assertThat(entryService.getCreditBalance(amadora.getId(), devUser.getId())).isEqualTo(5);
         assertThat(entryService.getCreditBalance(amadora.getId(), devEntrant.getId())).isEqualTo(3);
 

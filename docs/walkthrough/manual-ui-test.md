@@ -24,12 +24,12 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 | Email | Name | Role | Status | Credential |
 |-------|------|------|--------|------------|
-| `admin@localhost` | Dev Admin | SYSTEM_ADMIN | ACTIVE | Password: `admin` |
-| `user@localhost` | Dev User | USER | ACTIVE | Magic link (see logs) |
-| `pending@localhost` | Pending User | USER | PENDING | Magic link (see logs) |
-| `judge@localhost` | Dev Judge | USER | ACTIVE | Magic link (see logs) |
-| `steward@localhost` | Dev Steward | USER | ACTIVE | Magic link (see logs) |
-| `entrant@localhost` | Dev Entrant | USER | ACTIVE | Magic link (see logs) |
+| `admin@example.com` | Dev Admin | SYSTEM_ADMIN | ACTIVE | Password: `admin` |
+| `user@example.com` | Dev User | USER | ACTIVE | Magic link (see logs) |
+| `pending@example.com` | Pending User | USER | PENDING | Magic link (see logs) |
+| `judge@example.com` | Dev Judge | USER | ACTIVE | Magic link (see logs) |
+| `steward@example.com` | Dev Steward | USER | ACTIVE | Magic link (see logs) |
+| `entrant@example.com` | Dev Entrant | USER | ACTIVE | Magic link (see logs) |
 
 ### Seeded competition data (CHIP 2026)
 
@@ -38,20 +38,20 @@ Wait for startup to complete. The console will show magic links for dev users.
 - **Entry limits:** 3 per subcategory, 5 per main category (both divisions)
 - **Categories:** Full MJP catalog minus M4B and M4D
 - **Participants:**
-  - `admin@localhost` -- ADMIN
-  - `judge@localhost` -- JUDGE (has access code)
-  - `steward@localhost` -- STEWARD (has access code)
-  - `user@localhost` -- ENTRANT (5 credits in Amadora)
-  - `entrant@localhost` -- ENTRANT (3 credits in Amadora)
+  - `admin@example.com` -- ADMIN
+  - `judge@example.com` -- JUDGE (has access code)
+  - `steward@example.com` -- STEWARD (has access code)
+  - `user@example.com` -- ENTRANT (5 credits in Amadora)
+  - `entrant@example.com` -- ENTRANT (3 credits in Amadora)
 - **Product mappings:** CHIP-AMA (Amadora, product ID 1001), CHIP-PRO (Profissional, product ID 1002)
-- **Entries for `user@localhost`:** Wildflower Traditional (DRAFT, M1A), Blueberry Bliss (SUBMITTED, M2C), Oak-Aged Bochet (DRAFT, M1A)
-- **Entries for `entrant@localhost`:** Lavender Metheglin (DRAFT, M3B)
+- **Entries for `user@example.com`:** Wildflower Traditional (DRAFT, M1A), Blueberry Bliss (SUBMITTED, M2C), Oak-Aged Bochet (DRAFT, M1A)
+- **Entries for `entrant@example.com`:** Lavender Metheglin (DRAFT, M3B)
 
 ### Second competition (minimal)
 
 - **Competition:** Test Competition 2026 (September 1-30, 2026, Porto, Portugal)
 - **Division:** Open (MJP, REGISTRATION_OPEN, full catalog)
-- **Participants:** `admin@localhost` -- ADMIN
+- **Participants:** `admin@example.com` -- ADMIN
 
 ---
 
@@ -64,43 +64,46 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 - [ ] Navigate to `http://localhost:8080`
 - [ ] **Expected:** Redirected to `/login`
-- [ ] Click the "Login with Credentials" tab
-- [ ] Enter email: `admin@localhost`, password: `admin`
-- [ ] Click "Sign In"
-- [ ] **Expected:** Redirected to `/` with "Welcome admin@localhost"
+- [ ] Enter email: `admin@example.com`
+- [ ] Expand "Login with credentials" section
+- [ ] Enter password: `admin`
+- [ ] Click "Login"
+- [ ] **Expected:** Redirected to `/` with "Welcome admin@example.com"
 
 ### Magic link login
 
 - [ ] Log out (or open incognito window)
 - [ ] Navigate to `/login`
-- [ ] On the "Magic Link" tab, enter email: `user@localhost`
-- [ ] Click "Send Magic Link"
-- [ ] **Expected:** Notification "Magic link sent! Check the server logs."
+- [ ] Enter email: `user@example.com`
+- [ ] Click "Get Login Link"
+- [ ] **Expected:** Notification "If this email is registered, a login link has been sent."
 - [ ] Copy the magic link URL from the server console (format: `http://localhost:8080/login/magic?token=...`)
 - [ ] Paste the URL in the browser
-- [ ] **Expected:** Authenticated as `user@localhost`, redirected to `/` with "Welcome user@localhost"
+- [ ] **Expected:** Authenticated as `user@example.com`, redirected to `/` with "Welcome user@example.com"
 
 ### Magic link validation (blank email)
 
-- [ ] Navigate to `/login`, Magic Link tab
-- [ ] Leave email blank, click "Send Magic Link"
+- [ ] Navigate to `/login`
+- [ ] Leave email blank, click "Get Login Link"
 - [ ] **Expected:** Email field shows error "Please enter a valid email address"
 
 ### Access code login (judge)
 
-- [ ] Log in as `admin@localhost`
+- [ ] Log in as `admin@example.com`
 - [ ] Navigate to `/competitions`, click CHIP 2026 row
 - [ ] Click the "Participants" tab
-- [ ] Find `judge@localhost` in the grid, note the 8-character access code
+- [ ] Find `judge@example.com` in the grid, note the 8-character access code
 - [ ] Log out
-- [ ] On the "Login with Credentials" tab, enter email: `judge@localhost`, code: the access code
-- [ ] Click "Sign In"
-- [ ] **Expected:** Authenticated as `judge@localhost`, redirected to `/`
+- [ ] Enter email: `judge@example.com`
+- [ ] Expand "Login with credentials" section
+- [ ] Enter code: the access code
+- [ ] Click "Login"
+- [ ] **Expected:** Authenticated as `judge@example.com`, redirected to `/`
 
 ### Access code login (steward)
 
-- [ ] Repeat the above with `steward@localhost` and its access code
-- [ ] **Expected:** Authenticated as `steward@localhost`
+- [ ] Repeat the above with `steward@example.com` and its access code
+- [ ] **Expected:** Authenticated as `steward@example.com`
 
 ### Unauthenticated redirect
 
@@ -110,17 +113,19 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 ### Failed login
 
-- [ ] On the "Login with Credentials" tab, enter email: `admin@localhost`, password: `wrong`
-- [ ] Click "Sign In"
-- [ ] **Expected:** Login form shows error message (red banner)
+- [ ] Enter email: `admin@example.com`
+- [ ] Expand "Login with credentials" section
+- [ ] Enter password: `wrong`
+- [ ] Click "Login"
+- [ ] **Expected:** Error notification "Invalid email or password. Please try again."
 
 ### PENDING user activation on first login
 
-- [ ] Copy the magic link for `pending@localhost` from the server startup logs
+- [ ] Copy the magic link for `pending@example.com` from the server startup logs
 - [ ] Paste the URL in the browser
-- [ ] **Expected:** Authenticated as `pending@localhost`, redirected to `/`
-- [ ] Log in as `admin@localhost`, navigate to `/users`
-- [ ] **Expected:** `pending@localhost` status is now ACTIVE (was PENDING before first login)
+- [ ] **Expected:** Authenticated as `pending@example.com`, redirected to `/`
+- [ ] Log in as `admin@example.com`, navigate to `/users`
+- [ ] **Expected:** `pending@example.com` status is now ACTIVE (was PENDING before first login)
 
 ### Logout
 
@@ -137,7 +142,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 ### Main layout structure
 
-- [ ] Log in as `admin@localhost`
+- [ ] Log in as `admin@example.com`
 - [ ] **Expected:** Top navbar shows "MEADS" title and "Logout" button
 - [ ] **Expected:** Left sidebar (drawer) has: Home, Competitions, Users
 - [ ] Click the drawer toggle (hamburger icon)
@@ -145,16 +150,16 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 ### SYSTEM_ADMIN nav items
 
-- [ ] While logged in as `admin@localhost` (SYSTEM_ADMIN)
+- [ ] While logged in as `admin@example.com` (SYSTEM_ADMIN)
 - [ ] **Expected:** Side nav shows "Home", "Competitions", "Users"
-- [ ] Log out, log in as `user@localhost` (regular USER)
+- [ ] Log out, log in as `user@example.com` (regular USER)
 - [ ] **Expected:** Side nav shows "Home" only -- no "Competitions" or "Users"
 
 ### Home link
 
 - [ ] Navigate to `/users` (as admin)
 - [ ] Click "Home" in the sidebar
-- [ ] **Expected:** Navigated to `/` with "Welcome admin@localhost"
+- [ ] **Expected:** Navigated to `/` with "Welcome admin@example.com"
 
 ---
 
@@ -162,7 +167,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 **Covers:** `UserListViewTest`, `UserServiceTest`, `UserServiceValidationTest`
 
-*Log in as `admin@localhost` for all steps.*
+*Log in as `admin@example.com` for all steps.*
 
 ### User list grid
 
@@ -197,7 +202,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 ### Create user -- duplicate email
 
 - [ ] Click "Create User"
-- [ ] Enter email: `admin@localhost`, name: `Duplicate`
+- [ ] Enter email: `admin@example.com`, name: `Duplicate`
 - [ ] Click "Save"
 - [ ] **Expected:** Email field shows error "Email already exists"
 
@@ -227,7 +232,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 ### Self-edit restrictions
 
-- [ ] Click "Edit" on `admin@localhost` (yourself)
+- [ ] Click "Edit" on `admin@example.com` (yourself)
 - [ ] **Expected:** Role and Status dropdowns are disabled (cannot change your own role/status)
 - [ ] **Expected:** Name field is still editable
 
@@ -251,14 +256,14 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 ### Send magic link
 
-- [ ] Find `user@localhost` in the grid
+- [ ] Find `user@example.com` in the grid
 - [ ] Click "Send Magic Link"
 - [ ] **Expected:** Notification "Magic link sent successfully" (green)
 - [ ] **Expected:** Magic link URL logged in server console
 
 ### Self-delete prevention
 
-- [ ] Find `admin@localhost` (yourself)
+- [ ] Find `admin@example.com` (yourself)
 - [ ] Click "Deactivate"
 - [ ] **Expected:** Error notification (cannot deactivate your own account)
 
@@ -268,7 +273,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 **Covers:** `CompetitionListViewTest`, `CompetitionServiceTest` (create/update/delete)
 
-*Log in as `admin@localhost` for all steps.*
+*Log in as `admin@example.com` for all steps.*
 
 ### Competition list grid
 
@@ -279,13 +284,13 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 ### Access denied for regular user
 
-- [ ] Log in as `user@localhost`
+- [ ] Log in as `user@example.com`
 - [ ] Navigate to `/competitions`
 - [ ] **Expected:** Access denied (redirected away from the page)
 
 ### Create competition -- success
 
-- [ ] Log in as `admin@localhost`, navigate to `/competitions`
+- [ ] Log in as `admin@example.com`, navigate to `/competitions`
 - [ ] Click "Create Competition"
 - [ ] **Expected:** Dialog with fields: Name, Start Date, End Date, Location, Logo upload
 - [ ] Enter name: `Test Comp`, start: tomorrow, end: next week, location: `Porto`
@@ -340,7 +345,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 **Covers:** `CompetitionDetailViewTest`, `CompetitionServiceTest` (divisions, participants, settings)
 
-*Log in as `admin@localhost` for all steps unless noted.*
+*Log in as `admin@example.com` for all steps unless noted.*
 
 ### Header
 
@@ -428,7 +433,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 ### Authorization -- regular user redirected
 
-- [ ] Log in as `judge@localhost` (not a competition ADMIN)
+- [ ] Log in as `judge@example.com` (not a competition ADMIN)
 - [ ] Navigate directly to `/competitions/{chipId}` (use the URL from earlier)
 - [ ] **Expected:** Redirected to `/` (root) -- judge is not authorized for competition admin
 
@@ -438,7 +443,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 **Covers:** `DivisionDetailViewTest`, `CompetitionServiceTest` (categories, settings, status)
 
-*Log in as `admin@localhost` for all steps unless noted.*
+*Log in as `admin@example.com` for all steps unless noted.*
 
 ### Header
 
@@ -512,7 +517,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 ### Authorization -- unauthorized user redirected
 
-- [ ] Log in as `user@localhost` (regular USER, not competition ADMIN)
+- [ ] Log in as `user@example.com` (regular USER, not competition ADMIN)
 - [ ] Navigate directly to `/divisions/{amadoraId}`
 - [ ] **Expected:** Page loads (user has credits in this division, so MyEntriesView would be accessible, but DivisionDetailView requires ADMIN)
 - [ ] **Note:** Check whether regular entrant can see division detail or is redirected
@@ -523,7 +528,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 **Covers:** `DivisionEntryAdminViewTest`, `EntryServiceTest` (credits, entries, products)
 
-*Log in as `admin@localhost` for all steps.*
+*Log in as `admin@example.com` for all steps.*
 
 ### Navigate to Entry Admin
 
@@ -535,23 +540,23 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 - [ ] **Expected:** Default tab is "Credits"
 - [ ] **Expected:** Grid with columns: Email, Name, Credits, Entries
-- [ ] **Expected:** `user@localhost` -- Credits: 5, Entries: 3
-- [ ] **Expected:** `entrant@localhost` -- Credits: 3, Entries: 1
+- [ ] **Expected:** `user@example.com` -- Credits: 5, Entries: 3
+- [ ] **Expected:** `entrant@example.com` -- Credits: 3, Entries: 1
 
 ### Add credits
 
 - [ ] Click "Add Credits"
 - [ ] **Expected:** Dialog with fields: Entrant Email, Amount (default: 1)
-- [ ] Enter email: `user@localhost`, amount: `2`
+- [ ] Enter email: `user@example.com`, amount: `2`
 - [ ] Click "Add"
 - [ ] **Expected:** Notification "Credits added" (green)
-- [ ] **Expected:** `user@localhost` credits now shows 7
+- [ ] **Expected:** `user@example.com` credits now shows 7
 
 ### Mutual exclusivity -- add credits to different division
 
 - [ ] Navigate to Profissional division entry-admin (via CompetitionDetailView > Profissional > View > Manage Entries)
 - [ ] Click "Add Credits"
-- [ ] Enter email: `user@localhost`, amount: `1`
+- [ ] Enter email: `user@example.com`, amount: `1`
 - [ ] Click "Add"
 - [ ] **Expected:** Error notification -- mutual exclusivity violation (user already has credits in Amadora)
 
@@ -560,7 +565,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 - [ ] Navigate back to Amadora entry-admin
 - [ ] Click the "Entries" tab
 - [ ] **Expected:** Grid with columns: Entry #, Entry Code, Mead Name, Category, Entrant, Status
-- [ ] **Expected:** 4 entries total (3 from user@localhost, 1 from entrant@localhost)
+- [ ] **Expected:** 4 entries total (3 from user@example.com, 1 from entrant@example.com)
 - [ ] **Expected:** Blueberry Bliss -- Status: SUBMITTED
 - [ ] **Expected:** Others -- Status: DRAFT
 
@@ -593,7 +598,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 ### Navigate as entrant
 
-- [ ] Log in as `user@localhost`
+- [ ] Log in as `user@example.com`
 - [ ] Navigate to `/divisions/{amadoraId}/my-entries` (use the Amadora division UUID from the URL seen earlier as admin)
 - [ ] **Expected:** Page title "Amadora -- My Entries"
 
@@ -692,9 +697,9 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 **Covers:** `EntryServiceTest` (shouldRejectAddCreditsWhenMutualExclusivityViolated)
 
-- [ ] Log in as `admin@localhost`
+- [ ] Log in as `admin@example.com`
 - [ ] Navigate to Profissional division entry-admin
-- [ ] Click "Add Credits", enter email: `entrant@localhost` (who has Amadora credits), amount: 1
+- [ ] Click "Add Credits", enter email: `entrant@example.com` (who has Amadora credits), amount: 1
 - [ ] Click "Add"
 - [ ] **Expected:** Error -- mutual exclusivity violation
 
@@ -714,10 +719,10 @@ Wait for startup to complete. The console will show magic links for dev users.
 **Covers:** `MyEntriesViewTest` (shouldRedirectUnauthorizedEntrant), `DivisionEntryAdminViewTest`,
 `DivisionDetailViewTest` (shouldRedirectUnauthorizedUser)
 
-- [ ] Log in as `user@localhost` (entrant)
+- [ ] Log in as `user@example.com` (entrant)
 - [ ] Navigate directly to `/divisions/{amadoraId}/entry-admin`
 - [ ] **Expected:** Redirected to `/` (entrants cannot access admin view)
-- [ ] Log in as `judge@localhost`
+- [ ] Log in as `judge@example.com`
 - [ ] Navigate directly to `/divisions/{amadoraId}/entry-admin`
 - [ ] **Expected:** Redirected to `/` (judges cannot access admin view)
 - [ ] Navigate directly to `/divisions/{amadoraId}/my-entries`
@@ -727,7 +732,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 **Covers:** `CompetitionServiceTest` (category modification restrictions)
 
-- [ ] Log in as `admin@localhost`
+- [ ] Log in as `admin@example.com`
 - [ ] Navigate to Test Competition 2026 > Open division detail
 - [ ] Verify the Open division is in DRAFT status
 - [ ] **Expected:** "Add Category" button is enabled, "Remove" buttons are enabled

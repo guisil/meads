@@ -65,14 +65,14 @@ class OrderViewUITest {
     }
 
     @Test
-    @WithMockUser(username = "admin@localhost", roles = "SYSTEM_ADMIN")
+    @WithMockUser(username = "admin@example.com", roles = "SYSTEM_ADMIN")
     void shouldDisplayOrderViewWithGrid() {
         UI.getCurrent().navigate(OrderView.class);
         assertThat(_get(Grid.class)).isNotNull();
     }
 
     @Test
-    @WithMockUser(username = "admin@localhost", roles = "SYSTEM_ADMIN")
+    @WithMockUser(username = "admin@example.com", roles = "SYSTEM_ADMIN")
     void shouldShowSuccessNotificationWhenOrderCreated() {
         UI.getCurrent().navigate(OrderView.class);
 

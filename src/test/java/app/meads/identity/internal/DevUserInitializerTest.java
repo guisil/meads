@@ -42,49 +42,49 @@ class DevUserInitializerTest {
         List<User> savedUsers = captor.getAllValues();
 
         // Admin user
-        var admin = savedUsers.stream().filter(u -> u.getEmail().equals("admin@localhost")).findFirst().orElseThrow();
+        var admin = savedUsers.stream().filter(u -> u.getEmail().equals("admin@example.com")).findFirst().orElseThrow();
         assertThat(admin.getRole()).isEqualTo(Role.SYSTEM_ADMIN);
         assertThat(admin.getStatus()).isEqualTo(UserStatus.ACTIVE);
         assertThat(admin.getPasswordHash()).isEqualTo("$2a$10$adminHash");
 
         // Active user
-        var user = savedUsers.stream().filter(u -> u.getEmail().equals("user@localhost")).findFirst().orElseThrow();
+        var user = savedUsers.stream().filter(u -> u.getEmail().equals("user@example.com")).findFirst().orElseThrow();
         assertThat(user.getRole()).isEqualTo(Role.USER);
         assertThat(user.getStatus()).isEqualTo(UserStatus.ACTIVE);
 
         // Pending user
-        var pending = savedUsers.stream().filter(u -> u.getEmail().equals("pending@localhost")).findFirst().orElseThrow();
+        var pending = savedUsers.stream().filter(u -> u.getEmail().equals("pending@example.com")).findFirst().orElseThrow();
         assertThat(pending.getRole()).isEqualTo(Role.USER);
         assertThat(pending.getStatus()).isEqualTo(UserStatus.PENDING);
 
         // Judge user
-        var judge = savedUsers.stream().filter(u -> u.getEmail().equals("judge@localhost")).findFirst().orElseThrow();
+        var judge = savedUsers.stream().filter(u -> u.getEmail().equals("judge@example.com")).findFirst().orElseThrow();
         assertThat(judge.getRole()).isEqualTo(Role.USER);
         assertThat(judge.getStatus()).isEqualTo(UserStatus.ACTIVE);
 
         // Steward user
-        var steward = savedUsers.stream().filter(u -> u.getEmail().equals("steward@localhost")).findFirst().orElseThrow();
+        var steward = savedUsers.stream().filter(u -> u.getEmail().equals("steward@example.com")).findFirst().orElseThrow();
         assertThat(steward.getRole()).isEqualTo(Role.USER);
         assertThat(steward.getStatus()).isEqualTo(UserStatus.ACTIVE);
 
         // Entrant user
-        var entrant = savedUsers.stream().filter(u -> u.getEmail().equals("entrant@localhost")).findFirst().orElseThrow();
+        var entrant = savedUsers.stream().filter(u -> u.getEmail().equals("entrant@example.com")).findFirst().orElseThrow();
         assertThat(entrant.getRole()).isEqualTo(Role.USER);
         assertThat(entrant.getStatus()).isEqualTo(UserStatus.ACTIVE);
     }
 
     @Test
     void shouldSkipUsersWhenTheyAlreadyExist() {
-        given(userRepository.existsByEmail("admin@localhost")).willReturn(true);
-        given(userRepository.existsByEmail("user@localhost")).willReturn(false);
-        given(userRepository.existsByEmail("pending@localhost")).willReturn(true);
-        given(userRepository.existsByEmail("judge@localhost")).willReturn(true);
-        given(userRepository.existsByEmail("steward@localhost")).willReturn(true);
-        given(userRepository.existsByEmail("entrant@localhost")).willReturn(true);
+        given(userRepository.existsByEmail("admin@example.com")).willReturn(true);
+        given(userRepository.existsByEmail("user@example.com")).willReturn(false);
+        given(userRepository.existsByEmail("pending@example.com")).willReturn(true);
+        given(userRepository.existsByEmail("judge@example.com")).willReturn(true);
+        given(userRepository.existsByEmail("steward@example.com")).willReturn(true);
+        given(userRepository.existsByEmail("entrant@example.com")).willReturn(true);
 
         devUserInitializer.initializeDevUsers();
 
-        // Only one user saved (user@localhost)
+        // Only one user saved (user@example.com)
         then(userRepository).should(times(1)).save(any());
     }
 
@@ -95,12 +95,12 @@ class DevUserInitializerTest {
 
         devUserInitializer.initializeDevUsers();
 
-        // Magic links for all non-admin users, not admin@localhost
-        then(jwtMagicLinkService).should().generateLink(eq("user@localhost"), any());
-        then(jwtMagicLinkService).should().generateLink(eq("pending@localhost"), any());
-        then(jwtMagicLinkService).should().generateLink(eq("judge@localhost"), any());
-        then(jwtMagicLinkService).should().generateLink(eq("steward@localhost"), any());
-        then(jwtMagicLinkService).should().generateLink(eq("entrant@localhost"), any());
-        then(jwtMagicLinkService).should(never()).generateLink(eq("admin@localhost"), any());
+        // Magic links for all non-admin users, not admin@example.com
+        then(jwtMagicLinkService).should().generateLink(eq("user@example.com"), any());
+        then(jwtMagicLinkService).should().generateLink(eq("pending@example.com"), any());
+        then(jwtMagicLinkService).should().generateLink(eq("judge@example.com"), any());
+        then(jwtMagicLinkService).should().generateLink(eq("steward@example.com"), any());
+        then(jwtMagicLinkService).should().generateLink(eq("entrant@example.com"), any());
+        then(jwtMagicLinkService).should(never()).generateLink(eq("admin@example.com"), any());
     }
 }

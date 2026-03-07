@@ -34,12 +34,12 @@ class DevUserInitializer {
     @Order(1)
     @EventListener(ApplicationReadyEvent.class)
     void initializeDevUsers() {
-        createDevUserIfAbsent("admin@localhost", "Dev Admin", Role.SYSTEM_ADMIN, UserStatus.ACTIVE, "admin");
-        createDevUserIfAbsent("user@localhost", "Dev User", Role.USER, UserStatus.ACTIVE, null);
-        createDevUserIfAbsent("pending@localhost", "Pending User", Role.USER, UserStatus.PENDING, null);
-        createDevUserIfAbsent("judge@localhost", "Dev Judge", Role.USER, UserStatus.ACTIVE, null);
-        createDevUserIfAbsent("steward@localhost", "Dev Steward", Role.USER, UserStatus.ACTIVE, null);
-        createDevUserIfAbsent("entrant@localhost", "Dev Entrant", Role.USER, UserStatus.ACTIVE, null);
+        createDevUserIfAbsent("admin@example.com", "Dev Admin", Role.SYSTEM_ADMIN, UserStatus.ACTIVE, "admin");
+        createDevUserIfAbsent("user@example.com", "Dev User", Role.USER, UserStatus.ACTIVE, null);
+        createDevUserIfAbsent("pending@example.com", "Pending User", Role.USER, UserStatus.PENDING, null);
+        createDevUserIfAbsent("judge@example.com", "Dev Judge", Role.USER, UserStatus.ACTIVE, null);
+        createDevUserIfAbsent("steward@example.com", "Dev Steward", Role.USER, UserStatus.ACTIVE, null);
+        createDevUserIfAbsent("entrant@example.com", "Dev Entrant", Role.USER, UserStatus.ACTIVE, null);
     }
 
     private void createDevUserIfAbsent(String email, String name, Role role, UserStatus status, String password) {

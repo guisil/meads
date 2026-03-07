@@ -1,12 +1,18 @@
 package app.meads.identity;
 
+import com.vaadin.flow.component.Key;
+import com.vaadin.flow.component.Shortcuts;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.login.LoginForm;
-import com.vaadin.flow.component.login.LoginI18n;
+import com.vaadin.flow.component.details.Details;
 import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.notification.NotificationVariant;
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.component.tabs.TabSheet;
 import com.vaadin.flow.component.textfield.EmailField;
+import com.vaadin.flow.component.textfield.PasswordField;
+import com.vaadin.flow.data.value.ValueChangeMode;
+import com.vaadin.flow.dom.Element;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
@@ -21,49 +27,107 @@ import java.time.Duration;
 @AnonymousAllowed
 public class LoginView extends VerticalLayout implements BeforeEnterObserver {
 
-    private final LoginForm loginForm;
+    private final EmailField emailField;
+    private final PasswordField passwordField;
+    private final Element credentialsForm;
+    private final Element usernameInput;
+    private final Element passwordInput;
+    private final JwtMagicLinkService jwtMagicLinkService;
+    private final UserService userService;
 
-    public LoginView(JwtMagicLinkService jwtMagicLinkService) {
-        var tabSheet = new TabSheet();
-        tabSheet.setWidthFull();
+    public LoginView(JwtMagicLinkService jwtMagicLinkService, UserService userService) {
+        this.jwtMagicLinkService = jwtMagicLinkService;
+        this.userService = userService;
 
-        // --- Magic Link tab ---
-        var magicLinkLayout = new VerticalLayout();
-        var magicLinkEmail = new EmailField("Email");
-        var magicLinkButton = new Button("Send Magic Link");
-        magicLinkButton.addClickListener(e -> {
-            String emailValue = magicLinkEmail.getValue();
-            if (!StringUtils.hasText(emailValue)) {
-                magicLinkEmail.setInvalid(true);
-                magicLinkEmail.setErrorMessage("Please enter a valid email address");
-                return;
+        addClassName("login-view");
+
+        // --- Email + Get Login Link ---
+        emailField = new EmailField("Email");
+        emailField.setWidthFull();
+        emailField.setValueChangeMode(ValueChangeMode.EAGER);
+        var magicLinkButton = new Button("Get Login Link");
+        magicLinkButton.addClickListener(e -> sendMagicLink());
+        var emailRow = new HorizontalLayout(emailField, magicLinkButton);
+        emailRow.setWidthFull();
+        emailRow.setAlignItems(FlexComponent.Alignment.BASELINE);
+        emailRow.expand(emailField);
+
+        // --- Password + Login (collapsible) ---
+        passwordField = new PasswordField("Code / Password");
+        passwordField.setWidthFull();
+        passwordField.setValueChangeMode(ValueChangeMode.EAGER);
+        var loginButton = new Button("Login");
+        loginButton.addClickListener(e -> loginWithCredentials());
+        var passwordRow = new HorizontalLayout(passwordField, loginButton);
+        passwordRow.setWidthFull();
+        passwordRow.setAlignItems(FlexComponent.Alignment.BASELINE);
+        passwordRow.expand(passwordField);
+
+        // Hidden native form for credentials POST (Spring Security formLogin)
+        usernameInput = createHiddenInput("username");
+        passwordInput = createHiddenInput("password");
+        credentialsForm = new Element("form");
+        credentialsForm.setAttribute("method", "post");
+        credentialsForm.setAttribute("action", "login");
+        credentialsForm.getStyle().set("display", "none");
+        credentialsForm.appendChild(usernameInput, passwordInput);
+
+        var credentialsContent = new VerticalLayout(passwordRow);
+        credentialsContent.getElement().appendChild(credentialsForm);
+        var credentialsDetails = new Details("Login with credentials", credentialsContent);
+
+        // Enter key: credential login if password is filled, otherwise magic link
+        Shortcuts.addShortcutListener(this, () -> {
+            if (StringUtils.hasText(passwordField.getValue())) {
+                loginWithCredentials();
+            } else {
+                sendMagicLink();
             }
-            magicLinkEmail.setInvalid(false);
+        }, Key.ENTER);
+
+        add(emailRow, credentialsDetails);
+    }
+
+    private void sendMagicLink() {
+        String emailValue = emailField.getValue();
+        if (!StringUtils.hasText(emailValue) || emailField.isInvalid()) {
+            emailField.setInvalid(true);
+            emailField.setErrorMessage("Please enter a valid email address");
+            return;
+        }
+        try {
+            userService.findByEmail(emailValue);
             String link = jwtMagicLinkService.generateLink(emailValue, Duration.ofDays(7));
             log.info("\n\n\tMagic link for {}: {}\n", emailValue, link);
-            Notification.show("Magic link sent! Check the server logs.");
-        });
-        magicLinkLayout.add(magicLinkEmail, magicLinkButton);
-        tabSheet.add("Magic Link", magicLinkLayout);
+        } catch (IllegalArgumentException ex) {
+            log.info("Magic link requested for non-existent email: {}", emailValue);
+        }
+        Notification.show("If this email is registered, a login link has been sent.");
+    }
 
-        // --- Credentials tab (code / password) ---
-        loginForm = new LoginForm();
-        loginForm.setAction("login");
-        loginForm.setForgotPasswordButtonVisible(false);
+    private void loginWithCredentials() {
+        String email = emailField.getValue();
+        String password = passwordField.getValue();
+        if (!StringUtils.hasText(email) || emailField.isInvalid()) {
+            emailField.setInvalid(true);
+            emailField.setErrorMessage("Please enter a valid email address");
+            return;
+        }
+        if (!StringUtils.hasText(password)) {
+            passwordField.setInvalid(true);
+            passwordField.setErrorMessage("Code or password is required");
+            return;
+        }
+        usernameInput.setProperty("value", email);
+        passwordInput.setProperty("value", password);
+        credentialsForm.executeJs("this.submit()");
+    }
 
-        var i18n = LoginI18n.createDefault();
-        i18n.getForm().setTitle("");
-        i18n.getForm().setUsername("Email");
-        i18n.getForm().setPassword("Code / Password");
-        loginForm.setI18n(i18n);
-
-        loginForm.getElement().getStyle()
-                .set("--vaadin-login-form-background", "transparent")
-                .set("--vaadin-login-form-padding", "0");
-
-        tabSheet.add("Login with Credentials", loginForm);
-
-        add(tabSheet);
+    private static Element createHiddenInput(String name) {
+        var input = new Element("input");
+        input.setAttribute("type", "hidden");
+        input.setAttribute("name", name);
+        return input;
     }
 
     @Override
@@ -72,7 +136,8 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
                 .getQueryParameters()
                 .getParameters()
                 .containsKey("error")) {
-            loginForm.setError(true);
+            Notification.show("Invalid email or password. Please try again.")
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
     }
 }
