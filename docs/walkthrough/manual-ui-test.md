@@ -185,16 +185,15 @@ Wait for startup to complete. The console will show magic links for dev users.
 ### Set Password via token link
 
 - [ ] Log in as `admin@example.com`, navigate to `/users`
-- [ ] Click "Send Magic Link" for any user (e.g., `user@example.com`)
-- [ ] Copy the magic link URL from the server logs
-- [ ] Replace `/login/magic?token=` with `/set-password?token=` in the URL
-- [ ] Open the modified URL in a browser (can be logged out)
+- [ ] Click "Password Reset" for a non-password user (e.g., `user@example.com`)
+- [ ] Copy the password setup link from the server logs (format: `http://localhost:8080/set-password?token=...`)
+- [ ] Open the URL in a browser (can be logged out)
 - [ ] **Expected:** Set Password page with "Password" and "Confirm Password" fields
 - [ ] Enter mismatched passwords → click "Set Password"
 - [ ] **Expected:** "Passwords do not match" error on confirm field
 - [ ] Enter a matching password shorter than 8 characters → click "Set Password"
 - [ ] **Expected:** Error notification with "at least 8 characters"
-- [ ] Enter a valid matching password (8+ chars) → click "Set Password"
+- [ ] Enter a valid matching password (8+ chars) → press Enter (or click "Set Password")
 - [ ] **Expected:** "Password set successfully" notification, redirected to `/login`
 - [ ] Log in with the user's email and the new password
 - [ ] **Expected:** Successful login

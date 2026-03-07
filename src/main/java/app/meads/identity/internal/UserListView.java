@@ -72,7 +72,7 @@ public class UserListView extends VerticalLayout {
             actions.add(passwordResetButton);
             actions.setSpacing(true);
             return actions;
-        }).setHeader("Actions");
+        }).setHeader("Actions").setAutoWidth(true);
 
         grid.setItems(userService.findAll());
 

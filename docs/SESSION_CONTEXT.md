@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `competition-module`
-**Tests:** 397 passing (`mvn test -Dsurefire.useFile=false`)
+**Tests:** 398 passing (`mvn test -Dsurefire.useFile=false`)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -165,6 +165,12 @@ docs/
 - Added `MyCompetitionsView` at `/my-competitions` — competition admins can navigate to their competitions
 - MainLayout sidebar: SYSTEM_ADMIN sees "Competitions" + "Users"; regular users see "My Competitions"
 - Create user dialog no longer shows status field — always creates with PENDING status
+
+### Design decisions
+- **Any user can set a password via "Forgot password?"** — even users without a role that
+  requires one (e.g., regular entrants who only need magic links). This is allowed by design:
+  it's the user's choice, introduces no security issue, and once set, magic links are blocked
+  for them (defense in depth). No restriction needed.
 
 ### Known UX items (deferred)
 - After failed credentials login, page reloads at `/login?error` and shows error notification,

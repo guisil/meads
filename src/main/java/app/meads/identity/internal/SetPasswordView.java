@@ -1,6 +1,8 @@
 package app.meads.identity.internal;
 
 import app.meads.identity.UserService;
+import com.vaadin.flow.component.Key;
+import com.vaadin.flow.component.Shortcuts;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.notification.Notification;
@@ -52,6 +54,8 @@ public class SetPasswordView extends VerticalLayout implements BeforeEnterObserv
 
         var submitButton = new Button("Set Password");
         submitButton.addClickListener(e -> handleSubmit());
+
+        Shortcuts.addShortcutListener(this, this::handleSubmit, Key.ENTER);
 
         add(passwordField, confirmField, submitButton);
     }

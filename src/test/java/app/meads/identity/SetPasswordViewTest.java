@@ -6,6 +6,7 @@ import com.github.mvysny.kaributesting.v10.MockVaadin;
 import com.github.mvysny.kaributesting.v10.Routes;
 import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
 import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.textfield.PasswordField;
@@ -22,6 +23,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import java.time.Duration;
 
 import static com.github.mvysny.kaributesting.v10.LocatorJ.*;
+import static com.github.mvysny.kaributesting.v10.ShortcutsKt.fireShortcut;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
@@ -127,5 +129,27 @@ class SetPasswordViewTest {
 
         var notification = _get(Notification.class);
         assertThat(notification.getElement().getProperty("text")).contains("at least 8 characters");
+    }
+
+    @Test
+    void shouldSubmitPasswordOnEnterKey() {
+        User user = userService.createUser("setpw-enter@example.com", "Enter Key User", UserStatus.PENDING, Role.USER);
+        String link = jwtMagicLinkService.generatePasswordSetupLink(user.getEmail(), Duration.ofDays(7));
+        String token = link.substring(link.indexOf("token=") + "token=".length());
+
+        UI.getCurrent().navigate("set-password", QueryParameters.of("token", token));
+
+        var passwordField = _get(PasswordField.class, spec -> spec.withLabel("Password"));
+        var confirmField = _get(PasswordField.class, spec -> spec.withLabel("Confirm Password"));
+        passwordField.setValue("validPassword123");
+        confirmField.setValue("validPassword123");
+
+        fireShortcut(Key.ENTER);
+
+        var notification = _get(Notification.class);
+        assertThat(notification.getElement().getProperty("text")).contains("Password set successfully");
+
+        User updated = userService.findById(user.getId());
+        assertThat(updated.getPasswordHash()).isNotNull();
     }
 }
