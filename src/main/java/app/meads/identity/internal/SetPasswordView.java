@@ -28,6 +28,8 @@ public class SetPasswordView extends VerticalLayout implements BeforeEnterObserv
 
     public SetPasswordView(UserService userService) {
         this.userService = userService;
+        setWidth("auto");
+        getStyle().set("margin", "0 auto");
     }
 
     @Override
@@ -48,11 +50,9 @@ public class SetPasswordView extends VerticalLayout implements BeforeEnterObserv
         add(new H2("Set Password"));
 
         passwordField = new PasswordField("Password");
-        passwordField.setWidthFull();
         passwordField.setValueChangeMode(ValueChangeMode.EAGER);
 
         confirmField = new PasswordField("Confirm Password");
-        confirmField.setWidthFull();
         confirmField.setValueChangeMode(ValueChangeMode.EAGER);
 
         var submitButton = new Button("Set Password");

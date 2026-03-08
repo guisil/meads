@@ -40,6 +40,8 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
         this.userService = userService;
 
         addClassName("login-view");
+        setWidth("auto");
+        getStyle().set("margin", "0 auto");
 
         // --- Email + Get Login Link ---
         emailField = new EmailField("Email");
