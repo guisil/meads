@@ -140,8 +140,8 @@ docs/
 
 ## What's Next
 
-1. **Manual UI walkthrough** — Restart from Section 2 (authentication), do everything through
-   Section 11 (multi-role & cross-competition edge cases for exploratory testing and design decisions).
+1. **Manual UI walkthrough** — Continue from Section 7 (Division Detail — Categories tab).
+   Sections 2–6 are done. Continue through Section 11 (multi-role & cross-competition edge cases).
 2. **Code review** of both competition and entry modules (slice by slice)
 3. **Test review** (guided, with UI verification) of both modules
 4. **Judging module** — design and implementation
@@ -155,6 +155,8 @@ docs/
   - Bug fix: `updateCompetition`/`updateCompetitionLogo` now use `requireAuthorized` (allows competition ADMIN, not just SYSTEM_ADMIN)
   - Bug fix: CompetitionDetailView header/breadcrumb now refresh after settings save
   - Dev data: CHIP 2026 location changed to "Amarante, Portugal", dates to June 11-14
+  - Categories TreeGrid: reduced Code column width (100px, no flex grow)
+  - MJP categories: fixed V7 migration to match official MJP Guidelines 2023 — removed M1V/M4G/M4P/M4Z, added M4B (Historical Mead)
 - **Previous changes**: Grid ordering fix, URL slugs (short names), friendly redirects,
   SetPasswordView Enter key, Actions column width, magic link blocked for password users,
   password setup & reset (all 3 phases), compadmin dev user, MyCompetitionsView, MainLayout

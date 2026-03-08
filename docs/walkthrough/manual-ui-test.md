@@ -573,7 +573,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 - [ ] **Expected:** TreeGrid with columns: Code, Name, Description, (Remove)
 - [ ] **Expected:** Main categories expandable: M1 (Traditional Mead), M2 (Fruit Meads), M3 (Spiced Meads), M4 (Specialty Meads)
 - [ ] Expand M1
-- [ ] **Expected:** Sub-categories: M1A, M1B, M1C, M1V
+- [ ] **Expected:** Sub-categories: M1A, M1B, M1C
 - [ ] **Expected:** M4B and M4D are NOT present (excluded for CHIP)
 - [ ] **Expected:** "Add Category" button is enabled (status is REGISTRATION_OPEN, which allows modification)
 - [ ] **Expected:** "Remove" buttons are enabled
@@ -793,7 +793,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 **Main category limit (5 per main category):**
 
-- [ ] Create entries across multiple M1 subcategories (M1A, M1B, M1C, M1V) to total 5
+- [ ] Create entries across multiple M1 subcategories (M1A, M1B, M1C) to total 5
 - [ ] Attempt to create a 6th entry under any M1 subcategory
 - [ ] **Expected:** Error "Entry limit reached for this main category (max 5)"
 

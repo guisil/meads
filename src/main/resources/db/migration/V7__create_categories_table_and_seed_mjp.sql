@@ -13,8 +13,7 @@ CREATE TABLE categories (
 INSERT INTO categories (id, code, name, description, scoring_system) VALUES
     (gen_random_uuid(), 'M1A', 'Traditional Mead (Dry)', 'Traditional mead, dry', 'MJP'),
     (gen_random_uuid(), 'M1B', 'Traditional Mead (Medium)', 'Traditional mead, semi-sweet', 'MJP'),
-    (gen_random_uuid(), 'M1C', 'Traditional Mead (Sweet)', 'Traditional mead, sweet', 'MJP'),
-    (gen_random_uuid(), 'M1V', 'Traditional Mead (Varietal)', 'Traditional mead made with a single honey variety', 'MJP');
+    (gen_random_uuid(), 'M1C', 'Traditional Mead (Sweet)', 'Traditional mead, sweet', 'MJP');
 
 -- M2: Fruit Meads (Melomels)
 INSERT INTO categories (id, code, name, description, scoring_system) VALUES
@@ -33,10 +32,8 @@ INSERT INTO categories (id, code, name, description, scoring_system) VALUES
 -- M4: Specialty Meads
 INSERT INTO categories (id, code, name, description, scoring_system) VALUES
     (gen_random_uuid(), 'M4A', 'Braggot', 'Mead with malt / beer-style honey beverage', 'MJP'),
+    (gen_random_uuid(), 'M4B', 'Historical Mead', 'Mead made using historical methods or recipes', 'MJP'),
     (gen_random_uuid(), 'M4C', 'Experimental Mead', 'Mead with novel ingredients or processes', 'MJP'),
     (gen_random_uuid(), 'M4D', 'Honey Alcoholic Beverage', 'Other honey-containing alcoholic beverages — distillates, tinctures, liqueurs', 'MJP'),
     (gen_random_uuid(), 'M4E', 'Bochet', 'Mead made with caramelized honey', 'MJP'),
-    (gen_random_uuid(), 'M4G', 'Sparkling Mead', 'Sparkling mead, champagne style', 'MJP'),
-    (gen_random_uuid(), 'M4P', 'Polish Dessert Mead', 'Polish style dessert mead', 'MJP'),
-    (gen_random_uuid(), 'M4S', 'Session Mead', 'Mead under 7.5% ABV', 'MJP'),
-    (gen_random_uuid(), 'M4Z', 'Alcohol-Free Mead', 'Alcohol-free and low-alcohol mead, up to 3.5% ABV', 'MJP');
+    (gen_random_uuid(), 'M4S', 'Session Mead', 'Mead under 7.5% ABV', 'MJP');
