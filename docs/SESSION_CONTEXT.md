@@ -147,21 +147,15 @@ docs/
 4. **Judging module** — design and implementation
 
 ### Recent changes (this session)
-- **Grid ordering fix** — Added explicit `ORDER BY name` to all grid data queries to prevent
-  edited items from changing position. `UserService.findAll()` and `CompetitionService.findAllCompetitions()`
-  use `Sort.by("name")`; division queries use `findByCompetitionIdOrderByName()`.
-- **URL slugs (short names) replacing UUIDs in URLs** — All navigation now uses human-readable
-  short names instead of UUIDs. Competition short names are globally unique; division short names
-  are unique per competition. Pattern: `^[a-z0-9][a-z0-9-]*[a-z0-9]$` (min 2 chars).
-  - `Competition` entity: added `shortName` field (V3 migration updated)
-  - `Division` entity: added `shortName` field (V4 migration updated)
-  - `CompetitionService`: `findCompetitionByShortName()`, `findDivisionByShortName()`, uniqueness validation
-  - Routes: `/competitions/:shortName`, `/competitions/:compShortName/divisions/:divShortName`,
-    `.../entry-admin`, `.../my-entries`
-  - All views, tests, and dev data updated
-- **Previous changes**: Friendly redirects, SetPasswordView Enter key, Actions column width,
-  magic link blocked for password users, password setup & reset (all 3 phases), compadmin dev user,
-  MyCompetitionsView, MainLayout sidebar, create user dialog status field removed
+- **UI polish (manual walkthrough):**
+  - Login and Set Password views: constrained form width (`setWidth("auto")`, centered)
+  - User dialog: Save/Cancel buttons placed side by side (HorizontalLayout)
+  - All dialogs: standardized button order (Cancel left, Save right) and label ("Save" everywhere, no "Create")
+  - Logo upload: limit raised from 512KB to 2.5MB, added `fileRejectedListener` for error feedback
+- **Previous changes**: Grid ordering fix, URL slugs (short names), friendly redirects,
+  SetPasswordView Enter key, Actions column width, magic link blocked for password users,
+  password setup & reset (all 3 phases), compadmin dev user, MyCompetitionsView, MainLayout
+  sidebar, create user dialog status field removed
 
 ### Design decisions
 - **Any user can set a password via "Forgot password?"** — even users without a role that

@@ -143,8 +143,11 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
         });
         var upload = new Upload(uploadHandler);
         upload.setMaxFiles(1);
-        upload.setMaxFileSize(512 * 1024);
+        upload.setMaxFileSize(2560 * 1024);
         upload.setAcceptedFileTypes("image/png", "image/jpeg");
+        upload.addFileRejectedListener(e ->
+                Notification.show(e.getErrorMessage())
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR));
 
         var logoSection = new HorizontalLayout();
         logoSection.setDefaultVerticalComponentAlignment(Alignment.CENTER);

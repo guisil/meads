@@ -27,11 +27,11 @@ class CompetitionTest {
     @Test
     void shouldThrowWhenLogoExceedsMaxSize() {
         var competition = createCompetition();
-        byte[] oversizedLogo = new byte[512 * 1024 + 1]; // 512KB + 1 byte
+        byte[] oversizedLogo = new byte[2560 * 1024 + 1]; // 2.5MB + 1 byte
 
         assertThatThrownBy(() -> competition.updateLogo(oversizedLogo, "image/png"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("512");
+                .hasMessageContaining("2.5 MB");
     }
 
     @Test

@@ -195,7 +195,7 @@ class CompetitionListViewTest {
 
         var uploads = _find(Upload.class);
         assertThat(uploads).hasSize(1);
-        assertThat(uploads.getFirst().getMaxFileSize()).isEqualTo(512 * 1024);
+        assertThat(uploads.getFirst().getMaxFileSize()).isEqualTo(2560 * 1024);
     }
 
     @Test

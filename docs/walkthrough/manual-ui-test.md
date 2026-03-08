@@ -397,9 +397,9 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 - [ ] Log in as `admin@example.com`, navigate to `/competitions`
 - [ ] Click "Create Competition"
-- [ ] **Expected:** Dialog with fields: Name, Short Name, Start Date, End Date, Location, Logo upload
+- [ ] **Expected:** Dialog with fields: Name, Short Name, Start Date, End Date, Location, Logo upload (max 2.5 MB, PNG/JPEG)
 - [ ] Enter name: `Test Comp`, short name: `test-comp`, start: tomorrow, end: next week, location: `Porto`
-- [ ] Click "Create"
+- [ ] Click "Save"
 - [ ] **Expected:** Notification "Competition created successfully" (green)
 - [ ] **Expected:** Grid shows new competition
 
@@ -407,14 +407,14 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 - [ ] Click "Create Competition"
 - [ ] Leave name blank, fill in dates
-- [ ] Click "Create"
+- [ ] Click "Save"
 - [ ] **Expected:** Name field shows error "Name is required"
 
 ### Create competition -- missing dates
 
 - [ ] Click "Create Competition"
 - [ ] Enter name, leave start date blank
-- [ ] Click "Create"
+- [ ] Click "Save"
 - [ ] **Expected:** Start date field shows error "Start date is required"
 
 ### Edit competition
@@ -475,7 +475,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 - [ ] Click "Create Division"
 - [ ] **Expected:** Dialog with fields: Name, Short Name, Scoring System (default: MJP)
 - [ ] Enter name: `Test Division`, short name: `test-division`
-- [ ] Click "Create"
+- [ ] Click "Save"
 - [ ] **Expected:** Notification "Division created successfully" (green)
 - [ ] **Expected:** New division appears in grid with status "Draft"
 
@@ -532,7 +532,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 ### Settings tab
 
 - [ ] Click the "Settings" tab
-- [ ] **Expected:** Form with: Name, Short Name, Start Date, End Date, Location fields, Logo upload, Save button
+- [ ] **Expected:** Form with: Name, Short Name, Start Date, End Date, Location fields, Logo upload (max 2.5 MB, PNG/JPEG), Save button
 - [ ] **Expected:** Fields pre-populated with CHIP 2026 data
 - [ ] Change location to `Porto, Portugal`
 - [ ] Click "Save"

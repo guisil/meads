@@ -13,7 +13,7 @@ import java.util.UUID;
 @Getter
 public class Competition {
 
-    private static final int MAX_LOGO_SIZE = 512 * 1024;
+    private static final int MAX_LOGO_SIZE = 2560 * 1024;
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of("image/png", "image/jpeg");
     static final String SHORT_NAME_PATTERN = "^[a-z0-9][a-z0-9-]*[a-z0-9]$";
 
@@ -99,7 +99,7 @@ public class Competition {
             return;
         }
         if (logo.length > MAX_LOGO_SIZE) {
-            throw new IllegalArgumentException("Logo must not exceed 512 KB");
+            throw new IllegalArgumentException("Logo must not exceed 2.5 MB");
         }
         if (!ALLOWED_CONTENT_TYPES.contains(contentType)) {
             throw new IllegalArgumentException("Logo content type must be image/png or image/jpeg");
