@@ -707,7 +707,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 ### Navigate as entrant
 
 - [ ] Log in as `user@example.com`
-- [ ] Navigate to `/competitions/chip-2026/divisions/amadora/my-entries` (use the Amadora division UUID from the URL seen earlier as admin)
+- [ ] Navigate to `/competitions/chip-2026/divisions/amadora/my-entries`
 - [ ] **Expected:** Page title "Amadora -- My Entries"
 
 ### Credit balance display

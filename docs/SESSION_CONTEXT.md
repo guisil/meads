@@ -125,8 +125,7 @@ docs/
 ├── SESSION_CONTEXT.md          ← This file (primary context for resuming work)
 ├── examples/                   ← Test & domain model examples (referenced by CLAUDE.md)
 ├── plans/
-│   ├── 2026-03-02-entry-module-design.md  ← Retained as reference for future module designs
-│   └── 2026-03-07-password-setup-reset.md ← Password setup & reset design (ALL PHASES COMPLETE)
+│   └── 2026-03-02-entry-module-design.md  ← Retained as reference for future module designs
 ├── reference/
 │   └── chip-competition-rules.md          ← CHIP competition rules (active reference)
 ├── specs/
@@ -141,14 +140,16 @@ docs/
 
 ## What's Next
 
-1. **Manual UI walkthrough** — Resume from Section 2 (authentication), test 2.15 (set password
-   via token link). Walkthrough includes Section 11 (multi-role & cross-competition edge cases)
-   for exploratory testing and design decisions.
+1. **Manual UI walkthrough** — Restart from Section 2 (authentication), do everything through
+   Section 11 (multi-role & cross-competition edge cases for exploratory testing and design decisions).
 2. **Code review** of both competition and entry modules (slice by slice)
 3. **Test review** (guided, with UI verification) of both modules
 4. **Judging module** — design and implementation
 
 ### Recent changes (this session)
+- **Grid ordering fix** — Added explicit `ORDER BY name` to all grid data queries to prevent
+  edited items from changing position. `UserService.findAll()` and `CompetitionService.findAllCompetitions()`
+  use `Sort.by("name")`; division queries use `findByCompetitionIdOrderByName()`.
 - **URL slugs (short names) replacing UUIDs in URLs** — All navigation now uses human-readable
   short names instead of UUIDs. Competition short names are globally unique; division short names
   are unique per competition. Pattern: `^[a-z0-9][a-z0-9-]*[a-z0-9]$` (min 2 chars).
