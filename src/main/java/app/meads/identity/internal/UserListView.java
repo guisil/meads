@@ -9,9 +9,12 @@ import app.meads.identity.UserStatus;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import java.time.Duration;
@@ -20,6 +23,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
@@ -44,39 +48,71 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
         this.authenticationContext = authenticationContext;
         add(new H1("Users"));
 
+        TextField filterField = new TextField();
+        filterField.setPlaceholder("Filter by email or name...");
+        filterField.setValueChangeMode(ValueChangeMode.EAGER);
+        filterField.setWidthFull();
+        filterField.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
+        filterField.setClearButtonVisible(true);
+
         Button createUserButton = new Button("Create User");
         createUserButton.addClickListener(e -> openCreateUserDialog());
-        add(createUserButton);
+
+        var toolbar = new HorizontalLayout(filterField, createUserButton);
+        toolbar.setWidthFull();
+        toolbar.setFlexGrow(1, filterField);
+        add(toolbar);
 
         grid = new Grid<>(User.class, false);
-        grid.addColumn(User::getEmail).setHeader("Email");
-        grid.addColumn(User::getName).setHeader("Name");
-        grid.addColumn(User::getRole).setHeader("Role");
-        grid.addColumn(User::getStatus).setHeader("Status");
+        grid.addColumn(User::getEmail).setHeader("Email").setSortable(true).setFlexGrow(2);
+        grid.addColumn(User::getName).setHeader("Name").setSortable(true).setFlexGrow(2);
+        grid.addColumn(User::getRole).setHeader("Role").setSortable(true).setAutoWidth(true);
+        grid.addColumn(User::getStatus).setHeader("Status").setSortable(true).setAutoWidth(true);
         grid.addComponentColumn(user -> {
-            Button editButton = new Button("Edit");
+            Button editButton = new Button(new Icon(VaadinIcon.EDIT));
+            editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            editButton.setAriaLabel("Edit");
+            editButton.setTooltipText("Edit");
             editButton.addClickListener(e -> openEditDialog(user));
 
-            String deleteButtonText = user.getStatus() == UserStatus.INACTIVE ? "Delete" : "Deactivate";
-            Button deleteButton = new Button(deleteButtonText);
+            boolean isInactive = user.getStatus() == UserStatus.INACTIVE;
+            Button deleteButton = new Button(new Icon(isInactive ? VaadinIcon.TRASH : VaadinIcon.BAN));
+            deleteButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            deleteButton.setAriaLabel(isInactive ? "Delete" : "Deactivate");
+            deleteButton.setTooltipText(isInactive ? "Delete" : "Deactivate");
             deleteButton.addClickListener(e -> handleDeleteClick(user));
 
             HorizontalLayout actions = new HorizontalLayout(editButton, deleteButton);
 
             if (user.getPasswordHash() == null) {
-                Button magicLinkButton = new Button("Send Magic Link");
-                magicLinkButton.addClickListener(e -> sendMagicLink(user));
-                actions.add(magicLinkButton);
+                Button loginLinkButton = new Button(new Icon(VaadinIcon.ENVELOPE));
+                loginLinkButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+                loginLinkButton.setAriaLabel("Send Login Link");
+                loginLinkButton.setTooltipText("Send Login Link");
+                loginLinkButton.addClickListener(e -> sendMagicLink(user));
+                actions.add(loginLinkButton);
             }
 
-            Button passwordResetButton = new Button("Password Reset");
+            Button passwordResetButton = new Button(new Icon(VaadinIcon.KEY));
+            passwordResetButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            passwordResetButton.setAriaLabel("Password Reset");
+            passwordResetButton.setTooltipText("Password Reset");
             passwordResetButton.addClickListener(e -> sendPasswordResetLink(user));
             actions.add(passwordResetButton);
-            actions.setSpacing(true);
             return actions;
         }).setHeader("Actions").setAutoWidth(true);
 
-        grid.setItems(userService.findAll());
+        var dataView = grid.setItems(userService.findAll());
+        filterField.addValueChangeListener(e -> {
+            var filterString = e.getValue().toLowerCase();
+            if (filterString.isBlank()) {
+                dataView.removeFilters();
+            } else {
+                dataView.setFilter(user ->
+                        user.getEmail().toLowerCase().contains(filterString) ||
+                        user.getName().toLowerCase().contains(filterString));
+            }
+        });
 
         add(grid);
     }
@@ -152,7 +188,7 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
     public void sendMagicLink(User user) {
         String link = jwtMagicLinkService.generateLink(user.getEmail(), Duration.ofDays(7));
         log.info("\n\n\tMagic link for {}: {}\n", user.getEmail(), link);
-        var notification = Notification.show("Magic link sent successfully");
+        var notification = Notification.show("Login link sent successfully");
         notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
     }
 

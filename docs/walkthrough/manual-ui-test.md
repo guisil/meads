@@ -242,8 +242,15 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 - [ ] Navigate to `/users`
 - [ ] **Expected:** Page title "Users"
-- [ ] **Expected:** Grid with columns: Email, Name, Role, Status, (Actions)
+- [ ] **Expected:** Filter field with search icon and placeholder "Filter by email or name..."
+- [ ] **Expected:** Grid with columns: Email (sortable), Name (sortable), Role (sortable), Status (sortable), Actions (icon buttons)
 - [ ] **Expected:** Grid contains at least 7 dev users (admin, compadmin, user, pending/active, judge, steward, entrant)
+- [ ] Type a name fragment in the filter field
+- [ ] **Expected:** Grid filters immediately (EAGER mode), showing only matching users
+- [ ] Clear the filter
+- [ ] **Expected:** All users visible again
+- [ ] Click the "Email" column header
+- [ ] **Expected:** Grid sorts by email (ascending/descending toggle)
 
 ### Create user -- success
 
@@ -308,16 +315,16 @@ Wait for startup to complete. The console will show magic links for dev users.
 ### Deactivate user (soft delete)
 
 - [ ] Find `newuser@test.com` (status: PENDING or ACTIVE)
-- [ ] **Expected:** Action button shows "Deactivate"
-- [ ] Click "Deactivate"
+- [ ] **Expected:** Ban icon button with tooltip "Deactivate"
+- [ ] Click the ban icon button
 - [ ] **Expected:** Notification "User deactivated successfully" (green)
 - [ ] **Expected:** User status changes to INACTIVE in the grid
 
 ### Hard delete (confirmation dialog)
 
 - [ ] Find `newuser@test.com` (now INACTIVE)
-- [ ] **Expected:** Action button now shows "Delete"
-- [ ] Click "Delete"
+- [ ] **Expected:** Trash icon button with tooltip "Delete"
+- [ ] Click the trash icon button
 - [ ] **Expected:** Confirmation dialog: "Are you sure you want to permanently delete user newuser@test.com? This action cannot be undone."
 - [ ] Click "Confirm"
 - [ ] **Expected:** Notification "User deleted successfully" (green)
@@ -326,22 +333,22 @@ Wait for startup to complete. The console will show magic links for dev users.
 ### Send magic link (no-password user)
 
 - [ ] Find `user@example.com` in the grid (no password set)
-- [ ] **Expected:** "Send Magic Link" button is visible
-- [ ] Click "Send Magic Link"
-- [ ] **Expected:** Notification "Magic link sent successfully" (green)
+- [ ] **Expected:** "Send Login Link" icon button (envelope icon) is visible
+- [ ] Click the envelope icon button ("Send Login Link")
+- [ ] **Expected:** Notification "Login link sent successfully" (green)
 - [ ] **Expected:** Magic link URL logged in server console
 
 ### Send magic link button hidden for password users
 
 - [ ] Find `admin@example.com` in the grid (has password)
-- [ ] **Expected:** "Send Magic Link" button is NOT visible (only Edit, Deactivate, Password Reset)
+- [ ] **Expected:** "Send Login Link" icon button (envelope) is NOT visible (only Edit, Deactivate, Password Reset icons)
 - [ ] Find `compadmin@example.com` in the grid (has password)
-- [ ] **Expected:** "Send Magic Link" button is NOT visible
+- [ ] **Expected:** "Send Login Link" icon button (envelope) is NOT visible
 
 ### Send password reset link
 
 - [ ] Find any user in the grid
-- [ ] Click "Password Reset"
+- [ ] Click the key icon button (tooltip: "Password Reset")
 - [ ] **Expected:** Notification "Password reset link generated (check server logs)" (green)
 - [ ] **Expected:** Password setup link URL logged in server console (format: `.../set-password?token=...`)
 
@@ -357,7 +364,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 ### Self-delete prevention
 
 - [ ] Find `admin@example.com` (yourself)
-- [ ] Click "Deactivate"
+- [ ] Click the ban icon button (tooltip: "Deactivate")
 - [ ] **Expected:** Error notification (cannot deactivate your own account)
 
 ---
