@@ -174,7 +174,7 @@ class CompetitionListViewTest {
                 .setValue(LocalDate.of(2026, 6, 17));
         _get(TextField.class, spec -> spec.withLabel("Location")).setValue("Porto");
 
-        var saveButton = _get(Button.class, spec -> spec.withText("Create"));
+        var saveButton = _get(Button.class, spec -> spec.withText("Save"));
         _click(saveButton);
 
         assertThat(_find(Dialog.class)).isEmpty();

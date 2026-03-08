@@ -428,7 +428,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         scoringSelect.setItems(ScoringSystem.values());
         scoringSelect.setValue(ScoringSystem.MJP);
 
-        var createButton = new Button("Create", e -> {
+        var saveButton = new Button("Save", e -> {
             if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
                 nameField.setErrorMessage("Name is required");
@@ -460,7 +460,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         var form = new VerticalLayout(nameField, shortNameField, scoringSelect);
         form.setPadding(false);
         dialog.add(form);
-        dialog.getFooter().add(cancelButton, createButton);
+        dialog.getFooter().add(cancelButton, saveButton);
         dialog.open();
     }
 

@@ -173,7 +173,7 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
             }
         }
 
-        var submitButton = new Button(isEdit ? "Save" : "Create", e -> {
+        var submitButton = new Button("Save", e -> {
             if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
                 nameField.setErrorMessage("Name is required");
