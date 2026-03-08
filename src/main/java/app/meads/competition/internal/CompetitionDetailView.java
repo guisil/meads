@@ -6,9 +6,12 @@ import app.meads.identity.JwtMagicLinkService;
 import app.meads.identity.User;
 import app.meads.identity.UserService;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Image;
@@ -171,19 +174,31 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         tab.add(actions);
 
         divisionsGrid = new Grid<>(Division.class, false);
-        divisionsGrid.addColumn(Division::getName).setHeader("Name").setSortable(true);
+        divisionsGrid.addColumn(Division::getName).setHeader("Name").setSortable(true).setFlexGrow(2);
         divisionsGrid.addComponentColumn(div -> createStatusBadge(div.getStatus()))
-                .setHeader("Status");
-        divisionsGrid.addColumn(div -> div.getScoringSystem().name()).setHeader("Scoring");
+                .setHeader("Status").setAutoWidth(true);
+        divisionsGrid.addColumn(div -> div.getScoringSystem().name())
+                .setHeader("Scoring").setAutoWidth(true);
         divisionsGrid.addComponentColumn(div -> {
-            var viewButton = new Button("View", e ->
-                    e.getSource().getUI().ifPresent(ui ->
-                            ui.navigate("divisions/" + div.getId())));
-            var advanceButton = new Button("Advance", e -> advanceDivisionStatus(div));
+            var advanceButton = new Button(new Icon(VaadinIcon.FORWARD));
+            advanceButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            advanceButton.setAriaLabel("Advance");
+            advanceButton.setTooltipText("Advance Status");
             advanceButton.setEnabled(div.getStatus() != DivisionStatus.RESULTS_PUBLISHED);
-            var deleteButton = new Button("Delete", e -> openDeleteDivisionDialog(div));
-            return new HorizontalLayout(viewButton, advanceButton, deleteButton);
-        }).setHeader("Actions");
+            advanceButton.addClickListener(e -> advanceDivisionStatus(div));
+
+            var deleteButton = new Button(new Icon(VaadinIcon.TRASH));
+            deleteButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            deleteButton.setAriaLabel("Delete");
+            deleteButton.setTooltipText("Delete");
+            deleteButton.addClickListener(e -> openDeleteDivisionDialog(div));
+
+            return new HorizontalLayout(advanceButton, deleteButton);
+        }).setHeader("Actions").setAutoWidth(true);
+
+        divisionsGrid.addItemClickListener(e ->
+                e.getSource().getUI().ifPresent(ui ->
+                        ui.navigate("divisions/" + e.getItem().getId())));
 
         refreshDivisionsGrid();
         tab.add(divisionsGrid);
@@ -217,7 +232,11 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                     ? participant.getAccessCode() : "—";
         }).setHeader("Access Code");
         participantsGrid.addComponentColumn(pr -> {
-            var removeButton = new Button("Remove", e -> {
+            var removeButton = new Button(new Icon(VaadinIcon.CLOSE));
+            removeButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            removeButton.setAriaLabel("Remove");
+            removeButton.setTooltipText("Remove");
+            removeButton.addClickListener(e -> {
                 try {
                     competitionService.removeParticipant(
                             competitionId, pr.getParticipantId(), getCurrentUserId());
@@ -229,7 +248,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 }
             });
             return removeButton;
-        }).setHeader("");
+        }).setHeader("").setAutoWidth(true);
 
         refreshParticipantsGrid();
         tab.add(participantsGrid);

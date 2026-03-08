@@ -464,10 +464,11 @@ Wait for startup to complete. The console will show magic links for dev users.
 ### Divisions tab
 
 - [ ] **Expected:** Default tab is "Divisions"
-- [ ] **Expected:** Grid with columns: Name, Status, Scoring, (Actions)
+- [ ] **Expected:** Grid with columns: Name, Status, Scoring, Actions (icon buttons)
 - [ ] **Expected:** "Amadora" row -- Status badge "Registration Open", Scoring "MJP"
 - [ ] **Expected:** "Profissional" row -- Status badge "Registration Open", Scoring "MJP"
-- [ ] **Expected:** Each row has "View", "Advance", "Delete" buttons
+- [ ] **Expected:** Each row has Advance (forward icon) and Delete (trash icon) buttons
+- [ ] **Expected:** Clicking a division row navigates to the division detail
 
 ### Create division
 
@@ -481,7 +482,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 ### Advance division status
 
 - [ ] Find `Test Division` (status: Draft)
-- [ ] Click "Advance"
+- [ ] Click the forward icon button (tooltip: "Advance Status")
 - [ ] **Expected:** Confirmation dialog: "Advance division 'Test Division' from Draft to Registration Open?"
 - [ ] Click "Advance"
 - [ ] **Expected:** Notification "Status advanced successfully" (green)
@@ -489,7 +490,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 ### Delete division
 
-- [ ] Click "Delete" on `Test Division`
+- [ ] Click the trash icon button on `Test Division`
 - [ ] **Expected:** Confirmation dialog with warning about removing categories
 - [ ] Click "Delete"
 - [ ] **Expected:** Notification "Division deleted successfully" (green)
@@ -497,13 +498,13 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 ### View division detail
 
-- [ ] Click "View" on "Amadora"
+- [ ] Click the "Amadora" row in the grid
 - [ ] **Expected:** Navigated to `/divisions/{id}` (DivisionDetailView)
 
 ### Participants tab
 
 - [ ] Click the "Participants" tab
-- [ ] **Expected:** Grid with columns: Name, Email, Role, Access Code, (Remove)
+- [ ] **Expected:** Grid with columns: Name, Email, Role, Access Code, (Remove icon)
 - [ ] **Expected:** Rows for compadmin (Admin, no code), judge (Judge, 8-char code), steward (Steward, 8-char code), user (Entrant, no code), entrant (Entrant, no code)
 
 ### Add participant
@@ -524,7 +525,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 ### Remove participant
 
 - [ ] Find `newjudge@test.com` in the grid
-- [ ] Click "Remove"
+- [ ] Click the X icon button (tooltip: "Remove")
 - [ ] **Expected:** Notification "Participant removed" (green)
 - [ ] **Expected:** Participant removed from grid
 
