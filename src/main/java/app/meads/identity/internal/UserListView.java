@@ -310,7 +310,8 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
         if (statusSelect != null) {
             formLayout.add(statusSelect);
         }
-        formLayout.add(saveButton, cancelButton);
+        var buttonRow = new HorizontalLayout(saveButton, cancelButton);
+        formLayout.add(buttonRow);
         dialog.add(formLayout);
 
         dialog.open();
