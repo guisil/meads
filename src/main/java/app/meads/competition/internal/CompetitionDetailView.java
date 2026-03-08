@@ -9,8 +9,10 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Image;
+import com.vaadin.flow.component.html.Nav;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
@@ -88,8 +90,23 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         }
 
         removeAll();
+        add(createBreadcrumb());
         add(createHeader());
         add(createTabSheet());
+    }
+
+    private Nav createBreadcrumb() {
+        var nav = new Nav();
+        boolean isSystemAdmin = authenticationContext.getAuthenticatedUser(UserDetails.class)
+                .map(user -> user.getAuthorities().stream()
+                        .anyMatch(a -> a.getAuthority().equals("ROLE_SYSTEM_ADMIN")))
+                .orElse(false);
+        var listLink = new Anchor(isSystemAdmin ? "competitions" : "my-competitions",
+                isSystemAdmin ? "Competitions" : "My Competitions");
+        nav.add(listLink);
+        nav.add(new Span(" / "));
+        nav.add(new Span(competition.getName()));
+        return nav;
     }
 
     private HorizontalLayout createHeader() {

@@ -452,9 +452,11 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 *Log in as `compadmin@example.com` for all steps unless noted (competition admin, not system admin).*
 
-### Header
+### Breadcrumb and header
 
 - [ ] Navigate to CHIP 2026 via "My Competitions" in the sidebar, click CHIP 2026 row
+- [ ] **Expected:** Breadcrumb "My Competitions / CHIP 2026" (for competition admin) or "Competitions / CHIP 2026" (for SYSTEM_ADMIN)
+- [ ] **Expected:** "My Competitions" (or "Competitions") is a clickable link back to the list
 - [ ] **Expected:** Competition name "CHIP 2026" displayed
 - [ ] **Expected:** Date range "Jun 1 - 30, 2026" (or similar formatted range)
 - [ ] **Expected:** Location "Lisbon, Portugal"
