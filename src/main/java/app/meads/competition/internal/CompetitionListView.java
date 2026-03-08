@@ -5,16 +5,20 @@ import app.meads.competition.Competition;
 import app.meads.competition.CompetitionService;
 import app.meads.identity.UserService;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.upload.Upload;
+import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.server.streams.UploadHandler;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
@@ -42,36 +46,59 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
         this.userService = userService;
         this.authenticationContext = authenticationContext;
 
-        var header = new HorizontalLayout();
-        header.setWidthFull();
-        header.setJustifyContentMode(JustifyContentMode.BETWEEN);
-        header.setDefaultVerticalComponentAlignment(Alignment.CENTER);
-        header.addClassName("page-header");
+        add(new H2("Competitions"));
 
-        header.add(new H2("Competitions"));
+        var filterField = new TextField();
+        filterField.setPlaceholder("Filter by name...");
+        filterField.setValueChangeMode(ValueChangeMode.EAGER);
+        filterField.setWidthFull();
+        filterField.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
+        filterField.setClearButtonVisible(true);
 
         var createButton = new Button("Create Competition", e -> openCompetitionDialog(null));
-        header.add(createButton);
 
-        add(header);
+        var toolbar = new HorizontalLayout(filterField, createButton);
+        toolbar.setWidthFull();
+        toolbar.setFlexGrow(1, filterField);
+        add(toolbar);
 
         grid = new Grid<>(Competition.class, false);
-        grid.addColumn(Competition::getName).setHeader("Name").setSortable(true);
-        grid.addColumn(Competition::getStartDate).setHeader("Start Date").setSortable(true);
-        grid.addColumn(Competition::getEndDate).setHeader("End Date").setSortable(true);
+        grid.addColumn(Competition::getName).setHeader("Name").setSortable(true).setFlexGrow(2);
+        grid.addColumn(Competition::getStartDate).setHeader("Start Date").setSortable(true).setAutoWidth(true);
+        grid.addColumn(Competition::getEndDate).setHeader("End Date").setSortable(true).setAutoWidth(true);
         grid.addColumn(comp -> comp.getLocation() != null ? comp.getLocation() : "—")
-                .setHeader("Location");
+                .setHeader("Location").setSortable(true).setFlexGrow(1);
         grid.addComponentColumn(comp -> {
-            var editButton = new Button("Edit", e -> openCompetitionDialog(comp));
-            var deleteButton = new Button("Delete", e -> openDeleteCompetitionDialog(comp));
+            var editButton = new Button(new Icon(VaadinIcon.EDIT));
+            editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            editButton.setAriaLabel("Edit");
+            editButton.setTooltipText("Edit");
+            editButton.addClickListener(e -> openCompetitionDialog(comp));
+
+            var deleteButton = new Button(new Icon(VaadinIcon.TRASH));
+            deleteButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            deleteButton.setAriaLabel("Delete");
+            deleteButton.setTooltipText("Delete");
+            deleteButton.addClickListener(e -> openDeleteCompetitionDialog(comp));
+
             return new HorizontalLayout(editButton, deleteButton);
-        }).setHeader("Actions");
+        }).setHeader("Actions").setAutoWidth(true);
 
         grid.addItemClickListener(e ->
                 e.getSource().getUI().ifPresent(ui ->
                         ui.navigate("competitions/" + e.getItem().getId())));
 
-        refreshGrid();
+        var dataView = grid.setItems(competitionService.findAllCompetitions());
+        filterField.addValueChangeListener(e -> {
+            var filterString = e.getValue().toLowerCase();
+            if (filterString.isBlank()) {
+                dataView.removeFilters();
+            } else {
+                dataView.setFilter(comp ->
+                        comp.getName().toLowerCase().contains(filterString));
+            }
+        });
+
         add(grid);
     }
 

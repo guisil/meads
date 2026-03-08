@@ -379,8 +379,13 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 - [ ] Navigate to `/competitions`
 - [ ] **Expected:** Page title "Competitions"
-- [ ] **Expected:** Grid with columns: Name, Start Date, End Date, Location, (Actions)
+- [ ] **Expected:** Filter field with search icon and placeholder "Filter by name..."
+- [ ] **Expected:** Grid with columns: Name (sortable), Start Date (sortable), End Date (sortable), Location (sortable), Actions (icon buttons)
 - [ ] **Expected:** Grid shows "CHIP 2026" and "Test Competition 2026"
+- [ ] Type "CHIP" in the filter field
+- [ ] **Expected:** Grid filters immediately, showing only "CHIP 2026"
+- [ ] Clear the filter
+- [ ] **Expected:** All competitions visible again
 
 ### Access denied for regular user
 
@@ -414,7 +419,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 ### Edit competition
 
-- [ ] Click "Edit" on `Test Comp`
+- [ ] Click the pencil icon button (tooltip: "Edit") on `Test Comp`
 - [ ] **Expected:** Dialog with pre-populated fields
 - [ ] Change name to `Updated Comp`
 - [ ] Click "Save"
@@ -422,7 +427,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 ### Delete competition -- success (no divisions)
 
-- [ ] Click "Delete" on `Updated Comp`
+- [ ] Click the trash icon button (tooltip: "Delete") on `Updated Comp`
 - [ ] **Expected:** Confirmation dialog: "Are you sure you want to delete \"Updated Comp\"?"
 - [ ] Click "Delete"
 - [ ] **Expected:** Notification "Competition deleted successfully" (green)
@@ -430,7 +435,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 ### Delete competition -- blocked (has divisions)
 
-- [ ] Click "Delete" on "CHIP 2026"
+- [ ] Click the trash icon button on "CHIP 2026"
 - [ ] Click "Delete" in the confirmation dialog
 - [ ] **Expected:** Error notification (cannot delete competition with divisions)
 
