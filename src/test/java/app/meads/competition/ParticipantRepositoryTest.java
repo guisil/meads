@@ -32,7 +32,7 @@ class ParticipantRepositoryTest {
     UserRepository userRepository;
 
     private Competition createAndSaveCompetition() {
-        return competitionRepository.save(new Competition("Test Competition",
+        return competitionRepository.save(new Competition("Test Competition", "test-competition",
                 LocalDate.of(2026, 6, 15), LocalDate.of(2026, 6, 17), "Porto"));
     }
 

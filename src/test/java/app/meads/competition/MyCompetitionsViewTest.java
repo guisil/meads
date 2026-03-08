@@ -135,7 +135,8 @@ class MyCompetitionsViewTest {
         // Create a competition and make the user an admin
         var sysAdmin = userRepository.save(new User("mycompview-sysadmin@example.com",
                 "Sys Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN));
-        var comp = competitionService.createCompetition("My Test Comp",
+        var suffix = java.util.UUID.randomUUID().toString().substring(0, 8);
+        var comp = competitionService.createCompetition("My Test Comp", "my-test-" + suffix,
                 LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 30),
                 "Lisbon", sysAdmin.getId());
         competitionService.addParticipantByEmail(

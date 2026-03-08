@@ -397,8 +397,8 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 - [ ] Log in as `admin@example.com`, navigate to `/competitions`
 - [ ] Click "Create Competition"
-- [ ] **Expected:** Dialog with fields: Name, Start Date, End Date, Location, Logo upload
-- [ ] Enter name: `Test Comp`, start: tomorrow, end: next week, location: `Porto`
+- [ ] **Expected:** Dialog with fields: Name, Short Name, Start Date, End Date, Location, Logo upload
+- [ ] Enter name: `Test Comp`, short name: `test-comp`, start: tomorrow, end: next week, location: `Porto`
 - [ ] Click "Create"
 - [ ] **Expected:** Notification "Competition created successfully" (green)
 - [ ] **Expected:** Grid shows new competition
@@ -442,7 +442,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 ### Navigate to competition detail
 
 - [ ] Click the "CHIP 2026" row in the grid
-- [ ] **Expected:** Navigated to `/competitions/{id}` (CompetitionDetailView)
+- [ ] **Expected:** Navigated to `/competitions/{shortName}` (CompetitionDetailView)
 
 ---
 
@@ -473,8 +473,8 @@ Wait for startup to complete. The console will show magic links for dev users.
 ### Create division
 
 - [ ] Click "Create Division"
-- [ ] **Expected:** Dialog with fields: Name, Scoring System (default: MJP)
-- [ ] Enter name: `Test Division`
+- [ ] **Expected:** Dialog with fields: Name, Short Name, Scoring System (default: MJP)
+- [ ] Enter name: `Test Division`, short name: `test-division`
 - [ ] Click "Create"
 - [ ] **Expected:** Notification "Division created successfully" (green)
 - [ ] **Expected:** New division appears in grid with status "Draft"
@@ -499,7 +499,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 ### View division detail
 
 - [ ] Click the "Amadora" row in the grid
-- [ ] **Expected:** Navigated to `/divisions/{id}` (DivisionDetailView)
+- [ ] **Expected:** Navigated to `/competitions/{compShortName}/divisions/{divShortName}` (DivisionDetailView)
 
 ### Participants tab
 
@@ -532,7 +532,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 ### Settings tab
 
 - [ ] Click the "Settings" tab
-- [ ] **Expected:** Form with: Name, Start Date, End Date, Location fields, Logo upload, Save button
+- [ ] **Expected:** Form with: Name, Short Name, Start Date, End Date, Location fields, Logo upload, Save button
 - [ ] **Expected:** Fields pre-populated with CHIP 2026 data
 - [ ] Change location to `Porto, Portugal`
 - [ ] Click "Save"
@@ -542,7 +542,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 ### Authorization -- regular user redirected
 
 - [ ] Log in as `judge@example.com` (not a competition ADMIN)
-- [ ] Navigate directly to `/competitions/{chipId}` (use the URL from earlier)
+- [ ] Navigate directly to `/competitions/chip-2026` (use the URL from earlier)
 - [ ] **Expected:** Redirected to `/` (root) -- judge is not authorized for competition admin
 
 ---
@@ -615,7 +615,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 - [ ] **Expected:** "Manage Entries" link visible in the header area
 - [ ] Click "Manage Entries"
-- [ ] **Expected:** Navigated to `/divisions/{id}/entry-admin`
+- [ ] **Expected:** Navigated to `/competitions/{compShortName}/divisions/{divShortName}/entry-admin`
 - [ ] Navigate back to division detail
 
 ### Advance status from division detail
@@ -626,7 +626,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 ### Authorization -- unauthorized user redirected
 
 - [ ] Log in as `user@example.com` (regular USER, not competition ADMIN)
-- [ ] Navigate directly to `/divisions/{amadoraId}`
+- [ ] Navigate directly to `/competitions/chip-2026/divisions/amadora`
 - [ ] **Expected:** Page loads (user has credits in this division, so MyEntriesView would be accessible, but DivisionDetailView requires ADMIN)
 - [ ] **Note:** Check whether regular entrant can see division detail or is redirected
 
@@ -707,7 +707,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 ### Navigate as entrant
 
 - [ ] Log in as `user@example.com`
-- [ ] Navigate to `/divisions/{amadoraId}/my-entries` (use the Amadora division UUID from the URL seen earlier as admin)
+- [ ] Navigate to `/competitions/chip-2026/divisions/amadora/my-entries` (use the Amadora division UUID from the URL seen earlier as admin)
 - [ ] **Expected:** Page title "Amadora -- My Entries"
 
 ### Credit balance display
@@ -828,12 +828,12 @@ Wait for startup to complete. The console will show magic links for dev users.
 `DivisionDetailViewTest` (shouldRedirectUnauthorizedUser)
 
 - [ ] Log in as `user@example.com` (entrant)
-- [ ] Navigate directly to `/divisions/{amadoraId}/entry-admin`
+- [ ] Navigate directly to `/competitions/chip-2026/divisions/amadora/entry-admin`
 - [ ] **Expected:** Redirected to `/` (entrants cannot access admin view)
 - [ ] Log in as `judge@example.com`
-- [ ] Navigate directly to `/divisions/{amadoraId}/entry-admin`
+- [ ] Navigate directly to `/competitions/chip-2026/divisions/amadora/entry-admin`
 - [ ] **Expected:** Redirected to `/` (judges cannot access admin view)
-- [ ] Navigate directly to `/divisions/{amadoraId}/my-entries`
+- [ ] Navigate directly to `/competitions/chip-2026/divisions/amadora/my-entries`
 - [ ] **Expected:** Redirected to `/` (judge has no credits in this division)
 
 ### Status workflow -- category lock
@@ -904,7 +904,7 @@ may be invited as a competition ADMIN for a different competition.
 - [ ] Log out, log back in as `compadmin@example.com`
 - [ ] **Test:** Can they access both:
   - "My Competitions" to manage CHIP 2026 (as ADMIN)?
-  - `/divisions/{amadoraId}/my-entries` to manage their entries (as ENTRANT)?
+  - `/competitions/chip-2026/divisions/amadora/my-entries` to manage their entries (as ENTRANT)?
 - [ ] **Observe:** Is the navigation clear? Can they tell which "hat" they're wearing?
 - [ ] Clean up if needed
 

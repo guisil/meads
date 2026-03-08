@@ -36,6 +36,7 @@ import org.springframework.test.annotation.DirtiesContext;
 
 import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.UUID;
 
 import static com.github.mvysny.kaributesting.v10.LocatorJ.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -65,6 +66,7 @@ class DivisionEntryAdminViewTest {
     @Autowired
     ParticipantRoleRepository participantRoleRepository;
 
+    private Competition competition;
     private Division division;
 
     @BeforeEach
@@ -73,11 +75,12 @@ class DivisionEntryAdminViewTest {
                 .orElseGet(() -> userRepository.save(
                         new User(ADMIN_EMAIL, "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN)));
 
-        var competition = competitionRepository.save(new Competition(
-                "Entry Admin Test Competition",
+        var suffix = UUID.randomUUID().toString().substring(0, 8);
+        competition = competitionRepository.save(new Competition(
+                "Entry Admin Test Competition", "entry-admin-" + suffix,
                 LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30), "Test"));
         division = divisionRepository.save(new Division(
-                competition.getId(), "Admin Division", ScoringSystem.MJP));
+                competition.getId(), "Admin Division", "admin-div-" + suffix, ScoringSystem.MJP));
 
         var routes = new Routes().autoDiscoverViews("app.meads");
         var servlet = new MockSpringServlet(routes, ctx, UI::new);
@@ -137,7 +140,7 @@ class DivisionEntryAdminViewTest {
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldDisplayTabsForEntryAdmin() {
-        UI.getCurrent().navigate("divisions/" + division.getId() + "/entry-admin");
+        UI.getCurrent().navigate("competitions/" + competition.getShortName() + "/divisions/" + division.getShortName() + "/entry-admin");
 
         var heading = _get(H2.class);
         assertThat(heading.getText()).contains("Admin Division");

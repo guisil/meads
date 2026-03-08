@@ -167,6 +167,7 @@ class CompetitionListViewTest {
         _click(createButton);
 
         _get(TextField.class, spec -> spec.withLabel("Name")).setValue("Regional 2026");
+        _get(TextField.class, spec -> spec.withLabel("Short Name")).setValue("regional-2026");
         _get(DatePicker.class, spec -> spec.withLabel("Start Date"))
                 .setValue(LocalDate.of(2026, 6, 15));
         _get(DatePicker.class, spec -> spec.withLabel("End Date"))
@@ -201,6 +202,7 @@ class CompetitionListViewTest {
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldDisplayCompetitionsInGrid() {
         competitionRepository.save(new Competition("Test Competition",
+                "test-comp-" + java.util.UUID.randomUUID().toString().substring(0, 8),
                 LocalDate.of(2026, 6, 15), LocalDate.of(2026, 6, 17), "Porto"));
 
         UI.getCurrent().navigate("competitions");

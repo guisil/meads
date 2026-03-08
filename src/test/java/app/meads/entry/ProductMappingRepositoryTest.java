@@ -33,10 +33,10 @@ class ProductMappingRepositoryTest {
     DivisionRepository divisionRepository;
 
     private Division createAndSaveDivision() {
-        var competition = competitionRepository.save(new Competition("Test Competition",
+        var competition = competitionRepository.save(new Competition("Test Competition", "test-competition",
                 LocalDate.of(2026, 6, 15), LocalDate.of(2026, 6, 17), "Porto"));
         return divisionRepository.save(new Division(competition.getId(),
-                "Home", ScoringSystem.MJP));
+                "Home", "home", ScoringSystem.MJP));
     }
 
     @Test

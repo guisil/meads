@@ -40,10 +40,10 @@ class EntryCreditRepositoryTest {
     UserRepository userRepository;
 
     private Division createAndSaveDivision() {
-        var competition = competitionRepository.save(new Competition("Test Competition",
+        var competition = competitionRepository.save(new Competition("Test Competition", "test-competition",
                 LocalDate.of(2026, 6, 15), LocalDate.of(2026, 6, 17), "Porto"));
         return divisionRepository.save(new Division(competition.getId(),
-                "Home", ScoringSystem.MJP));
+                "Home", "home", ScoringSystem.MJP));
     }
 
     private User createAndSaveUser() {
@@ -100,12 +100,12 @@ class EntryCreditRepositoryTest {
 
     @Test
     void shouldFindDistinctDivisionIdsByUserId() {
-        var competition = competitionRepository.save(new Competition("Test Competition",
+        var competition = competitionRepository.save(new Competition("Test Competition", "test-comp-2",
                 LocalDate.of(2026, 6, 15), LocalDate.of(2026, 6, 17), "Porto"));
         var divisionA = divisionRepository.save(new Division(competition.getId(),
-                "Home", ScoringSystem.MJP));
+                "Home", "home", ScoringSystem.MJP));
         var divisionB = divisionRepository.save(new Division(competition.getId(),
-                "Pro", ScoringSystem.MJP));
+                "Pro", "pro", ScoringSystem.MJP));
         var user = createAndSaveUser();
 
         creditRepository.save(new EntryCredit(divisionA.getId(), user.getId(), 1,

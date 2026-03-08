@@ -34,7 +34,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
-@Route(value = "divisions/:divisionId/my-entries", layout = MainLayout.class)
+@Route(value = "competitions/:compShortName/divisions/:divShortName/my-entries", layout = MainLayout.class)
 @PermitAll
 public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver {
 
@@ -45,6 +45,8 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
 
     private UUID divisionId;
     private Division division;
+    private String compShortName;
+    private String divShortName;
     private UUID currentUserId;
     private Grid<Entry> entriesGrid;
 
@@ -60,17 +62,21 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
 
     @Override
     public void beforeEnter(BeforeEnterEvent beforeEnterEvent) {
-        divisionId = beforeEnterEvent.getRouteParameters().get("divisionId")
-                .map(UUID::fromString)
+        compShortName = beforeEnterEvent.getRouteParameters().get("compShortName")
+                .orElse(null);
+        divShortName = beforeEnterEvent.getRouteParameters().get("divShortName")
                 .orElse(null);
 
-        if (divisionId == null) {
+        if (compShortName == null || divShortName == null) {
             beforeEnterEvent.forwardTo("");
             return;
         }
 
         try {
-            division = competitionService.findDivisionById(divisionId);
+            var competition = competitionService.findCompetitionByShortName(compShortName);
+            division = competitionService.findDivisionByShortName(
+                    competition.getId(), divShortName);
+            divisionId = division.getId();
         } catch (IllegalArgumentException e) {
             beforeEnterEvent.forwardTo("");
             return;
@@ -301,7 +307,8 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                 dialog.close();
                 // Refresh the whole page to update buttons
                 getUI().ifPresent(ui -> ui.navigate(
-                        "divisions/" + divisionId + "/my-entries"));
+                        "competitions/" + compShortName
+                                + "/divisions/" + divShortName + "/my-entries"));
             } catch (IllegalArgumentException ex) {
                 Notification.show(ex.getMessage());
                 dialog.close();

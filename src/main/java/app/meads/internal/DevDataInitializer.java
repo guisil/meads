@@ -55,6 +55,7 @@ class DevDataInitializer {
         // 1. Create competition (requires SYSTEM_ADMIN)
         var chip = competitionService.createCompetition(
                 "CHIP 2026",
+                "chip-2026",
                 java.time.LocalDate.of(2026, 6, 1),
                 java.time.LocalDate.of(2026, 6, 30),
                 "Lisbon, Portugal",
@@ -67,9 +68,9 @@ class DevDataInitializer {
 
         // 3. Create divisions (competition admin can do this)
         var amadora = competitionService.createDivision(
-                chip.getId(), "Amadora", ScoringSystem.MJP, compAdminId);
+                chip.getId(), "Amadora", "amadora", ScoringSystem.MJP, compAdminId);
         var profissional = competitionService.createDivision(
-                chip.getId(), "Profissional", ScoringSystem.MJP, compAdminId);
+                chip.getId(), "Profissional", "profissional", ScoringSystem.MJP, compAdminId);
         log.info("Created divisions: Amadora ({}), Profissional ({})",
                 amadora.getId(), profissional.getId());
 
@@ -168,6 +169,7 @@ class DevDataInitializer {
     private void seedTestCompetition(UUID sysAdminId, UUID compAdminId) {
         var test = competitionService.createCompetition(
                 "Test Competition 2026",
+                "test-2026",
                 java.time.LocalDate.of(2026, 9, 1),
                 java.time.LocalDate.of(2026, 9, 30),
                 "Porto, Portugal",
@@ -177,7 +179,7 @@ class DevDataInitializer {
                 test.getId(), "compadmin@example.com", CompetitionRole.ADMIN, sysAdminId);
 
         competitionService.createDivision(
-                test.getId(), "Open", ScoringSystem.MJP, compAdminId);
+                test.getId(), "Open", "open", ScoringSystem.MJP, compAdminId);
 
         log.info("Created competition: {} with Open division", test.getName());
     }

@@ -34,13 +34,13 @@ class DivisionCategoryRepositoryTest {
     CategoryRepository categoryRepository;
 
     private Competition createAndSaveCompetition() {
-        return competitionRepository.save(new Competition("Test Competition",
+        return competitionRepository.save(new Competition("Test Competition", "test-competition",
                 LocalDate.of(2026, 6, 15), LocalDate.of(2026, 6, 17), "Porto"));
     }
 
     private Division createAndSaveDivision(UUID competitionId) {
         return divisionRepository.save(new Division(competitionId,
-                "Home", ScoringSystem.MJP));
+                "Home", "home", ScoringSystem.MJP));
     }
 
     @Test

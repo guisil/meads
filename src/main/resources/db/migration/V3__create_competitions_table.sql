@@ -1,6 +1,7 @@
 CREATE TABLE competitions (
     id                 UUID         PRIMARY KEY,
     name               VARCHAR(255) NOT NULL,
+    short_name         VARCHAR(100) NOT NULL UNIQUE,
     start_date         DATE         NOT NULL,
     end_date           DATE         NOT NULL,
     location           VARCHAR(500),

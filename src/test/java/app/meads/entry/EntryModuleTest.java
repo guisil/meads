@@ -44,11 +44,11 @@ class EntryModuleTest {
         var admin = userService.createUser(
                 "admin-integration@test.com", "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
         var competition = competitionService.createCompetition(
-                "Integration Test Competition",
+                "Integration Test Competition", "integration-test-competition",
                 LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30),
                 "Test Location", admin.getId());
         var division = competitionService.createDivision(
-                competition.getId(), "Test Division", ScoringSystem.MJP, admin.getId());
+                competition.getId(), "Test Division", "test-division", ScoringSystem.MJP, admin.getId());
         var category = competitionService.addCustomCategory(
                 division.getId(), "INT1", "Integration Test Category", "For integration testing",
                 null, admin.getId());

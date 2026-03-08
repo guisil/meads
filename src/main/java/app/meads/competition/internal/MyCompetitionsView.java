@@ -40,7 +40,7 @@ public class MyCompetitionsView extends VerticalLayout {
 
         grid.addItemClickListener(e ->
                 e.getSource().getUI().ifPresent(ui ->
-                        ui.navigate("competitions/" + e.getItem().getId())));
+                        ui.navigate("competitions/" + e.getItem().getShortName())));
 
         grid.setItems(competitionService.findCompetitionsByAdmin(getCurrentUserId()));
         add(grid);

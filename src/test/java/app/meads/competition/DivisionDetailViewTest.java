@@ -45,6 +45,7 @@ import org.springframework.test.annotation.DirtiesContext;
 
 import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.UUID;
 
 import static com.github.mvysny.kaributesting.v10.LocatorJ.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -90,10 +91,12 @@ class DivisionDetailViewTest {
                     "Detail Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN));
         }
 
+        var suffix = UUID.randomUUID().toString().substring(0, 8);
         testCompetition = competitionRepository.save(new Competition("Test Competition",
+                "test-comp-" + suffix,
                 LocalDate.of(2026, 6, 15), LocalDate.of(2026, 6, 17), "Porto"));
         testDivision = divisionRepository.save(new Division(
-                testCompetition.getId(), "Home", ScoringSystem.MJP));
+                testCompetition.getId(), "Home", "home-" + suffix, ScoringSystem.MJP));
 
         var routes = new Routes().autoDiscoverViews("app.meads");
         var servlet = new MockSpringServlet(routes, ctx, UI::new);
@@ -153,7 +156,7 @@ class DivisionDetailViewTest {
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldDisplayDivisionHeader() {
-        UI.getCurrent().navigate("divisions/" + testDivision.getId());
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName() + "/divisions/" + testDivision.getShortName());
 
         var heading = _get(H2.class, spec -> spec.withText("Home"));
         assertThat(heading).isNotNull();
@@ -162,7 +165,7 @@ class DivisionDetailViewTest {
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldDisplayStatusBadge() {
-        UI.getCurrent().navigate("divisions/" + testDivision.getId());
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName() + "/divisions/" + testDivision.getShortName());
 
         var badges = _find(Span.class);
         assertThat(badges).anyMatch(span ->
@@ -173,7 +176,7 @@ class DivisionDetailViewTest {
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldDisplayTabSheet() {
-        UI.getCurrent().navigate("divisions/" + testDivision.getId());
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName() + "/divisions/" + testDivision.getShortName());
 
         var tabSheet = _get(TabSheet.class);
         assertThat(tabSheet).isNotNull();
@@ -190,7 +193,7 @@ class DivisionDetailViewTest {
         participantRoleRepository.save(
                 new ParticipantRole(participant.getId(), CompetitionRole.ADMIN));
 
-        UI.getCurrent().navigate("divisions/" + testDivision.getId());
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName() + "/divisions/" + testDivision.getShortName());
 
         var heading = _get(H2.class, spec -> spec.withText("Home"));
         assertThat(heading).isNotNull();
@@ -203,7 +206,7 @@ class DivisionDetailViewTest {
                 .orElseGet(() -> userRepository.save(new User("unauthorized@example.com",
                         "Unauthorized", UserStatus.ACTIVE, Role.USER)));
 
-        UI.getCurrent().navigate("divisions/" + testDivision.getId());
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName() + "/divisions/" + testDivision.getShortName());
 
         // Should have been forwarded away — no H2 heading should be present
         var headings = _find(H2.class);
@@ -213,12 +216,12 @@ class DivisionDetailViewTest {
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldDisplayBreadcrumb() {
-        UI.getCurrent().navigate("divisions/" + testDivision.getId());
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName() + "/divisions/" + testDivision.getShortName());
 
         var nav = _get(Nav.class);
         assertThat(nav).isNotNull();
-        var routerLink = _get(nav, RouterLink.class);
-        assertThat(routerLink.getText()).isEqualTo(testCompetition.getName());
+        var anchor = _get(nav, Anchor.class);
+        assertThat(anchor.getText()).isEqualTo(testCompetition.getName());
         var divisionSpan = _find(nav, Span.class);
         assertThat(divisionSpan).anyMatch(s -> s.getText().equals(testDivision.getName()));
     }
@@ -233,7 +236,7 @@ class DivisionDetailViewTest {
                 testDivision.getId(), null,
                 "M1B", "Semi-Sweet Mead", "A semi-sweet mead", null, 1));
 
-        UI.getCurrent().navigate("divisions/" + testDivision.getId());
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName() + "/divisions/" + testDivision.getShortName());
 
         // Categories tab is now the first tab (index 0) — selected by default
         @SuppressWarnings("unchecked")
@@ -262,7 +265,7 @@ class DivisionDetailViewTest {
                 testDivision.getId(), null,
                 "M1A", "Traditional Mead (Dry)", "Dry traditional mead", parent.getId(), 0));
 
-        UI.getCurrent().navigate("divisions/" + testDivision.getId());
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName() + "/divisions/" + testDivision.getShortName());
 
         // Categories tab is the first tab (index 0) — selected by default
         var treeGrid = _get(TreeGrid.class, spec -> spec.withId("categories-grid"));
@@ -276,7 +279,7 @@ class DivisionDetailViewTest {
                 testDivision.getId(), null,
                 "M1A", "Traditional Mead", "A traditional mead", null, 0));
 
-        UI.getCurrent().navigate("divisions/" + testDivision.getId());
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName() + "/divisions/" + testDivision.getShortName());
 
         // Categories tab is the first tab (index 0) — selected by default
         @SuppressWarnings("unchecked")
@@ -293,7 +296,7 @@ class DivisionDetailViewTest {
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldShowAddCategoryButton() {
-        UI.getCurrent().navigate("divisions/" + testDivision.getId());
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName() + "/divisions/" + testDivision.getShortName());
 
         // Categories tab is the first tab (index 0) — selected by default
         var addButton = _get(Button.class, spec -> spec.withText("Add Category"));
@@ -304,7 +307,7 @@ class DivisionDetailViewTest {
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldAddCatalogCategoryViaDialog() {
-        UI.getCurrent().navigate("divisions/" + testDivision.getId());
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName() + "/divisions/" + testDivision.getShortName());
 
         // Categories tab is the first tab (index 0) — selected by default
         var addButton = _get(Button.class, spec -> spec.withText("Add Category"));
@@ -334,7 +337,7 @@ class DivisionDetailViewTest {
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldAddCustomCategoryViaDialog() {
-        UI.getCurrent().navigate("divisions/" + testDivision.getId());
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName() + "/divisions/" + testDivision.getShortName());
 
         // Categories tab is the first tab (index 0) — selected by default
         var addButton = _get(Button.class, spec -> spec.withText("Add Category"));
@@ -367,7 +370,7 @@ class DivisionDetailViewTest {
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldDisplayManageEntriesLink() {
-        UI.getCurrent().navigate("divisions/" + testDivision.getId());
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName() + "/divisions/" + testDivision.getShortName());
 
         var anchors = _find(Anchor.class);
         var manageEntries = anchors.stream()
@@ -375,6 +378,6 @@ class DivisionDetailViewTest {
                 .findFirst();
         assertThat(manageEntries).isPresent();
         assertThat(manageEntries.get().getHref())
-                .isEqualTo("divisions/" + testDivision.getId() + "/entry-admin");
+                .isEqualTo("competitions/" + testCompetition.getShortName() + "/divisions/" + testDivision.getShortName() + "/entry-admin");
     }
 }

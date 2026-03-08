@@ -20,6 +20,9 @@ public class Division {
     @Column(nullable = false)
     private String name;
 
+    @Column(name = "short_name", nullable = false)
+    private String shortName;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private DivisionStatus status;
@@ -41,10 +44,12 @@ public class Division {
 
     protected Division() {} // JPA
 
-    public Division(UUID competitionId, String name, ScoringSystem scoringSystem) {
+    public Division(UUID competitionId, String name, String shortName, ScoringSystem scoringSystem) {
+        Competition.validateShortName(shortName);
         this.id = UUID.randomUUID();
         this.competitionId = competitionId;
         this.name = name;
+        this.shortName = shortName;
         this.scoringSystem = scoringSystem;
         this.status = DivisionStatus.DRAFT;
     }
@@ -77,11 +82,13 @@ public class Division {
         this.maxEntriesPerMainCategory = maxEntriesPerMainCategory;
     }
 
-    public void updateDetails(String name, ScoringSystem scoringSystem) {
+    public void updateDetails(String name, String shortName, ScoringSystem scoringSystem) {
         if (status != DivisionStatus.DRAFT) {
             throw new IllegalStateException("Can only update details in DRAFT status");
         }
+        Competition.validateShortName(shortName);
         this.name = name;
+        this.shortName = shortName;
         this.scoringSystem = scoringSystem;
     }
 }

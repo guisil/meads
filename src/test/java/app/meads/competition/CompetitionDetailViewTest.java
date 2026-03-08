@@ -41,6 +41,7 @@ import org.springframework.test.annotation.DirtiesContext;
 
 import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.UUID;
 
 import static com.github.mvysny.kaributesting.v10.LocatorJ.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -79,7 +80,9 @@ class CompetitionDetailViewTest {
                     "Comp Detail Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN));
         }
 
+        var suffix = UUID.randomUUID().toString().substring(0, 8);
         testCompetition = competitionRepository.save(new Competition("Test Competition",
+                "test-comp-" + suffix,
                 LocalDate.of(2026, 6, 15), LocalDate.of(2026, 6, 17), "Porto"));
 
         var routes = new Routes().autoDiscoverViews("app.meads");
@@ -140,9 +143,9 @@ class CompetitionDetailViewTest {
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldDisplayCompetitionHeaderAndDivisionsTab() {
-        divisionRepository.save(new Division(testCompetition.getId(), "Home", ScoringSystem.MJP));
+        divisionRepository.save(new Division(testCompetition.getId(), "Home", "home", ScoringSystem.MJP));
 
-        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName());
 
         var heading = _get(H2.class, spec -> spec.withText("Test Competition"));
         assertThat(heading).isNotNull();
@@ -171,7 +174,7 @@ class CompetitionDetailViewTest {
         participantRoleRepository.save(
                 new ParticipantRole(participant.getId(), CompetitionRole.JUDGE));
 
-        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName());
 
         var tabSheet = _get(TabSheet.class);
         tabSheet.setSelectedIndex(1); // Participants tab
@@ -190,7 +193,7 @@ class CompetitionDetailViewTest {
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldDisplaySettingsTab() {
-        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName());
 
         var tabSheet = _get(TabSheet.class);
         tabSheet.setSelectedIndex(2); // Settings tab
@@ -220,7 +223,7 @@ class CompetitionDetailViewTest {
                         "New Comp Admin", UserStatus.ACTIVE, Role.USER)));
         assertThat(newAdmin.getPasswordHash()).isNull();
 
-        UI.getCurrent().navigate("competitions/" + testCompetition.getId());
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName());
 
         var tabSheet = _get(TabSheet.class);
         tabSheet.setSelectedIndex(1); // Participants tab

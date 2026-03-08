@@ -11,7 +11,6 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H2;
-import com.vaadin.flow.component.html.Nav;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
@@ -23,7 +22,6 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.router.RouterLink;
 import com.vaadin.flow.spring.security.AuthenticationContext;
 import jakarta.annotation.security.PermitAll;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -32,7 +30,7 @@ import org.springframework.util.StringUtils;
 import java.util.List;
 import java.util.UUID;
 
-@Route(value = "divisions/:divisionId/entry-admin", layout = MainLayout.class)
+@Route(value = "competitions/:compShortName/divisions/:divShortName/entry-admin", layout = MainLayout.class)
 @PermitAll
 public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnterObserver {
 
@@ -43,6 +41,8 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
 
     private UUID divisionId;
     private Division division;
+    private String compShortName;
+    private String divShortName;
     private UUID currentUserId;
 
     public DivisionEntryAdminView(EntryService entryService,
@@ -57,17 +57,21 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
 
     @Override
     public void beforeEnter(BeforeEnterEvent beforeEnterEvent) {
-        divisionId = beforeEnterEvent.getRouteParameters().get("divisionId")
-                .map(UUID::fromString)
+        compShortName = beforeEnterEvent.getRouteParameters().get("compShortName")
+                .orElse(null);
+        divShortName = beforeEnterEvent.getRouteParameters().get("divShortName")
                 .orElse(null);
 
-        if (divisionId == null) {
+        if (compShortName == null || divShortName == null) {
             beforeEnterEvent.forwardTo("");
             return;
         }
 
         try {
-            division = competitionService.findDivisionById(divisionId);
+            var competition = competitionService.findCompetitionByShortName(compShortName);
+            division = competitionService.findDivisionByShortName(
+                    competition.getId(), divShortName);
+            divisionId = division.getId();
         } catch (IllegalArgumentException e) {
             beforeEnterEvent.forwardTo("");
             return;
@@ -164,7 +168,8 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 dialog.close();
                 // Refresh view
                 getUI().ifPresent(ui -> ui.navigate(
-                        "divisions/" + divisionId + "/entry-admin"));
+                        "competitions/" + compShortName
+                                + "/divisions/" + divShortName + "/entry-admin"));
             } catch (IllegalArgumentException ex) {
                 Notification.show(ex.getMessage());
             }
@@ -255,7 +260,8 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
                 getUI().ifPresent(ui -> ui.navigate(
-                        "divisions/" + divisionId + "/entry-admin"));
+                        "competitions/" + compShortName
+                                + "/divisions/" + divShortName + "/entry-admin"));
             } catch (IllegalArgumentException ex) {
                 Notification.show(ex.getMessage());
             }

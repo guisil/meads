@@ -22,7 +22,7 @@ class CompetitionRepositoryTest {
 
     @Test
     void shouldSaveAndRetrieveCompetition() {
-        var competition = new Competition("Regional Mead Festival",
+        var competition = new Competition("Regional Mead Festival", "regional-mead-festival",
                 LocalDate.of(2026, 6, 15), LocalDate.of(2026, 6, 17), "Porto");
 
         competitionRepository.save(competition);
@@ -39,7 +39,7 @@ class CompetitionRepositoryTest {
 
     @Test
     void shouldSaveAndRetrieveCompetitionWithLogo() {
-        var competition = new Competition("Festival with Logo",
+        var competition = new Competition("Festival with Logo", "festival-with-logo",
                 LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 3), null);
         byte[] logo = new byte[]{1, 2, 3, 4, 5};
         competition.updateLogo(logo, "image/png");
@@ -55,7 +55,7 @@ class CompetitionRepositoryTest {
 
     @Test
     void shouldSaveCompetitionWithNullLocation() {
-        var competition = new Competition("No Location Competition",
+        var competition = new Competition("No Location Competition", "no-location-competition",
                 LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 1), null);
 
         competitionRepository.save(competition);

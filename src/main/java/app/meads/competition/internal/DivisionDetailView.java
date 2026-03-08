@@ -20,8 +20,6 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.router.RouteParameters;
-import com.vaadin.flow.router.RouterLink;
 import com.vaadin.flow.spring.security.AuthenticationContext;
 import jakarta.annotation.security.PermitAll;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -29,7 +27,7 @@ import org.springframework.util.StringUtils;
 
 import java.util.UUID;
 
-@Route(value = "divisions/:divisionId", layout = MainLayout.class)
+@Route(value = "competitions/:compShortName/divisions/:divShortName", layout = MainLayout.class)
 @PermitAll
 public class DivisionDetailView extends VerticalLayout implements BeforeEnterObserver {
 
@@ -52,18 +50,21 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
 
     @Override
     public void beforeEnter(BeforeEnterEvent beforeEnterEvent) {
-        divisionId = beforeEnterEvent.getRouteParameters().get("divisionId")
-                .map(UUID::fromString)
+        var compShortName = beforeEnterEvent.getRouteParameters().get("compShortName")
+                .orElse(null);
+        var divShortName = beforeEnterEvent.getRouteParameters().get("divShortName")
                 .orElse(null);
 
-        if (divisionId == null) {
+        if (compShortName == null || divShortName == null) {
             beforeEnterEvent.forwardTo("competitions");
             return;
         }
 
         try {
-            division = competitionService.findDivisionById(divisionId);
-            competition = competitionService.findCompetitionById(division.getCompetitionId());
+            competition = competitionService.findCompetitionByShortName(compShortName);
+            division = competitionService.findDivisionByShortName(
+                    competition.getId(), divShortName);
+            divisionId = division.getId();
         } catch (IllegalArgumentException e) {
             beforeEnterEvent.forwardTo("competitions");
             return;
@@ -82,8 +83,8 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
 
     private Nav createBreadcrumb() {
         var nav = new Nav();
-        var competitionLink = new RouterLink(competition.getName(), CompetitionDetailView.class,
-                new RouteParameters("competitionId", competition.getId().toString()));
+        var competitionLink = new Anchor(
+                "competitions/" + competition.getShortName(), competition.getName());
         nav.add(competitionLink);
         nav.add(new Span(" / "));
         nav.add(new Span(division.getName()));
@@ -109,7 +110,9 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         header.add(textBlock);
 
         var manageEntriesLink = new Anchor(
-                "divisions/" + divisionId + "/entry-admin", "Manage Entries");
+                "competitions/" + competition.getShortName()
+                        + "/divisions/" + division.getShortName() + "/entry-admin",
+                "Manage Entries");
         header.add(manageEntriesLink);
 
         if (division.getStatus() != DivisionStatus.RESULTS_PUBLISHED) {
@@ -291,6 +294,11 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         nameField.setValue(division.getName());
         nameField.setEnabled(isDraft);
 
+        var shortNameField = new TextField("Short Name");
+        shortNameField.setValue(division.getShortName());
+        shortNameField.setHelperText("URL-friendly identifier (e.g. amadora)");
+        shortNameField.setEnabled(isDraft);
+
         var scoringSelect = new Select<ScoringSystem>();
         scoringSelect.setLabel("Scoring System");
         scoringSelect.setItems(ScoringSystem.values());
@@ -307,9 +315,15 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                 nameField.setErrorMessage("Name is required");
                 return;
             }
+            if (!StringUtils.hasText(shortNameField.getValue())) {
+                shortNameField.setInvalid(true);
+                shortNameField.setErrorMessage("Short name is required");
+                return;
+            }
             try {
                 division = competitionService.updateDivision(
                         divisionId, nameField.getValue(),
+                        shortNameField.getValue(),
                         scoringSelect.getValue(), getCurrentUserId());
                 var notification = Notification.show("Settings saved successfully");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
@@ -319,7 +333,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         });
         saveButton.setEnabled(isDraft);
 
-        tab.add(nameField, scoringSelect, statusField, saveButton);
+        tab.add(nameField, shortNameField, scoringSelect, statusField, saveButton);
         return tab;
     }
 
@@ -336,7 +350,8 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
             try {
                 division = competitionService.advanceDivisionStatus(divisionId, getCurrentUserId());
                 getUI().ifPresent(ui -> ui.navigate(
-                        "divisions/" + divisionId));
+                        "competitions/" + competition.getShortName()
+                                + "/divisions/" + division.getShortName()));
                 dialog.close();
             } catch (IllegalArgumentException | IllegalStateException ex) {
                 Notification.show(ex.getMessage());

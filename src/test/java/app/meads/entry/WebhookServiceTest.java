@@ -121,7 +121,7 @@ class WebhookServiceTest {
         var service = createService();
         var divisionId = UUID.randomUUID();
         var competitionId = UUID.randomUUID();
-        var division = new Division(competitionId, "Home", ScoringSystem.MJP);
+        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP);
         var user = new User("entrant@test.com", "Test Entrant", UserStatus.ACTIVE, Role.USER);
         var mapping = new ProductMapping(divisionId, "101", "SKU-001", "Entry Pack", 1);
 
@@ -193,8 +193,8 @@ class WebhookServiceTest {
     void shouldFlagMutualExclusivityConflict() {
         var service = createService();
         var competitionId = UUID.randomUUID();
-        var divisionA = new Division(competitionId, "Home", ScoringSystem.MJP);
-        var divisionB = new Division(competitionId, "Pro", ScoringSystem.MJP);
+        var divisionA = new Division(competitionId, "Home", "home", ScoringSystem.MJP);
+        var divisionB = new Division(competitionId, "Pro", "pro", ScoringSystem.MJP);
         var user = new User("entrant@test.com", "Test Entrant", UserStatus.ACTIVE, Role.USER);
         var mappingA = new ProductMapping(divisionA.getId(), "101", "SKU-A",
                 "Home Entry", 1);
@@ -249,7 +249,7 @@ class WebhookServiceTest {
         var service = createService();
         var divisionId = UUID.randomUUID();
         var competitionId = UUID.randomUUID();
-        var division = new Division(competitionId, "Home", ScoringSystem.MJP);
+        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP);
         var newUser = new User("new@test.com", "New Entrant", UserStatus.PENDING, Role.USER);
         var mapping = new ProductMapping(divisionId, "101", "SKU-001", "Entry Pack", 1);
 
@@ -282,13 +282,13 @@ class WebhookServiceTest {
         var service = createService();
         var competitionId = UUID.randomUUID();
         var divisionId = UUID.randomUUID();
-        var division = new Division(competitionId, "Home", ScoringSystem.MJP);
+        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP);
         var user = new User("entrant@test.com", "Test Entrant", UserStatus.ACTIVE, Role.USER);
         var mapping = new ProductMapping(divisionId, "101", "SKU-001", "Entry Pack", 1);
 
         // User already has credits in a different division of same competition
         var otherDivisionId = UUID.randomUUID();
-        var otherDivision = new Division(competitionId, "Pro", ScoringSystem.MJP);
+        var otherDivision = new Division(competitionId, "Pro", "pro", ScoringSystem.MJP);
 
         var payload = buildPayload("ORDER-005", "entrant@test.com", "Test Entrant",
                 buildProduct("101", "SKU-001", "Entry Pack", 1));

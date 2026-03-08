@@ -43,7 +43,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
-@Route(value = "competitions/:competitionId", layout = MainLayout.class)
+@Route(value = "competitions/:shortName", layout = MainLayout.class)
 @PermitAll
 public class CompetitionDetailView extends VerticalLayout implements BeforeEnterObserver {
 
@@ -71,17 +71,17 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
     @Override
     public void beforeEnter(BeforeEnterEvent beforeEnterEvent) {
-        competitionId = beforeEnterEvent.getRouteParameters().get("competitionId")
-                .map(UUID::fromString)
+        var shortName = beforeEnterEvent.getRouteParameters().get("shortName")
                 .orElse(null);
 
-        if (competitionId == null) {
+        if (shortName == null) {
             beforeEnterEvent.forwardTo("competitions");
             return;
         }
 
         try {
-            competition = competitionService.findCompetitionById(competitionId);
+            competition = competitionService.findCompetitionByShortName(shortName);
+            competitionId = competition.getId();
         } catch (IllegalArgumentException e) {
             beforeEnterEvent.forwardTo("competitions");
             return;
@@ -198,7 +198,8 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
         divisionsGrid.addItemClickListener(e ->
                 e.getSource().getUI().ifPresent(ui ->
-                        ui.navigate("divisions/" + e.getItem().getId())));
+                        ui.navigate("competitions/" + competition.getShortName()
+                                + "/divisions/" + e.getItem().getShortName())));
 
         refreshDivisionsGrid();
         tab.add(divisionsGrid);
@@ -320,6 +321,10 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         var nameField = new TextField("Name");
         nameField.setValue(competition.getName());
 
+        var shortNameField = new TextField("Short Name");
+        shortNameField.setValue(competition.getShortName());
+        shortNameField.setHelperText("URL-friendly identifier (e.g. chip-2026)");
+
         var startDatePicker = new DatePicker("Start Date");
         startDatePicker.setValue(competition.getStartDate());
 
@@ -367,6 +372,11 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 nameField.setErrorMessage("Name is required");
                 return;
             }
+            if (!StringUtils.hasText(shortNameField.getValue())) {
+                shortNameField.setInvalid(true);
+                shortNameField.setErrorMessage("Short name is required");
+                return;
+            }
             if (startDatePicker.getValue() == null) {
                 startDatePicker.setInvalid(true);
                 startDatePicker.setErrorMessage("Start date is required");
@@ -381,7 +391,8 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 var location = StringUtils.hasText(locationField.getValue())
                         ? locationField.getValue() : null;
                 competition = competitionService.updateCompetition(competitionId,
-                        nameField.getValue(), startDatePicker.getValue(),
+                        nameField.getValue(), shortNameField.getValue(),
+                        startDatePicker.getValue(),
                         endDatePicker.getValue(), location, getCurrentUserId());
                 if (logoData[0] != null) {
                     competitionService.updateCompetitionLogo(
@@ -396,7 +407,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
             }
         });
 
-        tab.add(nameField, startDatePicker, endDatePicker, locationField, logoSection, saveButton);
+        tab.add(nameField, shortNameField, startDatePicker, endDatePicker, locationField, logoSection, saveButton);
         return tab;
     }
 
@@ -406,6 +417,11 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
         var nameField = new TextField("Name");
         nameField.setRequired(true);
+
+        var shortNameField = new TextField("Short Name");
+        shortNameField.setRequired(true);
+        shortNameField.setHelperText("URL-friendly identifier (e.g. amadora)");
+        shortNameField.setPattern("[a-z0-9][a-z0-9-]*[a-z0-9]");
 
         var scoringSelect = new Select<ScoringSystem>();
         scoringSelect.setLabel("Scoring System");
@@ -418,10 +434,16 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 nameField.setErrorMessage("Name is required");
                 return;
             }
+            if (!StringUtils.hasText(shortNameField.getValue())) {
+                shortNameField.setInvalid(true);
+                shortNameField.setErrorMessage("Short name is required");
+                return;
+            }
             try {
                 competitionService.createDivision(
                         competitionId,
                         nameField.getValue(),
+                        shortNameField.getValue(),
                         scoringSelect.getValue(),
                         getCurrentUserId());
                 refreshDivisionsGrid();
@@ -435,7 +457,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
         var cancelButton = new Button("Cancel", e -> dialog.close());
 
-        var form = new VerticalLayout(nameField, scoringSelect);
+        var form = new VerticalLayout(nameField, shortNameField, scoringSelect);
         form.setPadding(false);
         dialog.add(form);
         dialog.getFooter().add(cancelButton, createButton);

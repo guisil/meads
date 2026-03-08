@@ -86,7 +86,7 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
 
         grid.addItemClickListener(e ->
                 e.getSource().getUI().ifPresent(ui ->
-                        ui.navigate("competitions/" + e.getItem().getId())));
+                        ui.navigate("competitions/" + e.getItem().getShortName())));
 
         var dataView = grid.setItems(competitionService.findAllCompetitions());
         filterField.addValueChangeListener(e -> {
@@ -121,6 +121,11 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
         var nameField = new TextField("Name");
         nameField.setRequired(true);
 
+        var shortNameField = new TextField("Short Name");
+        shortNameField.setRequired(true);
+        shortNameField.setHelperText("URL-friendly identifier (e.g. chip-2026)");
+        shortNameField.setPattern("[a-z0-9][a-z0-9-]*[a-z0-9]");
+
         var startDatePicker = new DatePicker("Start Date");
         startDatePicker.setRequired(true);
 
@@ -147,6 +152,7 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
 
         if (isEdit) {
             nameField.setValue(existing.getName());
+            shortNameField.setValue(existing.getShortName());
             startDatePicker.setValue(existing.getStartDate());
             endDatePicker.setValue(existing.getEndDate());
             locationField.setValue(existing.getLocation() != null ? existing.getLocation() : "");
@@ -173,6 +179,11 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
                 nameField.setErrorMessage("Name is required");
                 return;
             }
+            if (!StringUtils.hasText(shortNameField.getValue())) {
+                shortNameField.setInvalid(true);
+                shortNameField.setErrorMessage("Short name is required");
+                return;
+            }
             if (startDatePicker.getValue() == null) {
                 startDatePicker.setInvalid(true);
                 startDatePicker.setErrorMessage("Start date is required");
@@ -190,10 +201,12 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
                 Competition saved;
                 if (isEdit) {
                     saved = competitionService.updateCompetition(existing.getId(),
-                            nameField.getValue(), startDatePicker.getValue(),
+                            nameField.getValue(), shortNameField.getValue(),
+                            startDatePicker.getValue(),
                             endDatePicker.getValue(), location, getCurrentUserId());
                 } else {
                     saved = competitionService.createCompetition(nameField.getValue(),
+                            shortNameField.getValue(),
                             startDatePicker.getValue(), endDatePicker.getValue(),
                             location, getCurrentUserId());
                 }
@@ -214,7 +227,7 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
 
         var cancelButton = new Button("Cancel", e -> dialog.close());
 
-        var form = new VerticalLayout(nameField, startDatePicker, endDatePicker, locationField, logoSection);
+        var form = new VerticalLayout(nameField, shortNameField, startDatePicker, endDatePicker, locationField, logoSection);
         form.setPadding(false);
         dialog.add(form);
         dialog.getFooter().add(cancelButton, submitButton);

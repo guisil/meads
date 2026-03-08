@@ -56,17 +56,26 @@ public class CompetitionService {
     // --- Competition methods (were MeadEvent methods) ---
 
     public Competition createCompetition(@NotBlank String name,
+                                          @NotBlank String shortName,
                                           @NotNull LocalDate startDate,
                                           @NotNull LocalDate endDate,
                                           String location,
                                           @NotNull UUID requestingUserId) {
         requireSystemAdmin(requestingUserId);
-        var competition = new Competition(name, startDate, endDate, location);
+        if (competitionRepository.existsByShortName(shortName)) {
+            throw new IllegalArgumentException("Short name already in use");
+        }
+        var competition = new Competition(name, shortName, startDate, endDate, location);
         return competitionRepository.save(competition);
     }
 
     public Competition findCompetitionById(@NotNull UUID competitionId) {
         return competitionRepository.findById(competitionId)
+                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
+    }
+
+    public Competition findCompetitionByShortName(@NotBlank String shortName) {
+        return competitionRepository.findByShortName(shortName)
                 .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
     }
 
@@ -85,6 +94,7 @@ public class CompetitionService {
 
     public Competition updateCompetition(@NotNull UUID competitionId,
                                           @NotBlank String name,
+                                          @NotBlank String shortName,
                                           @NotNull LocalDate startDate,
                                           @NotNull LocalDate endDate,
                                           String location,
@@ -92,7 +102,11 @@ public class CompetitionService {
         var competition = competitionRepository.findById(competitionId)
                 .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
         requireSystemAdmin(requestingUserId);
-        competition.updateDetails(name, startDate, endDate, location);
+        if (!competition.getShortName().equals(shortName)
+                && competitionRepository.existsByShortName(shortName)) {
+            throw new IllegalArgumentException("Short name already in use");
+        }
+        competition.updateDetails(name, shortName, startDate, endDate, location);
         return competitionRepository.save(competition);
     }
 
@@ -123,12 +137,16 @@ public class CompetitionService {
 
     public Division createDivision(@NotNull UUID competitionId,
                                     @NotBlank String name,
+                                    @NotBlank String shortName,
                                     @NotNull ScoringSystem scoringSystem,
                                     @NotNull UUID requestingUserId) {
         competitionRepository.findById(competitionId)
                 .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
         requireAuthorized(competitionId, requestingUserId);
-        var division = new Division(competitionId, name, scoringSystem);
+        if (divisionRepository.existsByCompetitionIdAndShortName(competitionId, shortName)) {
+            throw new IllegalArgumentException("Short name already in use in this competition");
+        }
+        var division = new Division(competitionId, name, shortName, scoringSystem);
         var saved = divisionRepository.save(division);
         initializeCategories(saved);
         return saved;
@@ -136,6 +154,12 @@ public class CompetitionService {
 
     public Division findDivisionById(@NotNull UUID divisionId) {
         return divisionRepository.findById(divisionId)
+                .orElseThrow(() -> new IllegalArgumentException("Division not found"));
+    }
+
+    public Division findDivisionByShortName(@NotNull UUID competitionId,
+                                             @NotBlank String shortName) {
+        return divisionRepository.findByCompetitionIdAndShortName(competitionId, shortName)
                 .orElseThrow(() -> new IllegalArgumentException("Division not found"));
     }
 
@@ -154,12 +178,18 @@ public class CompetitionService {
 
     public Division updateDivision(@NotNull UUID divisionId,
                                     @NotBlank String name,
+                                    @NotBlank String shortName,
                                     @NotNull ScoringSystem scoringSystem,
                                     @NotNull UUID requestingUserId) {
         var division = divisionRepository.findById(divisionId)
                 .orElseThrow(() -> new IllegalArgumentException("Division not found"));
         requireAuthorized(division.getCompetitionId(), requestingUserId);
-        division.updateDetails(name, scoringSystem);
+        if (!division.getShortName().equals(shortName)
+                && divisionRepository.existsByCompetitionIdAndShortName(
+                        division.getCompetitionId(), shortName)) {
+            throw new IllegalArgumentException("Short name already in use in this competition");
+        }
+        division.updateDetails(name, shortName, scoringSystem);
         return divisionRepository.save(division);
     }
 

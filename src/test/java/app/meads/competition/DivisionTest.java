@@ -11,7 +11,7 @@ class DivisionTest {
 
     private Division createDraftDivision() {
         return new Division(UUID.randomUUID(),
-                "Home Division", ScoringSystem.MJP);
+                "Home Division", "home-division", ScoringSystem.MJP);
     }
 
     @Test
@@ -45,7 +45,7 @@ class DivisionTest {
     void shouldUpdateDetailsWhenInDraft() {
         var division = createDraftDivision();
 
-        division.updateDetails("Updated Name", ScoringSystem.MJP);
+        division.updateDetails("Updated Name", "updated-name", ScoringSystem.MJP);
 
         assertThat(division.getName()).isEqualTo("Updated Name");
     }
@@ -55,7 +55,7 @@ class DivisionTest {
         var division = createDraftDivision();
         division.advanceStatus(); // REGISTRATION_OPEN
 
-        assertThatThrownBy(() -> division.updateDetails("New Name", ScoringSystem.MJP))
+        assertThatThrownBy(() -> division.updateDetails("New Name", "new-name", ScoringSystem.MJP))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("DRAFT");
     }

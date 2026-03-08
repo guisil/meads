@@ -37,8 +37,8 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 #### Entities (public API)
 | Entity | Table | Description |
 |--------|-------|-------------|
-| `Competition` | `competitions` | Top-level: name, dates, location, logo |
-| `Division` | `divisions` | Sub-level: competitionId, name, scoringSystem, status, entry limits |
+| `Competition` | `competitions` | Top-level: name, shortName (unique), dates, location, logo |
+| `Division` | `divisions` | Sub-level: competitionId, name, shortName (unique per competition), scoringSystem, status, entry limits |
 | `Participant` | `participants` | Competition-scoped: userId, accessCode |
 | `ParticipantRole` | `participant_roles` | Role per participant: JUDGE, STEWARD, ENTRANT, ADMIN |
 | `Category` | `categories` | Read-only catalog: code, name, scoringSystem |
@@ -57,8 +57,8 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 #### Views
 - `CompetitionListView` (`/competitions`) — SYSTEM_ADMIN only, all competitions grid with CRUD
-- `CompetitionDetailView` (`/competitions/:competitionId`) — tabs: Divisions, Participants, Settings
-- `DivisionDetailView` (`/divisions/:divisionId`) — tabs: Categories, Settings + "Manage Entries" link
+- `CompetitionDetailView` (`/competitions/:shortName`) — tabs: Divisions, Participants, Settings
+- `DivisionDetailView` (`/competitions/:compShortName/divisions/:divShortName`) — tabs: Categories, Settings + "Manage Entries" link
 - `MyCompetitionsView` (`/my-competitions`) — `@PermitAll`, shows competitions where user is ADMIN
 
 #### Migrations: V3–V8
@@ -98,8 +98,8 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 - `EntrantCreditSummary(userId, email, name, creditBalance, entryCount)`
 
 #### Views
-- `MyEntriesView` (`/divisions/:divisionId/my-entries`) — entrant-facing, credits display, entry grid, add/edit dialog, submit all
-- `DivisionEntryAdminView` (`/divisions/:divisionId/entry-admin`) — admin tabs: Credits, Entries, Products, Orders
+- `MyEntriesView` (`/competitions/:compShortName/divisions/:divShortName/my-entries`) — entrant-facing, credits display, entry grid, add/edit dialog, submit all
+- `DivisionEntryAdminView` (`/competitions/:compShortName/divisions/:divShortName/entry-admin`) — admin tabs: Credits, Entries, Products, Orders
 
 #### REST
 - `JumpsellerWebhookController` — `POST /api/webhooks/jumpseller/order-paid` (HMAC-verified)
@@ -149,28 +149,18 @@ docs/
 4. **Judging module** — design and implementation
 
 ### Recent changes (this session)
-- **Friendly redirect on access denied** — `UserListView` and `CompetitionListView` now use
-  `@PermitAll` + `beforeEnter()` instead of `@RolesAllowed("SYSTEM_ADMIN")`. Unauthorized
-  users are forwarded to `/` instead of seeing a 403 error.
-- **SetPasswordView Enter key** — pressing Enter submits the form, EAGER value change mode on both fields
-- **UserListView Actions column** — `.setAutoWidth(true)` to prevent button clipping
-- **Magic link blocked for password users** — defense in depth:
-  - `MagicLinkAuthenticationFilter` rejects magic link auth for users with passwords (redirects to `/login?error`)
-  - `LoginView.sendMagicLink()` skips link generation for password users (logs credential reminder instead)
-  - `UserListView` hides "Send Magic Link" button for users with passwords
-  - New test: `shouldRejectMagicLinkWhenUserHasPassword` in `JwtMagicLinkAuthenticationTest`
-- **Password setup & reset — ALL 3 PHASES COMPLETE**:
-  - Phase 1: `SetPasswordView` at `/set-password`, password validation (min 8 chars),
-    `setPasswordByToken()` on `UserService`, `generatePasswordSetupLink()` on `JwtMagicLinkService`
-  - Phase 2: `hasPassword()` on `UserService`, auto-generation of setup links when
-    creating/editing SYSTEM_ADMIN users or adding competition ADMIN participants
-  - Phase 3: "Forgot password?" button on LoginView, "Password Reset" button on UserListView
-  - Design: `docs/plans/2026-03-07-password-setup-reset.md`
-- Added `compadmin@example.com` dev user (USER role, password: `compadmin`) as dedicated competition admin
-- SYSTEM_ADMIN (`admin@example.com`) creates competitions; `compadmin@example.com` manages them
-- Added `MyCompetitionsView` at `/my-competitions` — competition admins can navigate to their competitions
-- MainLayout sidebar: SYSTEM_ADMIN sees "Competitions" + "Users"; regular users see "My Competitions"
-- Create user dialog no longer shows status field — always creates with PENDING status
+- **URL slugs (short names) replacing UUIDs in URLs** — All navigation now uses human-readable
+  short names instead of UUIDs. Competition short names are globally unique; division short names
+  are unique per competition. Pattern: `^[a-z0-9][a-z0-9-]*[a-z0-9]$` (min 2 chars).
+  - `Competition` entity: added `shortName` field (V3 migration updated)
+  - `Division` entity: added `shortName` field (V4 migration updated)
+  - `CompetitionService`: `findCompetitionByShortName()`, `findDivisionByShortName()`, uniqueness validation
+  - Routes: `/competitions/:shortName`, `/competitions/:compShortName/divisions/:divShortName`,
+    `.../entry-admin`, `.../my-entries`
+  - All views, tests, and dev data updated
+- **Previous changes**: Friendly redirects, SetPasswordView Enter key, Actions column width,
+  magic link blocked for password users, password setup & reset (all 3 phases), compadmin dev user,
+  MyCompetitionsView, MainLayout sidebar, create user dialog status field removed
 
 ### Design decisions
 - **Any user can set a password via "Forgot password?"** — even users without a role that

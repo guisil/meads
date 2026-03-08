@@ -62,7 +62,7 @@ class CompetitionServiceTest {
     ApplicationEventPublisher eventPublisher;
 
     private Competition createCompetition() {
-        return new Competition("Test Competition",
+        return new Competition("Test Competition", "test-competition",
                 LocalDate.of(2026, 6, 15), LocalDate.of(2026, 6, 17), "Porto");
     }
 
@@ -86,7 +86,7 @@ class CompetitionServiceTest {
                 .willAnswer(inv -> inv.getArgument(0));
 
         var result = competitionService.createCompetition(
-                "Regional 2026", LocalDate.of(2026, 6, 15),
+                "Regional 2026", "regional-2026", LocalDate.of(2026, 6, 15),
                 LocalDate.of(2026, 6, 17), "Porto", admin.getId());
 
         assertThat(result).isNotNull();
@@ -103,7 +103,7 @@ class CompetitionServiceTest {
         given(userService.findById(user.getId())).willReturn(user);
 
         assertThatThrownBy(() -> competitionService.createCompetition(
-                "Regional 2026", LocalDate.of(2026, 6, 15),
+                "Regional 2026", "regional-2026", LocalDate.of(2026, 6, 15),
                 LocalDate.of(2026, 6, 17), "Porto", user.getId()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("authorized");
@@ -136,7 +136,7 @@ class CompetitionServiceTest {
                 .willAnswer(inv -> inv.getArgument(0));
 
         var result = competitionService.updateCompetition(
-                competition.getId(), "Updated Name", LocalDate.of(2026, 7, 1),
+                competition.getId(), "Updated Name", "updated-name", LocalDate.of(2026, 7, 1),
                 LocalDate.of(2026, 7, 3), "Lisbon", admin.getId());
 
         assertThat(result.getName()).isEqualTo("Updated Name");
@@ -153,7 +153,7 @@ class CompetitionServiceTest {
         given(userService.findById(user.getId())).willReturn(user);
 
         assertThatThrownBy(() -> competitionService.updateCompetition(
-                competition.getId(), "Updated", LocalDate.of(2026, 7, 1),
+                competition.getId(), "Updated", "updated", LocalDate.of(2026, 7, 1),
                 LocalDate.of(2026, 7, 3), "Lisbon", user.getId()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("authorized");
@@ -217,7 +217,7 @@ class CompetitionServiceTest {
         var admin = createAdmin();
         var competition = createCompetition();
         var division = new Division(competition.getId(),
-                "Home", ScoringSystem.MJP);
+                "Home", "home", ScoringSystem.MJP);
         given(competitionRepository.findById(competition.getId())).willReturn(Optional.of(competition));
         given(userService.findById(admin.getId())).willReturn(admin);
         given(divisionRepository.findByCompetitionId(competition.getId()))
@@ -243,7 +243,7 @@ class CompetitionServiceTest {
                 .willAnswer(inv -> inv.getArgument(0));
 
         var result = competitionService.createDivision(
-                competition.getId(), "Home", ScoringSystem.MJP, admin.getId());
+                competition.getId(), "Home", "home", ScoringSystem.MJP, admin.getId());
 
         assertThat(result).isNotNull();
         assertThat(result.getName()).isEqualTo("Home");
@@ -277,7 +277,7 @@ class CompetitionServiceTest {
                 .willAnswer(inv -> inv.getArgument(0));
 
         competitionService.createDivision(
-                competition.getId(), "Home", ScoringSystem.MJP, admin.getId());
+                competition.getId(), "Home", "home", ScoringSystem.MJP, admin.getId());
 
         then(divisionCategoryRepository).should(org.mockito.Mockito.times(2))
                 .save(any(DivisionCategory.class));
@@ -290,7 +290,7 @@ class CompetitionServiceTest {
         given(competitionRepository.findById(competitionId)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> competitionService.createDivision(
-                competitionId, "Home", ScoringSystem.MJP, admin.getId()))
+                competitionId, "Home", "home", ScoringSystem.MJP, admin.getId()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Competition not found");
 
@@ -307,7 +307,7 @@ class CompetitionServiceTest {
                 .willReturn(Optional.empty());
 
         assertThatThrownBy(() -> competitionService.createDivision(
-                competition.getId(), "Home", ScoringSystem.MJP, user.getId()))
+                competition.getId(), "Home", "home", ScoringSystem.MJP, user.getId()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("authorized");
 
@@ -331,7 +331,7 @@ class CompetitionServiceTest {
                 .willAnswer(inv -> inv.getArgument(0));
 
         var result = competitionService.createDivision(
-                competition.getId(), "Home", ScoringSystem.MJP, compAdmin.getId());
+                competition.getId(), "Home", "home", ScoringSystem.MJP, compAdmin.getId());
 
         assertThat(result.getName()).isEqualTo("Home");
     }
@@ -342,7 +342,7 @@ class CompetitionServiceTest {
     void shouldAdvanceDivisionStatusAndPublishEvent() {
         var admin = createAdmin();
         var division = new Division(UUID.randomUUID(),
-                "Home", ScoringSystem.MJP);
+                "Home", "home", ScoringSystem.MJP);
         given(divisionRepository.findById(division.getId()))
                 .willReturn(Optional.of(division));
         given(userService.findById(admin.getId())).willReturn(admin);
@@ -360,7 +360,7 @@ class CompetitionServiceTest {
     void shouldRejectAdvanceDivisionStatusWhenUserNotAuthorized() {
         var user = createRegularUser();
         var division = new Division(UUID.randomUUID(),
-                "Home", ScoringSystem.MJP);
+                "Home", "home", ScoringSystem.MJP);
         given(divisionRepository.findById(division.getId()))
                 .willReturn(Optional.of(division));
         given(userService.findById(user.getId())).willReturn(user);
@@ -381,7 +381,7 @@ class CompetitionServiceTest {
     void shouldAllowCompetitionAdminToAdvanceDivisionStatus() {
         var compAdmin = createRegularUser();
         var competitionId = UUID.randomUUID();
-        var division = new Division(competitionId, "Home", ScoringSystem.MJP);
+        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP);
         var participant = new Participant(competitionId, compAdmin.getId());
         given(divisionRepository.findById(division.getId()))
                 .willReturn(Optional.of(division));
@@ -407,7 +407,7 @@ class CompetitionServiceTest {
     void shouldUpdateDivisionWhenInDraftAndRequestedByAdmin() {
         var admin = createAdmin();
         var division = new Division(UUID.randomUUID(),
-                "Home", ScoringSystem.MJP);
+                "Home", "home", ScoringSystem.MJP);
         given(divisionRepository.findById(division.getId()))
                 .willReturn(Optional.of(division));
         given(userService.findById(admin.getId())).willReturn(admin);
@@ -415,7 +415,7 @@ class CompetitionServiceTest {
                 .willAnswer(inv -> inv.getArgument(0));
 
         var result = competitionService.updateDivision(
-                division.getId(), "Updated Name", ScoringSystem.MJP, admin.getId());
+                division.getId(), "Updated Name", "updated-name", ScoringSystem.MJP, admin.getId());
 
         assertThat(result.getName()).isEqualTo("Updated Name");
         then(divisionRepository).should().save(division);
@@ -425,7 +425,7 @@ class CompetitionServiceTest {
     void shouldRejectUpdateDivisionWhenUserNotAuthorized() {
         var user = createRegularUser();
         var division = new Division(UUID.randomUUID(),
-                "Home", ScoringSystem.MJP);
+                "Home", "home", ScoringSystem.MJP);
         given(divisionRepository.findById(division.getId()))
                 .willReturn(Optional.of(division));
         given(userService.findById(user.getId())).willReturn(user);
@@ -434,7 +434,7 @@ class CompetitionServiceTest {
                 .willReturn(Optional.empty());
 
         assertThatThrownBy(() -> competitionService.updateDivision(
-                division.getId(), "Updated", ScoringSystem.MJP, user.getId()))
+                division.getId(), "Updated", "updated", ScoringSystem.MJP, user.getId()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("authorized");
 
@@ -445,7 +445,7 @@ class CompetitionServiceTest {
     void shouldAllowCompetitionAdminToUpdateDivision() {
         var compAdmin = createRegularUser();
         var competitionId = UUID.randomUUID();
-        var division = new Division(competitionId, "Home", ScoringSystem.MJP);
+        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP);
         var participant = new Participant(competitionId, compAdmin.getId());
         given(divisionRepository.findById(division.getId()))
                 .willReturn(Optional.of(division));
@@ -459,7 +459,7 @@ class CompetitionServiceTest {
                 .willAnswer(inv -> inv.getArgument(0));
 
         var result = competitionService.updateDivision(
-                division.getId(), "Updated", ScoringSystem.MJP, compAdmin.getId());
+                division.getId(), "Updated", "updated", ScoringSystem.MJP, compAdmin.getId());
 
         assertThat(result.getName()).isEqualTo("Updated");
         then(divisionRepository).should().save(division);
@@ -471,7 +471,7 @@ class CompetitionServiceTest {
     void shouldDeleteDivisionAndCleanUpCategories() {
         var admin = createAdmin();
         var division = new Division(UUID.randomUUID(),
-                "Home", ScoringSystem.MJP);
+                "Home", "home", ScoringSystem.MJP);
         given(divisionRepository.findById(division.getId()))
                 .willReturn(Optional.of(division));
         given(userService.findById(admin.getId())).willReturn(admin);
@@ -774,7 +774,7 @@ class CompetitionServiceTest {
     void shouldFindCompetitionsWhereUserIsAdmin() {
         var user = createRegularUser();
         var comp1 = createCompetition();
-        var comp2 = new Competition("Other Competition",
+        var comp2 = new Competition("Other Competition", "other-competition",
                 LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30), "Porto");
         var participant1 = new Participant(comp1.getId(), user.getId());
         var participant2 = new Participant(comp2.getId(), user.getId());
@@ -826,8 +826,8 @@ class CompetitionServiceTest {
     @Test
     void shouldFindDivisionsByCompetition() {
         var competitionId = UUID.randomUUID();
-        var div1 = new Division(competitionId, "Home", ScoringSystem.MJP);
-        var div2 = new Division(competitionId, "Pro", ScoringSystem.MJP);
+        var div1 = new Division(competitionId, "Home", "home", ScoringSystem.MJP);
+        var div2 = new Division(competitionId, "Pro", "pro", ScoringSystem.MJP);
         given(divisionRepository.findByCompetitionId(competitionId))
                 .willReturn(List.of(div1, div2));
 
@@ -842,7 +842,7 @@ class CompetitionServiceTest {
     @Test
     void shouldReturnTrueWhenUserIsAdminForDivisionCompetition() {
         var admin = createAdmin();
-        var division = new Division(UUID.randomUUID(), "Home", ScoringSystem.MJP);
+        var division = new Division(UUID.randomUUID(), "Home", "home", ScoringSystem.MJP);
         given(divisionRepository.findById(division.getId()))
                 .willReturn(Optional.of(division));
         given(userService.findById(admin.getId())).willReturn(admin);
@@ -856,7 +856,7 @@ class CompetitionServiceTest {
     @Test
     void shouldReturnFalseWhenUserIsNotAdminForDivisionCompetition() {
         var user = createRegularUser();
-        var division = new Division(UUID.randomUUID(), "Home", ScoringSystem.MJP);
+        var division = new Division(UUID.randomUUID(), "Home", "home", ScoringSystem.MJP);
         given(divisionRepository.findById(division.getId()))
                 .willReturn(Optional.of(division));
         given(userService.findById(user.getId())).willReturn(user);
@@ -888,8 +888,8 @@ class CompetitionServiceTest {
     void shouldFindAuthorizedDivisionsForSystemAdmin() {
         var admin = createAdmin();
         var competitionId = UUID.randomUUID();
-        var div1 = new Division(competitionId, "Home", ScoringSystem.MJP);
-        var div2 = new Division(competitionId, "Pro", ScoringSystem.MJP);
+        var div1 = new Division(competitionId, "Home", "home", ScoringSystem.MJP);
+        var div2 = new Division(competitionId, "Pro", "pro", ScoringSystem.MJP);
         given(userService.findById(admin.getId())).willReturn(admin);
         given(divisionRepository.findByCompetitionId(competitionId))
                 .willReturn(List.of(div1, div2));
@@ -904,8 +904,8 @@ class CompetitionServiceTest {
     void shouldFindAuthorizedDivisionsForCompetitionAdmin() {
         var compAdmin = createRegularUser();
         var competitionId = UUID.randomUUID();
-        var div1 = new Division(competitionId, "Home", ScoringSystem.MJP);
-        var div2 = new Division(competitionId, "Pro", ScoringSystem.MJP);
+        var div1 = new Division(competitionId, "Home", "home", ScoringSystem.MJP);
+        var div2 = new Division(competitionId, "Pro", "pro", ScoringSystem.MJP);
         var participant = new Participant(competitionId, compAdmin.getId());
         given(userService.findById(compAdmin.getId())).willReturn(compAdmin);
         given(participantRepository.findByCompetitionIdAndUserId(competitionId, compAdmin.getId()))
@@ -962,7 +962,7 @@ class CompetitionServiceTest {
     void shouldAddCatalogCategoryToDivision() {
         var admin = createAdmin();
         var division = new Division(UUID.randomUUID(),
-                "Home", ScoringSystem.MJP);
+                "Home", "home", ScoringSystem.MJP);
         var catalogCat = new Category();
         given(divisionRepository.findById(division.getId()))
                 .willReturn(Optional.of(division));
@@ -987,7 +987,7 @@ class CompetitionServiceTest {
     void shouldRejectDuplicateCatalogCategory() {
         var admin = createAdmin();
         var division = new Division(UUID.randomUUID(),
-                "Home", ScoringSystem.MJP);
+                "Home", "home", ScoringSystem.MJP);
         var catalogCat = new Category();
         given(divisionRepository.findById(division.getId()))
                 .willReturn(Optional.of(division));
@@ -1011,7 +1011,7 @@ class CompetitionServiceTest {
     void shouldAddCustomCategory() {
         var admin = createAdmin();
         var division = new Division(UUID.randomUUID(),
-                "Home", ScoringSystem.MJP);
+                "Home", "home", ScoringSystem.MJP);
         given(divisionRepository.findById(division.getId()))
                 .willReturn(Optional.of(division));
         given(userService.findById(admin.getId())).willReturn(admin);
@@ -1037,7 +1037,7 @@ class CompetitionServiceTest {
     void shouldAddCustomSubcategory() {
         var admin = createAdmin();
         var division = new Division(UUID.randomUUID(),
-                "Home", ScoringSystem.MJP);
+                "Home", "home", ScoringSystem.MJP);
         var parent = new DivisionCategory(division.getId(), null,
                 "M2E", "Other Fruit Melomel", "Other fruits", null, 0);
         given(divisionRepository.findById(division.getId()))
@@ -1065,7 +1065,7 @@ class CompetitionServiceTest {
     void shouldUpdateDivisionCategory() {
         var admin = createAdmin();
         var division = new Division(UUID.randomUUID(),
-                "Home", ScoringSystem.MJP);
+                "Home", "home", ScoringSystem.MJP);
         var catalogCategoryId = UUID.randomUUID();
         var dc = new DivisionCategory(division.getId(), catalogCategoryId,
                 "M1A", "Traditional Mead", "A traditional mead", null, 0);
@@ -1094,7 +1094,7 @@ class CompetitionServiceTest {
     void shouldRemoveDivisionCategory() {
         var admin = createAdmin();
         var division = new Division(UUID.randomUUID(),
-                "Home", ScoringSystem.MJP);
+                "Home", "home", ScoringSystem.MJP);
         var dc = new DivisionCategory(division.getId(), null,
                 "M1A", "Traditional Mead", "A traditional mead", null, 0);
         given(divisionRepository.findById(division.getId()))
@@ -1115,7 +1115,7 @@ class CompetitionServiceTest {
     void shouldRemoveDivisionCategoryWithSubcategories() {
         var admin = createAdmin();
         var division = new Division(UUID.randomUUID(),
-                "Home", ScoringSystem.MJP);
+                "Home", "home", ScoringSystem.MJP);
         var parent = new DivisionCategory(division.getId(), null,
                 "M2E", "Other Fruit Melomel", "Other fruits", null, 0);
         var child = new DivisionCategory(division.getId(), null,
@@ -1141,7 +1141,7 @@ class CompetitionServiceTest {
     void shouldRejectCategoryChangeAfterRegistrationClosed() {
         var admin = createAdmin();
         var division = new Division(UUID.randomUUID(),
-                "Home", ScoringSystem.MJP);
+                "Home", "home", ScoringSystem.MJP);
         // Advance to REGISTRATION_OPEN then REGISTRATION_CLOSED
         division.advanceStatus(); // DRAFT -> REGISTRATION_OPEN
         division.advanceStatus(); // REGISTRATION_OPEN -> REGISTRATION_CLOSED
@@ -1183,7 +1183,7 @@ class CompetitionServiceTest {
         given(cat2.getId()).willReturn(cat2Id);
         given(cat3.getId()).willReturn(cat3Id);
         var division = new Division(UUID.randomUUID(),
-                "Home", ScoringSystem.MJP);
+                "Home", "home", ScoringSystem.MJP);
         given(divisionRepository.findById(division.getId()))
                 .willReturn(Optional.of(division));
         given(categoryRepository.findByScoringSystem(ScoringSystem.MJP))
@@ -1209,7 +1209,7 @@ class CompetitionServiceTest {
     void shouldUpdateDivisionEntryLimitsWhenRequestedByAdmin() {
         var admin = createAdmin();
         var division = new Division(UUID.randomUUID(),
-                "Amadora", ScoringSystem.MJP);
+                "Amadora", "amadora", ScoringSystem.MJP);
         given(divisionRepository.findById(division.getId()))
                 .willReturn(Optional.of(division));
         given(userService.findById(admin.getId())).willReturn(admin);

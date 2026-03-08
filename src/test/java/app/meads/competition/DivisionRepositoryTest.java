@@ -25,7 +25,7 @@ class DivisionRepositoryTest {
     CompetitionRepository competitionRepository;
 
     private Competition createAndSaveCompetition() {
-        var competition = new Competition("Test Competition",
+        var competition = new Competition("Test Competition", "test-competition",
                 LocalDate.of(2026, 6, 15), LocalDate.of(2026, 6, 17), "Porto");
         return competitionRepository.save(competition);
     }
@@ -34,7 +34,7 @@ class DivisionRepositoryTest {
     void shouldSaveAndRetrieveDivision() {
         var competition = createAndSaveCompetition();
         var division = new Division(competition.getId(),
-                "Home Division", ScoringSystem.MJP);
+                "Home Division", "home-division", ScoringSystem.MJP);
 
         divisionRepository.save(division);
         var found = divisionRepository.findById(division.getId());
@@ -51,14 +51,14 @@ class DivisionRepositoryTest {
     void shouldFindDivisionsByCompetitionId() {
         var competition = createAndSaveCompetition();
         divisionRepository.save(new Division(competition.getId(),
-                "Home", ScoringSystem.MJP));
+                "Home", "home", ScoringSystem.MJP));
         divisionRepository.save(new Division(competition.getId(),
-                "Professional", ScoringSystem.MJP));
+                "Professional", "professional", ScoringSystem.MJP));
 
-        var otherCompetition = competitionRepository.save(new Competition("Other",
+        var otherCompetition = competitionRepository.save(new Competition("Other", "other",
                 LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 2), null));
         divisionRepository.save(new Division(otherCompetition.getId(),
-                "Unrelated", ScoringSystem.MJP));
+                "Unrelated", "unrelated", ScoringSystem.MJP));
 
         var results = divisionRepository.findByCompetitionId(competition.getId());
 

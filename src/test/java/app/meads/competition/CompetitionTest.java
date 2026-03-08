@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class CompetitionTest {
 
     private Competition createCompetition() {
-        return new Competition("Test Competition",
+        return new Competition("Test Competition", "test-competition",
                 LocalDate.of(2026, 6, 15), LocalDate.of(2026, 6, 17), null);
     }
 
@@ -18,7 +18,7 @@ class CompetitionTest {
     void shouldThrowWhenEndDateBeforeStartDate() {
         var competition = createCompetition();
 
-        assertThatThrownBy(() -> competition.updateDetails("Updated",
+        assertThatThrownBy(() -> competition.updateDetails("Updated", "updated",
                 LocalDate.of(2026, 7, 10), LocalDate.of(2026, 7, 5), null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("start date");

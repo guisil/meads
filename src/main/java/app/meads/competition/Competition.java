@@ -15,12 +15,16 @@ public class Competition {
 
     private static final int MAX_LOGO_SIZE = 512 * 1024;
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of("image/png", "image/jpeg");
+    static final String SHORT_NAME_PATTERN = "^[a-z0-9][a-z0-9-]*[a-z0-9]$";
 
     @Id
     private UUID id;
 
     @Column(nullable = false)
     private String name;
+
+    @Column(name = "short_name", nullable = false, unique = true)
+    private String shortName;
 
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
@@ -44,10 +48,12 @@ public class Competition {
 
     protected Competition() {} // JPA
 
-    public Competition(String name, LocalDate startDate, LocalDate endDate, String location) {
+    public Competition(String name, String shortName, LocalDate startDate, LocalDate endDate, String location) {
         validateDateOrdering(startDate, endDate);
+        validateShortName(shortName);
         this.id = UUID.randomUUID();
         this.name = name;
+        this.shortName = shortName;
         this.startDate = startDate;
         this.endDate = endDate;
         this.location = location;
@@ -63,9 +69,11 @@ public class Competition {
         updatedAt = Instant.now();
     }
 
-    public void updateDetails(String name, LocalDate startDate, LocalDate endDate, String location) {
+    public void updateDetails(String name, String shortName, LocalDate startDate, LocalDate endDate, String location) {
         validateDateOrdering(startDate, endDate);
+        validateShortName(shortName);
         this.name = name;
+        this.shortName = shortName;
         this.startDate = startDate;
         this.endDate = endDate;
         this.location = location;
@@ -74,6 +82,13 @@ public class Competition {
     private static void validateDateOrdering(LocalDate startDate, LocalDate endDate) {
         if (endDate.isBefore(startDate)) {
             throw new IllegalArgumentException("End date must not be before start date");
+        }
+    }
+
+    static void validateShortName(String shortName) {
+        if (shortName == null || !shortName.matches(SHORT_NAME_PATTERN)) {
+            throw new IllegalArgumentException(
+                    "Short name must be lowercase alphanumeric with hyphens, at least 2 characters");
         }
     }
 

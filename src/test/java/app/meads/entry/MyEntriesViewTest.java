@@ -38,6 +38,7 @@ import org.springframework.test.annotation.DirtiesContext;
 
 import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.UUID;
 
 import static com.github.mvysny.kaributesting.v10.LocatorJ.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -79,6 +80,7 @@ class MyEntriesViewTest {
 
     private User admin;
     private User entrant;
+    private Competition competition;
     private Division division;
 
     @BeforeEach
@@ -91,11 +93,12 @@ class MyEntriesViewTest {
                 .orElseGet(() -> userRepository.save(
                         new User(ENTRANT_EMAIL, "Entrant", UserStatus.ACTIVE, Role.USER)));
 
-        var competition = competitionRepository.save(new Competition(
-                "My Entries Test Competition",
+        var suffix = UUID.randomUUID().toString().substring(0, 8);
+        competition = competitionRepository.save(new Competition(
+                "My Entries Test Competition", "my-entries-" + suffix,
                 LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30), "Test"));
         division = divisionRepository.save(new Division(
-                competition.getId(), "Test Division", ScoringSystem.MJP));
+                competition.getId(), "Test Division", "test-div-" + suffix, ScoringSystem.MJP));
 
         // Add entrant as ENTRANT participant
         var participant = participantRepository.save(
@@ -174,7 +177,7 @@ class MyEntriesViewTest {
                         new User("noparticipant@example.com", "No Participant",
                                 UserStatus.ACTIVE, Role.USER)));
 
-        UI.getCurrent().navigate("divisions/" + division.getId() + "/my-entries");
+        UI.getCurrent().navigate("competitions/" + competition.getShortName() + "/divisions/" + division.getShortName() + "/my-entries");
 
         // Should have been forwarded away — no H2 with division name
         var headings = _find(H2.class);
@@ -184,7 +187,7 @@ class MyEntriesViewTest {
     @Test
     @WithMockUser(username = ENTRANT_EMAIL, roles = "USER")
     void shouldDisplayCreditsAndEntryGrid() {
-        UI.getCurrent().navigate("divisions/" + division.getId() + "/my-entries");
+        UI.getCurrent().navigate("competitions/" + competition.getShortName() + "/divisions/" + division.getShortName() + "/my-entries");
 
         var heading = _get(H2.class);
         assertThat(heading.getText()).contains("Test Division");
