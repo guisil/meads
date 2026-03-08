@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `competition-module`
-**Tests:** 398 passing (`mvn test -Dsurefire.useFile=false`)
+**Tests:** 399 passing (`mvn test -Dsurefire.useFile=false`)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -152,6 +152,9 @@ docs/
   - User dialog: Save/Cancel buttons placed side by side (HorizontalLayout)
   - All dialogs: standardized button order (Cancel left, Save right) and label ("Save" everywhere, no "Create")
   - Logo upload: limit raised from 512KB to 2.5MB, added `fileRejectedListener` for error feedback
+  - Bug fix: `updateCompetition`/`updateCompetitionLogo` now use `requireAuthorized` (allows competition ADMIN, not just SYSTEM_ADMIN)
+  - Bug fix: CompetitionDetailView header/breadcrumb now refresh after settings save
+  - Dev data: CHIP 2026 location changed to "Amarante, Portugal", dates to June 11-14
 - **Previous changes**: Grid ordering fix, URL slugs (short names), friendly redirects,
   SetPasswordView Enter key, Actions column width, magic link blocked for password users,
   password setup & reset (all 3 phases), compadmin dev user, MyCompetitionsView, MainLayout

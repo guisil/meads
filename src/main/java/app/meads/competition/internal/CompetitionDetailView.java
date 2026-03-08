@@ -54,6 +54,8 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
     private UUID competitionId;
     private Competition competition;
+    private HorizontalLayout header;
+    private Nav breadcrumb;
     private Grid<Division> divisionsGrid;
     private Grid<ParticipantRole> participantsGrid;
     private Map<UUID, Participant> participantMap;
@@ -93,8 +95,10 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         }
 
         removeAll();
-        add(createBreadcrumb());
-        add(createHeader());
+        breadcrumb = createBreadcrumb();
+        header = createHeader();
+        add(breadcrumb);
+        add(header);
         add(createTabSheet());
     }
 
@@ -138,6 +142,16 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
         header.add(textBlock);
         return header;
+    }
+
+    private void refreshHeader() {
+        var newBreadcrumb = createBreadcrumb();
+        replace(breadcrumb, newBreadcrumb);
+        breadcrumb = newBreadcrumb;
+
+        var newHeader = createHeader();
+        replace(header, newHeader);
+        header = newHeader;
     }
 
     private String formatDateRange() {
@@ -403,6 +417,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                             getCurrentUserId());
                     competition = competitionService.findCompetitionById(competitionId);
                 }
+                refreshHeader();
                 var notification = Notification.show("Competition updated successfully");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
             } catch (IllegalArgumentException ex) {

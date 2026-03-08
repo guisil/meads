@@ -146,11 +146,37 @@ class CompetitionServiceTest {
     }
 
     @Test
-    void shouldRejectUpdateCompetitionWhenUserNotSystemAdmin() {
+    void shouldUpdateCompetitionWhenRequestedByCompetitionAdmin() {
+        var compAdmin = createRegularUser();
+        var competition = createCompetition();
+        var participant = new Participant(competition.getId(), compAdmin.getId());
+        given(competitionRepository.findById(competition.getId())).willReturn(Optional.of(competition));
+        given(userService.findById(compAdmin.getId())).willReturn(compAdmin);
+        given(participantRepository.findByCompetitionIdAndUserId(
+                competition.getId(), compAdmin.getId()))
+                .willReturn(Optional.of(participant));
+        given(participantRoleRepository.existsByParticipantIdAndRole(
+                participant.getId(), CompetitionRole.ADMIN))
+                .willReturn(true);
+        given(competitionRepository.save(any(Competition.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var result = competitionService.updateCompetition(
+                competition.getId(), "Updated Name", "updated-name", LocalDate.of(2026, 7, 1),
+                LocalDate.of(2026, 7, 3), "Lisbon", compAdmin.getId());
+
+        assertThat(result.getName()).isEqualTo("Updated Name");
+        then(competitionRepository).should().save(competition);
+    }
+
+    @Test
+    void shouldRejectUpdateCompetitionWhenUserNotAuthorized() {
         var user = createRegularUser();
         var competition = createCompetition();
         given(competitionRepository.findById(competition.getId())).willReturn(Optional.of(competition));
         given(userService.findById(user.getId())).willReturn(user);
+        given(participantRepository.findByCompetitionIdAndUserId(competition.getId(), user.getId()))
+                .willReturn(Optional.empty());
 
         assertThatThrownBy(() -> competitionService.updateCompetition(
                 competition.getId(), "Updated", "updated", LocalDate.of(2026, 7, 1),

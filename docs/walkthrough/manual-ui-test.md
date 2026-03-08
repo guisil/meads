@@ -34,7 +34,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 ### Seeded competition data (CHIP 2026)
 
-- **Competition:** CHIP 2026 (June 1-30, 2026, Lisbon, Portugal)
+- **Competition:** CHIP 2026 (June 11-14, 2026, Amarante, Portugal)
 - **Divisions:** Amadora (Amateur) and Profissional (Commercial) -- both REGISTRATION_OPEN, MJP scoring
 - **Entry limits:** 3 per subcategory, 5 per main category (both divisions)
 - **Categories:** Full MJP catalog minus M4B and M4D
@@ -458,8 +458,8 @@ Wait for startup to complete. The console will show magic links for dev users.
 - [ ] **Expected:** Breadcrumb "My Competitions / CHIP 2026" (for competition admin) or "Competitions / CHIP 2026" (for SYSTEM_ADMIN)
 - [ ] **Expected:** "My Competitions" (or "Competitions") is a clickable link back to the list
 - [ ] **Expected:** Competition name "CHIP 2026" displayed
-- [ ] **Expected:** Date range "Jun 1 - 30, 2026" (or similar formatted range)
-- [ ] **Expected:** Location "Lisbon, Portugal"
+- [ ] **Expected:** Date range "Jun 11–14, 2026" (or similar formatted range)
+- [ ] **Expected:** Location "Amarante, Portugal"
 
 ### Divisions tab
 
@@ -537,7 +537,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 - [ ] Change location to `Porto, Portugal`
 - [ ] Click "Save"
 - [ ] **Expected:** Notification "Competition updated successfully" (green)
-- [ ] Revert location back to `Lisbon, Portugal` and save
+- [ ] Revert location back to `Amarante, Portugal` and save
 
 ### Authorization -- regular user redirected
 

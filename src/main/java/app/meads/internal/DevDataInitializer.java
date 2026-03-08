@@ -56,9 +56,9 @@ class DevDataInitializer {
         var chip = competitionService.createCompetition(
                 "CHIP 2026",
                 "chip-2026",
-                java.time.LocalDate.of(2026, 6, 1),
-                java.time.LocalDate.of(2026, 6, 30),
-                "Lisbon, Portugal",
+                java.time.LocalDate.of(2026, 6, 11),
+                java.time.LocalDate.of(2026, 6, 14),
+                "Amarante, Portugal",
                 sysAdminId);
         log.info("Created competition: {}", chip.getName());
 

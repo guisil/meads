@@ -33,7 +33,7 @@ class DevDataInitializerTest {
         var chip = competitions.stream()
                 .filter(c -> "CHIP 2026".equals(c.getName()))
                 .findFirst().orElseThrow();
-        assertThat(chip.getLocation()).isEqualTo("Lisbon, Portugal");
+        assertThat(chip.getLocation()).isEqualTo("Amarante, Portugal");
 
         var chipDivisions = competitionService.findDivisionsByCompetition(chip.getId());
         assertThat(chipDivisions).hasSize(2);

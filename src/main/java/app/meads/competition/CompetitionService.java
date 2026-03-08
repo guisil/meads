@@ -102,7 +102,7 @@ public class CompetitionService {
                                           @NotNull UUID requestingUserId) {
         var competition = competitionRepository.findById(competitionId)
                 .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
-        requireSystemAdmin(requestingUserId);
+        requireAuthorized(competitionId, requestingUserId);
         if (!competition.getShortName().equals(shortName)
                 && competitionRepository.existsByShortName(shortName)) {
             throw new IllegalArgumentException("Short name already in use");
@@ -117,7 +117,7 @@ public class CompetitionService {
                                               @NotNull UUID requestingUserId) {
         var competition = competitionRepository.findById(competitionId)
                 .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
-        requireSystemAdmin(requestingUserId);
+        requireAuthorized(competitionId, requestingUserId);
         competition.updateLogo(logo, contentType);
         return competitionRepository.save(competition);
     }
