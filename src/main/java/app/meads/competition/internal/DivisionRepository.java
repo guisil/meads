@@ -9,6 +9,7 @@ import java.util.UUID;
 
 public interface DivisionRepository extends JpaRepository<Division, UUID> {
     List<Division> findByCompetitionId(UUID competitionId);
+    List<Division> findByCompetitionIdOrderByName(UUID competitionId);
     Optional<Division> findByCompetitionIdAndShortName(UUID competitionId, String shortName);
     boolean existsByCompetitionIdAndShortName(UUID competitionId, String shortName);
 }

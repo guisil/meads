@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
@@ -80,7 +81,7 @@ public class CompetitionService {
     }
 
     public List<Competition> findAllCompetitions() {
-        return competitionRepository.findAll();
+        return competitionRepository.findAll(Sort.by("name"));
     }
 
     public List<Competition> findCompetitionsByAdmin(@NotNull UUID userId) {
@@ -204,7 +205,7 @@ public class CompetitionService {
     }
 
     public List<Division> findDivisionsByCompetition(@NotNull UUID competitionId) {
-        return divisionRepository.findByCompetitionId(competitionId);
+        return divisionRepository.findByCompetitionIdOrderByName(competitionId);
     }
 
     public Division updateDivisionEntryLimits(@NotNull UUID divisionId,
@@ -376,7 +377,7 @@ public class CompetitionService {
     public List<Division> findAuthorizedDivisions(@NotNull UUID competitionId,
                                                     @NotNull UUID userId) {
         if (isAuthorized(competitionId, userId)) {
-            return divisionRepository.findByCompetitionId(competitionId);
+            return divisionRepository.findByCompetitionIdOrderByName(competitionId);
         }
         return List.of();
     }

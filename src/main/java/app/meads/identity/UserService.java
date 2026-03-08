@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
@@ -52,7 +53,7 @@ public class UserService {
     }
 
     public List<User> findAll() {
-        return userRepository.findAll();
+        return userRepository.findAll(Sort.by("name"));
     }
 
     public User findById(UUID userId) {

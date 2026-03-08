@@ -116,7 +116,7 @@ class CompetitionServiceTest {
     @Test
     void shouldFindAllCompetitions() {
         var competition = createCompetition();
-        given(competitionRepository.findAll()).willReturn(List.of(competition));
+        given(competitionRepository.findAll(any(org.springframework.data.domain.Sort.class))).willReturn(List.of(competition));
 
         var result = competitionService.findAllCompetitions();
 
@@ -828,13 +828,13 @@ class CompetitionServiceTest {
         var competitionId = UUID.randomUUID();
         var div1 = new Division(competitionId, "Home", "home", ScoringSystem.MJP);
         var div2 = new Division(competitionId, "Pro", "pro", ScoringSystem.MJP);
-        given(divisionRepository.findByCompetitionId(competitionId))
+        given(divisionRepository.findByCompetitionIdOrderByName(competitionId))
                 .willReturn(List.of(div1, div2));
 
         var result = competitionService.findDivisionsByCompetition(competitionId);
 
         assertThat(result).hasSize(2);
-        then(divisionRepository).should().findByCompetitionId(competitionId);
+        then(divisionRepository).should().findByCompetitionIdOrderByName(competitionId);
     }
 
     // --- isAuthorizedForDivision ---
@@ -891,7 +891,7 @@ class CompetitionServiceTest {
         var div1 = new Division(competitionId, "Home", "home", ScoringSystem.MJP);
         var div2 = new Division(competitionId, "Pro", "pro", ScoringSystem.MJP);
         given(userService.findById(admin.getId())).willReturn(admin);
-        given(divisionRepository.findByCompetitionId(competitionId))
+        given(divisionRepository.findByCompetitionIdOrderByName(competitionId))
                 .willReturn(List.of(div1, div2));
 
         var result = competitionService.findAuthorizedDivisions(
@@ -913,7 +913,7 @@ class CompetitionServiceTest {
         given(participantRoleRepository.existsByParticipantIdAndRole(
                 participant.getId(), CompetitionRole.ADMIN))
                 .willReturn(true);
-        given(divisionRepository.findByCompetitionId(competitionId))
+        given(divisionRepository.findByCompetitionIdOrderByName(competitionId))
                 .willReturn(List.of(div1, div2));
 
         var result = competitionService.findAuthorizedDivisions(

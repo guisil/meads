@@ -167,12 +167,12 @@ class UserServiceTest {
                 new User("a@example.com", "A", UserStatus.ACTIVE, Role.USER),
                 new User("b@example.com", "B", UserStatus.PENDING, Role.SYSTEM_ADMIN)
         );
-        given(userRepository.findAll()).willReturn(users);
+        given(userRepository.findAll(any(org.springframework.data.domain.Sort.class))).willReturn(users);
 
         List<User> result = userService.findAll();
 
         assertThat(result).hasSize(2);
-        then(userRepository).should().findAll();
+        then(userRepository).should().findAll(any(org.springframework.data.domain.Sort.class));
     }
 
     @Test
