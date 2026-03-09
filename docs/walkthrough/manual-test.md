@@ -218,12 +218,12 @@ Wait for startup to complete. The console will show magic links for dev users.
 - [ ] **Expected:** Dropdown opens with "Logout" option
 - [ ] **Expected:** Left sidebar (drawer) starts collapsed
 - [ ] Click the drawer toggle (hamburger icon)
-- [ ] **Expected:** Sidebar expands, shows: Competitions, Users, My Entries
+- [ ] **Expected:** Sidebar expands, shows: Competitions, Users
 
 ### SYSTEM_ADMIN nav items
 
 - [ ] While logged in as `admin@example.com` (SYSTEM_ADMIN)
-- [ ] **Expected:** Side nav shows "Competitions", "Users", "My Entries"
+- [ ] **Expected:** Side nav shows "Competitions", "Users" -- no "My Entries"
 
 ### Competition admin nav items
 
@@ -945,7 +945,7 @@ curl -s -o /dev/null -w "%{http_code}" \
 ### Navigate as admin
 
 - [ ] Log in as `admin@example.com`
-- [ ] Open drawer, click "My Entries"
+- [ ] Navigate to `/my-entries` directly (sidebar does not show "My Entries" for SYSTEM_ADMIN)
 - [ ] **Expected:** Empty state "You have no entries in any competition." (admin has no credits)
 
 ---

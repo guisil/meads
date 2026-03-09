@@ -114,7 +114,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 #### Changes to other modules
 - `SecurityConfig` — separate `SecurityFilterChain` with `@Order(1)` for webhook API (CSRF disabled, permitAll)
-- `User.java` — added `meaderyName` field (V14)
+- `User.java` — added `meaderyName` field (now in V2)
 - `Division.java` — added `maxEntriesPerSubcategory`, `maxEntriesPerMainCategory`, `entryPrefix`
 - `DivisionDetailView` — added "Manage Entries" Anchor link (string-based, no entry module import), entry prefix in Settings tab
 - `application.properties` — added `app.jumpseller.hooks-token`
@@ -180,7 +180,7 @@ docs/
   - Orders tab: filter, edit order dialog (status + admin note), Awarded Credits + Pending Credits columns
   - All grids: resizable columns
   - Entry prefix: configurable per division (up to 5 chars), in Division Settings tab
-  - `Division.entryPrefix` field + V16 migration
+  - `Division.entryPrefix` field (now in V4)
   - `CompetitionService.updateDivision()`: added `entryPrefix` parameter
   - `EntryService.findOrdersByDivision()`: new method to query orders via line items
   - DevDataInitializer: entry prefixes ("AMA"/"PRO"), 2 example webhook orders
