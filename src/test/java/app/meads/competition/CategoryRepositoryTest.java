@@ -20,7 +20,7 @@ class CategoryRepositoryTest {
 
     @Test
     void shouldFindSeededMjpCategories() {
-        var categories = categoryRepository.findByScoringSystem(ScoringSystem.MJP);
+        var categories = categoryRepository.findByScoringSystemOrderByCode(ScoringSystem.MJP);
 
         assertThat(categories).isNotEmpty();
         assertThat(categories).allSatisfy(c -> {
@@ -33,7 +33,7 @@ class CategoryRepositoryTest {
 
     @Test
     void shouldContainTraditionalMeadCategory() {
-        var categories = categoryRepository.findByScoringSystem(ScoringSystem.MJP);
+        var categories = categoryRepository.findByScoringSystemOrderByCode(ScoringSystem.MJP);
 
         assertThat(categories)
                 .anyMatch(c -> c.getCode().equals("M1A")
@@ -43,7 +43,7 @@ class CategoryRepositoryTest {
     @Test
     void shouldReturnEmptyForUnknownScoringSystem() {
         var all = categoryRepository.findAll();
-        var mjp = categoryRepository.findByScoringSystem(ScoringSystem.MJP);
+        var mjp = categoryRepository.findByScoringSystemOrderByCode(ScoringSystem.MJP);
 
         // All seeded categories are MJP, so findAll == findByMJP
         assertThat(all).hasSameSizeAs(mjp);

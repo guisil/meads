@@ -290,29 +290,37 @@ class CompetitionServiceTest {
     void shouldInitializeCategoriesOnDivisionCreation() {
         var competition = createCompetition();
         var admin = createAdmin();
-        var cat1 = org.mockito.Mockito.mock(Category.class);
-        var cat2 = org.mockito.Mockito.mock(Category.class);
-        given(cat1.getId()).willReturn(UUID.randomUUID());
-        given(cat1.getCode()).willReturn("M1A");
-        given(cat1.getName()).willReturn("Traditional Mead");
-        given(cat1.getDescription()).willReturn("A traditional mead");
-        given(cat2.getId()).willReturn(UUID.randomUUID());
-        given(cat2.getCode()).willReturn("M1B");
-        given(cat2.getName()).willReturn("Semi-Sweet Mead");
-        given(cat2.getDescription()).willReturn("A semi-sweet mead");
+        var mainCat = org.mockito.Mockito.mock(Category.class);
+        var sub1 = org.mockito.Mockito.mock(Category.class);
+        var sub2 = org.mockito.Mockito.mock(Category.class);
+        given(mainCat.getId()).willReturn(UUID.randomUUID());
+        given(mainCat.getCode()).willReturn("M1");
+        given(mainCat.getName()).willReturn("Traditional Mead");
+        given(mainCat.getDescription()).willReturn("Traditional mead category");
+        given(mainCat.getParentCode()).willReturn(null);
+        given(sub1.getId()).willReturn(UUID.randomUUID());
+        given(sub1.getCode()).willReturn("M1A");
+        given(sub1.getName()).willReturn("Traditional Mead (Dry)");
+        given(sub1.getDescription()).willReturn("Traditional mead, dry");
+        given(sub1.getParentCode()).willReturn("M1");
+        given(sub2.getId()).willReturn(UUID.randomUUID());
+        given(sub2.getCode()).willReturn("M1B");
+        given(sub2.getName()).willReturn("Traditional Mead (Medium)");
+        given(sub2.getDescription()).willReturn("Traditional mead, semi-sweet");
+        given(sub2.getParentCode()).willReturn("M1");
         given(competitionRepository.findById(competition.getId())).willReturn(Optional.of(competition));
         given(userService.findById(admin.getId())).willReturn(admin);
         given(divisionRepository.save(any(Division.class)))
                 .willAnswer(inv -> inv.getArgument(0));
-        given(categoryRepository.findByScoringSystem(ScoringSystem.MJP))
-                .willReturn(List.of(cat1, cat2));
+        given(categoryRepository.findByScoringSystemOrderByCode(ScoringSystem.MJP))
+                .willReturn(List.of(mainCat, sub1, sub2));
         given(divisionCategoryRepository.save(any(DivisionCategory.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 
         competitionService.createDivision(
                 competition.getId(), "Home", "home", ScoringSystem.MJP, admin.getId());
 
-        then(divisionCategoryRepository).should(org.mockito.Mockito.times(2))
+        then(divisionCategoryRepository).should(org.mockito.Mockito.times(3))
                 .save(any(DivisionCategory.class));
     }
 
@@ -1284,7 +1292,7 @@ class CompetitionServiceTest {
                 "Home", "home", ScoringSystem.MJP);
         given(divisionRepository.findById(division.getId()))
                 .willReturn(Optional.of(division));
-        given(categoryRepository.findByScoringSystem(ScoringSystem.MJP))
+        given(categoryRepository.findByScoringSystemOrderByCode(ScoringSystem.MJP))
                 .willReturn(List.of(cat1, cat2, cat3));
         // cat1 already added, cat2 and cat3 not
         given(divisionCategoryRepository.existsByDivisionIdAndCatalogCategoryId(

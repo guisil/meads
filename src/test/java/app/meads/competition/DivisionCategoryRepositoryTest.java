@@ -88,7 +88,7 @@ class DivisionCategoryRepositoryTest {
     void shouldCheckExistsByDivisionIdAndCatalogCategoryId() {
         var competition = createAndSaveCompetition();
         var division = createAndSaveDivision(competition.getId());
-        var catalogCategories = categoryRepository.findByScoringSystem(ScoringSystem.MJP);
+        var catalogCategories = categoryRepository.findByScoringSystemOrderByCode(ScoringSystem.MJP);
         var catalogCat = catalogCategories.getFirst();
 
         divisionCategoryRepository.save(new DivisionCategory(

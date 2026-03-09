@@ -581,10 +581,11 @@ Wait for startup to complete. The console will show magic links for dev users.
 - [ ] **Expected:** Default tab is "Categories"
 - [ ] **Expected:** TreeGrid with columns: Code, Name, Description, (Remove icon)
 - [ ] **Expected:** Grid expands to fit content (no fixed height / empty scrollable area)
-- [ ] **Expected:** Main categories expandable: M1 (Traditional Mead), M2 (Fruit Meads), M3 (Spiced Meads), M4 (Specialty Meads)
+- [ ] **Expected:** Main categories as tree roots: M1 (Traditional Mead), M2 (Fruit Meads), M3 (Spiced Meads), M4 (Specialty Meads)
 - [ ] Expand M1
-- [ ] **Expected:** Sub-categories: M1A, M1B, M1C
-- [ ] **Expected:** M4B and M4D are NOT present (excluded for CHIP)
+- [ ] **Expected:** Sub-categories nested under M1: M1A, M1B, M1C
+- [ ] Expand M4
+- [ ] **Expected:** M4B (Historical Mead) and M4D (Honey Alcoholic Beverage) are NOT present (excluded for CHIP)
 - [ ] **Expected:** "Add Category" button is enabled (status is REGISTRATION_OPEN, which allows modification)
 - [ ] **Expected:** Remove buttons are X icons with "Remove" tooltip
 - [ ] Hover over a long description

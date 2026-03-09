@@ -26,5 +26,8 @@ public class Category {
     @Column(name = "scoring_system", nullable = false)
     private ScoringSystem scoringSystem;
 
+    @Column(name = "parent_code")
+    private String parentCode;
+
     protected Category() {} // JPA
 }

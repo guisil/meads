@@ -256,9 +256,17 @@ public class CompetitionService {
                 divisionId, catalogCategoryId)) {
             throw new IllegalArgumentException("Catalog category already added to this division");
         }
+        UUID parentId = null;
+        if (catalogCategory.getParentCode() != null) {
+            parentId = divisionCategoryRepository.findByDivisionIdOrderByCode(divisionId).stream()
+                    .filter(dc -> dc.getCode().equals(catalogCategory.getParentCode()))
+                    .map(DivisionCategory::getId)
+                    .findFirst()
+                    .orElse(null);
+        }
         var dc = new DivisionCategory(divisionId, catalogCategory.getId(),
                 catalogCategory.getCode(), catalogCategory.getName(),
-                catalogCategory.getDescription(), null, 0);
+                catalogCategory.getDescription(), parentId, 0);
         return divisionCategoryRepository.save(dc);
     }
 
@@ -327,7 +335,7 @@ public class CompetitionService {
     public List<Category> findAvailableCatalogCategories(@NotNull UUID divisionId) {
         var division = divisionRepository.findById(divisionId)
                 .orElseThrow(() -> new IllegalArgumentException("Division not found"));
-        var allCatalog = categoryRepository.findByScoringSystem(division.getScoringSystem());
+        var allCatalog = categoryRepository.findByScoringSystemOrderByCode(division.getScoringSystem());
         return allCatalog.stream()
                 .filter(cat -> !divisionCategoryRepository
                         .existsByDivisionIdAndCatalogCategoryId(divisionId, cat.getId()))
@@ -449,13 +457,29 @@ public class CompetitionService {
     }
 
     private void initializeCategories(Division division) {
-        var catalogCategories = categoryRepository.findByScoringSystem(
+        var catalogCategories = categoryRepository.findByScoringSystemOrderByCode(
                 division.getScoringSystem());
+
+        // First pass: create main categories (no parent)
+        var codeToId = new java.util.HashMap<String, UUID>();
         int sortOrder = 0;
         for (var cat : catalogCategories) {
-            var dc = new DivisionCategory(division.getId(), cat.getId(),
-                    cat.getCode(), cat.getName(), cat.getDescription(), null, sortOrder++);
-            divisionCategoryRepository.save(dc);
+            if (cat.getParentCode() == null) {
+                var dc = new DivisionCategory(division.getId(), cat.getId(),
+                        cat.getCode(), cat.getName(), cat.getDescription(), null, sortOrder++);
+                var saved = divisionCategoryRepository.save(dc);
+                codeToId.put(cat.getCode(), saved.getId());
+            }
+        }
+
+        // Second pass: create subcategories with parent references
+        for (var cat : catalogCategories) {
+            if (cat.getParentCode() != null) {
+                UUID parentId = codeToId.get(cat.getParentCode());
+                var dc = new DivisionCategory(division.getId(), cat.getId(),
+                        cat.getCode(), cat.getName(), cat.getDescription(), parentId, sortOrder++);
+                divisionCategoryRepository.save(dc);
+            }
         }
     }
 

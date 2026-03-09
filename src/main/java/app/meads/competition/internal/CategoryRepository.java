@@ -8,5 +8,5 @@ import java.util.List;
 import java.util.UUID;
 
 public interface CategoryRepository extends JpaRepository<Category, UUID> {
-    List<Category> findByScoringSystem(ScoringSystem scoringSystem);
+    List<Category> findByScoringSystemOrderByCode(ScoringSystem scoringSystem);
 }

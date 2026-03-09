@@ -320,7 +320,7 @@ class DivisionDetailViewTest {
         @SuppressWarnings("unchecked")
         var catalogSelect = (Select<Category>) _get(dialog, Select.class,
                 spec -> spec.withCaption("Catalog Category"));
-        var availableCategories = categoryRepository.findByScoringSystem(ScoringSystem.MJP);
+        var availableCategories = categoryRepository.findByScoringSystemOrderByCode(ScoringSystem.MJP);
         catalogSelect.setValue(availableCategories.getFirst());
 
         var submitButton = _get(dialog, Button.class, spec -> spec.withText("Add"));

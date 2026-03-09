@@ -158,7 +158,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         categoriesGrid.setAllRowsVisible(true);
         categoriesGrid.setId("categories-grid");
         categoriesGrid.addHierarchyColumn(DivisionCategory::getCode).setHeader("Code")
-                .setWidth("100px").setFlexGrow(0).setSortable(true);
+                .setWidth("150px").setFlexGrow(0).setSortable(true);
         categoriesGrid.addColumn(DivisionCategory::getName).setHeader("Name");
         categoriesGrid.addColumn(DivisionCategory::getDescription).setHeader("Description")
                 .setFlexGrow(2)
