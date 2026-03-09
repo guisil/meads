@@ -1323,11 +1323,28 @@ class CompetitionServiceTest {
                 .willAnswer(inv -> inv.getArgument(0));
 
         var result = competitionService.updateDivisionEntryLimits(
-                division.getId(), 3, 5, admin.getId());
+                division.getId(), 3, 5, 10, admin.getId());
 
         assertThat(result.getMaxEntriesPerSubcategory()).isEqualTo(3);
         assertThat(result.getMaxEntriesPerMainCategory()).isEqualTo(5);
+        assertThat(result.getMaxEntriesTotal()).isEqualTo(10);
         then(divisionRepository).should().save(division);
+    }
+
+    @Test
+    void shouldRejectUpdateDivisionEntryLimitsWhenNotDraft() {
+        var admin = createAdmin();
+        var division = new Division(UUID.randomUUID(),
+                "Amadora", "amadora", ScoringSystem.MJP);
+        division.advanceStatus(); // DRAFT → REGISTRATION_OPEN
+        given(divisionRepository.findById(division.getId()))
+                .willReturn(Optional.of(division));
+        given(userService.findById(admin.getId())).willReturn(admin);
+
+        assertThatThrownBy(() -> competitionService.updateDivisionEntryLimits(
+                division.getId(), 3, 5, 10, admin.getId()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("DRAFT");
     }
 
 }

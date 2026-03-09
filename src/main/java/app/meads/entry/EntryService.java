@@ -404,6 +404,17 @@ public class EntryService {
 
     private void checkEntryLimits(UUID divisionId, UUID userId,
                                    UUID initialCategoryId, Division division) {
+        // Total limit
+        if (division.getMaxEntriesTotal() != null) {
+            var totalCount = entryRepository.countByDivisionIdAndUserIdAndStatusNot(
+                    divisionId, userId, EntryStatus.WITHDRAWN);
+            if (totalCount >= division.getMaxEntriesTotal()) {
+                throw new IllegalArgumentException(
+                        "Entry limit reached for this division (max "
+                        + division.getMaxEntriesTotal() + " total)");
+            }
+        }
+
         // Subcategory limit
         if (division.getMaxEntriesPerSubcategory() != null) {
             var count = entryRepository.countByDivisionIdAndUserIdAndInitialCategoryIdAndStatusNot(

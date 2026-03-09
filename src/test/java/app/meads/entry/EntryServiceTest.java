@@ -78,6 +78,16 @@ class EntryServiceTest {
         return division;
     }
 
+    private Division createRegistrationOpenDivisionWithLimits(UUID competitionId,
+                                                               Integer maxPerSubcategory,
+                                                               Integer maxPerMainCategory,
+                                                               Integer maxTotal) {
+        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP);
+        division.updateEntryLimits(maxPerSubcategory, maxPerMainCategory, maxTotal);
+        division.advanceStatus(); // DRAFT → REGISTRATION_OPEN
+        return division;
+    }
+
     // --- Product Mapping tests ---
 
     @Test
@@ -512,8 +522,7 @@ class EntryServiceTest {
         var divisionId = UUID.randomUUID();
         var userId = UUID.randomUUID();
         var categoryId = UUID.randomUUID();
-        var division = createRegistrationOpenDivision(competitionId);
-        division.updateEntryLimits(2, null); // max 2 per subcategory
+        var division = createRegistrationOpenDivisionWithLimits(competitionId, 2, null, null);
 
         given(competitionService.findDivisionById(divisionId)).willReturn(division);
         given(creditRepository.sumAmountByDivisionIdAndUserId(divisionId, userId)).willReturn(5);
@@ -537,8 +546,7 @@ class EntryServiceTest {
         var competitionId = UUID.randomUUID();
         var divisionId = UUID.randomUUID();
         var userId = UUID.randomUUID();
-        var division = createRegistrationOpenDivision(competitionId);
-        division.updateEntryLimits(null, 3); // max 3 per main category
+        var division = createRegistrationOpenDivisionWithLimits(competitionId, null, 3, null);
 
         // Create category hierarchy: M2 (parent) → M2A, M2B (subcategories)
         var parentCategory = new DivisionCategory(divisionId, null, "M2",
@@ -565,6 +573,27 @@ class EntryServiceTest {
                 "Wildflower honey", null, false, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("main category");
+    }
+
+    @Test
+    void shouldRejectCreateEntryWhenTotalLimitExceeded() {
+        var competitionId = UUID.randomUUID();
+        var divisionId = UUID.randomUUID();
+        var userId = UUID.randomUUID();
+        var categoryId = UUID.randomUUID();
+        var division = createRegistrationOpenDivisionWithLimits(competitionId, null, null, 5);
+
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(creditRepository.sumAmountByDivisionIdAndUserId(divisionId, userId)).willReturn(10);
+        given(entryRepository.countByDivisionIdAndUserIdAndStatusNot(
+                divisionId, userId, EntryStatus.WITHDRAWN)).willReturn(5L);
+
+        assertThatThrownBy(() -> entryService.createEntry(divisionId, userId,
+                "My Mead", categoryId, Sweetness.DRY, Strength.STANDARD,
+                new BigDecimal("12.5"), Carbonation.STILL,
+                "Wildflower honey", null, false, null, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("total");
     }
 
     // Cycle 7: createEntry allows entry when limits are null (unlimited)

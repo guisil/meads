@@ -228,10 +228,12 @@ public class CompetitionService {
     public Division updateDivisionEntryLimits(@NotNull UUID divisionId,
                                               Integer maxEntriesPerSubcategory,
                                               Integer maxEntriesPerMainCategory,
+                                              Integer maxEntriesTotal,
                                               @NotNull UUID requestingUserId) {
         var division = findDivisionById(divisionId);
         requireAuthorized(division.getCompetitionId(), requestingUserId);
-        division.updateEntryLimits(maxEntriesPerSubcategory, maxEntriesPerMainCategory);
+        division.updateEntryLimits(maxEntriesPerSubcategory, maxEntriesPerMainCategory,
+                maxEntriesTotal);
         return divisionRepository.save(division);
     }
 

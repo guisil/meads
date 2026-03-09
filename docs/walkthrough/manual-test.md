@@ -635,9 +635,12 @@ Wait for startup to complete. The console will show magic links for dev users.
 ### Settings tab
 
 - [ ] Click the "Settings" tab
-- [ ] **Expected:** Fields: Name, Short Name, Entry Prefix, Scoring System, Status (read-only), Save button
+- [ ] **Expected:** Fields: Name, Short Name, Entry Prefix, Scoring System, Max Entries per Subcategory, Max Entries per Main Category, Max Total Entries, Status (read-only), Save button
 - [ ] **Expected:** Name, Short Name, Entry Prefix are always editable (regardless of status)
 - [ ] **Expected:** Entry Prefix: helper text "Short prefix for entry numbers (e.g. AMA), up to 5 characters", maxLength 5
+- [ ] **Expected:** Entry limit fields have step buttons, clear button, helper text (e.g. "Per entrant per subcategory (empty = unlimited)")
+- [ ] **Expected:** Entry limit fields show seeded values: 3 per subcategory, 5 per main category, 10 total
+- [ ] **Expected:** Entry limit fields are disabled (not DRAFT — Amadora is REGISTRATION_OPEN)
 - [ ] **Expected:** Scoring System is only editable in DRAFT status (disabled for Amadora since it's REGISTRATION_OPEN)
 - [ ] **Expected:** Save button is always enabled
 - [ ] Change name to `Amadora (Updated)`, click "Save"
@@ -964,6 +967,7 @@ curl -s -o /dev/null -w "%{http_code}" \
 
 - [ ] **Expected:** Credit info shows: "Credits: N remaining (M total, K used)"
 - [ ] **Expected:** Total should be 7 (5 original + 2 added in section 8), used should be 3
+- [ ] **Expected:** Limits info shows: "Limits: 10 total, 5 per main category, 3 per subcategory"
 
 ### Entries grid
 

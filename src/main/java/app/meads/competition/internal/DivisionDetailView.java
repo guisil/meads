@@ -369,6 +369,36 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         entryPrefixField.setHelperText("Short prefix for entry numbers (e.g. AMA), up to 5 characters");
         entryPrefixField.setValue(division.getEntryPrefix() != null ? division.getEntryPrefix() : "");
 
+        var maxPerSubcategoryField = new com.vaadin.flow.component.textfield.IntegerField("Max Entries per Subcategory");
+        maxPerSubcategoryField.setMin(1);
+        maxPerSubcategoryField.setStepButtonsVisible(true);
+        maxPerSubcategoryField.setClearButtonVisible(true);
+        maxPerSubcategoryField.setHelperText("Per entrant per subcategory (empty = unlimited)");
+        maxPerSubcategoryField.setEnabled(isDraft);
+        if (division.getMaxEntriesPerSubcategory() != null) {
+            maxPerSubcategoryField.setValue(division.getMaxEntriesPerSubcategory());
+        }
+
+        var maxPerMainCategoryField = new com.vaadin.flow.component.textfield.IntegerField("Max Entries per Main Category");
+        maxPerMainCategoryField.setMin(1);
+        maxPerMainCategoryField.setStepButtonsVisible(true);
+        maxPerMainCategoryField.setClearButtonVisible(true);
+        maxPerMainCategoryField.setHelperText("Per entrant per main category (empty = unlimited)");
+        maxPerMainCategoryField.setEnabled(isDraft);
+        if (division.getMaxEntriesPerMainCategory() != null) {
+            maxPerMainCategoryField.setValue(division.getMaxEntriesPerMainCategory());
+        }
+
+        var maxTotalField = new com.vaadin.flow.component.textfield.IntegerField("Max Total Entries");
+        maxTotalField.setMin(1);
+        maxTotalField.setStepButtonsVisible(true);
+        maxTotalField.setClearButtonVisible(true);
+        maxTotalField.setHelperText("Per entrant total in this division (empty = unlimited)");
+        maxTotalField.setEnabled(isDraft);
+        if (division.getMaxEntriesTotal() != null) {
+            maxTotalField.setValue(division.getMaxEntriesTotal());
+        }
+
         var statusField = new TextField("Status");
         statusField.setValue(division.getStatus().getDisplayName());
         statusField.setReadOnly(true);
@@ -391,6 +421,12 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                         divisionId, nameField.getValue(),
                         shortNameField.getValue(),
                         scoringSelect.getValue(), prefix, getCurrentUserId());
+                competitionService.updateDivisionEntryLimits(
+                        divisionId,
+                        maxPerSubcategoryField.getValue(),
+                        maxPerMainCategoryField.getValue(),
+                        maxTotalField.getValue(),
+                        getCurrentUserId());
                 refreshBreadcrumbAndHeader();
                 var notification = Notification.show("Settings saved successfully");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
@@ -399,7 +435,9 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
             }
         });
 
-        tab.add(nameField, shortNameField, entryPrefixField, scoringSelect, statusField, saveButton);
+        tab.add(nameField, shortNameField, entryPrefixField, scoringSelect,
+                maxPerSubcategoryField, maxPerMainCategoryField, maxTotalField,
+                statusField, saveButton);
         return tab;
     }
 

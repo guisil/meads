@@ -91,10 +91,10 @@ class DevDataInitializer {
 
         // 5. Set entry limits
         competitionService.updateDivisionEntryLimits(
-                amadora.getId(), 3, 5, compAdminId);
+                amadora.getId(), 3, 5, 10, compAdminId);
         competitionService.updateDivisionEntryLimits(
-                profissional.getId(), 3, 5, compAdminId);
-        log.info("Set entry limits: 3 per subcategory, 5 per main category");
+                profissional.getId(), 3, 5, 10, compAdminId);
+        log.info("Set entry limits: 3 per subcategory, 5 per main category, 10 total");
 
         // 5b. Set entry prefixes
         competitionService.updateDivision(amadora.getId(),

@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `competition-module`
-**Tests:** 409 passing (`mvn test -Dsurefire.useFile=false`)
+**Tests:** 411 passing (`mvn test -Dsurefire.useFile=false`)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -152,6 +152,19 @@ docs/
 5. **Judging module** — design and implementation
 
 ### Recent changes (this session)
+- **Entry limits UI + enforcement:**
+  - Added `maxEntriesTotal` field to `Division` entity (nullable Integer, null = unlimited)
+  - Updated V4 migration with `max_entries_total` column (pre-deployment, no new migration)
+  - `Division.updateEntryLimits()` now takes 3 params: maxPerSubcategory, maxPerMainCategory, maxTotal
+  - `CompetitionService.updateDivisionEntryLimits()` updated with maxEntriesTotal param
+  - `EntryService.checkEntryLimits()` enforces total limit (checked before subcategory/main category)
+  - DivisionDetailView Settings tab: 3 IntegerFields for all entry limits (step buttons, clear button, helper text)
+  - MyEntriesView: displays "Limits: N total, M per main category, K per subcategory" below credits
+  - DevDataInitializer: sets 10 total limit for both divisions
+  - New test: `shouldRejectCreateEntryWhenTotalLimitExceeded`
+  - `Division.updateEntryLimits()` restricted to DRAFT status (like scoring system)
+  - DivisionDetailView: entry limit fields disabled when not DRAFT
+  - New test: `shouldRejectUpdateDivisionEntryLimitsWhenNotDraft`
 - **Flyway migration consolidation:**
   - Merged V14 (meadery_name) into V2, V15/V16 (entry limits, entry prefix) into V4
   - Now V1–V13 contiguous, no gaps — safe since app is pre-deployment

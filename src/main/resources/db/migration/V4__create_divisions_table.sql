@@ -7,6 +7,7 @@ CREATE TABLE divisions (
     scoring_system VARCHAR(50)  NOT NULL,
     max_entries_per_subcategory    INT,
     max_entries_per_main_category  INT,
+    max_entries_total              INT,
     entry_prefix   VARCHAR(5),
     created_at     TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at     TIMESTAMP WITH TIME ZONE,

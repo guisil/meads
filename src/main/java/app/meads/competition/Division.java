@@ -40,6 +40,9 @@ public class Division {
     @Column(name = "max_entries_per_main_category")
     private Integer maxEntriesPerMainCategory;
 
+    @Column(name = "max_entries_total")
+    private Integer maxEntriesTotal;
+
     @Column(name = "entry_prefix", length = 5)
     private String entryPrefix;
 
@@ -85,9 +88,14 @@ public class Division {
     }
 
     public void updateEntryLimits(Integer maxEntriesPerSubcategory,
-                                  Integer maxEntriesPerMainCategory) {
+                                  Integer maxEntriesPerMainCategory,
+                                  Integer maxEntriesTotal) {
+        if (status != DivisionStatus.DRAFT) {
+            throw new IllegalStateException("Entry limits can only be changed in DRAFT status");
+        }
         this.maxEntriesPerSubcategory = maxEntriesPerSubcategory;
         this.maxEntriesPerMainCategory = maxEntriesPerMainCategory;
+        this.maxEntriesTotal = maxEntriesTotal;
     }
 
     public void updateDetails(String name, String shortName, ScoringSystem scoringSystem,

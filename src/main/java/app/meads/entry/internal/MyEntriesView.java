@@ -138,12 +138,37 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         return new H2(division.getName() + " — My Entries");
     }
 
-    private Span createCreditInfo() {
+    private VerticalLayout createCreditInfo() {
+        var layout = new VerticalLayout();
+        layout.setPadding(false);
+        layout.setSpacing(false);
+
         var creditBalance = entryService.getCreditBalance(divisionId, currentUserId);
         var activeEntries = entryService.countActiveEntries(divisionId, currentUserId);
         var remaining = creditBalance - activeEntries;
-        return new Span("Credits: " + remaining + " remaining (" + creditBalance
-                + " total, " + activeEntries + " used)");
+        layout.add(new Span("Credits: " + remaining + " remaining (" + creditBalance
+                + " total, " + activeEntries + " used)"));
+
+        var limits = buildLimitsText();
+        if (!limits.isEmpty()) {
+            layout.add(new Span("Limits: " + limits));
+        }
+
+        return layout;
+    }
+
+    private String buildLimitsText() {
+        var parts = new java.util.ArrayList<String>();
+        if (division.getMaxEntriesTotal() != null) {
+            parts.add(division.getMaxEntriesTotal() + " total");
+        }
+        if (division.getMaxEntriesPerMainCategory() != null) {
+            parts.add(division.getMaxEntriesPerMainCategory() + " per main category");
+        }
+        if (division.getMaxEntriesPerSubcategory() != null) {
+            parts.add(division.getMaxEntriesPerSubcategory() + " per subcategory");
+        }
+        return String.join(", ", parts);
     }
 
     private HorizontalLayout createActionButtons() {
