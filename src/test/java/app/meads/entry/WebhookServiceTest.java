@@ -136,7 +136,7 @@ class WebhookServiceTest {
         given(competitionService.findDivisionById(divisionId)).willReturn(division);
         given(creditRepository.findDistinctDivisionIdsByUserId(user.getId()))
                 .willReturn(List.of());
-        given(userService.findOrCreateByEmail("entrant@test.com")).willReturn(user);
+        given(userService.findOrCreateByEmail("entrant@test.com", "Test Entrant")).willReturn(user);
         given(lineItemRepository.save(any(JumpsellerOrderLineItem.class)))
                 .willAnswer(inv -> inv.getArgument(0));
         given(creditRepository.save(any(EntryCredit.class)))
@@ -178,7 +178,7 @@ class WebhookServiceTest {
                 .willAnswer(inv -> inv.getArgument(0));
         given(productMappingRepository.findByJumpsellerProductId("999"))
                 .willReturn(List.of());
-        given(userService.findOrCreateByEmail("entrant@test.com")).willReturn(user);
+        given(userService.findOrCreateByEmail("entrant@test.com", "Test Entrant")).willReturn(user);
         given(lineItemRepository.save(any(JumpsellerOrderLineItem.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 
@@ -223,7 +223,7 @@ class WebhookServiceTest {
                 .willReturn(List.of(divisionA.getId()));
         given(competitionService.findDivisionsByCompetition(competitionId))
                 .willReturn(List.of(divisionA, divisionB));
-        given(userService.findOrCreateByEmail("entrant@test.com")).willReturn(user);
+        given(userService.findOrCreateByEmail("entrant@test.com", "Test Entrant")).willReturn(user);
         given(lineItemRepository.save(any(JumpsellerOrderLineItem.class)))
                 .willAnswer(inv -> inv.getArgument(0));
         given(creditRepository.save(any(EntryCredit.class)))
@@ -270,7 +270,7 @@ class WebhookServiceTest {
         given(competitionService.findDivisionById(divisionId)).willReturn(division);
         given(creditRepository.findDistinctDivisionIdsByUserId(newUser.getId()))
                 .willReturn(List.of());
-        given(userService.findOrCreateByEmail("new@test.com")).willReturn(newUser);
+        given(userService.findOrCreateByEmail("new@test.com", "New Entrant")).willReturn(newUser);
         given(lineItemRepository.save(any(JumpsellerOrderLineItem.class)))
                 .willAnswer(inv -> inv.getArgument(0));
         given(creditRepository.save(any(EntryCredit.class)))
@@ -279,7 +279,7 @@ class WebhookServiceTest {
         service.processOrderPaid(payload);
 
         // findOrCreateByEmail is called — creates PENDING user if not exists
-        then(userService).should().findOrCreateByEmail("new@test.com");
+        then(userService).should().findOrCreateByEmail("new@test.com", "New Entrant");
         then(creditRepository).should().save(any(EntryCredit.class));
     }
 
@@ -309,7 +309,7 @@ class WebhookServiceTest {
                 .willReturn(List.of(otherDivision.getId()));
         given(competitionService.findDivisionsByCompetition(competitionId))
                 .willReturn(List.of(division, otherDivision));
-        given(userService.findOrCreateByEmail("entrant@test.com")).willReturn(user);
+        given(userService.findOrCreateByEmail("entrant@test.com", "Test Entrant")).willReturn(user);
         given(lineItemRepository.save(any(JumpsellerOrderLineItem.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 

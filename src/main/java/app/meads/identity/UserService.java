@@ -71,9 +71,13 @@ public class UserService {
     }
 
     public User findOrCreateByEmail(@Email @NotBlank String email) {
+        return findOrCreateByEmail(email, email);
+    }
+
+    public User findOrCreateByEmail(@Email @NotBlank String email, @NotBlank String name) {
         return userRepository.findByEmail(email)
                 .orElseGet(() -> {
-                    var user = new User(email, email, UserStatus.PENDING, Role.USER);
+                    var user = new User(email, name, UserStatus.PENDING, Role.USER);
                     return userRepository.save(user);
                 });
     }

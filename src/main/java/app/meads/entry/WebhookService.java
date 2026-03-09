@@ -87,8 +87,8 @@ public class WebhookService {
                 return;
             }
 
-            // Find or create user
-            var user = userService.findOrCreateByEmail(customerEmail);
+            // Find or create user (use customer name from order)
+            var user = userService.findOrCreateByEmail(customerEmail, customerName);
 
             // Save order first (line items have FK to this)
             var order = new JumpsellerOrder(orderId, customerEmail, customerName, rawPayload);
