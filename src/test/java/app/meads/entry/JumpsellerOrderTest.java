@@ -54,12 +54,14 @@ class JumpsellerOrderTest {
     }
 
     @Test
-    void shouldAddAdminNote() {
+    void shouldUpdateAdminDetails() {
         var order = new JumpsellerOrder("ORDER-001", "entrant@test.com",
                 "Test Entrant", "{}");
 
-        order.addAdminNote("Reviewed and approved");
+        order.updateAdminDetails(OrderStatus.PROCESSED, "Reviewed and approved");
 
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.PROCESSED);
         assertThat(order.getAdminNote()).isEqualTo("Reviewed and approved");
+        assertThat(order.getProcessedAt()).isNotNull();
     }
 }

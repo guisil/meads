@@ -326,6 +326,16 @@ public class EntryService {
         return orderRepository.findAllById(orderIds);
     }
 
+    public JumpsellerOrder updateOrderAdminDetails(@NotNull UUID orderId,
+                                                     @NotNull OrderStatus status,
+                                                     String adminNote,
+                                                     @NotNull UUID requestingUserId) {
+        var order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Order not found"));
+        order.updateAdminDetails(status, adminNote);
+        return orderRepository.save(order);
+    }
+
     // --- Private helpers ---
 
     private void requireAuthorizedForDivision(UUID divisionId, UUID userId) {

@@ -48,7 +48,7 @@ Wait for startup to complete. The console will show magic links for dev users.
   - `buyer1@example.com` -- ENTRANT (2 credits in Amadora, added via webhook)
   - `buyer2@example.com` -- ENTRANT (3 credits in Profissional, added via webhook)
 - **Product mappings:** CHIP-AMA (Amadora, product ID 1001), CHIP-PRO (Profissional, product ID 1002)
-- **Entries for `user@example.com`:** Wildflower Traditional (DRAFT, M1A), Blueberry Bliss (SUBMITTED, M2C), Oak-Aged Bochet (DRAFT, M1A)
+- **Entries for `user@example.com`:** Wildflower Traditional (SUBMITTED, M1A), Blueberry Bliss (SUBMITTED, M2C), Oak-Aged Bochet (DRAFT, M1A)
 - **Entries for `entrant@example.com`:** Lavender Metheglin (DRAFT, M3B)
 - **Webhook orders:**
   - JS-1001: buyer1@example.com (Maria Silva), 2x CHIP-AMA → 2 credits in Amadora, buyer added as ENTRANT
@@ -697,7 +697,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 - [ ] **Expected:** Default tab is "Credits"
 - [ ] **Expected:** Filter field: "Filter by name or email..."
-- [ ] **Expected:** Grid with columns: Name, Email, Credits, Entries, Actions (edit/delete icons)
+- [ ] **Expected:** Grid with columns: Name, Email, Credits, Entries, Actions (edit icon)
 - [ ] **Expected:** `user@example.com` -- Credits: 5, Entries: 3
 - [ ] **Expected:** `entrant@example.com` -- Credits: 3, Entries: 1
 - [ ] **Expected:** `buyer1@example.com` -- Credits: 2, Entries: 0 (from webhook order)
@@ -713,18 +713,13 @@ Wait for startup to complete. The console will show magic links for dev users.
 - [ ] **Expected:** Notification "Credits added" (green)
 - [ ] **Expected:** `user@example.com` credits now shows 7
 
-### Edit credits
+### Adjust credits
 
 - [ ] Click the edit icon (pencil) on `user@example.com` row
-- [ ] **Expected:** Dialog "Adjust Credits — Dev User", field "Credits to add" (min 1, default 1), helper shows current balance
-- [ ] Footer: Cancel (left), Add Credits (right)
-- [ ] Change amount, click "Add Credits" or Cancel
-
-### Remove credits
-
-- [ ] Click the delete icon (trash) on a row
-- [ ] **Expected:** Confirmation dialog "Remove Credits" — "Remove all credits (N) from email?"
-- [ ] Footer: Cancel (left), Remove (right)
+- [ ] **Expected:** Dialog "Adjust Credits — Dev User", field "Adjustment" (default 1), helper shows current balance
+- [ ] **Expected:** Footer: Cancel (left), Save (right)
+- [ ] Use positive values to add credits, negative to remove
+- [ ] Click "Save" or Cancel
 
 ### Mutual exclusivity -- add credits to different division
 
@@ -740,9 +735,9 @@ Wait for startup to complete. The console will show magic links for dev users.
 - [ ] Click the "Entries" tab
 - [ ] **Expected:** Filter field: "Filter by mead name, entrant, or entry code..."
 - [ ] **Expected:** Grid with columns: Entry # (with AMA prefix, e.g. "AMA-1"), Code, Mead Name, Category, Entrant, Status, Actions (edit/delete/withdraw icons)
-- [ ] **Expected:** 4 entries total (3 from user@example.com, 1 from entrant@example.com)
-- [ ] **Expected:** Blueberry Bliss -- Status: SUBMITTED
-- [ ] **Expected:** Others -- Status: DRAFT
+- [ ] **Expected:** 4 entries total (3 from user@example.com, 1 from entrant@example.com), sorted by entry number
+- [ ] **Expected:** Wildflower Traditional and Blueberry Bliss -- Status: SUBMITTED
+- [ ] **Expected:** Oak-Aged Bochet and Lavender Metheglin -- Status: DRAFT
 - [ ] **Expected:** Columns are sortable
 - [ ] **Expected:** Delete button (trash) only enabled for DRAFT entries
 - [ ] **Expected:** Withdraw button (ban) disabled for WITHDRAWN entries
@@ -773,10 +768,11 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 - [ ] Click the "Orders" tab
 - [ ] **Expected:** Filter field: "Filter by order ID or customer email..."
-- [ ] **Expected:** Grid with columns: Order ID, Customer, Status, Date, Actions (edit note icon)
+- [ ] **Expected:** Grid with columns: Order ID, Customer, Status, Date, Actions (edit icon)
 - [ ] **Expected:** 1 seeded order: JS-1001 (buyer1@example.com, PROCESSED)
 - [ ] **Expected:** Columns are sortable
-- [ ] **Expected:** Edit icon opens dialog to set/update admin note
+- [ ] **Expected:** Edit icon opens dialog with Status (dropdown) and Admin Note fields
+- [ ] **Expected:** Admin can change order status (e.g. NEEDS_REVIEW → PROCESSED after manual resolution)
 
 ---
 

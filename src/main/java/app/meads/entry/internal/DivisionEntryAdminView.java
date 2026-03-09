@@ -20,6 +20,7 @@ import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.tabs.TabSheet;
 import com.vaadin.flow.component.textfield.IntegerField;
@@ -175,17 +176,10 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         creditsGrid.addComponentColumn(summary -> {
             var editButton = new Button(new Icon(VaadinIcon.EDIT));
             editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            editButton.setAriaLabel("Edit Credits");
-            editButton.setTooltipText("Edit Credits");
+            editButton.setAriaLabel("Adjust Credits");
+            editButton.setTooltipText("Adjust Credits");
             editButton.addClickListener(e -> openEditCreditsDialog(summary));
-
-            var deleteButton = new Button(new Icon(VaadinIcon.TRASH));
-            deleteButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            deleteButton.setAriaLabel("Remove Credits");
-            deleteButton.setTooltipText("Remove Credits");
-            deleteButton.addClickListener(e -> openRemoveCreditsDialog(summary));
-
-            return new HorizontalLayout(editButton, deleteButton);
+            return editButton;
         }).setHeader("Actions").setAutoWidth(true);
 
         refreshCreditsGrid();
@@ -257,46 +251,25 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         var dialog = new Dialog();
         dialog.setHeaderTitle("Adjust Credits — " + summary.name());
 
-        var amountField = new IntegerField("Credits to add");
-        amountField.setMin(1);
+        var amountField = new IntegerField("Adjustment");
         amountField.setValue(1);
-        amountField.setHelperText("Current balance: " + summary.creditBalance());
+        amountField.setHelperText("Current balance: " + summary.creditBalance()
+                + ". Use positive to add, negative to remove.");
 
         dialog.add(new VerticalLayout(amountField));
 
-        var addButton = new Button("Add Credits", e -> {
-            if (amountField.getValue() == null || amountField.getValue() < 1) return;
+        var saveButton = new Button("Save", e -> {
+            if (amountField.getValue() == null || amountField.getValue() == 0) return;
             try {
-                entryService.addCredits(divisionId, summary.email(),
-                        amountField.getValue(), currentUserId);
-                var notification = Notification.show("Credits added");
-                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-                dialog.close();
-                refreshCreditsGrid();
-            } catch (IllegalArgumentException ex) {
-                Notification.show(ex.getMessage());
-            }
-        });
-
-        var cancelButton = new Button("Cancel", e -> dialog.close());
-        dialog.getFooter().add(cancelButton, addButton);
-        dialog.open();
-    }
-
-    private void openRemoveCreditsDialog(EntrantCreditSummary summary) {
-        var dialog = new Dialog();
-        dialog.setHeaderTitle("Remove Credits");
-
-        dialog.add("Remove all credits (" + summary.creditBalance()
-                + ") from " + summary.email() + "?");
-
-        var confirmButton = new Button("Remove", e -> {
-            try {
-                if (summary.creditBalance() > 0) {
+                var amount = amountField.getValue();
+                if (amount > 0) {
+                    entryService.addCredits(divisionId, summary.email(),
+                            amount, currentUserId);
+                } else {
                     entryService.removeCredits(divisionId, summary.userId(),
-                            summary.creditBalance(), currentUserId);
+                            -amount, currentUserId);
                 }
-                var notification = Notification.show("Credits removed");
+                var notification = Notification.show("Credits updated");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
                 refreshCreditsGrid();
@@ -306,7 +279,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         });
 
         var cancelButton = new Button("Cancel", e -> dialog.close());
-        dialog.getFooter().add(cancelButton, confirmButton);
+        dialog.getFooter().add(cancelButton, saveButton);
         dialog.open();
     }
 
@@ -401,7 +374,10 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
     }
 
     private void refreshEntriesGrid() {
-        entriesGrid.setItems(entryService.findEntriesByDivision(divisionId));
+        var entries = entryService.findEntriesByDivision(divisionId).stream()
+                .sorted(java.util.Comparator.comparingInt(Entry::getEntryNumber))
+                .toList();
+        entriesGrid.setItems(entries);
     }
 
     private void openEditEntryDialog(Entry entry) {
@@ -661,9 +637,9 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         ordersGrid.addComponentColumn(order -> {
             var editButton = new Button(new Icon(VaadinIcon.EDIT));
             editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            editButton.setAriaLabel("Edit Note");
-            editButton.setTooltipText("Edit Note");
-            editButton.addClickListener(e -> openEditOrderNoteDialog(order));
+            editButton.setAriaLabel("Edit");
+            editButton.setTooltipText("Edit");
+            editButton.addClickListener(e -> openEditOrderDialog(order));
             return editButton;
         }).setHeader("Actions").setAutoWidth(true);
 
@@ -688,23 +664,36 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         ordersGrid.setItems(entryService.findOrdersByDivision(divisionId));
     }
 
-    private void openEditOrderNoteDialog(JumpsellerOrder order) {
+    private void openEditOrderDialog(JumpsellerOrder order) {
         var dialog = new Dialog();
-        dialog.setHeaderTitle("Edit Note — Order " + order.getJumpsellerOrderId());
+        dialog.setHeaderTitle("Edit Order — " + order.getJumpsellerOrderId());
+
+        var statusSelect = new Select<OrderStatus>();
+        statusSelect.setLabel("Status");
+        statusSelect.setItems(OrderStatus.values());
+        statusSelect.setItemLabelGenerator(OrderStatus::name);
+        statusSelect.setValue(order.getStatus());
 
         var noteField = new TextField("Admin Note");
         noteField.setWidthFull();
         noteField.setValue(order.getAdminNote() != null ? order.getAdminNote() : "");
 
-        dialog.add(new VerticalLayout(noteField));
+        dialog.add(new VerticalLayout(statusSelect, noteField));
 
         var saveButton = new Button("Save", e -> {
-            order.addAdminNote(StringUtils.hasText(noteField.getValue())
-                    ? noteField.getValue().trim() : null);
-            var notification = Notification.show("Note saved");
-            notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-            dialog.close();
-            refreshOrdersGrid();
+            try {
+                entryService.updateOrderAdminDetails(order.getId(),
+                        statusSelect.getValue(),
+                        StringUtils.hasText(noteField.getValue())
+                                ? noteField.getValue().trim() : null,
+                        currentUserId);
+                var notification = Notification.show("Order updated");
+                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                dialog.close();
+                refreshOrdersGrid();
+            } catch (IllegalArgumentException ex) {
+                Notification.show(ex.getMessage());
+            }
         });
 
         var cancelButton = new Button("Cancel", e -> dialog.close());

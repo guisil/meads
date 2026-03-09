@@ -66,7 +66,11 @@ public class JumpsellerOrder {
         this.status = OrderStatus.NEEDS_REVIEW;
     }
 
-    public void addAdminNote(String note) {
+    public void updateAdminDetails(OrderStatus status, String note) {
+        this.status = status;
         this.adminNote = note;
+        if (status == OrderStatus.PROCESSED && this.processedAt == null) {
+            this.processedAt = Instant.now();
+        }
     }
 }
