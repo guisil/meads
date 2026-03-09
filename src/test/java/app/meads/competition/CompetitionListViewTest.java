@@ -133,7 +133,7 @@ class CompetitionListViewTest {
     void shouldRedirectToRootWhenRegularUserAccessesCompetitionsView() {
         UI.getCurrent().navigate("competitions");
 
-        assertThat(UI.getCurrent().getInternals().getActiveViewLocation().getPath()).isEmpty();
+        assertThat(UI.getCurrent().getInternals().getActiveViewLocation().getPath()).isEqualTo("my-entries");
     }
 
     @Test

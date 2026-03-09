@@ -56,7 +56,6 @@ public class MainLayout extends AppLayout {
         addToNavbar(navbar);
 
         var nav = new SideNav();
-        nav.addItem(new SideNavItem("Home", "", VaadinIcon.HOME.create()));
 
         if (authenticationContext.hasRole("SYSTEM_ADMIN")) {
             nav.addItem(new SideNavItem("Competitions", "competitions", VaadinIcon.CALENDAR.create()));
@@ -77,5 +76,6 @@ public class MainLayout extends AppLayout {
         addToDrawer(scroller);
 
         setPrimarySection(Section.DRAWER);
+        setDrawerOpened(false);
     }
 }

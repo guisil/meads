@@ -76,7 +76,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 - [ ] Expand "Login with credentials" section
 - [ ] Enter password: `admin`
 - [ ] Click "Login"
-- [ ] **Expected:** Redirected to `/` with "Welcome Dev Admin"
+- [ ] **Expected:** Redirected to `/competitions` (SYSTEM_ADMIN default landing page)
 
 ### Password login (competition admin)
 
@@ -85,7 +85,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 - [ ] Expand "Login with credentials" section
 - [ ] Enter password: `compadmin`
 - [ ] Click "Login"
-- [ ] **Expected:** Redirected to `/` with "Welcome Competition Admin"
+- [ ] **Expected:** Redirected to `/my-competitions` (competition admin default landing page)
 
 ### Magic link login
 
@@ -96,7 +96,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 - [ ] **Expected:** Notification "If this email is registered, a login link has been sent."
 - [ ] Copy the magic link URL from the server console (format: `http://localhost:8080/login/magic?token=...`)
 - [ ] Paste the URL in the browser
-- [ ] **Expected:** Authenticated as `user@example.com`, redirected to `/` with "Welcome Dev User"
+- [ ] **Expected:** Authenticated as `user@example.com`, redirected to `/my-entries` (regular user with credits)
 
 ### Magic link blocked for password user
 
@@ -216,27 +216,24 @@ Wait for startup to complete. The console will show magic links for dev users.
 - [ ] **Expected:** Top navbar shows "MEADS" title and user menu (user icon + `admin@example.com`)
 - [ ] Click the user menu
 - [ ] **Expected:** Dropdown opens with "Logout" option
-- [ ] **Expected:** Left sidebar (drawer) has: Home, Competitions, Users
+- [ ] **Expected:** Left sidebar (drawer) starts collapsed
 - [ ] Click the drawer toggle (hamburger icon)
-- [ ] **Expected:** Sidebar collapses/expands
+- [ ] **Expected:** Sidebar expands, shows: Competitions, Users, My Entries
 
 ### SYSTEM_ADMIN nav items
 
 - [ ] While logged in as `admin@example.com` (SYSTEM_ADMIN)
-- [ ] **Expected:** Side nav shows "Home", "Competitions", "Users"
+- [ ] **Expected:** Side nav shows "Competitions", "Users", "My Entries"
+
+### Competition admin nav items
+
+- [ ] Log out, log in as `compadmin@example.com` (competition admin, regular USER)
+- [ ] **Expected:** Side nav shows "My Competitions", "My Entries" -- no "Competitions" or "Users"
 
 ### Regular user nav items
 
-- [ ] Log out, log in as `compadmin@example.com` (competition admin, regular USER)
-- [ ] **Expected:** Side nav shows "Home", "My Competitions" -- no "Competitions" or "Users"
-- [ ] Log out, log in as `user@example.com` (regular USER, not competition admin)
-- [ ] **Expected:** Side nav shows "Home", "My Competitions" -- no "Competitions" or "Users"
-
-### Home link
-
-- [ ] Navigate to `/users` (as admin)
-- [ ] Click "Home" in the sidebar
-- [ ] **Expected:** Navigated to `/` with "Welcome Dev Admin"
+- [ ] Log out, log in as `user@example.com` (regular USER with credits, not competition admin)
+- [ ] **Expected:** Side nav shows "My Entries" only -- no "Competitions", "Users", or "My Competitions"
 
 ---
 
@@ -931,26 +928,17 @@ curl -s -o /dev/null -w "%{http_code}" \
 
 **Covers:** `EntryServiceTest` (findEntrantDivisionOverviews), `MainLayoutTest`
 
-### Navigate as entrant
+### Navigate as entrant (auto-redirect)
 
-- [ ] Log in as `user@example.com`
-- [ ] **Expected:** Sidebar shows "My Entries" link
-- [ ] Click "My Entries" in the sidebar
-- [ ] **Expected:** Page title "My Entries"
-- [ ] **Expected:** Under "CHIP 2026": Amadora division with credits and entry count, link to manage entries
+- [ ] Log in as `user@example.com` (has credits in only one division)
+- [ ] **Expected:** Automatically redirected to `/competitions/chip-2026/divisions/amadora/my-entries`
+- [ ] **Expected:** Breadcrumb: "My Entries / CHIP 2026 / Amadora"
 
 ### Navigate as admin
 
 - [ ] Log in as `admin@example.com`
-- [ ] **Expected:** Sidebar shows "My Entries" link (alongside Competitions and Users)
-- [ ] Click "My Entries"
+- [ ] Open drawer, click "My Entries"
 - [ ] **Expected:** Empty state "You have no entries in any competition." (admin has no credits)
-
-### Navigate to division entries
-
-- [ ] Log in as `user@example.com`, click "My Entries"
-- [ ] Click the "Amadora" link
-- [ ] **Expected:** Navigates to `/competitions/chip-2026/divisions/amadora/my-entries`
 
 ---
 
@@ -971,17 +959,22 @@ curl -s -o /dev/null -w "%{http_code}" \
 
 ### Entries grid
 
-- [ ] **Expected:** Grid with columns: Entry #, Mead Name, Category, Status
+- [ ] **Expected:** Grid with columns: Entry #, Mead Name, Category, Final Category, Status (badge), Actions
+- [ ] **Expected:** Entry # column is narrow (~90px), Status shows styled badge (like division status)
+- [ ] **Expected:** Final Category shows "—" for all entries (not yet assigned)
+- [ ] **Expected:** Actions column has icons: view (eye), edit (pencil), submit (check) — edit/submit only enabled for DRAFT
+- [ ] **Expected:** All columns are resizable and sortable
+- [ ] **Expected:** Filter bar above grid: text field (filter by mead name) + status dropdown (All statuses / Draft / Submitted / etc.)
 - [ ] **Expected:** 3 entries:
-  - Wildflower Traditional -- M1A -- DRAFT
-  - Blueberry Bliss -- M2C -- SUBMITTED
-  - Oak-Aged Bochet -- M1A -- DRAFT
+  - Wildflower Traditional -- M1A -- Draft (badge)
+  - Blueberry Bliss -- M2C -- Submitted (badge)
+  - Oak-Aged Bochet -- M1A -- Draft (badge)
 
 ### Add entry -- success
 
 - [ ] **Expected:** "Add Entry" button is enabled (remaining credits > 0)
 - [ ] Click "Add Entry"
-- [ ] **Expected:** Dialog (600px wide) with fields: Mead Name, Category, Sweetness, Strength, ABV (%), Carbonation, Honey Varieties, Other Ingredients, Wood Aged checkbox, Additional Information
+- [ ] **Expected:** Dialog (600px wide) with full-width fields: Mead Name, Category, Sweetness, Strength, ABV (%), Carbonation, Honey Varieties, Other Ingredients, Wood Aged checkbox, Additional Information
 - [ ] Fill in: Mead Name: `Spring Blossom`, Category: M1B, Sweetness: Medium, Strength: Standard, ABV: 12.0, Carbonation: Still, Honey: `Orange blossom`
 - [ ] Click "Save"
 - [ ] **Expected:** Notification "Entry created" (green)
@@ -1010,21 +1003,38 @@ curl -s -o /dev/null -w "%{http_code}" \
 - [ ] Click "Save"
 - [ ] **Expected:** Notification "Please fill in all required fields"
 
+### View entry details
+
+- [ ] Find "Blueberry Bliss" (SUBMITTED) in the grid
+- [ ] Click the view (eye) icon in the Actions column
+- [ ] **Expected:** Read-only dialog showing all entry fields (Mead Name, Category, Sweetness, Strength, ABV, Carbonation, Honey Varieties, Status, Entry Code, etc.)
+- [ ] Click "Close"
+
 ### Edit draft entry
 
 - [ ] Find "Wildflower Traditional" (DRAFT) in the grid
-- [ ] Click to edit (or use the edit action if available)
-- [ ] **Expected:** Dialog pre-populated with entry data
+- [ ] Click the edit (pencil) icon in the Actions column
+- [ ] **Expected:** Dialog pre-populated with entry data, all fields full-width
 - [ ] Change mead name to `Wildflower Traditional (Updated)`
 - [ ] Click "Save"
 - [ ] **Expected:** Notification "Entry updated" (green)
 - [ ] **Expected:** Grid shows updated name
 
-### Delete draft entry
+### Submit single entry
 
-- [ ] Note: This step depends on whether a delete action is exposed in the UI
-- [ ] If a delete button/action exists for DRAFT entries, click it
-- [ ] **Expected:** Entry removed, credit slot freed
+- [ ] Find a DRAFT entry in the grid
+- [ ] Click the submit (check) icon in the Actions column
+- [ ] **Expected:** Confirmation dialog: "Submit entry #N (Mead Name)? This cannot be undone."
+- [ ] Click "Cancel" (don't submit yet)
+
+### Filter and sort
+
+- [ ] Type "Wild" in the mead name filter field
+- [ ] **Expected:** Grid filters to show only entries with "Wild" in the name
+- [ ] Clear the filter, select "Draft" from the status dropdown
+- [ ] **Expected:** Grid shows only DRAFT entries
+- [ ] Click the "Entry #" column header
+- [ ] **Expected:** Entries sorted by entry number
 
 ### Submit all drafts
 

@@ -40,9 +40,14 @@ public class EntrantOverviewView extends VerticalLayout implements BeforeEnterOb
         var email = authenticationContext.getAuthenticatedUser(UserDetails.class)
                 .map(UserDetails::getUsername)
                 .orElseThrow();
-        var userId = userService.findByEmail(email).getId();
 
-        var overviews = entryService.findEntrantDivisionOverviews(userId);
+        java.util.List<EntrantDivisionOverview> overviews;
+        try {
+            var userId = userService.findByEmail(email).getId();
+            overviews = entryService.findEntrantDivisionOverviews(userId);
+        } catch (IllegalArgumentException e) {
+            overviews = java.util.List.of();
+        }
 
         // Auto-redirect to single division
         if (overviews.size() == 1) {

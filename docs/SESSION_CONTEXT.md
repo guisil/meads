@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `competition-module`
-**Tests:** 412 passing (`mvn test -Dsurefire.useFile=false`)
+**Tests:** 409 passing (`mvn test -Dsurefire.useFile=false`)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -99,8 +99,8 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 - `EntrantCreditSummary(userId, email, name, creditBalance, entryCount)`
 
 #### Views
-- `EntrantOverviewView` (`/my-entries`) — cross-competition entrant hub, shows all divisions with credits/entries, links to per-division MyEntriesView
-- `MyEntriesView` (`/competitions/:compShortName/divisions/:divShortName/my-entries`) — entrant-facing, credits display, entry grid, add/edit dialog, submit all
+- `EntrantOverviewView` (`/my-entries`) — cross-competition entrant hub, shows all divisions with credits/entries, auto-redirects to single division
+- `MyEntriesView` (`/competitions/:compShortName/divisions/:divShortName/my-entries`) — entrant-facing, credits display, entry grid with status badges/Final Category/Actions (view/edit/submit)/filtering/sorting, add/edit dialog (full-width fields), submit all
 - `DivisionEntryAdminView` (`/competitions/:compShortName/divisions/:divShortName/entry-admin`) — admin tabs: Credits, Entries, Products, Orders
 
 #### REST
@@ -145,13 +145,26 @@ docs/
 
 ## What's Next
 
-1. **Manual walkthrough** — Continue from Section 9 (Webhook API testing).
-   Sections 2–8 are done. Continue through Section 12 (multi-role & cross-competition edge cases).
+1. **Manual walkthrough** — Continue from Section 10 (My Entries Overview).
+   Sections 2–9 are done. Continue through Section 13 (multi-role & cross-competition edge cases).
 3. **Code review** of both competition and entry modules (slice by slice)
 4. **Test review** (guided, with UI verification) of both modules
 5. **Judging module** — design and implementation
 
 ### Recent changes (this session)
+- **Root redirect + navigation overhaul:**
+  - RootView now redirects by role: SYSTEM_ADMIN → `/competitions`, competition admin → `/my-competitions`, regular user → `/my-entries`
+  - Removed Home link from sidebar, drawer starts collapsed
+  - EntrantOverviewView handles missing users gracefully (shows empty state)
+- **MyEntriesView grid improvements:**
+  - Entry # column narrower (90px), styled status badges (like DivisionStatus), Final Category column
+  - Actions column: view (eye), edit (pencil), submit (check) icons with tooltips
+  - Filtering (mead name text field + status dropdown) and sorting on all columns
+  - All columns resizable, default sort by entry number
+  - View entry dialog (read-only, shows all fields)
+  - Single entry submission via `EntryService.submitEntry()`
+  - Add/Edit dialog: all form fields full-width
+  - Entry status badge CSS: `badge-submitted`, `badge-received`, `badge-withdrawn`
 - **Entry admin enhancements (DivisionEntryAdminView):**
   - All 4 tabs: filtering, sorting, action buttons (edit/delete/withdraw icons)
   - Credits tab: Name first (flexGrow 2) / Email (flexGrow 3), filter, edit/remove credits dialogs

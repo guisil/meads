@@ -83,6 +83,22 @@ vaadin-app-layout::part(drawer) {
   color: hsl(145, 45%, 32%);
 }
 
+/* --- Entry status badges --- */
+.badge-submitted {
+  background: hsla(200, 70%, 50%, 0.12);
+  color: hsl(200, 70%, 38%);
+}
+
+.badge-received {
+  background: hsla(145, 45%, 38%, 0.12);
+  color: hsl(145, 45%, 32%);
+}
+
+.badge-withdrawn {
+  background: hsla(5, 60%, 48%, 0.12);
+  color: hsl(5, 60%, 42%);
+}
+
 /* --- Page header pattern --- */
 .page-header {
   display: flex;

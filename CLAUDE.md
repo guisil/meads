@@ -93,7 +93,7 @@ app.meads                                ← @SpringBootApplication (root module
 ├── MeadsApplication.java               ← Entry point
 ├── MainLayout.java                      ← AppLayout wrapper (public API — shared by all views)
 └── internal/
-    └── RootView.java                    ← Root route, redirects unauthenticated to /login
+    └── RootView.java                    ← Root route, redirects by role (login/competitions/my-competitions/my-entries)
 
 app.meads.identity                       ← Identity module public API
 ├── package-info.java                    ← @ApplicationModule(allowedDependencies = {})

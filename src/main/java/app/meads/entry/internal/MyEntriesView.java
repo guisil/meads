@@ -9,13 +9,17 @@ import app.meads.entry.*;
 import app.meads.identity.Role;
 import app.meads.identity.UserService;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.grid.GridSortOrder;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Nav;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -24,6 +28,8 @@ import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.textfield.NumberField;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.data.provider.ListDataProvider;
+import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
@@ -34,7 +40,10 @@ import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Route(value = "competitions/:compShortName/divisions/:divShortName/my-entries", layout = MainLayout.class)
 @PermitAll
@@ -52,6 +61,11 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
     private String competitionName;
     private UUID currentUserId;
     private Grid<Entry> entriesGrid;
+    private Map<UUID, DivisionCategory> categoriesById;
+
+    // Filter state
+    private String nameFilter = "";
+    private EntryStatus statusFilter;
 
     public MyEntriesView(EntryService entryService,
                           CompetitionService competitionService,
@@ -97,11 +111,16 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
             return;
         }
 
+        // Pre-load categories for the division
+        categoriesById = competitionService.findDivisionCategories(divisionId).stream()
+                .collect(Collectors.toMap(DivisionCategory::getId, Function.identity()));
+
         removeAll();
         add(createBreadcrumb());
         add(createHeader());
         add(createCreditInfo());
         add(createActionButtons());
+        add(createFilters());
         add(createEntriesGrid());
     }
 
@@ -148,29 +167,224 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         return actions;
     }
 
+    private HorizontalLayout createFilters() {
+        var filters = new HorizontalLayout();
+        filters.setWidthFull();
+        filters.setDefaultVerticalComponentAlignment(Alignment.BASELINE);
+
+        var nameField = new TextField();
+        nameField.setPlaceholder("Filter by mead name...");
+        nameField.setClearButtonVisible(true);
+        nameField.setValueChangeMode(ValueChangeMode.EAGER);
+        nameField.addValueChangeListener(e -> {
+            nameFilter = e.getValue();
+            applyFilters();
+        });
+
+        var statusSelect = new Select<EntryStatus>();
+        statusSelect.setPlaceholder("All statuses");
+        statusSelect.setItems(EntryStatus.values());
+        statusSelect.setItemLabelGenerator(s -> s != null ? s.getDisplayName() : "All statuses");
+        statusSelect.setEmptySelectionAllowed(true);
+        statusSelect.addValueChangeListener(e -> {
+            statusFilter = e.getValue();
+            applyFilters();
+        });
+
+        filters.add(nameField, statusSelect);
+        return filters;
+    }
+
+    private void applyFilters() {
+        var dataProvider = (ListDataProvider<Entry>) entriesGrid.getDataProvider();
+        dataProvider.setFilter(entry -> {
+            if (StringUtils.hasText(nameFilter)
+                    && !entry.getMeadName().toLowerCase().contains(nameFilter.toLowerCase())) {
+                return false;
+            }
+            if (statusFilter != null && entry.getStatus() != statusFilter) {
+                return false;
+            }
+            return true;
+        });
+    }
+
     private Grid<Entry> createEntriesGrid() {
         entriesGrid = new Grid<>(Entry.class, false);
         entriesGrid.setAllRowsVisible(true);
         entriesGrid.setId("entries-grid");
-        entriesGrid.addColumn(Entry::getEntryNumber).setHeader("Entry #");
-        entriesGrid.addColumn(Entry::getMeadName).setHeader("Mead Name");
+
+        // 1. Entry # — smaller column
+        var entryNumCol = entriesGrid.addColumn(Entry::getEntryNumber)
+                .setHeader("Entry #")
+                .setSortable(true)
+                .setWidth("90px")
+                .setFlexGrow(0);
+
+        // Mead Name
+        entriesGrid.addColumn(Entry::getMeadName)
+                .setHeader("Mead Name")
+                .setSortable(true);
+
+        // Category (initial)
+        entriesGrid.addColumn(entry -> resolveCategoryName(entry.getInitialCategoryId()))
+                .setHeader("Category")
+                .setSortable(true);
+
+        // 3. Final Category
         entriesGrid.addColumn(entry -> {
-            var categories = competitionService.findDivisionCategories(divisionId);
-            return categories.stream()
-                    .filter(c -> c.getId().equals(entry.getInitialCategoryId()))
-                    .map(DivisionCategory::getName)
-                    .findFirst()
-                    .orElse("—");
-        }).setHeader("Category");
-        entriesGrid.addColumn(entry -> entry.getStatus().name()).setHeader("Status");
+            if (entry.getFinalCategoryId() == null) {
+                return "—";
+            }
+            return resolveCategoryName(entry.getFinalCategoryId());
+        }).setHeader("Final Category").setSortable(true);
+
+        // 2. Status badge — styled like DivisionStatus
+        entriesGrid.addComponentColumn(this::createStatusBadge)
+                .setHeader("Status")
+                .setSortable(true)
+                .setComparator((a, b) -> a.getStatus().compareTo(b.getStatus()));
+
+        // 4. Actions column
+        entriesGrid.addComponentColumn(this::createActions)
+                .setHeader("Actions")
+                .setWidth("140px")
+                .setFlexGrow(0);
+
+        // Make all columns resizable
+        entriesGrid.getColumns().forEach(col -> col.setResizable(true));
+
+        // Default sort by entry number
+        entriesGrid.sort(List.of(new GridSortOrder<>(entryNumCol,
+                com.vaadin.flow.data.provider.SortDirection.ASCENDING)));
 
         refreshGrid();
         return entriesGrid;
     }
 
+    private String resolveCategoryName(UUID categoryId) {
+        var cat = categoriesById.get(categoryId);
+        return cat != null ? cat.getName() : "—";
+    }
+
+    private Span createStatusBadge(Entry entry) {
+        var badge = new Span(entry.getStatus().getDisplayName());
+        badge.getElement().getThemeList().add("badge pill small");
+        badge.addClassName(entry.getStatus().getBadgeCssClass());
+        return badge;
+    }
+
+    private HorizontalLayout createActions(Entry entry) {
+        var actions = new HorizontalLayout();
+        actions.setSpacing(false);
+        actions.getStyle().set("gap", "var(--lumo-space-xs)");
+
+        // View — always available
+        var viewBtn = new Button(new Icon(VaadinIcon.EYE), e -> openViewDialog(entry));
+        viewBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE, ButtonVariant.LUMO_SMALL);
+        viewBtn.setTooltipText("View entry details");
+        actions.add(viewBtn);
+
+        var isOpen = division.getStatus() == DivisionStatus.REGISTRATION_OPEN;
+        var isDraft = entry.getStatus() == EntryStatus.DRAFT;
+
+        // Edit — only DRAFT entries when registration is open
+        var editBtn = new Button(new Icon(VaadinIcon.EDIT), e -> openEntryDialog(entry));
+        editBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE, ButtonVariant.LUMO_SMALL);
+        editBtn.setTooltipText("Edit entry");
+        editBtn.setEnabled(isDraft && isOpen);
+        actions.add(editBtn);
+
+        // Submit — only DRAFT entries when registration is open
+        var submitBtn = new Button(new Icon(VaadinIcon.CHECK), e -> submitSingle(entry));
+        submitBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE, ButtonVariant.LUMO_SMALL);
+        submitBtn.setTooltipText("Submit entry");
+        submitBtn.setEnabled(isDraft && isOpen);
+        actions.add(submitBtn);
+
+        return actions;
+    }
+
+    private void openViewDialog(Entry entry) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle("Entry #" + entry.getEntryNumber() + " — " + entry.getMeadName());
+        dialog.setWidth("600px");
+
+        var layout = new VerticalLayout();
+        layout.setPadding(false);
+
+        layout.add(readOnlyField("Mead Name", entry.getMeadName()));
+        layout.add(readOnlyField("Category",
+                resolveCategoryName(entry.getInitialCategoryId())));
+        if (entry.getFinalCategoryId() != null) {
+            layout.add(readOnlyField("Final Category",
+                    resolveCategoryName(entry.getFinalCategoryId())));
+        }
+        layout.add(readOnlyField("Sweetness", entry.getSweetness().getDisplayName()));
+        layout.add(readOnlyField("Strength", entry.getStrength().getDisplayName()));
+        layout.add(readOnlyField("ABV", entry.getAbv() + "%"));
+        layout.add(readOnlyField("Carbonation", entry.getCarbonation().getDisplayName()));
+        layout.add(readOnlyField("Honey Varieties", entry.getHoneyVarieties()));
+        if (StringUtils.hasText(entry.getOtherIngredients())) {
+            layout.add(readOnlyField("Other Ingredients", entry.getOtherIngredients()));
+        }
+        layout.add(readOnlyField("Wood Aged", entry.isWoodAged() ? "Yes" : "No"));
+        if (entry.isWoodAged() && StringUtils.hasText(entry.getWoodAgeingDetails())) {
+            layout.add(readOnlyField("Wood Ageing Details", entry.getWoodAgeingDetails()));
+        }
+        if (StringUtils.hasText(entry.getAdditionalInformation())) {
+            layout.add(readOnlyField("Additional Information",
+                    entry.getAdditionalInformation()));
+        }
+        layout.add(readOnlyField("Status", entry.getStatus().getDisplayName()));
+        layout.add(readOnlyField("Entry Code", entry.getEntryCode()));
+
+        dialog.add(layout);
+        dialog.getFooter().add(new Button("Close", e -> dialog.close()));
+        dialog.open();
+    }
+
+    private TextField readOnlyField(String label, String value) {
+        var field = new TextField(label);
+        field.setValue(value != null ? value : "");
+        field.setReadOnly(true);
+        field.setWidthFull();
+        return field;
+    }
+
+    private void submitSingle(Entry entry) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle("Submit Entry");
+        dialog.add("Submit entry #" + entry.getEntryNumber()
+                + " (" + entry.getMeadName() + ")? This cannot be undone.");
+
+        var confirmButton = new Button("Submit", e -> {
+            try {
+                entryService.submitEntry(entry.getId(), currentUserId);
+                refreshPage();
+                var notification = Notification.show("Entry submitted");
+                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                dialog.close();
+            } catch (IllegalArgumentException ex) {
+                Notification.show(ex.getMessage());
+                dialog.close();
+            }
+        });
+
+        var cancelButton = new Button("Cancel", e -> dialog.close());
+        dialog.getFooter().add(cancelButton, confirmButton);
+        dialog.open();
+    }
+
     private void refreshGrid() {
         var entries = entryService.findEntriesByDivisionAndUser(divisionId, currentUserId);
         entriesGrid.setItems(entries);
+    }
+
+    private void refreshPage() {
+        getUI().ifPresent(ui -> ui.navigate(
+                "competitions/" + compShortName
+                        + "/divisions/" + divShortName + "/my-entries"));
     }
 
     private void openEntryDialog(Entry existing) {
@@ -182,41 +396,51 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         layout.setPadding(false);
 
         var meadName = new TextField("Mead Name");
+        meadName.setWidthFull();
         var categorySelect = new Select<DivisionCategory>();
         categorySelect.setLabel("Category");
+        categorySelect.setWidthFull();
         categorySelect.setItemLabelGenerator(dc ->
                 dc.getCode() + " — " + dc.getName());
         categorySelect.setItems(competitionService.findDivisionCategories(divisionId));
 
         var sweetness = new Select<Sweetness>();
         sweetness.setLabel("Sweetness");
+        sweetness.setWidthFull();
         sweetness.setItems(Sweetness.values());
         sweetness.setItemLabelGenerator(Sweetness::getDisplayName);
 
         var strength = new Select<Strength>();
         strength.setLabel("Strength");
+        strength.setWidthFull();
         strength.setItems(Strength.values());
         strength.setItemLabelGenerator(Strength::getDisplayName);
 
         var abv = new NumberField("ABV (%)");
+        abv.setWidthFull();
         abv.setStep(0.1);
         abv.setMin(0);
         abv.setMax(30);
 
         var carbonation = new Select<Carbonation>();
         carbonation.setLabel("Carbonation");
+        carbonation.setWidthFull();
         carbonation.setItems(Carbonation.values());
         carbonation.setItemLabelGenerator(Carbonation::getDisplayName);
 
         var honeyVarieties = new TextArea("Honey Varieties");
+        honeyVarieties.setWidthFull();
         var otherIngredients = new TextArea("Other Ingredients");
+        otherIngredients.setWidthFull();
 
         var woodAged = new Checkbox("Wood Aged");
         var woodAgeingDetails = new TextArea("Wood Ageing Details");
+        woodAgeingDetails.setWidthFull();
         woodAgeingDetails.setVisible(false);
         woodAged.addValueChangeListener(e -> woodAgeingDetails.setVisible(e.getValue()));
 
         var additionalInfo = new TextArea("Additional Information");
+        additionalInfo.setWidthFull();
 
         if (existing != null) {
             meadName.setValue(existing.getMeadName());
@@ -290,7 +514,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                             StringUtils.hasText(additionalInfo.getValue())
                                     ? additionalInfo.getValue().trim() : null);
                 }
-                refreshGrid();
+                refreshPage();
                 var notification = Notification.show(existing == null
                         ? "Entry created" : "Entry updated");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
@@ -317,14 +541,10 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         var confirmButton = new Button("Submit", e -> {
             try {
                 entryService.submitAllDrafts(divisionId, currentUserId);
-                refreshGrid();
+                refreshPage();
                 var notification = Notification.show(draftCount + " entries submitted");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
-                // Refresh the whole page to update buttons
-                getUI().ifPresent(ui -> ui.navigate(
-                        "competitions/" + compShortName
-                                + "/divisions/" + divShortName + "/my-entries"));
             } catch (IllegalArgumentException ex) {
                 Notification.show(ex.getMessage());
                 dialog.close();

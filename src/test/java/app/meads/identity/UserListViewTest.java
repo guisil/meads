@@ -124,7 +124,7 @@ class UserListViewTest {
     void shouldRedirectToRootWhenRegularUserAccessesUsersView() {
         UI.getCurrent().navigate("users");
 
-        assertThat(UI.getCurrent().getInternals().getActiveViewLocation().getPath()).isEmpty();
+        assertThat(UI.getCurrent().getInternals().getActiveViewLocation().getPath()).isEqualTo("my-entries");
     }
 
     @Test

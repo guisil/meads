@@ -244,6 +244,18 @@ public class EntryService {
         entryRepository.delete(entry);
     }
 
+    public void submitEntry(@NotNull UUID entryId, @NotNull UUID userId) {
+        var entry = entryRepository.findById(entryId)
+                .orElseThrow(() -> new IllegalArgumentException("Entry not found"));
+        if (!entry.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("User is not the owner of this entry");
+        }
+        entry.submit();
+        entryRepository.save(entry);
+        eventPublisher.publishEvent(new EntriesSubmittedEvent(
+                entry.getDivisionId(), userId, 1));
+    }
+
     public void submitAllDrafts(@NotNull UUID divisionId, @NotNull UUID userId) {
         var drafts = entryRepository.findByDivisionIdAndUserIdAndStatus(
                 divisionId, userId, EntryStatus.DRAFT);
