@@ -132,14 +132,9 @@ public class EntryService {
                 "ADMIN", userService.findById(requestingUserId).getEmail());
         creditRepository.save(credit);
 
-        // Add ENTRANT participant at competition level
-        try {
-            competitionService.addParticipantByEmail(
-                    division.getCompetitionId(), userEmail,
-                    CompetitionRole.ENTRANT, requestingUserId);
-        } catch (IllegalArgumentException e) {
-            // Already has the role — ignore
-        }
+        // Add ENTRANT participant at competition level (idempotent)
+        competitionService.ensureEntrantParticipant(
+                division.getCompetitionId(), user.getId());
 
         eventPublisher.publishEvent(new CreditsAwardedEvent(
                 divisionId, user.getId(), amount, "ADMIN"));

@@ -285,10 +285,9 @@ class EntryServiceTest {
 
         entryService.addCredits(divisionId, "entrant@test.com", 1, adminUser.getId());
 
-        // Should add ENTRANT participant at competition level
-        then(competitionService).should().addParticipantByEmail(
-                eq(competitionId), eq("entrant@test.com"),
-                eq(CompetitionRole.ENTRANT), eq(adminUser.getId()));
+        // Should add ENTRANT participant at competition level (idempotent)
+        then(competitionService).should().ensureEntrantParticipant(
+                eq(competitionId), eq(entrant.getId()));
     }
 
     @Test
