@@ -526,6 +526,8 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 - [ ] Find `newjudge@test.com` in the grid
 - [ ] Click the X icon button (tooltip: "Remove")
+- [ ] **Expected:** Confirmation dialog: "Remove newjudge@test.com (Judge) from this competition?"
+- [ ] Click "Remove"
 - [ ] **Expected:** Notification "Participant removed" (green)
 - [ ] **Expected:** Participant removed from grid
 
@@ -570,13 +572,16 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 - [ ] Navigate back to Amadora division detail
 - [ ] **Expected:** Default tab is "Categories"
-- [ ] **Expected:** TreeGrid with columns: Code, Name, Description, (Remove)
+- [ ] **Expected:** TreeGrid with columns: Code, Name, Description, (Remove icon)
+- [ ] **Expected:** Grid expands to fit content (no fixed height / empty scrollable area)
 - [ ] **Expected:** Main categories expandable: M1 (Traditional Mead), M2 (Fruit Meads), M3 (Spiced Meads), M4 (Specialty Meads)
 - [ ] Expand M1
 - [ ] **Expected:** Sub-categories: M1A, M1B, M1C
 - [ ] **Expected:** M4B and M4D are NOT present (excluded for CHIP)
 - [ ] **Expected:** "Add Category" button is enabled (status is REGISTRATION_OPEN, which allows modification)
-- [ ] **Expected:** "Remove" buttons are enabled
+- [ ] **Expected:** Remove buttons are X icons with "Remove" tooltip
+- [ ] Hover over a long description
+- [ ] **Expected:** Tooltip shows the full description text
 
 ### Add catalog category
 
@@ -600,6 +605,8 @@ Wait for startup to complete. The console will show magic links for dev users.
 ### Remove category
 
 - [ ] Find the custom category `X1A` in the grid
+- [ ] Click the X icon (tooltip: "Remove")
+- [ ] **Expected:** Confirmation dialog: "Remove \"X1A — Test Category\" from this division?"
 - [ ] Click "Remove"
 - [ ] **Expected:** Notification "Category removed" (green)
 - [ ] **Expected:** Category removed from grid
@@ -608,12 +615,17 @@ Wait for startup to complete. The console will show magic links for dev users.
 ### Settings tab
 
 - [ ] Click the "Settings" tab
-- [ ] **Expected:** Fields: Name (editable -- but see note below), Scoring System, Status (read-only)
-- [ ] **Note:** Settings are only editable in DRAFT status. Since Amadora is REGISTRATION_OPEN, the Save button and editable fields may be disabled.
+- [ ] **Expected:** Fields: Name, Short Name, Scoring System, Status (read-only), Save button
+- [ ] **Expected:** Name and Short Name are always editable (regardless of status)
+- [ ] **Expected:** Scoring System is only editable in DRAFT status (disabled for Amadora since it's REGISTRATION_OPEN)
+- [ ] **Expected:** Save button is always enabled
+- [ ] Change name to `Amadora (Updated)`, click "Save"
+- [ ] **Expected:** Notification "Settings saved successfully" (green)
+- [ ] Revert name back to `Amadora` and save
 
-### Manage Entries link
+### Manage Entries button
 
-- [ ] **Expected:** "Manage Entries" link visible in the header area
+- [ ] **Expected:** "Manage Entries" button visible in the header area (next to "Advance Status")
 - [ ] Click "Manage Entries"
 - [ ] **Expected:** Navigated to `/competitions/{compShortName}/divisions/{divShortName}/entry-admin`
 - [ ] Navigate back to division detail

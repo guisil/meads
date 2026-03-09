@@ -51,13 +51,14 @@ class DivisionTest {
     }
 
     @Test
-    void shouldThrowWhenUpdatingDetailsAfterDraft() {
+    void shouldAllowUpdatingNameAndShortNameAfterDraft() {
         var division = createDraftDivision();
         division.advanceStatus(); // REGISTRATION_OPEN
 
-        assertThatThrownBy(() -> division.updateDetails("New Name", "new-name", ScoringSystem.MJP))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("DRAFT");
+        division.updateDetails("New Name", "new-name", ScoringSystem.MJP);
+
+        assertThat(division.getName()).isEqualTo("New Name");
+        assertThat(division.getShortName()).isEqualTo("new-name");
     }
 
     @Test

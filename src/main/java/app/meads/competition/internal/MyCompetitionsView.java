@@ -32,6 +32,7 @@ public class MyCompetitionsView extends VerticalLayout {
         add(new H2("My Competitions"));
 
         var grid = new Grid<>(Competition.class, false);
+        grid.setAllRowsVisible(true);
         grid.addColumn(Competition::getName).setHeader("Name").setSortable(true);
         grid.addColumn(Competition::getStartDate).setHeader("Start Date").setSortable(true);
         grid.addColumn(Competition::getEndDate).setHeader("End Date").setSortable(true);

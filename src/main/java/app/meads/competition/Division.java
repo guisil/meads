@@ -83,8 +83,8 @@ public class Division {
     }
 
     public void updateDetails(String name, String shortName, ScoringSystem scoringSystem) {
-        if (status != DivisionStatus.DRAFT) {
-            throw new IllegalStateException("Can only update details in DRAFT status");
+        if (status != DivisionStatus.DRAFT && scoringSystem != this.scoringSystem) {
+            throw new IllegalStateException("Scoring system can only be changed in DRAFT status");
         }
         Competition.validateShortName(shortName);
         this.name = name;

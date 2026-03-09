@@ -116,6 +116,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         tab.add(addCreditsButton);
 
         var grid = new Grid<EntrantCreditSummary>(EntrantCreditSummary.class, false);
+        grid.setAllRowsVisible(true);
         grid.setId("credits-grid");
         grid.addColumn(EntrantCreditSummary::email).setHeader("Email");
         grid.addColumn(EntrantCreditSummary::name).setHeader("Name");
@@ -185,6 +186,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         tab.setPadding(false);
 
         var grid = new Grid<Entry>(Entry.class, false);
+        grid.setAllRowsVisible(true);
         grid.setId("entries-grid");
         grid.addColumn(Entry::getEntryNumber).setHeader("Entry #");
         grid.addColumn(Entry::getEntryCode).setHeader("Entry Code");
@@ -217,6 +219,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         tab.add(addButton);
 
         var grid = new Grid<ProductMapping>(ProductMapping.class, false);
+        grid.setAllRowsVisible(true);
         grid.setId("products-grid");
         grid.addColumn(ProductMapping::getJumpsellerProductId).setHeader("Product ID");
         grid.addColumn(ProductMapping::getJumpsellerSku).setHeader("SKU");
@@ -277,6 +280,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         tab.setPadding(false);
 
         var grid = new Grid<JumpsellerOrder>(JumpsellerOrder.class, false);
+        grid.setAllRowsVisible(true);
         grid.setId("orders-grid");
         grid.addColumn(JumpsellerOrder::getJumpsellerOrderId).setHeader("Order ID");
         grid.addColumn(JumpsellerOrder::getCustomerEmail).setHeader("Customer");

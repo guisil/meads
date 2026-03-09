@@ -63,6 +63,7 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
         add(toolbar);
 
         grid = new Grid<>(Competition.class, false);
+        grid.setAllRowsVisible(true);
         grid.addColumn(Competition::getName).setHeader("Name").setSortable(true).setFlexGrow(2);
         grid.addColumn(Competition::getStartDate).setHeader("Start Date").setSortable(true).setAutoWidth(true);
         grid.addColumn(Competition::getEndDate).setHeader("End Date").setSortable(true).setAutoWidth(true);

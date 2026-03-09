@@ -135,6 +135,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
 
     private Grid<Entry> createEntriesGrid() {
         entriesGrid = new Grid<>(Entry.class, false);
+        entriesGrid.setAllRowsVisible(true);
         entriesGrid.setId("entries-grid");
         entriesGrid.addColumn(Entry::getEntryNumber).setHeader("Entry #");
         entriesGrid.addColumn(Entry::getMeadName).setHeader("Mead Name");

@@ -4,7 +4,10 @@ import app.meads.MainLayout;
 import app.meads.competition.*;
 import app.meads.identity.UserService;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dialog.Dialog;
+import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.treegrid.TreeGrid;
 import com.vaadin.flow.component.html.H2;
@@ -109,11 +112,11 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
 
         header.add(textBlock);
 
-        var manageEntriesLink = new Anchor(
-                "competitions/" + competition.getShortName()
-                        + "/divisions/" + division.getShortName() + "/entry-admin",
-                "Manage Entries");
-        header.add(manageEntriesLink);
+        var manageEntriesButton = new Button("Manage Entries", e ->
+                getUI().ifPresent(ui -> ui.navigate(
+                        "competitions/" + competition.getShortName()
+                                + "/divisions/" + division.getShortName() + "/entry-admin")));
+        header.add(manageEntriesButton);
 
         if (division.getStatus() != DivisionStatus.RESULTS_PUBLISHED) {
             var advanceButton = new Button("Advance Status", e -> advanceStatus());
@@ -147,27 +150,24 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         tab.add(actions);
 
         categoriesGrid = new TreeGrid<>(DivisionCategory.class, false);
+        categoriesGrid.setAllRowsVisible(true);
         categoriesGrid.setId("categories-grid");
         categoriesGrid.addHierarchyColumn(DivisionCategory::getCode).setHeader("Code")
                 .setWidth("100px").setFlexGrow(0).setSortable(true);
         categoriesGrid.addColumn(DivisionCategory::getName).setHeader("Name");
-        categoriesGrid.addColumn(DivisionCategory::getDescription).setHeader("Description");
+        categoriesGrid.addColumn(DivisionCategory::getDescription).setHeader("Description")
+                .setFlexGrow(2)
+                .setTooltipGenerator(DivisionCategory::getDescription);
 
         categoriesGrid.addComponentColumn(dc -> {
-            var removeButton = new Button("Remove", e -> {
-                try {
-                    competitionService.removeDivisionCategory(
-                            divisionId, dc.getId(), getCurrentUserId());
-                    refreshCategoriesGrid();
-                    var notification = Notification.show("Category removed");
-                    notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-                } catch (IllegalArgumentException ex) {
-                    Notification.show(ex.getMessage());
-                }
-            });
+            var removeButton = new Button(new Icon(VaadinIcon.CLOSE));
+            removeButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            removeButton.setAriaLabel("Remove");
+            removeButton.setTooltipText("Remove");
+            removeButton.addClickListener(e -> openRemoveCategoryDialog(dc));
             removeButton.setEnabled(allowModification);
             return removeButton;
-        }).setHeader("");
+        }).setHeader("").setAutoWidth(true);
 
         refreshCategoriesGrid();
         tab.add(categoriesGrid);
@@ -183,6 +183,31 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                 parent -> allCategories.stream()
                         .filter(dc -> parent.getId().equals(dc.getParentId()))
                         .toList());
+    }
+
+    private void openRemoveCategoryDialog(DivisionCategory category) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle("Remove Category");
+        dialog.add("Remove \"" + category.getCode() + " — " + category.getName()
+                + "\" from this division?");
+
+        var confirmButton = new Button("Remove", e -> {
+            try {
+                competitionService.removeDivisionCategory(
+                        divisionId, category.getId(), getCurrentUserId());
+                refreshCategoriesGrid();
+                var notification = Notification.show("Category removed");
+                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                dialog.close();
+            } catch (IllegalArgumentException ex) {
+                Notification.show(ex.getMessage());
+                dialog.close();
+            }
+        });
+
+        var cancelButton = new Button("Cancel", e -> dialog.close());
+        dialog.getFooter().add(cancelButton, confirmButton);
+        dialog.open();
     }
 
     private void openAddCategoryDialog() {
@@ -293,12 +318,10 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
 
         var nameField = new TextField("Name");
         nameField.setValue(division.getName());
-        nameField.setEnabled(isDraft);
 
         var shortNameField = new TextField("Short Name");
         shortNameField.setValue(division.getShortName());
         shortNameField.setHelperText("URL-friendly identifier (e.g. amadora)");
-        shortNameField.setEnabled(isDraft);
 
         var scoringSelect = new Select<ScoringSystem>();
         scoringSelect.setLabel("Scoring System");
@@ -332,7 +355,6 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                 Notification.show(ex.getMessage());
             }
         });
-        saveButton.setEnabled(isDraft);
 
         tab.add(nameField, shortNameField, scoringSelect, statusField, saveButton);
         return tab;

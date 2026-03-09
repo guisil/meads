@@ -372,12 +372,10 @@ class DivisionDetailViewTest {
     void shouldDisplayManageEntriesLink() {
         UI.getCurrent().navigate("competitions/" + testCompetition.getShortName() + "/divisions/" + testDivision.getShortName());
 
-        var anchors = _find(Anchor.class);
-        var manageEntries = anchors.stream()
-                .filter(a -> a.getText().equals("Manage Entries"))
+        var buttons = _find(Button.class);
+        var manageEntries = buttons.stream()
+                .filter(b -> b.getText().equals("Manage Entries"))
                 .findFirst();
         assertThat(manageEntries).isPresent();
-        assertThat(manageEntries.get().getHref())
-                .isEqualTo("competitions/" + testCompetition.getShortName() + "/divisions/" + testDivision.getShortName() + "/entry-admin");
     }
 }

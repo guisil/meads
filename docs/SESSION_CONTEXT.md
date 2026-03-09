@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `competition-module`
-**Tests:** 399 passing (`mvn test -Dsurefire.useFile=false`)
+**Tests:** 399 passing (`mvn test -Dsurefire.useFile=false`) — test count unchanged (replaced 1 test, no net additions)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -140,14 +140,26 @@ docs/
 
 ## What's Next
 
-1. **Manual UI walkthrough** — Continue from Section 7 (Division Detail — Categories tab).
+1. **Division status revert** — Implement one-step-back revert with guards (designed, not yet coded).
+   Guards: REGISTRATION_OPEN→DRAFT blocked if entries exist; JUDGING→REGISTRATION_CLOSED blocked
+   if judging data exists; others always allowed. See conversation for full design.
+2. **Manual UI walkthrough** — Continue from Section 7 (Division Detail — in progress).
    Sections 2–6 are done. Continue through Section 11 (multi-role & cross-competition edge cases).
-2. **Code review** of both competition and entry modules (slice by slice)
-3. **Test review** (guided, with UI verification) of both modules
-4. **Judging module** — design and implementation
+3. **Code review** of both competition and entry modules (slice by slice)
+4. **Test review** (guided, with UI verification) of both modules
+5. **Judging module** — design and implementation
 
 ### Recent changes (this session)
-- **UI polish (manual walkthrough):**
+- **UI polish (Section 7 walkthrough):**
+  - Categories TreeGrid: "Remove" text button → X icon with tooltip + confirmation dialog
+  - Participants grid: added confirmation dialog before removal
+  - Icon semantics: TRASH = permanent deletion (with confirmation), CLOSE (X) = disassociation (now also with confirmation)
+  - Categories Description column: increased flex grow (2) + tooltip on hover for long descriptions
+  - All 11 grids across 6 views: `setAllRowsVisible(true)` — grids expand to fit content, no fixed 400px height
+  - "Manage Entries": changed from Anchor link to Button (matches "Advance Status" style)
+  - Division settings: Name and Short Name editable at any status (not just DRAFT); Scoring System still locked to DRAFT
+  - `Division.updateDetails()`: relaxed restriction — only scoring system changes require DRAFT
+- **Previous session changes:**
   - Login and Set Password views: constrained form width (`setWidth("auto")`, centered)
   - User dialog: Save/Cancel buttons placed side by side (HorizontalLayout)
   - All dialogs: standardized button order (Cancel left, Save right) and label ("Save" everywhere, no "Create")
@@ -157,10 +169,10 @@ docs/
   - Dev data: CHIP 2026 location changed to "Amarante, Portugal", dates to June 11-14
   - Categories TreeGrid: reduced Code column width (100px, no flex grow)
   - MJP categories: fixed V7 migration to match official MJP Guidelines 2023 — removed M1V/M4G/M4P/M4Z, added M4B (Historical Mead)
-- **Previous changes**: Grid ordering fix, URL slugs (short names), friendly redirects,
-  SetPasswordView Enter key, Actions column width, magic link blocked for password users,
-  password setup & reset (all 3 phases), compadmin dev user, MyCompetitionsView, MainLayout
-  sidebar, create user dialog status field removed
+  - Grid ordering fix, URL slugs (short names), friendly redirects,
+    SetPasswordView Enter key, Actions column width, magic link blocked for password users,
+    password setup & reset (all 3 phases), compadmin dev user, MyCompetitionsView, MainLayout
+    sidebar, create user dialog status field removed
 
 ### Design decisions
 - **Any user can set a password via "Forgot password?"** — even users without a role that

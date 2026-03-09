@@ -64,6 +64,7 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
         add(toolbar);
 
         grid = new Grid<>(User.class, false);
+        grid.setAllRowsVisible(true);
         grid.addColumn(User::getEmail).setHeader("Email").setSortable(true).setFlexGrow(2);
         grid.addColumn(User::getName).setHeader("Name").setSortable(true).setFlexGrow(2);
         grid.addColumn(User::getRole).setHeader("Role").setSortable(true).setAutoWidth(true);

@@ -188,6 +188,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         tab.add(actions);
 
         divisionsGrid = new Grid<>(Division.class, false);
+        divisionsGrid.setAllRowsVisible(true);
         divisionsGrid.addColumn(Division::getName).setHeader("Name").setSortable(true).setFlexGrow(2);
         divisionsGrid.addComponentColumn(div -> createStatusBadge(div.getStatus()))
                 .setHeader("Status").setAutoWidth(true);
@@ -230,6 +231,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         tab.add(actions);
 
         participantsGrid = new Grid<>();
+        participantsGrid.setAllRowsVisible(true);
         participantsGrid.addColumn(pr -> {
             var participant = participantMap.get(pr.getParticipantId());
             var user = participant != null ? userMap.get(participant.getUserId()) : null;
@@ -251,23 +253,42 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
             removeButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
             removeButton.setAriaLabel("Remove");
             removeButton.setTooltipText("Remove");
-            removeButton.addClickListener(e -> {
-                try {
-                    competitionService.removeParticipant(
-                            competitionId, pr.getParticipantId(), getCurrentUserId());
-                    refreshParticipantsGrid();
-                    var notification = Notification.show("Participant removed");
-                    notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-                } catch (IllegalArgumentException ex) {
-                    Notification.show(ex.getMessage());
-                }
-            });
+            removeButton.addClickListener(e -> openRemoveParticipantDialog(pr));
             return removeButton;
         }).setHeader("").setAutoWidth(true);
 
         refreshParticipantsGrid();
         tab.add(participantsGrid);
         return tab;
+    }
+
+    private void openRemoveParticipantDialog(ParticipantRole participantRole) {
+        var participant = participantMap.get(participantRole.getParticipantId());
+        var user = participant != null ? userMap.get(participant.getUserId()) : null;
+        var displayName = user != null ? user.getEmail() : "this participant";
+
+        var dialog = new Dialog();
+        dialog.setHeaderTitle("Remove Participant");
+        dialog.add("Remove " + displayName + " ("
+                + participantRole.getRole().getDisplayName() + ") from this competition?");
+
+        var confirmButton = new Button("Remove", e -> {
+            try {
+                competitionService.removeParticipant(
+                        competitionId, participantRole.getParticipantId(), getCurrentUserId());
+                refreshParticipantsGrid();
+                var notification = Notification.show("Participant removed");
+                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                dialog.close();
+            } catch (IllegalArgumentException ex) {
+                Notification.show(ex.getMessage());
+                dialog.close();
+            }
+        });
+
+        var cancelButton = new Button("Cancel", e -> dialog.close());
+        dialog.getFooter().add(cancelButton, confirmButton);
+        dialog.open();
     }
 
     private void openAddParticipantDialog() {
