@@ -768,9 +768,9 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 - [ ] Click the "Orders" tab
 - [ ] **Expected:** Filter field: "Filter by order ID or customer email..."
-- [ ] **Expected:** Grid with columns: Order ID, Customer, Status, Date (ISO-8601 UTC, e.g. 2026-03-09T18:30:15Z), Note, Actions (edit icon)
+- [ ] **Expected:** Grid with columns: Order ID, Customer, Status, Awarded Credits, Pending Credits, Date (ISO-8601 UTC), Note, Actions (edit icon)
+- [ ] **Expected:** All columns are resizable and sortable
 - [ ] **Expected:** 1 seeded order: JS-1001 (buyer1@example.com, PROCESSED)
-- [ ] **Expected:** Columns are sortable
 - [ ] **Expected:** Edit icon opens dialog with Status (dropdown) and Admin Note fields
 - [ ] **Expected:** Admin can change order status (e.g. NEEDS_REVIEW → PROCESSED after manual resolution)
 
@@ -868,7 +868,7 @@ curl -s -o /dev/null -w "%{http_code}" \
 ```
 
 - [ ] **Expected:** HTTP 200
-- [ ] Verify in UI: Orders tab shows `WH-002` as PROCESSED (all-ignored counts as processed)
+- [ ] Verify in UI: Order `WH-002` does NOT appear in Amadora's Orders tab (no line items linked to this division since the product was unmapped)
 - [ ] Credits for `webhooktest@example.com` remain at 3 (no credits for non-mapped products)
 
 ### Invalid signature -- rejected

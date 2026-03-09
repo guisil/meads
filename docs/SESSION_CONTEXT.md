@@ -156,14 +156,17 @@ docs/
   - Credits tab: Name first (flexGrow 2) / Email (flexGrow 3), filter, edit/remove credits dialogs
   - Entries tab: entry number with configurable prefix (e.g. "AMA-1"), filter, edit/delete/withdraw dialogs
   - Products tab: edit/delete dialogs for product mappings
-  - Orders tab: filter, edit admin note dialog
+  - Orders tab: filter, edit order dialog (status + admin note), Awarded Credits + Pending Credits columns
+  - All grids: resizable columns
   - Entry prefix: configurable per division (up to 5 chars), in Division Settings tab
   - `Division.entryPrefix` field + V16 migration
   - `CompetitionService.updateDivision()`: added `entryPrefix` parameter
   - `EntryService.findOrdersByDivision()`: new method to query orders via line items
   - DevDataInitializer: entry prefixes ("AMA"/"PRO"), 2 example webhook orders
+  - `EntryService.findLineItemsByDivision()`: new method for line item data in orders grid
   - Fixed FK violation in `WebhookService.processOrderPaid()`: order saved before line items
   - Fixed `JumpsellerOrder`/`JumpsellerOrderLineItem` timestamp: `createdAt` set in constructor (not `@PrePersist`) to avoid null on merge
+  - Fixed `markNeedsReview` to store divisionId + intended credits on line item (so NEEDS_REVIEW orders appear in division's Orders tab)
   - DivisionDetailView: categories auto-expand, Add Category dialog button alignment, breadcrumb refresh after settings save
 - **Division status revert with guard pattern:**
   - `DivisionRevertGuard` interface in competition module public API — modules implement to block unsafe reverts

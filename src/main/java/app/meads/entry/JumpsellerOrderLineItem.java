@@ -67,8 +67,10 @@ public class JumpsellerOrderLineItem {
         this.creditsAwarded = creditsAwarded;
     }
 
-    public void markNeedsReview(String reason) {
+    public void markNeedsReview(UUID divisionId, int intendedCredits, String reason) {
         this.status = LineItemStatus.NEEDS_REVIEW;
+        this.divisionId = divisionId;
+        this.creditsAwarded = intendedCredits;
         this.reviewReason = reason;
     }
 

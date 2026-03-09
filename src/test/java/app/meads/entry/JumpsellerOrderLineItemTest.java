@@ -44,9 +44,12 @@ class JumpsellerOrderLineItemTest {
         var item = new JumpsellerOrderLineItem(UUID.randomUUID(), "PROD-001",
                 "SKU-001", "Entry Pack", 1);
 
-        item.markNeedsReview("Mutual exclusivity conflict");
+        var divisionId = UUID.randomUUID();
+        item.markNeedsReview(divisionId, 3, "Mutual exclusivity conflict");
 
         assertThat(item.getStatus()).isEqualTo(LineItemStatus.NEEDS_REVIEW);
+        assertThat(item.getDivisionId()).isEqualTo(divisionId);
+        assertThat(item.getCreditsAwarded()).isEqualTo(3);
         assertThat(item.getReviewReason()).isEqualTo("Mutual exclusivity conflict");
     }
 

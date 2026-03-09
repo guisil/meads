@@ -39,7 +39,9 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Route(value = "competitions/:compShortName/divisions/:divShortName/entry-admin", layout = MainLayout.class)
 @PermitAll
@@ -61,6 +63,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
     private Grid<Entry> entriesGrid;
     private Grid<ProductMapping> productsGrid;
     private Grid<JumpsellerOrder> ordersGrid;
+    private Map<UUID, List<JumpsellerOrderLineItem>> lineItemsByOrderId;
     private List<DivisionCategory> divisionCategories;
 
     public DivisionEntryAdminView(EntryService entryService,
@@ -185,6 +188,8 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             editButton.addClickListener(e -> openEditCreditsDialog(summary));
             return editButton;
         }).setHeader("Actions").setAutoWidth(true);
+
+        creditsGrid.getColumns().forEach(col -> col.setResizable(true));
 
         refreshCreditsGrid();
 
@@ -341,6 +346,8 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
 
             return new HorizontalLayout(editButton, deleteButton, withdrawButton);
         }).setHeader("Actions").setAutoWidth(true);
+
+        entriesGrid.getColumns().forEach(col -> col.setResizable(true));
 
         refreshEntriesGrid();
 
@@ -509,6 +516,8 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             return new HorizontalLayout(editButton, deleteButton);
         }).setHeader("Actions").setAutoWidth(true);
 
+        productsGrid.getColumns().forEach(col -> col.setResizable(true));
+
         refreshProductsGrid();
         tab.add(productsGrid);
         return tab;
@@ -635,12 +644,27 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         ordersGrid = new Grid<>(JumpsellerOrder.class, false);
         ordersGrid.setAllRowsVisible(true);
         ordersGrid.setId("orders-grid");
+        ordersGrid.setColumnReorderingAllowed(true);
         ordersGrid.addColumn(JumpsellerOrder::getJumpsellerOrderId)
                 .setHeader("Order ID").setSortable(true);
         ordersGrid.addColumn(JumpsellerOrder::getCustomerEmail)
                 .setHeader("Customer").setSortable(true).setFlexGrow(2);
         ordersGrid.addColumn(order -> order.getStatus().name())
                 .setHeader("Status").setSortable(true).setAutoWidth(true);
+        ordersGrid.addColumn(order -> {
+            var items = lineItemsByOrderId.getOrDefault(order.getId(), List.of());
+            return items.stream()
+                    .filter(i -> i.getStatus() == LineItemStatus.PROCESSED)
+                    .mapToInt(JumpsellerOrderLineItem::getCreditsAwarded)
+                    .sum();
+        }).setHeader("Awarded Credits").setSortable(true).setAutoWidth(true);
+        ordersGrid.addColumn(order -> {
+            var items = lineItemsByOrderId.getOrDefault(order.getId(), List.of());
+            return items.stream()
+                    .filter(i -> i.getStatus() == LineItemStatus.NEEDS_REVIEW)
+                    .mapToInt(JumpsellerOrderLineItem::getCreditsAwarded)
+                    .sum();
+        }).setHeader("Pending Credits").setSortable(true).setAutoWidth(true);
         ordersGrid.addColumn(order -> formatInstant(order.getCreatedAt()))
                 .setHeader("Date").setSortable(true).setAutoWidth(true);
         ordersGrid.addColumn(JumpsellerOrder::getAdminNote)
@@ -653,6 +677,8 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             editButton.addClickListener(e -> openEditOrderDialog(order));
             return editButton;
         }).setHeader("Actions").setAutoWidth(true);
+
+        ordersGrid.getColumns().forEach(col -> col.setResizable(true));
 
         refreshOrdersGrid();
 
@@ -672,6 +698,8 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
     }
 
     private void refreshOrdersGrid() {
+        lineItemsByOrderId = entryService.findLineItemsByDivision(divisionId).stream()
+                .collect(Collectors.groupingBy(JumpsellerOrderLineItem::getOrderId));
         ordersGrid.setItems(entryService.findOrdersByDivision(divisionId));
     }
 

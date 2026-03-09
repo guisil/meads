@@ -124,7 +124,8 @@ public class WebhookService {
 
                 // Mutual exclusivity check
                 if (hasCreditConflict(user.getId(), divisionId, division.getCompetitionId())) {
-                    lineItem.markNeedsReview("Mutual exclusivity conflict: user already has credits in another division of the same competition");
+                    var intendedCredits = quantity * mapping.getCreditsPerUnit();
+                    lineItem.markNeedsReview(divisionId, intendedCredits, "Mutual exclusivity conflict: user already has credits in another division of the same competition");
                     lineItemRepository.save(lineItem);
                     needsReviewCount++;
                     continue;

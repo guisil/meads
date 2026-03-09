@@ -326,6 +326,10 @@ public class EntryService {
         return orderRepository.findAllById(orderIds);
     }
 
+    public List<JumpsellerOrderLineItem> findLineItemsByDivision(@NotNull UUID divisionId) {
+        return lineItemRepository.findByDivisionId(divisionId);
+    }
+
     public JumpsellerOrder updateOrderAdminDetails(@NotNull UUID orderId,
                                                      @NotNull OrderStatus status,
                                                      String adminNote,
