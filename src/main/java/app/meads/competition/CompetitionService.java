@@ -6,6 +6,7 @@ import app.meads.identity.UserService;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @Transactional
 @Validated
@@ -70,7 +72,9 @@ public class CompetitionService {
             throw new IllegalArgumentException("Short name already in use");
         }
         var competition = new Competition(name, shortName, startDate, endDate, location);
-        return competitionRepository.save(competition);
+        var saved = competitionRepository.save(competition);
+        log.info("Created competition: {} (shortName={})", saved.getId(), shortName);
+        return saved;
     }
 
     public Competition findCompetitionById(@NotNull UUID competitionId) {
@@ -111,6 +115,7 @@ public class CompetitionService {
             throw new IllegalArgumentException("Short name already in use");
         }
         competition.updateDetails(name, shortName, startDate, endDate, location);
+        log.info("Updated competition: {} (shortName={})", competitionId, shortName);
         return competitionRepository.save(competition);
     }
 
@@ -122,6 +127,7 @@ public class CompetitionService {
                 .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
         requireAuthorized(competitionId, requestingUserId);
         competition.updateLogo(logo, contentType);
+        log.info("Updated logo for competition: {}", competitionId);
         return competitionRepository.save(competition);
     }
 
@@ -135,6 +141,7 @@ public class CompetitionService {
             throw new IllegalArgumentException("Cannot delete competition with divisions");
         }
         competitionRepository.delete(competition);
+        log.info("Deleted competition: {} ({})", competitionId, competition.getShortName());
     }
 
     // --- Division methods (were Competition methods) ---
@@ -153,6 +160,7 @@ public class CompetitionService {
         var division = new Division(competitionId, name, shortName, scoringSystem);
         var saved = divisionRepository.save(division);
         initializeCategories(saved);
+        log.info("Created division: {} (shortName={}, competition={})", saved.getId(), shortName, competitionId);
         return saved;
     }
 
@@ -175,6 +183,7 @@ public class CompetitionService {
         var previousStatus = division.getStatus();
         division.advanceStatus();
         var saved = divisionRepository.save(division);
+        log.info("Advanced division status: {} ({} → {})", divisionId, previousStatus, saved.getStatus());
         eventPublisher.publishEvent(new DivisionStatusAdvancedEvent(
                 divisionId, previousStatus, saved.getStatus()));
         return saved;
@@ -185,11 +194,13 @@ public class CompetitionService {
         var division = divisionRepository.findById(divisionId)
                 .orElseThrow(() -> new IllegalArgumentException("Division not found"));
         requireAuthorized(division.getCompetitionId(), requestingUserId);
-        var targetStatus = division.getStatus().previous()
+        var previousStatus = division.getStatus();
+        var targetStatus = previousStatus.previous()
                 .orElseThrow(() -> new IllegalStateException("Cannot revert from DRAFT"));
         revertGuards.forEach(guard ->
-                guard.checkRevertAllowed(divisionId, division.getStatus(), targetStatus));
+                guard.checkRevertAllowed(divisionId, previousStatus, targetStatus));
         division.revertStatus();
+        log.info("Reverted division status: {} ({} → {})", divisionId, previousStatus, targetStatus);
         return divisionRepository.save(division);
     }
 
@@ -208,6 +219,7 @@ public class CompetitionService {
             throw new IllegalArgumentException("Short name already in use in this competition");
         }
         division.updateDetails(name, shortName, scoringSystem, entryPrefix);
+        log.debug("Updated division settings: {} (shortName={})", divisionId, shortName);
         return divisionRepository.save(division);
     }
 
@@ -219,6 +231,7 @@ public class CompetitionService {
         divisionCategoryRepository.deleteAll(
                 divisionCategoryRepository.findByDivisionIdOrderByCode(divisionId));
         divisionRepository.delete(division);
+        log.info("Deleted division: {} ({})", divisionId, division.getShortName());
     }
 
     public List<Division> findDivisionsByCompetition(@NotNull UUID competitionId) {
@@ -234,6 +247,8 @@ public class CompetitionService {
         requireAuthorized(division.getCompetitionId(), requestingUserId);
         division.updateEntryLimits(maxEntriesPerSubcategory, maxEntriesPerMainCategory,
                 maxEntriesTotal);
+        log.debug("Updated entry limits for division: {} (sub={}, main={}, total={})",
+                divisionId, maxEntriesPerSubcategory, maxEntriesPerMainCategory, maxEntriesTotal);
         return divisionRepository.save(division);
     }
 
@@ -270,6 +285,7 @@ public class CompetitionService {
         var dc = new DivisionCategory(divisionId, catalogCategory.getId(),
                 catalogCategory.getCode(), catalogCategory.getName(),
                 catalogCategory.getDescription(), parentId, 0);
+        log.debug("Added catalog category {} to division {}", catalogCategory.getCode(), divisionId);
         return divisionCategoryRepository.save(dc);
     }
 
@@ -294,6 +310,7 @@ public class CompetitionService {
                     .orElseThrow(() -> new IllegalArgumentException("Parent category not found"));
         }
         var dc = new DivisionCategory(divisionId, null, code, name, description, parentId, 0);
+        log.debug("Added custom category {} to division {}", code, divisionId);
         return divisionCategoryRepository.save(dc);
     }
 
@@ -333,6 +350,7 @@ public class CompetitionService {
             divisionCategoryRepository.deleteAll(children);
         }
         divisionCategoryRepository.delete(category);
+        log.debug("Removed category {} from division {}", category.getCode(), divisionId);
     }
 
     public List<Category> findAvailableCatalogCategories(@NotNull UUID divisionId) {
@@ -364,6 +382,7 @@ public class CompetitionService {
         }
 
         var pr = new ParticipantRole(participant.getId(), role);
+        log.info("Added participant role: userId={}, role={}, competition={}", userId, role, competitionId);
         return participantRoleRepository.save(pr);
     }
 
@@ -379,6 +398,7 @@ public class CompetitionService {
         if (!participantRoleRepository.existsByParticipantIdAndRole(
                 participant.getId(), CompetitionRole.ENTRANT)) {
             participantRoleRepository.save(new ParticipantRole(participant.getId(), CompetitionRole.ENTRANT));
+            log.debug("Auto-added ENTRANT role: userId={}, competition={}", userId, competitionId);
         }
     }
 
@@ -401,6 +421,7 @@ public class CompetitionService {
         }
         var roles = participantRoleRepository.findByParticipantId(participantId);
         participantRoleRepository.deleteAll(roles);
+        log.info("Removed participant: participantId={}, competition={}", participantId, competitionId);
     }
 
     public List<Participant> findParticipantsByCompetition(@NotNull UUID competitionId) {

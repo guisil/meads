@@ -15,6 +15,7 @@ import app.meads.identity.UserService;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +26,7 @@ import java.security.SecureRandom;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @Transactional
 @Validated
@@ -76,6 +78,8 @@ public class EntryService {
         }
         var mapping = new ProductMapping(divisionId, jumpsellerProductId, jumpsellerSku,
                 productName, creditsPerUnit);
+        log.info("Created product mapping: productId={}, division={}, credits={}",
+                jumpsellerProductId, divisionId, creditsPerUnit);
         return productMappingRepository.save(mapping);
     }
 
@@ -87,6 +91,7 @@ public class EntryService {
                 .orElseThrow(() -> new IllegalArgumentException("Product mapping not found"));
         requireAuthorizedForDivision(mapping.getDivisionId(), requestingUserId);
         mapping.updateDetails(productName, creditsPerUnit);
+        log.debug("Updated product mapping: {}", mappingId);
         return productMappingRepository.save(mapping);
     }
 
@@ -96,6 +101,7 @@ public class EntryService {
                 .orElseThrow(() -> new IllegalArgumentException("Product mapping not found"));
         requireAuthorizedForDivision(mapping.getDivisionId(), requestingUserId);
         productMappingRepository.delete(mapping);
+        log.info("Removed product mapping: {}", mappingId);
     }
 
     public List<ProductMapping> findProductMappings(@NotNull UUID divisionId) {
@@ -131,6 +137,7 @@ public class EntryService {
         var credit = new EntryCredit(divisionId, user.getId(), amount,
                 "ADMIN", userService.findById(requestingUserId).getEmail());
         creditRepository.save(credit);
+        log.info("Added {} credits: division={}, user={}", amount, divisionId, user.getEmail());
 
         // Add ENTRANT participant at competition level (idempotent)
         competitionService.ensureEntrantParticipant(
@@ -153,6 +160,7 @@ public class EntryService {
         var credit = new EntryCredit(divisionId, userId, -amount,
                 "ADMIN", userService.findById(requestingUserId).getEmail());
         creditRepository.save(credit);
+        log.info("Removed {} credits: division={}, userId={}", amount, divisionId, userId);
     }
 
     public boolean hasCreditsInOtherDivision(@NotNull UUID competitionId,
@@ -204,7 +212,10 @@ public class EntryService {
                 meadName, initialCategoryId, sweetness, strength, abv, carbonation,
                 honeyVarieties, otherIngredients, woodAged, woodAgeingDetails,
                 additionalInformation);
-        return entryRepository.save(entry);
+        var saved = entryRepository.save(entry);
+        log.info("Created entry: #{} (code={}, mead={}, division={}, userId={})",
+                entryNumber, entryCode, meadName, divisionId, userId);
+        return saved;
     }
 
     public Entry updateEntry(@NotNull UUID entryId,
@@ -228,6 +239,7 @@ public class EntryService {
         entry.updateDetails(meadName, initialCategoryId, sweetness, strength, abv,
                 carbonation, honeyVarieties, otherIngredients, woodAged,
                 woodAgeingDetails, additionalInformation);
+        log.debug("Updated entry: {} (mead={})", entryId, meadName);
         return entryRepository.save(entry);
     }
 
@@ -242,6 +254,7 @@ public class EntryService {
                     + "entry is " + entry.getStatus());
         }
         entryRepository.delete(entry);
+        log.info("Deleted entry: #{} ({})", entry.getEntryNumber(), entryId);
     }
 
     public void submitEntry(@NotNull UUID entryId, @NotNull UUID userId) {
@@ -252,6 +265,7 @@ public class EntryService {
         }
         entry.submit();
         entryRepository.save(entry);
+        log.info("Submitted entry: #{} ({})", entry.getEntryNumber(), entryId);
         eventPublisher.publishEvent(new EntriesSubmittedEvent(
                 entry.getDivisionId(), userId, 1));
     }
@@ -266,6 +280,7 @@ public class EntryService {
             entry.submit();
             entryRepository.save(entry);
         }
+        log.info("Submitted {} draft entries: division={}, userId={}", drafts.size(), divisionId, userId);
         eventPublisher.publishEvent(new EntriesSubmittedEvent(
                 divisionId, userId, drafts.size()));
     }
@@ -275,6 +290,7 @@ public class EntryService {
                 .orElseThrow(() -> new IllegalArgumentException("Entry not found"));
         requireAuthorizedForDivision(entry.getDivisionId(), requestingUserId);
         entry.markReceived();
+        log.info("Marked entry received: #{} ({})", entry.getEntryNumber(), entryId);
         return entryRepository.save(entry);
     }
 
@@ -283,6 +299,7 @@ public class EntryService {
                 .orElseThrow(() -> new IllegalArgumentException("Entry not found"));
         requireAuthorizedForDivision(entry.getDivisionId(), requestingUserId);
         entry.withdraw();
+        log.info("Withdrew entry: #{} ({})", entry.getEntryNumber(), entryId);
         return entryRepository.save(entry);
     }
 
@@ -305,6 +322,7 @@ public class EntryService {
         entry.adminUpdateDetails(meadName, initialCategoryId, sweetness, strength, abv,
                 carbonation, honeyVarieties, otherIngredients, woodAged,
                 woodAgeingDetails, additionalInformation);
+        log.debug("Admin updated entry: #{} ({})", entry.getEntryNumber(), entryId);
         return entryRepository.save(entry);
     }
 
@@ -371,6 +389,7 @@ public class EntryService {
         var order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("Order not found"));
         order.updateAdminDetails(status, adminNote);
+        log.debug("Updated order admin details: {} (status={})", orderId, status);
         return orderRepository.save(order);
     }
 

@@ -2,6 +2,7 @@ package app.meads.identity;
 
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -12,6 +13,7 @@ import java.time.Instant;
 import java.util.Date;
 import java.util.UUID;
 
+@Slf4j
 @Service
 public class JwtMagicLinkService {
 
@@ -35,11 +37,13 @@ public class JwtMagicLinkService {
 
     public String generateLink(String email, Duration validity) {
         String token = buildToken(email, validity);
+        log.debug("Generated magic link for: {} (validity={})", email, validity);
         return baseUrl + "/login/magic?token=" + token;
     }
 
     public String generatePasswordSetupLink(String email, Duration validity) {
         String token = buildToken(email, validity);
+        log.debug("Generated password setup link for: {} (validity={})", email, validity);
         return baseUrl + "/set-password?token=" + token;
     }
 

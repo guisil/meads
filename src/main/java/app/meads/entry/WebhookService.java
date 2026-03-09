@@ -61,6 +61,7 @@ public class WebhookService {
 
     public boolean verifySignature(String payload, String signature) {
         if (signature == null || payload == null) {
+            log.warn("Webhook signature verification failed: null payload or signature");
             return false;
         }
         try {
@@ -69,6 +70,7 @@ public class WebhookService {
             var expected = HexFormat.of().formatHex(mac.doFinal(payload.getBytes()));
             return expected.equalsIgnoreCase(signature);
         } catch (NoSuchAlgorithmException | InvalidKeyException e) {
+            log.error("Webhook HMAC computation failed", e);
             return false;
         }
     }
@@ -89,6 +91,8 @@ public class WebhookService {
 
             // Find or create user (use customer name from order)
             var user = userService.findOrCreateByEmail(customerEmail, customerName);
+
+            log.info("Processing webhook order: id={}, customer={}", orderId, customerEmail);
 
             // Save order first (line items have FK to this)
             var order = new JumpsellerOrder(orderId, customerEmail, customerName, rawPayload);
@@ -115,6 +119,7 @@ public class WebhookService {
                     lineItem.markIgnored();
                     lineItemRepository.save(lineItem);
                     ignoredCount++;
+                    log.debug("Ignored unmapped product: {} ({})", productName, productId);
                     continue;
                 }
 
@@ -128,6 +133,8 @@ public class WebhookService {
                     lineItem.markNeedsReview(divisionId, intendedCredits, "Mutual exclusivity conflict: user already has credits in another division of the same competition");
                     lineItemRepository.save(lineItem);
                     needsReviewCount++;
+                    log.warn("Webhook line item needs review (mutual exclusivity): product={}, user={}",
+                            productId, customerEmail);
                     continue;
                 }
 
@@ -135,6 +142,8 @@ public class WebhookService {
                 var credits = quantity * mapping.getCreditsPerUnit();
                 lineItem.markProcessed(divisionId, credits);
                 lineItemRepository.save(lineItem);
+                log.debug("Awarded {} credits from webhook: product={}, division={}, user={}",
+                        credits, productId, divisionId, customerEmail);
 
                 var credit = new EntryCredit(divisionId, user.getId(), credits,
                         "WEBHOOK", lineItem.getId().toString());
@@ -160,6 +169,8 @@ public class WebhookService {
             }
 
             orderRepository.save(order);
+            log.info("Webhook order processed: id={}, status={}, items={} (processed={}, review={}, ignored={})",
+                    orderId, order.getStatus(), totalItems, processedCount, needsReviewCount, ignoredCount);
 
         } catch (Exception e) {
             log.error("Error processing order paid webhook", e);

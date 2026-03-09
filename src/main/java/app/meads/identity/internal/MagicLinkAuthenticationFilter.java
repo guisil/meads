@@ -70,6 +70,7 @@ class MagicLinkAuthenticationFilter extends OncePerRequestFilter {
             // Publish event for UserActivationListener
             eventPublisher.publishEvent(new AuthenticationSuccessEvent(authentication));
 
+            log.info("Magic link authentication successful for: {}", email);
             response.sendRedirect("/");
         } catch (Exception e) {
             log.debug("JWT magic link authentication failed: {}", e.getMessage());

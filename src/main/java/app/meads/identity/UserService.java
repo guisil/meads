@@ -10,10 +10,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @Transactional
 @Validated
@@ -34,7 +37,9 @@ public class UserService {
             throw new IllegalArgumentException("Email already exists");
         }
         User user = new User(email, name, status, role);
-        return userRepository.save(user);
+        var saved = userRepository.save(user);
+        log.info("Created user: {} (email={}, role={}, status={})", saved.getId(), email, role, status);
+        return saved;
     }
 
     public User updateUser(UUID userId, @NotBlank String name, Role role, UserStatus status, String currentUserEmail) {
@@ -49,6 +54,7 @@ public class UserService {
             }
         }
         user.updateDetails(name, role, status);
+        log.info("Updated user: {} (name={}, role={}, status={})", userId, name, role, status);
         return userRepository.save(user);
     }
 
@@ -78,6 +84,7 @@ public class UserService {
         return userRepository.findByEmail(email)
                 .orElseGet(() -> {
                     var user = new User(email, name, UserStatus.PENDING, Role.USER);
+                    log.info("Auto-created user for email: {}", email);
                     return userRepository.save(user);
                 });
     }
@@ -107,6 +114,7 @@ public class UserService {
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
         user.setPasswordHash(passwordEncoder.encode(rawPassword));
         userRepository.save(user);
+        log.info("Password set for user: {} ({})", userId, user.getEmail());
     }
 
     public void setPasswordByToken(String token, String rawPassword) {
@@ -116,6 +124,7 @@ public class UserService {
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
         user.setPasswordHash(passwordEncoder.encode(rawPassword));
         userRepository.save(user);
+        log.info("Password set via token for user: {}", email);
     }
 
     private void validatePassword(String rawPassword) {
@@ -132,9 +141,11 @@ public class UserService {
         }
         if (user.getStatus() == UserStatus.INACTIVE) {
             userRepository.delete(user);
+            log.info("Deleted inactive user: {} ({})", userId, user.getEmail());
         } else {
             user.deactivate();
             userRepository.save(user);
+            log.info("Deactivated user: {} ({})", userId, user.getEmail());
         }
     }
 }
