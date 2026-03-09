@@ -76,6 +76,11 @@ public class Division {
         };
     }
 
+    public void revertStatus() {
+        this.status = status.previous()
+                .orElseThrow(() -> new IllegalStateException("Cannot revert from DRAFT"));
+    }
+
     public void updateEntryLimits(Integer maxEntriesPerSubcategory,
                                   Integer maxEntriesPerMainCategory) {
         this.maxEntriesPerSubcategory = maxEntriesPerSubcategory;

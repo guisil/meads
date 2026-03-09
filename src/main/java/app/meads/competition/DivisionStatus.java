@@ -30,4 +30,12 @@ public enum DivisionStatus {
         }
         return Optional.of(values[nextOrdinal]);
     }
+
+    public Optional<DivisionStatus> previous() {
+        int prevOrdinal = ordinal() - 1;
+        if (prevOrdinal < 0) {
+            return Optional.empty();
+        }
+        return Optional.of(values()[prevOrdinal]);
+    }
 }

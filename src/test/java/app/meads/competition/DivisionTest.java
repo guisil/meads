@@ -62,6 +62,26 @@ class DivisionTest {
     }
 
     @Test
+    void shouldRevertStatusOneStepBack() {
+        var division = createDraftDivision();
+        division.advanceStatus(); // REGISTRATION_OPEN
+        division.advanceStatus(); // REGISTRATION_CLOSED
+
+        division.revertStatus();
+
+        assertThat(division.getStatus()).isEqualTo(DivisionStatus.REGISTRATION_OPEN);
+    }
+
+    @Test
+    void shouldThrowWhenRevertingFromDraft() {
+        var division = createDraftDivision();
+
+        assertThatThrownBy(division::revertStatus)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("DRAFT");
+    }
+
+    @Test
     void shouldThrowWhenAdvancingPastTerminalStatus() {
         var division = createDraftDivision();
         division.advanceStatus(); // REGISTRATION_OPEN

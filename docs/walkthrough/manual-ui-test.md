@@ -467,7 +467,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 - [ ] **Expected:** Grid with columns: Name, Status, Scoring, Actions (icon buttons)
 - [ ] **Expected:** "Amadora" row -- Status badge "Registration Open", Scoring "MJP"
 - [ ] **Expected:** "Profissional" row -- Status badge "Registration Open", Scoring "MJP"
-- [ ] **Expected:** Each row has Advance (forward icon) and Delete (trash icon) buttons
+- [ ] **Expected:** Each row has Advance (forward icon), Revert (backwards icon, hidden for DRAFT), and Delete (trash icon) buttons
 - [ ] **Expected:** Clicking a division row navigates to the division detail
 
 ### Create division
@@ -634,6 +634,26 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 - [ ] **Expected:** "Advance Status" button visible (since status is not RESULTS_PUBLISHED)
 - [ ] **Do NOT click** -- this would advance Amadora beyond REGISTRATION_OPEN, affecting later tests
+
+### Revert status from division detail
+
+- [ ] **Expected:** "Revert Status" button visible (since status is not DRAFT)
+- [ ] **Do NOT click on Amadora** -- reverting to DRAFT is blocked by the entry guard (entries exist)
+- [ ] To test revert, use Test Competition 2026 > Open division (or a fresh test division):
+  - Advance from DRAFT to REGISTRATION_OPEN
+  - Click "Revert Status"
+  - **Expected:** Confirmation dialog: "Revert from Registration Open to Draft?"
+  - Click "Revert"
+  - **Expected:** Status reverts to DRAFT, page reloads
+  - **Expected:** "Revert Status" button is now hidden (DRAFT has no previous status)
+
+### Revert blocked by entry guard
+
+- [ ] Navigate to Amadora division detail (REGISTRATION_OPEN, has entries)
+- [ ] Click "Revert Status"
+- [ ] Click "Revert" in the confirmation dialog
+- [ ] **Expected:** Error notification "Cannot revert to DRAFT: division has entries"
+- [ ] **Expected:** Status remains REGISTRATION_OPEN
 
 ### Authorization -- unauthorized user redirected
 
@@ -868,6 +888,9 @@ Wait for startup to complete. The console will show magic links for dev users.
 - [ ] Continue advancing the Open division: REGISTRATION_CLOSED > JUDGING > DELIBERATION > RESULTS_PUBLISHED
 - [ ] **Expected:** Each advance shows confirmation dialog with correct from/to statuses
 - [ ] **Expected:** After RESULTS_PUBLISHED, "Advance Status" button is hidden or disabled
+- [ ] Revert from RESULTS_PUBLISHED back one step at a time to DRAFT
+- [ ] **Expected:** Each revert shows confirmation dialog with correct from/to statuses
+- [ ] **Expected:** After DRAFT, "Revert Status" button is hidden
 
 ---
 
@@ -947,7 +970,7 @@ After running the above tests, document decisions on:
 | 4. User Management | `UserListViewTest`, `UserServiceTest`, `UserServiceValidationTest`, `UserTest`, `AdminInitializerTest` |
 | 5. Competition Management | `CompetitionListViewTest`, `CompetitionServiceTest`, `CompetitionTest` |
 | 6. Competition Detail | `CompetitionDetailViewTest`, `CompetitionServiceTest`, `DivisionTest`, `ParticipantTest`, `ParticipantRoleTest` |
-| 7. Division Detail | `DivisionDetailViewTest`, `CompetitionServiceTest`, `DivisionCategoryRepositoryTest`, `CategoryRepositoryTest`, `DivisionStatusTest` |
+| 7. Division Detail | `DivisionDetailViewTest`, `CompetitionServiceTest`, `DivisionCategoryRepositoryTest`, `CategoryRepositoryTest`, `DivisionStatusTest`, `EntryDivisionRevertGuardTest` |
 | 8. Entry Admin | `DivisionEntryAdminViewTest`, `EntryServiceTest`, `ProductMappingRepositoryTest`, `JumpsellerOrderRepositoryTest` |
 | 9. My Entries | `MyEntriesViewTest`, `EntryServiceTest`, `EntryTest`, `EntryCreditRepositoryTest`, `EntryRepositoryTest` |
 | 10. Cross-cutting | `EntryServiceTest`, `DevDataInitializerTest`, `EntryModuleTest`, `CompetitionModuleTest`, `ModulithStructureTest` |

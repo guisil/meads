@@ -14,10 +14,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -29,6 +31,8 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.atLeast;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
@@ -60,6 +64,9 @@ class CompetitionServiceTest {
 
     @Mock
     ApplicationEventPublisher eventPublisher;
+
+    @Spy
+    List<DivisionRevertGuard> revertGuards = new ArrayList<>();
 
     private Competition createCompetition() {
         return new Competition("Test Competition", "test-competition",
@@ -425,6 +432,71 @@ class CompetitionServiceTest {
 
         assertThat(result.getStatus()).isEqualTo(DivisionStatus.REGISTRATION_OPEN);
         then(eventPublisher).should().publishEvent(any(DivisionStatusAdvancedEvent.class));
+    }
+
+    // --- revertDivisionStatus ---
+
+    @Test
+    void shouldRevertDivisionStatusOneStepBack() {
+        var admin = createAdmin();
+        var division = new Division(UUID.randomUUID(),
+                "Home", "home", ScoringSystem.MJP);
+        division.advanceStatus(); // REGISTRATION_OPEN
+        given(divisionRepository.findById(division.getId()))
+                .willReturn(Optional.of(division));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(divisionRepository.save(any(Division.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var result = competitionService.revertDivisionStatus(division.getId(), admin.getId());
+
+        assertThat(result.getStatus()).isEqualTo(DivisionStatus.DRAFT);
+        then(divisionRepository).should().save(division);
+    }
+
+    @Test
+    void shouldRejectRevertDivisionStatusWhenUserNotAuthorized() {
+        var user = createRegularUser();
+        var division = new Division(UUID.randomUUID(),
+                "Home", "home", ScoringSystem.MJP);
+        division.advanceStatus(); // REGISTRATION_OPEN
+        given(divisionRepository.findById(division.getId()))
+                .willReturn(Optional.of(division));
+        given(userService.findById(user.getId())).willReturn(user);
+        given(participantRepository.findByCompetitionIdAndUserId(
+                division.getCompetitionId(), user.getId()))
+                .willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> competitionService.revertDivisionStatus(
+                division.getId(), user.getId()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("authorized");
+
+        then(divisionRepository).should(never()).save(any());
+    }
+
+    @Test
+    void shouldRejectRevertWhenGuardBlocks() {
+        var guard = mock(DivisionRevertGuard.class);
+        revertGuards.add(guard);
+
+        var admin = createAdmin();
+        var division = new Division(UUID.randomUUID(),
+                "Home", "home", ScoringSystem.MJP);
+        division.advanceStatus(); // REGISTRATION_OPEN
+        given(divisionRepository.findById(division.getId()))
+                .willReturn(Optional.of(division));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        willThrow(new IllegalStateException("Cannot revert to DRAFT: entries exist in this division"))
+                .given(guard).checkRevertAllowed(division.getId(),
+                        DivisionStatus.REGISTRATION_OPEN, DivisionStatus.DRAFT);
+
+        assertThatThrownBy(() -> competitionService.revertDivisionStatus(
+                division.getId(), admin.getId()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("entries exist");
+
+        then(divisionRepository).should(never()).save(any());
     }
 
     // --- updateDivision ---

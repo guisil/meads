@@ -195,6 +195,13 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         divisionsGrid.addColumn(div -> div.getScoringSystem().name())
                 .setHeader("Scoring").setAutoWidth(true);
         divisionsGrid.addComponentColumn(div -> {
+            var revertButton = new Button(new Icon(VaadinIcon.BACKWARDS));
+            revertButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            revertButton.setAriaLabel("Revert");
+            revertButton.setTooltipText("Revert Status");
+            revertButton.setEnabled(div.getStatus() != DivisionStatus.DRAFT);
+            revertButton.addClickListener(e -> revertDivisionStatus(div));
+
             var advanceButton = new Button(new Icon(VaadinIcon.FORWARD));
             advanceButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
             advanceButton.setAriaLabel("Advance");
@@ -208,7 +215,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
             deleteButton.setTooltipText("Delete");
             deleteButton.addClickListener(e -> openDeleteDivisionDialog(div));
 
-            return new HorizontalLayout(advanceButton, deleteButton);
+            return new HorizontalLayout(revertButton, advanceButton, deleteButton);
         }).setHeader("Actions").setAutoWidth(true);
 
         divisionsGrid.addItemClickListener(e ->
@@ -500,6 +507,32 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         form.setPadding(false);
         dialog.add(form);
         dialog.getFooter().add(cancelButton, saveButton);
+        dialog.open();
+    }
+
+    private void revertDivisionStatus(Division division) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle("Revert Status");
+        var prevStatus = division.getStatus().previous()
+                .map(DivisionStatus::getDisplayName).orElse("—");
+        dialog.add("Revert division '" + division.getName() + "' from "
+                + division.getStatus().getDisplayName() + " to " + prevStatus + "?");
+
+        var confirmButton = new Button("Revert", e -> {
+            try {
+                competitionService.revertDivisionStatus(division.getId(), getCurrentUserId());
+                refreshDivisionsGrid();
+                var notification = Notification.show("Status reverted successfully");
+                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                dialog.close();
+            } catch (IllegalArgumentException | IllegalStateException ex) {
+                Notification.show(ex.getMessage());
+                dialog.close();
+            }
+        });
+
+        var cancelButton = new Button("Cancel", e -> dialog.close());
+        dialog.getFooter().add(cancelButton, confirmButton);
         dialog.open();
     }
 

@@ -378,4 +378,32 @@ class DivisionDetailViewTest {
                 .findFirst();
         assertThat(manageEntries).isPresent();
     }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldDisplayRevertStatusButtonWhenNotDraft() {
+        testDivision.advanceStatus(); // DRAFT → REGISTRATION_OPEN
+        divisionRepository.save(testDivision);
+
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName() + "/divisions/" + testDivision.getShortName());
+
+        var buttons = _find(Button.class);
+        var revertButton = buttons.stream()
+                .filter(b -> b.getText().equals("Revert Status"))
+                .findFirst();
+        assertThat(revertButton).isPresent();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldNotDisplayRevertStatusButtonWhenDraft() {
+        // testDivision starts in DRAFT
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName() + "/divisions/" + testDivision.getShortName());
+
+        var buttons = _find(Button.class);
+        var revertButton = buttons.stream()
+                .filter(b -> b.getText().equals("Revert Status"))
+                .findFirst();
+        assertThat(revertButton).isEmpty();
+    }
 }

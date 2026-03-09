@@ -129,6 +129,7 @@ app.meads.competition                    ← Competition module public API
 ├── CompetitionRole.java                 ← Enum: JUDGE, STEWARD, ENTRANT, ADMIN
 ├── ScoringSystem.java                   ← Enum: MJP
 ├── CompetitionService.java              ← Application service (public API)
+├── DivisionRevertGuard.java             ← Guard interface for blocking unsafe status reverts
 ├── DivisionStatusAdvancedEvent.java     ← Spring application event
 └── internal/                            ← Module-private
     ├── CompetitionRepository.java       ← JPA repository
@@ -167,6 +168,7 @@ app.meads.entry                              ← Entry module public API
     ├── EntryCreditRepository.java           ← JPA repository
     ├── EntryRepository.java                 ← JPA repository
     ├── JumpsellerWebhookController.java     ← @RestController (webhook endpoint)
+    ├── EntryDivisionRevertGuard.java        ← DivisionRevertGuard impl (blocks revert to DRAFT with entries)
     ├── RegistrationClosedListener.java      ← @ApplicationModuleListener (DivisionStatusAdvancedEvent)
     ├── MyEntriesView.java                   ← Entrant-facing view (@PermitAll + beforeEnter auth)
     └── DivisionEntryAdminView.java          ← Admin view with Credits/Entries/Products/Orders tabs

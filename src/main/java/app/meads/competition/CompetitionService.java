@@ -35,6 +35,7 @@ public class CompetitionService {
     private final CategoryRepository categoryRepository;
     private final UserService userService;
     private final ApplicationEventPublisher eventPublisher;
+    private final List<DivisionRevertGuard> revertGuards;
 
     CompetitionService(CompetitionRepository competitionRepository,
                        DivisionRepository divisionRepository,
@@ -43,7 +44,8 @@ public class CompetitionService {
                        DivisionCategoryRepository divisionCategoryRepository,
                        CategoryRepository categoryRepository,
                        UserService userService,
-                       ApplicationEventPublisher eventPublisher) {
+                       ApplicationEventPublisher eventPublisher,
+                       List<DivisionRevertGuard> revertGuards) {
         this.competitionRepository = competitionRepository;
         this.divisionRepository = divisionRepository;
         this.participantRepository = participantRepository;
@@ -52,6 +54,7 @@ public class CompetitionService {
         this.categoryRepository = categoryRepository;
         this.userService = userService;
         this.eventPublisher = eventPublisher;
+        this.revertGuards = revertGuards;
     }
 
     // --- Competition methods (were MeadEvent methods) ---
@@ -175,6 +178,19 @@ public class CompetitionService {
         eventPublisher.publishEvent(new DivisionStatusAdvancedEvent(
                 divisionId, previousStatus, saved.getStatus()));
         return saved;
+    }
+
+    public Division revertDivisionStatus(@NotNull UUID divisionId,
+                                          @NotNull UUID requestingUserId) {
+        var division = divisionRepository.findById(divisionId)
+                .orElseThrow(() -> new IllegalArgumentException("Division not found"));
+        requireAuthorized(division.getCompetitionId(), requestingUserId);
+        var targetStatus = division.getStatus().previous()
+                .orElseThrow(() -> new IllegalStateException("Cannot revert from DRAFT"));
+        revertGuards.forEach(guard ->
+                guard.checkRevertAllowed(divisionId, division.getStatus(), targetStatus));
+        division.revertStatus();
+        return divisionRepository.save(division);
     }
 
     public Division updateDivision(@NotNull UUID divisionId,

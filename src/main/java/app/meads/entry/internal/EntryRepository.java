@@ -29,6 +29,8 @@ public interface EntryRepository extends JpaRepository<Entry, UUID> {
 
     boolean existsByDivisionIdAndEntryCode(UUID divisionId, String entryCode);
 
+    boolean existsByDivisionId(UUID divisionId);
+
     @Query("SELECT COALESCE(MAX(e.entryNumber), 0) FROM Entry e WHERE e.divisionId = :divisionId")
     int findMaxEntryNumberByDivisionId(@Param("divisionId") UUID divisionId);
 }

@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `competition-module`
-**Tests:** 399 passing (`mvn test -Dsurefire.useFile=false`) — test count unchanged (replaced 1 test, no net additions)
+**Tests:** 409 passing (`mvn test -Dsurefire.useFile=false`)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -53,12 +53,13 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 - Competition CRUD, Division CRUD, Participant management, Category management
 - Authorization: `isAuthorizedForCompetition()`, `isAuthorizedForDivision()`
 - `findCompetitionsByAdmin(userId)` — finds competitions where user has ADMIN participant role
+- `revertDivisionStatus()` — one-step-back revert with guard interface pattern
 - Events: `DivisionStatusAdvancedEvent`
 
 #### Views
 - `CompetitionListView` (`/competitions`) — SYSTEM_ADMIN only, all competitions grid with CRUD
 - `CompetitionDetailView` (`/competitions/:shortName`) — tabs: Divisions, Participants, Settings
-- `DivisionDetailView` (`/competitions/:compShortName/divisions/:divShortName`) — tabs: Categories, Settings + "Manage Entries" link
+- `DivisionDetailView` (`/competitions/:compShortName/divisions/:divShortName`) — tabs: Categories, Settings + "Manage Entries" button + "Advance/Revert Status" buttons
 - `MyCompetitionsView` (`/my-competitions`) — `@PermitAll`, shows competitions where user is ADMIN
 
 #### Migrations: V3–V8
@@ -104,6 +105,9 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 #### REST
 - `JumpsellerWebhookController` — `POST /api/webhooks/jumpseller/order-paid` (HMAC-verified)
 
+#### Guards
+- `EntryDivisionRevertGuard` — blocks REGISTRATION_OPEN → DRAFT revert when entries exist
+
 #### Event Listener
 - `RegistrationClosedListener` — skeleton for `DivisionStatusAdvancedEvent` (REGISTRATION_CLOSED)
 
@@ -140,16 +144,22 @@ docs/
 
 ## What's Next
 
-1. **Division status revert** — Implement one-step-back revert with guards (designed, not yet coded).
-   Guards: REGISTRATION_OPEN→DRAFT blocked if entries exist; JUDGING→REGISTRATION_CLOSED blocked
-   if judging data exists; others always allowed. See conversation for full design.
-2. **Manual UI walkthrough** — Continue from Section 7 (Division Detail — in progress).
+1. **Manual UI walkthrough** — Continue from Section 7 (Division Detail — review revert behavior).
    Sections 2–6 are done. Continue through Section 11 (multi-role & cross-competition edge cases).
 3. **Code review** of both competition and entry modules (slice by slice)
 4. **Test review** (guided, with UI verification) of both modules
 5. **Judging module** — design and implementation
 
 ### Recent changes (this session)
+- **Division status revert with guard pattern:**
+  - `DivisionRevertGuard` interface in competition module public API — modules implement to block unsafe reverts
+  - `Division.revertStatus()` domain method (mirror of `advanceStatus()`)
+  - `DivisionStatus.previous()` method (mirror of `next()`)
+  - `CompetitionService.revertDivisionStatus()` — calls all guards before reverting
+  - `EntryDivisionRevertGuard` in entry module — blocks REGISTRATION_OPEN → DRAFT when entries exist
+  - UI: "Revert Status" button in DivisionDetailView header (hidden when DRAFT)
+  - UI: Revert icon (BACKWARDS) in CompetitionDetailView divisions grid (hidden when DRAFT)
+  - Both with confirmation dialogs
 - **UI polish (Section 7 walkthrough):**
   - Categories TreeGrid: "Remove" text button → X icon with tooltip + confirmation dialog
   - Participants grid: added confirmation dialog before removal
@@ -195,6 +205,7 @@ docs/
 - `JumpsellerOrderLineItemTest.java` — entity domain methods
 - `EntryTest.java` — entry entity domain methods (constructor, submit, markReceived, withdraw, updateDetails, assignFinalCategory, getEffectiveCategoryId)
 - `RegistrationClosedListenerTest.java` — event listener unit tests
+- `EntryDivisionRevertGuardTest.java` — blocks revert to DRAFT when entries exist
 
 ### Repository tests
 - `ProductMappingRepositoryTest.java`

@@ -118,6 +118,11 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                                 + "/divisions/" + division.getShortName() + "/entry-admin")));
         header.add(manageEntriesButton);
 
+        if (division.getStatus() != DivisionStatus.DRAFT) {
+            var revertButton = new Button("Revert Status", e -> revertStatus());
+            header.add(revertButton);
+        }
+
         if (division.getStatus() != DivisionStatus.RESULTS_PUBLISHED) {
             var advanceButton = new Button("Advance Status", e -> advanceStatus());
             header.add(advanceButton);
@@ -372,6 +377,33 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         var confirmButton = new Button("Advance", e -> {
             try {
                 division = competitionService.advanceDivisionStatus(divisionId, getCurrentUserId());
+                getUI().ifPresent(ui -> ui.navigate(
+                        "competitions/" + competition.getShortName()
+                                + "/divisions/" + division.getShortName()));
+                dialog.close();
+            } catch (IllegalArgumentException | IllegalStateException ex) {
+                Notification.show(ex.getMessage());
+                dialog.close();
+            }
+        });
+
+        var cancelButton = new Button("Cancel", e -> dialog.close());
+        dialog.getFooter().add(cancelButton, confirmButton);
+        dialog.open();
+    }
+
+    private void revertStatus() {
+        var prevStatusName = division.getStatus().previous()
+                .map(DivisionStatus::getDisplayName).orElse("—");
+
+        var dialog = new Dialog();
+        dialog.setHeaderTitle("Revert Status");
+        dialog.add("Revert from " + division.getStatus().getDisplayName()
+                + " to " + prevStatusName + "?");
+
+        var confirmButton = new Button("Revert", e -> {
+            try {
+                division = competitionService.revertDivisionStatus(divisionId, getCurrentUserId());
                 getUI().ifPresent(ui -> ui.navigate(
                         "competitions/" + competition.getShortName()
                                 + "/divisions/" + division.getShortName()));
