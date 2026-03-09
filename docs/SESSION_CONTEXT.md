@@ -38,7 +38,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 | Entity | Table | Description |
 |--------|-------|-------------|
 | `Competition` | `competitions` | Top-level: name, shortName (unique), dates, location, logo |
-| `Division` | `divisions` | Sub-level: competitionId, name, shortName (unique per competition), scoringSystem, status, entry limits, entryPrefix |
+| `Division` | `divisions` | Sub-level: competitionId, name, shortName (unique per competition), scoringSystem, status, entry limits (per subcategory, per main category, total), entryPrefix |
 | `Participant` | `participants` | Competition-scoped: userId, accessCode |
 | `ParticipantRole` | `participant_roles` | Role per participant: JUDGE, STEWARD, ENTRANT, ADMIN |
 | `Category` | `categories` | Read-only catalog: code, name, scoringSystem |
@@ -54,6 +54,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 - Authorization: `isAuthorizedForCompetition()`, `isAuthorizedForDivision()`
 - `findCompetitionsByAdmin(userId)` — finds competitions where user has ADMIN participant role
 - `revertDivisionStatus()` — one-step-back revert with guard interface pattern
+- Entry limits (per subcategory, per main category, total) — DRAFT-only, enforced by EntryService
 - Events: `DivisionStatusAdvancedEvent`
 
 #### Views
@@ -88,7 +89,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 - `LineItemStatus`: PROCESSED, NEEDS_REVIEW, IGNORED, UNPROCESSED
 
 #### Services
-- **EntryService** — Product mapping CRUD, credit management, entry CRUD, submission, limits enforcement
+- **EntryService** — Product mapping CRUD, credit management, entry CRUD, submission, limits enforcement (total, subcategory, main category)
 - **WebhookService** — HMAC signature verification, `processOrderPaid` (JSON parsing, idempotency, mutual exclusivity, credit creation)
 
 #### Events
@@ -100,7 +101,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 #### Views
 - `EntrantOverviewView` (`/my-entries`) — cross-competition entrant hub, shows all divisions with credits/entries, auto-redirects to single division
-- `MyEntriesView` (`/competitions/:compShortName/divisions/:divShortName/my-entries`) — entrant-facing, credits display, entry grid with status badges/Final Category/Actions (view/edit/submit)/filtering/sorting, add/edit dialog (full-width fields), submit all
+- `MyEntriesView` (`/competitions/:compShortName/divisions/:divShortName/my-entries`) — entrant-facing, credits + limits display, entry grid with status badges/Final Category/Actions (view/edit/submit)/filtering/sorting, add/edit dialog (full-width fields), submit all
 - `DivisionEntryAdminView` (`/competitions/:compShortName/divisions/:divShortName/entry-admin`) — admin tabs: Credits, Entries, Products, Orders
 
 #### REST
@@ -115,11 +116,15 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 #### Changes to other modules
 - `SecurityConfig` — separate `SecurityFilterChain` with `@Order(1)` for webhook API (CSRF disabled, permitAll)
 - `User.java` — added `meaderyName` field (now in V2)
-- `Division.java` — added `maxEntriesPerSubcategory`, `maxEntriesPerMainCategory`, `entryPrefix`
-- `DivisionDetailView` — added "Manage Entries" Anchor link (string-based, no entry module import), entry prefix in Settings tab
+- `Division.java` — added `maxEntriesPerSubcategory`, `maxEntriesPerMainCategory`, `maxEntriesTotal`, `entryPrefix`
+- `DivisionDetailView` — "Manage Entries" button, entry prefix + entry limits in Settings tab (DRAFT-only for limits)
 - `application.properties` — added `app.jumpseller.hooks-token`
 
 #### Migrations: V9–V13
+
+### Cross-cutting
+
+- **Comprehensive logging** added across all 3 modules (INFO for actions, DEBUG for queries/settings, WARN for blocked operations, ERROR for failures)
 
 ---
 
@@ -145,101 +150,68 @@ docs/
 
 ## What's Next
 
-1. **Manual walkthrough** — Continue from Section 10 (My Entries Overview).
-   Sections 2–9 are done. Continue through Section 13 (multi-role & cross-competition edge cases).
-3. **Code review** of both competition and entry modules (slice by slice)
-4. **Test review** (guided, with UI verification) of both modules
-5. **Judging module** — design and implementation
+### Priority 1: Manual walkthrough (full redo)
+Redo the **entire** manual-test walkthrough from Section 1. Previous partial run covered
+Sections 2–9; this is a fresh pass through all sections (1–13) to validate the current
+state end-to-end, including recent entry limits UI, logging, and all accumulated changes.
+May produce bug fixes or UX improvements.
 
-### Recent changes (this session)
-- **Entry limits UI + enforcement:**
-  - Added `maxEntriesTotal` field to `Division` entity (nullable Integer, null = unlimited)
-  - Updated V4 migration with `max_entries_total` column (pre-deployment, no new migration)
-  - `Division.updateEntryLimits()` now takes 3 params: maxPerSubcategory, maxPerMainCategory, maxTotal
-  - `CompetitionService.updateDivisionEntryLimits()` updated with maxEntriesTotal param
-  - `EntryService.checkEntryLimits()` enforces total limit (checked before subcategory/main category)
-  - DivisionDetailView Settings tab: 3 IntegerFields for all entry limits (step buttons, clear button, helper text)
-  - MyEntriesView: displays "Limits: N total, M per main category, K per subcategory" below credits
-  - DevDataInitializer: sets 10 total limit for both divisions
-  - New test: `shouldRejectCreateEntryWhenTotalLimitExceeded`
-  - `Division.updateEntryLimits()` restricted to DRAFT status (like scoring system)
-  - DivisionDetailView: entry limit fields disabled when not DRAFT
-  - New test: `shouldRejectUpdateDivisionEntryLimitsWhenNotDraft`
-- **Flyway migration consolidation:**
-  - Merged V14 (meadery_name) into V2, V15/V16 (entry limits, entry prefix) into V4
-  - Now V1–V13 contiguous, no gaps — safe since app is pre-deployment
-- **Send login link for participants:**
-  - CompetitionDetailView Participants tab: envelope icon to send magic login link
-  - Only shown for participants without passwords (magic-link-only users)
-- **SYSTEM_ADMIN no longer sees "My Entries"** in sidebar (they never have entries)
-- **Root redirect + navigation overhaul:**
-  - RootView now redirects by role: SYSTEM_ADMIN → `/competitions`, competition admin → `/my-competitions`, regular user → `/my-entries`
-  - Removed Home link from sidebar, drawer starts collapsed
-  - EntrantOverviewView handles missing users gracefully (shows empty state)
-- **MyEntriesView grid improvements:**
-  - Entry # column narrower (90px), styled status badges (like DivisionStatus), Final Category column
-  - Actions column: view (eye), edit (pencil), submit (check) icons with tooltips
-  - Filtering (mead name text field + status dropdown) and sorting on all columns
-  - All columns resizable, default sort by entry number
-  - View entry dialog (read-only, shows all fields)
-  - Single entry submission via `EntryService.submitEntry()`
-  - Add/Edit dialog: all form fields full-width
-  - Entry status badge CSS: `badge-submitted`, `badge-received`, `badge-withdrawn`
-- **Entry admin enhancements (DivisionEntryAdminView):**
-  - All 4 tabs: filtering, sorting, action buttons (edit/delete/withdraw icons)
-  - Credits tab: Name first (flexGrow 2) / Email (flexGrow 3), filter, edit/remove credits dialogs
-  - Entries tab: entry number with configurable prefix (e.g. "AMA-1"), filter, edit/delete/withdraw dialogs
-  - Products tab: edit/delete dialogs for product mappings
-  - Orders tab: filter, edit order dialog (status + admin note), Awarded Credits + Pending Credits columns
-  - All grids: resizable columns
-  - Entry prefix: configurable per division (up to 5 chars), in Division Settings tab
-  - `Division.entryPrefix` field (now in V4)
-  - `CompetitionService.updateDivision()`: added `entryPrefix` parameter
-  - `EntryService.findOrdersByDivision()`: new method to query orders via line items
-  - DevDataInitializer: entry prefixes ("AMA"/"PRO"), 2 example webhook orders
-  - `EntryService.findLineItemsByDivision()`: new method for line item data in orders grid
-  - Fixed FK violation in `WebhookService.processOrderPaid()`: order saved before line items
-  - Fixed `JumpsellerOrder`/`JumpsellerOrderLineItem` timestamp: `createdAt` set in constructor (not `@PrePersist`) to avoid null on merge
-  - Fixed `markNeedsReview` to store divisionId + intended credits on line item (so NEEDS_REVIEW orders appear in division's Orders tab)
-  - DivisionDetailView: categories auto-expand, Add Category dialog button alignment, breadcrumb refresh after settings save
-- **Division status revert with guard pattern:**
-  - `DivisionRevertGuard` interface in competition module public API — modules implement to block unsafe reverts
-  - `Division.revertStatus()` domain method (mirror of `advanceStatus()`)
-  - `DivisionStatus.previous()` method (mirror of `next()`)
-  - `CompetitionService.revertDivisionStatus()` — calls all guards before reverting
-  - `EntryDivisionRevertGuard` in entry module — blocks REGISTRATION_OPEN → DRAFT when entries exist
-  - UI: "Revert Status" button in DivisionDetailView header (hidden when DRAFT)
-  - UI: Revert icon (BACKWARDS) in CompetitionDetailView divisions grid (hidden when DRAFT)
-  - Both with confirmation dialogs
-- **UI polish (Section 7 walkthrough):**
-  - Categories TreeGrid: "Remove" text button → X icon with tooltip + confirmation dialog
-  - Participants grid: added confirmation dialog before removal
-  - Icon semantics: TRASH = permanent deletion (with confirmation), CLOSE (X) = disassociation (now also with confirmation)
-  - Categories Description column: increased flex grow (2) + tooltip on hover for long descriptions
-  - All 11 grids across 6 views: `setAllRowsVisible(true)` — grids expand to fit content, no fixed 400px height
-  - "Manage Entries": changed from Anchor link to Button (matches "Advance Status" style)
-  - Division settings: Name and Short Name editable at any status (not just DRAFT); Scoring System still locked to DRAFT
-  - `Division.updateDetails()`: relaxed restriction — only scoring system changes require DRAFT
-- **Previous session changes:**
-  - Login and Set Password views: constrained form width (`setWidth("auto")`, centered)
-  - User dialog: Save/Cancel buttons placed side by side (HorizontalLayout)
-  - All dialogs: standardized button order (Cancel left, Save right) and label ("Save" everywhere, no "Create")
-  - Logo upload: limit raised from 512KB to 2.5MB, added `fileRejectedListener` for error feedback
-  - Bug fix: `updateCompetition`/`updateCompetitionLogo` now use `requireAuthorized` (allows competition ADMIN, not just SYSTEM_ADMIN)
-  - Bug fix: CompetitionDetailView header/breadcrumb now refresh after settings save
-  - Dev data: CHIP 2026 location changed to "Amarante, Portugal", dates to June 11-14
-  - Categories TreeGrid: reduced Code column width (100px, no flex grow)
-  - MJP categories: fixed V7 migration to match official MJP Guidelines 2023 — removed M1V/M4G/M4P/M4Z, added M4B (Historical Mead)
-  - Grid ordering fix, URL slugs (short names), friendly redirects,
-    SetPasswordView Enter key, Actions column width, magic link blocked for password users,
-    password setup & reset (all 3 phases), compadmin dev user, MyCompetitionsView, MainLayout
-    sidebar, create user dialog status field removed
+### Priority 2: Deployment planning
+Evaluate cloud providers and services for first deployment:
+- **Managed PostgreSQL** with automatic backups — **top priority**, data must never be lost
+- **Log management** — logs properly stored and rolled, searchable
+- **Email sending** — reliable delivery for magic links, password resets, notifications
+  (low volume but sometimes bursty)
+- **Secrets management** — at minimum `INITIAL_ADMIN_EMAIL` + `INITIAL_ADMIN_PASSWORD`
+  for bootstrapping, plus JWT secret, DB credentials, Jumpseller hooks token
+- **Cost considerations:** The app only needs to be online for a few months at a time.
+  Going for multiple AWS services (RDS, ECS, SES, Secrets Manager, etc.) could be overkill
+  and expensive. Finding a good balance between cost and reliability is key. A simpler
+  PaaS (Railway, Render, Fly.io) with a managed DB add-on might be more appropriate than
+  full AWS infrastructure. Premium high-availability is not required — reliable uptime is
+  enough. The non-negotiable is never losing data (hence managed DB with backups).
 
-### Design decisions
+### Priority 3: Configuration audit
+Review `application.properties` and profile-specific files:
+- Which properties should be env vars vs. config files vs. secrets?
+- Which belong to specific profiles (`dev`, `prod`, `test`)?
+- Align with chosen cloud provider's configuration model
+
+### Priority 4: Email sending implementation
+Implement actual email delivery (currently magic links and password reset links are
+logged to console). Mechanism depends on deployment choice (SES, SMTP, etc.).
+Spring Boot has `spring-boot-starter-mail` — evaluate if that's sufficient.
+
+### Priority 5: Entry submission labels (PDF)
+When a mead entry is submitted, the entrant should be able to download a printable
+label PDF:
+- **Format:** 1 page containing 3 identical label copies (for 3 bottles)
+- **Content:** Mead info (entry number, category, sweetness, strength, carbonation, etc.)
+  + QR code (containing at minimum the entry ID, possibly competition/division context)
+- **Implementation:** Template-based PDF generation (e.g., iText, OpenPDF, or Apache PDFBox)
+- **UX:** Download button/link in MyEntriesView after submission
+
+### Priority 6: Competition documents
+Decide how to handle downloadable documents per competition (rules, guidelines, etc.):
+- Options: stored in DB (BLOB), external file storage (S3), or just external links
+- Where to display: competition detail page, possibly entrant-facing views
+- Consider storage cost, upload UX, and simplicity
+
+### After these priorities: Resume planned work
+7. **Judging module** — design and implementation
+8. **Awards module** — design and implementation
+
+---
+
+## Design decisions
 - **Any user can set a password via "Forgot password?"** — even users without a role that
   requires one (e.g., regular entrants who only need magic links). This is allowed by design:
   it's the user's choice, introduces no security issue, and once set, magic links are blocked
   for them (defense in depth). No restriction needed.
+- **Entry limits changeable only in DRAFT** — once a division advances past DRAFT,
+  entry limits are locked. This prevents unfairness from mid-registration limit changes.
+- **Flyway migrations modified in-place** — since the app is pre-deployment, existing
+  migrations are edited rather than creating new ones. This keeps migration numbering clean.
 
 ### Known UX items (deferred)
 - After failed credentials login, page reloads at `/login?error` and shows error notification,
@@ -250,7 +222,7 @@ docs/
 ## All Test Files (entry module)
 
 ### Unit tests
-- `EntryServiceTest.java` — product mapping CRUD + credit methods + entry CRUD + submission + limits
+- `EntryServiceTest.java` — product mapping CRUD + credit methods + entry CRUD + submission + limits (subcategory, main category, total)
 - `WebhookServiceTest.java` — HMAC verification + processOrderPaid variants
 - `JumpsellerOrderTest.java` — entity domain methods
 - `JumpsellerOrderLineItemTest.java` — entity domain methods
@@ -290,3 +262,4 @@ docs/
 - Mutual exclusivity: user cannot have credits in two different divisions of same competition
 - `@WebMvcTest` doesn't work in this Vaadin project — use `MockMvcBuilders.standaloneSetup(controller)` with `@ExtendWith(MockitoExtension.class)` instead
 - String-based `Anchor` navigation for cross-module links (avoids Spring Modulith circular dependencies)
+- Comprehensive logging: `@Slf4j` on all services, controllers, filters, listeners, guards
