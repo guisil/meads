@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `competition-module`
-**Tests:** 408 passing (`mvn test -Dsurefire.useFile=false`)
+**Tests:** 412 passing (`mvn test -Dsurefire.useFile=false`)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -99,6 +99,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 - `EntrantCreditSummary(userId, email, name, creditBalance, entryCount)`
 
 #### Views
+- `EntrantOverviewView` (`/my-entries`) — cross-competition entrant hub, shows all divisions with credits/entries, links to per-division MyEntriesView
 - `MyEntriesView` (`/competitions/:compShortName/divisions/:divShortName/my-entries`) — entrant-facing, credits display, entry grid, add/edit dialog, submit all
 - `DivisionEntryAdminView` (`/competitions/:compShortName/divisions/:divShortName/entry-admin`) — admin tabs: Credits, Entries, Products, Orders
 

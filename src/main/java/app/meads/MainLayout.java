@@ -20,9 +20,12 @@ import com.vaadin.flow.spring.security.AuthenticationContext;
 public class MainLayout extends AppLayout {
 
     private final transient AuthenticationContext authenticationContext;
+    private final CompetitionAdminChecker competitionAdminChecker;
 
-    public MainLayout(AuthenticationContext authenticationContext) {
+    public MainLayout(AuthenticationContext authenticationContext,
+                       CompetitionAdminChecker competitionAdminChecker) {
         this.authenticationContext = authenticationContext;
+        this.competitionAdminChecker = competitionAdminChecker;
 
         var toggle = new DrawerToggle();
         var title = new H1("MEADS");
@@ -59,7 +62,14 @@ public class MainLayout extends AppLayout {
             nav.addItem(new SideNavItem("Competitions", "competitions", VaadinIcon.CALENDAR.create()));
             nav.addItem(new SideNavItem("Users", "users", VaadinIcon.USERS.create()));
         } else if (authenticationContext.isAuthenticated()) {
-            nav.addItem(new SideNavItem("My Competitions", "my-competitions", VaadinIcon.CALENDAR.create()));
+            var email = authenticationContext.getPrincipalName().orElse("");
+            if (competitionAdminChecker.hasAdminCompetitions(email)) {
+                nav.addItem(new SideNavItem("My Competitions", "my-competitions", VaadinIcon.CALENDAR.create()));
+            }
+        }
+
+        if (authenticationContext.isAuthenticated()) {
+            nav.addItem(new SideNavItem("My Entries", "my-entries", VaadinIcon.LIST.create()));
         }
 
         var scroller = new Scroller(nav);

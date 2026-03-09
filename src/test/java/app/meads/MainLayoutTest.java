@@ -152,12 +152,12 @@ class MainLayoutTest {
 
     @Test
     @WithMockUser(roles = "USER")
-    void shouldDisplayMyCompetitionsLinkInDrawerForRegularUser() {
+    void shouldNotDisplayMyCompetitionsLinkForRegularUserWithoutAdminCompetitions() {
         UI.getCurrent().navigate("");
 
         assertThat(_find(SideNavItem.class))
                 .extracting(SideNavItem::getLabel)
-                .contains("My Competitions");
+                .doesNotContain("My Competitions");
     }
 
     @Test
@@ -176,6 +176,26 @@ class MainLayoutTest {
         UI.getCurrent().navigate("users");
 
         assertThat(_find(AppLayout.class)).isNotEmpty();
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void shouldDisplayMyEntriesLinkInDrawerForRegularUser() {
+        UI.getCurrent().navigate("");
+
+        assertThat(_find(SideNavItem.class))
+                .extracting(SideNavItem::getLabel)
+                .contains("My Entries");
+    }
+
+    @Test
+    @WithMockUser(roles = "SYSTEM_ADMIN")
+    void shouldDisplayMyEntriesLinkInDrawerForSystemAdmin() {
+        UI.getCurrent().navigate("");
+
+        assertThat(_find(SideNavItem.class))
+                .extracting(SideNavItem::getLabel)
+                .contains("My Entries");
     }
 
     @Test

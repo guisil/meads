@@ -315,6 +315,28 @@ public class EntryService {
                 divisionId, userId, EntryStatus.WITHDRAWN);
     }
 
+    // --- Entrant overview methods ---
+
+    public List<EntrantDivisionOverview> findEntrantDivisionOverviews(@NotNull UUID userId) {
+        var divisionIds = creditRepository.findDistinctDivisionIdsByUserId(userId);
+        return divisionIds.stream()
+                .map(divisionId -> {
+                    var division = competitionService.findDivisionById(divisionId);
+                    var competition = competitionService.findCompetitionById(
+                            division.getCompetitionId());
+                    var creditBalance = creditRepository.sumAmountByDivisionIdAndUserId(
+                            divisionId, userId);
+                    var entryCount = entryRepository.countByDivisionIdAndUserIdAndStatusNot(
+                            divisionId, userId, EntryStatus.WITHDRAWN);
+                    return new EntrantDivisionOverview(
+                            competition.getId(), competition.getName(),
+                            competition.getShortName(),
+                            divisionId, division.getName(), division.getShortName(),
+                            creditBalance, entryCount);
+                })
+                .toList();
+    }
+
     // --- Order methods ---
 
     public List<JumpsellerOrder> findOrdersByDivision(@NotNull UUID divisionId) {

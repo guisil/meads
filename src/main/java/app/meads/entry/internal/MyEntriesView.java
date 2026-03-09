@@ -12,7 +12,9 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.Nav;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
@@ -47,6 +49,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
     private Division division;
     private String compShortName;
     private String divShortName;
+    private String competitionName;
     private UUID currentUserId;
     private Grid<Entry> entriesGrid;
 
@@ -74,6 +77,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
 
         try {
             var competition = competitionService.findCompetitionByShortName(compShortName);
+            competitionName = competition.getName();
             division = competitionService.findDivisionByShortName(
                     competition.getId(), divShortName);
             divisionId = division.getId();
@@ -94,10 +98,21 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         }
 
         removeAll();
+        add(createBreadcrumb());
         add(createHeader());
         add(createCreditInfo());
         add(createActionButtons());
         add(createEntriesGrid());
+    }
+
+    private Nav createBreadcrumb() {
+        var nav = new Nav();
+        nav.add(new Anchor("my-entries", "My Entries"));
+        nav.add(new Span(" / "));
+        nav.add(new Span(competitionName));
+        nav.add(new Span(" / "));
+        nav.add(new Span(division.getName()));
+        return nav;
     }
 
     private H2 createHeader() {

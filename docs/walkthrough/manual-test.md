@@ -927,14 +927,41 @@ curl -s -o /dev/null -w "%{http_code}" \
 
 ---
 
-## 10. My Entries (Amadora -- entrant view)
+## 10. My Entries Overview (entrant hub)
+
+**Covers:** `EntryServiceTest` (findEntrantDivisionOverviews), `MainLayoutTest`
+
+### Navigate as entrant
+
+- [ ] Log in as `user@example.com`
+- [ ] **Expected:** Sidebar shows "My Entries" link
+- [ ] Click "My Entries" in the sidebar
+- [ ] **Expected:** Page title "My Entries"
+- [ ] **Expected:** Under "CHIP 2026": Amadora division with credits and entry count, link to manage entries
+
+### Navigate as admin
+
+- [ ] Log in as `admin@example.com`
+- [ ] **Expected:** Sidebar shows "My Entries" link (alongside Competitions and Users)
+- [ ] Click "My Entries"
+- [ ] **Expected:** Empty state "You have no entries in any competition." (admin has no credits)
+
+### Navigate to division entries
+
+- [ ] Log in as `user@example.com`, click "My Entries"
+- [ ] Click the "Amadora" link
+- [ ] **Expected:** Navigates to `/competitions/chip-2026/divisions/amadora/my-entries`
+
+---
+
+## 11. My Entries (Amadora -- entrant view)
 
 **Covers:** `MyEntriesViewTest`, `EntryServiceTest` (create/update/delete/submit entries)
 
 ### Navigate as entrant
 
 - [ ] Log in as `user@example.com`
-- [ ] Navigate to `/competitions/chip-2026/divisions/amadora/my-entries`
+- [ ] Navigate via "My Entries" → click Amadora link (or go directly to `/competitions/chip-2026/divisions/amadora/my-entries`)
 - [ ] **Expected:** Page title "Amadora -- My Entries"
 
 ### Credit balance display
@@ -1026,7 +1053,7 @@ curl -s -o /dev/null -w "%{http_code}" \
 
 ---
 
-## 11. Cross-cutting Concerns
+## 12. Cross-cutting Concerns
 
 ### Mutual exclusivity (end-to-end)
 
@@ -1089,7 +1116,7 @@ curl -s -o /dev/null -w "%{http_code}" \
 
 ---
 
-## 12. Multi-Role & Cross-Competition Edge Cases
+## 13. Multi-Role & Cross-Competition Edge Cases
 
 **Goal:** Test combinations of roles across competitions and identify gaps in
 credential management and authorization. Some of these are exploratory — note

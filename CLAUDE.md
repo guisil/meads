@@ -170,6 +170,7 @@ app.meads.entry                              ← Entry module public API
     ├── JumpsellerWebhookController.java     ← @RestController (webhook endpoint)
     ├── EntryDivisionRevertGuard.java        ← DivisionRevertGuard impl (blocks revert to DRAFT with entries)
     ├── RegistrationClosedListener.java      ← @ApplicationModuleListener (DivisionStatusAdvancedEvent)
+    ├── EntrantOverviewView.java             ← Cross-competition entrant hub (/my-entries, @PermitAll)
     ├── MyEntriesView.java                   ← Entrant-facing view (@PermitAll + beforeEnter auth)
     └── DivisionEntryAdminView.java          ← Admin view with Credits/Entries/Products/Orders tabs
 ```

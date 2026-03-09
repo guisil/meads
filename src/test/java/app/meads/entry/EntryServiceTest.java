@@ -1,5 +1,6 @@
 package app.meads.entry;
 
+import app.meads.competition.Competition;
 import app.meads.competition.CompetitionRole;
 import app.meads.competition.CompetitionService;
 import app.meads.competition.Division;
@@ -23,6 +24,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -880,5 +882,49 @@ class EntryServiceTest {
 
         assertThat(newEntry).isNotNull();
         assertThat(newEntry.getEntryNumber()).isEqualTo(2);
+    }
+
+    // --- Entrant overview tests ---
+
+    @Test
+    void shouldReturnEntrantDivisionOverviews() {
+        var userId = UUID.randomUUID();
+        var competition = new Competition("CHIP 2026", "chip-2026",
+                LocalDate.of(2026, 6, 11), LocalDate.of(2026, 6, 14), "Amarante");
+        var division = new Division(competition.getId(), "Amadora", "amadora", ScoringSystem.MJP);
+
+        given(creditRepository.findDistinctDivisionIdsByUserId(userId))
+                .willReturn(List.of(division.getId()));
+        given(competitionService.findDivisionById(division.getId()))
+                .willReturn(division);
+        given(competitionService.findCompetitionById(competition.getId()))
+                .willReturn(competition);
+        given(creditRepository.sumAmountByDivisionIdAndUserId(division.getId(), userId))
+                .willReturn(3);
+        given(entryRepository.countByDivisionIdAndUserIdAndStatusNot(
+                division.getId(), userId, EntryStatus.WITHDRAWN))
+                .willReturn(1L);
+
+        var overviews = entryService.findEntrantDivisionOverviews(userId);
+
+        assertThat(overviews).hasSize(1);
+        var overview = overviews.getFirst();
+        assertThat(overview.competitionName()).isEqualTo("CHIP 2026");
+        assertThat(overview.competitionShortName()).isEqualTo("chip-2026");
+        assertThat(overview.divisionName()).isEqualTo("Amadora");
+        assertThat(overview.divisionShortName()).isEqualTo("amadora");
+        assertThat(overview.creditBalance()).isEqualTo(3);
+        assertThat(overview.activeEntryCount()).isEqualTo(1);
+    }
+
+    @Test
+    void shouldReturnEmptyOverviewsWhenNoCredits() {
+        var userId = UUID.randomUUID();
+        given(creditRepository.findDistinctDivisionIdsByUserId(userId))
+                .willReturn(List.of());
+
+        var overviews = entryService.findEntrantDivisionOverviews(userId);
+
+        assertThat(overviews).isEmpty();
     }
 }
