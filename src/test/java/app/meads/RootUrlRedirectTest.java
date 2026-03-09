@@ -4,8 +4,8 @@ import com.github.mvysny.kaributesting.v10.MockVaadin;
 import com.github.mvysny.kaributesting.v10.Routes;
 import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
 import com.vaadin.flow.component.UI;
-import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.menubar.MenuBar;
 import com.vaadin.flow.component.sidenav.SideNavItem;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,7 +16,6 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.test.context.support.WithMockUser;
 
-import static com.github.mvysny.kaributesting.v10.LocatorJ._click;
 import static com.github.mvysny.kaributesting.v10.LocatorJ._get;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -57,37 +56,21 @@ class RootUrlRedirectTest {
     }
 
     @Test
-    @WithMockUser(username = "test@example.com")
-    void shouldDisplayUserEmailWhenAuthenticated() {
+    @WithMockUser(username = "unknown@example.com")
+    void shouldFallBackToEmailWhenUserNotInDatabase() {
         UI.getCurrent().navigate("");
 
-        var heading = _get(H1.class, spec -> spec.withText("Welcome test@example.com"));
-        assertThat(heading.getText()).contains("test@example.com");
+        var heading = _get(H1.class, spec -> spec.withText("Welcome unknown@example.com"));
+        assertThat(heading.getText()).contains("unknown@example.com");
     }
 
     @Test
     @WithMockUser
-    void shouldDisplayLogoutButtonWhenAuthenticated() {
+    void shouldDisplayUserMenuWhenAuthenticated() {
         UI.getCurrent().navigate("");
 
-        var button = _get(Button.class, spec -> spec.withText("Logout"));
-        assertThat(button.getText()).isEqualTo("Logout");
-    }
-
-    @Test
-    @WithMockUser
-    void shouldHaveLogoutButtonThatNavigatesToLogoutEndpoint() {
-        UI.getCurrent().navigate("");
-
-        var button = _get(Button.class, spec -> spec.withText("Logout"));
-        assertThat(button.getText()).isEqualTo("Logout");
-
-        // The button should not throw NPE when clicked
-        // In production, it will navigate to /logout endpoint via setLocation()
-        // In Karibu tests, setLocation() doesn't actually navigate, but shouldn't error
-        org.junit.jupiter.api.Assertions.assertDoesNotThrow(() -> {
-            _click(button);
-        });
+        var menuBar = _get(MenuBar.class);
+        assertThat(menuBar.getItems()).hasSize(1);
     }
 
     @Test

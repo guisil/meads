@@ -6,9 +6,10 @@ import com.github.mvysny.kaributesting.v10.MockVaadin;
 import com.github.mvysny.kaributesting.v10.Routes;
 import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
 import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.Text;
 import com.vaadin.flow.component.applayout.AppLayout;
-import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.menubar.MenuBar;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.sidenav.SideNavItem;
 import com.vaadin.flow.server.VaadinServletRequest;
@@ -114,11 +115,19 @@ class MainLayoutTest {
     }
 
     @Test
-    @WithMockUser(roles = "USER")
-    void shouldDisplayLogoutButtonInNavbarWhenAuthenticated() {
+    @WithMockUser(username = "user@example.com", roles = "USER")
+    void shouldDisplayUserMenuInNavbarWhenAuthenticated() {
         UI.getCurrent().navigate("");
 
-        assertThat(_find(Button.class, spec -> spec.withText("Logout"))).hasSize(1);
+        var menuBar = _get(MenuBar.class);
+        assertThat(menuBar.getItems()).hasSize(1);
+
+        var userItem = menuBar.getItems().getFirst();
+        var emailText = userItem.getChildren()
+                .filter(c -> c instanceof Text)
+                .map(c -> ((Text) c).getText())
+                .findFirst().orElse("");
+        assertThat(emailText).isEqualTo("user@example.com");
     }
 
     @Test

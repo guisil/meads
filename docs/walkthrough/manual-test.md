@@ -70,7 +70,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 - [ ] Expand "Login with credentials" section
 - [ ] Enter password: `admin`
 - [ ] Click "Login"
-- [ ] **Expected:** Redirected to `/` with "Welcome admin@example.com"
+- [ ] **Expected:** Redirected to `/` with "Welcome Dev Admin"
 
 ### Password login (competition admin)
 
@@ -79,7 +79,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 - [ ] Expand "Login with credentials" section
 - [ ] Enter password: `compadmin`
 - [ ] Click "Login"
-- [ ] **Expected:** Redirected to `/` with "Welcome compadmin@example.com"
+- [ ] **Expected:** Redirected to `/` with "Welcome Competition Admin"
 
 ### Magic link login
 
@@ -90,7 +90,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 - [ ] **Expected:** Notification "If this email is registered, a login link has been sent."
 - [ ] Copy the magic link URL from the server console (format: `http://localhost:8080/login/magic?token=...`)
 - [ ] Paste the URL in the browser
-- [ ] **Expected:** Authenticated as `user@example.com`, redirected to `/` with "Welcome user@example.com"
+- [ ] **Expected:** Authenticated as `user@example.com`, redirected to `/` with "Welcome Dev User"
 
 ### Magic link blocked for password user
 
@@ -177,7 +177,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 ### Logout
 
-- [ ] While logged in, click the "Logout" button in the top navbar
+- [ ] While logged in, click the user menu in the top navbar, then click "Logout"
 - [ ] **Expected:** Redirected to `/login`
 - [ ] Navigate to `http://localhost:8080/`
 - [ ] **Expected:** Redirected to `/login` (session ended)
@@ -207,7 +207,9 @@ Wait for startup to complete. The console will show magic links for dev users.
 ### Main layout structure
 
 - [ ] Log in as `admin@example.com`
-- [ ] **Expected:** Top navbar shows "MEADS" title and "Logout" button
+- [ ] **Expected:** Top navbar shows "MEADS" title and user menu (user icon + `admin@example.com`)
+- [ ] Click the user menu
+- [ ] **Expected:** Dropdown opens with "Logout" option
 - [ ] **Expected:** Left sidebar (drawer) has: Home, Competitions, Users
 - [ ] Click the drawer toggle (hamburger icon)
 - [ ] **Expected:** Sidebar collapses/expands
@@ -228,7 +230,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 - [ ] Navigate to `/users` (as admin)
 - [ ] Click "Home" in the sidebar
-- [ ] **Expected:** Navigated to `/` with "Welcome admin@example.com"
+- [ ] **Expected:** Navigated to `/` with "Welcome Dev Admin"
 
 ---
 

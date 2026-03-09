@@ -40,6 +40,12 @@ vaadin-app-layout::part(navbar) {
   box-shadow: 0 1px 4px hsla(30, 20%, 10%, 0.15);
 }
 
+.app-title {
+  font-size: 1.125rem;
+  margin: 0;
+  color: var(--lumo-base-color);
+}
+
 /* --- Drawer --- */
 vaadin-app-layout::part(drawer) {
   background: hsl(40, 15%, 96%);

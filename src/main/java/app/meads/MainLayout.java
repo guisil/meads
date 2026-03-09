@@ -1,10 +1,13 @@
 package app.meads;
 
+import com.vaadin.flow.component.Text;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.applayout.DrawerToggle;
-import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.menubar.MenuBar;
+import com.vaadin.flow.component.menubar.MenuBarVariant;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.Scroller;
@@ -23,16 +26,29 @@ public class MainLayout extends AppLayout {
 
         var toggle = new DrawerToggle();
         var title = new H1("MEADS");
-        title.getStyle().set("font-size", "1.125rem").set("margin", "0");
-
-        var logoutButton = new Button("Logout", e -> authenticationContext.logout());
-        logoutButton.getElement().getThemeList().add("tertiary small");
+        title.addClassName("app-title");
 
         var navbar = new HorizontalLayout(toggle, title);
         navbar.setFlexGrow(1, title);
         navbar.setWidthFull();
         navbar.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.CENTER);
-        navbar.add(logoutButton);
+
+        if (authenticationContext.isAuthenticated()) {
+            var email = authenticationContext.getPrincipalName().orElse("");
+
+            var userIcon = new Icon(VaadinIcon.USER);
+            userIcon.getStyle().setWidth("var(--lumo-icon-size-s)");
+            userIcon.getStyle().setHeight("var(--lumo-icon-size-s)");
+            userIcon.getStyle().setMarginRight("var(--lumo-space-xs)");
+
+            var userMenu = new MenuBar();
+            userMenu.addThemeVariants(MenuBarVariant.LUMO_TERTIARY_INLINE);
+            var userItem = userMenu.addItem(userIcon);
+            userItem.add(new Text(email));
+            userItem.getSubMenu().addItem("Logout", e -> authenticationContext.logout());
+
+            navbar.add(userMenu);
+        }
 
         addToNavbar(navbar);
 

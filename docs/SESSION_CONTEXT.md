@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `competition-module`
-**Tests:** 409 passing (`mvn test -Dsurefire.useFile=false`)
+**Tests:** 408 passing (`mvn test -Dsurefire.useFile=false`)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
