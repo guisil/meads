@@ -40,6 +40,9 @@ public class Division {
     @Column(name = "max_entries_per_main_category")
     private Integer maxEntriesPerMainCategory;
 
+    @Column(name = "entry_prefix", length = 5)
+    private String entryPrefix;
+
     private Instant updatedAt;
 
     protected Division() {} // JPA
@@ -87,7 +90,8 @@ public class Division {
         this.maxEntriesPerMainCategory = maxEntriesPerMainCategory;
     }
 
-    public void updateDetails(String name, String shortName, ScoringSystem scoringSystem) {
+    public void updateDetails(String name, String shortName, ScoringSystem scoringSystem,
+                              String entryPrefix) {
         if (status != DivisionStatus.DRAFT && scoringSystem != this.scoringSystem) {
             throw new IllegalStateException("Scoring system can only be changed in DRAFT status");
         }
@@ -95,5 +99,6 @@ public class Division {
         this.name = name;
         this.shortName = shortName;
         this.scoringSystem = scoringSystem;
+        this.entryPrefix = entryPrefix;
     }
 }

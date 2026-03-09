@@ -7,6 +7,8 @@ import app.meads.competition.DivisionCategory;
 import app.meads.competition.ScoringSystem;
 import app.meads.entry.internal.EntryCreditRepository;
 import app.meads.entry.internal.EntryRepository;
+import app.meads.entry.internal.JumpsellerOrderLineItemRepository;
+import app.meads.entry.internal.JumpsellerOrderRepository;
 import app.meads.entry.internal.ProductMappingRepository;
 import app.meads.identity.Role;
 import app.meads.identity.User;
@@ -54,6 +56,12 @@ class EntryServiceTest {
 
     @Mock
     EntryRepository entryRepository;
+
+    @Mock
+    JumpsellerOrderRepository orderRepository;
+
+    @Mock
+    JumpsellerOrderLineItemRepository lineItemRepository;
 
     @Mock
     ApplicationEventPublisher eventPublisher;

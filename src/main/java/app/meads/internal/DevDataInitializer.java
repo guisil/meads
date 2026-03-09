@@ -3,6 +3,9 @@ package app.meads.internal;
 import app.meads.competition.*;
 import app.meads.entry.*;
 import app.meads.identity.UserService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.Profile;
@@ -18,16 +21,21 @@ import java.util.UUID;
 @Profile("dev")
 class DevDataInitializer {
 
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
     private final UserService userService;
     private final CompetitionService competitionService;
     private final EntryService entryService;
+    private final WebhookService webhookService;
 
     DevDataInitializer(UserService userService,
                        CompetitionService competitionService,
-                       EntryService entryService) {
+                       EntryService entryService,
+                       WebhookService webhookService) {
         this.userService = userService;
         this.competitionService = competitionService;
         this.entryService = entryService;
+        this.webhookService = webhookService;
     }
 
     @Order(2)
@@ -87,6 +95,14 @@ class DevDataInitializer {
         competitionService.updateDivisionEntryLimits(
                 profissional.getId(), 3, 5, compAdminId);
         log.info("Set entry limits: 3 per subcategory, 5 per main category");
+
+        // 5b. Set entry prefixes
+        competitionService.updateDivision(amadora.getId(),
+                amadora.getName(), amadora.getShortName(), amadora.getScoringSystem(),
+                "AMA", compAdminId);
+        competitionService.updateDivision(profissional.getId(),
+                profissional.getName(), profissional.getShortName(), profissional.getScoringSystem(),
+                "PRO", compAdminId);
 
         // 6. Advance CHIP divisions: DRAFT → REGISTRATION_OPEN
         competitionService.advanceDivisionStatus(amadora.getId(), compAdminId);
@@ -164,6 +180,32 @@ class DevDataInitializer {
                 "Lavender, chamomile", false, null, null);
 
         log.info("Created entries for CHIP Amadora");
+
+        // 11. Create example orders via webhook processing
+        webhookService.processOrderPaid(buildOrderPayload(
+                "JS-1001", "buyer1@example.com", "Maria Silva",
+                "1001", "CHIP-AMA", "CHIP Amadora Entry", 2));
+        webhookService.processOrderPaid(buildOrderPayload(
+                "JS-1002", "buyer2@example.com", "João Santos",
+                "1002", "CHIP-PRO", "CHIP Profissional Entry", 3));
+        log.info("Created example webhook orders");
+    }
+
+    private String buildOrderPayload(String orderId, String email, String fullName,
+                                      String productId, String sku, String productName,
+                                      int quantity) {
+        var root = MAPPER.createObjectNode();
+        root.put("id", orderId);
+        var customer = root.putObject("customer");
+        customer.put("email", email);
+        customer.put("full_name", fullName);
+        var products = root.putArray("products");
+        var product = products.addObject();
+        product.put("product_id", productId);
+        product.put("sku", sku);
+        product.put("name", productName);
+        product.put("qty", quantity);
+        return root.toString();
     }
 
     private void seedTestCompetition(UUID sysAdminId, UUID compAdminId) {

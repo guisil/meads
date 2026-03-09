@@ -8,10 +8,15 @@ import app.meads.entry.*;
 import app.meads.identity.Role;
 import app.meads.identity.UserService;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.Nav;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -19,6 +24,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.tabs.TabSheet;
 import com.vaadin.flow.component.textfield.IntegerField;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
@@ -43,7 +49,14 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
     private Division division;
     private String compShortName;
     private String divShortName;
+    private String competitionName;
     private UUID currentUserId;
+
+    private Grid<EntrantCreditSummary> creditsGrid;
+    private Grid<Entry> entriesGrid;
+    private Grid<ProductMapping> productsGrid;
+    private Grid<JumpsellerOrder> ordersGrid;
+    private List<DivisionCategory> divisionCategories;
 
     public DivisionEntryAdminView(EntryService entryService,
                                    CompetitionService competitionService,
@@ -69,6 +82,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
 
         try {
             var competition = competitionService.findCompetitionByShortName(compShortName);
+            competitionName = competition.getName();
             division = competitionService.findDivisionByShortName(
                     competition.getId(), divShortName);
             divisionId = division.getId();
@@ -87,9 +101,33 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             return;
         }
 
+        divisionCategories = competitionService.findDivisionCategories(divisionId);
+
         removeAll();
+        add(createBreadcrumb());
         add(createHeader());
         add(createTabSheet());
+    }
+
+    private Nav createBreadcrumb() {
+        var nav = new Nav();
+        var user = userService.findById(currentUserId);
+        boolean isSystemAdmin = user.getRole() == Role.SYSTEM_ADMIN;
+        var listLink = new Anchor(isSystemAdmin ? "competitions" : "my-competitions",
+                isSystemAdmin ? "Competitions" : "My Competitions");
+        nav.add(listLink);
+        nav.add(new Span(" / "));
+        var competitionLink = new Anchor(
+                "competitions/" + compShortName, competitionName);
+        nav.add(competitionLink);
+        nav.add(new Span(" / "));
+        var divisionLink = new Anchor(
+                "competitions/" + compShortName + "/divisions/" + divShortName,
+                division.getName());
+        nav.add(divisionLink);
+        nav.add(new Span(" / "));
+        nav.add(new Span("Entry Admin"));
+        return nav;
     }
 
     private H2 createHeader() {
@@ -108,29 +146,66 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         return tabSheet;
     }
 
+    // --- Credits Tab ---
+
     private VerticalLayout createCreditsTab() {
         var tab = new VerticalLayout();
         tab.setPadding(false);
 
+        var filterField = new TextField();
+        filterField.setPlaceholder("Filter by name or email...");
+        filterField.setValueChangeMode(ValueChangeMode.EAGER);
+        filterField.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
+        filterField.setClearButtonVisible(true);
+
         var addCreditsButton = new Button("Add Credits", e -> openAddCreditsDialog());
-        tab.add(addCreditsButton);
 
-        var grid = new Grid<EntrantCreditSummary>(EntrantCreditSummary.class, false);
-        grid.setAllRowsVisible(true);
-        grid.setId("credits-grid");
-        grid.addColumn(EntrantCreditSummary::email).setHeader("Email");
-        grid.addColumn(EntrantCreditSummary::name).setHeader("Name");
-        grid.addColumn(EntrantCreditSummary::creditBalance).setHeader("Credits");
-        grid.addColumn(EntrantCreditSummary::entryCount).setHeader("Entries");
+        var toolbar = new HorizontalLayout(filterField, addCreditsButton);
+        toolbar.setWidthFull();
+        toolbar.setFlexGrow(1, filterField);
+        tab.add(toolbar);
 
-        // Populate: list all entrants with credits for this division
-        refreshCreditsGrid(grid);
-        tab.add(grid);
+        creditsGrid = new Grid<>(EntrantCreditSummary.class, false);
+        creditsGrid.setAllRowsVisible(true);
+        creditsGrid.setId("credits-grid");
+        creditsGrid.addColumn(EntrantCreditSummary::name).setHeader("Name").setSortable(true).setFlexGrow(2);
+        creditsGrid.addColumn(EntrantCreditSummary::email).setHeader("Email").setSortable(true).setFlexGrow(3);
+        creditsGrid.addColumn(EntrantCreditSummary::creditBalance).setHeader("Credits").setSortable(true).setAutoWidth(true);
+        creditsGrid.addColumn(EntrantCreditSummary::entryCount).setHeader("Entries").setSortable(true).setAutoWidth(true);
+        creditsGrid.addComponentColumn(summary -> {
+            var editButton = new Button(new Icon(VaadinIcon.EDIT));
+            editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            editButton.setAriaLabel("Edit Credits");
+            editButton.setTooltipText("Edit Credits");
+            editButton.addClickListener(e -> openEditCreditsDialog(summary));
+
+            var deleteButton = new Button(new Icon(VaadinIcon.TRASH));
+            deleteButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            deleteButton.setAriaLabel("Remove Credits");
+            deleteButton.setTooltipText("Remove Credits");
+            deleteButton.addClickListener(e -> openRemoveCreditsDialog(summary));
+
+            return new HorizontalLayout(editButton, deleteButton);
+        }).setHeader("Actions").setAutoWidth(true);
+
+        refreshCreditsGrid();
+
+        filterField.addValueChangeListener(e -> {
+            var filterString = e.getValue().toLowerCase();
+            if (filterString.isBlank()) {
+                creditsGrid.getListDataView().removeFilters();
+            } else {
+                creditsGrid.getListDataView().setFilter(s ->
+                        s.name().toLowerCase().contains(filterString)
+                                || s.email().toLowerCase().contains(filterString));
+            }
+        });
+
+        tab.add(creditsGrid);
         return tab;
     }
 
-    private void refreshCreditsGrid(Grid<EntrantCreditSummary> grid) {
-        // Get all participants with credits
+    private void refreshCreditsGrid() {
         var participants = competitionService.findParticipantsByCompetition(
                 division.getCompetitionId());
         var summaries = participants.stream()
@@ -143,7 +218,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 })
                 .filter(s -> s.creditBalance() > 0 || s.entryCount() > 0)
                 .toList();
-        grid.setItems(summaries);
+        creditsGrid.setItems(summaries);
     }
 
     private void openAddCreditsDialog() {
@@ -167,10 +242,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 var notification = Notification.show("Credits added");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
-                // Refresh view
-                getUI().ifPresent(ui -> ui.navigate(
-                        "competitions/" + compShortName
-                                + "/divisions/" + divShortName + "/entry-admin"));
+                refreshCreditsGrid();
             } catch (IllegalArgumentException ex) {
                 Notification.show(ex.getMessage());
             }
@@ -181,35 +253,242 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         dialog.open();
     }
 
+    private void openEditCreditsDialog(EntrantCreditSummary summary) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle("Adjust Credits — " + summary.name());
+
+        var amountField = new IntegerField("Credits to add");
+        amountField.setMin(1);
+        amountField.setValue(1);
+        amountField.setHelperText("Current balance: " + summary.creditBalance());
+
+        dialog.add(new VerticalLayout(amountField));
+
+        var addButton = new Button("Add Credits", e -> {
+            if (amountField.getValue() == null || amountField.getValue() < 1) return;
+            try {
+                entryService.addCredits(divisionId, summary.email(),
+                        amountField.getValue(), currentUserId);
+                var notification = Notification.show("Credits added");
+                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                dialog.close();
+                refreshCreditsGrid();
+            } catch (IllegalArgumentException ex) {
+                Notification.show(ex.getMessage());
+            }
+        });
+
+        var cancelButton = new Button("Cancel", e -> dialog.close());
+        dialog.getFooter().add(cancelButton, addButton);
+        dialog.open();
+    }
+
+    private void openRemoveCreditsDialog(EntrantCreditSummary summary) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle("Remove Credits");
+
+        dialog.add("Remove all credits (" + summary.creditBalance()
+                + ") from " + summary.email() + "?");
+
+        var confirmButton = new Button("Remove", e -> {
+            try {
+                if (summary.creditBalance() > 0) {
+                    entryService.removeCredits(divisionId, summary.userId(),
+                            summary.creditBalance(), currentUserId);
+                }
+                var notification = Notification.show("Credits removed");
+                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                dialog.close();
+                refreshCreditsGrid();
+            } catch (IllegalArgumentException ex) {
+                Notification.show(ex.getMessage());
+            }
+        });
+
+        var cancelButton = new Button("Cancel", e -> dialog.close());
+        dialog.getFooter().add(cancelButton, confirmButton);
+        dialog.open();
+    }
+
+    // --- Entries Tab ---
+
     private VerticalLayout createEntriesTab() {
         var tab = new VerticalLayout();
         tab.setPadding(false);
 
-        var grid = new Grid<Entry>(Entry.class, false);
-        grid.setAllRowsVisible(true);
-        grid.setId("entries-grid");
-        grid.addColumn(Entry::getEntryNumber).setHeader("Entry #");
-        grid.addColumn(Entry::getEntryCode).setHeader("Entry Code");
-        grid.addColumn(Entry::getMeadName).setHeader("Mead Name");
-        grid.addColumn(entry -> {
-            var categories = competitionService.findDivisionCategories(divisionId);
-            return categories.stream()
-                    .filter(c -> c.getId().equals(entry.getInitialCategoryId()))
-                    .map(DivisionCategory::getName)
-                    .findFirst()
-                    .orElse("—");
-        }).setHeader("Category");
-        grid.addColumn(entry -> {
-            var user = userService.findById(entry.getUserId());
-            return user.getEmail();
-        }).setHeader("Entrant");
-        grid.addColumn(entry -> entry.getStatus().name()).setHeader("Status");
+        var filterField = new TextField();
+        filterField.setPlaceholder("Filter by mead name, entrant, or entry code...");
+        filterField.setValueChangeMode(ValueChangeMode.EAGER);
+        filterField.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
+        filterField.setClearButtonVisible(true);
 
-        var entries = entryService.findEntriesByDivision(divisionId);
-        grid.setItems(entries);
-        tab.add(grid);
+        var toolbar = new HorizontalLayout(filterField);
+        toolbar.setWidthFull();
+        toolbar.setFlexGrow(1, filterField);
+        tab.add(toolbar);
+
+        entriesGrid = new Grid<>(Entry.class, false);
+        entriesGrid.setAllRowsVisible(true);
+        entriesGrid.setId("entries-grid");
+        entriesGrid.addColumn(entry -> formatEntryNumber(entry.getEntryNumber()))
+                .setHeader("Entry #").setSortable(true).setAutoWidth(true);
+        entriesGrid.addColumn(Entry::getEntryCode).setHeader("Code").setSortable(true).setAutoWidth(true);
+        entriesGrid.addColumn(Entry::getMeadName).setHeader("Mead Name").setSortable(true).setFlexGrow(2);
+        entriesGrid.addColumn(entry -> getCategoryName(entry.getInitialCategoryId()))
+                .setHeader("Category").setSortable(true);
+        entriesGrid.addColumn(entry -> userService.findById(entry.getUserId()).getEmail())
+                .setHeader("Entrant").setSortable(true).setFlexGrow(2);
+        entriesGrid.addColumn(entry -> entry.getStatus().name())
+                .setHeader("Status").setSortable(true).setAutoWidth(true);
+        entriesGrid.addComponentColumn(entry -> {
+            var editButton = new Button(new Icon(VaadinIcon.EDIT));
+            editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            editButton.setAriaLabel("Edit");
+            editButton.setTooltipText("Edit");
+            editButton.setEnabled(entry.getStatus() != EntryStatus.WITHDRAWN);
+            editButton.addClickListener(e -> openEditEntryDialog(entry));
+
+            var deleteButton = new Button(new Icon(VaadinIcon.TRASH));
+            deleteButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            deleteButton.setAriaLabel("Delete");
+            deleteButton.setTooltipText("Delete");
+            deleteButton.setEnabled(entry.getStatus() == EntryStatus.DRAFT);
+            deleteButton.addClickListener(e -> openDeleteEntryDialog(entry));
+
+            var withdrawButton = new Button(new Icon(VaadinIcon.BAN));
+            withdrawButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            withdrawButton.setAriaLabel("Withdraw");
+            withdrawButton.setTooltipText("Withdraw");
+            withdrawButton.setEnabled(entry.getStatus() != EntryStatus.WITHDRAWN);
+            withdrawButton.addClickListener(e -> openWithdrawEntryDialog(entry));
+
+            return new HorizontalLayout(editButton, deleteButton, withdrawButton);
+        }).setHeader("Actions").setAutoWidth(true);
+
+        refreshEntriesGrid();
+
+        filterField.addValueChangeListener(e -> {
+            var filterString = e.getValue().toLowerCase();
+            if (filterString.isBlank()) {
+                entriesGrid.getListDataView().removeFilters();
+            } else {
+                entriesGrid.getListDataView().setFilter(entry ->
+                        entry.getMeadName().toLowerCase().contains(filterString)
+                                || entry.getEntryCode().toLowerCase().contains(filterString)
+                                || userService.findById(entry.getUserId()).getEmail()
+                                        .toLowerCase().contains(filterString));
+            }
+        });
+
+        tab.add(entriesGrid);
         return tab;
     }
+
+    private String formatEntryNumber(int entryNumber) {
+        var prefix = division.getEntryPrefix();
+        if (prefix != null && !prefix.isBlank()) {
+            return prefix + "-" + entryNumber;
+        }
+        return String.valueOf(entryNumber);
+    }
+
+    private String getCategoryName(UUID categoryId) {
+        return divisionCategories.stream()
+                .filter(c -> c.getId().equals(categoryId))
+                .map(DivisionCategory::getName)
+                .findFirst()
+                .orElse("—");
+    }
+
+    private void refreshEntriesGrid() {
+        entriesGrid.setItems(entryService.findEntriesByDivision(divisionId));
+    }
+
+    private void openEditEntryDialog(Entry entry) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle("Edit Entry — " + formatEntryNumber(entry.getEntryNumber()));
+
+        var meadNameField = new TextField("Mead Name");
+        meadNameField.setValue(entry.getMeadName());
+
+        dialog.add(new VerticalLayout(meadNameField));
+
+        var saveButton = new Button("Save", e -> {
+            if (!StringUtils.hasText(meadNameField.getValue())) {
+                meadNameField.setInvalid(true);
+                meadNameField.setErrorMessage("Mead name is required");
+                return;
+            }
+            try {
+                entryService.adminUpdateEntry(entry.getId(), meadNameField.getValue().trim(),
+                        entry.getInitialCategoryId(), entry.getSweetness(), entry.getStrength(),
+                        entry.getAbv(), entry.getCarbonation(), entry.getHoneyVarieties(),
+                        entry.getOtherIngredients(), entry.isWoodAged(),
+                        entry.getWoodAgeingDetails(), entry.getAdditionalInformation(),
+                        currentUserId);
+                var notification = Notification.show("Entry updated");
+                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                dialog.close();
+                refreshEntriesGrid();
+            } catch (IllegalArgumentException | IllegalStateException ex) {
+                Notification.show(ex.getMessage());
+            }
+        });
+
+        var cancelButton = new Button("Cancel", e -> dialog.close());
+        dialog.getFooter().add(cancelButton, saveButton);
+        dialog.open();
+    }
+
+    private void openDeleteEntryDialog(Entry entry) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle("Delete Entry");
+
+        dialog.add("Delete entry " + formatEntryNumber(entry.getEntryNumber())
+                + " \"" + entry.getMeadName() + "\"? This action cannot be undone.");
+
+        var confirmButton = new Button("Delete", e -> {
+            try {
+                entryService.deleteEntry(entry.getId(), entry.getUserId());
+                var notification = Notification.show("Entry deleted");
+                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                dialog.close();
+                refreshEntriesGrid();
+            } catch (IllegalArgumentException | IllegalStateException ex) {
+                Notification.show(ex.getMessage());
+            }
+        });
+
+        var cancelButton = new Button("Cancel", e -> dialog.close());
+        dialog.getFooter().add(cancelButton, confirmButton);
+        dialog.open();
+    }
+
+    private void openWithdrawEntryDialog(Entry entry) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle("Withdraw Entry");
+
+        dialog.add("Withdraw entry " + formatEntryNumber(entry.getEntryNumber())
+                + " \"" + entry.getMeadName() + "\"?");
+
+        var confirmButton = new Button("Withdraw", e -> {
+            try {
+                entryService.withdrawEntry(entry.getId(), currentUserId);
+                var notification = Notification.show("Entry withdrawn");
+                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                dialog.close();
+                refreshEntriesGrid();
+            } catch (IllegalArgumentException | IllegalStateException ex) {
+                Notification.show(ex.getMessage());
+            }
+        });
+
+        var cancelButton = new Button("Cancel", e -> dialog.close());
+        dialog.getFooter().add(cancelButton, confirmButton);
+        dialog.open();
+    }
+
+    // --- Products Tab ---
 
     private VerticalLayout createProductsTab() {
         var tab = new VerticalLayout();
@@ -218,18 +497,40 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         var addButton = new Button("Add Mapping", e -> openAddProductDialog());
         tab.add(addButton);
 
-        var grid = new Grid<ProductMapping>(ProductMapping.class, false);
-        grid.setAllRowsVisible(true);
-        grid.setId("products-grid");
-        grid.addColumn(ProductMapping::getJumpsellerProductId).setHeader("Product ID");
-        grid.addColumn(ProductMapping::getJumpsellerSku).setHeader("SKU");
-        grid.addColumn(ProductMapping::getProductName).setHeader("Product Name");
-        grid.addColumn(ProductMapping::getCreditsPerUnit).setHeader("Credits/Unit");
+        productsGrid = new Grid<>(ProductMapping.class, false);
+        productsGrid.setAllRowsVisible(true);
+        productsGrid.setId("products-grid");
+        productsGrid.addColumn(ProductMapping::getJumpsellerProductId)
+                .setHeader("Product ID").setSortable(true);
+        productsGrid.addColumn(ProductMapping::getJumpsellerSku)
+                .setHeader("SKU").setSortable(true).setAutoWidth(true);
+        productsGrid.addColumn(ProductMapping::getProductName)
+                .setHeader("Product Name").setSortable(true).setFlexGrow(2);
+        productsGrid.addColumn(ProductMapping::getCreditsPerUnit)
+                .setHeader("Credits/Unit").setSortable(true).setAutoWidth(true);
+        productsGrid.addComponentColumn(mapping -> {
+            var editButton = new Button(new Icon(VaadinIcon.EDIT));
+            editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            editButton.setAriaLabel("Edit");
+            editButton.setTooltipText("Edit");
+            editButton.addClickListener(e -> openEditProductDialog(mapping));
 
-        var mappings = entryService.findProductMappings(divisionId);
-        grid.setItems(mappings);
-        tab.add(grid);
+            var deleteButton = new Button(new Icon(VaadinIcon.TRASH));
+            deleteButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            deleteButton.setAriaLabel("Delete");
+            deleteButton.setTooltipText("Delete");
+            deleteButton.addClickListener(e -> openDeleteProductDialog(mapping));
+
+            return new HorizontalLayout(editButton, deleteButton);
+        }).setHeader("Actions").setAutoWidth(true);
+
+        refreshProductsGrid();
+        tab.add(productsGrid);
         return tab;
+    }
+
+    private void refreshProductsGrid() {
+        productsGrid.setItems(entryService.findProductMappings(divisionId));
     }
 
     private void openAddProductDialog() {
@@ -262,9 +563,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 var notification = Notification.show("Product mapping added");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
-                getUI().ifPresent(ui -> ui.navigate(
-                        "competitions/" + compShortName
-                                + "/divisions/" + divShortName + "/entry-admin"));
+                refreshProductsGrid();
             } catch (IllegalArgumentException ex) {
                 Notification.show(ex.getMessage());
             }
@@ -275,20 +574,142 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         dialog.open();
     }
 
+    private void openEditProductDialog(ProductMapping mapping) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle("Edit Product Mapping");
+
+        var nameField = new TextField("Product Name");
+        nameField.setValue(mapping.getProductName());
+        var creditsField = new IntegerField("Credits Per Unit");
+        creditsField.setMin(1);
+        creditsField.setValue(mapping.getCreditsPerUnit());
+
+        dialog.add(new VerticalLayout(nameField, creditsField));
+
+        var saveButton = new Button("Save", e -> {
+            if (!StringUtils.hasText(nameField.getValue()) || creditsField.getValue() == null) {
+                return;
+            }
+            try {
+                entryService.updateProductMapping(mapping.getId(),
+                        nameField.getValue().trim(), creditsField.getValue(), currentUserId);
+                var notification = Notification.show("Product mapping updated");
+                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                dialog.close();
+                refreshProductsGrid();
+            } catch (IllegalArgumentException ex) {
+                Notification.show(ex.getMessage());
+            }
+        });
+
+        var cancelButton = new Button("Cancel", e -> dialog.close());
+        dialog.getFooter().add(cancelButton, saveButton);
+        dialog.open();
+    }
+
+    private void openDeleteProductDialog(ProductMapping mapping) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle("Delete Product Mapping");
+
+        dialog.add("Delete mapping for \"" + mapping.getProductName() + "\"?");
+
+        var confirmButton = new Button("Delete", e -> {
+            try {
+                entryService.removeProductMapping(mapping.getId(), currentUserId);
+                var notification = Notification.show("Product mapping deleted");
+                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                dialog.close();
+                refreshProductsGrid();
+            } catch (IllegalArgumentException ex) {
+                Notification.show(ex.getMessage());
+            }
+        });
+
+        var cancelButton = new Button("Cancel", e -> dialog.close());
+        dialog.getFooter().add(cancelButton, confirmButton);
+        dialog.open();
+    }
+
+    // --- Orders Tab ---
+
     private VerticalLayout createOrdersTab() {
         var tab = new VerticalLayout();
         tab.setPadding(false);
 
-        var grid = new Grid<JumpsellerOrder>(JumpsellerOrder.class, false);
-        grid.setAllRowsVisible(true);
-        grid.setId("orders-grid");
-        grid.addColumn(JumpsellerOrder::getJumpsellerOrderId).setHeader("Order ID");
-        grid.addColumn(JumpsellerOrder::getCustomerEmail).setHeader("Customer");
-        grid.addColumn(order -> order.getStatus().name()).setHeader("Status");
-        grid.addColumn(JumpsellerOrder::getCreatedAt).setHeader("Date");
+        var filterField = new TextField();
+        filterField.setPlaceholder("Filter by order ID or customer email...");
+        filterField.setValueChangeMode(ValueChangeMode.EAGER);
+        filterField.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
+        filterField.setClearButtonVisible(true);
 
-        tab.add(grid);
+        var toolbar = new HorizontalLayout(filterField);
+        toolbar.setWidthFull();
+        toolbar.setFlexGrow(1, filterField);
+        tab.add(toolbar);
+
+        ordersGrid = new Grid<>(JumpsellerOrder.class, false);
+        ordersGrid.setAllRowsVisible(true);
+        ordersGrid.setId("orders-grid");
+        ordersGrid.addColumn(JumpsellerOrder::getJumpsellerOrderId)
+                .setHeader("Order ID").setSortable(true);
+        ordersGrid.addColumn(JumpsellerOrder::getCustomerEmail)
+                .setHeader("Customer").setSortable(true).setFlexGrow(2);
+        ordersGrid.addColumn(order -> order.getStatus().name())
+                .setHeader("Status").setSortable(true).setAutoWidth(true);
+        ordersGrid.addColumn(JumpsellerOrder::getCreatedAt)
+                .setHeader("Date").setSortable(true).setAutoWidth(true);
+        ordersGrid.addComponentColumn(order -> {
+            var editButton = new Button(new Icon(VaadinIcon.EDIT));
+            editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            editButton.setAriaLabel("Edit Note");
+            editButton.setTooltipText("Edit Note");
+            editButton.addClickListener(e -> openEditOrderNoteDialog(order));
+            return editButton;
+        }).setHeader("Actions").setAutoWidth(true);
+
+        refreshOrdersGrid();
+
+        filterField.addValueChangeListener(e -> {
+            var filterString = e.getValue().toLowerCase();
+            if (filterString.isBlank()) {
+                ordersGrid.getListDataView().removeFilters();
+            } else {
+                ordersGrid.getListDataView().setFilter(order ->
+                        order.getJumpsellerOrderId().toLowerCase().contains(filterString)
+                                || order.getCustomerEmail().toLowerCase().contains(filterString));
+            }
+        });
+
+        tab.add(ordersGrid);
         return tab;
+    }
+
+    private void refreshOrdersGrid() {
+        ordersGrid.setItems(entryService.findOrdersByDivision(divisionId));
+    }
+
+    private void openEditOrderNoteDialog(JumpsellerOrder order) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle("Edit Note — Order " + order.getJumpsellerOrderId());
+
+        var noteField = new TextField("Admin Note");
+        noteField.setWidthFull();
+        noteField.setValue(order.getAdminNote() != null ? order.getAdminNote() : "");
+
+        dialog.add(new VerticalLayout(noteField));
+
+        var saveButton = new Button("Save", e -> {
+            order.addAdminNote(StringUtils.hasText(noteField.getValue())
+                    ? noteField.getValue().trim() : null);
+            var notification = Notification.show("Note saved");
+            notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            dialog.close();
+            refreshOrdersGrid();
+        });
+
+        var cancelButton = new Button("Cancel", e -> dialog.close());
+        dialog.getFooter().add(cancelButton, saveButton);
+        dialog.open();
     }
 
     private UUID getCurrentUserId() {

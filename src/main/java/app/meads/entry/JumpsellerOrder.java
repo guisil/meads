@@ -49,11 +49,7 @@ public class JumpsellerOrder {
         this.customerName = customerName;
         this.rawPayload = rawPayload;
         this.status = OrderStatus.UNPROCESSED;
-    }
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = Instant.now();
+        this.createdAt = Instant.now();
     }
 
     public void markProcessed() {

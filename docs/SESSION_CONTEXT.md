@@ -38,7 +38,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 | Entity | Table | Description |
 |--------|-------|-------------|
 | `Competition` | `competitions` | Top-level: name, shortName (unique), dates, location, logo |
-| `Division` | `divisions` | Sub-level: competitionId, name, shortName (unique per competition), scoringSystem, status, entry limits |
+| `Division` | `divisions` | Sub-level: competitionId, name, shortName (unique per competition), scoringSystem, status, entry limits, entryPrefix |
 | `Participant` | `participants` | Competition-scoped: userId, accessCode |
 | `ParticipantRole` | `participant_roles` | Role per participant: JUDGE, STEWARD, ENTRANT, ADMIN |
 | `Category` | `categories` | Read-only catalog: code, name, scoringSystem |
@@ -114,11 +114,11 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 #### Changes to other modules
 - `SecurityConfig` — added `.requestMatchers("/api/webhooks/**").permitAll()`
 - `User.java` — added `meaderyName` field (V14)
-- `Division.java` — added `maxEntriesPerSubcategory`, `maxEntriesPerMainCategory` (V15)
-- `DivisionDetailView` — added "Manage Entries" Anchor link (string-based, no entry module import)
+- `Division.java` — added `maxEntriesPerSubcategory`, `maxEntriesPerMainCategory` (V15), `entryPrefix` (V16)
+- `DivisionDetailView` — added "Manage Entries" Anchor link (string-based, no entry module import), entry prefix in Settings tab
 - `application.properties` — added `app.jumpseller.hooks-token`
 
-#### Migrations: V9–V15
+#### Migrations: V9–V16
 
 ---
 
@@ -151,6 +151,20 @@ docs/
 5. **Judging module** — design and implementation
 
 ### Recent changes (this session)
+- **Entry admin enhancements (DivisionEntryAdminView):**
+  - All 4 tabs: filtering, sorting, action buttons (edit/delete/withdraw icons)
+  - Credits tab: Name first (flexGrow 2) / Email (flexGrow 3), filter, edit/remove credits dialogs
+  - Entries tab: entry number with configurable prefix (e.g. "AMA-1"), filter, edit/delete/withdraw dialogs
+  - Products tab: edit/delete dialogs for product mappings
+  - Orders tab: filter, edit admin note dialog
+  - Entry prefix: configurable per division (up to 5 chars), in Division Settings tab
+  - `Division.entryPrefix` field + V16 migration
+  - `CompetitionService.updateDivision()`: added `entryPrefix` parameter
+  - `EntryService.findOrdersByDivision()`: new method to query orders via line items
+  - DevDataInitializer: entry prefixes ("AMA"/"PRO"), 2 example webhook orders
+  - Fixed FK violation in `WebhookService.processOrderPaid()`: order saved before line items
+  - Fixed `JumpsellerOrder`/`JumpsellerOrderLineItem` timestamp: `createdAt` set in constructor (not `@PrePersist`) to avoid null on merge
+  - DivisionDetailView: categories auto-expand, Add Category dialog button alignment, breadcrumb refresh after settings save
 - **Division status revert with guard pattern:**
   - `DivisionRevertGuard` interface in competition module public API — modules implement to block unsafe reverts
   - `Division.revertStatus()` domain method (mirror of `advanceStatus()`)

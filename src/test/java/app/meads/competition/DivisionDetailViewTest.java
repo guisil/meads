@@ -220,10 +220,11 @@ class DivisionDetailViewTest {
 
         var nav = _get(Nav.class);
         assertThat(nav).isNotNull();
-        var anchor = _get(nav, Anchor.class);
-        assertThat(anchor.getText()).isEqualTo(testCompetition.getName());
-        var divisionSpan = _find(nav, Span.class);
-        assertThat(divisionSpan).anyMatch(s -> s.getText().equals(testDivision.getName()));
+        var anchors = _find(nav, Anchor.class);
+        assertThat(anchors).anyMatch(a -> a.getText().equals("Competitions"));
+        assertThat(anchors).anyMatch(a -> a.getText().equals(testCompetition.getName()));
+        var spans = _find(nav, Span.class);
+        assertThat(spans).anyMatch(s -> s.getText().equals(testDivision.getName()));
     }
 
     @Test

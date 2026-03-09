@@ -7,6 +7,8 @@ import app.meads.competition.DivisionCategory;
 import app.meads.competition.DivisionStatus;
 import app.meads.entry.internal.EntryCreditRepository;
 import app.meads.entry.internal.EntryRepository;
+import app.meads.entry.internal.JumpsellerOrderLineItemRepository;
+import app.meads.entry.internal.JumpsellerOrderRepository;
 import app.meads.entry.internal.ProductMappingRepository;
 import app.meads.identity.Role;
 import app.meads.identity.UserService;
@@ -35,6 +37,8 @@ public class EntryService {
     private final ProductMappingRepository productMappingRepository;
     private final EntryCreditRepository creditRepository;
     private final EntryRepository entryRepository;
+    private final JumpsellerOrderRepository orderRepository;
+    private final JumpsellerOrderLineItemRepository lineItemRepository;
     private final CompetitionService competitionService;
     private final UserService userService;
     private final ApplicationEventPublisher eventPublisher;
@@ -42,12 +46,16 @@ public class EntryService {
     EntryService(ProductMappingRepository productMappingRepository,
                  EntryCreditRepository creditRepository,
                  EntryRepository entryRepository,
+                 JumpsellerOrderRepository orderRepository,
+                 JumpsellerOrderLineItemRepository lineItemRepository,
                  CompetitionService competitionService,
                  UserService userService,
                  ApplicationEventPublisher eventPublisher) {
         this.productMappingRepository = productMappingRepository;
         this.creditRepository = creditRepository;
         this.entryRepository = entryRepository;
+        this.orderRepository = orderRepository;
+        this.lineItemRepository = lineItemRepository;
         this.competitionService = competitionService;
         this.userService = userService;
         this.eventPublisher = eventPublisher;
@@ -310,6 +318,17 @@ public class EntryService {
     public long countActiveEntries(@NotNull UUID divisionId, @NotNull UUID userId) {
         return entryRepository.countByDivisionIdAndUserIdAndStatusNot(
                 divisionId, userId, EntryStatus.WITHDRAWN);
+    }
+
+    // --- Order methods ---
+
+    public List<JumpsellerOrder> findOrdersByDivision(@NotNull UUID divisionId) {
+        var lineItems = lineItemRepository.findByDivisionId(divisionId);
+        var orderIds = lineItems.stream()
+                .map(JumpsellerOrderLineItem::getOrderId)
+                .distinct()
+                .toList();
+        return orderRepository.findAllById(orderIds);
     }
 
     // --- Private helpers ---

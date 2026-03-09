@@ -521,7 +521,7 @@ class CompetitionServiceTest {
                 .willAnswer(inv -> inv.getArgument(0));
 
         var result = competitionService.updateDivision(
-                division.getId(), "Updated Name", "updated-name", ScoringSystem.MJP, admin.getId());
+                division.getId(), "Updated Name", "updated-name", ScoringSystem.MJP, null, admin.getId());
 
         assertThat(result.getName()).isEqualTo("Updated Name");
         then(divisionRepository).should().save(division);
@@ -540,7 +540,7 @@ class CompetitionServiceTest {
                 .willReturn(Optional.empty());
 
         assertThatThrownBy(() -> competitionService.updateDivision(
-                division.getId(), "Updated", "updated", ScoringSystem.MJP, user.getId()))
+                division.getId(), "Updated", "updated", ScoringSystem.MJP, null, user.getId()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("authorized");
 
@@ -565,7 +565,7 @@ class CompetitionServiceTest {
                 .willAnswer(inv -> inv.getArgument(0));
 
         var result = competitionService.updateDivision(
-                division.getId(), "Updated", "updated", ScoringSystem.MJP, compAdmin.getId());
+                division.getId(), "Updated", "updated", ScoringSystem.MJP, null, compAdmin.getId());
 
         assertThat(result.getName()).isEqualTo("Updated");
         then(divisionRepository).should().save(division);

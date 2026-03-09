@@ -90,8 +90,9 @@ public class WebhookService {
             // Find or create user
             var user = userService.findOrCreateByEmail(customerEmail);
 
-            // Save order
+            // Save order first (line items have FK to this)
             var order = new JumpsellerOrder(orderId, customerEmail, customerName, rawPayload);
+            orderRepository.save(order);
 
             int processedCount = 0;
             int needsReviewCount = 0;

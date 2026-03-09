@@ -37,6 +37,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 - **Competition:** CHIP 2026 (June 11-14, 2026, Amarante, Portugal)
 - **Divisions:** Amadora (Amateur) and Profissional (Commercial) -- both REGISTRATION_OPEN, MJP scoring
 - **Entry limits:** 3 per subcategory, 5 per main category (both divisions)
+- **Entry prefixes:** Amadora = "AMA", Profissional = "PRO"
 - **Categories:** Full MJP catalog minus M4B and M4D
 - **Participants:**
   - `compadmin@example.com` -- ADMIN
@@ -47,11 +48,14 @@ Wait for startup to complete. The console will show magic links for dev users.
 - **Product mappings:** CHIP-AMA (Amadora, product ID 1001), CHIP-PRO (Profissional, product ID 1002)
 - **Entries for `user@example.com`:** Wildflower Traditional (DRAFT, M1A), Blueberry Bliss (SUBMITTED, M2C), Oak-Aged Bochet (DRAFT, M1A)
 - **Entries for `entrant@example.com`:** Lavender Metheglin (DRAFT, M3B)
+- **Webhook orders:**
+  - JS-1001: buyer1@example.com (Maria Silva), 2x CHIP-AMA → 2 credits in Amadora
+  - JS-1002: buyer2@example.com (João Santos), 3x CHIP-PRO → 3 credits in Profissional
 
 ### Second competition (minimal)
 
 - **Competition:** Test Competition 2026 (September 1-30, 2026, Porto, Portugal)
-- **Division:** Open (MJP, REGISTRATION_OPEN, full catalog)
+- **Division:** Open (MJP, DRAFT, full catalog)
 - **Participants:** `compadmin@example.com` -- ADMIN
 
 ---
@@ -571,8 +575,9 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 ### Breadcrumb
 
-- [ ] **Expected:** Breadcrumb shows "CHIP 2026 / Amadora" (or similar)
-- [ ] Click the "CHIP 2026" link in the breadcrumb
+- [ ] **Expected:** Breadcrumb shows "My Competitions / CHIP 2026 / Amadora" (or "Competitions / CHIP 2026 / Amadora" for SYSTEM_ADMIN)
+- [ ] **Expected:** "My Competitions" and "CHIP 2026" are clickable links
+- [ ] Click "CHIP 2026" link in the breadcrumb
 - [ ] **Expected:** Navigated back to CompetitionDetailView
 
 ### Categories tab (TreeGrid)
@@ -623,8 +628,9 @@ Wait for startup to complete. The console will show magic links for dev users.
 ### Settings tab
 
 - [ ] Click the "Settings" tab
-- [ ] **Expected:** Fields: Name, Short Name, Scoring System, Status (read-only), Save button
-- [ ] **Expected:** Name and Short Name are always editable (regardless of status)
+- [ ] **Expected:** Fields: Name, Short Name, Entry Prefix, Scoring System, Status (read-only), Save button
+- [ ] **Expected:** Name, Short Name, Entry Prefix are always editable (regardless of status)
+- [ ] **Expected:** Entry Prefix: helper text "Short prefix for entry numbers (e.g. AMA), up to 5 characters", maxLength 5
 - [ ] **Expected:** Scoring System is only editable in DRAFT status (disabled for Amadora since it's REGISTRATION_OPEN)
 - [ ] **Expected:** Save button is always enabled
 - [ ] Change name to `Amadora (Updated)`, click "Save"
@@ -681,24 +687,42 @@ Wait for startup to complete. The console will show magic links for dev users.
 ### Navigate to Entry Admin
 
 - [ ] From Amadora division detail, click "Manage Entries"
-- [ ] **Expected:** Page title "Amadora -- Entry Admin"
+- [ ] **Expected:** Breadcrumb "My Competitions / CHIP 2026 / Amadora / Entry Admin" — first 3 segments are clickable links
+- [ ] **Expected:** Page title "Amadora — Entry Admin"
 - [ ] **Expected:** TabSheet with 4 tabs: Credits, Entries, Products, Orders
 
 ### Credits tab
 
 - [ ] **Expected:** Default tab is "Credits"
-- [ ] **Expected:** Grid with columns: Email, Name, Credits, Entries
+- [ ] **Expected:** Filter field: "Filter by name or email..."
+- [ ] **Expected:** Grid with columns: Name, Email, Credits, Entries, Actions (edit/delete icons)
 - [ ] **Expected:** `user@example.com` -- Credits: 5, Entries: 3
 - [ ] **Expected:** `entrant@example.com` -- Credits: 3, Entries: 1
+- [ ] **Expected:** `buyer1@example.com` -- Credits: 2, Entries: 0 (from webhook order)
+- [ ] **Expected:** Columns are sortable
+- [ ] Type in filter field to filter by name or email
 
 ### Add credits
 
 - [ ] Click "Add Credits"
-- [ ] **Expected:** Dialog with fields: Entrant Email, Amount (default: 1)
+- [ ] **Expected:** Dialog with fields: Entrant Email, Amount (default: 1), footer buttons: Cancel (left), Add (right)
 - [ ] Enter email: `user@example.com`, amount: `2`
 - [ ] Click "Add"
 - [ ] **Expected:** Notification "Credits added" (green)
 - [ ] **Expected:** `user@example.com` credits now shows 7
+
+### Edit credits
+
+- [ ] Click the edit icon (pencil) on `user@example.com` row
+- [ ] **Expected:** Dialog "Adjust Credits — Dev User", field "Credits to add" (min 1, default 1), helper shows current balance
+- [ ] Footer: Cancel (left), Add Credits (right)
+- [ ] Change amount, click "Add Credits" or Cancel
+
+### Remove credits
+
+- [ ] Click the delete icon (trash) on a row
+- [ ] **Expected:** Confirmation dialog "Remove Credits" — "Remove all credits (N) from email?"
+- [ ] Footer: Cancel (left), Remove (right)
 
 ### Mutual exclusivity -- add credits to different division
 
@@ -712,21 +736,32 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 - [ ] Navigate back to Amadora entry-admin
 - [ ] Click the "Entries" tab
-- [ ] **Expected:** Grid with columns: Entry #, Entry Code, Mead Name, Category, Entrant, Status
+- [ ] **Expected:** Filter field: "Filter by mead name, entrant, or entry code..."
+- [ ] **Expected:** Grid with columns: Entry # (with AMA prefix, e.g. "AMA-1"), Code, Mead Name, Category, Entrant, Status, Actions (edit/delete/withdraw icons)
 - [ ] **Expected:** 4 entries total (3 from user@example.com, 1 from entrant@example.com)
 - [ ] **Expected:** Blueberry Bliss -- Status: SUBMITTED
 - [ ] **Expected:** Others -- Status: DRAFT
+- [ ] **Expected:** Columns are sortable
+- [ ] **Expected:** Delete button (trash) only enabled for DRAFT entries
+- [ ] **Expected:** Withdraw button (ban) disabled for WITHDRAWN entries
+- [ ] **Expected:** Edit button opens dialog to change mead name
+- [ ] **Expected:** Delete button opens confirmation dialog
+- [ ] **Expected:** Withdraw button opens confirmation dialog
 
 ### Products tab
 
 - [ ] Click the "Products" tab
-- [ ] **Expected:** Grid with columns: Product ID, SKU, Product Name, Credits/Unit
+- [ ] **Expected:** Grid with columns: Product ID, SKU, Product Name, Credits/Unit, Actions (edit/delete icons)
 - [ ] **Expected:** Row: Product ID 1001, SKU "CHIP-AMA", Product Name "CHIP Amadora Entry", Credits/Unit 1
+- [ ] **Expected:** Columns are sortable
+- [ ] **Expected:** Edit opens dialog with Product Name and Credits Per Unit fields
+- [ ] **Expected:** Delete opens confirmation dialog
 
 ### Add product mapping
 
 - [ ] Click "Add Mapping"
 - [ ] **Expected:** Dialog with fields: Jumpseller Product ID, SKU (optional), Product Name, Credits Per Unit (default: 1)
+- [ ] Footer: Cancel (left), Add (right)
 - [ ] Enter product ID: `9999`, product name: `Test Product`, credits: `2`
 - [ ] Click "Add"
 - [ ] **Expected:** Notification "Product mapping added" (green)
@@ -735,8 +770,11 @@ Wait for startup to complete. The console will show magic links for dev users.
 ### Orders tab
 
 - [ ] Click the "Orders" tab
-- [ ] **Expected:** Grid with columns: Order ID, Customer, Status, Date
-- [ ] **Expected:** Grid is empty (orders come only via webhook, not seeded)
+- [ ] **Expected:** Filter field: "Filter by order ID or customer email..."
+- [ ] **Expected:** Grid with columns: Order ID, Customer, Status, Date, Actions (edit note icon)
+- [ ] **Expected:** 1 seeded order: JS-1001 (buyer1@example.com, PROCESSED)
+- [ ] **Expected:** Columns are sortable
+- [ ] **Expected:** Edit icon opens dialog to set/update admin note
 
 ---
 

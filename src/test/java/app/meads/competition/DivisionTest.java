@@ -45,7 +45,7 @@ class DivisionTest {
     void shouldUpdateDetailsWhenInDraft() {
         var division = createDraftDivision();
 
-        division.updateDetails("Updated Name", "updated-name", ScoringSystem.MJP);
+        division.updateDetails("Updated Name", "updated-name", ScoringSystem.MJP, null);
 
         assertThat(division.getName()).isEqualTo("Updated Name");
     }
@@ -55,7 +55,7 @@ class DivisionTest {
         var division = createDraftDivision();
         division.advanceStatus(); // REGISTRATION_OPEN
 
-        division.updateDetails("New Name", "new-name", ScoringSystem.MJP);
+        division.updateDetails("New Name", "new-name", ScoringSystem.MJP, null);
 
         assertThat(division.getName()).isEqualTo("New Name");
         assertThat(division.getShortName()).isEqualTo("new-name");

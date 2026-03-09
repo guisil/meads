@@ -58,11 +58,7 @@ public class JumpsellerOrderLineItem {
         this.quantity = quantity;
         this.status = LineItemStatus.UNPROCESSED;
         this.creditsAwarded = 0;
-    }
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = Instant.now();
+        this.createdAt = Instant.now();
     }
 
     public void markProcessed(UUID divisionId, int creditsAwarded) {

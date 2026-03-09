@@ -197,6 +197,7 @@ public class CompetitionService {
                                     @NotBlank String name,
                                     @NotBlank String shortName,
                                     @NotNull ScoringSystem scoringSystem,
+                                    String entryPrefix,
                                     @NotNull UUID requestingUserId) {
         var division = divisionRepository.findById(divisionId)
                 .orElseThrow(() -> new IllegalArgumentException("Division not found"));
@@ -206,7 +207,7 @@ public class CompetitionService {
                         division.getCompetitionId(), shortName)) {
             throw new IllegalArgumentException("Short name already in use in this competition");
         }
-        division.updateDetails(name, shortName, scoringSystem);
+        division.updateDetails(name, shortName, scoringSystem, entryPrefix);
         return divisionRepository.save(division);
     }
 

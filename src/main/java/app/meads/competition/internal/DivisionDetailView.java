@@ -41,6 +41,8 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
     private UUID divisionId;
     private Division division;
     private Competition competition;
+    private Nav breadcrumb;
+    private HorizontalLayout header;
     private TreeGrid<DivisionCategory> categoriesGrid;
 
     public DivisionDetailView(CompetitionService competitionService,
@@ -79,13 +81,33 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         }
 
         removeAll();
-        add(createBreadcrumb());
-        add(createHeader());
+        breadcrumb = createBreadcrumb();
+        header = createHeader();
+        add(breadcrumb);
+        add(header);
         add(createTabSheet());
+    }
+
+    private void refreshBreadcrumbAndHeader() {
+        var newBreadcrumb = createBreadcrumb();
+        replace(breadcrumb, newBreadcrumb);
+        breadcrumb = newBreadcrumb;
+
+        var newHeader = createHeader();
+        replace(header, newHeader);
+        header = newHeader;
     }
 
     private Nav createBreadcrumb() {
         var nav = new Nav();
+        boolean isSystemAdmin = authenticationContext.getAuthenticatedUser(UserDetails.class)
+                .map(user -> user.getAuthorities().stream()
+                        .anyMatch(a -> a.getAuthority().equals("ROLE_SYSTEM_ADMIN")))
+                .orElse(false);
+        var listLink = new Anchor(isSystemAdmin ? "competitions" : "my-competitions",
+                isSystemAdmin ? "Competitions" : "My Competitions");
+        nav.add(listLink);
+        nav.add(new Span(" / "));
         var competitionLink = new Anchor(
                 "competitions/" + competition.getShortName(), competition.getName());
         nav.add(competitionLink);
@@ -188,6 +210,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                 parent -> allCategories.stream()
                         .filter(dc -> parent.getId().equals(dc.getParentId()))
                         .toList());
+        rootCategories.forEach(root -> categoriesGrid.expand(root));
     }
 
     private void openRemoveCategoryDialog(DivisionCategory category) {
@@ -249,7 +272,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
             }
         });
 
-        catalogLayout.add(catalogSelect, catalogAddButton);
+        catalogLayout.add(catalogSelect);
         dialogTabs.add("From Catalog", catalogLayout);
 
         // --- Custom tab ---
@@ -306,12 +329,19 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
             }
         });
 
-        customLayout.add(codeField, nameField, descriptionField, parentSelect, customAddButton);
+        customLayout.add(codeField, nameField, descriptionField, parentSelect);
         dialogTabs.add("Custom", customLayout);
+
+        // Show the correct Add button based on active tab
+        customAddButton.setVisible(false);
+        dialogTabs.addSelectedChangeListener(e -> {
+            catalogAddButton.setVisible(e.getSelectedTab().getLabel().equals("From Catalog"));
+            customAddButton.setVisible(e.getSelectedTab().getLabel().equals("Custom"));
+        });
 
         var cancelButton = new Button("Cancel", e -> dialog.close());
         dialog.add(dialogTabs);
-        dialog.getFooter().add(cancelButton);
+        dialog.getFooter().add(cancelButton, catalogAddButton, customAddButton);
         dialog.open();
     }
 
@@ -334,6 +364,11 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         scoringSelect.setValue(division.getScoringSystem());
         scoringSelect.setEnabled(isDraft);
 
+        var entryPrefixField = new TextField("Entry Prefix");
+        entryPrefixField.setMaxLength(5);
+        entryPrefixField.setHelperText("Short prefix for entry numbers (e.g. AMA), up to 5 characters");
+        entryPrefixField.setValue(division.getEntryPrefix() != null ? division.getEntryPrefix() : "");
+
         var statusField = new TextField("Status");
         statusField.setValue(division.getStatus().getDisplayName());
         statusField.setReadOnly(true);
@@ -350,10 +385,13 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                 return;
             }
             try {
+                var prefix = StringUtils.hasText(entryPrefixField.getValue())
+                        ? entryPrefixField.getValue().trim() : null;
                 division = competitionService.updateDivision(
                         divisionId, nameField.getValue(),
                         shortNameField.getValue(),
-                        scoringSelect.getValue(), getCurrentUserId());
+                        scoringSelect.getValue(), prefix, getCurrentUserId());
+                refreshBreadcrumbAndHeader();
                 var notification = Notification.show("Settings saved successfully");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
             } catch (IllegalStateException | IllegalArgumentException ex) {
@@ -361,7 +399,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
             }
         });
 
-        tab.add(nameField, shortNameField, scoringSelect, statusField, saveButton);
+        tab.add(nameField, shortNameField, entryPrefixField, scoringSelect, statusField, saveButton);
         return tab;
     }
 

@@ -4,6 +4,7 @@ import app.meads.TestcontainersConfiguration;
 import app.meads.competition.CompetitionService;
 import app.meads.competition.DivisionStatus;
 import app.meads.entry.EntryService;
+import app.meads.entry.WebhookService;
 import app.meads.identity.UserService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +23,7 @@ class DevDataInitializerTest {
 
     @Autowired CompetitionService competitionService;
     @Autowired EntryService entryService;
+    @Autowired WebhookService webhookService;
     @Autowired UserService userService;
 
     @Test
@@ -83,7 +85,7 @@ class DevDataInitializerTest {
     void shouldBeIdempotent() {
         // DevDataInitializer already ran on startup.
         // Running it again should not create duplicate data.
-        var initializer = new DevDataInitializer(userService, competitionService, entryService);
+        var initializer = new DevDataInitializer(userService, competitionService, entryService, webhookService);
         initializer.initializeDevData();
 
         var competitions = competitionService.findAllCompetitions();

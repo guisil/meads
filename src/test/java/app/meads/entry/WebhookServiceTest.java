@@ -144,9 +144,12 @@ class WebhookServiceTest {
 
         service.processOrderPaid(payload);
 
-        // Should save the order as PROCESSED
-        then(orderRepository).should().save(argThat(order ->
-                order.getStatus() == OrderStatus.PROCESSED));
+        // Should save the order — last save has PROCESSED status
+        var orderCaptor = ArgumentCaptor.forClass(JumpsellerOrder.class);
+        then(orderRepository).should(org.mockito.Mockito.atLeast(1))
+                .save(orderCaptor.capture());
+        assertThat(orderCaptor.getAllValues().getLast().getStatus())
+                .isEqualTo(OrderStatus.PROCESSED);
 
         // Should create credits (2 qty * 1 credit/unit = 2 credits)
         var creditCaptor = ArgumentCaptor.forClass(EntryCredit.class);
@@ -228,9 +231,12 @@ class WebhookServiceTest {
 
         service.processOrderPaid(payload);
 
-        // Should save order as PARTIALLY_PROCESSED
-        then(orderRepository).should().save(argThat(order ->
-                order.getStatus() == OrderStatus.PARTIALLY_PROCESSED));
+        // Should save order — last save has PARTIALLY_PROCESSED status
+        var orderCaptor = ArgumentCaptor.forClass(JumpsellerOrder.class);
+        then(orderRepository).should(org.mockito.Mockito.atLeast(1))
+                .save(orderCaptor.capture());
+        assertThat(orderCaptor.getAllValues().getLast().getStatus())
+                .isEqualTo(OrderStatus.PARTIALLY_PROCESSED);
 
         // Should create credits for first valid item only
         then(creditRepository).should().save(any(EntryCredit.class));
@@ -309,9 +315,12 @@ class WebhookServiceTest {
 
         service.processOrderPaid(payload);
 
-        // All items flagged → order NEEDS_REVIEW
-        then(orderRepository).should().save(argThat(order ->
-                order.getStatus() == OrderStatus.NEEDS_REVIEW));
+        // All items flagged → last save has NEEDS_REVIEW status
+        var orderCaptor = ArgumentCaptor.forClass(JumpsellerOrder.class);
+        then(orderRepository).should(org.mockito.Mockito.atLeast(1))
+                .save(orderCaptor.capture());
+        assertThat(orderCaptor.getAllValues().getLast().getStatus())
+                .isEqualTo(OrderStatus.NEEDS_REVIEW);
         then(creditRepository).should(never()).save(any());
     }
 

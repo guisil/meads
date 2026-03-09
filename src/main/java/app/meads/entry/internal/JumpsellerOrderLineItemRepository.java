@@ -8,4 +8,5 @@ import java.util.UUID;
 
 public interface JumpsellerOrderLineItemRepository extends JpaRepository<JumpsellerOrderLineItem, UUID> {
     List<JumpsellerOrderLineItem> findByOrderId(UUID orderId);
+    List<JumpsellerOrderLineItem> findByDivisionId(UUID divisionId);
 }
