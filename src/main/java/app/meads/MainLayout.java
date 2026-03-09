@@ -67,7 +67,7 @@ public class MainLayout extends AppLayout {
             }
         }
 
-        if (authenticationContext.isAuthenticated()) {
+        if (authenticationContext.isAuthenticated() && !authenticationContext.hasRole("SYSTEM_ADMIN")) {
             nav.addItem(new SideNavItem("My Entries", "my-entries", VaadinIcon.LIST.create()));
         }
 

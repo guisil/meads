@@ -5,6 +5,9 @@ CREATE TABLE divisions (
     short_name     VARCHAR(100) NOT NULL,
     status         VARCHAR(50)  NOT NULL,
     scoring_system VARCHAR(50)  NOT NULL,
+    max_entries_per_subcategory    INT,
+    max_entries_per_main_category  INT,
+    entry_prefix   VARCHAR(5),
     created_at     TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at     TIMESTAMP WITH TIME ZONE,
     UNIQUE (competition_id, short_name)

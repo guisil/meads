@@ -264,12 +264,28 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                     ? participant.getAccessCode() : "—";
         }).setHeader("Access Code").setAutoWidth(true);
         participantsGrid.addComponentColumn(pr -> {
+            var actions = new HorizontalLayout();
+            actions.setSpacing(false);
+            actions.getStyle().set("gap", "var(--lumo-space-xs)");
+
+            var participant = participantMap.get(pr.getParticipantId());
+            var user = participant != null ? userMap.get(participant.getUserId()) : null;
+
+            if (user != null && user.getPasswordHash() == null) {
+                var sendLinkButton = new Button(new Icon(VaadinIcon.ENVELOPE));
+                sendLinkButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+                sendLinkButton.setTooltipText("Send login link");
+                sendLinkButton.addClickListener(e -> sendMagicLink(user));
+                actions.add(sendLinkButton);
+            }
+
             var removeButton = new Button(new Icon(VaadinIcon.CLOSE));
             removeButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            removeButton.setAriaLabel("Remove");
             removeButton.setTooltipText("Remove");
             removeButton.addClickListener(e -> openRemoveParticipantDialog(pr));
-            return removeButton;
+            actions.add(removeButton);
+
+            return actions;
         }).setHeader("").setAutoWidth(true);
 
         refreshParticipantsGrid();
@@ -619,6 +635,14 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
     private void refreshDivisionsGrid() {
         divisionsGrid.setItems(competitionService.findDivisionsByCompetition(competitionId));
+    }
+
+    private void sendMagicLink(User user) {
+        var link = jwtMagicLinkService.generateLink(user.getEmail(), Duration.ofDays(7));
+        log.info("\n\n\tMagic link for {}: {}\n", user.getEmail(), link);
+        var notification = Notification.show("Login link generated for " + user.getEmail()
+                + " (check server logs)");
+        notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
     }
 
     private void generatePasswordSetupLinkIfNeeded(String email, CompetitionRole role) {

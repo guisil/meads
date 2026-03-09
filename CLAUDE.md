@@ -363,7 +363,7 @@ void tearDown() {
 ## Database & Migrations
 
 - **Location:** `src/main/resources/db/migration/V{N}__{description}.sql`
-- **Current highest version:** V16 (`V16__add_entry_prefix_to_divisions.sql`). V5–V8 are competition module (pre-deployment). V9–V15 are entry module. V16 adds entry prefix to divisions.
+- **Current highest version:** V13 (`V13__create_entries_table.sql`). V2 includes users + meadery_name. V3–V8 are competition module (V4 includes entry limits + prefix). V9–V13 are entry module.
 - **Naming:** `V{next}__{snake_case_description}.sql` (double underscore)
 - Migrations are created in **Step 2** (GREEN), when a repository test needs a table.
 - **Never edit existing migrations.** Always create new ones.

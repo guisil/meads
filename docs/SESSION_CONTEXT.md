@@ -115,11 +115,11 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 #### Changes to other modules
 - `SecurityConfig` — separate `SecurityFilterChain` with `@Order(1)` for webhook API (CSRF disabled, permitAll)
 - `User.java` — added `meaderyName` field (V14)
-- `Division.java` — added `maxEntriesPerSubcategory`, `maxEntriesPerMainCategory` (V15), `entryPrefix` (V16)
+- `Division.java` — added `maxEntriesPerSubcategory`, `maxEntriesPerMainCategory`, `entryPrefix`
 - `DivisionDetailView` — added "Manage Entries" Anchor link (string-based, no entry module import), entry prefix in Settings tab
 - `application.properties` — added `app.jumpseller.hooks-token`
 
-#### Migrations: V9–V16
+#### Migrations: V9–V13
 
 ---
 
@@ -152,6 +152,13 @@ docs/
 5. **Judging module** — design and implementation
 
 ### Recent changes (this session)
+- **Flyway migration consolidation:**
+  - Merged V14 (meadery_name) into V2, V15/V16 (entry limits, entry prefix) into V4
+  - Now V1–V13 contiguous, no gaps — safe since app is pre-deployment
+- **Send login link for participants:**
+  - CompetitionDetailView Participants tab: envelope icon to send magic login link
+  - Only shown for participants without passwords (magic-link-only users)
+- **SYSTEM_ADMIN no longer sees "My Entries"** in sidebar (they never have entries)
 - **Root redirect + navigation overhaul:**
   - RootView now redirects by role: SYSTEM_ADMIN → `/competitions`, competition admin → `/my-competitions`, regular user → `/my-entries`
   - Removed Home link from sidebar, drawer starts collapsed

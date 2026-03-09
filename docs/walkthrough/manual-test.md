@@ -510,8 +510,9 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 - [ ] Click the "Participants" tab
 - [ ] **Expected:** Filter field with search icon and placeholder "Filter by name or email..."
-- [ ] **Expected:** Grid with columns: Name (sortable), Email (sortable), Role (sortable), Access Code, (Remove icon)
+- [ ] **Expected:** Grid with columns: Name (sortable), Email (sortable), Role (sortable), Access Code, Actions (envelope + remove icons)
 - [ ] **Expected:** Rows for compadmin (Admin, no code), judge (Judge, 8-char code), steward (Steward, 8-char code), user (Entrant, no code), entrant (Entrant, no code)
+- [ ] **Expected:** Envelope icon (send login link) shown only for participants without passwords (magic-link-only users)
 - [ ] Type a name fragment in the filter field
 - [ ] **Expected:** Grid filters immediately (EAGER mode), showing only matching participants
 - [ ] Clear the filter
@@ -531,6 +532,13 @@ Wait for startup to complete. The console will show magic links for dev users.
 - [ ] Click "Add Participant"
 - [ ] Leave email blank, click "Add"
 - [ ] **Expected:** Error "Email is required"
+
+### Send login link
+
+- [ ] Find a participant without a password (e.g., `user@example.com` or `judge@example.com`)
+- [ ] Click the envelope icon (tooltip: "Send login link")
+- [ ] **Expected:** Notification "Login link generated for user@example.com (check server logs)" (green)
+- [ ] **Expected:** Magic link URL appears in server console
 
 ### Remove participant
 

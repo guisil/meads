@@ -1,1 +1,0 @@
-ALTER TABLE users ADD COLUMN meadery_name VARCHAR(255);

@@ -190,12 +190,12 @@ class MainLayoutTest {
 
     @Test
     @WithMockUser(roles = "SYSTEM_ADMIN")
-    void shouldDisplayMyEntriesLinkInDrawerForSystemAdmin() {
+    void shouldNotDisplayMyEntriesLinkInDrawerForSystemAdmin() {
         UI.getCurrent().navigate("");
 
         assertThat(_find(SideNavItem.class))
                 .extracting(SideNavItem::getLabel)
-                .contains("My Entries");
+                .doesNotContain("My Entries");
     }
 
     @Test
