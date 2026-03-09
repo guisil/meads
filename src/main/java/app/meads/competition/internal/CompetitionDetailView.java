@@ -232,10 +232,18 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         var tab = new VerticalLayout();
         tab.setPadding(false);
 
-        var actions = new HorizontalLayout();
+        var filterField = new TextField();
+        filterField.setPlaceholder("Filter by name or email...");
+        filterField.setValueChangeMode(com.vaadin.flow.data.value.ValueChangeMode.EAGER);
+        filterField.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
+        filterField.setClearButtonVisible(true);
+
         var addButton = new Button("Add Participant", e -> openAddParticipantDialog());
-        actions.add(addButton);
-        tab.add(actions);
+
+        var toolbar = new HorizontalLayout(filterField, addButton);
+        toolbar.setWidthFull();
+        toolbar.setFlexGrow(1, filterField);
+        tab.add(toolbar);
 
         participantsGrid = new Grid<>();
         participantsGrid.setAllRowsVisible(true);
@@ -243,18 +251,18 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
             var participant = participantMap.get(pr.getParticipantId());
             var user = participant != null ? userMap.get(participant.getUserId()) : null;
             return user != null ? user.getName() : "Unknown";
-        }).setHeader("Name");
+        }).setHeader("Name").setSortable(true).setFlexGrow(2);
         participantsGrid.addColumn(pr -> {
             var participant = participantMap.get(pr.getParticipantId());
             var user = participant != null ? userMap.get(participant.getUserId()) : null;
             return user != null ? user.getEmail() : "—";
-        }).setHeader("Email");
-        participantsGrid.addColumn(pr -> pr.getRole().getDisplayName()).setHeader("Role");
+        }).setHeader("Email").setSortable(true).setFlexGrow(3);
+        participantsGrid.addColumn(pr -> pr.getRole().getDisplayName()).setHeader("Role").setSortable(true).setAutoWidth(true);
         participantsGrid.addColumn(pr -> {
             var participant = participantMap.get(pr.getParticipantId());
             return participant != null && participant.getAccessCode() != null
                     ? participant.getAccessCode() : "—";
-        }).setHeader("Access Code");
+        }).setHeader("Access Code").setAutoWidth(true);
         participantsGrid.addComponentColumn(pr -> {
             var removeButton = new Button(new Icon(VaadinIcon.CLOSE));
             removeButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
@@ -265,6 +273,22 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         }).setHeader("").setAutoWidth(true);
 
         refreshParticipantsGrid();
+
+        filterField.addValueChangeListener(e -> {
+            var filterString = e.getValue().toLowerCase();
+            if (filterString.isBlank()) {
+                participantsGrid.getListDataView().removeFilters();
+            } else {
+                participantsGrid.getListDataView().setFilter(pr -> {
+                    var participant = participantMap.get(pr.getParticipantId());
+                    var user = participant != null ? userMap.get(participant.getUserId()) : null;
+                    if (user == null) return false;
+                    return user.getName().toLowerCase().contains(filterString)
+                            || user.getEmail().toLowerCase().contains(filterString);
+                });
+            }
+        });
+
         tab.add(participantsGrid);
         return tab;
     }

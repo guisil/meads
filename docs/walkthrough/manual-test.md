@@ -245,7 +245,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 - [ ] Navigate to `/users`
 - [ ] **Expected:** Page title "Users"
 - [ ] **Expected:** Filter field with search icon and placeholder "Filter by email or name..."
-- [ ] **Expected:** Grid with columns: Email (sortable), Name (sortable), Role (sortable), Status (sortable), Actions (icon buttons)
+- [ ] **Expected:** Grid with columns: Name (sortable), Email (sortable), Role (sortable), Status (sortable), Actions (icon buttons)
 - [ ] **Expected:** Grid contains at least 7 dev users (admin, compadmin, user, pending/active, judge, steward, entrant)
 - [ ] Type a name fragment in the filter field
 - [ ] **Expected:** Grid filters immediately (EAGER mode), showing only matching users
@@ -506,8 +506,13 @@ Wait for startup to complete. The console will show magic links for dev users.
 ### Participants tab
 
 - [ ] Click the "Participants" tab
-- [ ] **Expected:** Grid with columns: Name, Email, Role, Access Code, (Remove icon)
+- [ ] **Expected:** Filter field with search icon and placeholder "Filter by name or email..."
+- [ ] **Expected:** Grid with columns: Name (sortable), Email (sortable), Role (sortable), Access Code, (Remove icon)
 - [ ] **Expected:** Rows for compadmin (Admin, no code), judge (Judge, 8-char code), steward (Steward, 8-char code), user (Entrant, no code), entrant (Entrant, no code)
+- [ ] Type a name fragment in the filter field
+- [ ] **Expected:** Grid filters immediately (EAGER mode), showing only matching participants
+- [ ] Clear the filter
+- [ ] **Expected:** All participants visible again
 
 ### Add participant
 
