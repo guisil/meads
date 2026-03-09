@@ -138,6 +138,11 @@ public class WebhookService {
                 var credit = new EntryCredit(divisionId, user.getId(), credits,
                         "WEBHOOK", lineItem.getId().toString());
                 creditRepository.save(credit);
+
+                // Ensure buyer is an ENTRANT participant
+                competitionService.ensureEntrantParticipant(
+                        division.getCompetitionId(), user.getId());
+
                 processedCount++;
             }
 

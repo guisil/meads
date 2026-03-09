@@ -365,6 +365,21 @@ public class CompetitionService {
         return participantRoleRepository.save(pr);
     }
 
+    /**
+     * Ensures a user has the ENTRANT role in a competition. No authorization required —
+     * intended for system-initiated flows (e.g. webhook order processing).
+     * Idempotent: does nothing if the user already has the ENTRANT role.
+     */
+    public void ensureEntrantParticipant(@NotNull UUID competitionId, @NotNull UUID userId) {
+        competitionRepository.findById(competitionId)
+                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
+        var participant = findOrCreateParticipant(competitionId, userId, CompetitionRole.ENTRANT);
+        if (!participantRoleRepository.existsByParticipantIdAndRole(
+                participant.getId(), CompetitionRole.ENTRANT)) {
+            participantRoleRepository.save(new ParticipantRole(participant.getId(), CompetitionRole.ENTRANT));
+        }
+    }
+
     public ParticipantRole addParticipantByEmail(@NotNull UUID competitionId,
                                                    @NotBlank @Email String email,
                                                    @NotNull CompetitionRole role,

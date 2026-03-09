@@ -45,12 +45,14 @@ Wait for startup to complete. The console will show magic links for dev users.
   - `steward@example.com` -- STEWARD (has access code)
   - `user@example.com` -- ENTRANT (5 credits in Amadora)
   - `entrant@example.com` -- ENTRANT (3 credits in Amadora)
+  - `buyer1@example.com` -- ENTRANT (2 credits in Amadora, added via webhook)
+  - `buyer2@example.com` -- ENTRANT (3 credits in Profissional, added via webhook)
 - **Product mappings:** CHIP-AMA (Amadora, product ID 1001), CHIP-PRO (Profissional, product ID 1002)
 - **Entries for `user@example.com`:** Wildflower Traditional (DRAFT, M1A), Blueberry Bliss (SUBMITTED, M2C), Oak-Aged Bochet (DRAFT, M1A)
 - **Entries for `entrant@example.com`:** Lavender Metheglin (DRAFT, M3B)
 - **Webhook orders:**
-  - JS-1001: buyer1@example.com (Maria Silva), 2x CHIP-AMA → 2 credits in Amadora
-  - JS-1002: buyer2@example.com (João Santos), 3x CHIP-PRO → 3 credits in Profissional
+  - JS-1001: buyer1@example.com (Maria Silva), 2x CHIP-AMA → 2 credits in Amadora, buyer added as ENTRANT
+  - JS-1002: buyer2@example.com (João Santos), 3x CHIP-PRO → 3 credits in Profissional, buyer added as ENTRANT
 
 ### Second competition (minimal)
 
