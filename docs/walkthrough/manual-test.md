@@ -1,8 +1,8 @@
-# Manual UI Walkthrough / Test
+# Manual Walkthrough / Test
 
-Comprehensive manual test plan for MEADS. Covers every user-facing behavior across
-identity, competition, and entry modules. Organized by workflow area with checkboxes
-for progress tracking.
+Comprehensive manual test plan for MEADS. Covers every user-facing behavior and API
+endpoint across identity, competition, and entry modules. Organized by workflow area
+with checkboxes for progress tracking.
 
 **Date:** 2026-03-07
 **Seeded data:** Dev profile (`spring.profiles.active=dev`)
@@ -732,7 +732,141 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 ---
 
-## 9. My Entries (Amadora -- entrant view)
+## 9. Webhook -- Order Paid (API)
+
+**Covers:** `JumpsellerWebhookControllerTest`, `WebhookServiceTest`
+
+*Not a UI test — uses curl/Postman against the running application.*
+
+### HMAC signature helper
+
+The webhook endpoint requires an `Jumpseller-Hmac-Sha256` header with an HMAC-SHA256
+signature of the request body, computed using the hooks token as the secret key.
+
+The dev token is configured in `application.properties` as `your-jumpseller-hooks-token-here`.
+
+To compute the signature for a given payload:
+
+```bash
+echo -n '<payload>' | openssl dgst -sha256 -hmac 'your-jumpseller-hooks-token-here' | awk '{print $2}'
+```
+
+Or as a reusable shell function:
+
+```bash
+sign() { echo -n "$1" | openssl dgst -sha256 -hmac 'your-jumpseller-hooks-token-here' | awk '{print $2}'; }
+```
+
+### Successful order -- mapped product creates credits
+
+This uses seeded product mapping: product ID `1001` → Amadora division (SKU `CHIP-AMA`, 1 credit/unit).
+
+```bash
+PAYLOAD='{"id":"WH-001","customer":{"email":"webhooktest@example.com","full_name":"Webhook Tester"},"products":[{"product_id":"1001","sku":"CHIP-AMA","name":"CHIP Amadora Entry","qty":3}]}'
+SIGNATURE=$(sign "$PAYLOAD")
+
+curl -s -o /dev/null -w "%{http_code}" \
+  -X POST http://localhost:8080/api/webhooks/jumpseller/order-paid \
+  -H "Content-Type: application/json" \
+  -H "Jumpseller-Hmac-Sha256: $SIGNATURE" \
+  -d "$PAYLOAD"
+```
+
+- [ ] **Expected:** HTTP 200
+- [ ] Verify in UI: Log in as `compadmin@example.com`, navigate to Amadora entry-admin
+  - **Credits tab:** `webhooktest@example.com` appears with 3 credits
+  - **Orders tab:** Order `WH-001` appears with status PROCESSED
+- [ ] Verify user creation: Log in as `admin@example.com`, navigate to `/users`
+  - **Expected:** `webhooktest@example.com` exists (PENDING status, created automatically)
+
+### Duplicate order -- idempotency
+
+```bash
+# Send the exact same payload again (same order ID "WH-001")
+curl -s -o /dev/null -w "%{http_code}" \
+  -X POST http://localhost:8080/api/webhooks/jumpseller/order-paid \
+  -H "Content-Type: application/json" \
+  -H "Jumpseller-Hmac-Sha256: $SIGNATURE" \
+  -d "$PAYLOAD"
+```
+
+- [ ] **Expected:** HTTP 200 (accepted but silently skipped)
+- [ ] Verify in UI: Credits for `webhooktest@example.com` are still 3 (not doubled)
+
+### Non-mapped product -- ignored
+
+```bash
+PAYLOAD2='{"id":"WH-002","customer":{"email":"webhooktest@example.com","full_name":"Webhook Tester"},"products":[{"product_id":"9876","sku":"TSHIRT","name":"Conference T-Shirt","qty":1}]}'
+SIGNATURE2=$(sign "$PAYLOAD2")
+
+curl -s -o /dev/null -w "%{http_code}" \
+  -X POST http://localhost:8080/api/webhooks/jumpseller/order-paid \
+  -H "Content-Type: application/json" \
+  -H "Jumpseller-Hmac-Sha256: $SIGNATURE2" \
+  -d "$PAYLOAD2"
+```
+
+- [ ] **Expected:** HTTP 200
+- [ ] Verify in UI: Orders tab shows `WH-002` as PROCESSED (all-ignored counts as processed)
+- [ ] Credits for `webhooktest@example.com` remain at 3 (no credits for non-mapped products)
+
+### Invalid signature -- rejected
+
+```bash
+curl -s -o /dev/null -w "%{http_code}" \
+  -X POST http://localhost:8080/api/webhooks/jumpseller/order-paid \
+  -H "Content-Type: application/json" \
+  -H "Jumpseller-Hmac-Sha256: deadbeef" \
+  -d '{"id":"WH-003","customer":{"email":"test@example.com","full_name":"Test"},"products":[]}'
+```
+
+- [ ] **Expected:** HTTP 401 (Unauthorized)
+- [ ] Verify: No order `WH-003` in the Orders tab
+
+### Mutual exclusivity conflict
+
+`webhooktest@example.com` already has credits in Amadora. An order for Profissional
+(product ID `1002`) in the same competition (CHIP 2026) should be flagged.
+
+```bash
+PAYLOAD3='{"id":"WH-004","customer":{"email":"webhooktest@example.com","full_name":"Webhook Tester"},"products":[{"product_id":"1002","sku":"CHIP-PRO","name":"CHIP Profissional Entry","qty":1}]}'
+SIGNATURE3=$(sign "$PAYLOAD3")
+
+curl -s -o /dev/null -w "%{http_code}" \
+  -X POST http://localhost:8080/api/webhooks/jumpseller/order-paid \
+  -H "Content-Type: application/json" \
+  -H "Jumpseller-Hmac-Sha256: $SIGNATURE3" \
+  -d "$PAYLOAD3"
+```
+
+- [ ] **Expected:** HTTP 200 (webhook accepted, conflict handled internally)
+- [ ] Verify in UI:
+  - Amadora Orders tab: No `WH-004` (this order targets Profissional)
+  - Profissional entry-admin Orders tab: `WH-004` appears with status NEEDS_REVIEW
+  - Profissional Credits tab: `webhooktest@example.com` does NOT appear (no credits awarded)
+
+### Mixed order -- some mapped, some conflicting
+
+```bash
+PAYLOAD4='{"id":"WH-005","customer":{"email":"newbuyer@example.com","full_name":"New Buyer"},"products":[{"product_id":"1001","sku":"CHIP-AMA","name":"CHIP Amadora Entry","qty":2},{"product_id":"1002","sku":"CHIP-PRO","name":"CHIP Profissional Entry","qty":1}]}'
+SIGNATURE4=$(sign "$PAYLOAD4")
+
+curl -s -o /dev/null -w "%{http_code}" \
+  -X POST http://localhost:8080/api/webhooks/jumpseller/order-paid \
+  -H "Content-Type: application/json" \
+  -H "Jumpseller-Hmac-Sha256: $SIGNATURE4" \
+  -d "$PAYLOAD4"
+```
+
+- [ ] **Expected:** HTTP 200
+- [ ] Verify in UI:
+  - Amadora Credits tab: `newbuyer@example.com` appears with 2 credits
+  - Profissional Credits tab: `newbuyer@example.com` does NOT appear (mutual exclusivity conflict)
+  - Amadora Orders tab: `WH-005` appears with status PARTIALLY_PROCESSED
+
+---
+
+## 10. My Entries (Amadora -- entrant view)
 
 **Covers:** `MyEntriesViewTest`, `EntryServiceTest` (create/update/delete/submit entries)
 
@@ -831,7 +965,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 ---
 
-## 10. Cross-cutting Concerns
+## 11. Cross-cutting Concerns
 
 ### Mutual exclusivity (end-to-end)
 
@@ -894,7 +1028,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 ---
 
-## 11. Multi-Role & Cross-Competition Edge Cases
+## 12. Multi-Role & Cross-Competition Edge Cases
 
 **Goal:** Test combinations of roles across competitions and identify gaps in
 credential management and authorization. Some of these are exploratory — note
@@ -972,8 +1106,9 @@ After running the above tests, document decisions on:
 | 6. Competition Detail | `CompetitionDetailViewTest`, `CompetitionServiceTest`, `DivisionTest`, `ParticipantTest`, `ParticipantRoleTest` |
 | 7. Division Detail | `DivisionDetailViewTest`, `CompetitionServiceTest`, `DivisionCategoryRepositoryTest`, `CategoryRepositoryTest`, `DivisionStatusTest`, `EntryDivisionRevertGuardTest` |
 | 8. Entry Admin | `DivisionEntryAdminViewTest`, `EntryServiceTest`, `ProductMappingRepositoryTest`, `JumpsellerOrderRepositoryTest` |
-| 9. My Entries | `MyEntriesViewTest`, `EntryServiceTest`, `EntryTest`, `EntryCreditRepositoryTest`, `EntryRepositoryTest` |
-| 10. Cross-cutting | `EntryServiceTest`, `DevDataInitializerTest`, `EntryModuleTest`, `CompetitionModuleTest`, `ModulithStructureTest` |
+| 9. Webhook | `JumpsellerWebhookControllerTest`, `WebhookServiceTest`, `JumpsellerOrderTest`, `JumpsellerOrderLineItemTest` |
+| 10. My Entries | `MyEntriesViewTest`, `EntryServiceTest`, `EntryTest`, `EntryCreditRepositoryTest`, `EntryRepositoryTest` |
+| 11. Cross-cutting | `EntryServiceTest`, `DevDataInitializerTest`, `EntryModuleTest`, `CompetitionModuleTest`, `ModulithStructureTest` |
 
 ### Tests without direct manual coverage
 
@@ -983,9 +1118,7 @@ These tests cover internal behavior not directly visible in the UI:
 - `DatabaseUserDetailsServiceTest` -- UserDetailsService internals
 - `AdminInitializerIntegrationTest` -- startup initialization
 - `UserRepositoryTest`, `CompetitionRepositoryTest`, `DivisionRepositoryTest`, `ParticipantRepositoryTest`, `ParticipantRoleRepositoryTest` -- persistence layer
-- `JumpsellerOrderTest`, `JumpsellerOrderLineItemTest` -- domain model internals
 - `JumpsellerOrderLineItemRepositoryTest` -- persistence layer
-- `WebhookServiceTest` -- webhook processing (requires external HTTP calls)
 - `RegistrationClosedListenerTest` -- event listener skeleton
 - `CompetitionAccessCodeValidatorTest` -- access code validation internals
 - `MeadsApplicationTest` -- context loading

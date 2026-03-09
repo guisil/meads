@@ -2,15 +2,14 @@ package app.meads.entry.internal;
 
 import app.meads.competition.DivisionStatus;
 import app.meads.competition.DivisionStatusAdvancedEvent;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @Component
 public class RegistrationClosedListener {
 
-    private static final Logger log = LoggerFactory.getLogger(RegistrationClosedListener.class);
 
     @ApplicationModuleListener
     public void on(DivisionStatusAdvancedEvent event) {

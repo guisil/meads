@@ -137,15 +137,15 @@ docs/
 │   ├── judging.md                         ← Preliminary spec (post-rework naming)
 │   └── awards.md                          ← Preliminary spec (post-rework naming)
 └── walkthrough/
-    └── manual-ui-test.md                  ← Living test plan (must be updated with every UI change)
+    └── manual-test.md                  ← Living test plan (UI + API, must be updated with every change)
 ```
 
 ---
 
 ## What's Next
 
-1. **Manual UI walkthrough** — Continue from Section 7 (Division Detail — review revert behavior).
-   Sections 2–6 are done. Continue through Section 11 (multi-role & cross-competition edge cases).
+1. **Manual walkthrough** — Continue from Section 7 (Division Detail — review revert behavior).
+   Sections 2–6 are done. Continue through Section 12 (multi-role & cross-competition edge cases).
 3. **Code review** of both competition and entry modules (slice by slice)
 4. **Test review** (guided, with UI verification) of both modules
 5. **Judging module** — design and implementation

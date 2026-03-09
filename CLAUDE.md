@@ -57,7 +57,7 @@ When uncertain, default to **full cycle**.
 - Run: `mvn test -Dsurefire.useFile=false` (full suite)
 - **Update all affected docs before suggesting a commit message** (see Commit Hygiene):
   1. `docs/SESSION_CONTEXT.md` — test count, module status, what's next
-  2. `docs/walkthrough/manual-ui-test.md` — if any UI changed
+  2. `docs/walkthrough/manual-test.md` — if any UI changed
   3. `CLAUDE.md` — if conventions, patterns, or migrations changed
   4. Clean up completed plans/specs
 - Suggest a commit message. State what to test next.
@@ -511,10 +511,10 @@ Checklist — update each if affected:
    truth). Keep specs for unimplemented modules current with the latest naming and conventions.
 4. **Design docs** (`docs/plans/`) — Delete design docs for fully implemented features.
    Only keep active/in-progress plans. The codebase is the source of truth for completed work.
-5. **Walkthrough** (`docs/walkthrough/manual-ui-test.md`) — **Must be updated with every UI
-   change.** This is a living document: add test steps for new features, update existing steps
-   if behavior changed, and keep the coverage mapping appendix current. The walkthrough must
-   always be executable end-to-end against the current codebase.
+5. **Walkthrough** (`docs/walkthrough/manual-test.md`) — **Must be updated with every UI or
+   API change.** This is a living document: add test steps for new features, update existing
+   steps if behavior changed, and keep the coverage mapping appendix current. The walkthrough
+   must always be executable end-to-end against the current codebase.
 6. **Example files** (`docs/examples/`) — Update if testing or domain model conventions changed.
    Examples must always reflect the actual patterns used in the codebase.
 

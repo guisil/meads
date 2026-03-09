@@ -9,8 +9,7 @@ import app.meads.entry.internal.ProductMappingRepository;
 import app.meads.identity.UserService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -25,12 +24,12 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @Transactional
 @Validated
 public class WebhookService {
 
-    private static final Logger log = LoggerFactory.getLogger(WebhookService.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final JumpsellerOrderRepository orderRepository;
