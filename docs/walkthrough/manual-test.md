@@ -768,7 +768,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 - [ ] Click the "Orders" tab
 - [ ] **Expected:** Filter field: "Filter by order ID or customer email..."
-- [ ] **Expected:** Grid with columns: Order ID, Customer, Status, Date (formatted as yyyy-MM-dd HH:mm), Note, Actions (edit icon)
+- [ ] **Expected:** Grid with columns: Order ID, Customer, Status, Date (ISO-8601 UTC, e.g. 2026-03-09T18:30:15Z), Note, Actions (edit icon)
 - [ ] **Expected:** 1 seeded order: JS-1001 (buyer1@example.com, PROCESSED)
 - [ ] **Expected:** Columns are sortable
 - [ ] **Expected:** Edit icon opens dialog with Status (dropdown) and Admin Note fields
@@ -798,8 +798,25 @@ echo -n '<payload>' | openssl dgst -sha256 -hmac 'your-jumpseller-hooks-token-he
 Or as a reusable shell function:
 
 ```bash
-sign() { echo -n "$1" | openssl dgst -sha256 -hmac 'your-jumpseller-hooks-token-here' | awk '{print $2}'; }
+sign() { echo -n "$1" | openssl dgst -sha256 -hmac 'your-jumpseller-hooks-token-here' | sed 's/.*= //'; }
 ```
+
+#### Alternative: Postman
+
+1. Create a Postman environment variable `hooks_token` = `your-jumpseller-hooks-token-here`
+2. Add a **Pre-request Script** to automatically compute the signature:
+   ```javascript
+   const payload = pm.request.body.raw;
+   const token = pm.environment.get("hooks_token");
+   const signature = CryptoJS.HmacSHA256(payload, token).toString(CryptoJS.enc.Hex);
+   pm.environment.set("hmac_signature", signature);
+   ```
+3. Set headers:
+   - `Jumpseller-Hmac-Sha256`: `{{hmac_signature}}`
+   - `Content-Type`: `application/json`
+4. Method: **POST**, URL: `http://localhost:8080/api/webhooks/jumpseller/order-paid`
+5. Body: **raw / JSON** — paste each test payload below
+6. For the invalid signature test (9.4), temporarily replace `{{hmac_signature}}` with `deadbeef`
 
 ### Successful order -- mapped product creates credits
 

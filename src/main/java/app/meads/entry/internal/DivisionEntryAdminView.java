@@ -34,6 +34,10 @@ import jakarta.annotation.security.PermitAll;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.util.StringUtils;
 
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -365,10 +369,9 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         return String.valueOf(entryNumber);
     }
 
-    private String formatInstant(java.time.Instant instant) {
+    private String formatInstant(Instant instant) {
         if (instant == null) return "";
-        return instant.atZone(java.time.ZoneId.systemDefault())
-                .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+        return DateTimeFormatter.ISO_INSTANT.format(instant.truncatedTo(ChronoUnit.SECONDS));
     }
 
     private String getCategoryName(UUID categoryId) {
@@ -381,7 +384,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
 
     private void refreshEntriesGrid() {
         var entries = entryService.findEntriesByDivision(divisionId).stream()
-                .sorted(java.util.Comparator.comparingInt(Entry::getEntryNumber))
+                .sorted(Comparator.comparingInt(Entry::getEntryNumber))
                 .toList();
         entriesGrid.setItems(entries);
     }

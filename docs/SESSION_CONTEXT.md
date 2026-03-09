@@ -112,7 +112,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 - `RegistrationClosedListener` — skeleton for `DivisionStatusAdvancedEvent` (REGISTRATION_CLOSED)
 
 #### Changes to other modules
-- `SecurityConfig` — added `.requestMatchers("/api/webhooks/**").permitAll()`
+- `SecurityConfig` — separate `SecurityFilterChain` with `@Order(1)` for webhook API (CSRF disabled, permitAll)
 - `User.java` — added `meaderyName` field (V14)
 - `Division.java` — added `maxEntriesPerSubcategory`, `maxEntriesPerMainCategory` (V15), `entryPrefix` (V16)
 - `DivisionDetailView` — added "Manage Entries" Anchor link (string-based, no entry module import), entry prefix in Settings tab
@@ -144,8 +144,8 @@ docs/
 
 ## What's Next
 
-1. **Manual walkthrough** — Continue from Section 7 (Division Detail — review revert behavior).
-   Sections 2–6 are done. Continue through Section 12 (multi-role & cross-competition edge cases).
+1. **Manual walkthrough** — Continue from Section 9 (Webhook API testing).
+   Sections 2–8 are done. Continue through Section 12 (multi-role & cross-competition edge cases).
 3. **Code review** of both competition and entry modules (slice by slice)
 4. **Test review** (guided, with UI verification) of both modules
 5. **Judging module** — design and implementation
