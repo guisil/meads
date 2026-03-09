@@ -150,13 +150,22 @@ docs/
 
 ## What's Next
 
-### Priority 1: Manual walkthrough (full redo)
+### Priority 1: Meadery name and country on entries
+Check if there is a way for a professional meadery to add the meadery name when adding
+entries. The `User` entity already has an optional `meaderyName` field — investigate whether
+it should be displayed/editable in the entry flow (e.g., pre-filled from the user profile,
+or overridable per entry), and whether entries themselves need a meadery name field.
+Also consider whether it's worth adding a "Country" field to users, participants, or entries
+— evaluate where it belongs and what value it provides (e.g., for international competitions,
+results display, or statistical purposes).
+
+### Priority 2: Manual walkthrough (full redo)
 Redo the **entire** manual-test walkthrough from Section 1. Previous partial run covered
 Sections 2–9; this is a fresh pass through all sections (1–13) to validate the current
 state end-to-end, including recent entry limits UI, logging, and all accumulated changes.
 May produce bug fixes or UX improvements.
 
-### Priority 2: Deployment planning
+### Priority 3: Deployment planning
 Evaluate cloud providers and services for first deployment:
 - **Managed PostgreSQL** with automatic backups — **top priority**, data must never be lost
 - **Log management** — logs properly stored and rolled, searchable
@@ -171,18 +180,19 @@ Evaluate cloud providers and services for first deployment:
   full AWS infrastructure. Premium high-availability is not required — reliable uptime is
   enough. The non-negotiable is never losing data (hence managed DB with backups).
 
-### Priority 3: Configuration audit
+### Priority 4: Configuration audit
 Review `application.properties` and profile-specific files:
 - Which properties should be env vars vs. config files vs. secrets?
 - Which belong to specific profiles (`dev`, `prod`, `test`)?
 - Align with chosen cloud provider's configuration model
 
-### Priority 4: Email sending implementation
+### Priority 5: Email sending implementation
 Implement actual email delivery (currently magic links and password reset links are
 logged to console). Mechanism depends on deployment choice (SES, SMTP, etc.).
 Spring Boot has `spring-boot-starter-mail` — evaluate if that's sufficient.
+The current console-logging behavior should be kept for the `dev` profile for testing.
 
-### Priority 5: Entry submission labels (PDF)
+### Priority 6: Entry submission labels (PDF)
 When a mead entry is submitted, the entrant should be able to download a printable
 label PDF:
 - **Format:** 1 page containing 3 identical label copies (for 3 bottles)
@@ -191,7 +201,7 @@ label PDF:
 - **Implementation:** Template-based PDF generation (e.g., iText, OpenPDF, or Apache PDFBox)
 - **UX:** Download button/link in MyEntriesView after submission
 
-### Priority 6: Competition documents
+### Priority 7: Competition documents
 Decide how to handle downloadable documents per competition (rules, guidelines, etc.):
 - Options: stored in DB (BLOB), external file storage (S3), or just external links
 - Where to display: competition detail page, possibly entrant-facing views
