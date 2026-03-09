@@ -169,10 +169,8 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
         Button cancelButton = new Button("Cancel");
         cancelButton.addClickListener(e -> dialog.close());
 
-        HorizontalLayout buttons = new HorizontalLayout(confirmButton, cancelButton);
-        content.add(buttons);
-
         dialog.add(content);
+        dialog.getFooter().add(cancelButton, confirmButton);
         dialog.open();
     }
 
@@ -208,9 +206,12 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
         Dialog dialog = new Dialog();
         boolean isCreate = existingUser == null;
 
-        EmailField emailField = isCreate ? new EmailField("Email") : null;
-        if (emailField != null) {
+        EmailField emailField = new EmailField("Email");
+        if (isCreate) {
             emailField.setRequired(true);
+        } else {
+            emailField.setValue(existingUser.getEmail());
+            emailField.setReadOnly(true);
         }
 
         TextField nameField = new TextField("Name");
@@ -243,7 +244,7 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
         var statusSelectRef = statusSelect;
         Button saveButton = new Button("Save");
         saveButton.addClickListener(e -> {
-            if (emailField != null && !StringUtils.hasText(emailField.getValue())) {
+            if (isCreate && !StringUtils.hasText(emailField.getValue())) {
                 emailField.setInvalid(true);
                 emailField.setErrorMessage("Email is required");
                 return;
@@ -283,7 +284,7 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
                 generatePasswordSetupLinkIfNeeded(savedUser);
                 dialog.close();
             } catch (IllegalArgumentException ex) {
-                if (emailField != null) {
+                if (isCreate) {
                     emailField.setInvalid(true);
                     emailField.setErrorMessage(ex.getMessage());
                 } else {
@@ -291,7 +292,7 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
                     nameField.setErrorMessage("Failed to save user. Please try again.");
                 }
             } catch (ConstraintViolationException ex) {
-                if (emailField != null) {
+                if (isCreate) {
                     emailField.setInvalid(true);
                     emailField.setErrorMessage("Please enter a valid email address");
                 }
@@ -304,10 +305,7 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
         cancelButton.addClickListener(e -> dialog.close());
 
         VerticalLayout formLayout = new VerticalLayout();
-        if (emailField != null) {
-            formLayout.add(emailField);
-        }
-        formLayout.add(nameField, roleSelect);
+        formLayout.add(emailField, nameField, roleSelect);
         if (statusSelect != null) {
             formLayout.add(statusSelect);
         }
