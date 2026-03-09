@@ -365,6 +365,12 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         return String.valueOf(entryNumber);
     }
 
+    private String formatInstant(java.time.Instant instant) {
+        if (instant == null) return "";
+        return instant.atZone(java.time.ZoneId.systemDefault())
+                .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+    }
+
     private String getCategoryName(UUID categoryId) {
         return divisionCategories.stream()
                 .filter(c -> c.getId().equals(categoryId))
@@ -632,8 +638,10 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 .setHeader("Customer").setSortable(true).setFlexGrow(2);
         ordersGrid.addColumn(order -> order.getStatus().name())
                 .setHeader("Status").setSortable(true).setAutoWidth(true);
-        ordersGrid.addColumn(JumpsellerOrder::getCreatedAt)
+        ordersGrid.addColumn(order -> formatInstant(order.getCreatedAt()))
                 .setHeader("Date").setSortable(true).setAutoWidth(true);
+        ordersGrid.addColumn(JumpsellerOrder::getAdminNote)
+                .setHeader("Note").setSortable(true).setFlexGrow(2);
         ordersGrid.addComponentColumn(order -> {
             var editButton = new Button(new Icon(VaadinIcon.EDIT));
             editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);

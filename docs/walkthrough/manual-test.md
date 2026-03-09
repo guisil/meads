@@ -768,7 +768,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 - [ ] Click the "Orders" tab
 - [ ] **Expected:** Filter field: "Filter by order ID or customer email..."
-- [ ] **Expected:** Grid with columns: Order ID, Customer, Status, Date, Actions (edit icon)
+- [ ] **Expected:** Grid with columns: Order ID, Customer, Status, Date (formatted as yyyy-MM-dd HH:mm), Note, Actions (edit icon)
 - [ ] **Expected:** 1 seeded order: JS-1001 (buyer1@example.com, PROCESSED)
 - [ ] **Expected:** Columns are sortable
 - [ ] **Expected:** Edit icon opens dialog with Status (dropdown) and Admin Note fields
