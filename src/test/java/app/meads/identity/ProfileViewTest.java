@@ -28,7 +28,6 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.annotation.DirtiesContext;
 
 import java.util.Arrays;
-import java.util.List;
 
 import static com.github.mvysny.kaributesting.v10.LocatorJ.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -103,7 +102,7 @@ class ProfileViewTest {
 
     @Test
     @WithMockUser(username = "entrant@test.com", roles = "USER")
-    void shouldDisplayProfileFields(TestInfo testInfo) {
+    void shouldDisplayProfileFields() {
         userRepository.findByEmail("entrant@test.com")
                 .orElseGet(() -> userRepository.save(
                         new User("entrant@test.com", "Test Entrant", UserStatus.ACTIVE, Role.USER)));
@@ -120,7 +119,7 @@ class ProfileViewTest {
 
     @Test
     @WithMockUser(username = "save-profile@test.com", roles = "USER")
-    void shouldSaveProfileChanges(TestInfo testInfo) {
+    void shouldSaveProfileChanges() {
         userRepository.findByEmail("save-profile@test.com")
                 .orElseGet(() -> userRepository.save(
                         new User("save-profile@test.com", "Test Entrant", UserStatus.ACTIVE, Role.USER)));

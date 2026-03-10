@@ -198,9 +198,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                 .set("padding", "var(--lumo-space-m)")
                 .set("border-radius", "var(--lumo-border-radius-m)")
                 .set("margin-bottom", "var(--lumo-space-m)");
-        var anchor = new Anchor("profile", "update your profile");
-        warning.add(new Span("This division requires a meadery name. Please "), anchor,
-                new Span(" before submitting entries."));
+        warning.add(new Span("This division requires a meadery name. Please update your profile (via the user menu on the top right corner of the page) before submitting entries."));
         return warning;
     }
 

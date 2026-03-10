@@ -3,9 +3,11 @@ package app.meads.identity.internal;
 import app.meads.MainLayout;
 import app.meads.identity.UserService;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.PageTitle;
@@ -69,12 +71,22 @@ public class ProfileView extends VerticalLayout {
                         countryCombo.getValue());
                 Notification.show("Profile updated")
                         .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                navigateBack();
             } catch (Exception ex) {
                 Notification.show(ex.getMessage());
             }
         });
+        saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        add(emailField, nameField, meaderyField, countryCombo, saveButton);
+        var cancelButton = new Button("Cancel", e -> navigateBack());
+
+        var buttons = new HorizontalLayout(cancelButton, saveButton);
+
+        add(emailField, nameField, meaderyField, countryCombo, buttons);
         setMaxWidth("600px");
+    }
+
+    private void navigateBack() {
+        getUI().ifPresent(ui -> ui.navigate(""));
     }
 }

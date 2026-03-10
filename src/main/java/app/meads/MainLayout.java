@@ -48,6 +48,8 @@ public class MainLayout extends AppLayout {
             userMenu.addThemeVariants(MenuBarVariant.LUMO_TERTIARY_INLINE);
             var userItem = userMenu.addItem(userIcon);
             userItem.add(new Text(email));
+            userItem.getSubMenu().addItem("My Profile", e ->
+                    getUI().ifPresent(ui -> ui.navigate("profile")));
             userItem.getSubMenu().addItem("Logout", e -> authenticationContext.logout());
 
             navbar.add(userMenu);
@@ -69,10 +71,6 @@ public class MainLayout extends AppLayout {
 
         if (authenticationContext.isAuthenticated() && !authenticationContext.hasRole("SYSTEM_ADMIN")) {
             nav.addItem(new SideNavItem("My Entries", "my-entries", VaadinIcon.LIST.create()));
-        }
-
-        if (authenticationContext.isAuthenticated()) {
-            nav.addItem(new SideNavItem("My Profile", "profile", VaadinIcon.USER.create()));
         }
 
         var scroller = new Scroller(nav);
