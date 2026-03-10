@@ -297,6 +297,10 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
                         UserStatus.PENDING,
                         roleSelect.getValue()
                     );
+                    var meadery = meaderyField.getValue();
+                    userService.updateProfile(savedUser.getId(), savedUser.getName(),
+                            meadery != null && !meadery.isBlank() ? meadery.trim() : null,
+                            countryCombo.getValue());
                 } else {
                     savedUser = userService.updateUser(
                         existingUser.getId(),

@@ -605,6 +605,26 @@ class UserListViewTest {
     @Test
     @WithMockUser(roles = "SYSTEM_ADMIN")
     @DirtiesContext
+    void shouldPersistMeaderyNameAndCountryWhenCreatingUser() {
+        UI.getCurrent().navigate("users");
+        _click(_get(Button.class, spec -> spec.withText("Create User")));
+
+        _get(EmailField.class, spec -> spec.withLabel("Email")).setValue("meadmaker@example.com");
+        _get(TextField.class, spec -> spec.withLabel("Name")).setValue("Mead Maker");
+        _get(TextField.class, spec -> spec.withLabel("Meadery Name")).setValue("Golden Hive");
+        _get(ComboBox.class, spec -> spec.withLabel("Country")).setValue("PT");
+
+        _click(_get(Button.class, spec -> spec.withText("Save")));
+
+        var createdUser = userRepository.findByEmail("meadmaker@example.com");
+        assertThat(createdUser).isPresent();
+        assertThat(createdUser.get().getMeaderyName()).isEqualTo("Golden Hive");
+        assertThat(createdUser.get().getCountry()).isEqualTo("PT");
+    }
+
+    @Test
+    @WithMockUser(roles = "SYSTEM_ADMIN")
+    @DirtiesContext
     void shouldNotCreateUserWhenEmailFieldIsEmpty() {
         // Arrange - count users before
         long userCountBefore = userRepository.count();
