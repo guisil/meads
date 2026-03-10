@@ -351,9 +351,10 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         entriesGrid.setId("entries-grid");
 
         // 1. Entry # — smaller column
-        var entryNumCol = entriesGrid.addColumn(Entry::getEntryNumber)
+        var entryNumCol = entriesGrid.addColumn(entry -> formatEntryId(entry))
                 .setHeader("Entry #")
                 .setSortable(true)
+                .setComparator((a, b) -> Integer.compare(a.getEntryNumber(), b.getEntryNumber()))
                 .setWidth("110px")
                 .setFlexGrow(0);
 
@@ -492,7 +493,6 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                     entry.getAdditionalInformation()));
         }
         layout.add(readOnlyField("Status", entry.getStatus().getDisplayName()));
-        layout.add(readOnlyField("Entry Code", entry.getEntryCode()));
 
         dialog.add(layout);
         dialog.getFooter().add(new Button("Close", e -> dialog.close()));
