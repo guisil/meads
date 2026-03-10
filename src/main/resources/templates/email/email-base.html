@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${subject}">Email</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f4; font-family: Arial, Helvetica, sans-serif;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f4f4f4;">
+        <tr>
+            <td align="center" style="padding: 40px 0;">
+                <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden;">
+                    <!-- Header -->
+                    <tr>
+                        <td style="background-color: #1a1a2e; padding: 24px 40px; text-align: center;">
+                            <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: bold; letter-spacing: 2px;">MEADS</h1>
+                        </td>
+                    </tr>
+                    <!-- Body -->
+                    <tr>
+                        <td style="padding: 40px;">
+                            <h2 style="margin: 0 0 16px 0; color: #1a1a2e; font-size: 20px;" th:text="${heading}">Heading</h2>
+                            <p style="margin: 0 0 32px 0; color: #333333; font-size: 16px; line-height: 1.5;" th:text="${bodyText}">Body text</p>
+                            <!-- CTA Button -->
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto;">
+                                <tr>
+                                    <td style="border-radius: 6px; background-color: #1a1a2e;">
+                                        <a th:href="${ctaUrl}" th:text="${ctaLabel}" style="display: inline-block; padding: 14px 32px; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: bold;">Button</a>
+                                    </td>
+                                </tr>
+                            </table>
+                            <!-- Fallback URL -->
+                            <p style="margin: 32px 0 0 0; color: #888888; font-size: 12px; line-height: 1.4;">
+                                If the button doesn't work, copy and paste this link into your browser:<br/>
+                                <a th:href="${ctaUrl}" th:text="${ctaUrl}" style="color: #1a1a2e; word-break: break-all;">https://example.com</a>
+                            </p>
+                        </td>
+                    </tr>
+                    <!-- Contact footer (conditional) -->
+                    <tr th:if="${contactEmail != null}">
+                        <td style="padding: 0 40px 24px 40px; border-top: 1px solid #eeeeee;">
+                            <p style="margin: 24px 0 0 0; color: #666666; font-size: 14px;">
+                                Questions? Contact
+                                <a th:href="'mailto:' + ${contactEmail}" th:text="${contactEmail}" style="color: #1a1a2e;">organizer@example.com</a>
+                            </p>
+                        </td>
+                    </tr>
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background-color: #f8f8f8; padding: 20px 40px; text-align: center; border-top: 1px solid #eeeeee;">
+                            <p style="margin: 0; color: #999999; font-size: 12px;">
+                                MEADS &mdash; Mead Evaluation and Awards Data System
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
