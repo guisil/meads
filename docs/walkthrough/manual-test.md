@@ -4,7 +4,7 @@ Comprehensive manual test plan for MEADS. Covers every user-facing behavior and 
 endpoint across identity, competition, and entry modules. Organized by workflow area
 with checkboxes for progress tracking.
 
-**Date:** 2026-03-07
+**Date:** 2026-03-10
 **Seeded data:** Dev profile (`spring.profiles.active=dev`)
 
 ---
@@ -62,6 +62,19 @@ Dev users created by `DevUserInitializer` still log magic links to console (bypa
 - **Competition:** Test Competition 2026 (September 1-30, 2026, Porto, Portugal)
 - **Division:** Open (MJP, DRAFT, full catalog)
 - **Participants:** `compadmin@example.com` -- ADMIN
+
+### Email types (Mailpit reference)
+
+All emails use the Thymeleaf template `email/email-base.html` — dark header with "MEADS",
+CTA button, fallback URL, and optional contact footer.
+
+| Trigger | Subject | Heading | CTA Label | Contact Footer |
+|---------|---------|---------|-----------|----------------|
+| "Get Login Link" on login page | Your MEADS login link | Log in to MEADS | Log In | No |
+| "Forgot password?" on login page | Reset your MEADS password | Set your password | Set Password | No |
+| "Password Reset" (key icon) in Users admin | Reset your MEADS password | Set your password | Set Password | No |
+| New SYSTEM_ADMIN created without password | Reset your MEADS password | Set your password | Set Password | No |
+| New competition ADMIN added without password | Set up your MEADS admin password | Set your admin password | Set Password | Yes (if competition has contactEmail) |
 
 ---
 
@@ -1267,6 +1280,228 @@ After running the above tests, document decisions on:
 
 ---
 
+## 14. Security Testing
+
+**Goal:** Verify the application is resilient to common web attacks (OWASP Top 10)
+across all input surfaces. Use browser dev tools, Mailpit, and direct HTTP requests.
+
+*Log in as `admin@example.com` for most tests (SYSTEM_ADMIN has broadest access).*
+
+### XSS — Stored (text fields rendered in grids and dialogs)
+
+These fields accept free text that is later rendered in grids, dialogs, breadcrumbs,
+and email templates. Vaadin's server-side rendering should escape HTML by default,
+but verify each surface.
+
+**Payload:** `<script>alert('xss')</script>` and `<img src=x onerror=alert(1)>`
+
+- [ ] Navigate to `/users`, create a user with name: `<script>alert('xss')</script>`
+- [ ] **Expected:** Name appears as literal text in the grid, no script execution
+- [ ] Edit the user — verify the dialog shows the literal text, not rendered HTML
+- [ ] Delete the test user
+
+- [ ] Navigate to `/competitions`, create a competition with name: `<img src=x onerror=alert(1)>`
+- [ ] **Expected:** Name appears as literal text in the grid and header
+- [ ] Navigate to the competition detail — verify breadcrumb, header, and tabs show literal text
+- [ ] Delete the competition
+
+- [ ] As entrant, navigate to My Entries and create an entry with:
+  - Mead name: `<script>alert('xss')</script>`
+  - Honey varieties: `"><img src=x onerror=alert(1)>`
+  - Other ingredients: `<svg onload=alert(1)>`
+  - Additional info: `javascript:alert(1)`
+- [ ] **Expected:** All fields render as literal text in the entry grid and view dialog
+- [ ] As admin, view the entry in DivisionEntryAdminView — verify literal text in admin grid
+- [ ] Delete or withdraw the entry
+
+- [ ] Create a competition with contact email: `"><script>alert(1)</script>@evil.com`
+- [ ] Add a new ADMIN participant (without password) to trigger password setup email
+- [ ] Open Mailpit — verify the email renders the contact email as literal text, not executed HTML
+- [ ] **Expected:** Thymeleaf's `th:text` escapes the value; no script in the rendered email
+
+### XSS — Reflected (URL parameters)
+
+- [ ] Navigate to `http://localhost:8080/login?error=<script>alert(1)</script>`
+- [ ] **Expected:** Error notification shows generic "Invalid email or password" text, not the parameter value
+- [ ] Navigate to `http://localhost:8080/set-password?token=<script>alert(1)</script>`
+- [ ] **Expected:** "Invalid or expired token" error (JWT parse failure), no script execution
+
+### XSS — Route parameters
+
+- [ ] Navigate to `http://localhost:8080/competitions/<script>alert(1)</script>`
+- [ ] **Expected:** Competition not found — redirected to `/competitions` or root. No script execution.
+- [ ] Navigate to `http://localhost:8080/competitions/chip-2026/divisions/<img%20src=x%20onerror=alert(1)>`
+- [ ] **Expected:** Division not found — redirected. No script execution.
+
+### SQL Injection — Text fields
+
+**Payload:** `' OR '1'='1` and `'; DROP TABLE users; --`
+
+- [ ] Navigate to `/users`, click "Create User"
+- [ ] Enter email: `test@example.com`, name: `' OR '1'='1`
+- [ ] Click "Save"
+- [ ] **Expected:** User created with the literal name (Spring Data JPA uses parameterized queries)
+- [ ] Verify the grid shows exactly: `' OR '1'='1` — no extra rows, no error
+- [ ] Delete the test user
+
+- [ ] Create an entry with mead name: `'; DROP TABLE entries; --`
+- [ ] **Expected:** Entry created normally, mead name stored as literal text
+- [ ] Verify in admin grid — no database error, literal text displayed
+
+### SQL Injection — Route parameters
+
+- [ ] Navigate to `http://localhost:8080/competitions/' OR '1'='1`
+- [ ] **Expected:** Competition not found — redirect. No SQL error exposed.
+- [ ] Navigate to `http://localhost:8080/competitions/chip-2026/divisions/' UNION SELECT * FROM users --`
+- [ ] **Expected:** Division not found — redirect. No data leakage.
+
+### SQL Injection — Webhook endpoint
+
+```bash
+curl -X POST http://localhost:8080/api/webhooks/jumpseller/order-paid \
+  -H "Content-Type: application/json" \
+  -H "Jumpseller-Hmac-Sha256: invalid" \
+  -d '{"order": {"id": "1 OR 1=1"}}'
+```
+
+- [ ] **Expected:** 401 Unauthorized (HMAC check fails before any DB access)
+
+### JWT Token Manipulation
+
+- [ ] Navigate to `http://localhost:8080/set-password?token=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsImV4cCI6OTk5OTk5OTk5OX0.invalidsignature`
+- [ ] **Expected:** "Invalid or expired token" error — forged tokens rejected
+- [ ] Navigate to `http://localhost:8080/login/magic?token=expired.token.here`
+- [ ] **Expected:** Redirected to `/login?error` — expired/invalid tokens rejected
+- [ ] Navigate to `http://localhost:8080/set-password?token=` (empty token)
+- [ ] **Expected:** Redirected to `/login` (missing token handled)
+- [ ] Navigate to `http://localhost:8080/set-password` (no token parameter)
+- [ ] **Expected:** Redirected to `/login`
+
+### Authorization Bypass — Direct URL access
+
+- [ ] Log in as `user@example.com` (regular USER, not admin)
+- [ ] Navigate directly to `http://localhost:8080/users`
+- [ ] **Expected:** Redirected away (not authorized for admin page)
+- [ ] Navigate directly to `http://localhost:8080/competitions`
+- [ ] **Expected:** Redirected away (SYSTEM_ADMIN only)
+- [ ] Navigate to `http://localhost:8080/competitions/chip-2026`
+- [ ] **Expected:** Redirected away (not a competition ADMIN)
+- [ ] Navigate to `http://localhost:8080/competitions/chip-2026/divisions/amadora/entry-admin`
+- [ ] **Expected:** Redirected away (not authorized for admin view)
+
+- [ ] Log in as `judge@example.com` (JUDGE in CHIP, but not ADMIN)
+- [ ] Navigate directly to `http://localhost:8080/competitions/chip-2026`
+- [ ] **Expected:** Redirected to root (judge is not competition ADMIN)
+- [ ] Navigate to entry admin URL for Amadora
+- [ ] **Expected:** Redirected (not authorized)
+
+- [ ] Log out completely
+- [ ] Navigate to `http://localhost:8080/competitions/chip-2026`
+- [ ] **Expected:** Redirected to `/login` (unauthenticated)
+
+### Authorization Bypass — Webhook without signature
+
+```bash
+curl -X POST http://localhost:8080/api/webhooks/jumpseller/order-paid \
+  -H "Content-Type: application/json" \
+  -d '{"order": {"id": "99999", "status": "Paid", "customer": {"email": "evil@example.com"}, "products": []}}'
+```
+
+- [ ] **Expected:** 401 Unauthorized (missing HMAC header)
+
+```bash
+curl -X POST http://localhost:8080/api/webhooks/jumpseller/order-paid \
+  -H "Content-Type: application/json" \
+  -H "Jumpseller-Hmac-Sha256: tampered-signature" \
+  -d '{"order": {"id": "99999", "status": "Paid", "customer": {"email": "evil@example.com"}, "products": []}}'
+```
+
+- [ ] **Expected:** 401 Unauthorized (invalid HMAC signature)
+
+### CSRF Protection
+
+Vaadin views use server-side state with automatic CSRF token handling. The webhook
+endpoint has a dedicated `SecurityFilterChain` with CSRF disabled (stateless API).
+
+- [ ] Open browser dev tools, inspect any Vaadin form POST (e.g., login)
+- [ ] **Expected:** Vaadin includes CSRF token automatically in its communication protocol
+- [ ] Attempt to submit the login form from an external HTML page (create a simple form POSTing to `/login`)
+- [ ] **Expected:** Login fails (CSRF token missing or invalid)
+
+### Email Enumeration Prevention
+
+- [ ] Navigate to `/login`
+- [ ] Enter email: `existing-user@example.com` (registered), click "Get Login Link"
+- [ ] **Expected:** Notification: "If this email is registered, a login link has been sent."
+- [ ] Enter email: `nonexistent@example.com` (not registered), click "Get Login Link"
+- [ ] **Expected:** Same notification: "If this email is registered, a login link has been sent."
+- [ ] **Expected:** Response time is similar for both (no timing side-channel)
+- [ ] Repeat with "Forgot password?" — verify same notification for both cases
+
+### Path Traversal — Route parameters
+
+- [ ] Navigate to `http://localhost:8080/competitions/../../users`
+- [ ] **Expected:** Competition not found — redirect. No access to `/users` path.
+- [ ] Navigate to `http://localhost:8080/competitions/chip-2026/divisions/../../`
+- [ ] **Expected:** Division not found — redirect. No traversal outside expected routes.
+
+### File Upload Validation
+
+- [ ] Navigate to competition Settings tab
+- [ ] Attempt to upload a file larger than 2.5 MB
+- [ ] **Expected:** Upload rejected with error notification (client-side check)
+- [ ] Attempt to upload a `.gif` or `.svg` file (wrong MIME type)
+- [ ] **Expected:** Upload rejected (accepted types: `image/png`, `image/jpeg` only)
+- [ ] Attempt to upload an HTML file renamed to `.png`
+- [ ] **Expected:** Upload may succeed client-side, but logo is stored as binary and served as
+  base64 data URI with the declared content type — no HTML execution risk
+
+### Input Length / Boundary Testing
+
+- [ ] Create a competition with a very long name (500+ characters)
+- [ ] **Expected:** Either accepted (VARCHAR 255 truncation or DB constraint error) or graceful validation error
+- [ ] Create an entry with very long text in all TextArea fields (honey varieties, ingredients, additional info — 10,000+ characters)
+- [ ] **Expected:** Accepted or graceful error — no server crash, no memory exhaustion
+- [ ] Enter an extremely long email in the login field (500+ characters)
+- [ ] **Expected:** EmailField validation rejects it, or server-side Bean Validation catches it
+
+### IDOR — Accessing other users' entries
+
+- [ ] Log in as `user@example.com`, note a division and entry they own
+- [ ] Log in as `entrant@example.com`
+- [ ] **Observe:** Can `entrant@example.com` see entries belonging to `user@example.com`?
+- [ ] **Expected:** MyEntriesView only shows entries for the logged-in user
+- [ ] **Expected:** No way to edit or view another user's entry details through the UI
+
+### HTTP Method Tampering — Webhook
+
+```bash
+curl -X GET http://localhost:8080/api/webhooks/jumpseller/order-paid
+```
+
+- [ ] **Expected:** 405 Method Not Allowed (only POST accepted)
+
+```bash
+curl -X PUT http://localhost:8080/api/webhooks/jumpseller/order-paid \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+- [ ] **Expected:** 405 Method Not Allowed
+
+### Error Message Information Leakage
+
+- [ ] Trigger various errors and verify no stack traces, SQL queries, or internal paths are shown:
+  - Invalid login credentials → generic "Invalid email or password"
+  - Invalid JWT token → "Invalid or expired token"
+  - Competition not found → redirect (no error details)
+  - Authorization failure → redirect (no "you don't have permission" leaking resource existence)
+- [ ] Check server logs for any sensitive data exposure (passwords, tokens in log messages)
+- [ ] **Expected:** Passwords are never logged. JWT tokens appear only in fallback log messages
+  (when email fails to send). Access codes appear in participant grids only.
+
+---
+
 ## Appendix: Coverage Mapping
 
 | Walkthrough Section | Automated Tests |
@@ -1281,6 +1516,7 @@ After running the above tests, document decisions on:
 | 9. Webhook | `JumpsellerWebhookControllerTest`, `WebhookServiceTest`, `JumpsellerOrderTest`, `JumpsellerOrderLineItemTest` |
 | 10. My Entries | `MyEntriesViewTest`, `EntryServiceTest`, `EntryTest`, `EntryCreditRepositoryTest`, `EntryRepositoryTest` |
 | 11. Cross-cutting | `EntryServiceTest`, `DevDataInitializerTest`, `EntryModuleTest`, `CompetitionModuleTest`, `ModulithStructureTest` |
+| 14. Security | `SecurityConfigTest`, `JumpsellerWebhookControllerTest`, `SmtpEmailServiceTest`, `JwtMagicLinkServiceTest`, `LoginViewTest` |
 
 ### Tests without direct manual coverage
 
