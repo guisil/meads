@@ -18,10 +18,10 @@ docker-compose up -d          # Start PostgreSQL + Mailpit
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-Wait for startup to complete. The console will show magic links for dev users.
+Wait for startup to complete. Magic link emails for dev users will be sent to Mailpit.
 
-**Mailpit web UI:** `http://localhost:8025` — all emails sent by the app are captured here.
-Dev users created by `DevUserInitializer` still log magic links to console (bypass email).
+**Mailpit web UI:** `http://localhost:8025` — all emails sent by the app are captured here,
+including dev user magic links sent by `DevUserInitializer` at startup.
 
 ### Dev users
 
@@ -29,11 +29,11 @@ Dev users created by `DevUserInitializer` still log magic links to console (bypa
 |-------|------|------|--------|------------|
 | `admin@example.com` | Dev Admin | SYSTEM_ADMIN | ACTIVE | Password: `admin` |
 | `compadmin@example.com` | Competition Admin | USER | ACTIVE | Password: `compadmin` |
-| `user@example.com` | Dev User | USER | ACTIVE | Magic link (see logs) |
-| `pending@example.com` | Pending User | USER | PENDING | Magic link (see logs) |
-| `judge@example.com` | Dev Judge | USER | ACTIVE | Magic link (see logs) |
-| `steward@example.com` | Dev Steward | USER | ACTIVE | Magic link (see logs) |
-| `entrant@example.com` | Dev Entrant | USER | ACTIVE | Magic link (see logs) |
+| `user@example.com` | Dev User | USER | ACTIVE | Magic link (see Mailpit) |
+| `pending@example.com` | Pending User | USER | PENDING | Magic link (see Mailpit) |
+| `judge@example.com` | Dev Judge | USER | ACTIVE | Magic link (see Mailpit) |
+| `steward@example.com` | Dev Steward | USER | ACTIVE | Magic link (see Mailpit) |
+| `entrant@example.com` | Dev Entrant | USER | ACTIVE | Magic link (see Mailpit) |
 
 ### Seeded competition data (CHIP 2026)
 

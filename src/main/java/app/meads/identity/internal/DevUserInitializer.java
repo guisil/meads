@@ -1,6 +1,6 @@
 package app.meads.identity.internal;
 
-import app.meads.identity.JwtMagicLinkService;
+import app.meads.identity.EmailService;
 import app.meads.identity.Role;
 import app.meads.identity.User;
 import app.meads.identity.UserStatus;
@@ -13,21 +13,19 @@ import org.springframework.stereotype.Component;
 
 import org.springframework.core.annotation.Order;
 
-import java.time.Duration;
-
 @Slf4j
 @Component
 @Profile("dev")
 class DevUserInitializer {
 
     private final UserRepository userRepository;
-    private final JwtMagicLinkService jwtMagicLinkService;
+    private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
 
-    DevUserInitializer(UserRepository userRepository, JwtMagicLinkService jwtMagicLinkService,
+    DevUserInitializer(UserRepository userRepository, EmailService emailService,
                        PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
-        this.jwtMagicLinkService = jwtMagicLinkService;
+        this.emailService = emailService;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -53,8 +51,8 @@ class DevUserInitializer {
             user.setPasswordHash(passwordEncoder.encode(password));
             log.info("Created dev user {} with password: {}", email, password);
         } else {
-            String link = jwtMagicLinkService.generateLink(email, Duration.ofDays(30));
-            log.info("\n\n\tDev magic link for {}: {}\n", email, link);
+            emailService.sendMagicLink(email);
+            log.info("Sent magic link email to dev user {}", email);
         }
         userRepository.save(user);
     }

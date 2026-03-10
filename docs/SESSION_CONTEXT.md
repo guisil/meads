@@ -215,8 +215,8 @@ Design and implementation, after judging module. Reference: `docs/reference/chip
 - **Token validity (7 days)** — private constant in `SmtpEmailService`, not mentioned in email body.
 - **Competition `contactEmail`** — optional field, shown in password setup emails as reply-to
   and visible footer contact. Saved via `CompetitionService.updateCompetitionContactEmail()`.
-- **DevUserInitializer unchanged** — uses `JwtMagicLinkService` directly (runs at startup before
-  Mailpit is ready, uses 30-day tokens, dev-only).
+- **DevUserInitializer uses EmailService** — sends magic link emails via `EmailService.sendMagicLink()`
+  at startup. Emails are captured by Mailpit in dev. Password users (admin, compadmin) still log to console.
 - **`spring.thymeleaf.check-template-location=false`** — prevents Thymeleaf view resolver conflict
   with Vaadin (Thymeleaf used only for template rendering, not view resolution).
   MyEntriesView shows warning banner and blocks submit (all + individual) when required but missing.

@@ -1,6 +1,6 @@
 package app.meads.identity.internal;
 
-import app.meads.identity.JwtMagicLinkService;
+import app.meads.identity.EmailService;
 import app.meads.identity.Role;
 import app.meads.identity.User;
 import app.meads.identity.UserStatus;
@@ -27,7 +27,7 @@ class DevUserInitializerTest {
 
     @InjectMocks DevUserInitializer devUserInitializer;
     @Mock UserRepository userRepository;
-    @Mock JwtMagicLinkService jwtMagicLinkService;
+    @Mock EmailService emailService;
     @Mock PasswordEncoder passwordEncoder;
 
     @Test
@@ -97,19 +97,19 @@ class DevUserInitializerTest {
     }
 
     @Test
-    void shouldGenerateMagicLinksForNonAdminDevUsers() {
+    void shouldSendMagicLinkEmailsForNonPasswordDevUsers() {
         given(userRepository.existsByEmail(any())).willReturn(false);
         given(passwordEncoder.encode("admin")).willReturn("$2a$10$adminHash");
 
         devUserInitializer.initializeDevUsers();
 
-        // Magic links for non-password users only
-        then(jwtMagicLinkService).should().generateLink(eq("user@example.com"), any());
-        then(jwtMagicLinkService).should().generateLink(eq("pending@example.com"), any());
-        then(jwtMagicLinkService).should().generateLink(eq("judge@example.com"), any());
-        then(jwtMagicLinkService).should().generateLink(eq("steward@example.com"), any());
-        then(jwtMagicLinkService).should().generateLink(eq("entrant@example.com"), any());
-        then(jwtMagicLinkService).should(never()).generateLink(eq("admin@example.com"), any());
-        then(jwtMagicLinkService).should(never()).generateLink(eq("compadmin@example.com"), any());
+        // Magic link emails for non-password users only
+        then(emailService).should().sendMagicLink("user@example.com");
+        then(emailService).should().sendMagicLink("pending@example.com");
+        then(emailService).should().sendMagicLink("judge@example.com");
+        then(emailService).should().sendMagicLink("steward@example.com");
+        then(emailService).should().sendMagicLink("entrant@example.com");
+        then(emailService).should(never()).sendMagicLink("admin@example.com");
+        then(emailService).should(never()).sendMagicLink("compadmin@example.com");
     }
 }
