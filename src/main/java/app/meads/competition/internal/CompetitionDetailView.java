@@ -465,6 +465,9 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 Notification.show(e.getErrorMessage())
                         .addThemeVariants(NotificationVariant.LUMO_ERROR));
 
+        var logoLabel = new Span("Logo (PNG or JPEG, max 2.5 MB)");
+        logoLabel.addClassName("field-label");
+
         var logoSection = new HorizontalLayout();
         logoSection.setDefaultVerticalComponentAlignment(Alignment.CENTER);
         logoSection.add(upload);
@@ -506,6 +509,10 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 endDatePicker.setErrorMessage("End date is required");
                 return;
             }
+            if (StringUtils.hasText(contactEmailField.getValue()) && contactEmailField.isInvalid()) {
+                contactEmailField.setErrorMessage("Please enter a valid email address");
+                return;
+            }
             try {
                 var location = StringUtils.hasText(locationField.getValue())
                         ? locationField.getValue() : null;
@@ -537,7 +544,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
             }
         });
 
-        tab.add(nameField, shortNameField, startDatePicker, endDatePicker, locationField, contactEmailField, shippingAddressField, phoneNumberField, logoSection, saveButton);
+        tab.add(nameField, shortNameField, startDatePicker, endDatePicker, locationField, contactEmailField, shippingAddressField, phoneNumberField, logoLabel, logoSection, saveButton);
         return tab;
     }
 
