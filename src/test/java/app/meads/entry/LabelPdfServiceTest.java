@@ -8,6 +8,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.lowagie.text.pdf.PdfName;
+import com.lowagie.text.pdf.PdfReader;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -28,7 +31,7 @@ class LabelPdfServiceTest {
     }
 
     @Test
-    void shouldGenerateSingleEntryLabelPdf() {
+    void shouldGenerateSingleEntryLabelPdf() throws Exception {
         var competition = new Competition("CHIP Mead 2026", "chip-2026",
                 LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 3), "Lisbon");
         competition.updateShippingDetails("123 Main St\nCity, 12345\nPortugal", "+351-555-0123");
@@ -49,6 +52,14 @@ class LabelPdfServiceTest {
         assertThat(pdfBytes).isNotNull();
         assertThat(pdfBytes.length).isGreaterThan(0);
         assertThat(new String(pdfBytes, 0, 5)).startsWith("%PDF");
+
+        // Verify QR code images are embedded (3 labels = 3 images)
+        var reader = new PdfReader(pdfBytes);
+        var resources = reader.getPageN(1).getAsDict(PdfName.RESOURCES);
+        var xObjects = resources.getAsDict(PdfName.XOBJECT);
+        assertThat(xObjects).isNotNull();
+        assertThat(xObjects.getKeys()).hasSize(3);
+        reader.close();
     }
 
     @Test

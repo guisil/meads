@@ -254,26 +254,28 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] Log out, log in as `user@example.com` (regular USER with credits, not competition admin)
 - [ ] **Expected:** Side nav shows "My Entries" only -- no "Competitions", "Users", or "My Competitions"
 
-### My Profile nav item
+### My Profile (user menu)
 
 - [ ] While logged in as any user
-- [ ] **Expected:** Side nav shows "My Profile" (for all authenticated users)
-- [ ] Click "My Profile"
+- [ ] **Expected:** User menu (top right corner) contains "My Profile" above the logout option
+- [ ] Click the user menu, then "My Profile"
 - [ ] **Expected:** Navigated to `/profile`
 
 ### Profile self-edit
 
 - [ ] **Expected:** Page title "My Profile"
-- [ ] **Expected:** Fields: Email (read-only), Name, Meadery Name, Country (ComboBox), Save button
+- [ ] **Expected:** Fields: Email (read-only), Name, Meadery Name, Country (ComboBox), Cancel button, Save button
 - [ ] **Expected:** Email shows current user's email and is not editable
 - [ ] **Expected:** Name is pre-populated with current user's name
 - [ ] Change Name to `Updated Name`, set Meadery Name to `Test Meadery`, select Country `Portugal`
 - [ ] Click "Save"
-- [ ] **Expected:** Notification "Profile saved" (green)
-- [ ] Reload the page
+- [ ] **Expected:** Notification "Profile updated" (green), navigated to default page
+- [ ] Navigate back to `/profile`
 - [ ] **Expected:** Fields retain the saved values
 - [ ] Clear Meadery Name and Country, revert Name, click "Save"
 - [ ] **Expected:** Changes saved successfully (meadery name and country can be null)
+- [ ] Navigate to `/profile`, click "Cancel"
+- [ ] **Expected:** Navigated to default page without saving
 
 ---
 
@@ -288,7 +290,7 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] Navigate to `/users`
 - [ ] **Expected:** Page title "Users"
 - [ ] **Expected:** Filter field with search icon and placeholder "Filter by email or name..."
-- [ ] **Expected:** Grid with columns: Name (sortable), Email (sortable), Role (sortable), Status (sortable), Actions (icon buttons)
+- [ ] **Expected:** Grid with columns: Name (sortable), Email (sortable), Meadery (sortable), Country (sortable, full name), Role (sortable), Status (sortable), Actions (icon buttons)
 - [ ] **Expected:** Grid contains at least 7 dev users (admin, compadmin, user, pending/active, judge, steward, entrant)
 - [ ] Type a name fragment in the filter field
 - [ ] **Expected:** Grid filters immediately (EAGER mode), showing only matching users
@@ -550,7 +552,7 @@ CTA button, fallback URL, and optional contact footer.
 
 - [ ] Click the "Participants" tab
 - [ ] **Expected:** Filter field with search icon and placeholder "Filter by name or email..."
-- [ ] **Expected:** Grid with columns: Name (sortable), Email (sortable), Role (sortable), Access Code, Actions (envelope + remove icons)
+- [ ] **Expected:** Grid with columns: Name (sortable), Email (sortable), Meadery (sortable), Country (sortable), Role (sortable), Access Code, Actions (envelope + remove icons). All columns resizable.
 - [ ] **Expected:** Rows for compadmin (Admin, no code), judge (Judge, 8-char code), steward (Steward, 8-char code), user (Entrant, no code), entrant (Entrant, no code)
 - [ ] **Expected:** Envelope icon (send login link) shown only for participants without passwords (magic-link-only users)
 - [ ] Type a name fragment in the filter field
@@ -592,7 +594,7 @@ CTA button, fallback URL, and optional contact footer.
 ### Settings tab
 
 - [ ] Click the "Settings" tab
-- [ ] **Expected:** Form with: Name, Short Name, Start Date, End Date, Location, Contact Email, Logo upload (max 2.5 MB, PNG/JPEG), Save button
+- [ ] **Expected:** Form with: Name, Short Name, Start Date, End Date, Location, Contact Email, Logo label ("Logo") above upload field (max 2.5 MB, PNG/JPEG), Save button
 - [ ] **Expected:** Fields pre-populated with CHIP 2026 data
 - [ ] **Expected:** Contact Email field with helper text "Shown in emails sent to competition participants" and clear button
 - [ ] Enter contact email: `organizer@chip.com`
@@ -851,7 +853,7 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] Navigate back to Amadora entry-admin
 - [ ] Click the "Entries" tab
 - [ ] **Expected:** Filter field: "Filter by mead name, entrant, or entry code..."
-- [ ] **Expected:** Grid with columns: Entry # (with AMA prefix, e.g. "AMA-1"), Code, Mead Name, Category, Entrant, Meadery, Country, Status, Actions (edit/delete/withdraw icons)
+- [ ] **Expected:** Grid with columns: Entry # (with AMA prefix, e.g. "AMA-1"), Code, Mead Name, Category (code with tooltip for full name), Entrant, Meadery, Country, Status, Actions (edit/delete/withdraw icons)
 - [ ] **Expected:** Meadery column shows user's meadery name (or empty if not set)
 - [ ] **Expected:** Country column shows display name (e.g. "Portugal") based on user's ISO country code
 - [ ] **Expected:** 4 entries total (3 from user@example.com, 1 from entrant@example.com), sorted by entry number
@@ -1111,7 +1113,8 @@ curl -s -o /dev/null -w "%{http_code}" \
 ### Entries grid
 
 - [ ] **Expected:** Grid with columns: Entry #, Mead Name, Category, Final Category, Status (badge), Actions
-- [ ] **Expected:** Entry # column is narrow (~90px), Status shows styled badge (like division status)
+- [ ] **Expected:** Entry # column shows prefixed format (e.g. AMA-1), narrow (~110px), Status shows styled badge (like division status)
+- [ ] **Expected:** Category column shows code (e.g. M1A) with tooltip showing full category name
 - [ ] **Expected:** Final Category shows "—" for all entries (not yet assigned)
 - [ ] **Expected:** Actions column has icons: view (eye), edit (pencil), submit (check) — edit/submit only enabled for DRAFT
 - [ ] **Expected:** All columns are resizable and sortable
@@ -1125,7 +1128,7 @@ curl -s -o /dev/null -w "%{http_code}" \
 
 - [ ] **Expected:** "Add Entry" button is enabled (remaining credits > 0)
 - [ ] Click "Add Entry"
-- [ ] **Expected:** Dialog (600px wide) with full-width fields: Mead Name, Category, Sweetness, Strength, ABV (%), Carbonation, Honey Varieties, Other Ingredients, Wood Aged checkbox, Additional Information
+- [ ] **Expected:** Dialog (600px wide) with full-width fields: Mead Name, Category (subcategories only, shows "code — name"), Sweetness, Strength, ABV (%), Carbonation, Honey Varieties, Other Ingredients, Wood Aged checkbox, Additional Information
 - [ ] Fill in: Mead Name: `Spring Blossom`, Category: M1B, Sweetness: Medium, Strength: Standard, ABV: 12.0, Carbonation: Still, Honey: `Orange blossom`
 - [ ] Click "Save"
 - [ ] **Expected:** Notification "Entry created" (green)
@@ -1158,7 +1161,7 @@ curl -s -o /dev/null -w "%{http_code}" \
 
 - [ ] Find "Blueberry Bliss" (SUBMITTED) in the grid
 - [ ] Click the view (eye) icon in the Actions column
-- [ ] **Expected:** Read-only dialog showing all entry fields (Mead Name, Category, Sweetness, Strength, ABV, Carbonation, Honey Varieties, Status, Entry Code, etc.)
+- [ ] **Expected:** Read-only dialog showing all entry fields (Mead Name, Category (code — name format), Sweetness, Strength, ABV, Carbonation, Honey Varieties, Status, etc.). Entry code is NOT shown (only visible to admins).
 - [ ] Click "Close"
 
 ### Edit draft entry

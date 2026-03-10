@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `competition-module`
-**Tests:** 481 passing (`mvn test -Dsurefire.useFile=false`)
+**Tests:** 482 passing (`mvn test -Dsurefire.useFile=false`)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -128,7 +128,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 - `User.java` — added `meaderyName` and `country` fields (now in V2)
 - `Division.java` — added `maxEntriesPerSubcategory`, `maxEntriesPerMainCategory`, `maxEntriesTotal`, `entryPrefix`, `meaderyNameRequired`
 - `DivisionDetailView` — "Manage Entries" button, entry prefix + entry limits in Settings tab (DRAFT-only for limits), meaderyNameRequired checkbox (DRAFT-only)
-- `MainLayout` — "My Profile" nav item for all authenticated users
+- `MainLayout` — "My Profile" as submenu item in user dropdown menu (navigates to `/profile`)
 - `application.properties` — added `app.jumpseller.hooks-token`
 
 #### Migrations: V9–V13
@@ -167,34 +167,61 @@ docs/
 
 ### Priority 1: Manual walkthrough (full redo)
 Redo the **entire** manual-test walkthrough from Section 1. Previous partial run covered
-Sections 2–9; this is a fresh pass through all sections (1–14) to validate the current
-state end-to-end, including competition documents, entry limits UI, logging, and all
-accumulated changes. May produce bug fixes or UX improvements.
+Sections 2–8 with many fixes along the way; this is a fresh pass through all sections
+(1–14) to validate the current state end-to-end. **Go through every test item without
+skipping anything.** May produce bug fixes or UX improvements.
 
-### Priority 2: Deployment
+### Priority 2: Category value locking / auto-fill
+Investigate and implement category-driven field locking. Examples:
+- ABV range could lock the Strength field (e.g., <7.5% → Hydromel, 7.5-14% → Standard, >14% → Sack)
+- Selecting M1A (Dry Traditional) could lock Sweetness to "Dry"
+- Choosing a specific subcategory could constrain or suggest characteristics
+This needs design work first — which fields, which categories, how strict (lock vs. suggest).
+
+### Priority 3: Entry labels layout adjustments
+QR code now renders correctly (was broken: ZXing TYPE_BYTE_BINARY incompatible with OpenPDF).
+Additional layout improvements to consider:
+- Review spacing, font sizes, and overall label aesthetics
+- Verify QR code scannability at print resolution
+- Consider adding ABV to label characteristics line
+- Review instruction header formatting
+- Test with various entry data (long names, many ingredients, etc.)
+
+### Priority 4: Email notifications
+Design and implement email notifications beyond magic links:
+- **Admin alert on invalid/partially processed webhook orders** — notify competition admin when
+  an order arrives with NEEDS_REVIEW or PARTIALLY_PROCESSED status
+- **Entrant deadline reminder** — notify entrants who have DRAFT entries when the registration
+  deadline is approaching (e.g., 7 days, 3 days, 1 day before REGISTRATION_CLOSED)
+- **Entry submission confirmation** — notify entrant when their entries are successfully submitted
+- Other potential: entry received confirmation, results published notification
+Needs design: triggers, templates, frequency/dedup, configuration per competition.
+
+### Priority 5: Deployment
 **Investigation complete** — see `docs/plans/2026-03-10-deployment-design.md`.
 Summary: Evaluated Railway, DigitalOcean (App Platform, Droplet), AWS (Lightsail, EB+RDS).
 Recommendation: DigitalOcean App Platform + Managed PostgreSQL (~$20/mo) — best balance of
 cost, automatic backups (daily + PITR), and zero ops. Needs Dockerfile, DNS setup, email
 provider (Resend), and prod config before deploying.
 
-### Priority 3: Internationalization (i18n)
+### Priority 6: Internationalization (i18n)
 **Design complete** — see `docs/plans/2026-03-10-i18n-design.md`. Implementation deferred.
 Summary: Vaadin I18NProvider + Spring MessageSource, resource bundles, browser locale +
 UI switcher (cookie/localStorage), entrant-facing views only (6 views), MJP category
 translations via bundles keyed by code. ~100-120 strings to extract. No DB changes needed.
 
-### Priority 4: Judging module
+### Priority 7: Judging module
 Design and implementation. Reference: `docs/reference/chip-competition-rules.md`.
 
-### Priority 5: Awards module
+### Priority 8: Awards module
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md`.
 
 ### Completed priorities
 - **Configuration audit** — Properties reorganized, secrets in profile-specific files.
 - **Email sending** — SMTP with Thymeleaf templates, Mailpit dev, Resend prod.
-- **Entry labels (PDF)** — OpenPDF + ZXing, LabelPdfService, individual + batch download.
+- **Entry labels (PDF)** — OpenPDF + ZXing, LabelPdfService, individual + batch download. QR code fix: ZXing TYPE_BYTE_BINARY → TYPE_INT_RGB conversion + nested PdfPTable for cell embedding.
 - **Competition documents** — PDF upload + external links, admin Documents tab, entrant list.
+- **Category code display** — Grid columns show code (e.g. M1A) with tooltip for full name in both MyEntriesView and DivisionEntryAdminView. View entry dialog shows "code — name" format. Entry creation filtered to subcategories only.
 
 ---
 

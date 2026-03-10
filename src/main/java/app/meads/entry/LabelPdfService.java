@@ -219,18 +219,29 @@ public class LabelPdfService {
     private void addQrCode(PdfPCell cell, String content) throws WriterException, IOException {
         var qrCodeWriter = new QRCodeWriter();
         var bitMatrix = qrCodeWriter.encode(content, BarcodeFormat.QR_CODE, QR_CODE_SIZE, QR_CODE_SIZE);
-        var bufferedImage = MatrixToImageWriter.toBufferedImage(bitMatrix);
+        var binaryImage = MatrixToImageWriter.toBufferedImage(bitMatrix);
+
+        // ZXing produces TYPE_BYTE_BINARY images which OpenPDF cannot embed — convert to RGB
+        var rgbImage = new java.awt.image.BufferedImage(
+                binaryImage.getWidth(), binaryImage.getHeight(),
+                java.awt.image.BufferedImage.TYPE_INT_RGB);
+        var g = rgbImage.createGraphics();
+        g.drawImage(binaryImage, 0, 0, null);
+        g.dispose();
 
         var imageBytes = new ByteArrayOutputStream();
-        ImageIO.write(bufferedImage, "PNG", imageBytes);
+        ImageIO.write(rgbImage, "PNG", imageBytes);
         var image = Image.getInstance(imageBytes.toByteArray());
-        image.setAlignment(Element.ALIGN_CENTER);
         image.scaleAbsolute(QR_CODE_SIZE, QR_CODE_SIZE);
 
-        var qrParagraph = new Paragraph();
-        qrParagraph.setAlignment(Element.ALIGN_CENTER);
-        qrParagraph.add(image);
-        cell.addElement(qrParagraph);
+        // Use nested table to properly embed image in cell
+        var imgTable = new PdfPTable(1);
+        imgTable.setWidthPercentage(100);
+        var imgCell = new PdfPCell(image, false);
+        imgCell.setBorder(0);
+        imgCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        imgTable.addCell(imgCell);
+        cell.addElement(imgTable);
     }
 
     String formatEntryId(Entry entry, Division division) {
