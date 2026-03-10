@@ -69,6 +69,12 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
         grid.setAllRowsVisible(true);
         grid.addColumn(User::getName).setHeader("Name").setSortable(true).setFlexGrow(2);
         grid.addColumn(User::getEmail).setHeader("Email").setSortable(true).setFlexGrow(3);
+        grid.addColumn(user -> user.getMeaderyName() != null ? user.getMeaderyName() : "—")
+                .setHeader("Meadery").setSortable(true).setFlexGrow(2);
+        grid.addColumn(user -> {
+            if (user.getCountry() == null) return "—";
+            return new Locale("", user.getCountry()).getDisplayCountry(Locale.ENGLISH);
+        }).setHeader("Country").setSortable(true).setAutoWidth(true);
         grid.addColumn(User::getRole).setHeader("Role").setSortable(true).setAutoWidth(true);
         grid.addColumn(User::getStatus).setHeader("Status").setSortable(true).setAutoWidth(true);
         grid.addComponentColumn(user -> {
@@ -104,6 +110,8 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
             actions.add(passwordResetButton);
             return actions;
         }).setHeader("Actions").setAutoWidth(true);
+
+        grid.getColumns().forEach(col -> col.setResizable(true));
 
         var dataView = grid.setItems(userService.findAll());
         filterField.addValueChangeListener(e -> {

@@ -53,10 +53,24 @@ class DevDataInitializer {
         var compAdmin = userService.findByEmail("compadmin@example.com");
         var compAdminId = compAdmin.getId();
 
+        seedUserProfiles();
         seedChip2026(sysAdminId, compAdminId);
         seedTestCompetition(sysAdminId, compAdminId);
 
         log.info("Dev data initialization complete");
+    }
+
+    private void seedUserProfiles() {
+        var compAdmin = userService.findByEmail("compadmin@example.com");
+        userService.updateProfile(compAdmin.getId(), compAdmin.getName(), "Hidroméis do Minho", "PT");
+
+        var devUser = userService.findByEmail("user@example.com");
+        userService.updateProfile(devUser.getId(), devUser.getName(), null, "GB");
+
+        var entrant = userService.findByEmail("entrant@example.com");
+        userService.updateProfile(entrant.getId(), entrant.getName(), null, "DE");
+
+        log.info("Set meadery names and countries for dev users");
     }
 
     private void seedChip2026(UUID sysAdminId, UUID compAdminId) {
@@ -184,21 +198,25 @@ class DevDataInitializer {
         // 11. Create example orders via webhook processing
         webhookService.processOrderPaid(buildOrderPayload(
                 "JS-1001", "buyer1@example.com", "Maria Silva",
-                "1001", "CHIP-AMA", "CHIP Amadora Entry", 2));
+                "1001", "CHIP-AMA", "CHIP Amadora Entry", 2, "PT"));
         webhookService.processOrderPaid(buildOrderPayload(
                 "JS-1002", "buyer2@example.com", "João Santos",
-                "1002", "CHIP-PRO", "CHIP Profissional Entry", 3));
+                "1002", "CHIP-PRO", "CHIP Profissional Entry", 3, "BR"));
         log.info("Created example webhook orders");
     }
 
     private String buildOrderPayload(String orderId, String email, String fullName,
                                       String productId, String sku, String productName,
-                                      int quantity) {
+                                      int quantity, String countryCode) {
         var root = MAPPER.createObjectNode();
         root.put("id", orderId);
         var customer = root.putObject("customer");
         customer.put("email", email);
         customer.put("full_name", fullName);
+        if (countryCode != null) {
+            var shipping = root.putObject("shipping_address");
+            shipping.put("country_code", countryCode);
+        }
         var products = root.putArray("products");
         var product = products.addObject();
         product.put("product_id", productId);
