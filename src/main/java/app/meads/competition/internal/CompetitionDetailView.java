@@ -63,6 +63,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
     private Nav breadcrumb;
     private Grid<Division> divisionsGrid;
     private Grid<ParticipantRole> participantsGrid;
+    private Grid<CompetitionDocument> documentsGrid;
     private Map<UUID, Participant> participantMap;
     private Map<UUID, User> userMap;
 
@@ -719,7 +720,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         actions.add(new Button("Add Document", e -> openAddDocumentDialog()));
         tab.add(actions);
 
-        var documentsGrid = new Grid<CompetitionDocument>(CompetitionDocument.class, false);
+        documentsGrid = new Grid<>(CompetitionDocument.class, false);
         documentsGrid.setAllRowsVisible(true);
         documentsGrid.addColumn(CompetitionDocument::getName).setHeader("Name").setFlexGrow(3);
         documentsGrid.addComponentColumn(doc -> {
@@ -842,7 +843,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                         type, pdfData[0], pdfContentType[0],
                         type == DocumentType.LINK ? urlField.getValue().trim() : null,
                         getCurrentUserId());
-                UI.getCurrent().navigate("competitions/" + competition.getShortName());
+                documentsGrid.setItems(competitionService.getDocuments(competitionId));
                 var notification = Notification.show("Document added successfully");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
