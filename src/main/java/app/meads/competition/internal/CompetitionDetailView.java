@@ -5,6 +5,7 @@ import app.meads.competition.*;
 import app.meads.identity.EmailService;
 import app.meads.identity.User;
 import app.meads.identity.UserService;
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.datepicker.DatePicker;
@@ -27,6 +28,7 @@ import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.upload.Upload;
+import com.vaadin.flow.server.StreamResource;
 import com.vaadin.flow.server.streams.UploadHandler;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
@@ -37,6 +39,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
 
+import java.io.ByteArrayInputStream;
 import java.util.Base64;
 import java.util.Map;
 import java.util.UUID;
@@ -174,6 +177,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         tabSheet.add("Divisions", createDivisionsTab());
         tabSheet.add("Participants", createParticipantsTab());
         tabSheet.add("Settings", createSettingsTab());
+        tabSheet.add("Documents", createDocumentsTab());
 
         return tabSheet;
     }
@@ -682,6 +686,228 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 // User not found — shouldn't happen since we just added them
             }
         }
+    }
+
+    private VerticalLayout createDocumentsTab() {
+        var tab = new VerticalLayout();
+        tab.setPadding(false);
+
+        var actions = new HorizontalLayout();
+        actions.setWidthFull();
+        actions.setJustifyContentMode(JustifyContentMode.END);
+        actions.add(new Button("Add Document", e -> openAddDocumentDialog()));
+        tab.add(actions);
+
+        var documentsGrid = new Grid<CompetitionDocument>(CompetitionDocument.class, false);
+        documentsGrid.setAllRowsVisible(true);
+        documentsGrid.addColumn(CompetitionDocument::getName).setHeader("Name").setFlexGrow(3);
+        documentsGrid.addComponentColumn(doc -> {
+            var badge = new Span(doc.getType().name());
+            badge.getElement().getThemeList().add("badge pill small");
+            return badge;
+        }).setHeader("Type").setAutoWidth(true);
+        documentsGrid.addComponentColumn(doc -> {
+            var layout = new HorizontalLayout();
+            layout.setSpacing(false);
+            layout.getStyle().set("gap", "var(--lumo-space-xs)");
+
+            if (doc.getType() == DocumentType.PDF) {
+                var downloadAnchor = new Anchor(
+                        new StreamResource(doc.getName() + ".pdf",
+                                () -> new ByteArrayInputStream(
+                                        competitionService.getDocument(doc.getId()).getData())),
+                        "");
+                downloadAnchor.getElement().setAttribute("download", true);
+                var downloadButton = new Button(new Icon(VaadinIcon.DOWNLOAD));
+                downloadButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+                downloadButton.setTooltipText("Download");
+                downloadAnchor.add(downloadButton);
+                layout.add(downloadAnchor);
+            } else {
+                var openAnchor = new Anchor(doc.getUrl(), "");
+                openAnchor.setTarget("_blank");
+                var openButton = new Button(new Icon(VaadinIcon.EXTERNAL_LINK));
+                openButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+                openButton.setTooltipText("Open link");
+                openAnchor.add(openButton);
+                layout.add(openAnchor);
+            }
+
+            var upButton = new Button(new Icon(VaadinIcon.ARROW_UP));
+            upButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            upButton.setTooltipText("Move up");
+            upButton.addClickListener(e -> moveDocument(documentsGrid, doc, -1));
+
+            var downButton = new Button(new Icon(VaadinIcon.ARROW_DOWN));
+            downButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            downButton.setTooltipText("Move down");
+            downButton.addClickListener(e -> moveDocument(documentsGrid, doc, 1));
+
+            var editButton = new Button(new Icon(VaadinIcon.EDIT));
+            editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            editButton.setTooltipText("Edit name");
+            editButton.addClickListener(e -> openEditDocumentNameDialog(documentsGrid, doc));
+
+            var deleteButton = new Button(new Icon(VaadinIcon.TRASH));
+            deleteButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            deleteButton.setTooltipText("Delete");
+            deleteButton.addClickListener(e -> openDeleteDocumentDialog(documentsGrid, doc));
+
+            layout.add(upButton, downButton, editButton, deleteButton);
+            return layout;
+        }).setHeader("Actions").setAutoWidth(true);
+
+        documentsGrid.setItems(competitionService.getDocuments(competitionId));
+        tab.add(documentsGrid);
+        return tab;
+    }
+
+    private void openAddDocumentDialog() {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle("Add Document");
+
+        var nameField = new TextField("Name");
+        nameField.setRequired(true);
+        nameField.setWidthFull();
+
+        var typeSelect = new Select<DocumentType>();
+        typeSelect.setLabel("Type");
+        typeSelect.setItems(DocumentType.values());
+        typeSelect.setValue(DocumentType.PDF);
+        typeSelect.setWidthFull();
+
+        var urlField = new TextField("URL");
+        urlField.setWidthFull();
+        urlField.setVisible(false);
+
+        var pdfData = new byte[1][];
+        var pdfContentType = new String[1];
+
+        var uploadHandler = UploadHandler.inMemory((metadata, data) -> {
+            pdfData[0] = data;
+            pdfContentType[0] = metadata.contentType();
+        });
+        var upload = new Upload(uploadHandler);
+        upload.setMaxFiles(1);
+        upload.setMaxFileSize(10 * 1024 * 1024);
+        upload.setAcceptedFileTypes("application/pdf");
+        upload.addFileRejectedListener(e ->
+                Notification.show(e.getErrorMessage())
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR));
+
+        typeSelect.addValueChangeListener(e -> {
+            upload.setVisible(e.getValue() == DocumentType.PDF);
+            urlField.setVisible(e.getValue() == DocumentType.LINK);
+        });
+
+        var saveButton = new Button("Save", e -> {
+            if (!StringUtils.hasText(nameField.getValue())) {
+                nameField.setInvalid(true);
+                nameField.setErrorMessage("Name is required");
+                return;
+            }
+            try {
+                var type = typeSelect.getValue();
+                if (type == DocumentType.PDF && pdfData[0] == null) {
+                    Notification.show("Please upload a PDF file");
+                    return;
+                }
+                if (type == DocumentType.LINK && !StringUtils.hasText(urlField.getValue())) {
+                    urlField.setInvalid(true);
+                    urlField.setErrorMessage("URL is required");
+                    return;
+                }
+                competitionService.addDocument(competitionId, nameField.getValue().trim(),
+                        type, pdfData[0], pdfContentType[0],
+                        type == DocumentType.LINK ? urlField.getValue().trim() : null,
+                        getCurrentUserId());
+                UI.getCurrent().navigate("competitions/" + competition.getShortName());
+                var notification = Notification.show("Document added successfully");
+                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                dialog.close();
+            } catch (IllegalArgumentException ex) {
+                Notification.show(ex.getMessage());
+            }
+        });
+
+        var cancelButton = new Button("Cancel", e -> dialog.close());
+
+        var form = new VerticalLayout(nameField, typeSelect, upload, urlField);
+        form.setPadding(false);
+        dialog.add(form);
+        dialog.getFooter().add(cancelButton, saveButton);
+        dialog.open();
+    }
+
+    private void moveDocument(Grid<CompetitionDocument> grid, CompetitionDocument doc, int direction) {
+        var docs = competitionService.getDocuments(competitionId);
+        var ids = docs.stream().map(CompetitionDocument::getId).collect(java.util.stream.Collectors.toList());
+        int currentIndex = ids.indexOf(doc.getId());
+        int targetIndex = currentIndex + direction;
+        if (targetIndex < 0 || targetIndex >= ids.size()) return;
+        ids.remove(currentIndex);
+        ids.add(targetIndex, doc.getId());
+        try {
+            competitionService.reorderDocuments(competitionId, ids, getCurrentUserId());
+            grid.setItems(competitionService.getDocuments(competitionId));
+        } catch (IllegalArgumentException ex) {
+            Notification.show(ex.getMessage());
+        }
+    }
+
+    private void openEditDocumentNameDialog(Grid<CompetitionDocument> grid, CompetitionDocument doc) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle("Edit Document Name");
+
+        var nameField = new TextField("Name");
+        nameField.setValue(doc.getName());
+        nameField.setWidthFull();
+
+        var saveButton = new Button("Save", e -> {
+            if (!StringUtils.hasText(nameField.getValue())) {
+                nameField.setInvalid(true);
+                nameField.setErrorMessage("Name is required");
+                return;
+            }
+            try {
+                competitionService.updateDocumentName(doc.getId(),
+                        nameField.getValue().trim(), getCurrentUserId());
+                grid.setItems(competitionService.getDocuments(competitionId));
+                var notification = Notification.show("Document name updated");
+                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                dialog.close();
+            } catch (IllegalArgumentException ex) {
+                Notification.show(ex.getMessage());
+            }
+        });
+
+        var cancelButton = new Button("Cancel", e -> dialog.close());
+        dialog.add(nameField);
+        dialog.getFooter().add(cancelButton, saveButton);
+        dialog.open();
+    }
+
+    private void openDeleteDocumentDialog(Grid<CompetitionDocument> grid, CompetitionDocument doc) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle("Delete Document");
+        dialog.add("Are you sure you want to delete \"" + doc.getName() + "\"?");
+
+        var confirmButton = new Button("Delete", e -> {
+            try {
+                competitionService.removeDocument(doc.getId(), getCurrentUserId());
+                grid.setItems(competitionService.getDocuments(competitionId));
+                var notification = Notification.show("Document deleted");
+                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                dialog.close();
+            } catch (IllegalArgumentException ex) {
+                Notification.show(ex.getMessage());
+                dialog.close();
+            }
+        });
+
+        var cancelButton = new Button("Cancel", e -> dialog.close());
+        dialog.getFooter().add(cancelButton, confirmButton);
+        dialog.open();
     }
 
     private UUID getCurrentUserId() {

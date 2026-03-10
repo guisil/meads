@@ -9,6 +9,8 @@ import app.meads.identity.Role;
 import app.meads.identity.User;
 import app.meads.identity.UserStatus;
 import app.meads.identity.internal.UserRepository;
+import app.meads.competition.CompetitionDocument;
+import app.meads.competition.DocumentType;
 import com.github.mvysny.fakeservlet.FakeRequest;
 import com.github.mvysny.kaributesting.v10.MockVaadin;
 import com.github.mvysny.kaributesting.v10.Routes;
@@ -71,6 +73,9 @@ class CompetitionDetailViewTest {
 
     @Autowired
     UserRepository userRepository;
+
+    @Autowired
+    CompetitionService competitionService;
 
     private Competition testCompetition;
 
@@ -255,5 +260,37 @@ class CompetitionDetailViewTest {
                 .map(n -> n.getElement().getProperty("text"))
                 .toList();
         assertThat(notificationTexts).anyMatch(t -> t != null && t.contains("Password setup email sent"));
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldDisplayDocumentsTab() {
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName());
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(3); // Documents tab (after Divisions, Participants, Settings)
+
+        var addButton = _get(Button.class, spec -> spec.withText("Add Document"));
+        assertThat(addButton).isNotNull();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldDisplayDocumentsInGrid() {
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        competitionService.addDocument(testCompetition.getId(), "Test Rules",
+                DocumentType.LINK, null, null, "https://example.com/rules", admin.getId());
+
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName());
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(3); // Documents tab
+
+        @SuppressWarnings("unchecked")
+        var grid = (Grid<CompetitionDocument>) _find(Grid.class).stream()
+                .filter(g -> !(g instanceof com.vaadin.flow.component.treegrid.TreeGrid))
+                .reduce((first, second) -> second)
+                .orElseThrow();
+        assertThat(grid.getGenericDataView().getItems().count()).isEqualTo(1);
     }
 }
