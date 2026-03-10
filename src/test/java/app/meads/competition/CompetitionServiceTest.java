@@ -1,6 +1,7 @@
 package app.meads.competition;
 
 import app.meads.competition.internal.CategoryRepository;
+import app.meads.competition.internal.CompetitionDocumentRepository;
 import app.meads.competition.internal.CompetitionRepository;
 import app.meads.competition.internal.DivisionCategoryRepository;
 import app.meads.competition.internal.DivisionRepository;
@@ -58,6 +59,9 @@ class CompetitionServiceTest {
 
     @Mock
     CategoryRepository categoryRepository;
+
+    @Mock
+    CompetitionDocumentRepository competitionDocumentRepository;
 
     @Mock
     UserService userService;
@@ -276,9 +280,12 @@ class CompetitionServiceTest {
         given(competitionRepository.findById(competition.getId())).willReturn(Optional.of(competition));
         given(userService.findById(admin.getId())).willReturn(admin);
         given(divisionRepository.findByCompetitionId(competition.getId())).willReturn(List.of());
+        given(competitionDocumentRepository.findByCompetitionIdOrderByDisplayOrder(competition.getId()))
+                .willReturn(List.of());
 
         competitionService.deleteCompetition(competition.getId(), admin.getId());
 
+        then(competitionDocumentRepository).should().deleteAll(List.of());
         then(competitionRepository).should().delete(competition);
     }
 
@@ -1402,6 +1409,173 @@ class CompetitionServiceTest {
 
         assertThat(result.isMeaderyNameRequired()).isTrue();
         then(divisionRepository).should().save(division);
+    }
+
+    // --- Document methods ---
+
+    @Test
+    void shouldAddPdfDocumentWhenAuthorized() {
+        var admin = createAdmin();
+        var competition = createCompetition();
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(competitionRepository.findById(competition.getId()))
+                .willReturn(Optional.of(competition));
+        given(competitionDocumentRepository.existsByCompetitionIdAndName(
+                competition.getId(), "Rules")).willReturn(false);
+        given(competitionDocumentRepository.countByCompetitionId(competition.getId()))
+                .willReturn(0);
+        given(competitionDocumentRepository.save(any(CompetitionDocument.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var result = competitionService.addDocument(competition.getId(), "Rules",
+                DocumentType.PDF, new byte[]{1, 2, 3}, "application/pdf", null, admin.getId());
+
+        assertThat(result.getName()).isEqualTo("Rules");
+        assertThat(result.getType()).isEqualTo(DocumentType.PDF);
+        assertThat(result.getDisplayOrder()).isZero();
+    }
+
+    @Test
+    void shouldAddLinkDocumentWhenAuthorized() {
+        var admin = createAdmin();
+        var competition = createCompetition();
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(competitionRepository.findById(competition.getId()))
+                .willReturn(Optional.of(competition));
+        given(competitionDocumentRepository.existsByCompetitionIdAndName(
+                competition.getId(), "MJP Guide")).willReturn(false);
+        given(competitionDocumentRepository.countByCompetitionId(competition.getId()))
+                .willReturn(2);
+        given(competitionDocumentRepository.save(any(CompetitionDocument.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var result = competitionService.addDocument(competition.getId(), "MJP Guide",
+                DocumentType.LINK, null, null, "https://example.com/mjp", admin.getId());
+
+        assertThat(result.getType()).isEqualTo(DocumentType.LINK);
+        assertThat(result.getUrl()).isEqualTo("https://example.com/mjp");
+        assertThat(result.getDisplayOrder()).isEqualTo(2);
+    }
+
+    @Test
+    void shouldRejectDuplicateDocumentName() {
+        var admin = createAdmin();
+        var competition = createCompetition();
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(competitionRepository.findById(competition.getId()))
+                .willReturn(Optional.of(competition));
+        given(competitionDocumentRepository.existsByCompetitionIdAndName(
+                competition.getId(), "Rules")).willReturn(true);
+
+        assertThatThrownBy(() -> competitionService.addDocument(competition.getId(), "Rules",
+                DocumentType.LINK, null, null, "https://example.com", admin.getId()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("already exists");
+    }
+
+    @Test
+    void shouldRemoveDocumentWhenAuthorized() {
+        var admin = createAdmin();
+        var competition = createCompetition();
+        var doc = CompetitionDocument.createLink(competition.getId(), "Rules", "https://example.com", 0);
+        given(competitionDocumentRepository.findById(doc.getId()))
+                .willReturn(Optional.of(doc));
+        given(userService.findById(admin.getId())).willReturn(admin);
+
+        competitionService.removeDocument(doc.getId(), admin.getId());
+
+        then(competitionDocumentRepository).should().delete(doc);
+    }
+
+    @Test
+    void shouldUpdateDocumentNameWhenAuthorized() {
+        var admin = createAdmin();
+        var competition = createCompetition();
+        var doc = CompetitionDocument.createLink(competition.getId(), "Old Name", "https://example.com", 0);
+        given(competitionDocumentRepository.findById(doc.getId()))
+                .willReturn(Optional.of(doc));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(competitionDocumentRepository.existsByCompetitionIdAndName(
+                competition.getId(), "New Name")).willReturn(false);
+        given(competitionDocumentRepository.save(any(CompetitionDocument.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var result = competitionService.updateDocumentName(doc.getId(), "New Name", admin.getId());
+
+        assertThat(result.getName()).isEqualTo("New Name");
+    }
+
+    @Test
+    void shouldGetDocumentsOrderedByDisplayOrder() {
+        var competition = createCompetition();
+        var doc1 = CompetitionDocument.createLink(competition.getId(), "A", "https://a.com", 0);
+        var doc2 = CompetitionDocument.createLink(competition.getId(), "B", "https://b.com", 1);
+        given(competitionDocumentRepository.findByCompetitionIdOrderByDisplayOrder(competition.getId()))
+                .willReturn(List.of(doc1, doc2));
+
+        var result = competitionService.getDocuments(competition.getId());
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).getName()).isEqualTo("A");
+    }
+
+    @Test
+    void shouldGetDocumentById() {
+        var doc = CompetitionDocument.createLink(UUID.randomUUID(), "Rules", "https://example.com", 0);
+        given(competitionDocumentRepository.findById(doc.getId()))
+                .willReturn(Optional.of(doc));
+
+        var result = competitionService.getDocument(doc.getId());
+
+        assertThat(result.getName()).isEqualTo("Rules");
+    }
+
+    @Test
+    void shouldThrowWhenDocumentNotFound() {
+        var randomId = UUID.randomUUID();
+        given(competitionDocumentRepository.findById(randomId)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> competitionService.getDocument(randomId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("not found");
+    }
+
+    @Test
+    void shouldReorderDocumentsWhenAuthorized() {
+        var admin = createAdmin();
+        var competition = createCompetition();
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(competitionRepository.findById(competition.getId()))
+                .willReturn(Optional.of(competition));
+        var doc1 = CompetitionDocument.createLink(competition.getId(), "A", "https://a.com", 0);
+        var doc2 = CompetitionDocument.createLink(competition.getId(), "B", "https://b.com", 1);
+        given(competitionDocumentRepository.findByCompetitionIdOrderByDisplayOrder(competition.getId()))
+                .willReturn(List.of(doc1, doc2));
+
+        // Reorder: B first, then A
+        competitionService.reorderDocuments(competition.getId(),
+                List.of(doc2.getId(), doc1.getId()), admin.getId());
+
+        assertThat(doc2.getDisplayOrder()).isZero();
+        assertThat(doc1.getDisplayOrder()).isEqualTo(1);
+    }
+
+    @Test
+    void shouldDeleteDocumentsWhenDeletingCompetition() {
+        var admin = createAdmin();
+        var competition = createCompetition();
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(competitionRepository.findById(competition.getId()))
+                .willReturn(Optional.of(competition));
+        given(divisionRepository.findByCompetitionId(competition.getId()))
+                .willReturn(List.of());
+        given(competitionDocumentRepository.findByCompetitionIdOrderByDisplayOrder(competition.getId()))
+                .willReturn(List.of());
+
+        competitionService.deleteCompetition(competition.getId(), admin.getId());
+
+        then(competitionDocumentRepository).should().deleteAll(List.of());
+        then(competitionRepository).should().delete(competition);
     }
 
 }

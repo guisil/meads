@@ -37,6 +37,7 @@ public class CompetitionService {
     private final CategoryRepository categoryRepository;
     private final UserService userService;
     private final ApplicationEventPublisher eventPublisher;
+    private final CompetitionDocumentRepository competitionDocumentRepository;
     private final List<DivisionRevertGuard> revertGuards;
 
     CompetitionService(CompetitionRepository competitionRepository,
@@ -45,6 +46,7 @@ public class CompetitionService {
                        ParticipantRoleRepository participantRoleRepository,
                        DivisionCategoryRepository divisionCategoryRepository,
                        CategoryRepository categoryRepository,
+                       CompetitionDocumentRepository competitionDocumentRepository,
                        UserService userService,
                        ApplicationEventPublisher eventPublisher,
                        List<DivisionRevertGuard> revertGuards) {
@@ -54,6 +56,7 @@ public class CompetitionService {
         this.participantRoleRepository = participantRoleRepository;
         this.divisionCategoryRepository = divisionCategoryRepository;
         this.categoryRepository = categoryRepository;
+        this.competitionDocumentRepository = competitionDocumentRepository;
         this.userService = userService;
         this.eventPublisher = eventPublisher;
         this.revertGuards = revertGuards;
@@ -163,6 +166,8 @@ public class CompetitionService {
         if (!divisions.isEmpty()) {
             throw new IllegalArgumentException("Cannot delete competition with divisions");
         }
+        var documents = competitionDocumentRepository.findByCompetitionIdOrderByDisplayOrder(competitionId);
+        competitionDocumentRepository.deleteAll(documents);
         competitionRepository.delete(competition);
         log.info("Deleted competition: {} ({})", competitionId, competition.getShortName());
     }
@@ -394,6 +399,81 @@ public class CompetitionService {
                 .filter(cat -> !divisionCategoryRepository
                         .existsByDivisionIdAndCatalogCategoryId(divisionId, cat.getId()))
                 .toList();
+    }
+
+    // --- Document methods ---
+
+    public CompetitionDocument addDocument(@NotNull UUID competitionId,
+                                            @NotBlank String name,
+                                            @NotNull DocumentType type,
+                                            byte[] data,
+                                            String contentType,
+                                            String url,
+                                            @NotNull UUID requestingUserId) {
+        competitionRepository.findById(competitionId)
+                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
+        requireAuthorized(competitionId, requestingUserId);
+        if (competitionDocumentRepository.existsByCompetitionIdAndName(competitionId, name)) {
+            throw new IllegalArgumentException("Document with this name already exists");
+        }
+        int nextOrder = competitionDocumentRepository.countByCompetitionId(competitionId);
+        var doc = switch (type) {
+            case PDF -> CompetitionDocument.createPdf(competitionId, name, data, contentType, nextOrder);
+            case LINK -> CompetitionDocument.createLink(competitionId, name, url, nextOrder);
+        };
+        log.info("Added document '{}' (type={}) to competition {}", name, type, competitionId);
+        return competitionDocumentRepository.save(doc);
+    }
+
+    public void removeDocument(@NotNull UUID documentId, @NotNull UUID requestingUserId) {
+        var doc = competitionDocumentRepository.findById(documentId)
+                .orElseThrow(() -> new IllegalArgumentException("Document not found"));
+        requireAuthorized(doc.getCompetitionId(), requestingUserId);
+        competitionDocumentRepository.delete(doc);
+        log.info("Removed document '{}' from competition {}", doc.getName(), doc.getCompetitionId());
+    }
+
+    public CompetitionDocument updateDocumentName(@NotNull UUID documentId,
+                                                    @NotBlank String name,
+                                                    @NotNull UUID requestingUserId) {
+        var doc = competitionDocumentRepository.findById(documentId)
+                .orElseThrow(() -> new IllegalArgumentException("Document not found"));
+        requireAuthorized(doc.getCompetitionId(), requestingUserId);
+        if (competitionDocumentRepository.existsByCompetitionIdAndName(doc.getCompetitionId(), name)) {
+            throw new IllegalArgumentException("Document with this name already exists");
+        }
+        doc.updateName(name);
+        log.debug("Updated document name: {} → '{}'", documentId, name);
+        return competitionDocumentRepository.save(doc);
+    }
+
+    public void reorderDocuments(@NotNull UUID competitionId,
+                                  @NotNull List<UUID> orderedIds,
+                                  @NotNull UUID requestingUserId) {
+        competitionRepository.findById(competitionId)
+                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
+        requireAuthorized(competitionId, requestingUserId);
+        var docs = competitionDocumentRepository.findByCompetitionIdOrderByDisplayOrder(competitionId);
+        var docMap = docs.stream()
+                .collect(java.util.stream.Collectors.toMap(CompetitionDocument::getId,
+                        java.util.function.Function.identity()));
+        for (int i = 0; i < orderedIds.size(); i++) {
+            var doc = docMap.get(orderedIds.get(i));
+            if (doc != null) {
+                doc.updateDisplayOrder(i);
+            }
+        }
+        competitionDocumentRepository.saveAll(docs);
+        log.debug("Reordered {} documents for competition {}", orderedIds.size(), competitionId);
+    }
+
+    public List<CompetitionDocument> getDocuments(@NotNull UUID competitionId) {
+        return competitionDocumentRepository.findByCompetitionIdOrderByDisplayOrder(competitionId);
+    }
+
+    public CompetitionDocument getDocument(@NotNull UUID documentId) {
+        return competitionDocumentRepository.findById(documentId)
+                .orElseThrow(() -> new IllegalArgumentException("Document not found"));
     }
 
     // --- Participant methods ---
