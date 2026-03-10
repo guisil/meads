@@ -165,61 +165,36 @@ docs/
 
 ## What's Next
 
-### Priority 1: Internationalization (i18n)
-**Design complete** — see `docs/plans/2026-03-10-i18n-design.md`. Implementation deferred.
-Summary: Vaadin I18NProvider + Spring MessageSource, resource bundles, browser locale +
-UI switcher (cookie/localStorage), entrant-facing views only (6 views), MJP category
-translations via bundles keyed by code. ~100-120 strings to extract. No DB changes needed.
-
-### Priority 2: Manual walkthrough (full redo)
+### Priority 1: Manual walkthrough (full redo)
 Redo the **entire** manual-test walkthrough from Section 1. Previous partial run covered
-Sections 2–9; this is a fresh pass through all sections (1–13) to validate the current
-state end-to-end, including recent entry limits UI, logging, and all accumulated changes.
-May produce bug fixes or UX improvements.
+Sections 2–9; this is a fresh pass through all sections (1–14) to validate the current
+state end-to-end, including competition documents, entry limits UI, logging, and all
+accumulated changes. May produce bug fixes or UX improvements.
 
-### Priority 3: Deployment planning
-**Investigation complete** — see `docs/plans/2026-03-10-deployment-design.md`. Decision deferred.
+### Priority 2: Deployment
+**Investigation complete** — see `docs/plans/2026-03-10-deployment-design.md`.
 Summary: Evaluated Railway, DigitalOcean (App Platform, Droplet), AWS (Lightsail, EB+RDS).
 Recommendation: DigitalOcean App Platform + Managed PostgreSQL (~$20/mo) — best balance of
 cost, automatic backups (daily + PITR), and zero ops. Needs Dockerfile, DNS setup, email
 provider (Resend), and prod config before deploying.
 
-### Priority 4: Configuration audit
-**Complete.** Properties reorganized: `application.properties` has only non-sensitive
-environment-agnostic defaults. Secrets and env-specific values moved to `application-dev.properties`.
-Created `application-prod.properties` (minimal). Test properties in `src/test/resources/application.properties`.
-Deployment configuration checklist in `docs/plans/2026-03-10-deployment-design.md`.
+### Priority 3: Internationalization (i18n)
+**Design complete** — see `docs/plans/2026-03-10-i18n-design.md`. Implementation deferred.
+Summary: Vaadin I18NProvider + Spring MessageSource, resource bundles, browser locale +
+UI switcher (cookie/localStorage), entrant-facing views only (6 views), MJP category
+translations via bundles keyed by code. ~100-120 strings to extract. No DB changes needed.
 
-### Priority 5: Email sending implementation
-**Complete.** `spring-boot-starter-mail` + `spring-boot-starter-thymeleaf` for SMTP email
-delivery with HTML templates. `EmailService` interface in identity module public API,
-`SmtpEmailService` in `internal/`. Three email types: magic link, password reset, password
-setup (with competition context + contact email). Thymeleaf HTML template (`email/email-base.html`)
-with table-based layout, CTA button, fallback URL, conditional contact footer. SMTP failures
-caught and logged with fallback link (no UI crash). Mailpit for dev, Resend SMTP for prod.
-Competition `contactEmail` field in Settings tab, saved to DB, shown in password setup emails.
-7-day token validity as private constant. DevUserInitializer unchanged (uses JwtMagicLinkService
-directly). 7 unit tests for SmtpEmailService.
+### Priority 4: Judging module
+Design and implementation. Reference: `docs/reference/chip-competition-rules.md`.
 
-### Priority 6: Entry submission labels (PDF)
-**Complete.** OpenPDF + ZXing for PDF label generation. `LabelPdfService` generates A4 landscape
-PDFs with instruction header (shipping address + phone) and 3 identical labels per page (competition
-name, division name, entry ID, mead name, category code, sweetness/strength/carbonation, ingredients,
-QR code, notes area, disclaimer). Entrants: individual download for SUBMITTED entries + batch
-"Download all labels" (direct). Admins: individual download for SUBMITTED/RECEIVED entries + batch
-"Download all labels" with confirmation dialog. Competition entity gained `shippingAddress` (TEXT) and
-`phoneNumber` (VARCHAR) fields. Settings tab in CompetitionDetailView has shipping address + phone fields.
-Design: `docs/plans/2026-03-10-entry-labels-design.md`. Plan: `docs/plans/2026-03-10-entry-labels-plan.md`.
+### Priority 5: Awards module
+Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md`.
 
-### Priority 7: Competition documents
-**Complete.** `CompetitionDocument` entity (PDF upload or external link) with `DocumentType` enum.
-Admin "Documents" tab in `CompetitionDetailView` for CRUD + reordering. Entrant document list
-in `MyEntriesView`. PDF stored in DB (max 10 MB), links stored as URLs. Unique name per
-competition, admin-managed display order. V14 migration. 26 new tests.
-
-### After these priorities: Resume planned work
-7. **Judging module** — design and implementation
-8. **Awards module** — design and implementation
+### Completed priorities
+- **Configuration audit** — Properties reorganized, secrets in profile-specific files.
+- **Email sending** — SMTP with Thymeleaf templates, Mailpit dev, Resend prod.
+- **Entry labels (PDF)** — OpenPDF + ZXing, LabelPdfService, individual + batch download.
+- **Competition documents** — PDF upload + external links, admin Documents tab, entrant list.
 
 ---
 
