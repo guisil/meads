@@ -359,8 +359,10 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 .setHeader("Entry #").setSortable(true).setAutoWidth(true);
         entriesGrid.addColumn(Entry::getEntryCode).setHeader("Code").setSortable(true).setAutoWidth(true);
         entriesGrid.addColumn(Entry::getMeadName).setHeader("Mead Name").setSortable(true).setFlexGrow(2);
-        entriesGrid.addColumn(entry -> getCategoryName(entry.getInitialCategoryId()))
-                .setHeader("Category").setSortable(true);
+        entriesGrid.addComponentColumn(entry -> createCategorySpan(entry.getInitialCategoryId()))
+                .setHeader("Category").setSortable(true)
+                .setComparator((a, b) -> resolveCategoryCode(a.getInitialCategoryId())
+                        .compareTo(resolveCategoryCode(b.getInitialCategoryId())));
         entriesGrid.addColumn(entry -> userService.findById(entry.getUserId()).getEmail())
                 .setHeader("Entrant").setSortable(true).setFlexGrow(2);
         entriesGrid.addColumn(entry -> {
@@ -459,6 +461,25 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 .map(DivisionCategory::getName)
                 .findFirst()
                 .orElse("—");
+    }
+
+    private String resolveCategoryCode(UUID categoryId) {
+        return divisionCategories.stream()
+                .filter(c -> c.getId().equals(categoryId))
+                .map(DivisionCategory::getCode)
+                .findFirst()
+                .orElse("—");
+    }
+
+    private Span createCategorySpan(UUID categoryId) {
+        var cat = divisionCategories.stream()
+                .filter(c -> c.getId().equals(categoryId))
+                .findFirst()
+                .orElse(null);
+        if (cat == null) return new Span("—");
+        var span = new Span(cat.getCode());
+        span.setTitle(cat.getName());
+        return span;
     }
 
     private DivisionCategory getCategoryById(UUID categoryId) {

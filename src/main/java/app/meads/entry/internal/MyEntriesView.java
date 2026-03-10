@@ -363,17 +363,19 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                 .setHeader("Mead Name")
                 .setSortable(true);
 
-        // Category (initial)
-        entriesGrid.addColumn(entry -> resolveCategoryName(entry.getInitialCategoryId()))
+        // Category (initial) — show code with tooltip
+        entriesGrid.addComponentColumn(entry -> createCategorySpan(entry.getInitialCategoryId()))
                 .setHeader("Category")
-                .setSortable(true);
+                .setSortable(true)
+                .setComparator((a, b) -> resolveCategoryCode(a.getInitialCategoryId())
+                        .compareTo(resolveCategoryCode(b.getInitialCategoryId())));
 
-        // 3. Final Category
-        entriesGrid.addColumn(entry -> {
+        // Final Category — show code with tooltip
+        entriesGrid.addComponentColumn(entry -> {
             if (entry.getFinalCategoryId() == null) {
-                return "—";
+                return new Span("—");
             }
-            return resolveCategoryName(entry.getFinalCategoryId());
+            return createCategorySpan(entry.getFinalCategoryId());
         }).setHeader("Final Category").setSortable(true);
 
         // 2. Status badge — styled like DivisionStatus
@@ -399,9 +401,22 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         return entriesGrid;
     }
 
-    private String resolveCategoryName(UUID categoryId) {
+    private String resolveCategoryCode(UUID categoryId) {
         var cat = categoriesById.get(categoryId);
-        return cat != null ? cat.getName() : "—";
+        return cat != null ? cat.getCode() : "—";
+    }
+
+    private String resolveCategoryCodeAndName(UUID categoryId) {
+        var cat = categoriesById.get(categoryId);
+        return cat != null ? cat.getCode() + " — " + cat.getName() : "—";
+    }
+
+    private Span createCategorySpan(UUID categoryId) {
+        var cat = categoriesById.get(categoryId);
+        if (cat == null) return new Span("—");
+        var span = new Span(cat.getCode());
+        span.setTitle(cat.getName());
+        return span;
     }
 
     private Span createStatusBadge(Entry entry) {
@@ -471,10 +486,10 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
 
         layout.add(readOnlyField("Mead Name", entry.getMeadName()));
         layout.add(readOnlyField("Category",
-                resolveCategoryName(entry.getInitialCategoryId())));
+                resolveCategoryCodeAndName(entry.getInitialCategoryId())));
         if (entry.getFinalCategoryId() != null) {
             layout.add(readOnlyField("Final Category",
-                    resolveCategoryName(entry.getFinalCategoryId())));
+                    resolveCategoryCodeAndName(entry.getFinalCategoryId())));
         }
         layout.add(readOnlyField("Sweetness", entry.getSweetness().getDisplayName()));
         layout.add(readOnlyField("Strength", entry.getStrength().getDisplayName()));
@@ -565,7 +580,9 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         categorySelect.setWidthFull();
         categorySelect.setItemLabelGenerator(dc ->
                 dc.getCode() + " — " + dc.getName());
-        categorySelect.setItems(competitionService.findDivisionCategories(divisionId));
+        categorySelect.setItems(competitionService.findDivisionCategories(divisionId).stream()
+                .filter(dc -> dc.getParentId() != null)
+                .toList());
 
         var sweetness = new Select<Sweetness>();
         sweetness.setLabel("Sweetness");
