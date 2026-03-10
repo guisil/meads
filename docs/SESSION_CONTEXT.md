@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `competition-module`
-**Tests:** 442 passing (`mvn test -Dsurefire.useFile=false`)
+**Tests:** 455 passing (`mvn test -Dsurefire.useFile=false`)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -42,7 +42,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 #### Entities (public API)
 | Entity | Table | Description |
 |--------|-------|-------------|
-| `Competition` | `competitions` | Top-level: name, shortName (unique), dates, location, logo, contactEmail |
+| `Competition` | `competitions` | Top-level: name, shortName (unique), dates, location, logo, contactEmail, shippingAddress, phoneNumber |
 | `Division` | `divisions` | Sub-level: competitionId, name, shortName (unique per competition), scoringSystem, status, entry limits (per subcategory, per main category, total), entryPrefix, meaderyNameRequired |
 | `Participant` | `participants` | Competition-scoped: userId, accessCode |
 | `ParticipantRole` | `participant_roles` | Role per participant: JUDGE, STEWARD, ENTRANT, ADMIN |
@@ -65,7 +65,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 #### Views
 - `CompetitionListView` (`/competitions`) — SYSTEM_ADMIN only, all competitions grid with CRUD
-- `CompetitionDetailView` (`/competitions/:shortName`) — tabs: Divisions, Participants, Settings (includes contactEmail field)
+- `CompetitionDetailView` (`/competitions/:shortName`) — tabs: Divisions, Participants, Settings (includes contactEmail, shippingAddress, phoneNumber fields)
 - `DivisionDetailView` (`/competitions/:compShortName/divisions/:divShortName`) — tabs: Categories, Settings + "Manage Entries" button + "Advance/Revert Status" buttons
 - `MyCompetitionsView` (`/my-competitions`) — `@PermitAll`, shows competitions where user is ADMIN
 
@@ -97,6 +97,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 #### Services
 - **EntryService** — Product mapping CRUD, credit management, entry CRUD, submission, limits enforcement (total, subcategory, main category)
 - **WebhookService** — HMAC signature verification, `processOrderPaid` (JSON parsing, idempotency, mutual exclusivity, credit creation, country enrichment from shipping/billing address)
+- **LabelPdfService** — PDF label generation (OpenPDF + ZXing QR codes). Single entry or batch. A4 landscape, instruction header, 3 identical labels per page. Public API for cross-module access.
 
 #### Events
 - `CreditsAwardedEvent(divisionId, userId, amount, source)`
@@ -107,8 +108,8 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 #### Views
 - `EntrantOverviewView` (`/my-entries`) — cross-competition entrant hub, shows all divisions with credits/entries, auto-redirects to single division
-- `MyEntriesView` (`/competitions/:compShortName/divisions/:divShortName/my-entries`) — entrant-facing, credits + limits display, entry grid with status badges/Final Category/Actions (view/edit/submit)/filtering/sorting, add/edit dialog (full-width fields), submit all, meadery name required warning + submit blocking
-- `DivisionEntryAdminView` (`/competitions/:compShortName/divisions/:divShortName/entry-admin`) — admin tabs: Credits, Entries (with Meadery/Country columns), Products, Orders
+- `MyEntriesView` (`/competitions/:compShortName/divisions/:divShortName/my-entries`) — entrant-facing, credits + limits display, entry grid with status badges/Final Category/Actions (view/edit/submit/download label)/filtering/sorting, add/edit dialog (full-width fields), submit all, "Download all labels" batch button, meadery name required warning + submit blocking
+- `DivisionEntryAdminView` (`/competitions/:compShortName/divisions/:divShortName/entry-admin`) — admin tabs: Credits, Entries (with Meadery/Country columns + individual label download + batch "Download all labels" with confirmation dialog), Products, Orders
 
 #### REST
 - `JumpsellerWebhookController` — `POST /api/webhooks/jumpseller/order-paid` (HMAC-verified)
@@ -198,13 +199,14 @@ Competition `contactEmail` field in Settings tab, saved to DB, shown in password
 directly). 7 unit tests for SmtpEmailService.
 
 ### Priority 6: Entry submission labels (PDF)
-When a mead entry is submitted, the entrant should be able to download a printable
-label PDF:
-- **Format:** 1 page containing 3 identical label copies (for 3 bottles)
-- **Content:** Mead info (entry number, category, sweetness, strength, carbonation, etc.)
-  + QR code (containing at minimum the entry ID, possibly competition/division context)
-- **Implementation:** Template-based PDF generation (e.g., iText, OpenPDF, or Apache PDFBox)
-- **UX:** Download button/link in MyEntriesView after submission
+**Complete.** OpenPDF + ZXing for PDF label generation. `LabelPdfService` generates A4 landscape
+PDFs with instruction header (shipping address + phone) and 3 identical labels per page (competition
+name, division name, entry ID, mead name, category code, sweetness/strength/carbonation, ingredients,
+QR code, notes area, disclaimer). Entrants: individual download for SUBMITTED entries + batch
+"Download all labels" (direct). Admins: individual download for SUBMITTED/RECEIVED entries + batch
+"Download all labels" with confirmation dialog. Competition entity gained `shippingAddress` (TEXT) and
+`phoneNumber` (VARCHAR) fields. Settings tab in CompetitionDetailView has shipping address + phone fields.
+Design: `docs/plans/2026-03-10-entry-labels-design.md`. Plan: `docs/plans/2026-03-10-entry-labels-plan.md`.
 
 ### Priority 7: Competition documents
 Decide how to handle downloadable documents per competition (rules, guidelines, etc.):
@@ -259,6 +261,7 @@ Decide how to handle downloadable documents per competition (rules, guidelines, 
 ### Unit tests
 - `EntryServiceTest.java` — product mapping CRUD + credit methods + entry CRUD + submission + limits (subcategory, main category, total)
 - `WebhookServiceTest.java` — HMAC verification + processOrderPaid variants
+- `LabelPdfServiceTest.java` — single/batch PDF generation, missing fields, QR code format, entry prefix handling
 - `JumpsellerOrderTest.java` — entity domain methods
 - `JumpsellerOrderLineItemTest.java` — entity domain methods
 - `EntryTest.java` — entry entity domain methods (constructor, submit, markReceived, withdraw, updateDetails, assignFinalCategory, getEffectiveCategoryId)
@@ -279,8 +282,8 @@ Decide how to handle downloadable documents per competition (rules, guidelines, 
 - `EntryModuleTest.java` — bootstrap + full credit → entry → submit workflow
 
 ### UI tests
-- `MyEntriesViewTest.java` — credits display, entry grid, authorization redirect, meadery name warning + submit blocking
-- `DivisionEntryAdminViewTest.java` — admin tabs rendering, meadery name + country columns
+- `MyEntriesViewTest.java` — credits display, entry grid, authorization redirect, meadery name warning + submit blocking, download all labels button, download label for submitted entries
+- `DivisionEntryAdminViewTest.java` — admin tabs rendering, meadery name + country columns, download all labels button
 
 ---
 

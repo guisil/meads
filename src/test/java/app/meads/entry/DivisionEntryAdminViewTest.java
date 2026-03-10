@@ -15,6 +15,7 @@ import com.github.mvysny.kaributesting.v10.MockVaadin;
 import com.github.mvysny.kaributesting.v10.Routes;
 import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
 import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.tabs.TabSheet;
@@ -172,5 +173,20 @@ class DivisionEntryAdminViewTest {
                 .map(c -> ((Grid.Column<?>) c).getHeaderText())
                 .toList();
         assertThat(headers).contains("Meadery", "Country");
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldShowDownloadAllLabelsButtonInEntriesTab() {
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/entry-admin");
+
+        // Select the Entries tab
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(1);
+
+        // The "Download all labels" button should exist in the toolbar
+        var downloadBtn = _get(Button.class, spec -> spec.withText("Download all labels"));
+        assertThat(downloadBtn).isNotNull();
     }
 }

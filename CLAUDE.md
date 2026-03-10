@@ -162,6 +162,7 @@ app.meads.entry                              ← Entry module public API
 ├── LineItemStatus.java                      ← Enum: PROCESSED, NEEDS_REVIEW, IGNORED, UNPROCESSED
 ├── EntryService.java                        ← Application service (public API)
 ├── WebhookService.java                      ← Webhook processing service (public API)
+├── LabelPdfService.java                     ← PDF label generation (OpenPDF + ZXing QR codes)
 ├── CreditsAwardedEvent.java                 ← Spring application event (record)
 ├── EntriesSubmittedEvent.java               ← Spring application event (record)
 ├── EntrantCreditSummary.java                ← DTO record (userId, email, name, creditBalance, entryCount)
@@ -367,7 +368,7 @@ void tearDown() {
 ## Database & Migrations
 
 - **Location:** `src/main/resources/db/migration/V{N}__{description}.sql`
-- **Current highest version:** V13 (`V13__create_entries_table.sql`). V2 includes users + meadery_name. V3–V8 are competition module (V3 includes contact_email, V4 includes entry limits + prefix). V9–V13 are entry module.
+- **Current highest version:** V13 (`V13__create_entries_table.sql`). V2 includes users + meadery_name. V3–V8 are competition module (V3 includes contact_email + shipping_address + phone_number, V4 includes entry limits + prefix). V9–V13 are entry module.
 - **Naming:** `V{next}__{snake_case_description}.sql` (double underscore)
 - Migrations are created in **Step 2** (GREEN), when a repository test needs a table.
 - **Never edit existing migrations.** Always create new ones.

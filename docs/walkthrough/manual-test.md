@@ -809,6 +809,26 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] **Expected:** Delete button opens confirmation dialog
 - [ ] **Expected:** Withdraw button opens confirmation dialog
 
+### Entry labels -- individual download (admin)
+
+- [ ] **Expected:** SUBMITTED and RECEIVED entries have a download icon (download-alt) in the Actions column
+- [ ] **Expected:** DRAFT and WITHDRAWN entries do NOT have a download icon
+- [ ] Click the download icon on a SUBMITTED entry
+- [ ] **Expected:** Browser downloads a PDF file named `label-AMA-{N}.pdf`
+- [ ] **Expected:** PDF is A4 landscape with instruction header (shipping address + phone if set) and 3 identical labels
+- [ ] **Expected:** Each label shows: competition name, division name, entry ID, mead name, category code, sweetness/strength/carbonation, ingredients, QR code, notes area, disclaimer
+
+### Entry labels -- batch download (admin)
+
+- [ ] **Expected:** "Download all labels" button exists in the Entries tab toolbar (next to filter field)
+- [ ] Click "Download all labels"
+- [ ] **Expected:** Confirmation dialog: "Download all labels" with message "This will generate labels for N entries. Continue?"
+- [ ] **Expected:** Dialog footer has "Cancel" button and "Download" anchor/link
+- [ ] Click "Cancel" to dismiss
+- [ ] Click "Download all labels" again, then click "Download" in the dialog
+- [ ] **Expected:** Browser downloads `all-labels.pdf` containing one page per qualifying entry (SUBMITTED + RECEIVED)
+- [ ] If no qualifying entries exist, clicking the button shows notification "No submitted or received entries to generate labels for"
+
 ### Products tab
 
 - [ ] Click the "Products" tab
@@ -1116,6 +1136,21 @@ curl -s -o /dev/null -w "%{http_code}" \
 - [ ] **Expected:** All previously DRAFT entries now show status SUBMITTED
 - [ ] **Expected:** "Submit All" button is now disabled (no more drafts)
 - [ ] **Expected:** "Add Entry" button may still be enabled if credits remain
+
+### Entry labels -- individual download (entrant)
+
+- [ ] **Expected:** SUBMITTED entries show a download icon (download-alt) in the Actions column
+- [ ] **Expected:** DRAFT entries do NOT have a download icon
+- [ ] Click the download icon on a SUBMITTED entry
+- [ ] **Expected:** Browser downloads a PDF file named `label-AMA-{N}.pdf`
+- [ ] **Expected:** PDF is A4 landscape with 3 identical labels per page
+
+### Entry labels -- batch download (entrant)
+
+- [ ] **Expected:** "Download all labels" button exists in the toolbar area (wrapped in an Anchor)
+- [ ] Click "Download all labels"
+- [ ] **Expected:** Browser downloads `all-labels.pdf` containing one page per SUBMITTED entry
+- [ ] **Expected:** No confirmation dialog for entrants (direct download)
 
 ### Meadery name required -- warning and submit blocking
 

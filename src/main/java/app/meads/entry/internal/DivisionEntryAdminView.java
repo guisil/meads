@@ -1,6 +1,7 @@
 package app.meads.entry.internal;
 
 import app.meads.MainLayout;
+import app.meads.competition.Competition;
 import app.meads.competition.CompetitionService;
 import app.meads.competition.Division;
 import app.meads.competition.DivisionCategory;
@@ -19,6 +20,7 @@ import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
+import com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
@@ -29,11 +31,13 @@ import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.server.StreamResource;
 import com.vaadin.flow.spring.security.AuthenticationContext;
 import jakarta.annotation.security.PermitAll;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.util.StringUtils;
 
+import java.io.ByteArrayInputStream;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
@@ -51,10 +55,12 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
     private final EntryService entryService;
     private final CompetitionService competitionService;
     private final UserService userService;
+    private final LabelPdfService labelPdfService;
     private final transient AuthenticationContext authenticationContext;
 
     private UUID divisionId;
     private Division division;
+    private Competition competition;
     private String compShortName;
     private String divShortName;
     private String competitionName;
@@ -70,10 +76,12 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
     public DivisionEntryAdminView(EntryService entryService,
                                    CompetitionService competitionService,
                                    UserService userService,
+                                   LabelPdfService labelPdfService,
                                    AuthenticationContext authenticationContext) {
         this.entryService = entryService;
         this.competitionService = competitionService;
         this.userService = userService;
+        this.labelPdfService = labelPdfService;
         this.authenticationContext = authenticationContext;
     }
 
@@ -90,7 +98,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         }
 
         try {
-            var competition = competitionService.findCompetitionByShortName(compShortName);
+            competition = competitionService.findCompetitionByShortName(compShortName);
             competitionName = competition.getName();
             division = competitionService.findDivisionByShortName(
                     competition.getId(), divShortName);
@@ -305,9 +313,43 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         filterField.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
         filterField.setClearButtonVisible(true);
 
-        var toolbar = new HorizontalLayout(filterField);
+        var downloadAllBtn = new Button("Download all labels", new Icon(VaadinIcon.DOWNLOAD_ALT));
+        downloadAllBtn.addClickListener(e -> {
+            var allEntries = entryService.findEntriesByDivision(divisionId);
+            var qualifyingEntries = allEntries.stream()
+                    .filter(entry -> entry.getStatus() == EntryStatus.SUBMITTED
+                            || entry.getStatus() == EntryStatus.RECEIVED)
+                    .toList();
+            if (qualifyingEntries.isEmpty()) {
+                Notification.show("No submitted or received entries to generate labels for");
+                return;
+            }
+            var dialog = new Dialog();
+            dialog.setHeaderTitle("Download all labels");
+            dialog.add(new Span("This will generate labels for "
+                    + qualifyingEntries.size() + " entries. Continue?"));
+
+            var resource = new StreamResource("all-labels.pdf", () -> {
+                java.util.function.Function<UUID, DivisionCategory> resolver = id ->
+                        divisionCategories.stream()
+                                .filter(c -> c.getId().equals(id)).findFirst().orElse(null);
+                return new ByteArrayInputStream(
+                        labelPdfService.generateLabels(qualifyingEntries, competition,
+                                division, resolver));
+            });
+            resource.setContentType("application/pdf");
+            var downloadAnchor = new Anchor(resource, "Download");
+            downloadAnchor.getElement().setAttribute("download", true);
+
+            var cancelBtn = new Button("Cancel", ev -> dialog.close());
+            dialog.getFooter().add(cancelBtn, downloadAnchor);
+            dialog.open();
+        });
+
+        var toolbar = new HorizontalLayout(filterField, downloadAllBtn);
         toolbar.setWidthFull();
         toolbar.setFlexGrow(1, filterField);
+        toolbar.setDefaultVerticalComponentAlignment(Alignment.BASELINE);
         tab.add(toolbar);
 
         entriesGrid = new Grid<>(Entry.class, false);
@@ -355,7 +397,26 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             withdrawButton.setEnabled(entry.getStatus() != EntryStatus.WITHDRAWN);
             withdrawButton.addClickListener(e -> openWithdrawEntryDialog(entry));
 
-            return new HorizontalLayout(editButton, deleteButton, withdrawButton);
+            var actions = new HorizontalLayout(editButton, deleteButton, withdrawButton);
+
+            if (entry.getStatus() == EntryStatus.SUBMITTED || entry.getStatus() == EntryStatus.RECEIVED) {
+                var category = getCategoryById(entry.getInitialCategoryId());
+                var resource = new StreamResource(
+                        "label-" + formatEntryNumber(entry.getEntryNumber()) + ".pdf",
+                        () -> new ByteArrayInputStream(
+                                labelPdfService.generateLabel(entry, competition, division, category)));
+                resource.setContentType("application/pdf");
+                var downloadAnchor = new Anchor(resource, "");
+                downloadAnchor.getElement().setAttribute("download", true);
+                var downloadBtn = new Button(new Icon(VaadinIcon.DOWNLOAD_ALT));
+                downloadBtn.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+                downloadBtn.setAriaLabel("Download label");
+                downloadBtn.setTooltipText("Download label");
+                downloadAnchor.add(downloadBtn);
+                actions.add(downloadAnchor);
+            }
+
+            return actions;
         }).setHeader("Actions").setAutoWidth(true);
 
         entriesGrid.getColumns().forEach(col -> col.setResizable(true));
@@ -398,6 +459,13 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 .map(DivisionCategory::getName)
                 .findFirst()
                 .orElse("—");
+    }
+
+    private DivisionCategory getCategoryById(UUID categoryId) {
+        return divisionCategories.stream()
+                .filter(c -> c.getId().equals(categoryId))
+                .findFirst()
+                .orElse(null);
     }
 
     private void refreshEntriesGrid() {
