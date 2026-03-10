@@ -41,6 +41,7 @@ import org.springframework.util.StringUtils;
 
 import java.io.ByteArrayInputStream;
 import java.util.Base64;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
@@ -262,6 +263,17 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
             var user = participant != null ? userMap.get(participant.getUserId()) : null;
             return user != null ? user.getEmail() : "—";
         }).setHeader("Email").setSortable(true).setFlexGrow(3);
+        participantsGrid.addColumn(pr -> {
+            var participant = participantMap.get(pr.getParticipantId());
+            var user = participant != null ? userMap.get(participant.getUserId()) : null;
+            return user != null && user.getMeaderyName() != null ? user.getMeaderyName() : "—";
+        }).setHeader("Meadery").setSortable(true).setFlexGrow(2);
+        participantsGrid.addColumn(pr -> {
+            var participant = participantMap.get(pr.getParticipantId());
+            var user = participant != null ? userMap.get(participant.getUserId()) : null;
+            if (user == null || user.getCountry() == null) return "—";
+            return new Locale("", user.getCountry()).getDisplayCountry(Locale.ENGLISH);
+        }).setHeader("Country").setSortable(true).setAutoWidth(true);
         participantsGrid.addColumn(pr -> pr.getRole().getDisplayName()).setHeader("Role").setSortable(true).setAutoWidth(true);
         participantsGrid.addColumn(pr -> {
             var participant = participantMap.get(pr.getParticipantId());
@@ -292,6 +304,8 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
             return actions;
         }).setHeader("").setAutoWidth(true);
+
+        participantsGrid.getColumns().forEach(col -> col.setResizable(true));
 
         refreshParticipantsGrid();
 
