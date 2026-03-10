@@ -4,6 +4,7 @@ import app.meads.MainLayout;
 import app.meads.competition.Competition;
 import app.meads.competition.CompetitionService;
 import app.meads.competition.Division;
+import app.meads.competition.DocumentType;
 import app.meads.competition.DivisionCategory;
 import app.meads.competition.DivisionStatus;
 import app.meads.entry.*;
@@ -136,6 +137,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         if (meaderyNameMissing) {
             add(createMeaderyWarning());
         }
+        add(createDocumentsSection());
         add(createCreditInfo());
         add(createActionButtons());
         add(createFilters());
@@ -154,6 +156,37 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
 
     private H2 createHeader() {
         return new H2(division.getName() + " — My Entries");
+    }
+
+    private VerticalLayout createDocumentsSection() {
+        var docs = competitionService.getDocuments(competition.getId());
+        if (docs.isEmpty()) {
+            return new VerticalLayout();
+        }
+
+        var section = new VerticalLayout();
+        section.setPadding(false);
+        section.setSpacing(false);
+
+        var header = new Span("Competition Documents");
+        header.getStyle().set("font-weight", "600");
+        section.add(header);
+
+        for (var doc : docs) {
+            if (doc.getType() == DocumentType.LINK) {
+                var anchor = new Anchor(doc.getUrl(), doc.getName());
+                anchor.setTarget("_blank");
+                section.add(anchor);
+            } else {
+                var streamResource = new StreamResource(doc.getName() + ".pdf",
+                        () -> new ByteArrayInputStream(
+                                competitionService.getDocument(doc.getId()).getData()));
+                var anchor = new Anchor(streamResource, doc.getName());
+                anchor.getElement().setAttribute("download", true);
+                section.add(anchor);
+            }
+        }
+        return section;
     }
 
     private Div createMeaderyWarning() {

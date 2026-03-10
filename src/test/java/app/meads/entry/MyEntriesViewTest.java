@@ -2,6 +2,7 @@ package app.meads.entry;
 
 import app.meads.TestcontainersConfiguration;
 import app.meads.competition.*;
+import app.meads.competition.DocumentType;
 import app.meads.competition.internal.CompetitionRepository;
 import app.meads.competition.internal.DivisionRepository;
 import app.meads.competition.internal.ParticipantRepository;
@@ -324,5 +325,21 @@ class MyEntriesViewTest {
                 })
                 .toList();
         assertThat(downloadAllAnchors).hasSize(1);
+    }
+
+    @Test
+    @WithMockUser(username = ENTRANT_EMAIL, roles = "USER")
+    void shouldDisplayCompetitionDocuments() {
+        competitionService.addDocument(competition.getId(), "Competition Rules",
+                DocumentType.LINK, null, null, "https://example.com/rules", admin.getId());
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/my-entries");
+
+        var anchors = _find(Anchor.class);
+        var docAnchor = anchors.stream()
+                .filter(a -> "Competition Rules".equals(a.getText()))
+                .findFirst();
+        assertThat(docAnchor).isPresent();
     }
 }
