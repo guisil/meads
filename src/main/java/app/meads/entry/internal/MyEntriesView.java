@@ -15,6 +15,7 @@ import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridSortOrder;
 import com.vaadin.flow.component.html.Anchor;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Nav;
 import com.vaadin.flow.component.html.Span;
@@ -62,6 +63,8 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
     private UUID currentUserId;
     private Grid<Entry> entriesGrid;
     private Map<UUID, DivisionCategory> categoriesById;
+
+    private boolean meaderyNameMissing;
 
     // Filter state
     private String nameFilter = "";
@@ -111,6 +114,10 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
             return;
         }
 
+        // Check meadery name requirement
+        meaderyNameMissing = division.isMeaderyNameRequired()
+                && (user.getMeaderyName() == null || user.getMeaderyName().isBlank());
+
         // Pre-load categories for the division
         categoriesById = competitionService.findDivisionCategories(divisionId).stream()
                 .collect(Collectors.toMap(DivisionCategory::getId, Function.identity()));
@@ -118,6 +125,9 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         removeAll();
         add(createBreadcrumb());
         add(createHeader());
+        if (meaderyNameMissing) {
+            add(createMeaderyWarning());
+        }
         add(createCreditInfo());
         add(createActionButtons());
         add(createFilters());
@@ -136,6 +146,20 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
 
     private H2 createHeader() {
         return new H2(division.getName() + " — My Entries");
+    }
+
+    private Div createMeaderyWarning() {
+        var warning = new Div();
+        warning.getStyle()
+                .set("background-color", "var(--lumo-warning-color-10pct)")
+                .set("color", "var(--lumo-warning-text-color)")
+                .set("padding", "var(--lumo-space-m)")
+                .set("border-radius", "var(--lumo-border-radius-m)")
+                .set("margin-bottom", "var(--lumo-space-m)");
+        var anchor = new Anchor("profile", "update your profile");
+        warning.add(new Span("This division requires a meadery name. Please "), anchor,
+                new Span(" before submitting entries."));
+        return warning;
     }
 
     private VerticalLayout createCreditInfo() {
@@ -186,7 +210,10 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         var hasDrafts = entries.stream().anyMatch(en -> en.getStatus() == EntryStatus.DRAFT);
 
         var submitButton = new Button("Submit All", e -> submitAll());
-        submitButton.setEnabled(hasDrafts);
+        submitButton.setEnabled(hasDrafts && !meaderyNameMissing);
+        if (meaderyNameMissing) {
+            submitButton.setTooltipText("Meadery name required — update your profile");
+        }
         actions.add(submitButton);
 
         return actions;
@@ -320,11 +347,13 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         editBtn.setEnabled(isDraft && isOpen);
         actions.add(editBtn);
 
-        // Submit — only DRAFT entries when registration is open
+        // Submit — only DRAFT entries when registration is open and meadery name not missing
         var submitBtn = new Button(new Icon(VaadinIcon.CHECK), e -> submitSingle(entry));
         submitBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE, ButtonVariant.LUMO_SMALL);
-        submitBtn.setTooltipText("Submit entry");
-        submitBtn.setEnabled(isDraft && isOpen);
+        submitBtn.setEnabled(isDraft && isOpen && !meaderyNameMissing);
+        submitBtn.setTooltipText(meaderyNameMissing
+                ? "Meadery name required — update your profile"
+                : "Submit entry");
         actions.add(submitBtn);
 
         return actions;

@@ -91,7 +91,7 @@ Multiple related fast-cycle changes can be batched in one response.
 ```
 app.meads                                ← @SpringBootApplication (root module)
 ├── MeadsApplication.java               ← Entry point
-├── MainLayout.java                      ← AppLayout wrapper (public API — shared by all views)
+├── MainLayout.java                      ← AppLayout wrapper (public API — shared by all views, includes "My Profile" nav)
 └── internal/
     └── RootView.java                    ← Root route, redirects by role (login/competitions/my-competitions/my-entries)
 
@@ -115,6 +115,7 @@ app.meads.identity                       ← Identity module public API
     ├── AdminInitializer.java            ← Seeds initial admin with password on startup
     ├── DevUserInitializer.java          ← Seeds dev users (dev profile only)
     ├── SetPasswordView.java              ← Set password via token (@AnonymousAllowed)
+    ├── ProfileView.java                  ← User profile self-edit (@PermitAll)
     └── UserActivationListener.java      ← PENDING → ACTIVE on first login
 
 app.meads.competition                    ← Competition module public API

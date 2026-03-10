@@ -83,6 +83,19 @@ public class WebhookService {
             var customerName = root.get("customer").get("full_name").asText();
             var products = root.get("products");
 
+            // Extract country code from shipping address (fallback to billing)
+            String customerCountry = null;
+            var shippingAddress = root.get("shipping_address");
+            if (shippingAddress != null && shippingAddress.has("country_code")) {
+                customerCountry = shippingAddress.get("country_code").asText();
+            }
+            if (customerCountry == null) {
+                var billingAddress = root.get("billing_address");
+                if (billingAddress != null && billingAddress.has("country_code")) {
+                    customerCountry = billingAddress.get("country_code").asText();
+                }
+            }
+
             // Idempotency check
             if (orderRepository.existsByJumpsellerOrderId(orderId)) {
                 log.info("Order {} already processed, skipping", orderId);
@@ -92,10 +105,17 @@ public class WebhookService {
             // Find or create user (use customer name from order)
             var user = userService.findOrCreateByEmail(customerEmail, customerName);
 
+            // Enrich user country if not already set
+            if (customerCountry != null && user.getCountry() == null) {
+                user.updateCountry(customerCountry);
+                log.info("Enriched user {} country to {} from webhook", user.getEmail(), customerCountry);
+            }
+
             log.info("Processing webhook order: id={}, customer={}", orderId, customerEmail);
 
             // Save order first (line items have FK to this)
             var order = new JumpsellerOrder(orderId, customerEmail, customerName, rawPayload);
+            order.setCustomerCountry(customerCountry);
             orderRepository.save(order);
 
             int processedCount = 0;

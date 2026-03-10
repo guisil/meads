@@ -1347,4 +1347,24 @@ class CompetitionServiceTest {
                 .hasMessageContaining("DRAFT");
     }
 
+    // --- updateDivisionMeaderyNameRequired ---
+
+    @Test
+    void shouldUpdateDivisionMeaderyNameRequired() {
+        var admin = createAdmin();
+        var division = new Division(UUID.randomUUID(),
+                "Amadora", "amadora", ScoringSystem.MJP);
+        given(divisionRepository.findById(division.getId()))
+                .willReturn(Optional.of(division));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(divisionRepository.save(any(Division.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var result = competitionService.updateDivisionMeaderyNameRequired(
+                division.getId(), true, admin.getId());
+
+        assertThat(result.isMeaderyNameRequired()).isTrue();
+        then(divisionRepository).should().save(division);
+    }
+
 }

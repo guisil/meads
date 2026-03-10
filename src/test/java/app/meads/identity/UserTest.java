@@ -102,6 +102,21 @@ class UserTest {
     }
 
     @Test
+    void shouldUpdateCountry() {
+        var user = new User("test@example.com", "Test", UserStatus.ACTIVE, Role.USER);
+        user.updateCountry("PT");
+        assertThat(user.getCountry()).isEqualTo("PT");
+    }
+
+    @Test
+    void shouldAllowNullCountry() {
+        var user = new User("test@example.com", "Test", UserStatus.ACTIVE, Role.USER);
+        user.updateCountry("PT");
+        user.updateCountry(null);
+        assertThat(user.getCountry()).isNull();
+    }
+
+    @Test
     void shouldUpdateDetailsWhenValidDataProvided() {
         // Arrange
         var user = new User(

@@ -71,6 +71,10 @@ public class MainLayout extends AppLayout {
             nav.addItem(new SideNavItem("My Entries", "my-entries", VaadinIcon.LIST.create()));
         }
 
+        if (authenticationContext.isAuthenticated()) {
+            nav.addItem(new SideNavItem("My Profile", "profile", VaadinIcon.USER.create()));
+        }
+
         var scroller = new Scroller(nav);
         scroller.getStyle().set("padding", "var(--lumo-space-s)");
         addToDrawer(scroller);

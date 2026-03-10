@@ -18,6 +18,7 @@ import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.server.VaadinServletRequest;
@@ -92,6 +93,9 @@ class MyEntriesViewTest {
         entrant = userRepository.findByEmail(ENTRANT_EMAIL)
                 .orElseGet(() -> userRepository.save(
                         new User(ENTRANT_EMAIL, "Entrant", UserStatus.ACTIVE, Role.USER)));
+        // Reset meadery name to ensure test isolation
+        entrant.updateMeaderyName(null);
+        entrant = userRepository.save(entrant);
 
         var suffix = UUID.randomUUID().toString().substring(0, 8);
         competition = competitionRepository.save(new Competition(
@@ -182,6 +186,62 @@ class MyEntriesViewTest {
         // Should have been forwarded away — no H2 with division name
         var headings = _find(H2.class);
         assertThat(headings).noneMatch(h -> h.getText().contains("Test Division"));
+    }
+
+    @Test
+    @WithMockUser(username = ENTRANT_EMAIL, roles = "USER")
+    void shouldShowWarningWhenMeaderyNameRequiredButMissing() {
+        // Set meaderyNameRequired on division (need to revert to DRAFT first)
+        division.revertStatus(); // REGISTRATION_OPEN → DRAFT
+        division.updateMeaderyNameRequired(true);
+        division.advanceStatus(); // DRAFT → REGISTRATION_OPEN
+        divisionRepository.save(division);
+
+        // Entrant has no meadery name (default)
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/my-entries");
+
+        // Warning banner should be present
+        var warnings = _find(Div.class).stream()
+                .filter(d -> {
+                    var spans = _find(d, Span.class);
+                    return spans.stream().anyMatch(s ->
+                            s.getText() != null && s.getText().contains("meadery name"));
+                })
+                .toList();
+        assertThat(warnings).isNotEmpty();
+
+        // Submit All button should be disabled
+        var submitButton = _get(Button.class, spec -> spec.withText("Submit All"));
+        assertThat(submitButton.isEnabled()).isFalse();
+    }
+
+    @Test
+    @WithMockUser(username = ENTRANT_EMAIL, roles = "USER")
+    void shouldNotShowWarningWhenMeaderyNameIsSet() {
+        // Set meaderyNameRequired on division
+        division.revertStatus();
+        division.updateMeaderyNameRequired(true);
+        division.advanceStatus();
+        divisionRepository.save(division);
+
+        // Set meadery name on entrant
+        entrant.updateMeaderyName("Golden Meadery");
+        userRepository.save(entrant);
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/my-entries");
+
+        // No warning banner
+        var warnings = _find(Div.class).stream()
+                .filter(d -> {
+                    var spans = _find(d, Span.class);
+                    return spans.stream().anyMatch(s ->
+                            s.getText() != null && s.getText().contains("meadery name"));
+                })
+                .toList();
+        assertThat(warnings).isEmpty();
     }
 
     @Test

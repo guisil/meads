@@ -23,6 +23,9 @@ public class JumpsellerOrder {
     @Column(name = "customer_name", nullable = false)
     private String customerName;
 
+    @Column(name = "customer_country", length = 2)
+    private String customerCountry;
+
     @Column(name = "raw_payload", nullable = false, columnDefinition = "TEXT")
     private String rawPayload;
 
@@ -50,6 +53,10 @@ public class JumpsellerOrder {
         this.rawPayload = rawPayload;
         this.status = OrderStatus.UNPROCESSED;
         this.createdAt = Instant.now();
+    }
+
+    public void setCustomerCountry(String customerCountry) {
+        this.customerCountry = customerCountry;
     }
 
     public void markProcessed() {

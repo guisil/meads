@@ -9,6 +9,7 @@ CREATE TABLE divisions (
     max_entries_per_main_category  INT,
     max_entries_total              INT,
     entry_prefix   VARCHAR(5),
+    meadery_name_required           BOOLEAN NOT NULL DEFAULT FALSE,
     created_at     TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at     TIMESTAMP WITH TIME ZONE,
     UNIQUE (competition_id, short_name)

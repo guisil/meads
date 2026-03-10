@@ -39,6 +39,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -320,6 +321,16 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 .setHeader("Category").setSortable(true);
         entriesGrid.addColumn(entry -> userService.findById(entry.getUserId()).getEmail())
                 .setHeader("Entrant").setSortable(true).setFlexGrow(2);
+        entriesGrid.addColumn(entry -> {
+            var user = userService.findById(entry.getUserId());
+            return user.getMeaderyName() != null ? user.getMeaderyName() : "";
+        }).setHeader("Meadery").setSortable(true).setAutoWidth(true);
+        entriesGrid.addColumn(entry -> {
+            var user = userService.findById(entry.getUserId());
+            return user.getCountry() != null
+                    ? new Locale("", user.getCountry()).getDisplayCountry(Locale.ENGLISH)
+                    : "";
+        }).setHeader("Country").setSortable(true).setAutoWidth(true);
         entriesGrid.addColumn(entry -> entry.getStatus().name())
                 .setHeader("Status").setSortable(true).setAutoWidth(true);
         entriesGrid.addComponentColumn(entry -> {

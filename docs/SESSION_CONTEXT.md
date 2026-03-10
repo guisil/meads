@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `competition-module`
-**Tests:** 411 passing (`mvn test -Dsurefire.useFile=false`)
+**Tests:** 431 passing (`mvn test -Dsurefire.useFile=false`)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -23,9 +23,11 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 ## Modules Implemented
 
 ### identity module (`app.meads.identity`)
-- User entity (UUID, email, name, status, role, optional password, optional meaderyName)
+- User entity (UUID, email, name, status, role, optional password, optional meaderyName, optional country)
 - JWT magic link authentication + admin password login + access code login
-- UserService (public API), SecurityConfig, UserListView (admin CRUD)
+- UserService (public API) — includes `updateProfile()` with ISO 3166-1 alpha-2 country validation
+- SecurityConfig, UserListView (admin CRUD with meadery name + country fields)
+- ProfileView (`/profile`) — self-edit for name, meadery name, country
 - Password setup & reset: `SetPasswordView`, `setPasswordByToken()`, `generatePasswordSetupLink()`,
   `hasPassword()`, triggers on admin role assignment, "Forgot password?" on login, admin "Password Reset"
 - **Status:** Complete
@@ -38,7 +40,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 | Entity | Table | Description |
 |--------|-------|-------------|
 | `Competition` | `competitions` | Top-level: name, shortName (unique), dates, location, logo |
-| `Division` | `divisions` | Sub-level: competitionId, name, shortName (unique per competition), scoringSystem, status, entry limits (per subcategory, per main category, total), entryPrefix |
+| `Division` | `divisions` | Sub-level: competitionId, name, shortName (unique per competition), scoringSystem, status, entry limits (per subcategory, per main category, total), entryPrefix, meaderyNameRequired |
 | `Participant` | `participants` | Competition-scoped: userId, accessCode |
 | `ParticipantRole` | `participant_roles` | Role per participant: JUDGE, STEWARD, ENTRANT, ADMIN |
 | `Category` | `categories` | Read-only catalog: code, name, scoringSystem |
@@ -75,7 +77,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 | Entity | Table | Migration | Description |
 |--------|-------|-----------|-------------|
 | `ProductMapping` | `product_mappings` | V9 | Jumpseller product → division mapping |
-| `JumpsellerOrder` | `jumpseller_orders` | V10 | Webhook order storage, idempotency |
+| `JumpsellerOrder` | `jumpseller_orders` | V10 | Webhook order storage, idempotency, customerCountry |
 | `JumpsellerOrderLineItem` | `jumpseller_order_line_items` | V11 | Per-product line items |
 | `EntryCredit` | `entry_credits` | V12 | Append-only credit ledger |
 | `Entry` | `entries` | V13 | Mead entry aggregate root |
@@ -90,7 +92,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 #### Services
 - **EntryService** — Product mapping CRUD, credit management, entry CRUD, submission, limits enforcement (total, subcategory, main category)
-- **WebhookService** — HMAC signature verification, `processOrderPaid` (JSON parsing, idempotency, mutual exclusivity, credit creation)
+- **WebhookService** — HMAC signature verification, `processOrderPaid` (JSON parsing, idempotency, mutual exclusivity, credit creation, country enrichment from shipping/billing address)
 
 #### Events
 - `CreditsAwardedEvent(divisionId, userId, amount, source)`
@@ -101,8 +103,8 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 #### Views
 - `EntrantOverviewView` (`/my-entries`) — cross-competition entrant hub, shows all divisions with credits/entries, auto-redirects to single division
-- `MyEntriesView` (`/competitions/:compShortName/divisions/:divShortName/my-entries`) — entrant-facing, credits + limits display, entry grid with status badges/Final Category/Actions (view/edit/submit)/filtering/sorting, add/edit dialog (full-width fields), submit all
-- `DivisionEntryAdminView` (`/competitions/:compShortName/divisions/:divShortName/entry-admin`) — admin tabs: Credits, Entries, Products, Orders
+- `MyEntriesView` (`/competitions/:compShortName/divisions/:divShortName/my-entries`) — entrant-facing, credits + limits display, entry grid with status badges/Final Category/Actions (view/edit/submit)/filtering/sorting, add/edit dialog (full-width fields), submit all, meadery name required warning + submit blocking
+- `DivisionEntryAdminView` (`/competitions/:compShortName/divisions/:divShortName/entry-admin`) — admin tabs: Credits, Entries (with Meadery/Country columns), Products, Orders
 
 #### REST
 - `JumpsellerWebhookController` — `POST /api/webhooks/jumpseller/order-paid` (HMAC-verified)
@@ -115,9 +117,10 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 #### Changes to other modules
 - `SecurityConfig` — separate `SecurityFilterChain` with `@Order(1)` for webhook API (CSRF disabled, permitAll)
-- `User.java` — added `meaderyName` field (now in V2)
-- `Division.java` — added `maxEntriesPerSubcategory`, `maxEntriesPerMainCategory`, `maxEntriesTotal`, `entryPrefix`
-- `DivisionDetailView` — "Manage Entries" button, entry prefix + entry limits in Settings tab (DRAFT-only for limits)
+- `User.java` — added `meaderyName` and `country` fields (now in V2)
+- `Division.java` — added `maxEntriesPerSubcategory`, `maxEntriesPerMainCategory`, `maxEntriesTotal`, `entryPrefix`, `meaderyNameRequired`
+- `DivisionDetailView` — "Manage Entries" button, entry prefix + entry limits in Settings tab (DRAFT-only for limits), meaderyNameRequired checkbox (DRAFT-only)
+- `MainLayout` — "My Profile" nav item for all authenticated users
 - `application.properties` — added `app.jumpseller.hooks-token`
 
 #### Migrations: V9–V13
@@ -135,7 +138,8 @@ docs/
 ├── SESSION_CONTEXT.md          ← This file (primary context for resuming work)
 ├── examples/                   ← Test & domain model examples (referenced by CLAUDE.md)
 ├── plans/
-│   └── 2026-03-02-entry-module-design.md  ← Retained as reference for future module designs
+│   ├── 2026-03-02-entry-module-design.md  ← Retained as reference for future module designs
+│   └── 2026-03-10-profile-meadery-country-design.md  ← Design reference for profile/meadery/country
 ├── reference/
 │   └── chip-competition-rules.md          ← CHIP competition rules (active reference)
 ├── specs/
@@ -150,23 +154,7 @@ docs/
 
 ## What's Next
 
-### Priority 1: User profile self-edit, meadery name & country — IN PROGRESS
-**Design:** Approved — `docs/plans/2026-03-10-profile-meadery-country-design.md`
-**Implementation plan:** `docs/plans/2026-03-10-profile-meadery-country-plan.md`
-**Status:** Design + plan complete, implementation not yet started (0/12 tasks done).
-**Next step:** Execute the plan starting from Task 1. Use the plan file directly —
-it has all 12 tasks with full code, test commands, and file paths.
-
-Key decisions made:
-- Country field on User (ISO 3166-1 alpha-2, ComboBox with Locale.getISOCountries())
-- Meadery name stays on User profile only (no per-entry override)
-- `meaderyNameRequired` boolean flag on Division (DRAFT-only)
-- MyEntriesView: warning banner + block submit (all + individual) when meadery required but missing
-- Webhook enrichment: extract `shipping_address.country_code`, enrich User country if null
-- ProfileView at `/profile` with My Profile nav item in MainLayout
-- Modify existing V2/V4/V10 migrations in-place (pre-deployment)
-
-### Priority 2: Internationalization (i18n)
+### Priority 1: Internationalization (i18n)
 Investigate how to best approach i18n for the application. Initial target languages are
 English and Portuguese, but the design should support adding more languages later.
 Key areas to consider:
@@ -185,13 +173,13 @@ Key areas to consider:
 - **Scope the investigation** — what's the minimum viable i18n that unblocks Portuguese
   support without over-engineering?
 
-### Priority 3: Manual walkthrough (full redo)
+### Priority 2: Manual walkthrough (full redo)
 Redo the **entire** manual-test walkthrough from Section 1. Previous partial run covered
 Sections 2–9; this is a fresh pass through all sections (1–13) to validate the current
 state end-to-end, including recent entry limits UI, logging, and all accumulated changes.
 May produce bug fixes or UX improvements.
 
-### Priority 4: Deployment planning
+### Priority 3: Deployment planning
 Evaluate cloud providers and services for first deployment:
 - **Managed PostgreSQL** with automatic backups — **top priority**, data must never be lost
 - **Log management** — logs properly stored and rolled, searchable
@@ -206,19 +194,19 @@ Evaluate cloud providers and services for first deployment:
   full AWS infrastructure. Premium high-availability is not required — reliable uptime is
   enough. The non-negotiable is never losing data (hence managed DB with backups).
 
-### Priority 5: Configuration audit
+### Priority 4: Configuration audit
 Review `application.properties` and profile-specific files:
 - Which properties should be env vars vs. config files vs. secrets?
 - Which belong to specific profiles (`dev`, `prod`, `test`)?
 - Align with chosen cloud provider's configuration model
 
-### Priority 6: Email sending implementation
+### Priority 5: Email sending implementation
 Implement actual email delivery (currently magic links and password reset links are
 logged to console). Mechanism depends on deployment choice (SES, SMTP, etc.).
 Spring Boot has `spring-boot-starter-mail` — evaluate if that's sufficient.
 The current console-logging behavior should be kept for the `dev` profile for testing.
 
-### Priority 7: Entry submission labels (PDF)
+### Priority 6: Entry submission labels (PDF)
 When a mead entry is submitted, the entrant should be able to download a printable
 label PDF:
 - **Format:** 1 page containing 3 identical label copies (for 3 bottles)
@@ -227,7 +215,7 @@ label PDF:
 - **Implementation:** Template-based PDF generation (e.g., iText, OpenPDF, or Apache PDFBox)
 - **UX:** Download button/link in MyEntriesView after submission
 
-### Priority 8: Competition documents
+### Priority 7: Competition documents
 Decide how to handle downloadable documents per competition (rules, guidelines, etc.):
 - Options: stored in DB (BLOB), external file storage (S3), or just external links
 - Where to display: competition detail page, possibly entrant-facing views
@@ -248,6 +236,11 @@ Decide how to handle downloadable documents per competition (rules, guidelines, 
   entry limits are locked. This prevents unfairness from mid-registration limit changes.
 - **Flyway migrations modified in-place** — since the app is pre-deployment, existing
   migrations are edited rather than creating new ones. This keeps migration numbering clean.
+- **Country field on User** — ISO 3166-1 alpha-2 code, validated in `UserService.updateProfile()`.
+  ComboBox with `Locale.getISOCountries()` in UI. Webhook enrichment from shipping/billing address.
+- **Meadery name stays on User profile only** — no per-entry override needed.
+- **`meaderyNameRequired` on Division** — boolean flag, changeable only in DRAFT status.
+  MyEntriesView shows warning banner and blocks submit (all + individual) when required but missing.
 
 ### Known UX items (deferred)
 - After failed credentials login, page reloads at `/login?error` and shows error notification,
@@ -280,8 +273,8 @@ Decide how to handle downloadable documents per competition (rules, guidelines, 
 - `EntryModuleTest.java` — bootstrap + full credit → entry → submit workflow
 
 ### UI tests
-- `MyEntriesViewTest.java` — credits display, entry grid, authorization redirect
-- `DivisionEntryAdminViewTest.java` — admin tabs rendering
+- `MyEntriesViewTest.java` — credits display, entry grid, authorization redirect, meadery name warning + submit blocking
+- `DivisionEntryAdminViewTest.java` — admin tabs rendering, meadery name + country columns
 
 ---
 

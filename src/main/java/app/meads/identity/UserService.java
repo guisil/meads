@@ -14,6 +14,8 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 
 @Slf4j
@@ -21,6 +23,8 @@ import java.util.UUID;
 @Transactional
 @Validated
 public class UserService {
+
+    private static final Set<String> VALID_COUNTRY_CODES = Set.of(Locale.getISOCountries());
 
     private final UserRepository userRepository;
     private final JwtMagicLinkService jwtMagicLinkService;
@@ -87,6 +91,20 @@ public class UserService {
                     log.info("Auto-created user for email: {}", email);
                     return userRepository.save(user);
                 });
+    }
+
+    public User updateProfile(@NotNull UUID userId, @NotBlank String name,
+                               String meaderyName, String country) {
+        if (country != null && !VALID_COUNTRY_CODES.contains(country)) {
+            throw new IllegalArgumentException("Invalid ISO 3166-1 alpha-2 country code: " + country);
+        }
+        var user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+        user.updateDetails(name, user.getRole(), user.getStatus());
+        user.updateMeaderyName(meaderyName);
+        user.updateCountry(country);
+        log.info("Profile updated for user {} ({})", user.getEmail(), userId);
+        return userRepository.save(user);
     }
 
     public User updateMeaderyName(@NotNull UUID userId, String meaderyName) {

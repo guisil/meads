@@ -12,6 +12,7 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.TextField;
@@ -674,6 +675,26 @@ class UserListViewTest {
         // Email field should show validation error
         assertThat(emailField.isInvalid()).isTrue();
         assertThat(emailField.getErrorMessage()).contains("already exists");
+    }
+
+    @Test
+    @WithMockUser(roles = "SYSTEM_ADMIN")
+    void shouldDisplayMeaderyNameAndCountryInEditDialog() {
+        var user = new User("meadery@test.com", "Meadery User", UserStatus.ACTIVE, Role.USER);
+        user.updateMeaderyName("Golden Mead");
+        user.updateCountry("PT");
+        userRepository.save(user);
+
+        UI.getCurrent().navigate("users");
+        var view = _get(UserListView.class);
+        view.openEditDialog(user);
+
+        var meaderyField = _get(TextField.class, spec -> spec.withLabel("Meadery Name"));
+        assertThat(meaderyField.getValue()).isEqualTo("Golden Mead");
+
+        @SuppressWarnings("unchecked")
+        var countryCombo = (ComboBox<String>) _get(ComboBox.class, spec -> spec.withLabel("Country"));
+        assertThat(countryCombo.getValue()).isEqualTo("PT");
     }
 
     @Test

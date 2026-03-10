@@ -46,6 +46,9 @@ public class Division {
     @Column(name = "entry_prefix", length = 5)
     private String entryPrefix;
 
+    @Column(name = "meadery_name_required", nullable = false)
+    private boolean meaderyNameRequired;
+
     private Instant updatedAt;
 
     protected Division() {} // JPA
@@ -58,6 +61,7 @@ public class Division {
         this.shortName = shortName;
         this.scoringSystem = scoringSystem;
         this.status = DivisionStatus.DRAFT;
+        this.meaderyNameRequired = false;
     }
 
     @PrePersist
@@ -96,6 +100,13 @@ public class Division {
         this.maxEntriesPerSubcategory = maxEntriesPerSubcategory;
         this.maxEntriesPerMainCategory = maxEntriesPerMainCategory;
         this.maxEntriesTotal = maxEntriesTotal;
+    }
+
+    public void updateMeaderyNameRequired(boolean meaderyNameRequired) {
+        if (status != DivisionStatus.DRAFT) {
+            throw new IllegalStateException("Meadery name requirement can only be changed in DRAFT status");
+        }
+        this.meaderyNameRequired = meaderyNameRequired;
     }
 
     public void updateDetails(String name, String shortName, ScoringSystem scoringSystem,

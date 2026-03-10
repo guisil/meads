@@ -17,6 +17,7 @@ import com.github.mvysny.kaributesting.v10.Routes;
 import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.treegrid.TreeGrid;
@@ -393,6 +394,21 @@ class DivisionDetailViewTest {
                 .filter(b -> b.getText().equals("Revert Status"))
                 .findFirst();
         assertThat(revertButton).isPresent();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldDisplayMeaderyNameRequiredCheckboxInSettings() {
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName()
+                + "/divisions/" + testDivision.getShortName());
+
+        // Switch to Settings tab (index 1)
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(1);
+
+        var checkbox = _get(Checkbox.class, spec -> spec.withLabel("Meadery Name Required"));
+        assertThat(checkbox.getValue()).isFalse();
+        assertThat(checkbox.isEnabled()).isTrue(); // DRAFT allows editing
     }
 
     @Test

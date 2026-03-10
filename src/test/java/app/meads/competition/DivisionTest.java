@@ -82,6 +82,27 @@ class DivisionTest {
     }
 
     @Test
+    void shouldDefaultMeaderyNameRequiredToFalse() {
+        var division = createDraftDivision();
+        assertThat(division.isMeaderyNameRequired()).isFalse();
+    }
+
+    @Test
+    void shouldUpdateMeaderyNameRequired() {
+        var division = createDraftDivision();
+        division.updateMeaderyNameRequired(true);
+        assertThat(division.isMeaderyNameRequired()).isTrue();
+    }
+
+    @Test
+    void shouldRejectMeaderyNameRequiredChangeOutsideDraft() {
+        var division = createDraftDivision();
+        division.advanceStatus(); // DRAFT → REGISTRATION_OPEN
+        assertThatThrownBy(() -> division.updateMeaderyNameRequired(true))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
     void shouldThrowWhenAdvancingPastTerminalStatus() {
         var division = createDraftDivision();
         division.advanceStatus(); // REGISTRATION_OPEN

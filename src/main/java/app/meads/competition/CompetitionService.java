@@ -252,6 +252,16 @@ public class CompetitionService {
         return divisionRepository.save(division);
     }
 
+    public Division updateDivisionMeaderyNameRequired(@NotNull UUID divisionId,
+                                                       boolean meaderyNameRequired,
+                                                       @NotNull UUID requestingUserId) {
+        var division = findDivisionById(divisionId);
+        requireAuthorized(division.getCompetitionId(), requestingUserId);
+        division.updateMeaderyNameRequired(meaderyNameRequired);
+        log.debug("Division {} meaderyNameRequired set to {}", divisionId, meaderyNameRequired);
+        return divisionRepository.save(division);
+    }
+
     // --- Division Category methods ---
 
     public List<DivisionCategory> findDivisionCategories(@NotNull UUID divisionId) {

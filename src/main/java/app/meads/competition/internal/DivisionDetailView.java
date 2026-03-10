@@ -5,6 +5,7 @@ import app.meads.competition.*;
 import app.meads.identity.UserService;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
@@ -399,6 +400,12 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
             maxTotalField.setValue(division.getMaxEntriesTotal());
         }
 
+        var meaderyRequiredCheckbox = new Checkbox("Meadery Name Required");
+        meaderyRequiredCheckbox.setValue(division.isMeaderyNameRequired());
+        meaderyRequiredCheckbox.setEnabled(isDraft);
+        meaderyRequiredCheckbox.setTooltipText(
+                "When enabled, entrants must have a meadery name in their profile to submit entries");
+
         var statusField = new TextField("Status");
         statusField.setValue(division.getStatus().getDisplayName());
         statusField.setReadOnly(true);
@@ -427,6 +434,8 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                         maxPerMainCategoryField.getValue(),
                         maxTotalField.getValue(),
                         getCurrentUserId());
+                competitionService.updateDivisionMeaderyNameRequired(
+                        divisionId, meaderyRequiredCheckbox.getValue(), getCurrentUserId());
                 refreshBreadcrumbAndHeader();
                 var notification = Notification.show("Settings saved successfully");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
@@ -437,7 +446,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
 
         tab.add(nameField, shortNameField, entryPrefixField, scoringSelect,
                 maxPerSubcategoryField, maxPerMainCategoryField, maxTotalField,
-                statusField, saveButton);
+                meaderyRequiredCheckbox, statusField, saveButton);
         return tab;
     }
 

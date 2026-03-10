@@ -1,23 +1,16 @@
-package app.meads.entry;
+package app.meads.identity;
 
 import app.meads.TestcontainersConfiguration;
-import app.meads.competition.*;
-import app.meads.competition.internal.CompetitionRepository;
-import app.meads.competition.internal.DivisionRepository;
-import app.meads.competition.internal.ParticipantRepository;
-import app.meads.competition.internal.ParticipantRoleRepository;
-import app.meads.identity.Role;
-import app.meads.identity.User;
-import app.meads.identity.UserStatus;
 import app.meads.identity.internal.UserRepository;
 import com.github.mvysny.fakeservlet.FakeRequest;
 import com.github.mvysny.kaributesting.v10.MockVaadin;
 import com.github.mvysny.kaributesting.v10.Routes;
 import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
 import com.vaadin.flow.component.UI;
-import com.vaadin.flow.component.grid.Grid;
-import com.vaadin.flow.component.html.H2;
-import com.vaadin.flow.component.tabs.TabSheet;
+import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.combobox.ComboBox;
+import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.server.VaadinServletRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,9 +27,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.annotation.DirtiesContext;
 
-import java.time.LocalDate;
 import java.util.Arrays;
-import java.util.UUID;
+import java.util.List;
 
 import static com.github.mvysny.kaributesting.v10.LocatorJ.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -44,9 +36,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
 @DirtiesContext
-class DivisionEntryAdminViewTest {
-
-    private static final String ADMIN_EMAIL = "entryadmin-admin@example.com";
+class ProfileViewTest {
 
     @Autowired
     ApplicationContext ctx;
@@ -54,34 +44,8 @@ class DivisionEntryAdminViewTest {
     @Autowired
     UserRepository userRepository;
 
-    @Autowired
-    CompetitionRepository competitionRepository;
-
-    @Autowired
-    DivisionRepository divisionRepository;
-
-    @Autowired
-    ParticipantRepository participantRepository;
-
-    @Autowired
-    ParticipantRoleRepository participantRoleRepository;
-
-    private Competition competition;
-    private Division division;
-
     @BeforeEach
     void setup(TestInfo testInfo) {
-        var admin = userRepository.findByEmail(ADMIN_EMAIL)
-                .orElseGet(() -> userRepository.save(
-                        new User(ADMIN_EMAIL, "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN)));
-
-        var suffix = UUID.randomUUID().toString().substring(0, 8);
-        competition = competitionRepository.save(new Competition(
-                "Entry Admin Test Competition", "entry-admin-" + suffix,
-                LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30), "Test"));
-        division = divisionRepository.save(new Division(
-                competition.getId(), "Admin Division", "admin-div-" + suffix, ScoringSystem.MJP));
-
         var routes = new Routes().autoDiscoverViews("app.meads");
         var servlet = new MockSpringServlet(routes, ctx, UI::new);
         MockVaadin.setup(UI::new, servlet);
@@ -138,39 +102,41 @@ class DivisionEntryAdminViewTest {
     }
 
     @Test
-    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldDisplayTabsForEntryAdmin() {
-        UI.getCurrent().navigate("competitions/" + competition.getShortName() + "/divisions/" + division.getShortName() + "/entry-admin");
+    @WithMockUser(username = "entrant@test.com", roles = "USER")
+    void shouldDisplayProfileFields(TestInfo testInfo) {
+        userRepository.findByEmail("entrant@test.com")
+                .orElseGet(() -> userRepository.save(
+                        new User("entrant@test.com", "Test Entrant", UserStatus.ACTIVE, Role.USER)));
 
-        var heading = _get(H2.class);
-        assertThat(heading.getText()).contains("Admin Division");
+        UI.getCurrent().navigate("profile");
 
-        var tabSheet = _get(TabSheet.class);
-        assertThat(tabSheet).isNotNull();
-        assertThat(tabSheet.getTabCount()).isEqualTo(4);
+        var emailField = _get(TextField.class, spec -> spec.withLabel("Email"));
+        assertThat(emailField.isReadOnly()).isTrue();
+        assertThat(emailField.getValue()).isEqualTo("entrant@test.com");
+
+        var nameField = _get(TextField.class, spec -> spec.withLabel("Name"));
+        assertThat(nameField.getValue()).isEqualTo("Test Entrant");
     }
 
-    @SuppressWarnings("unchecked")
     @Test
-    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldShowMeaderyAndCountryColumnsInEntriesTab() {
-        UI.getCurrent().navigate("competitions/" + competition.getShortName()
-                + "/divisions/" + division.getShortName() + "/entry-admin");
+    @WithMockUser(username = "save-profile@test.com", roles = "USER")
+    void shouldSaveProfileChanges(TestInfo testInfo) {
+        userRepository.findByEmail("save-profile@test.com")
+                .orElseGet(() -> userRepository.save(
+                        new User("save-profile@test.com", "Test Entrant", UserStatus.ACTIVE, Role.USER)));
 
-        // Select the Entries tab
-        var tabSheet = _get(TabSheet.class);
-        tabSheet.setSelectedIndex(1); // Entries is the second tab
+        UI.getCurrent().navigate("profile");
 
-        // Find the entries grid (it has id "entries-grid")
-        var grids = _find(Grid.class);
-        var entriesGrid = grids.stream()
-                .filter(g -> "entries-grid".equals(g.getId().orElse(null)))
-                .findFirst()
-                .orElseThrow(() -> new AssertionError("Entries grid not found"));
+        var nameField = _get(TextField.class, spec -> spec.withLabel("Name"));
+        nameField.setValue("Updated Name");
 
-        var headers = entriesGrid.getColumns().stream()
-                .map(c -> ((Grid.Column<?>) c).getHeaderText())
-                .toList();
-        assertThat(headers).contains("Meadery", "Country");
+        var meaderyField = _get(TextField.class, spec -> spec.withLabel("Meadery Name"));
+        meaderyField.setValue("My Meadery");
+
+        _click(_get(Button.class, spec -> spec.withText("Save")));
+
+        var updated = userRepository.findByEmail("save-profile@test.com").orElseThrow();
+        assertThat(updated.getName()).isEqualTo("Updated Name");
+        assertThat(updated.getMeaderyName()).isEqualTo("My Meadery");
     }
 }

@@ -3,6 +3,7 @@ CREATE TABLE jumpseller_orders (
     jumpseller_order_id VARCHAR(255)    NOT NULL UNIQUE,
     customer_email      VARCHAR(255)    NOT NULL,
     customer_name       VARCHAR(255)    NOT NULL,
+    customer_country    VARCHAR(2),
     raw_payload         TEXT            NOT NULL,
     status              VARCHAR(50)     NOT NULL,
     admin_note          TEXT,

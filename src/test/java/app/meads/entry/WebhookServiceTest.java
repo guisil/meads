@@ -82,6 +82,22 @@ class WebhookServiceTest {
                 """.formatted(orderId, email, name, productList).trim();
     }
 
+    private String buildPayloadWithAddress(String orderId, String email, String name,
+                                            String countryCode, String... products) {
+        var productList = new StringBuilder("[");
+        for (int i = 0; i < products.length; i++) {
+            if (i > 0) productList.append(",");
+            productList.append(products[i]);
+        }
+        productList.append("]");
+        var addressBlock = countryCode != null
+                ? ", \"shipping_address\": {\"country_code\": \"%s\"}".formatted(countryCode)
+                : "";
+        return """
+                {"id": "%s", "customer": {"email": "%s", "full_name": "%s"}%s, "products": %s}
+                """.formatted(orderId, email, name, addressBlock, productList).trim();
+    }
+
     private String buildProduct(String productId, String sku, String name, int qty) {
         return """
                 {"product_id": "%s", "sku": "%s", "name": "%s", "qty": %d}
@@ -322,6 +338,104 @@ class WebhookServiceTest {
         assertThat(orderCaptor.getAllValues().getLast().getStatus())
                 .isEqualTo(OrderStatus.NEEDS_REVIEW);
         then(creditRepository).should(never()).save(any());
+    }
+
+    @Test
+    void shouldExtractCountryCodeFromShippingAddress() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var competitionId = UUID.randomUUID();
+        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP);
+        var user = new User("entrant@test.com", "Test Entrant", UserStatus.ACTIVE, Role.USER);
+        var mapping = new ProductMapping(divisionId, "101", "SKU-001", "Entry Pack", 1);
+
+        var payload = buildPayloadWithAddress("ORDER-010", "entrant@test.com", "Test Entrant",
+                "PT", buildProduct("101", "SKU-001", "Entry Pack", 1));
+
+        given(orderRepository.existsByJumpsellerOrderId("ORDER-010")).willReturn(false);
+        given(orderRepository.save(any(JumpsellerOrder.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(productMappingRepository.findByJumpsellerProductId("101"))
+                .willReturn(List.of(mapping));
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(creditRepository.findDistinctDivisionIdsByUserId(user.getId()))
+                .willReturn(List.of());
+        given(userService.findOrCreateByEmail("entrant@test.com", "Test Entrant")).willReturn(user);
+        given(lineItemRepository.save(any(JumpsellerOrderLineItem.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(creditRepository.save(any(EntryCredit.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.processOrderPaid(payload);
+
+        var orderCaptor = ArgumentCaptor.forClass(JumpsellerOrder.class);
+        then(orderRepository).should(org.mockito.Mockito.atLeast(1)).save(orderCaptor.capture());
+        assertThat(orderCaptor.getAllValues().getLast().getCustomerCountry()).isEqualTo("PT");
+    }
+
+    @Test
+    void shouldEnrichUserCountryWhenNull() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var competitionId = UUID.randomUUID();
+        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP);
+        var user = new User("entrant@test.com", "Test Entrant", UserStatus.ACTIVE, Role.USER);
+        var mapping = new ProductMapping(divisionId, "101", "SKU-001", "Entry Pack", 1);
+
+        var payload = buildPayloadWithAddress("ORDER-011", "entrant@test.com", "Test Entrant",
+                "PT", buildProduct("101", "SKU-001", "Entry Pack", 1));
+
+        given(orderRepository.existsByJumpsellerOrderId("ORDER-011")).willReturn(false);
+        given(orderRepository.save(any(JumpsellerOrder.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(productMappingRepository.findByJumpsellerProductId("101"))
+                .willReturn(List.of(mapping));
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(creditRepository.findDistinctDivisionIdsByUserId(user.getId()))
+                .willReturn(List.of());
+        given(userService.findOrCreateByEmail("entrant@test.com", "Test Entrant")).willReturn(user);
+        given(lineItemRepository.save(any(JumpsellerOrderLineItem.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(creditRepository.save(any(EntryCredit.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.processOrderPaid(payload);
+
+        // User country should be enriched (was null, now PT)
+        assertThat(user.getCountry()).isEqualTo("PT");
+    }
+
+    @Test
+    void shouldNotOverwriteExistingUserCountry() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var competitionId = UUID.randomUUID();
+        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP);
+        var user = new User("entrant@test.com", "Test Entrant", UserStatus.ACTIVE, Role.USER);
+        user.updateCountry("BR"); // Already has country
+        var mapping = new ProductMapping(divisionId, "101", "SKU-001", "Entry Pack", 1);
+
+        var payload = buildPayloadWithAddress("ORDER-012", "entrant@test.com", "Test Entrant",
+                "PT", buildProduct("101", "SKU-001", "Entry Pack", 1));
+
+        given(orderRepository.existsByJumpsellerOrderId("ORDER-012")).willReturn(false);
+        given(orderRepository.save(any(JumpsellerOrder.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(productMappingRepository.findByJumpsellerProductId("101"))
+                .willReturn(List.of(mapping));
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(creditRepository.findDistinctDivisionIdsByUserId(user.getId()))
+                .willReturn(List.of());
+        given(userService.findOrCreateByEmail("entrant@test.com", "Test Entrant")).willReturn(user);
+        given(lineItemRepository.save(any(JumpsellerOrderLineItem.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(creditRepository.save(any(EntryCredit.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.processOrderPaid(payload);
+
+        // Should NOT overwrite existing country
+        assertThat(user.getCountry()).isEqualTo("BR");
     }
 
     @Test

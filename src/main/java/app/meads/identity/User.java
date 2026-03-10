@@ -39,6 +39,9 @@ public class User {
     @Column(name = "meadery_name")
     private String meaderyName;
 
+    @Column(length = 2)
+    private String country;
+
     private Instant updatedAt;
 
     protected User() {} // JPA
@@ -71,6 +74,10 @@ public class User {
 
     public void updateMeaderyName(String meaderyName) {
         this.meaderyName = meaderyName;
+    }
+
+    public void updateCountry(String country) {
+        this.country = country;
     }
 
     public void updateDetails(String name, Role role, UserStatus status) {

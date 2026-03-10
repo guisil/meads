@@ -6,6 +6,7 @@ CREATE TABLE users (
     role VARCHAR(50) NOT NULL DEFAULT 'USER',
     password_hash VARCHAR(255),
     meadery_name VARCHAR(255),
+    country                 VARCHAR(2),
     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE
 );

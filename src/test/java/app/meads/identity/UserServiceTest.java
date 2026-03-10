@@ -281,6 +281,42 @@ class UserServiceTest {
         then(userRepository).should().save(user);
     }
 
+    // --- updateProfile tests ---
+
+    @Test
+    void shouldUpdateProfile() {
+        var user = new User("test@example.com", "Old Name", UserStatus.ACTIVE, Role.USER);
+        given(userRepository.findById(user.getId())).willReturn(Optional.of(user));
+        given(userRepository.save(any(User.class))).willAnswer(i -> i.getArgument(0));
+
+        var result = userService.updateProfile(user.getId(), "New Name", "My Meadery", "PT");
+
+        assertThat(result.getName()).isEqualTo("New Name");
+        assertThat(result.getMeaderyName()).isEqualTo("My Meadery");
+        assertThat(result.getCountry()).isEqualTo("PT");
+    }
+
+    @Test
+    void shouldRejectInvalidCountryCode() {
+        var userId = UUID.randomUUID();
+
+        assertThatThrownBy(() -> userService.updateProfile(userId, "Name", null, "XX"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("country code");
+    }
+
+    @Test
+    void shouldAllowNullCountryInProfile() {
+        var user = new User("test@example.com", "Name", UserStatus.ACTIVE, Role.USER);
+        given(userRepository.findById(user.getId())).willReturn(Optional.of(user));
+        given(userRepository.save(any(User.class))).willAnswer(i -> i.getArgument(0));
+
+        var result = userService.updateProfile(user.getId(), "Name", null, null);
+
+        assertThat(result.getCountry()).isNull();
+        assertThat(result.getMeaderyName()).isNull();
+    }
+
     // --- updateMeaderyName tests ---
 
     @Test

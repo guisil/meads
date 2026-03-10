@@ -10,6 +10,7 @@ import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H1;
@@ -18,6 +19,8 @@ import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.Locale;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.select.Select;
@@ -221,6 +224,26 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
         roleSelect.setLabel("Role");
         roleSelect.setItems(Role.values());
 
+        var meaderyField = new TextField("Meadery Name");
+        meaderyField.setWidthFull();
+        if (!isCreate && existingUser.getMeaderyName() != null) {
+            meaderyField.setValue(existingUser.getMeaderyName());
+        }
+
+        var countryCombo = new ComboBox<String>("Country");
+        var countries = Arrays.stream(Locale.getISOCountries())
+                .sorted((a, b) -> new Locale("", a).getDisplayCountry(Locale.ENGLISH)
+                        .compareTo(new Locale("", b).getDisplayCountry(Locale.ENGLISH)))
+                .toList();
+        countryCombo.setItems(countries);
+        countryCombo.setItemLabelGenerator(code ->
+                new Locale("", code).getDisplayCountry(Locale.ENGLISH));
+        countryCombo.setClearButtonVisible(true);
+        countryCombo.setWidthFull();
+        if (!isCreate && existingUser.getCountry() != null) {
+            countryCombo.setValue(existingUser.getCountry());
+        }
+
         Select<UserStatus> statusSelect = null;
 
         if (isCreate) {
@@ -277,6 +300,10 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
                         statusSelectRef.getValue(),
                         getCurrentUserEmail()
                     );
+                    var meadery = meaderyField.getValue();
+                    userService.updateProfile(existingUser.getId(), nameField.getValue(),
+                            meadery != null && !meadery.isBlank() ? meadery.trim() : null,
+                            countryCombo.getValue());
                 }
                 grid.setItems(userService.findAll());
                 var notification = Notification.show(isCreate ? "User created successfully" : "User saved successfully");
@@ -305,7 +332,7 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
         cancelButton.addClickListener(e -> dialog.close());
 
         VerticalLayout formLayout = new VerticalLayout();
-        formLayout.add(emailField, nameField, roleSelect);
+        formLayout.add(emailField, nameField, meaderyField, countryCombo, roleSelect);
         if (statusSelect != null) {
             formLayout.add(statusSelect);
         }

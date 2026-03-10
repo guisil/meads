@@ -235,6 +235,27 @@ Wait for startup to complete. The console will show magic links for dev users.
 - [ ] Log out, log in as `user@example.com` (regular USER with credits, not competition admin)
 - [ ] **Expected:** Side nav shows "My Entries" only -- no "Competitions", "Users", or "My Competitions"
 
+### My Profile nav item
+
+- [ ] While logged in as any user
+- [ ] **Expected:** Side nav shows "My Profile" (for all authenticated users)
+- [ ] Click "My Profile"
+- [ ] **Expected:** Navigated to `/profile`
+
+### Profile self-edit
+
+- [ ] **Expected:** Page title "My Profile"
+- [ ] **Expected:** Fields: Email (read-only), Name, Meadery Name, Country (ComboBox), Save button
+- [ ] **Expected:** Email shows current user's email and is not editable
+- [ ] **Expected:** Name is pre-populated with current user's name
+- [ ] Change Name to `Updated Name`, set Meadery Name to `Test Meadery`, select Country `Portugal`
+- [ ] Click "Save"
+- [ ] **Expected:** Notification "Profile saved" (green)
+- [ ] Reload the page
+- [ ] **Expected:** Fields retain the saved values
+- [ ] Clear Meadery Name and Country, revert Name, click "Save"
+- [ ] **Expected:** Changes saved successfully (meadery name and country can be null)
+
 ---
 
 ## 4. User Management
@@ -298,8 +319,8 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 - [ ] Find `newuser@test.com` in the grid
 - [ ] Click "Edit"
-- [ ] **Expected:** Dialog with pre-populated fields (email read-only, name editable, role, status)
-- [ ] Change name to `Updated User`
+- [ ] **Expected:** Dialog with pre-populated fields (email read-only, name editable, meadery name, country, role, status)
+- [ ] Change name to `Updated User`, set Meadery Name to `Admin Meadery`, select Country `United States`
 - [ ] Click "Save"
 - [ ] **Expected:** Notification "User saved successfully" (green)
 - [ ] **Expected:** Grid shows updated name
@@ -635,8 +656,9 @@ Wait for startup to complete. The console will show magic links for dev users.
 ### Settings tab
 
 - [ ] Click the "Settings" tab
-- [ ] **Expected:** Fields: Name, Short Name, Entry Prefix, Scoring System, Max Entries per Subcategory, Max Entries per Main Category, Max Total Entries, Status (read-only), Save button
+- [ ] **Expected:** Fields: Name, Short Name, Entry Prefix, Scoring System, Max Entries per Subcategory, Max Entries per Main Category, Max Total Entries, Meadery Name Required (checkbox), Status (read-only), Save button
 - [ ] **Expected:** Name, Short Name, Entry Prefix are always editable (regardless of status)
+- [ ] **Expected:** "Meadery Name Required" checkbox is disabled (not DRAFT — Amadora is REGISTRATION_OPEN)
 - [ ] **Expected:** Entry Prefix: helper text "Short prefix for entry numbers (e.g. AMA), up to 5 characters", maxLength 5
 - [ ] **Expected:** Entry limit fields have step buttons, clear button, helper text (e.g. "Per entrant per subcategory (empty = unlimited)")
 - [ ] **Expected:** Entry limit fields show seeded values: 3 per subcategory, 5 per main category, 10 total
@@ -742,7 +764,9 @@ Wait for startup to complete. The console will show magic links for dev users.
 - [ ] Navigate back to Amadora entry-admin
 - [ ] Click the "Entries" tab
 - [ ] **Expected:** Filter field: "Filter by mead name, entrant, or entry code..."
-- [ ] **Expected:** Grid with columns: Entry # (with AMA prefix, e.g. "AMA-1"), Code, Mead Name, Category, Entrant, Status, Actions (edit/delete/withdraw icons)
+- [ ] **Expected:** Grid with columns: Entry # (with AMA prefix, e.g. "AMA-1"), Code, Mead Name, Category, Entrant, Meadery, Country, Status, Actions (edit/delete/withdraw icons)
+- [ ] **Expected:** Meadery column shows user's meadery name (or empty if not set)
+- [ ] **Expected:** Country column shows display name (e.g. "Portugal") based on user's ISO country code
 - [ ] **Expected:** 4 entries total (3 from user@example.com, 1 from entrant@example.com), sorted by entry number
 - [ ] **Expected:** Wildflower Traditional and Blueberry Bliss -- Status: SUBMITTED
 - [ ] **Expected:** Oak-Aged Bochet and Lavender Metheglin -- Status: DRAFT
@@ -831,7 +855,7 @@ sign() { echo -n "$1" | openssl dgst -sha256 -hmac 'your-jumpseller-hooks-token-
 This uses seeded product mapping: product ID `1001` → Amadora division (SKU `CHIP-AMA`, 1 credit/unit).
 
 ```bash
-PAYLOAD='{"id":"WH-001","customer":{"email":"webhooktest@example.com","full_name":"Webhook Tester"},"products":[{"product_id":"1001","sku":"CHIP-AMA","name":"CHIP Amadora Entry","qty":3}]}'
+PAYLOAD='{"id":"WH-001","customer":{"email":"webhooktest@example.com","full_name":"Webhook Tester"},"products":[{"product_id":"1001","sku":"CHIP-AMA","name":"CHIP Amadora Entry","qty":3}],"shipping_address":{"country_code":"PT"}}'
 SIGNATURE=$(sign "$PAYLOAD")
 
 curl -s -o /dev/null -w "%{http_code}" \
@@ -847,6 +871,8 @@ curl -s -o /dev/null -w "%{http_code}" \
   - **Orders tab:** Order `WH-001` appears with status PROCESSED
 - [ ] Verify user creation: Log in as `admin@example.com`, navigate to `/users`
   - **Expected:** `webhooktest@example.com` exists (PENDING status, created automatically)
+- [ ] Verify country enrichment: Edit `webhooktest@example.com` in users list
+  - **Expected:** Country field shows "Portugal" (enriched from webhook `shipping_address.country_code`)
 
 ### Duplicate order -- idempotency
 
@@ -1059,6 +1085,23 @@ curl -s -o /dev/null -w "%{http_code}" \
 - [ ] **Expected:** "Submit All" button is now disabled (no more drafts)
 - [ ] **Expected:** "Add Entry" button may still be enabled if credits remain
 
+### Meadery name required -- warning and submit blocking
+
+*Pre-requisite: Set `meaderyNameRequired` on a division in DRAFT status, then advance to REGISTRATION_OPEN.
+Or use a test division where the flag is already set.*
+
+- [ ] Ensure your user has NO meadery name set (clear it via My Profile)
+- [ ] Navigate to a division with `meaderyNameRequired = true`
+- [ ] **Expected:** Warning banner at the top: "This division requires a meadery name..." with link to "My Profile"
+- [ ] **Expected:** "Submit All" button is disabled
+- [ ] **Expected:** Individual submit buttons (check icons) in the grid are disabled
+- [ ] Click the "My Profile" link in the warning banner
+- [ ] **Expected:** Navigated to `/profile`
+- [ ] Set a meadery name and save
+- [ ] Navigate back to the division's My Entries page
+- [ ] **Expected:** Warning banner is gone
+- [ ] **Expected:** "Submit All" and individual submit buttons are enabled
+
 ### Entry limit enforcement
 
 **Subcategory limit (3 per subcategory):**
@@ -1210,7 +1253,7 @@ After running the above tests, document decisions on:
 | Walkthrough Section | Automated Tests |
 |---|---|
 | 2. Authentication | `LoginViewTest`, `SetPasswordViewTest`, `AdminPasswordAuthenticationTest`, `JwtMagicLinkAuthenticationTest`, `RootUrlRedirectTest`, `LogoutFlowTest`, `UserActivationListenerTest`, `SecurityConfigTest`, `AccessCodeAwareAuthenticationProviderTest`, `DevUserInitializerTest` |
-| 3. Navigation & Layout | `MainLayoutTest`, `RootUrlRedirectTest`, `MyCompetitionsViewTest` |
+| 3. Navigation & Layout | `MainLayoutTest`, `RootUrlRedirectTest`, `MyCompetitionsViewTest`, `ProfileViewTest` |
 | 4. User Management | `UserListViewTest`, `UserServiceTest`, `UserServiceValidationTest`, `UserTest`, `AdminInitializerTest` |
 | 5. Competition Management | `CompetitionListViewTest`, `CompetitionServiceTest`, `CompetitionTest` |
 | 6. Competition Detail | `CompetitionDetailViewTest`, `CompetitionServiceTest`, `DivisionTest`, `ParticipantTest`, `ParticipantRoleTest` |
