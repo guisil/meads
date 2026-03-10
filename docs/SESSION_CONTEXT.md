@@ -150,7 +150,7 @@ docs/
 
 ## What's Next
 
-### Priority 1: Meadery name and country on entries
+### Priority 1: User profile fields + meadery name and country on entries
 Check if there is a way for a professional meadery to add the meadery name when adding
 entries. The `User` entity already has an optional `meaderyName` field — investigate whether
 it should be displayed/editable in the entry flow (e.g., pre-filled from the user profile,
@@ -158,14 +158,36 @@ or overridable per entry), and whether entries themselves need a meadery name fi
 Also consider whether it's worth adding a "Country" field to users, participants, or entries
 — evaluate where it belongs and what value it provides (e.g., for international competitions,
 results display, or statistical purposes).
+Additionally, consider whether users should be allowed to edit their own name (and the
+optional meadery name and country) from their profile — currently only admins can edit
+user details via `UserListView`.
 
-### Priority 2: Manual walkthrough (full redo)
+### Priority 2: Internationalization (i18n)
+Investigate how to best approach i18n for the application. Initial target languages are
+English and Portuguese, but the design should support adding more languages later.
+Key areas to consider:
+- **UI labels and messages** — Vaadin's built-in i18n support (`I18NProvider`), resource
+  bundles, how to wire it up with Spring Boot
+- **Database-stored data** — mead categories (`categories` table with code/name) are the
+  most obvious candidate for translated content. Evaluate whether other DB data needs
+  translation (e.g., competition names, division names — probably not, as these are
+  user-defined). Options: separate translation table, JSON column, or code-based lookup.
+- **Enums with display names** — `Sweetness`, `Strength`, `Carbonation`, `EntryStatus`,
+  `DivisionStatus`, etc. currently have `getDisplayName()` returning hardcoded English.
+  These should use message bundles instead.
+- **Language selection** — default based on the user's country (if set and a matching
+  translation is available), with the ability to override. Store preference on the user
+  entity or rely on browser locale with a manual override.
+- **Scope the investigation** — what's the minimum viable i18n that unblocks Portuguese
+  support without over-engineering?
+
+### Priority 3: Manual walkthrough (full redo)
 Redo the **entire** manual-test walkthrough from Section 1. Previous partial run covered
 Sections 2–9; this is a fresh pass through all sections (1–13) to validate the current
 state end-to-end, including recent entry limits UI, logging, and all accumulated changes.
 May produce bug fixes or UX improvements.
 
-### Priority 3: Deployment planning
+### Priority 4: Deployment planning
 Evaluate cloud providers and services for first deployment:
 - **Managed PostgreSQL** with automatic backups — **top priority**, data must never be lost
 - **Log management** — logs properly stored and rolled, searchable
@@ -180,19 +202,19 @@ Evaluate cloud providers and services for first deployment:
   full AWS infrastructure. Premium high-availability is not required — reliable uptime is
   enough. The non-negotiable is never losing data (hence managed DB with backups).
 
-### Priority 4: Configuration audit
+### Priority 5: Configuration audit
 Review `application.properties` and profile-specific files:
 - Which properties should be env vars vs. config files vs. secrets?
 - Which belong to specific profiles (`dev`, `prod`, `test`)?
 - Align with chosen cloud provider's configuration model
 
-### Priority 5: Email sending implementation
+### Priority 6: Email sending implementation
 Implement actual email delivery (currently magic links and password reset links are
 logged to console). Mechanism depends on deployment choice (SES, SMTP, etc.).
 Spring Boot has `spring-boot-starter-mail` — evaluate if that's sufficient.
 The current console-logging behavior should be kept for the `dev` profile for testing.
 
-### Priority 6: Entry submission labels (PDF)
+### Priority 7: Entry submission labels (PDF)
 When a mead entry is submitted, the entrant should be able to download a printable
 label PDF:
 - **Format:** 1 page containing 3 identical label copies (for 3 bottles)
@@ -201,7 +223,7 @@ label PDF:
 - **Implementation:** Template-based PDF generation (e.g., iText, OpenPDF, or Apache PDFBox)
 - **UX:** Download button/link in MyEntriesView after submission
 
-### Priority 7: Competition documents
+### Priority 8: Competition documents
 Decide how to handle downloadable documents per competition (rules, guidelines, etc.):
 - Options: stored in DB (BLOB), external file storage (S3), or just external links
 - Where to display: competition detail page, possibly entrant-facing views
