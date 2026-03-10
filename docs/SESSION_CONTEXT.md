@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `competition-module`
-**Tests:** 431 passing (`mvn test -Dsurefire.useFile=false`)
+**Tests:** 442 passing (`mvn test -Dsurefire.useFile=false`)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -30,6 +30,9 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 - ProfileView (`/profile`) — self-edit for name, meadery name, country
 - Password setup & reset: `SetPasswordView`, `setPasswordByToken()`, `generatePasswordSetupLink()`,
   `hasPassword()`, triggers on admin role assignment, "Forgot password?" on login, admin "Password Reset"
+- EmailService (public API) — `SmtpEmailService` (internal) with `JavaMailSender` + Thymeleaf HTML templates.
+  Sends magic link, password reset, and password setup emails. SMTP failure logged with fallback link (no crash).
+  Mailpit for dev (port 1025 SMTP, port 8025 web UI). Resend SMTP for prod. 7-day token validity.
 - **Status:** Complete
 
 ### competition module (`app.meads.competition`)
@@ -39,7 +42,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 #### Entities (public API)
 | Entity | Table | Description |
 |--------|-------|-------------|
-| `Competition` | `competitions` | Top-level: name, shortName (unique), dates, location, logo |
+| `Competition` | `competitions` | Top-level: name, shortName (unique), dates, location, logo, contactEmail |
 | `Division` | `divisions` | Sub-level: competitionId, name, shortName (unique per competition), scoringSystem, status, entry limits (per subcategory, per main category, total), entryPrefix, meaderyNameRequired |
 | `Participant` | `participants` | Competition-scoped: userId, accessCode |
 | `ParticipantRole` | `participant_roles` | Role per participant: JUDGE, STEWARD, ENTRANT, ADMIN |
@@ -55,13 +58,14 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 - Competition CRUD, Division CRUD, Participant management, Category management
 - Authorization: `isAuthorizedForCompetition()`, `isAuthorizedForDivision()`
 - `findCompetitionsByAdmin(userId)` — finds competitions where user has ADMIN participant role
+- `updateCompetitionContactEmail()` — updates competition contact email (shown in participant emails)
 - `revertDivisionStatus()` — one-step-back revert with guard interface pattern
 - Entry limits (per subcategory, per main category, total) — DRAFT-only, enforced by EntryService
 - Events: `DivisionStatusAdvancedEvent`
 
 #### Views
 - `CompetitionListView` (`/competitions`) — SYSTEM_ADMIN only, all competitions grid with CRUD
-- `CompetitionDetailView` (`/competitions/:shortName`) — tabs: Divisions, Participants, Settings
+- `CompetitionDetailView` (`/competitions/:shortName`) — tabs: Divisions, Participants, Settings (includes contactEmail field)
 - `DivisionDetailView` (`/competitions/:compShortName/divisions/:divShortName`) — tabs: Categories, Settings + "Manage Entries" button + "Advance/Revert Status" buttons
 - `MyCompetitionsView` (`/my-competitions`) — `@PermitAll`, shows competitions where user is ADMIN
 
@@ -140,6 +144,7 @@ docs/
 ├── plans/
 │   ├── 2026-03-02-entry-module-design.md  ← Retained as reference for future module designs
 │   ├── 2026-03-10-profile-meadery-country-design.md  ← Design reference for profile/meadery/country
+│   ├── 2026-03-10-email-sending-design.md  ← Email sending design (implemented)
 │   ├── 2026-03-10-i18n-design.md          ← i18n design (implementation deferred)
 │   └── 2026-03-10-deployment-design.md    ← Deployment options + config checklist (decision deferred)
 ├── reference/
@@ -182,10 +187,15 @@ Created `application-prod.properties` (minimal). Test properties in `src/test/re
 Deployment configuration checklist in `docs/plans/2026-03-10-deployment-design.md`.
 
 ### Priority 5: Email sending implementation
-Implement actual email delivery (currently magic links and password reset links are
-logged to console). Mechanism depends on deployment choice (SES, SMTP, etc.).
-Spring Boot has `spring-boot-starter-mail` — evaluate if that's sufficient.
-The current console-logging behavior should be kept for the `dev` profile for testing.
+**Complete.** `spring-boot-starter-mail` + `spring-boot-starter-thymeleaf` for SMTP email
+delivery with HTML templates. `EmailService` interface in identity module public API,
+`SmtpEmailService` in `internal/`. Three email types: magic link, password reset, password
+setup (with competition context + contact email). Thymeleaf HTML template (`email/email-base.html`)
+with table-based layout, CTA button, fallback URL, conditional contact footer. SMTP failures
+caught and logged with fallback link (no UI crash). Mailpit for dev, Resend SMTP for prod.
+Competition `contactEmail` field in Settings tab, saved to DB, shown in password setup emails.
+7-day token validity as private constant. DevUserInitializer unchanged (uses JwtMagicLinkService
+directly). 7 unit tests for SmtpEmailService.
 
 ### Priority 6: Entry submission labels (PDF)
 When a mead entry is submitted, the entrant should be able to download a printable
@@ -221,6 +231,14 @@ Decide how to handle downloadable documents per competition (rules, guidelines, 
   ComboBox with `Locale.getISOCountries()` in UI. Webhook enrichment from shipping/billing address.
 - **Meadery name stays on User profile only** — no per-entry override needed.
 - **`meaderyNameRequired` on Division** — boolean flag, changeable only in DRAFT status.
+- **Email SMTP failure resilience** — catch and log with fallback link, never crash UI actions.
+- **Token validity (7 days)** — private constant in `SmtpEmailService`, not mentioned in email body.
+- **Competition `contactEmail`** — optional field, shown in password setup emails as reply-to
+  and visible footer contact. Saved via `CompetitionService.updateCompetitionContactEmail()`.
+- **DevUserInitializer unchanged** — uses `JwtMagicLinkService` directly (runs at startup before
+  Mailpit is ready, uses 30-day tokens, dev-only).
+- **`spring.thymeleaf.check-template-location=false`** — prevents Thymeleaf view resolver conflict
+  with Vaadin (Thymeleaf used only for template rendering, not view resolution).
   MyEntriesView shows warning banner and blocks submit (all + individual) when required but missing.
 
 ### Known UX items (deferred)

@@ -7,6 +7,7 @@ CREATE TABLE competitions (
     location           VARCHAR(500),
     logo               BYTEA,
     logo_content_type  VARCHAR(100),
+    contact_email      VARCHAR(255),
     created_at         TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at         TIMESTAMP WITH TIME ZONE
 );

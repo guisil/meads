@@ -14,11 +14,14 @@ with checkboxes for progress tracking.
 ### Start the application
 
 ```bash
-docker-compose up -d          # Start PostgreSQL
+docker-compose up -d          # Start PostgreSQL + Mailpit
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
 Wait for startup to complete. The console will show magic links for dev users.
+
+**Mailpit web UI:** `http://localhost:8025` — all emails sent by the app are captured here.
+Dev users created by `DevUserInitializer` still log magic links to console (bypass email).
 
 ### Dev users
 
@@ -94,8 +97,9 @@ Wait for startup to complete. The console will show magic links for dev users.
 - [ ] Enter email: `user@example.com`
 - [ ] Click "Get Login Link"
 - [ ] **Expected:** Notification "If this email is registered, a login link has been sent."
-- [ ] Copy the magic link URL from the server console (format: `http://localhost:8080/login/magic?token=...`)
-- [ ] Paste the URL in the browser
+- [ ] Open Mailpit (`http://localhost:8025`) — find the email for `user@example.com`
+- [ ] **Expected:** Email with subject "Your MEADS login link", heading "Log in to MEADS", "Log In" button
+- [ ] Click the "Log In" button (or copy the link from the email)
 - [ ] **Expected:** Authenticated as `user@example.com`, redirected to `/my-entries` (regular user with credits)
 
 ### Magic link blocked for password user
@@ -105,8 +109,8 @@ Wait for startup to complete. The console will show magic links for dev users.
 - [ ] Enter email: `admin@example.com` (has a password)
 - [ ] Click "Get Login Link"
 - [ ] **Expected:** Same notification "If this email is registered, a login link has been sent."
-- [ ] **Expected:** Server logs show "User admin@example.com has a password — please log in with your credentials" (NOT a magic link URL)
-- [ ] If a magic link URL were somehow generated, navigating to it should redirect to `/login?error` (filter blocks it)
+- [ ] **Expected:** Server logs show "User admin@example.com has a password — suggesting credentials login" (NO email sent)
+- [ ] **Expected:** No email appears in Mailpit for `admin@example.com`
 
 ### Magic link validation (blank email)
 
@@ -153,7 +157,8 @@ Wait for startup to complete. The console will show magic links for dev users.
 - [ ] Expand "Login with credentials" section
 - [ ] Click "Forgot password?"
 - [ ] **Expected:** Notification "If this email is registered, a password reset link has been sent."
-- [ ] Check server logs for the password setup link URL
+- [ ] Open Mailpit — find the email for `user@example.com`
+- [ ] **Expected:** Email with subject "Reset your MEADS password", heading "Set your password", "Set Password" button
 - [ ] **Expected:** Link format `http://localhost:8080/set-password?token=...`
 
 ### Forgot password? (non-existent email — no enumeration)
@@ -163,7 +168,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 - [ ] Expand "Login with credentials" section
 - [ ] Click "Forgot password?"
 - [ ] **Expected:** Same notification "If this email is registered, a password reset link has been sent."
-- [ ] **Expected:** No link in server logs (user doesn't exist)
+- [ ] **Expected:** No email in Mailpit for `nonexistent@example.com` (user doesn't exist)
 
 ### Forgot password? (blank email)
 
@@ -192,7 +197,8 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 - [ ] Log in as `admin@example.com`, navigate to `/users`
 - [ ] Click "Password Reset" for a non-password user (e.g., `user@example.com`)
-- [ ] Copy the password setup link from the server logs (format: `http://localhost:8080/set-password?token=...`)
+- [ ] Open Mailpit — find the password reset email for `user@example.com`
+- [ ] Copy the "Set Password" link from the email (format: `http://localhost:8080/set-password?token=...`)
 - [ ] Open the URL in a browser (can be logged out)
 - [ ] **Expected:** Set Password page with "Password" and "Confirm Password" fields
 - [ ] Enter mismatched passwords → click "Set Password"
@@ -362,7 +368,7 @@ Wait for startup to complete. The console will show magic links for dev users.
 - [ ] **Expected:** "Send Login Link" icon button (envelope icon) is visible
 - [ ] Click the envelope icon button ("Send Login Link")
 - [ ] **Expected:** Notification "Login link sent successfully" (green)
-- [ ] **Expected:** Magic link URL logged in server console
+- [ ] **Expected:** Email appears in Mailpit with subject "Your MEADS login link"
 
 ### Send magic link button hidden for password users
 
@@ -375,8 +381,8 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 - [ ] Find any user in the grid
 - [ ] Click the key icon button (tooltip: "Password Reset")
-- [ ] **Expected:** Notification "Password reset link generated (check server logs)" (green)
-- [ ] **Expected:** Password setup link URL logged in server console (format: `.../set-password?token=...`)
+- [ ] **Expected:** Notification "Password reset link sent successfully" (green)
+- [ ] **Expected:** Password reset email appears in Mailpit with subject "Reset your MEADS password"
 
 ### Password setup link on SYSTEM_ADMIN creation
 
@@ -384,8 +390,8 @@ Wait for startup to complete. The console will show magic links for dev users.
 - [ ] Fill: email `newadmin@test.com`, name `New Admin`, role `SYSTEM_ADMIN`
 - [ ] Click "Save"
 - [ ] **Expected:** "User created successfully" notification (green)
-- [ ] **Expected:** "Password setup link generated (check server logs)" notification
-- [ ] **Expected:** Password setup link logged in server console
+- [ ] **Expected:** "Password setup link sent successfully" notification
+- [ ] **Expected:** Password reset email appears in Mailpit for `newadmin@test.com`
 
 ### Self-delete prevention
 
@@ -558,8 +564,8 @@ Wait for startup to complete. The console will show magic links for dev users.
 
 - [ ] Find a participant without a password (e.g., `user@example.com` or `judge@example.com`)
 - [ ] Click the envelope icon (tooltip: "Send login link")
-- [ ] **Expected:** Notification "Login link generated for user@example.com (check server logs)" (green)
-- [ ] **Expected:** Magic link URL appears in server console
+- [ ] **Expected:** Notification "Login link sent to user@example.com" (green)
+- [ ] **Expected:** Login email appears in Mailpit with subject "Your MEADS login link"
 
 ### Remove participant
 
@@ -573,12 +579,25 @@ Wait for startup to complete. The console will show magic links for dev users.
 ### Settings tab
 
 - [ ] Click the "Settings" tab
-- [ ] **Expected:** Form with: Name, Short Name, Start Date, End Date, Location fields, Logo upload (max 2.5 MB, PNG/JPEG), Save button
+- [ ] **Expected:** Form with: Name, Short Name, Start Date, End Date, Location, Contact Email, Logo upload (max 2.5 MB, PNG/JPEG), Save button
 - [ ] **Expected:** Fields pre-populated with CHIP 2026 data
+- [ ] **Expected:** Contact Email field with helper text "Shown in emails sent to competition participants" and clear button
+- [ ] Enter contact email: `organizer@chip.com`
 - [ ] Change location to `Porto, Portugal`
 - [ ] Click "Save"
 - [ ] **Expected:** Notification "Competition updated successfully" (green)
+- [ ] **Expected:** Contact email is saved (refresh page to verify it persists)
 - [ ] Revert location back to `Amarante, Portugal` and save
+
+### Contact email in password setup emails
+
+- [ ] With `organizer@chip.com` set as contact email, go to the Participants tab
+- [ ] Add a new ADMIN participant: `newadmin@test.com`
+- [ ] **Expected:** Notification "Participant added successfully" + "Password setup email sent to newadmin@test.com"
+- [ ] Open Mailpit — find the email for `newadmin@test.com`
+- [ ] **Expected:** Email with subject "Set up your MEADS admin password", mentions "CHIP 2026" in body
+- [ ] **Expected:** Footer shows "Questions? Contact organizer@chip.com" with mailto link
+- [ ] Remove `newadmin@test.com` from participants and clear the contact email to restore state
 
 ### Authorization -- regular user redirected
 
@@ -1268,6 +1287,7 @@ After running the above tests, document decisions on:
 These tests cover internal behavior not directly visible in the UI:
 
 - `JwtMagicLinkServiceTest` -- token generation/validation internals
+- `SmtpEmailServiceTest` -- email sending (SMTP + Thymeleaf template rendering)
 - `DatabaseUserDetailsServiceTest` -- UserDetailsService internals
 - `AdminInitializerIntegrationTest` -- startup initialization
 - `UserRepositoryTest`, `CompetitionRepositoryTest`, `DivisionRepositoryTest`, `ParticipantRepositoryTest`, `ParticipantRoleRepositoryTest` -- persistence layer

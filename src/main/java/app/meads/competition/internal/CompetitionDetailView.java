@@ -2,7 +2,7 @@ package app.meads.competition.internal;
 
 import app.meads.MainLayout;
 import app.meads.competition.*;
-import app.meads.identity.JwtMagicLinkService;
+import app.meads.identity.EmailService;
 import app.meads.identity.User;
 import app.meads.identity.UserService;
 import com.vaadin.flow.component.button.Button;
@@ -23,6 +23,7 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.tabs.TabSheet;
+import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.upload.Upload;
 import com.vaadin.flow.server.streams.UploadHandler;
@@ -35,7 +36,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
 
-import java.time.Duration;
 import java.util.Base64;
 import java.util.Map;
 import java.util.UUID;
@@ -49,7 +49,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
     private final CompetitionService competitionService;
     private final UserService userService;
-    private final JwtMagicLinkService jwtMagicLinkService;
+    private final EmailService emailService;
     private final transient AuthenticationContext authenticationContext;
 
     private UUID competitionId;
@@ -63,11 +63,11 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
     public CompetitionDetailView(CompetitionService competitionService,
                                   UserService userService,
-                                  JwtMagicLinkService jwtMagicLinkService,
+                                  EmailService emailService,
                                   AuthenticationContext authenticationContext) {
         this.competitionService = competitionService;
         this.userService = userService;
-        this.jwtMagicLinkService = jwtMagicLinkService;
+        this.emailService = emailService;
         this.authenticationContext = authenticationContext;
     }
 
@@ -416,6 +416,11 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         var locationField = new TextField("Location");
         locationField.setValue(competition.getLocation() != null ? competition.getLocation() : "");
 
+        var contactEmailField = new EmailField("Contact Email");
+        contactEmailField.setValue(competition.getContactEmail() != null ? competition.getContactEmail() : "");
+        contactEmailField.setHelperText("Shown in emails sent to competition participants");
+        contactEmailField.setClearButtonVisible(true);
+
         var logoData = new byte[1][];
         var logoContentType = new String[1];
 
@@ -479,12 +484,16 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                         nameField.getValue(), shortNameField.getValue(),
                         startDatePicker.getValue(),
                         endDatePicker.getValue(), location, getCurrentUserId());
+                var contactEmail = StringUtils.hasText(contactEmailField.getValue())
+                        ? contactEmailField.getValue().trim() : null;
+                competitionService.updateCompetitionContactEmail(
+                        competitionId, contactEmail, getCurrentUserId());
                 if (logoData[0] != null) {
                     competitionService.updateCompetitionLogo(
                             competitionId, logoData[0], logoContentType[0],
                             getCurrentUserId());
-                    competition = competitionService.findCompetitionById(competitionId);
                 }
+                competition = competitionService.findCompetitionById(competitionId);
                 refreshHeader();
                 var notification = Notification.show("Competition updated successfully");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
@@ -493,7 +502,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
             }
         });
 
-        tab.add(nameField, shortNameField, startDatePicker, endDatePicker, locationField, logoSection, saveButton);
+        tab.add(nameField, shortNameField, startDatePicker, endDatePicker, locationField, contactEmailField, logoSection, saveButton);
         return tab;
     }
 
@@ -638,10 +647,8 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
     }
 
     private void sendMagicLink(User user) {
-        var link = jwtMagicLinkService.generateLink(user.getEmail(), Duration.ofDays(7));
-        log.info("\n\n\tMagic link for {}: {}\n", user.getEmail(), link);
-        var notification = Notification.show("Login link generated for " + user.getEmail()
-                + " (check server logs)");
+        emailService.sendMagicLink(user.getEmail());
+        var notification = Notification.show("Login link sent to " + user.getEmail());
         notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
     }
 
@@ -650,10 +657,9 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
             try {
                 var user = userService.findByEmail(email);
                 if (!userService.hasPassword(user.getId())) {
-                    var link = jwtMagicLinkService.generatePasswordSetupLink(
-                            email, Duration.ofDays(7));
-                    log.info("\n\n\tPassword setup link for {}: {}\n", email, link);
-                    Notification.show("Password setup link generated (check server logs)");
+                    emailService.sendPasswordSetup(email, competition.getName(),
+                            competition.getContactEmail());
+                    Notification.show("Password setup email sent to " + email);
                 }
             } catch (IllegalArgumentException ignored) {
                 // User not found — shouldn't happen since we just added them

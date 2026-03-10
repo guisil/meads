@@ -1,7 +1,7 @@
 package app.meads.identity.internal;
 
 import app.meads.MainLayout;
-import app.meads.identity.JwtMagicLinkService;
+import app.meads.identity.EmailService;
 import app.meads.identity.Role;
 import app.meads.identity.User;
 import app.meads.identity.UserService;
@@ -18,7 +18,6 @@ import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
-import java.time.Duration;
 import java.util.Arrays;
 import java.util.Locale;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -41,13 +40,13 @@ import org.springframework.util.StringUtils;
 public class UserListView extends VerticalLayout implements BeforeEnterObserver {
 
     private final UserService userService;
-    private final JwtMagicLinkService jwtMagicLinkService;
+    private final EmailService emailService;
     private final transient AuthenticationContext authenticationContext;
     private final Grid<User> grid;
 
-    public UserListView(UserService userService, JwtMagicLinkService jwtMagicLinkService, AuthenticationContext authenticationContext) {
+    public UserListView(UserService userService, EmailService emailService, AuthenticationContext authenticationContext) {
         this.userService = userService;
-        this.jwtMagicLinkService = jwtMagicLinkService;
+        this.emailService = emailService;
         this.authenticationContext = authenticationContext;
         add(new H1("Users"));
 
@@ -188,16 +187,14 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
     }
 
     public void sendMagicLink(User user) {
-        String link = jwtMagicLinkService.generateLink(user.getEmail(), Duration.ofDays(7));
-        log.info("\n\n\tMagic link for {}: {}\n", user.getEmail(), link);
+        emailService.sendMagicLink(user.getEmail());
         var notification = Notification.show("Login link sent successfully");
         notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
     }
 
     public void sendPasswordResetLink(User user) {
-        String link = jwtMagicLinkService.generatePasswordSetupLink(user.getEmail(), Duration.ofDays(7));
-        log.info("\n\n\tPassword reset link for {}: {}\n", user.getEmail(), link);
-        var notification = Notification.show("Password reset link generated (check server logs)");
+        emailService.sendPasswordReset(user.getEmail());
+        var notification = Notification.show("Password reset link sent successfully");
         notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
     }
 
@@ -345,9 +342,8 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
 
     private void generatePasswordSetupLinkIfNeeded(User user) {
         if (user.getRole() == Role.SYSTEM_ADMIN && !userService.hasPassword(user.getId())) {
-            String link = jwtMagicLinkService.generatePasswordSetupLink(user.getEmail(), Duration.ofDays(7));
-            log.info("\n\n\tPassword setup link for {}: {}\n", user.getEmail(), link);
-            Notification.show("Password setup link generated (check server logs)");
+            emailService.sendPasswordReset(user.getEmail());
+            Notification.show("Password setup link sent successfully");
         }
     }
 

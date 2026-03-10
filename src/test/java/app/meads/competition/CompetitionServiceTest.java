@@ -230,6 +230,24 @@ class CompetitionServiceTest {
         assertThat(result.hasLogo()).isFalse();
     }
 
+    // --- updateCompetitionContactEmail ---
+
+    @Test
+    void shouldUpdateCompetitionContactEmail() {
+        var admin = createAdmin();
+        var competition = createCompetition();
+        given(competitionRepository.findById(competition.getId())).willReturn(Optional.of(competition));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(competitionRepository.save(any(Competition.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var result = competitionService.updateCompetitionContactEmail(
+                competition.getId(), "organizer@example.com", admin.getId());
+
+        assertThat(result.getContactEmail()).isEqualTo("organizer@example.com");
+        then(competitionRepository).should().save(competition);
+    }
+
     // --- deleteCompetition ---
 
     @Test

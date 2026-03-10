@@ -54,6 +54,19 @@ class CompetitionRepositoryTest {
     }
 
     @Test
+    void shouldSaveAndRetrieveCompetitionWithContactEmail() {
+        var competition = new Competition("Email Competition", "email-competition",
+                LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 3), null);
+        competition.updateContactEmail("organizer@example.com");
+
+        competitionRepository.save(competition);
+        var found = competitionRepository.findById(competition.getId());
+
+        assertThat(found).isPresent();
+        assertThat(found.get().getContactEmail()).isEqualTo("organizer@example.com");
+    }
+
+    @Test
     void shouldSaveCompetitionWithNullLocation() {
         var competition = new Competition("No Location Competition", "no-location-competition",
                 LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 1), null);

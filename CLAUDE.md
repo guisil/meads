@@ -17,6 +17,7 @@ reference implementations; future modules will follow the same patterns.
 - **PostgreSQL 18**, Flyway (managed by Boot)
 - **Testcontainers 2.0.3**, Karibu Testing 2.6.2, Mockito, Awaitility 4.3.0
 - **jjwt 0.13.0** (JWT magic link tokens)
+- **spring-boot-starter-mail** + **spring-boot-starter-thymeleaf** (SMTP email with HTML templates)
 - **JUnit 5**, AssertJ, Spring Security 7.0.2
 
 ---
@@ -102,10 +103,12 @@ app.meads.identity                       ← Identity module public API
 ├── Role.java                            ← Enum: USER, SYSTEM_ADMIN
 ├── UserService.java                     ← Application service (public API)
 ├── JwtMagicLinkService.java            ← JWT token generation + validation (public API)
+├── EmailService.java                    ← Email sending interface (public API)
 ├── AccessCodeValidator.java             ← Interface for access code validation (public API)
 ├── LoginView.java                       ← Vaadin login view (public — referenced by SecurityConfig)
 └── internal/                            ← Module-private
     ├── UserRepository.java              ← JPA repository
+    ├── SmtpEmailService.java            ← SMTP email implementation (JavaMailSender + Thymeleaf)
     ├── SecurityConfig.java              ← Spring Security filter chain (formLogin + JWT filter)
     ├── MagicLinkAuthenticationFilter.java ← JWT magic link authentication filter
     ├── AccessCodeAuthenticationProvider.java ← Access code authentication provider
@@ -364,7 +367,7 @@ void tearDown() {
 ## Database & Migrations
 
 - **Location:** `src/main/resources/db/migration/V{N}__{description}.sql`
-- **Current highest version:** V13 (`V13__create_entries_table.sql`). V2 includes users + meadery_name. V3–V8 are competition module (V4 includes entry limits + prefix). V9–V13 are entry module.
+- **Current highest version:** V13 (`V13__create_entries_table.sql`). V2 includes users + meadery_name. V3–V8 are competition module (V3 includes contact_email, V4 includes entry limits + prefix). V9–V13 are entry module.
 - **Naming:** `V{next}__{snake_case_description}.sql` (double underscore)
 - Migrations are created in **Step 2** (GREEN), when a repository test needs a table.
 - **Never edit existing migrations.** Always create new ones.

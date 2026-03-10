@@ -65,4 +65,23 @@ class CompetitionTest {
 
         assertThat(competition.hasLogo()).isFalse();
     }
+
+    @Test
+    void shouldUpdateContactEmail() {
+        var competition = createCompetition();
+
+        competition.updateContactEmail("organizer@example.com");
+
+        assertThat(competition.getContactEmail()).isEqualTo("organizer@example.com");
+    }
+
+    @Test
+    void shouldClearContactEmail() {
+        var competition = createCompetition();
+        competition.updateContactEmail("organizer@example.com");
+
+        competition.updateContactEmail(null);
+
+        assertThat(competition.getContactEmail()).isNull();
+    }
 }

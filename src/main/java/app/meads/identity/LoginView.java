@@ -20,8 +20,6 @@ import com.vaadin.flow.server.auth.AnonymousAllowed;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
 
-import java.time.Duration;
-
 @Slf4j
 @Route("login")
 @AnonymousAllowed
@@ -32,11 +30,11 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
     private final Element credentialsForm;
     private final Element usernameInput;
     private final Element passwordInput;
-    private final JwtMagicLinkService jwtMagicLinkService;
+    private final EmailService emailService;
     private final UserService userService;
 
-    public LoginView(JwtMagicLinkService jwtMagicLinkService, UserService userService) {
-        this.jwtMagicLinkService = jwtMagicLinkService;
+    public LoginView(EmailService emailService, UserService userService) {
+        this.emailService = emailService;
         this.userService = userService;
 
         addClassName("login-view");
@@ -103,10 +101,9 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
         try {
             var user = userService.findByEmail(emailValue);
             if (user.getPasswordHash() != null) {
-                log.info("\n\n\tUser {} has a password — please log in with your credentials\n", emailValue);
+                log.info("User {} has a password — suggesting credentials login", emailValue);
             } else {
-                String link = jwtMagicLinkService.generateLink(emailValue, Duration.ofDays(7));
-                log.info("\n\n\tMagic link for {}: {}\n", emailValue, link);
+                emailService.sendMagicLink(emailValue);
             }
         } catch (IllegalArgumentException ex) {
             log.info("Magic link requested for non-existent email: {}", emailValue);
@@ -123,8 +120,7 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
         }
         try {
             userService.findByEmail(emailValue);
-            String link = jwtMagicLinkService.generatePasswordSetupLink(emailValue, Duration.ofDays(7));
-            log.info("\n\n\tPassword reset link for {}: {}\n", emailValue, link);
+            emailService.sendPasswordReset(emailValue);
         } catch (IllegalArgumentException ex) {
             log.info("Password reset requested for non-existent email: {}", emailValue);
         }

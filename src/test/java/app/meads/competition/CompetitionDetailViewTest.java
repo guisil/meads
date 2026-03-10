@@ -238,6 +238,6 @@ class CompetitionDetailViewTest {
         var notificationTexts = notifications.stream()
                 .map(n -> n.getElement().getProperty("text"))
                 .toList();
-        assertThat(notificationTexts).anyMatch(t -> t != null && t.contains("Password setup link"));
+        assertThat(notificationTexts).anyMatch(t -> t != null && t.contains("Password setup email sent"));
     }
 }

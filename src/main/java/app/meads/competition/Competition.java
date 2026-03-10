@@ -41,6 +41,9 @@ public class Competition {
     @Column(name = "logo_content_type", length = 100)
     private String logoContentType;
 
+    @Column(name = "contact_email")
+    private String contactEmail;
+
     @Column(nullable = false)
     private Instant createdAt;
 
@@ -110,5 +113,9 @@ public class Competition {
 
     public boolean hasLogo() {
         return logo != null;
+    }
+
+    public void updateContactEmail(String contactEmail) {
+        this.contactEmail = contactEmail;
     }
 }
