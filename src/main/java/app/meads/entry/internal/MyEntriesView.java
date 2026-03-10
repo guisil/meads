@@ -139,8 +139,9 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         }
         add(createDocumentsSection());
         add(createCreditInfo());
-        add(createActionButtons());
-        add(createFilters());
+        var toolbar = createToolbar();
+        toolbar.getStyle().set("margin-top", "var(--lumo-space-s)");
+        add(toolbar);
         add(createEntriesGrid());
     }
 
@@ -203,88 +204,76 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         return warning;
     }
 
-    private VerticalLayout createCreditInfo() {
-        var layout = new VerticalLayout();
-        layout.setPadding(false);
-        layout.setSpacing(false);
+    private HorizontalLayout createCreditInfo() {
+        var layout = new HorizontalLayout();
+        layout.setWidthFull();
+        layout.setDefaultVerticalComponentAlignment(Alignment.CENTER);
+        layout.getStyle()
+                .set("background-color", "var(--lumo-contrast-5pct)")
+                .set("border-radius", "var(--lumo-border-radius-m)")
+                .set("padding", "var(--lumo-space-s) var(--lumo-space-m)");
 
         var creditBalance = entryService.getCreditBalance(divisionId, currentUserId);
         var activeEntries = entryService.countActiveEntries(divisionId, currentUserId);
         var remaining = creditBalance - activeEntries;
-        layout.add(new Span("Credits: " + remaining + " remaining (" + creditBalance
-                + " total, " + activeEntries + " used)"));
 
-        var limits = buildLimitsText();
-        if (!limits.isEmpty()) {
-            layout.add(new Span("Limits: " + limits));
+        var creditsLabel = new Span("Credits:");
+        creditsLabel.getStyle().set("font-weight", "600");
+
+        var remainingBadge = new Span(remaining + " remaining");
+        remainingBadge.getElement().getThemeList().add("badge pill small");
+        if (remaining > 0) {
+            remainingBadge.getElement().getThemeList().add("success");
+        }
+
+        var detailSpan = new Span("(" + creditBalance + " total, " + activeEntries + " used)");
+        detailSpan.getStyle().set("color", "var(--lumo-secondary-text-color)")
+                .set("font-size", "var(--lumo-font-size-s)");
+
+        layout.add(creditsLabel, remainingBadge, detailSpan);
+
+        // Limits badges (right side with spacer)
+        var hasLimits = division.getMaxEntriesPerSubcategory() != null
+                || division.getMaxEntriesPerMainCategory() != null
+                || division.getMaxEntriesTotal() != null;
+        if (hasLimits) {
+            var spacer = new Div();
+            layout.add(spacer);
+            layout.expand(spacer);
+
+            var limitsLabel = new Span("Limits:");
+            limitsLabel.getStyle().set("font-weight", "600");
+            layout.add(limitsLabel);
+
+            if (division.getMaxEntriesPerSubcategory() != null) {
+                layout.add(createLimitBadge(division.getMaxEntriesPerSubcategory() + " per subcategory"));
+            }
+            if (division.getMaxEntriesPerMainCategory() != null) {
+                layout.add(createLimitBadge(division.getMaxEntriesPerMainCategory() + " per main category"));
+            }
+            if (division.getMaxEntriesTotal() != null) {
+                layout.add(createLimitBadge(division.getMaxEntriesTotal() + " total"));
+            }
         }
 
         return layout;
     }
 
-    private String buildLimitsText() {
-        var parts = new java.util.ArrayList<String>();
-        if (division.getMaxEntriesTotal() != null) {
-            parts.add(division.getMaxEntriesTotal() + " total");
-        }
-        if (division.getMaxEntriesPerMainCategory() != null) {
-            parts.add(division.getMaxEntriesPerMainCategory() + " per main category");
-        }
-        if (division.getMaxEntriesPerSubcategory() != null) {
-            parts.add(division.getMaxEntriesPerSubcategory() + " per subcategory");
-        }
-        return String.join(", ", parts);
+    private Span createLimitBadge(String text) {
+        var badge = new Span(text);
+        badge.getElement().getThemeList().add("badge pill small contrast");
+        return badge;
     }
 
-    private HorizontalLayout createActionButtons() {
-        var actions = new HorizontalLayout();
+    private HorizontalLayout createToolbar() {
+        var toolbar = new HorizontalLayout();
+        toolbar.setWidthFull();
+        toolbar.setDefaultVerticalComponentAlignment(Alignment.BASELINE);
 
-        var creditBalance = entryService.getCreditBalance(divisionId, currentUserId);
-        var activeEntries = entryService.countActiveEntries(divisionId, currentUserId);
-        var isOpen = division.getStatus() == DivisionStatus.REGISTRATION_OPEN;
-
-        var addButton = new Button("Add Entry", e -> openEntryDialog(null));
-        addButton.setEnabled(isOpen && creditBalance > activeEntries);
-        actions.add(addButton);
-
-        var entries = entryService.findEntriesByDivisionAndUser(divisionId, currentUserId);
-        var hasDrafts = entries.stream().anyMatch(en -> en.getStatus() == EntryStatus.DRAFT);
-
-        var submitButton = new Button("Submit All", e -> submitAll());
-        submitButton.setEnabled(hasDrafts && !meaderyNameMissing);
-        if (meaderyNameMissing) {
-            submitButton.setTooltipText("Meadery name required — update your profile");
-        }
-        actions.add(submitButton);
-
-        // Download all labels (SUBMITTED entries)
-        var downloadAllResource = new StreamResource("all-labels.pdf", () -> {
-            var submittedEntries = entries != null
-                    ? entries.stream().filter(e2 -> e2.getStatus() == EntryStatus.SUBMITTED).toList()
-                    : List.<Entry>of();
-            if (submittedEntries.isEmpty()) {
-                return new ByteArrayInputStream(new byte[0]);
-            }
-            return new ByteArrayInputStream(
-                    labelPdfService.generateLabels(submittedEntries, competition, division, categoriesById::get));
-        });
-        downloadAllResource.setContentType("application/pdf");
-        var downloadAllAnchor = new Anchor(downloadAllResource, "");
-        downloadAllAnchor.getElement().setAttribute("download", true);
-        var downloadAllBtn = new Button("Download all labels", new Icon(VaadinIcon.DOWNLOAD_ALT));
-        downloadAllAnchor.add(downloadAllBtn);
-        actions.add(downloadAllAnchor);
-
-        return actions;
-    }
-
-    private HorizontalLayout createFilters() {
-        var filters = new HorizontalLayout();
-        filters.setWidthFull();
-        filters.setDefaultVerticalComponentAlignment(Alignment.BASELINE);
-
+        // Filters (left)
         var nameField = new TextField();
         nameField.setPlaceholder("Filter by mead name...");
+        nameField.setWidth("300px");
         nameField.setClearButtonVisible(true);
         nameField.setValueChangeMode(ValueChangeMode.EAGER);
         nameField.addValueChangeListener(e -> {
@@ -302,8 +291,46 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
             applyFilters();
         });
 
-        filters.add(nameField, statusSelect);
-        return filters;
+        // Action buttons (right)
+        var creditBalance = entryService.getCreditBalance(divisionId, currentUserId);
+        var activeEntries = entryService.countActiveEntries(divisionId, currentUserId);
+        var isOpen = division.getStatus() == DivisionStatus.REGISTRATION_OPEN;
+
+        var addButton = new Button("Add Entry", e -> openEntryDialog(null));
+        addButton.setEnabled(isOpen && creditBalance > activeEntries);
+
+        var entries = entryService.findEntriesByDivisionAndUser(divisionId, currentUserId);
+        var hasDrafts = entries.stream().anyMatch(en -> en.getStatus() == EntryStatus.DRAFT);
+
+        var submitButton = new Button("Submit All", e -> submitAll());
+        submitButton.setEnabled(hasDrafts && !meaderyNameMissing);
+        if (meaderyNameMissing) {
+            submitButton.setTooltipText("Meadery name required — update your profile");
+        }
+
+        // Download all labels (SUBMITTED entries)
+        var downloadAllResource = new StreamResource("all-labels.pdf", () -> {
+            var submittedEntries = entries != null
+                    ? entries.stream().filter(e2 -> e2.getStatus() == EntryStatus.SUBMITTED).toList()
+                    : List.<Entry>of();
+            if (submittedEntries.isEmpty()) {
+                return new ByteArrayInputStream(new byte[0]);
+            }
+            return new ByteArrayInputStream(
+                    labelPdfService.generateLabels(submittedEntries, competition, division, categoriesById::get));
+        });
+        downloadAllResource.setContentType("application/pdf");
+        var downloadAllAnchor = new Anchor(downloadAllResource, "");
+        downloadAllAnchor.getElement().setAttribute("download", true);
+        var downloadAllBtn = new Button("Download all labels", new Icon(VaadinIcon.DOWNLOAD_ALT));
+        downloadAllAnchor.add(downloadAllBtn);
+
+        // Spacer pushes buttons to the right
+        var spacer = new Div();
+        toolbar.add(nameField, statusSelect, spacer, addButton, submitButton, downloadAllAnchor);
+        toolbar.expand(spacer);
+
+        return toolbar;
     }
 
     private void applyFilters() {
@@ -329,7 +356,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         var entryNumCol = entriesGrid.addColumn(Entry::getEntryNumber)
                 .setHeader("Entry #")
                 .setSortable(true)
-                .setWidth("90px")
+                .setWidth("110px")
                 .setFlexGrow(0);
 
         // Mead Name
