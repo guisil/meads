@@ -612,6 +612,61 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] **Expected:** Footer shows "Questions? Contact organizer@chip.com" with mailto link
 - [ ] Remove `newadmin@test.com` from participants and clear the contact email to restore state
 
+### Documents tab
+
+- [ ] Click "Documents" tab (4th tab)
+- [ ] **Expected:** "Add Document" button visible, empty grid
+
+#### Add link document
+
+- [ ] Click "Add Document"
+- [ ] **Expected:** Dialog with Name, Type (PDF/Link selector defaulting to PDF), Upload component
+- [ ] Change Type to "Link"
+- [ ] **Expected:** Upload component hides, URL field appears
+- [ ] Enter Name: `MJP Guidelines`, URL: `https://meadjudging.com/guidelines`
+- [ ] Click "Save"
+- [ ] **Expected:** Notification "Document added successfully" (green)
+- [ ] **Expected:** Document appears in grid with Name "MJP Guidelines", Type badge "LINK"
+
+#### Add PDF document
+
+- [ ] Click "Add Document"
+- [ ] **Expected:** Type defaults to PDF, Upload component visible
+- [ ] Enter Name: `Competition Rules`
+- [ ] Upload a small test PDF (any PDF under 10 MB)
+- [ ] Click "Save"
+- [ ] **Expected:** Notification "Document added successfully" (green)
+- [ ] **Expected:** Two documents in grid
+
+#### Reorder documents
+
+- [ ] Click the down arrow on "MJP Guidelines" row
+- [ ] **Expected:** "MJP Guidelines" moves to second position, "Competition Rules" is first
+- [ ] Click the up arrow on "MJP Guidelines" row
+- [ ] **Expected:** "MJP Guidelines" moves back to first position
+
+#### Edit document name
+
+- [ ] Click the edit (pencil) icon on "MJP Guidelines" row
+- [ ] **Expected:** Dialog with name field pre-filled with "MJP Guidelines"
+- [ ] Change name to `MJP Category Guide`
+- [ ] Click "Save"
+- [ ] **Expected:** Notification "Document name updated" (green), grid updated
+
+#### Document actions
+
+- [ ] Click the external link icon on "MJP Category Guide" row
+- [ ] **Expected:** Link opens in new tab
+- [ ] Click the download icon on "Competition Rules" row
+- [ ] **Expected:** PDF file downloads
+
+#### Delete document
+
+- [ ] Click the trash icon on "Competition Rules" row
+- [ ] **Expected:** Confirmation dialog "Are you sure you want to delete "Competition Rules"?"
+- [ ] Click "Delete"
+- [ ] **Expected:** Notification "Document deleted" (green), only "MJP Category Guide" remains
+
 ### Authorization -- regular user redirected
 
 - [ ] Log in as `judge@example.com` (not a competition ADMIN)
@@ -1040,6 +1095,12 @@ curl -s -o /dev/null -w "%{http_code}" \
 - [ ] Log in as `user@example.com`
 - [ ] Navigate via "My Entries" → click Amadora link (or go directly to `/competitions/chip-2026/divisions/amadora/my-entries`)
 - [ ] **Expected:** Page title "Amadora -- My Entries"
+
+### Competition documents
+
+- [ ] **Expected:** "Competition Documents" section visible (if documents were added in section 6)
+- [ ] **Expected:** "MJP Category Guide" appears as a clickable link (opens in new tab)
+- [ ] If no documents were added, this section should not appear
 
 ### Credit balance display
 

@@ -135,6 +135,8 @@ app.meads.competition                    ← Competition module public API
 ├── CompetitionService.java              ← Application service (public API)
 ├── DivisionRevertGuard.java             ← Guard interface for blocking unsafe status reverts
 ├── DivisionStatusAdvancedEvent.java     ← Spring application event
+├── CompetitionDocument.java             ← JPA entity (competition-scoped document, PDF or link)
+├── DocumentType.java                    ← Enum: PDF, LINK
 └── internal/                            ← Module-private
     ├── CompetitionRepository.java       ← JPA repository
     ├── DivisionRepository.java          ← JPA repository
@@ -142,9 +144,10 @@ app.meads.competition                    ← Competition module public API
     ├── ParticipantRoleRepository.java   ← JPA repository
     ├── CategoryRepository.java          ← JPA repository
     ├── DivisionCategoryRepository.java  ← JPA repository
+    ├── CompetitionDocumentRepository.java ← JPA repository
     ├── CompetitionAccessCodeValidator.java  ← AccessCodeValidator implementation
     ├── CompetitionListView.java         ← Competitions CRUD view (@RolesAllowed("SYSTEM_ADMIN"))
-    ├── CompetitionDetailView.java       ← Competition detail with Divisions/Participants/Settings tabs (@PermitAll + beforeEnter auth)
+    ├── CompetitionDetailView.java       ← Competition detail with Divisions/Participants/Settings/Documents tabs (@PermitAll + beforeEnter auth)
     ├── DivisionDetailView.java          ← Division detail with Categories/Settings tabs, breadcrumb (@PermitAll + beforeEnter auth)
     └── MyCompetitionsView.java          ← Competitions where user is ADMIN (@PermitAll)
 app.meads.entry                              ← Entry module public API
@@ -368,7 +371,7 @@ void tearDown() {
 ## Database & Migrations
 
 - **Location:** `src/main/resources/db/migration/V{N}__{description}.sql`
-- **Current highest version:** V13 (`V13__create_entries_table.sql`). V2 includes users + meadery_name. V3–V8 are competition module (V3 includes contact_email + shipping_address + phone_number, V4 includes entry limits + prefix). V9–V13 are entry module.
+- **Current highest version:** V14 (`V14__create_competition_documents_table.sql`). V2 includes users + meadery_name. V3–V8 are competition module (V3 includes contact_email + shipping_address + phone_number, V4 includes entry limits + prefix). V9–V13 are entry module. V14 is competition documents.
 - **Naming:** `V{next}__{snake_case_description}.sql` (double underscore)
 - Migrations are created in **Step 2** (GREEN), when a repository test needs a table.
 - **Never edit existing migrations.** Always create new ones.

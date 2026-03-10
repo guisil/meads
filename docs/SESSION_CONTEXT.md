@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `competition-module`
-**Tests:** 455 passing (`mvn test -Dsurefire.useFile=false`)
+**Tests:** 481 passing (`mvn test -Dsurefire.useFile=false`)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -48,14 +48,17 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 | `ParticipantRole` | `participant_roles` | Role per participant: JUDGE, STEWARD, ENTRANT, ADMIN |
 | `Category` | `categories` | Read-only catalog: code, name, scoringSystem |
 | `DivisionCategory` | `division_categories` | Per-division category with optional parent |
+| `CompetitionDocument` | `competition_documents` | Competition-scoped document (PDF upload or external link) |
 
 #### Key enums
 - `DivisionStatus`: DRAFT → REGISTRATION_OPEN → REGISTRATION_CLOSED → JUDGING → DELIBERATION → RESULTS_PUBLISHED
 - `CompetitionRole`: JUDGE, STEWARD, ENTRANT, ADMIN
 - `ScoringSystem`: MJP
+- `DocumentType`: PDF, LINK
 
 #### Service — `CompetitionService` (public API)
 - Competition CRUD, Division CRUD, Participant management, Category management
+- Document management: `addDocument`, `removeDocument`, `updateDocumentName`, `reorderDocuments`, `getDocuments`, `getDocument`
 - Authorization: `isAuthorizedForCompetition()`, `isAuthorizedForDivision()`
 - `findCompetitionsByAdmin(userId)` — finds competitions where user has ADMIN participant role
 - `updateCompetitionContactEmail()` — updates competition contact email (shown in participant emails)
@@ -65,11 +68,11 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 #### Views
 - `CompetitionListView` (`/competitions`) — SYSTEM_ADMIN only, all competitions grid with CRUD
-- `CompetitionDetailView` (`/competitions/:shortName`) — tabs: Divisions, Participants, Settings (includes contactEmail, shippingAddress, phoneNumber fields)
+- `CompetitionDetailView` (`/competitions/:shortName`) — tabs: Divisions, Participants, Settings, Documents (add/edit/delete/reorder PDF and link documents)
 - `DivisionDetailView` (`/competitions/:compShortName/divisions/:divShortName`) — tabs: Categories, Settings + "Manage Entries" button + "Advance/Revert Status" buttons
 - `MyCompetitionsView` (`/my-competitions`) — `@PermitAll`, shows competitions where user is ADMIN
 
-#### Migrations: V3–V8
+#### Migrations: V3–V8, V14
 
 ### entry module (`app.meads.entry`) — COMPLETE
 
@@ -108,7 +111,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 #### Views
 - `EntrantOverviewView` (`/my-entries`) — cross-competition entrant hub, shows all divisions with credits/entries, auto-redirects to single division
-- `MyEntriesView` (`/competitions/:compShortName/divisions/:divShortName/my-entries`) — entrant-facing, credits + limits display, entry grid with status badges/Final Category/Actions (view/edit/submit/download label)/filtering/sorting, add/edit dialog (full-width fields), submit all, "Download all labels" batch button, meadery name required warning + submit blocking
+- `MyEntriesView` (`/competitions/:compShortName/divisions/:divShortName/my-entries`) — entrant-facing, competition documents list, credits + limits display, entry grid with status badges/Final Category/Actions (view/edit/submit/download label)/filtering/sorting, add/edit dialog (full-width fields), submit all, "Download all labels" batch button, meadery name required warning + submit blocking
 - `DivisionEntryAdminView` (`/competitions/:compShortName/divisions/:divShortName/entry-admin`) — admin tabs: Credits, Entries (with Meadery/Country columns + individual label download + batch "Download all labels" with confirmation dialog), Products, Orders
 
 #### REST
@@ -209,10 +212,10 @@ QR code, notes area, disclaimer). Entrants: individual download for SUBMITTED en
 Design: `docs/plans/2026-03-10-entry-labels-design.md`. Plan: `docs/plans/2026-03-10-entry-labels-plan.md`.
 
 ### Priority 7: Competition documents
-Decide how to handle downloadable documents per competition (rules, guidelines, etc.):
-- Options: stored in DB (BLOB), external file storage (S3), or just external links
-- Where to display: competition detail page, possibly entrant-facing views
-- Consider storage cost, upload UX, and simplicity
+**Complete.** `CompetitionDocument` entity (PDF upload or external link) with `DocumentType` enum.
+Admin "Documents" tab in `CompetitionDetailView` for CRUD + reordering. Entrant document list
+in `MyEntriesView`. PDF stored in DB (max 10 MB), links stored as URLs. Unique name per
+competition, admin-managed display order. V14 migration. 26 new tests.
 
 ### After these priorities: Resume planned work
 7. **Judging module** — design and implementation
@@ -256,6 +259,21 @@ Decide how to handle downloadable documents per competition (rules, guidelines, 
 
 ---
 
+## All Test Files (competition module — documents)
+
+### Unit tests
+- `CompetitionDocumentTest.java` — entity factory methods, validation (size, content type, name, URL), domain methods
+- `CompetitionServiceTest.java` — document CRUD methods (addDocument, removeDocument, updateDocumentName, reorderDocuments, getDocuments, getDocument, deleteCompetition cleanup)
+
+### Repository tests
+- `CompetitionDocumentRepositoryTest.java` — save, find ordered, count, exists by name
+
+### UI tests
+- `CompetitionDetailViewTest.java` — Documents tab rendering, document grid display
+- `MyEntriesViewTest.java` — competition documents section in entrant view
+
+---
+
 ## All Test Files (entry module)
 
 ### Unit tests
@@ -282,7 +300,7 @@ Decide how to handle downloadable documents per competition (rules, guidelines, 
 - `EntryModuleTest.java` — bootstrap + full credit → entry → submit workflow
 
 ### UI tests
-- `MyEntriesViewTest.java` — credits display, entry grid, authorization redirect, meadery name warning + submit blocking, download all labels button, download label for submitted entries
+- `MyEntriesViewTest.java` — credits display, entry grid, authorization redirect, meadery name warning + submit blocking, download all labels button, download label for submitted entries, competition documents display
 - `DivisionEntryAdminViewTest.java` — admin tabs rendering, meadery name + country columns, download all labels button
 
 ---
