@@ -139,7 +139,9 @@ docs/
 ├── examples/                   ← Test & domain model examples (referenced by CLAUDE.md)
 ├── plans/
 │   ├── 2026-03-02-entry-module-design.md  ← Retained as reference for future module designs
-│   └── 2026-03-10-profile-meadery-country-design.md  ← Design reference for profile/meadery/country
+│   ├── 2026-03-10-profile-meadery-country-design.md  ← Design reference for profile/meadery/country
+│   ├── 2026-03-10-i18n-design.md          ← i18n design (implementation deferred)
+│   └── 2026-03-10-deployment-design.md    ← Deployment options + config checklist (decision deferred)
 ├── reference/
 │   └── chip-competition-rules.md          ← CHIP competition rules (active reference)
 ├── specs/
@@ -155,23 +157,10 @@ docs/
 ## What's Next
 
 ### Priority 1: Internationalization (i18n)
-Investigate how to best approach i18n for the application. Initial target languages are
-English and Portuguese, but the design should support adding more languages later.
-Key areas to consider:
-- **UI labels and messages** — Vaadin's built-in i18n support (`I18NProvider`), resource
-  bundles, how to wire it up with Spring Boot
-- **Database-stored data** — mead categories (`categories` table with code/name) are the
-  most obvious candidate for translated content. Evaluate whether other DB data needs
-  translation (e.g., competition names, division names — probably not, as these are
-  user-defined). Options: separate translation table, JSON column, or code-based lookup.
-- **Enums with display names** — `Sweetness`, `Strength`, `Carbonation`, `EntryStatus`,
-  `DivisionStatus`, etc. currently have `getDisplayName()` returning hardcoded English.
-  These should use message bundles instead.
-- **Language selection** — default based on the user's country (if set and a matching
-  translation is available), with the ability to override. Store preference on the user
-  entity or rely on browser locale with a manual override.
-- **Scope the investigation** — what's the minimum viable i18n that unblocks Portuguese
-  support without over-engineering?
+**Design complete** — see `docs/plans/2026-03-10-i18n-design.md`. Implementation deferred.
+Summary: Vaadin I18NProvider + Spring MessageSource, resource bundles, browser locale +
+UI switcher (cookie/localStorage), entrant-facing views only (6 views), MJP category
+translations via bundles keyed by code. ~100-120 strings to extract. No DB changes needed.
 
 ### Priority 2: Manual walkthrough (full redo)
 Redo the **entire** manual-test walkthrough from Section 1. Previous partial run covered
@@ -180,25 +169,17 @@ state end-to-end, including recent entry limits UI, logging, and all accumulated
 May produce bug fixes or UX improvements.
 
 ### Priority 3: Deployment planning
-Evaluate cloud providers and services for first deployment:
-- **Managed PostgreSQL** with automatic backups — **top priority**, data must never be lost
-- **Log management** — logs properly stored and rolled, searchable
-- **Email sending** — reliable delivery for magic links, password resets, notifications
-  (low volume but sometimes bursty)
-- **Secrets management** — at minimum `INITIAL_ADMIN_EMAIL` + `INITIAL_ADMIN_PASSWORD`
-  for bootstrapping, plus JWT secret, DB credentials, Jumpseller hooks token
-- **Cost considerations:** The app only needs to be online for a few months at a time.
-  Going for multiple AWS services (RDS, ECS, SES, Secrets Manager, etc.) could be overkill
-  and expensive. Finding a good balance between cost and reliability is key. A simpler
-  PaaS (Railway, Render, Fly.io) with a managed DB add-on might be more appropriate than
-  full AWS infrastructure. Premium high-availability is not required — reliable uptime is
-  enough. The non-negotiable is never losing data (hence managed DB with backups).
+**Investigation complete** — see `docs/plans/2026-03-10-deployment-design.md`. Decision deferred.
+Summary: Evaluated Railway, DigitalOcean (App Platform, Droplet), AWS (Lightsail, EB+RDS).
+Recommendation: DigitalOcean App Platform + Managed PostgreSQL (~$20/mo) — best balance of
+cost, automatic backups (daily + PITR), and zero ops. Needs Dockerfile, DNS setup, email
+provider (Resend), and prod config before deploying.
 
 ### Priority 4: Configuration audit
-Review `application.properties` and profile-specific files:
-- Which properties should be env vars vs. config files vs. secrets?
-- Which belong to specific profiles (`dev`, `prod`, `test`)?
-- Align with chosen cloud provider's configuration model
+**Complete.** Properties reorganized: `application.properties` has only non-sensitive
+environment-agnostic defaults. Secrets and env-specific values moved to `application-dev.properties`.
+Created `application-prod.properties` (minimal). Test properties in `src/test/resources/application.properties`.
+Deployment configuration checklist in `docs/plans/2026-03-10-deployment-design.md`.
 
 ### Priority 5: Email sending implementation
 Implement actual email delivery (currently magic links and password reset links are
@@ -245,6 +226,13 @@ Decide how to handle downloadable documents per competition (rules, guidelines, 
 ### Known UX items (deferred)
 - After failed credentials login, page reloads at `/login?error` and shows error notification,
   but password field is cleared (expected browser behavior for form POST). Not blocking.
+
+### Configuration
+- **Properties reorganized** — `application.properties` contains only non-sensitive,
+  environment-agnostic defaults (4 properties). Secrets and env-specific values live in
+  profile-specific files (`application-dev.properties`, `application-prod.properties`).
+  Test overrides in `src/test/resources/application.properties`.
+- **Deployment env vars checklist** in `docs/plans/2026-03-10-deployment-design.md`.
 
 ---
 
