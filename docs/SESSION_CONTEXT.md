@@ -150,17 +150,21 @@ docs/
 
 ## What's Next
 
-### Priority 1: User profile fields + meadery name and country on entries
-Check if there is a way for a professional meadery to add the meadery name when adding
-entries. The `User` entity already has an optional `meaderyName` field — investigate whether
-it should be displayed/editable in the entry flow (e.g., pre-filled from the user profile,
-or overridable per entry), and whether entries themselves need a meadery name field.
-Also consider whether it's worth adding a "Country" field to users, participants, or entries
-— evaluate where it belongs and what value it provides (e.g., for international competitions,
-results display, or statistical purposes).
-Additionally, consider whether users should be allowed to edit their own name (and the
-optional meadery name and country) from their profile — currently only admins can edit
-user details via `UserListView`.
+### Priority 1: User profile self-edit, meadery name & country — IN PROGRESS
+**Design:** Approved — `docs/plans/2026-03-10-profile-meadery-country-design.md`
+**Implementation plan:** `docs/plans/2026-03-10-profile-meadery-country-plan.md`
+**Status:** Design + plan complete, implementation not yet started (0/12 tasks done).
+**Next step:** Execute the plan starting from Task 1. Use the plan file directly —
+it has all 12 tasks with full code, test commands, and file paths.
+
+Key decisions made:
+- Country field on User (ISO 3166-1 alpha-2, ComboBox with Locale.getISOCountries())
+- Meadery name stays on User profile only (no per-entry override)
+- `meaderyNameRequired` boolean flag on Division (DRAFT-only)
+- MyEntriesView: warning banner + block submit (all + individual) when meadery required but missing
+- Webhook enrichment: extract `shipping_address.country_code`, enrich User country if null
+- ProfileView at `/profile` with My Profile nav item in MainLayout
+- Modify existing V2/V4/V10 migrations in-place (pre-deployment)
 
 ### Priority 2: Internationalization (i18n)
 Investigate how to best approach i18n for the application. Initial target languages are
