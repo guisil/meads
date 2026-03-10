@@ -1,6 +1,7 @@
 package app.meads.entry.internal;
 
 import app.meads.MainLayout;
+import app.meads.competition.Competition;
 import app.meads.competition.CompetitionService;
 import app.meads.competition.Division;
 import app.meads.competition.DivisionCategory;
@@ -19,6 +20,7 @@ import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Nav;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.server.StreamResource;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
@@ -39,6 +41,7 @@ import jakarta.annotation.security.PermitAll;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.util.StringUtils;
 
+import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -53,16 +56,19 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
     private final EntryService entryService;
     private final CompetitionService competitionService;
     private final UserService userService;
+    private final LabelPdfService labelPdfService;
     private final transient AuthenticationContext authenticationContext;
 
     private UUID divisionId;
     private Division division;
+    private Competition competition;
     private String compShortName;
     private String divShortName;
     private String competitionName;
     private UUID currentUserId;
     private Grid<Entry> entriesGrid;
     private Map<UUID, DivisionCategory> categoriesById;
+    private List<Entry> entries;
 
     private boolean meaderyNameMissing;
 
@@ -73,10 +79,12 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
     public MyEntriesView(EntryService entryService,
                           CompetitionService competitionService,
                           UserService userService,
+                          LabelPdfService labelPdfService,
                           AuthenticationContext authenticationContext) {
         this.entryService = entryService;
         this.competitionService = competitionService;
         this.userService = userService;
+        this.labelPdfService = labelPdfService;
         this.authenticationContext = authenticationContext;
     }
 
@@ -93,7 +101,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         }
 
         try {
-            var competition = competitionService.findCompetitionByShortName(compShortName);
+            competition = competitionService.findCompetitionByShortName(compShortName);
             competitionName = competition.getName();
             division = competitionService.findDivisionByShortName(
                     competition.getId(), divShortName);
@@ -215,6 +223,24 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
             submitButton.setTooltipText("Meadery name required — update your profile");
         }
         actions.add(submitButton);
+
+        // Download all labels (SUBMITTED entries)
+        var downloadAllResource = new StreamResource("all-labels.pdf", () -> {
+            var submittedEntries = entries != null
+                    ? entries.stream().filter(e2 -> e2.getStatus() == EntryStatus.SUBMITTED).toList()
+                    : List.<Entry>of();
+            if (submittedEntries.isEmpty()) {
+                return new ByteArrayInputStream(new byte[0]);
+            }
+            return new ByteArrayInputStream(
+                    labelPdfService.generateLabels(submittedEntries, competition, division, categoriesById::get));
+        });
+        downloadAllResource.setContentType("application/pdf");
+        var downloadAllAnchor = new Anchor(downloadAllResource, "");
+        downloadAllAnchor.getElement().setAttribute("download", true);
+        var downloadAllBtn = new Button("Download all labels", new Icon(VaadinIcon.DOWNLOAD_ALT));
+        downloadAllAnchor.add(downloadAllBtn);
+        actions.add(downloadAllAnchor);
 
         return actions;
     }
@@ -356,6 +382,23 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                 : "Submit entry");
         actions.add(submitBtn);
 
+        // Download label — only SUBMITTED entries
+        if (entry.getStatus() == EntryStatus.SUBMITTED) {
+            var category = categoriesById.get(entry.getInitialCategoryId());
+            var resource = new StreamResource(
+                    "label-" + formatEntryId(entry) + ".pdf",
+                    () -> new ByteArrayInputStream(
+                            labelPdfService.generateLabel(entry, competition, division, category)));
+            resource.setContentType("application/pdf");
+            var downloadAnchor = new Anchor(resource, "");
+            downloadAnchor.getElement().setAttribute("download", true);
+            var downloadIcon = new Button(new Icon(VaadinIcon.DOWNLOAD_ALT));
+            downloadIcon.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE, ButtonVariant.LUMO_SMALL);
+            downloadIcon.setTooltipText("Download label");
+            downloadAnchor.add(downloadIcon);
+            actions.add(downloadAnchor);
+        }
+
         return actions;
     }
 
@@ -431,8 +474,16 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
     }
 
     private void refreshGrid() {
-        var entries = entryService.findEntriesByDivisionAndUser(divisionId, currentUserId);
+        entries = entryService.findEntriesByDivisionAndUser(divisionId, currentUserId);
         entriesGrid.setItems(entries);
+    }
+
+    private String formatEntryId(Entry entry) {
+        var prefix = division.getEntryPrefix();
+        if (prefix != null && !prefix.isBlank()) {
+            return prefix + "-" + entry.getEntryNumber();
+        }
+        return String.valueOf(entry.getEntryNumber());
     }
 
     private void refreshPage() {

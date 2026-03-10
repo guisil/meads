@@ -16,8 +16,10 @@ import com.github.mvysny.kaributesting.v10.MockVaadin;
 import com.github.mvysny.kaributesting.v10.Routes;
 import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
 import com.vaadin.flow.component.UI;
+import app.meads.competition.internal.DivisionCategoryRepository;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Span;
@@ -37,6 +39,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.annotation.DirtiesContext;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.UUID;
@@ -72,6 +75,9 @@ class MyEntriesViewTest {
 
     @Autowired
     EntryCreditRepository creditRepository;
+
+    @Autowired
+    DivisionCategoryRepository divisionCategoryRepository;
 
     @Autowired
     CompetitionService competitionService;
@@ -270,5 +276,53 @@ class MyEntriesViewTest {
         // Add Entry button
         var addButton = _get(Button.class, spec -> spec.withText("Add Entry"));
         assertThat(addButton.isEnabled()).isTrue();
+    }
+
+    @Test
+    @WithMockUser(username = ENTRANT_EMAIL, roles = "USER")
+    void shouldShowDownloadAllLabelsButton() {
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/my-entries");
+
+        var anchors = _find(Anchor.class);
+        var downloadAllAnchors = anchors.stream()
+                .filter(a -> {
+                    var buttons = _find(a, Button.class);
+                    return buttons.stream().anyMatch(b ->
+                            b.getText() != null && b.getText().contains("Download all labels"));
+                })
+                .toList();
+        assertThat(downloadAllAnchors).hasSize(1);
+    }
+
+    @Test
+    @WithMockUser(username = ENTRANT_EMAIL, roles = "USER")
+    void shouldShowDownloadLabelForSubmittedEntries() {
+        // Create a category for entries
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Dry mead category", null, 1));
+
+        // Create and submit an entry
+        var entry = entryService.createEntry(division.getId(), entrant.getId(),
+                "Test Mead", category.getId(),
+                Sweetness.DRY, Strength.STANDARD, new BigDecimal("12.0"),
+                Carbonation.STILL, "Honey", null, false, null, null);
+        entryService.submitEntry(entry.getId(), entrant.getId());
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/my-entries");
+
+        // "Download all labels" anchor should exist in the toolbar
+        // Note: individual download anchors inside Grid componentColumn are not found by _find
+        // (known Karibu limitation for component columns)
+        var anchors = _find(Anchor.class);
+        var downloadAllAnchors = anchors.stream()
+                .filter(a -> {
+                    var buttons = _find(a, Button.class);
+                    return buttons.stream().anyMatch(b ->
+                            b.getText() != null && b.getText().contains("Download all labels"));
+                })
+                .toList();
+        assertThat(downloadAllAnchors).hasSize(1);
     }
 }
