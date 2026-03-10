@@ -142,6 +142,18 @@ public class CompetitionService {
         return competitionRepository.save(competition);
     }
 
+    public Competition updateCompetitionShippingDetails(@NotNull UUID competitionId,
+                                                           String shippingAddress,
+                                                           String phoneNumber,
+                                                           @NotNull UUID requestingUserId) {
+        var competition = competitionRepository.findById(competitionId)
+                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
+        requireAuthorized(competitionId, requestingUserId);
+        competition.updateShippingDetails(shippingAddress, phoneNumber);
+        log.info("Updated shipping details for competition: {}", competitionId);
+        return competitionRepository.save(competition);
+    }
+
     public void deleteCompetition(@NotNull UUID competitionId,
                                    @NotNull UUID requestingUserId) {
         var competition = competitionRepository.findById(competitionId)

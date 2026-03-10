@@ -84,4 +84,24 @@ class CompetitionTest {
 
         assertThat(competition.getContactEmail()).isNull();
     }
+
+    @Test
+    void shouldUpdateShippingDetails() {
+        var competition = createCompetition();
+
+        competition.updateShippingDetails("123 Main St\nCity, 12345", "+1-555-0123");
+
+        assertThat(competition.getShippingAddress()).isEqualTo("123 Main St\nCity, 12345");
+        assertThat(competition.getPhoneNumber()).isEqualTo("+1-555-0123");
+    }
+
+    @Test
+    void shouldUpdateShippingDetailsWithNulls() {
+        var competition = createCompetition();
+
+        competition.updateShippingDetails(null, null);
+
+        assertThat(competition.getShippingAddress()).isNull();
+        assertThat(competition.getPhoneNumber()).isNull();
+    }
 }

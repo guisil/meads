@@ -44,6 +44,12 @@ public class Competition {
     @Column(name = "contact_email")
     private String contactEmail;
 
+    @Column(name = "shipping_address", columnDefinition = "TEXT")
+    private String shippingAddress;
+
+    @Column(name = "phone_number")
+    private String phoneNumber;
+
     @Column(nullable = false)
     private Instant createdAt;
 
@@ -117,5 +123,10 @@ public class Competition {
 
     public void updateContactEmail(String contactEmail) {
         this.contactEmail = contactEmail;
+    }
+
+    public void updateShippingDetails(String shippingAddress, String phoneNumber) {
+        this.shippingAddress = shippingAddress;
+        this.phoneNumber = phoneNumber;
     }
 }

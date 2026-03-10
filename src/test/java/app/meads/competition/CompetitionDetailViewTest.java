@@ -21,6 +21,7 @@ import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.tabs.TabSheet;
+import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.upload.Upload;
 import com.vaadin.flow.server.VaadinServletRequest;
@@ -212,6 +213,21 @@ class CompetitionDetailViewTest {
 
         var uploads = _find(Upload.class);
         assertThat(uploads).hasSize(1);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldDisplayShippingFieldsInSettingsTab() {
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName());
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(2); // Settings tab
+
+        var shippingField = _get(TextArea.class, spec -> spec.withLabel("Shipping Address"));
+        assertThat(shippingField).isNotNull();
+
+        var phoneField = _get(TextField.class, spec -> spec.withLabel("Phone Number"));
+        assertThat(phoneField).isNotNull();
     }
 
     @Test

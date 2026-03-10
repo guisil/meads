@@ -24,6 +24,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.tabs.TabSheet;
 import com.vaadin.flow.component.textfield.EmailField;
+import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.upload.Upload;
 import com.vaadin.flow.server.streams.UploadHandler;
@@ -421,6 +422,16 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         contactEmailField.setHelperText("Shown in emails sent to competition participants");
         contactEmailField.setClearButtonVisible(true);
 
+        var shippingAddressField = new TextArea("Shipping Address");
+        shippingAddressField.setValue(competition.getShippingAddress() != null ? competition.getShippingAddress() : "");
+        shippingAddressField.setHelperText("Shown on entry labels — where entrants should ship their bottles");
+        shippingAddressField.setWidthFull();
+
+        var phoneNumberField = new TextField("Phone Number");
+        phoneNumberField.setValue(competition.getPhoneNumber() != null ? competition.getPhoneNumber() : "");
+        phoneNumberField.setHelperText("Contact phone number shown on entry labels");
+        phoneNumberField.setClearButtonVisible(true);
+
         var logoData = new byte[1][];
         var logoContentType = new String[1];
 
@@ -488,6 +499,12 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                         ? contactEmailField.getValue().trim() : null;
                 competitionService.updateCompetitionContactEmail(
                         competitionId, contactEmail, getCurrentUserId());
+                var shippingAddress = StringUtils.hasText(shippingAddressField.getValue())
+                        ? shippingAddressField.getValue().trim() : null;
+                var phoneNumber = StringUtils.hasText(phoneNumberField.getValue())
+                        ? phoneNumberField.getValue().trim() : null;
+                competitionService.updateCompetitionShippingDetails(
+                        competitionId, shippingAddress, phoneNumber, getCurrentUserId());
                 if (logoData[0] != null) {
                     competitionService.updateCompetitionLogo(
                             competitionId, logoData[0], logoContentType[0],
@@ -502,7 +519,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
             }
         });
 
-        tab.add(nameField, shortNameField, startDatePicker, endDatePicker, locationField, contactEmailField, logoSection, saveButton);
+        tab.add(nameField, shortNameField, startDatePicker, endDatePicker, locationField, contactEmailField, shippingAddressField, phoneNumberField, logoSection, saveButton);
         return tab;
     }
 

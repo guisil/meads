@@ -248,6 +248,25 @@ class CompetitionServiceTest {
         then(competitionRepository).should().save(competition);
     }
 
+    // --- updateCompetitionShippingDetails ---
+
+    @Test
+    void shouldUpdateCompetitionShippingDetails() {
+        var admin = createAdmin();
+        var competition = createCompetition();
+        given(competitionRepository.findById(competition.getId())).willReturn(Optional.of(competition));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(competitionRepository.save(any(Competition.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var result = competitionService.updateCompetitionShippingDetails(
+                competition.getId(), "123 Main St", "+1-555-0123", admin.getId());
+
+        assertThat(result.getShippingAddress()).isEqualTo("123 Main St");
+        assertThat(result.getPhoneNumber()).isEqualTo("+1-555-0123");
+        then(competitionRepository).should().save(competition);
+    }
+
     // --- deleteCompetition ---
 
     @Test
