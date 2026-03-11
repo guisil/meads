@@ -28,6 +28,7 @@ import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.spring.security.AuthenticationContext;
 import jakarta.annotation.security.PermitAll;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.util.StringUtils;
 
@@ -234,6 +235,9 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
             } catch (IllegalArgumentException ex) {
                 Notification.show(ex.getMessage());
                 dialog.close();
+            } catch (DataIntegrityViolationException ex) {
+                Notification.show("Cannot remove category: it is used by one or more entries");
+                dialog.close();
             }
         });
 
@@ -372,6 +376,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         entryPrefixField.setMaxLength(5);
         entryPrefixField.setHelperText("Short prefix for entry numbers (e.g. AMA), up to 5 characters");
         entryPrefixField.setValue(division.getEntryPrefix() != null ? division.getEntryPrefix() : "");
+        entryPrefixField.setEnabled(isDraft);
 
         var maxPerSubcategoryField = new com.vaadin.flow.component.textfield.IntegerField("Max Entries per Subcategory");
         maxPerSubcategoryField.setMin(1);
@@ -443,14 +448,18 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                         divisionId, nameField.getValue(),
                         shortNameField.getValue(),
                         scoringSelect.getValue(), prefix, getCurrentUserId());
-                competitionService.updateDivisionEntryLimits(
-                        divisionId,
-                        maxPerSubcategoryField.getValue(),
-                        maxPerMainCategoryField.getValue(),
-                        maxTotalField.getValue(),
-                        getCurrentUserId());
-                competitionService.updateDivisionMeaderyNameRequired(
-                        divisionId, meaderyRequiredCheckbox.getValue(), getCurrentUserId());
+                if (isDraft) {
+                    competitionService.updateDivisionEntryLimits(
+                            divisionId,
+                            maxPerSubcategoryField.getValue(),
+                            maxPerMainCategoryField.getValue(),
+                            maxTotalField.getValue(),
+                            getCurrentUserId());
+                }
+                if (isDraft) {
+                    competitionService.updateDivisionMeaderyNameRequired(
+                            divisionId, meaderyRequiredCheckbox.getValue(), getCurrentUserId());
+                }
                 if (deadlinePicker.getValue() != null && timezoneCombo.getValue() != null) {
                     competitionService.updateDivisionDeadline(
                             divisionId, deadlinePicker.getValue(),

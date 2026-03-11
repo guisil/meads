@@ -135,7 +135,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 - `SecurityConfig` — separate `SecurityFilterChain` with `@Order(1)` for webhook API (CSRF disabled, permitAll)
 - `User.java` — added `meaderyName` and `country` fields (now in V2)
 - `Division.java` — added `maxEntriesPerSubcategory`, `maxEntriesPerMainCategory`, `maxEntriesTotal`, `entryPrefix`, `meaderyNameRequired`, `registrationDeadline`, `registrationDeadlineTimezone`
-- `DivisionDetailView` — "Manage Entries" button, entry prefix + entry limits in Settings tab (DRAFT-only for limits), meaderyNameRequired checkbox (DRAFT-only), registration deadline fields (DRAFT/REGISTRATION_OPEN)
+- `DivisionDetailView` — "Manage Entries" button, entry prefix (DRAFT-only) + entry limits in Settings tab (DRAFT-only for limits and prefix), meaderyNameRequired checkbox (DRAFT-only), registration deadline fields (DRAFT/REGISTRATION_OPEN)
 - `MainLayout` — "My Profile" as submenu item in user dropdown menu (navigates to `/profile`)
 - `application.properties` — added `app.jumpseller.hooks-token`
 

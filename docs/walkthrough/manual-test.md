@@ -766,7 +766,8 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] **Expected:** Fields: Name, Short Name, Entry Prefix, Scoring System, Max Entries per Subcategory, Max Entries per Main Category, Max Total Entries, Meadery Name Required (checkbox), Registration Deadline (date+time picker), Timezone (combo box), Status (read-only), Save button
 - [ ] **Expected:** Registration Deadline shows the seeded deadline value; Timezone shows the seeded timezone
 - [ ] **Expected:** Registration Deadline and Timezone are editable (Amadora is REGISTRATION_OPEN — deadline editable in DRAFT and REGISTRATION_OPEN)
-- [ ] **Expected:** Name, Short Name, Entry Prefix are always editable (regardless of status)
+- [ ] **Expected:** Name, Short Name are always editable (regardless of status)
+- [ ] **Expected:** Entry Prefix is disabled (not DRAFT — Amadora is REGISTRATION_OPEN). Only editable in DRAFT to prevent label inconsistency
 - [ ] **Expected:** "Meadery Name Required" checkbox is disabled (not DRAFT — Amadora is REGISTRATION_OPEN)
 - [ ] **Expected:** Entry Prefix: helper text "Short prefix for entry numbers (e.g. AMA), up to 5 characters", maxLength 5
 - [ ] **Expected:** Entry limit fields have step buttons, clear button, helper text (e.g. "Per entrant per subcategory (empty = unlimited)")
