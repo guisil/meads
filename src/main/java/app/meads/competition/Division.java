@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -49,11 +50,19 @@ public class Division {
     @Column(name = "meadery_name_required", nullable = false)
     private boolean meaderyNameRequired;
 
+    @Column(name = "registration_deadline", nullable = false)
+    private LocalDateTime registrationDeadline;
+
+    @Column(name = "registration_deadline_timezone", nullable = false, length = 50)
+    private String registrationDeadlineTimezone;
+
     private Instant updatedAt;
 
     protected Division() {} // JPA
 
-    public Division(UUID competitionId, String name, String shortName, ScoringSystem scoringSystem) {
+    public Division(UUID competitionId, String name, String shortName,
+                    ScoringSystem scoringSystem,
+                    LocalDateTime registrationDeadline, String registrationDeadlineTimezone) {
         Competition.validateShortName(shortName);
         this.id = UUID.randomUUID();
         this.competitionId = competitionId;
@@ -62,6 +71,8 @@ public class Division {
         this.scoringSystem = scoringSystem;
         this.status = DivisionStatus.DRAFT;
         this.meaderyNameRequired = false;
+        this.registrationDeadline = registrationDeadline;
+        this.registrationDeadlineTimezone = registrationDeadlineTimezone;
     }
 
     @PrePersist
@@ -107,6 +118,15 @@ public class Division {
             throw new IllegalStateException("Meadery name requirement can only be changed in DRAFT status");
         }
         this.meaderyNameRequired = meaderyNameRequired;
+    }
+
+    public void updateRegistrationDeadline(LocalDateTime deadline, String timezone) {
+        if (status != DivisionStatus.DRAFT && status != DivisionStatus.REGISTRATION_OPEN) {
+            throw new IllegalStateException(
+                    "Registration deadline can only be changed in DRAFT or REGISTRATION_OPEN status");
+        }
+        this.registrationDeadline = deadline;
+        this.registrationDeadlineTimezone = timezone;
     }
 
     public void updateDetails(String name, String shortName, ScoringSystem scoringSystem,

@@ -8,7 +8,9 @@ import app.meads.identity.UserService;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.datepicker.DatePicker;
+import com.vaadin.flow.component.datetimepicker.DateTimePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.icon.Icon;
@@ -40,6 +42,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
 
 import java.io.ByteArrayInputStream;
+import java.time.ZoneId;
 import java.util.Base64;
 import java.util.Locale;
 import java.util.Map;
@@ -566,6 +569,15 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         scoringSelect.setItems(ScoringSystem.values());
         scoringSelect.setValue(ScoringSystem.MJP);
 
+        var deadlinePicker = new DateTimePicker("Registration Deadline");
+        deadlinePicker.setRequiredIndicatorVisible(true);
+
+        var timezoneCombo = new ComboBox<String>("Timezone");
+        timezoneCombo.setItems(ZoneId.getAvailableZoneIds().stream().sorted().toList());
+        timezoneCombo.setValue("UTC");
+        timezoneCombo.setRequired(true);
+        timezoneCombo.setAllowCustomValue(false);
+
         var saveButton = new Button("Save", e -> {
             if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
@@ -577,12 +589,18 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 shortNameField.setErrorMessage("Short name is required");
                 return;
             }
+            if (deadlinePicker.getValue() == null) {
+                Notification.show("Registration deadline is required");
+                return;
+            }
             try {
                 competitionService.createDivision(
                         competitionId,
                         nameField.getValue(),
                         shortNameField.getValue(),
                         scoringSelect.getValue(),
+                        deadlinePicker.getValue(),
+                        timezoneCombo.getValue(),
                         getCurrentUserId());
                 refreshDivisionsGrid();
                 var notification = Notification.show("Division created successfully");
@@ -595,7 +613,8 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
         var cancelButton = new Button("Cancel", e -> dialog.close());
 
-        var form = new VerticalLayout(nameField, shortNameField, scoringSelect);
+        var form = new VerticalLayout(nameField, shortNameField, scoringSelect,
+                deadlinePicker, timezoneCombo);
         form.setPadding(false);
         dialog.add(form);
         dialog.getFooter().add(cancelButton, saveButton);

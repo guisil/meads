@@ -139,6 +139,9 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         }
         add(createDocumentsSection());
         add(createCreditInfo());
+        if (division.getRegistrationDeadline() != null) {
+            add(createDeadlineInfo());
+        }
         var toolbar = createToolbar();
         toolbar.getStyle().set("margin-top", "var(--lumo-space-s)");
         add(toolbar);
@@ -752,6 +755,17 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         var cancelButton = new Button("Cancel", e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
         dialog.open();
+    }
+
+    private Span createDeadlineInfo() {
+        var formatter = java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm");
+        var formatted = division.getRegistrationDeadline().format(formatter);
+        var deadlineSpan = new Span("Registration closes: " + formatted
+                + " " + division.getRegistrationDeadlineTimezone());
+        deadlineSpan.getStyle()
+                .set("color", "var(--lumo-secondary-text-color)")
+                .set("font-size", "var(--lumo-font-size-s)");
+        return deadlineSpan;
     }
 
     private static final Map<String, String> CATEGORY_HINTS = Map.ofEntries(

@@ -20,6 +20,7 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+import java.time.LocalDateTime;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
@@ -137,7 +138,7 @@ class WebhookServiceTest {
         var service = createService();
         var divisionId = UUID.randomUUID();
         var competitionId = UUID.randomUUID();
-        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP);
+        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
         var user = new User("entrant@test.com", "Test Entrant", UserStatus.ACTIVE, Role.USER);
         var mapping = new ProductMapping(divisionId, "101", "SKU-001", "Entry Pack", 1);
 
@@ -212,8 +213,8 @@ class WebhookServiceTest {
     void shouldFlagMutualExclusivityConflict() {
         var service = createService();
         var competitionId = UUID.randomUUID();
-        var divisionA = new Division(competitionId, "Home", "home", ScoringSystem.MJP);
-        var divisionB = new Division(competitionId, "Pro", "pro", ScoringSystem.MJP);
+        var divisionA = new Division(competitionId, "Home", "home", ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
+        var divisionB = new Division(competitionId, "Pro", "pro", ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
         var user = new User("entrant@test.com", "Test Entrant", UserStatus.ACTIVE, Role.USER);
         var mappingA = new ProductMapping(divisionA.getId(), "101", "SKU-A",
                 "Home Entry", 1);
@@ -271,7 +272,7 @@ class WebhookServiceTest {
         var service = createService();
         var divisionId = UUID.randomUUID();
         var competitionId = UUID.randomUUID();
-        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP);
+        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
         var newUser = new User("new@test.com", "New Entrant", UserStatus.PENDING, Role.USER);
         var mapping = new ProductMapping(divisionId, "101", "SKU-001", "Entry Pack", 1);
 
@@ -304,13 +305,13 @@ class WebhookServiceTest {
         var service = createService();
         var competitionId = UUID.randomUUID();
         var divisionId = UUID.randomUUID();
-        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP);
+        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
         var user = new User("entrant@test.com", "Test Entrant", UserStatus.ACTIVE, Role.USER);
         var mapping = new ProductMapping(divisionId, "101", "SKU-001", "Entry Pack", 1);
 
         // User already has credits in a different division of same competition
         var otherDivisionId = UUID.randomUUID();
-        var otherDivision = new Division(competitionId, "Pro", "pro", ScoringSystem.MJP);
+        var otherDivision = new Division(competitionId, "Pro", "pro", ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
 
         var payload = buildPayload("ORDER-005", "entrant@test.com", "Test Entrant",
                 buildProduct("101", "SKU-001", "Entry Pack", 1));
@@ -345,7 +346,7 @@ class WebhookServiceTest {
         var service = createService();
         var divisionId = UUID.randomUUID();
         var competitionId = UUID.randomUUID();
-        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP);
+        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
         var user = new User("entrant@test.com", "Test Entrant", UserStatus.ACTIVE, Role.USER);
         var mapping = new ProductMapping(divisionId, "101", "SKU-001", "Entry Pack", 1);
 
@@ -378,7 +379,7 @@ class WebhookServiceTest {
         var service = createService();
         var divisionId = UUID.randomUUID();
         var competitionId = UUID.randomUUID();
-        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP);
+        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
         var user = new User("entrant@test.com", "Test Entrant", UserStatus.ACTIVE, Role.USER);
         var mapping = new ProductMapping(divisionId, "101", "SKU-001", "Entry Pack", 1);
 
@@ -410,7 +411,7 @@ class WebhookServiceTest {
         var service = createService();
         var divisionId = UUID.randomUUID();
         var competitionId = UUID.randomUUID();
-        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP);
+        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
         var user = new User("entrant@test.com", "Test Entrant", UserStatus.ACTIVE, Role.USER);
         user.updateCountry("BR"); // Already has country
         var mapping = new ProductMapping(divisionId, "101", "SKU-001", "Entry Pack", 1);
@@ -453,5 +454,80 @@ class WebhookServiceTest {
         then(orderRepository).should(never()).save(any());
         then(lineItemRepository).should(never()).save(any());
         then(creditRepository).should(never()).save(any());
+    }
+
+    // --- OrderRequiresReviewEvent tests ---
+
+    @Test
+    void shouldPublishOrderRequiresReviewEventWhenNeedsReview() {
+        var service = createService();
+        var competitionId = UUID.randomUUID();
+        var divisionId = UUID.randomUUID();
+        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP,
+                LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
+        var user = new User("entrant@test.com", "Test Entrant", UserStatus.ACTIVE, Role.USER);
+        var mapping = new ProductMapping(divisionId, "101", "SKU-001", "Entry Pack", 1);
+
+        var otherDivision = new Division(competitionId, "Pro", "pro", ScoringSystem.MJP,
+                LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
+
+        var payload = buildPayload("ORDER-EVENT", "entrant@test.com", "Test Entrant",
+                buildProduct("101", "SKU-001", "Entry Pack", 1));
+
+        given(orderRepository.existsByJumpsellerOrderId("ORDER-EVENT")).willReturn(false);
+        given(orderRepository.save(any(JumpsellerOrder.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(productMappingRepository.findByJumpsellerProductId("101"))
+                .willReturn(List.of(mapping));
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(creditRepository.findDistinctDivisionIdsByUserId(user.getId()))
+                .willReturn(List.of(otherDivision.getId()));
+        given(competitionService.findDivisionsByCompetition(competitionId))
+                .willReturn(List.of(division, otherDivision));
+        given(userService.findOrCreateByEmail("entrant@test.com", "Test Entrant")).willReturn(user);
+        given(lineItemRepository.save(any(JumpsellerOrderLineItem.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.processOrderPaid(payload);
+
+        var eventCaptor = ArgumentCaptor.forClass(OrderRequiresReviewEvent.class);
+        then(eventPublisher).should().publishEvent(eventCaptor.capture());
+        var event = eventCaptor.getValue();
+        assertThat(event.jumpsellerOrderId()).isEqualTo("ORDER-EVENT");
+        assertThat(event.status()).isEqualTo(OrderStatus.NEEDS_REVIEW);
+        assertThat(event.affectedCompetitionIds()).contains(competitionId);
+        assertThat(event.customerName()).isEqualTo("Test Entrant");
+    }
+
+    @Test
+    void shouldNotPublishReviewEventWhenFullyProcessed() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var competitionId = UUID.randomUUID();
+        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP,
+                LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
+        var user = new User("entrant@test.com", "Test Entrant", UserStatus.ACTIVE, Role.USER);
+        var mapping = new ProductMapping(divisionId, "101", "SKU-001", "Entry Pack", 1);
+
+        var payload = buildPayload("ORDER-OK", "entrant@test.com", "Test Entrant",
+                buildProduct("101", "SKU-001", "Entry Pack", 1));
+
+        given(orderRepository.existsByJumpsellerOrderId("ORDER-OK")).willReturn(false);
+        given(orderRepository.save(any(JumpsellerOrder.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(productMappingRepository.findByJumpsellerProductId("101"))
+                .willReturn(List.of(mapping));
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(creditRepository.findDistinctDivisionIdsByUserId(user.getId()))
+                .willReturn(List.of());
+        given(userService.findOrCreateByEmail("entrant@test.com", "Test Entrant")).willReturn(user);
+        given(lineItemRepository.save(any(JumpsellerOrderLineItem.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(creditRepository.save(any(EntryCredit.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.processOrderPaid(payload);
+
+        then(eventPublisher).should(never()).publishEvent(any(OrderRequiresReviewEvent.class));
     }
 }

@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `competition-module`
-**Tests:** 483 passing (`mvn test -Dsurefire.useFile=false`)
+**Tests:** 494 passing (`mvn test -Dsurefire.useFile=false`)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -31,7 +31,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 - Password setup & reset: `SetPasswordView`, `setPasswordByToken()`, `generatePasswordSetupLink()`,
   `hasPassword()`, triggers on admin role assignment, "Forgot password?" on login, admin "Password Reset"
 - EmailService (public API) — `SmtpEmailService` (internal) with `JavaMailSender` + Thymeleaf HTML templates.
-  Sends magic link, password reset, and password setup emails. SMTP failure logged with fallback link (no crash).
+  Sends magic link, password reset, password setup, order review alert, and submission confirmation emails. SMTP failure logged with fallback link (no crash).
   Mailpit for dev (port 1025 SMTP, port 8025 web UI). Resend SMTP for prod. 7-day token validity.
 - **Status:** Complete
 
@@ -43,7 +43,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 | Entity | Table | Description |
 |--------|-------|-------------|
 | `Competition` | `competitions` | Top-level: name, shortName (unique), dates, location, logo, contactEmail, shippingAddress, phoneNumber |
-| `Division` | `divisions` | Sub-level: competitionId, name, shortName (unique per competition), scoringSystem, status, entry limits (per subcategory, per main category, total), entryPrefix, meaderyNameRequired |
+| `Division` | `divisions` | Sub-level: competitionId, name, shortName (unique per competition), scoringSystem, status, entry limits (per subcategory, per main category, total), entryPrefix, meaderyNameRequired, registrationDeadline, registrationDeadlineTimezone |
 | `Participant` | `participants` | Competition-scoped: userId, accessCode |
 | `ParticipantRole` | `participant_roles` | Role per participant: JUDGE, STEWARD, ENTRANT, ADMIN |
 | `Category` | `categories` | Read-only catalog: code, name, scoringSystem |
@@ -61,6 +61,8 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 - Document management: `addDocument`, `removeDocument`, `updateDocumentName`, `reorderDocuments`, `getDocuments`, `getDocument`
 - Authorization: `isAuthorizedForCompetition()`, `isAuthorizedForDivision()`
 - `findCompetitionsByAdmin(userId)` — finds competitions where user has ADMIN participant role
+- `findAdminEmailsByCompetitionId(competitionId)` — returns email addresses of all ADMIN participants
+- `updateDivisionDeadline()` — updates registration deadline (DRAFT or REGISTRATION_OPEN only)
 - `updateCompetitionContactEmail()` — updates competition contact email (shown in participant emails)
 - `revertDivisionStatus()` — one-step-back revert with guard interface pattern
 - Entry limits (per subcategory, per main category, total) — DRAFT-only, enforced by EntryService
@@ -99,19 +101,20 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 #### Services
 - **EntryService** — Product mapping CRUD, credit management, entry CRUD, submission, limits enforcement (total, subcategory, main category)
-- **WebhookService** — HMAC signature verification, `processOrderPaid` (JSON parsing, idempotency, mutual exclusivity, credit creation, country enrichment from shipping/billing address)
+- **WebhookService** — HMAC signature verification, `processOrderPaid` (JSON parsing, idempotency, mutual exclusivity, credit creation, country enrichment from shipping/billing address, publishes `OrderRequiresReviewEvent` for NEEDS_REVIEW/PARTIALLY_PROCESSED orders)
 - **LabelPdfService** — PDF label generation (OpenPDF + ZXing QR codes). Single entry or batch. A4 landscape, instruction header, 3 identical labels per page. Public API for cross-module access.
 
 #### Events
 - `CreditsAwardedEvent(divisionId, userId, amount, source)`
 - `EntriesSubmittedEvent(divisionId, userId, entryCount)`
+- `OrderRequiresReviewEvent(orderId, jumpsellerOrderId, customerName, customerEmail, affectedCompetitionIds, status)`
 
 #### DTOs
 - `EntrantCreditSummary(userId, email, name, creditBalance, entryCount)`
 
 #### Views
 - `EntrantOverviewView` (`/my-entries`) — cross-competition entrant hub, shows all divisions with credits/entries, auto-redirects to single division
-- `MyEntriesView` (`/competitions/:compShortName/divisions/:divShortName/my-entries`) — entrant-facing, competition documents list, credits + limits display, entry grid with status badges/Final Category/Actions (view/edit/submit/download label)/filtering/sorting, add/edit dialog (full-width fields), submit all, "Download all labels" batch button, meadery name required warning + submit blocking
+- `MyEntriesView` (`/competitions/:compShortName/divisions/:divShortName/my-entries`) — entrant-facing, competition documents list, credits + limits display, registration deadline display, category guidance hints, entry grid with status badges/Final Category/Actions (view/edit/submit/download label)/filtering/sorting, add/edit dialog (full-width fields), submit all, "Download all labels" batch button, meadery name required warning + submit blocking
 - `DivisionEntryAdminView` (`/competitions/:compShortName/divisions/:divShortName/entry-admin`) — admin tabs: Credits, Entries (with Meadery/Country columns + individual label download + batch "Download all labels" with confirmation dialog), Products, Orders
 
 #### REST
@@ -120,14 +123,16 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 #### Guards
 - `EntryDivisionRevertGuard` — blocks REGISTRATION_OPEN → DRAFT revert when entries exist
 
-#### Event Listener
+#### Event Listeners
 - `RegistrationClosedListener` — skeleton for `DivisionStatusAdvancedEvent` (REGISTRATION_CLOSED)
+- `OrderReviewNotificationListener` — sends admin alert emails when `OrderRequiresReviewEvent` is published
+- `SubmissionConfirmationListener` — sends entrant confirmation email when `EntriesSubmittedEvent` is published
 
 #### Changes to other modules
 - `SecurityConfig` — separate `SecurityFilterChain` with `@Order(1)` for webhook API (CSRF disabled, permitAll)
 - `User.java` — added `meaderyName` and `country` fields (now in V2)
-- `Division.java` — added `maxEntriesPerSubcategory`, `maxEntriesPerMainCategory`, `maxEntriesTotal`, `entryPrefix`, `meaderyNameRequired`
-- `DivisionDetailView` — "Manage Entries" button, entry prefix + entry limits in Settings tab (DRAFT-only for limits), meaderyNameRequired checkbox (DRAFT-only)
+- `Division.java` — added `maxEntriesPerSubcategory`, `maxEntriesPerMainCategory`, `maxEntriesTotal`, `entryPrefix`, `meaderyNameRequired`, `registrationDeadline`, `registrationDeadlineTimezone`
+- `DivisionDetailView` — "Manage Entries" button, entry prefix + entry limits in Settings tab (DRAFT-only for limits), meaderyNameRequired checkbox (DRAFT-only), registration deadline fields (DRAFT/REGISTRATION_OPEN)
 - `MainLayout` — "My Profile" as submenu item in user dropdown menu (navigates to `/profile`)
 - `application.properties` — added `app.jumpseller.hooks-token`
 
@@ -180,15 +185,12 @@ Additional layout improvements to consider:
 - Review instruction header formatting
 - Test with various entry data (long names, many ingredients, etc.)
 
-### Priority 3: Email notifications
-Design and implement email notifications beyond magic links:
-- **Admin alert on invalid/partially processed webhook orders** — notify competition admin when
-  an order arrives with NEEDS_REVIEW or PARTIALLY_PROCESSED status
+### Priority 3: Auto-close + deadline reminders (deferred)
+- **Auto-close** — automatically advance division from REGISTRATION_OPEN → REGISTRATION_CLOSED
+  when registration deadline passes (scheduled task)
 - **Entrant deadline reminder** — notify entrants who have DRAFT entries when the registration
-  deadline is approaching (e.g., 7 days, 3 days, 1 day before REGISTRATION_CLOSED)
-- **Entry submission confirmation** — notify entrant when their entries are successfully submitted
+  deadline is approaching (e.g., 7 days, 3 days, 1 day before deadline)
 - Other potential: entry received confirmation, results published notification
-Needs design: triggers, templates, frequency/dedup, configuration per competition.
 
 ### Priority 4: Deployment
 **Investigation complete** — see `docs/plans/2026-03-10-deployment-design.md`.
@@ -223,6 +225,9 @@ Requires: DB migration, admin UI for constraint config, cross-module data flow, 
 - **Competition documents** — PDF upload + external links, admin Documents tab, entrant list.
 - **Category code display** — Grid columns show code (e.g. M1A) with tooltip for full name in both MyEntriesView and DivisionEntryAdminView. View entry dialog shows "code — name" format. Entry creation filtered to subcategories only.
 - **Category guidance hints** — Informational hint text below category dropdown in entry dialog. All 16 MJP subcategories have style-specific guidance (ingredients, sweetness, ABV). No field locking or validation.
+- **Registration deadline** — `registrationDeadline` (LocalDateTime) + `registrationDeadlineTimezone` fields on Division. Displayed in entrant view, editable in DRAFT/REGISTRATION_OPEN. V4 migration modified in-place.
+- **Admin order alert emails** — `OrderRequiresReviewEvent` published by WebhookService, `OrderReviewNotificationListener` sends alert to all competition admins.
+- **Entry submission confirmation emails** — `SubmissionConfirmationListener` sends confirmation to entrant when entries submitted, with link to MyEntriesView.
 
 ---
 
@@ -287,6 +292,8 @@ Requires: DB migration, admin UI for constraint config, cross-module data flow, 
 - `JumpsellerOrderLineItemTest.java` — entity domain methods
 - `EntryTest.java` — entry entity domain methods (constructor, submit, markReceived, withdraw, updateDetails, assignFinalCategory, getEffectiveCategoryId)
 - `RegistrationClosedListenerTest.java` — event listener unit tests
+- `OrderReviewNotificationListenerTest.java` — sends admin alert emails on order review event
+- `SubmissionConfirmationListenerTest.java` — sends entrant confirmation on submission event
 - `EntryDivisionRevertGuardTest.java` — blocks revert to DRAFT when entries exist
 
 ### Repository tests

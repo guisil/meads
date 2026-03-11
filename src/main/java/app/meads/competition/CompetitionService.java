@@ -14,7 +14,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
 import java.security.SecureRandom;
+import java.time.DateTimeException;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -178,6 +181,8 @@ public class CompetitionService {
                                     @NotBlank String name,
                                     @NotBlank String shortName,
                                     @NotNull ScoringSystem scoringSystem,
+                                    @NotNull LocalDateTime registrationDeadline,
+                                    @NotBlank String registrationDeadlineTimezone,
                                     @NotNull UUID requestingUserId) {
         competitionRepository.findById(competitionId)
                 .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
@@ -185,7 +190,13 @@ public class CompetitionService {
         if (divisionRepository.existsByCompetitionIdAndShortName(competitionId, shortName)) {
             throw new IllegalArgumentException("Short name already in use in this competition");
         }
-        var division = new Division(competitionId, name, shortName, scoringSystem);
+        try {
+            ZoneId.of(registrationDeadlineTimezone);
+        } catch (DateTimeException e) {
+            throw new IllegalArgumentException("Invalid timezone: " + registrationDeadlineTimezone);
+        }
+        var division = new Division(competitionId, name, shortName, scoringSystem,
+                registrationDeadline, registrationDeadlineTimezone);
         var saved = divisionRepository.save(division);
         initializeCategories(saved);
         log.info("Created division: {} (shortName={}, competition={})", saved.getId(), shortName, competitionId);
@@ -277,6 +288,23 @@ public class CompetitionService {
                 maxEntriesTotal);
         log.debug("Updated entry limits for division: {} (sub={}, main={}, total={})",
                 divisionId, maxEntriesPerSubcategory, maxEntriesPerMainCategory, maxEntriesTotal);
+        return divisionRepository.save(division);
+    }
+
+    public Division updateDivisionDeadline(@NotNull UUID divisionId,
+                                          @NotNull LocalDateTime deadline,
+                                          @NotBlank String timezone,
+                                          @NotNull UUID requestingUserId) {
+        var division = findDivisionById(divisionId);
+        requireAuthorized(division.getCompetitionId(), requestingUserId);
+        try {
+            ZoneId.of(timezone);
+        } catch (DateTimeException e) {
+            throw new IllegalArgumentException("Invalid timezone: " + timezone);
+        }
+        division.updateRegistrationDeadline(deadline, timezone);
+        log.debug("Updated registration deadline for division: {} ({} {})",
+                divisionId, deadline, timezone);
         return divisionRepository.save(division);
     }
 
@@ -639,6 +667,14 @@ public class CompetitionService {
         if (!isAuthorized(competitionId, userId)) {
             throw new IllegalArgumentException("User is not authorized to perform this action");
         }
+    }
+
+    public List<String> findAdminEmailsByCompetitionId(@NotNull UUID competitionId) {
+        return participantRepository.findByCompetitionId(competitionId).stream()
+                .filter(p -> participantRoleRepository.existsByParticipantIdAndRole(
+                        p.getId(), CompetitionRole.ADMIN))
+                .map(p -> userService.findById(p.getUserId()).getEmail())
+                .toList();
     }
 
     private boolean isAuthorized(UUID competitionId, UUID userId) {

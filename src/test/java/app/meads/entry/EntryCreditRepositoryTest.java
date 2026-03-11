@@ -18,6 +18,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -43,7 +44,7 @@ class EntryCreditRepositoryTest {
         var competition = competitionRepository.save(new Competition("Test Competition", "test-competition",
                 LocalDate.of(2026, 6, 15), LocalDate.of(2026, 6, 17), "Porto"));
         return divisionRepository.save(new Division(competition.getId(),
-                "Home", "home", ScoringSystem.MJP));
+                "Home", "home", ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC"));
     }
 
     private User createAndSaveUser() {
@@ -103,9 +104,9 @@ class EntryCreditRepositoryTest {
         var competition = competitionRepository.save(new Competition("Test Competition", "test-comp-2",
                 LocalDate.of(2026, 6, 15), LocalDate.of(2026, 6, 17), "Porto"));
         var divisionA = divisionRepository.save(new Division(competition.getId(),
-                "Home", "home", ScoringSystem.MJP));
+                "Home", "home", ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC"));
         var divisionB = divisionRepository.save(new Division(competition.getId(),
-                "Pro", "pro", ScoringSystem.MJP));
+                "Pro", "pro", ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC"));
         var user = createAndSaveUser();
 
         creditRepository.save(new EntryCredit(divisionA.getId(), user.getId(), 1,

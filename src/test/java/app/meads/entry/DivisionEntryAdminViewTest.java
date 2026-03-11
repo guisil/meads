@@ -36,6 +36,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.annotation.DirtiesContext;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.UUID;
 
@@ -81,7 +82,7 @@ class DivisionEntryAdminViewTest {
                 "Entry Admin Test Competition", "entry-admin-" + suffix,
                 LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30), "Test"));
         division = divisionRepository.save(new Division(
-                competition.getId(), "Admin Division", "admin-div-" + suffix, ScoringSystem.MJP));
+                competition.getId(), "Admin Division", "admin-div-" + suffix, ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC"));
 
         var routes = new Routes().autoDiscoverViews("app.meads");
         var servlet = new MockSpringServlet(routes, ctx, UI::new);

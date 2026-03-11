@@ -168,6 +168,7 @@ app.meads.entry                              ← Entry module public API
 ├── LabelPdfService.java                     ← PDF label generation (OpenPDF + ZXing QR codes)
 ├── CreditsAwardedEvent.java                 ← Spring application event (record)
 ├── EntriesSubmittedEvent.java               ← Spring application event (record)
+├── OrderRequiresReviewEvent.java            ← Spring application event (record)
 ├── EntrantCreditSummary.java                ← DTO record (userId, email, name, creditBalance, entryCount)
 └── internal/                                ← Module-private
     ├── ProductMappingRepository.java        ← JPA repository
@@ -178,6 +179,8 @@ app.meads.entry                              ← Entry module public API
     ├── JumpsellerWebhookController.java     ← @RestController (webhook endpoint)
     ├── EntryDivisionRevertGuard.java        ← DivisionRevertGuard impl (blocks revert to DRAFT with entries)
     ├── RegistrationClosedListener.java      ← @ApplicationModuleListener (DivisionStatusAdvancedEvent)
+    ├── OrderReviewNotificationListener.java ← @ApplicationModuleListener (OrderRequiresReviewEvent → admin emails)
+    ├── SubmissionConfirmationListener.java  ← @ApplicationModuleListener (EntriesSubmittedEvent → entrant email)
     ├── EntrantOverviewView.java             ← Cross-competition entrant hub (/my-entries, @PermitAll)
     ├── MyEntriesView.java                   ← Entrant-facing view (@PermitAll + beforeEnter auth)
     └── DivisionEntryAdminView.java          ← Admin view with Credits/Entries/Products/Orders tabs

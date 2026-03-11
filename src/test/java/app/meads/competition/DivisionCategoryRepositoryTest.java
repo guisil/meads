@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -40,7 +41,8 @@ class DivisionCategoryRepositoryTest {
 
     private Division createAndSaveDivision(UUID competitionId) {
         return divisionRepository.save(new Division(competitionId,
-                "Home", "home", ScoringSystem.MJP));
+                "Home", "home", ScoringSystem.MJP,
+                LocalDateTime.of(2026, 12, 31, 23, 59), "UTC"));
     }
 
     @Test

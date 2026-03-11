@@ -20,8 +20,10 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.util.HashSet;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Slf4j
@@ -122,6 +124,7 @@ public class WebhookService {
             int needsReviewCount = 0;
             int ignoredCount = 0;
             int totalItems = 0;
+            Set<UUID> affectedCompetitionIds = new HashSet<>();
 
             for (JsonNode product : products) {
                 totalItems++;
@@ -146,6 +149,7 @@ public class WebhookService {
                 var mapping = mappings.getFirst();
                 var divisionId = mapping.getDivisionId();
                 var division = competitionService.findDivisionById(divisionId);
+                affectedCompetitionIds.add(division.getCompetitionId());
 
                 // Mutual exclusivity check
                 if (hasCreditConflict(user.getId(), divisionId, division.getCompetitionId())) {
@@ -191,6 +195,15 @@ public class WebhookService {
             orderRepository.save(order);
             log.info("Webhook order processed: id={}, status={}, items={} (processed={}, review={}, ignored={})",
                     orderId, order.getStatus(), totalItems, processedCount, needsReviewCount, ignoredCount);
+
+            // Publish event for orders requiring review
+            if (order.getStatus() == OrderStatus.NEEDS_REVIEW
+                    || order.getStatus() == OrderStatus.PARTIALLY_PROCESSED) {
+                eventPublisher.publishEvent(new OrderRequiresReviewEvent(
+                        order.getId(), orderId, customerName, customerEmail,
+                        affectedCompetitionIds, order.getStatus()));
+                log.info("Published OrderRequiresReviewEvent for order {}", orderId);
+            }
 
         } catch (Exception e) {
             log.error("Error processing order paid webhook", e);

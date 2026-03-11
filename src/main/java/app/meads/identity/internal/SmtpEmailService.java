@@ -76,6 +76,40 @@ class SmtpEmailService implements EmailService {
         sendEmail(recipientEmail, "Set up your MEADS admin password", ctx, link);
     }
 
+    @Override
+    public void sendOrderReviewAlert(String recipientEmail, String competitionName,
+                                      String jumpsellerOrderId, String customerName) {
+        var ctx = new Context();
+        var subject = "[MEADS] Order requires review — " + competitionName;
+        ctx.setVariable("subject", subject);
+        ctx.setVariable("heading", "Order Requires Review");
+        ctx.setVariable("bodyText",
+                "Order #" + jumpsellerOrderId + " from " + customerName
+                        + " could not be fully processed and requires manual review.");
+        ctx.setVariable("ctaLabel", null);
+        ctx.setVariable("ctaUrl", null);
+        ctx.setVariable("contactEmail", null);
+        sendEmail(recipientEmail, subject, ctx, "");
+    }
+
+    @Override
+    public void sendSubmissionConfirmation(String recipientEmail, String competitionName,
+                                            String divisionName, int entryCount,
+                                            String entriesUrl) {
+        var ctx = new Context();
+        var subject = "[MEADS] Entries submitted — " + divisionName;
+        ctx.setVariable("subject", subject);
+        ctx.setVariable("heading", "Entries Submitted");
+        ctx.setVariable("bodyText",
+                "Your " + entryCount + " " + (entryCount == 1 ? "entry" : "entries")
+                        + " in " + divisionName + " (" + competitionName
+                        + ") have been submitted successfully. You can download your entry labels from the link below.");
+        ctx.setVariable("ctaLabel", "View My Entries");
+        ctx.setVariable("ctaUrl", entriesUrl);
+        ctx.setVariable("contactEmail", null);
+        sendEmail(recipientEmail, subject, ctx, entriesUrl);
+    }
+
     private void sendEmail(String to, String subject, Context thymeleafContext, String fallbackLink) {
         try {
             var htmlBody = templateEngine.process(TEMPLATE_NAME, thymeleafContext);

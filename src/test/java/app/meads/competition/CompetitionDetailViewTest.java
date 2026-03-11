@@ -43,6 +43,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.annotation.DirtiesContext;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.UUID;
 
@@ -149,7 +150,8 @@ class CompetitionDetailViewTest {
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldDisplayCompetitionHeaderAndDivisionsTab() {
-        divisionRepository.save(new Division(testCompetition.getId(), "Home", "home", ScoringSystem.MJP));
+        divisionRepository.save(new Division(testCompetition.getId(), "Home", "home", ScoringSystem.MJP,
+                LocalDateTime.of(2026, 12, 31, 23, 59), "UTC"));
 
         UI.getCurrent().navigate("competitions/" + testCompetition.getShortName());
 

@@ -25,6 +25,7 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -73,7 +74,7 @@ class EntryServiceTest {
     }
 
     private Division createRegistrationOpenDivision(UUID competitionId) {
-        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP);
+        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
         division.advanceStatus(); // DRAFT → REGISTRATION_OPEN
         return division;
     }
@@ -82,7 +83,7 @@ class EntryServiceTest {
                                                                Integer maxPerSubcategory,
                                                                Integer maxPerMainCategory,
                                                                Integer maxTotal) {
-        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP);
+        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
         division.updateEntryLimits(maxPerSubcategory, maxPerMainCategory, maxTotal);
         division.advanceStatus(); // DRAFT → REGISTRATION_OPEN
         return division;
@@ -230,7 +231,7 @@ class EntryServiceTest {
     void shouldAddCreditsWithMutualExclusivityCheck() {
         var competitionId = UUID.randomUUID();
         var divisionId = UUID.randomUUID();
-        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP);
+        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
         var adminUser = createSystemAdmin();
         var entrant = new User("entrant@test.com", "Entrant", UserStatus.ACTIVE, Role.USER);
 
@@ -260,8 +261,8 @@ class EntryServiceTest {
         var competitionId = UUID.randomUUID();
         var divisionId = UUID.randomUUID();
         var otherDivisionId = UUID.randomUUID();
-        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP);
-        var otherDivision = new Division(competitionId, "Pro", "pro", ScoringSystem.MJP);
+        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
+        var otherDivision = new Division(competitionId, "Pro", "pro", ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
         var adminUser = createSystemAdmin();
         var entrant = new User("entrant@test.com", "Entrant", UserStatus.ACTIVE, Role.USER);
 
@@ -283,7 +284,7 @@ class EntryServiceTest {
     void shouldAddEntrantParticipantWhenAddingCredits() {
         var competitionId = UUID.randomUUID();
         var divisionId = UUID.randomUUID();
-        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP);
+        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
         var adminUser = createSystemAdmin();
         var entrant = new User("entrant@test.com", "Entrant", UserStatus.ACTIVE, Role.USER);
 
@@ -344,8 +345,8 @@ class EntryServiceTest {
         var divisionId = UUID.randomUUID();
         var otherDivisionId = UUID.randomUUID();
         var userId = UUID.randomUUID();
-        var otherDivision = new Division(competitionId, "Pro", "pro", ScoringSystem.MJP);
-        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP);
+        var otherDivision = new Division(competitionId, "Pro", "pro", ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
+        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
 
         given(creditRepository.findDistinctDivisionIdsByUserId(userId))
                 .willReturn(List.of(otherDivision.getId()));
@@ -376,7 +377,7 @@ class EntryServiceTest {
         var competitionId = UUID.randomUUID();
         var divisionId = UUID.randomUUID();
         var userId = UUID.randomUUID();
-        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP);
+        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
 
         given(creditRepository.findDistinctDivisionIdsByUserId(userId))
                 .willReturn(List.of(divisionId));
@@ -447,7 +448,7 @@ class EntryServiceTest {
         var divisionId = UUID.randomUUID();
         var userId = UUID.randomUUID();
         var categoryId = UUID.randomUUID();
-        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP); // DRAFT
+        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC"); // DRAFT
 
         given(competitionService.findDivisionById(divisionId)).willReturn(division);
 
@@ -920,7 +921,7 @@ class EntryServiceTest {
         var userId = UUID.randomUUID();
         var competition = new Competition("CHIP 2026", "chip-2026",
                 LocalDate.of(2026, 6, 11), LocalDate.of(2026, 6, 14), "Amarante");
-        var division = new Division(competition.getId(), "Amadora", "amadora", ScoringSystem.MJP);
+        var division = new Division(competition.getId(), "Amadora", "amadora", ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
 
         given(creditRepository.findDistinctDivisionIdsByUserId(userId))
                 .willReturn(List.of(division.getId()));

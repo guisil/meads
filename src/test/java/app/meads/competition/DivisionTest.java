@@ -2,6 +2,7 @@ package app.meads.competition;
 
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -11,7 +12,8 @@ class DivisionTest {
 
     private Division createDraftDivision() {
         return new Division(UUID.randomUUID(),
-                "Home Division", "home-division", ScoringSystem.MJP);
+                "Home Division", "home-division", ScoringSystem.MJP,
+                LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
     }
 
     @Test

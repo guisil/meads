@@ -43,6 +43,7 @@ import org.springframework.test.annotation.DirtiesContext;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.UUID;
 
@@ -110,7 +111,7 @@ class MyEntriesViewTest {
                 "My Entries Test Competition", "my-entries-" + suffix,
                 LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30), "Test"));
         division = divisionRepository.save(new Division(
-                competition.getId(), "Test Division", "test-div-" + suffix, ScoringSystem.MJP));
+                competition.getId(), "Test Division", "test-div-" + suffix, ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC"));
 
         // Add entrant as ENTRANT participant
         var participant = participantRepository.save(

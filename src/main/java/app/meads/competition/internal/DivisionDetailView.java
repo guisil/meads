@@ -6,6 +6,8 @@ import app.meads.identity.UserService;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
+import com.vaadin.flow.component.combobox.ComboBox;
+import com.vaadin.flow.component.datetimepicker.DateTimePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
@@ -29,6 +31,7 @@ import jakarta.annotation.security.PermitAll;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.util.StringUtils;
 
+import java.time.ZoneId;
 import java.util.UUID;
 
 @Route(value = "competitions/:compShortName/divisions/:divShortName", layout = MainLayout.class)
@@ -406,6 +409,18 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         meaderyRequiredCheckbox.setTooltipText(
                 "When enabled, entrants must have a meadery name in their profile to submit entries");
 
+        boolean canEditDeadline = isDraft || division.getStatus() == DivisionStatus.REGISTRATION_OPEN;
+
+        var deadlinePicker = new DateTimePicker("Registration Deadline");
+        deadlinePicker.setValue(division.getRegistrationDeadline());
+        deadlinePicker.setEnabled(canEditDeadline);
+
+        var timezoneCombo = new ComboBox<String>("Timezone");
+        timezoneCombo.setItems(ZoneId.getAvailableZoneIds().stream().sorted().toList());
+        timezoneCombo.setValue(division.getRegistrationDeadlineTimezone());
+        timezoneCombo.setEnabled(canEditDeadline);
+        timezoneCombo.setAllowCustomValue(false);
+
         var statusField = new TextField("Status");
         statusField.setValue(division.getStatus().getDisplayName());
         statusField.setReadOnly(true);
@@ -436,6 +451,11 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                         getCurrentUserId());
                 competitionService.updateDivisionMeaderyNameRequired(
                         divisionId, meaderyRequiredCheckbox.getValue(), getCurrentUserId());
+                if (deadlinePicker.getValue() != null && timezoneCombo.getValue() != null) {
+                    competitionService.updateDivisionDeadline(
+                            divisionId, deadlinePicker.getValue(),
+                            timezoneCombo.getValue(), getCurrentUserId());
+                }
                 refreshBreadcrumbAndHeader();
                 var notification = Notification.show("Settings saved successfully");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
@@ -446,7 +466,8 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
 
         tab.add(nameField, shortNameField, entryPrefixField, scoringSelect,
                 maxPerSubcategoryField, maxPerMainCategoryField, maxTotalField,
-                meaderyRequiredCheckbox, statusField, saveButton);
+                meaderyRequiredCheckbox, deadlinePicker, timezoneCombo,
+                statusField, saveButton);
         return tab;
     }
 

@@ -14,6 +14,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Slf4j
@@ -89,10 +90,13 @@ class DevDataInitializer {
                 chip.getId(), "compadmin@example.com", CompetitionRole.ADMIN, sysAdminId);
 
         // 3. Create divisions (competition admin can do this)
+        var deadline = LocalDateTime.of(2026, 6, 30, 23, 59);
         var amadora = competitionService.createDivision(
-                chip.getId(), "Amadora", "amadora", ScoringSystem.MJP, compAdminId);
+                chip.getId(), "Amadora", "amadora", ScoringSystem.MJP,
+                deadline, "Europe/Lisbon", compAdminId);
         var profissional = competitionService.createDivision(
-                chip.getId(), "Profissional", "profissional", ScoringSystem.MJP, compAdminId);
+                chip.getId(), "Profissional", "profissional", ScoringSystem.MJP,
+                deadline, "Europe/Lisbon", compAdminId);
         log.info("Created divisions: Amadora ({}), Profissional ({})",
                 amadora.getId(), profissional.getId());
 
@@ -239,7 +243,8 @@ class DevDataInitializer {
                 test.getId(), "compadmin@example.com", CompetitionRole.ADMIN, sysAdminId);
 
         competitionService.createDivision(
-                test.getId(), "Open", "open", ScoringSystem.MJP, compAdminId);
+                test.getId(), "Open", "open", ScoringSystem.MJP,
+                LocalDateTime.of(2026, 12, 31, 23, 59), "UTC", compAdminId);
 
         log.info("Created competition: {} with Open division", test.getName());
     }

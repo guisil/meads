@@ -14,6 +14,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -36,7 +37,7 @@ class ProductMappingRepositoryTest {
         var competition = competitionRepository.save(new Competition("Test Competition", "test-competition",
                 LocalDate.of(2026, 6, 15), LocalDate.of(2026, 6, 17), "Porto"));
         return divisionRepository.save(new Division(competition.getId(),
-                "Home", "home", ScoringSystem.MJP));
+                "Home", "home", ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC"));
     }
 
     @Test

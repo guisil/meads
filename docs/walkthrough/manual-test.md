@@ -520,11 +520,14 @@ CTA button, fallback URL, and optional contact footer.
 ### Create division
 
 - [ ] Click "Create Division"
-- [ ] **Expected:** Dialog with fields: Name, Short Name, Scoring System (default: MJP)
+- [ ] **Expected:** Dialog with fields: Name, Short Name, Scoring System (default: MJP), Registration Deadline (date+time picker), Timezone (combo box, default UTC)
 - [ ] Enter name: `Test Division`, short name: `test-division`
+- [ ] Set registration deadline to a future date/time
+- [ ] Select timezone (e.g., `Europe/Lisbon`)
 - [ ] Click "Save"
 - [ ] **Expected:** Notification "Division created successfully" (green)
 - [ ] **Expected:** New division appears in grid with status "Draft"
+- [ ] Try saving without setting deadline → **Expected:** "Registration deadline is required" notification
 
 ### Advance division status
 
@@ -745,7 +748,9 @@ CTA button, fallback URL, and optional contact footer.
 ### Settings tab
 
 - [ ] Click the "Settings" tab
-- [ ] **Expected:** Fields: Name, Short Name, Entry Prefix, Scoring System, Max Entries per Subcategory, Max Entries per Main Category, Max Total Entries, Meadery Name Required (checkbox), Status (read-only), Save button
+- [ ] **Expected:** Fields: Name, Short Name, Entry Prefix, Scoring System, Max Entries per Subcategory, Max Entries per Main Category, Max Total Entries, Meadery Name Required (checkbox), Registration Deadline (date+time picker), Timezone (combo box), Status (read-only), Save button
+- [ ] **Expected:** Registration Deadline shows the seeded deadline value; Timezone shows the seeded timezone
+- [ ] **Expected:** Registration Deadline and Timezone are editable (Amadora is REGISTRATION_OPEN — deadline editable in DRAFT and REGISTRATION_OPEN)
 - [ ] **Expected:** Name, Short Name, Entry Prefix are always editable (regardless of status)
 - [ ] **Expected:** "Meadery Name Required" checkbox is disabled (not DRAFT — Amadora is REGISTRATION_OPEN)
 - [ ] **Expected:** Entry Prefix: helper text "Short prefix for entry numbers (e.g. AMA), up to 5 characters", maxLength 5
@@ -1048,6 +1053,7 @@ curl -s -o /dev/null -w "%{http_code}" \
   - Amadora Orders tab: No `WH-004` (this order targets Profissional)
   - Profissional entry-admin Orders tab: `WH-004` appears with status NEEDS_REVIEW
   - Profissional Credits tab: `webhooktest@example.com` does NOT appear (no credits awarded)
+- [ ] **Check Mailpit:** admin alert email(s) sent to competition admin(s) for CHIP 2026, subject "[MEADS] Order requires review — CHIP 2026"
 
 ### Mixed order -- some mapped, some conflicting
 
@@ -1067,6 +1073,7 @@ curl -s -o /dev/null -w "%{http_code}" \
   - Amadora Credits tab: `newbuyer@example.com` appears with 2 credits
   - Profissional Credits tab: `newbuyer@example.com` does NOT appear (mutual exclusivity conflict)
   - Amadora Orders tab: `WH-005` appears with status PARTIALLY_PROCESSED
+- [ ] **Check Mailpit:** admin alert email(s) sent for PARTIALLY_PROCESSED order
 
 ---
 
@@ -1109,6 +1116,11 @@ curl -s -o /dev/null -w "%{http_code}" \
 - [ ] **Expected:** Credit info shows: "Credits: N remaining (M total, K used)"
 - [ ] **Expected:** Total should be 7 (5 original + 2 added in section 8), used should be 3
 - [ ] **Expected:** Limits info shows: "Limits: 10 total, 5 per main category, 3 per subcategory"
+
+### Registration deadline display
+
+- [ ] **Expected:** "Registration closes: [date] [timezone]" shown below credit info
+- [ ] **Expected:** Date format is like "30 Jun 2026, 23:59 Europe/Lisbon"
 
 ### Entries grid
 
@@ -1204,6 +1216,7 @@ curl -s -o /dev/null -w "%{http_code}" \
 - [ ] **Expected:** All previously DRAFT entries now show status SUBMITTED
 - [ ] **Expected:** "Submit All" button is now disabled (no more drafts)
 - [ ] **Expected:** "Add Entry" button may still be enabled if credits remain
+- [ ] **Check Mailpit:** submission confirmation email sent to entrant, subject "[MEADS] Entries submitted — Amadora", body includes entry count and link to MyEntriesView
 
 ### Entry labels -- individual download (entrant)
 

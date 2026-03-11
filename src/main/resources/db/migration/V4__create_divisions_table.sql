@@ -10,6 +10,8 @@ CREATE TABLE divisions (
     max_entries_total              INT,
     entry_prefix   VARCHAR(5),
     meadery_name_required           BOOLEAN NOT NULL DEFAULT FALSE,
+    registration_deadline           TIMESTAMP    NOT NULL,
+    registration_deadline_timezone  VARCHAR(50)  NOT NULL DEFAULT 'UTC',
     created_at     TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at     TIMESTAMP WITH TIME ZONE,
     UNIQUE (competition_id, short_name)

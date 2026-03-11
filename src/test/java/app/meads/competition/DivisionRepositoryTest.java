@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -34,7 +35,8 @@ class DivisionRepositoryTest {
     void shouldSaveAndRetrieveDivision() {
         var competition = createAndSaveCompetition();
         var division = new Division(competition.getId(),
-                "Home Division", "home-division", ScoringSystem.MJP);
+                "Home Division", "home-division", ScoringSystem.MJP,
+                LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
 
         divisionRepository.save(division);
         var found = divisionRepository.findById(division.getId());
@@ -51,19 +53,36 @@ class DivisionRepositoryTest {
     void shouldFindDivisionsByCompetitionId() {
         var competition = createAndSaveCompetition();
         divisionRepository.save(new Division(competition.getId(),
-                "Home", "home", ScoringSystem.MJP));
+                "Home", "home", ScoringSystem.MJP,
+                LocalDateTime.of(2026, 12, 31, 23, 59), "UTC"));
         divisionRepository.save(new Division(competition.getId(),
-                "Professional", "professional", ScoringSystem.MJP));
+                "Professional", "professional", ScoringSystem.MJP,
+                LocalDateTime.of(2026, 12, 31, 23, 59), "UTC"));
 
         var otherCompetition = competitionRepository.save(new Competition("Other", "other",
                 LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 2), null));
         divisionRepository.save(new Division(otherCompetition.getId(),
-                "Unrelated", "unrelated", ScoringSystem.MJP));
+                "Unrelated", "unrelated", ScoringSystem.MJP,
+                LocalDateTime.of(2026, 12, 31, 23, 59), "UTC"));
 
         var results = divisionRepository.findByCompetitionId(competition.getId());
 
         assertThat(results).hasSize(2);
         assertThat(results).extracting(Division::getName)
                 .containsExactlyInAnyOrder("Home", "Professional");
+    }
+
+    @Test
+    void shouldPersistRegistrationDeadline() {
+        var competition = createAndSaveCompetition();
+        var deadline = LocalDateTime.of(2026, 6, 15, 23, 59);
+        var timezone = "Europe/Lisbon";
+        var division = new Division(competition.getId(), "Deadline Test", "deadline-test",
+                ScoringSystem.MJP, deadline, timezone);
+        divisionRepository.save(division);
+
+        var found = divisionRepository.findById(division.getId()).orElseThrow();
+        assertThat(found.getRegistrationDeadline()).isEqualTo(deadline);
+        assertThat(found.getRegistrationDeadlineTimezone()).isEqualTo(timezone);
     }
 }

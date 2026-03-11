@@ -14,6 +14,7 @@ import org.springframework.modulith.test.PublishedEvents;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -48,7 +49,7 @@ class EntryModuleTest {
                 LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30),
                 "Test Location", admin.getId());
         var division = competitionService.createDivision(
-                competition.getId(), "Test Division", "test-division", ScoringSystem.MJP, admin.getId());
+                competition.getId(), "Test Division", "test-division", ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC", admin.getId());
         var category = competitionService.addCustomCategory(
                 division.getId(), "INT1", "Integration Test Category", "For integration testing",
                 null, admin.getId());
