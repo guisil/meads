@@ -852,7 +852,7 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] Click "Add"
 - [ ] **Expected:** Notification "Credits added" (green)
 - [ ] **Expected:** `user@example.com` credits now shows 7
-- [ ] **Check Mailpit:** credit notification email sent to `user@example.com`, subject "[MEADS] Entry credits received — Amadora"
+- [ ] **Check Mailpit:** credit notification email sent to `user@example.com`, subject "[MEADS] Entry credits received — Amadora", CTA "View My Entries" is a magic link URL
 
 ### Adjust credits
 
@@ -894,8 +894,8 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] **Expected:** DRAFT and WITHDRAWN entries do NOT have a download icon
 - [ ] Click the download icon on a SUBMITTED entry
 - [ ] **Expected:** Browser downloads a PDF file named `label-AMA-{N}.pdf`
-- [ ] **Expected:** PDF is A4 landscape with instruction header (shipping address + phone if set) and 3 identical labels
-- [ ] **Expected:** Each label shows: competition name, division name, entry ID, mead name, category code, sweetness/strength/carbonation, ingredients, QR code, notes area, disclaimer
+- [ ] **Expected:** PDF is A4 landscape with 2-line instruction header (line 1: print/attach, line 2: shipping address + phone if set) and 3 identical labels
+- [ ] **Expected:** Each label shows: competition name, division name, entry ID, mead name (2-line fixed height), category code, sweetness/strength/carbonation (with field names: "Sweetness: dry | Strength: standard | Carbonation: still"), ingredients (Honey/Other/Wood, each with 2-line fixed height), QR code (left) + notes area (right), disclaimer "FREE SAMPLES. NOT FOR RESALE."
 
 ### Entry labels -- batch download (admin)
 
@@ -905,6 +905,7 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] **Expected:** Dialog footer has "Cancel" button and "Download" anchor/link
 - [ ] Click "Cancel" to dismiss
 - [ ] Click "Download all labels" again, then click "Download" in the dialog
+- [ ] **Expected:** Dialog closes after clicking Download
 - [ ] **Expected:** Browser downloads `all-labels.pdf` containing one page per qualifying entry (SUBMITTED + RECEIVED)
 - [ ] If no qualifying entries exist, clicking the button shows notification "No submitted or received entries to generate labels for"
 
@@ -922,6 +923,10 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] Click "Add Mapping"
 - [ ] **Expected:** Dialog with fields: Jumpseller Product ID, SKU (optional), Product Name, Credits Per Unit (default: 1)
 - [ ] Footer: Cancel (left), Add (right)
+- [ ] Leave Product ID empty, click "Add"
+- [ ] **Expected:** Field-level error "Product ID is required"
+- [ ] Leave Product Name empty, click "Add"
+- [ ] **Expected:** Field-level error "Product name is required"
 - [ ] Enter product ID: `9999`, product name: `Test Product`, credits: `2`
 - [ ] Click "Add"
 - [ ] **Expected:** Notification "Product mapping added" (green)
@@ -1004,7 +1009,7 @@ curl -s -o /dev/null -w "%{http_code}" \
   - **Expected:** `webhooktest@example.com` exists (PENDING status, created automatically)
 - [ ] Verify country enrichment: Edit `webhooktest@example.com` in users list
   - **Expected:** Country field shows "Portugal" (enriched from webhook `shipping_address.country_code`)
-- [ ] **Check Mailpit:** credit notification email sent to `webhooktest@example.com`, subject "[MEADS] Entry credits received — Amadora", body says "3 entry credits", CTA button "View My Entries"
+- [ ] **Check Mailpit:** credit notification email sent to `webhooktest@example.com`, subject "[MEADS] Entry credits received — Amadora", body says "3 entry credits", CTA button "View My Entries" (magic link URL)
 
 ### Duplicate order -- idempotency
 

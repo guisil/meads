@@ -39,10 +39,13 @@ public class LabelPdfService {
     private static final Font FONT_COMPETITION = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10);
     private static final Font FONT_DIVISION = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14);
     private static final Font FONT_FIELD_VALUE = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8);
+    private static final Font FONT_CHAR_LABEL = FontFactory.getFont(FontFactory.HELVETICA, 7);
+    private static final Font FONT_CHAR_VALUE = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 7);
     private static final Font FONT_SMALL = FontFactory.getFont(FontFactory.HELVETICA, 7);
     private static final Font FONT_SMALL_BOLD = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 7);
     private static final Font FONT_DISCLAIMER = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8);
-    private static final int QR_CODE_SIZE = 80;
+    private static final int QR_CODE_SIZE = 130;
+    private static final float TWO_LINE_HEIGHT = 28f; // 2 lines at 8pt font (~14pt per line)
 
     public byte[] generateLabel(Entry entry, Competition competition,
                                  Division division, DivisionCategory category) {
@@ -100,23 +103,29 @@ public class LabelPdfService {
     }
 
     private void addInstructionHeader(Document document, Competition competition) throws Exception {
-        var sb = new StringBuilder();
-        sb.append("Print the labels and cut along the lines. ");
-        sb.append("Attach one label to each bottle using elastic bands (do not use sticky tape).");
+        var line1 = new Paragraph(
+                "Print the labels and cut along the lines. "
+                        + "Attach one label to each bottle using elastic bands (do not use sticky tape).",
+                FONT_HEADER);
+        line1.setAlignment(Element.ALIGN_CENTER);
+        document.add(line1);
 
+        var sb = new StringBuilder();
         if (competition.getShippingAddress() != null && !competition.getShippingAddress().isBlank()) {
-            sb.append(" Post your bottles to: ");
+            sb.append("Post your bottles to: ");
             sb.append(competition.getShippingAddress().replace("\n", ", "));
             if (competition.getPhoneNumber() != null && !competition.getPhoneNumber().isBlank()) {
                 sb.append(", Tel. ").append(competition.getPhoneNumber());
             }
         } else if (competition.getPhoneNumber() != null && !competition.getPhoneNumber().isBlank()) {
-            sb.append(" Tel. ").append(competition.getPhoneNumber());
+            sb.append("Tel. ").append(competition.getPhoneNumber());
         }
 
-        var paragraph = new Paragraph(sb.toString(), FONT_HEADER);
-        paragraph.setAlignment(Element.ALIGN_CENTER);
-        document.add(paragraph);
+        if (!sb.isEmpty()) {
+            var line2 = new Paragraph(sb.toString(), FONT_HEADER);
+            line2.setAlignment(Element.ALIGN_CENTER);
+            document.add(line2);
+        }
     }
 
     private PdfPCell createLabelCell(Entry entry, Competition competition,
@@ -139,49 +148,45 @@ public class LabelPdfService {
         var entryId = formatEntryId(entry, division);
         addFieldLine(cell, "ID: ", entryId);
 
-        // Name
-        addFieldLine(cell, "Name: ", entry.getMeadName());
+        // Name (fixed 2-line height)
+        addFixedHeightFieldLine(cell, "Name: ", entry.getMeadName());
 
         // Category
         var categoryCode = category != null ? category.getCode() : "—";
         addFieldLine(cell, "Category: ", categoryCode);
 
-        // Sweetness | Strength | Carbonation
-        var characteristics = entry.getSweetness().name().toLowerCase()
-                + " | " + entry.getStrength().name().toLowerCase()
-                + " | " + entry.getCarbonation().name().toLowerCase();
-        addParagraph(cell, characteristics, FONT_NORMAL, Element.ALIGN_LEFT);
+        // Sweetness | Strength | Carbonation (compact with field names)
+        var charPhrase = new Phrase();
+        charPhrase.add(new Phrase("Sweetness: ", FONT_CHAR_LABEL));
+        charPhrase.add(new Phrase(entry.getSweetness().name().toLowerCase(), FONT_CHAR_VALUE));
+        charPhrase.add(new Phrase("  |  Strength: ", FONT_CHAR_LABEL));
+        charPhrase.add(new Phrase(entry.getStrength().name().toLowerCase(), FONT_CHAR_VALUE));
+        charPhrase.add(new Phrase("  |  Carbonation: ", FONT_CHAR_LABEL));
+        charPhrase.add(new Phrase(entry.getCarbonation().name().toLowerCase(), FONT_CHAR_VALUE));
+        var charParagraph = new Paragraph(charPhrase);
+        cell.addElement(charParagraph);
 
         addSeparator(cell);
 
-        // Ingredients
-        addFieldLine(cell, "Honey: ", entry.getHoneyVarieties());
-        if (entry.getOtherIngredients() != null && !entry.getOtherIngredients().isBlank()) {
-            addFieldLine(cell, "Other: ", entry.getOtherIngredients().replace("\n", ", "));
-        }
-        if (entry.isWoodAged() && entry.getWoodAgeingDetails() != null) {
-            addFieldLine(cell, "Wood: ", entry.getWoodAgeingDetails());
-        }
+        // Ingredients (always show all three fields, fixed 2-line height each)
+        addFixedHeightFieldLine(cell, "Honey: ", entry.getHoneyVarieties());
+        var otherIngredients = (entry.getOtherIngredients() != null && !entry.getOtherIngredients().isBlank())
+                ? entry.getOtherIngredients().replace("\n", ", ") : "";
+        addFixedHeightFieldLine(cell, "Other: ", otherIngredients);
+        var woodDetails = (entry.isWoodAged() && entry.getWoodAgeingDetails() != null)
+                ? entry.getWoodAgeingDetails() : "";
+        addFixedHeightFieldLine(cell, "Wood: ", woodDetails);
 
         addSeparator(cell);
 
-        // QR code
+        // QR code (left) + Official notes area (right)
         var qrContent = formatQrContent(entry, competition, division);
-        addQrCode(cell, qrContent);
-
-        addSeparator(cell);
-
-        // Official notes area
-        var notesLabel = new Paragraph("For official notes. Leave blank.", FONT_SMALL);
-        notesLabel.setAlignment(Element.ALIGN_CENTER);
-        cell.addElement(notesLabel);
-        // Empty space for notes
-        addParagraph(cell, " \n \n", FONT_SMALL, Element.ALIGN_LEFT);
+        addQrAndNotesRow(cell, qrContent);
 
         addSeparator(cell);
 
         // Disclaimer
-        var disclaimer = new Paragraph("FREE SAMPLES. NOT FOR RE-SALE.", FONT_DISCLAIMER);
+        var disclaimer = new Paragraph("FREE SAMPLES. NOT FOR RESALE.", FONT_DISCLAIMER);
         disclaimer.setAlignment(Element.ALIGN_CENTER);
         cell.addElement(disclaimer);
 
@@ -202,6 +207,21 @@ public class LabelPdfService {
         cell.addElement(p);
     }
 
+    private void addFixedHeightFieldLine(PdfPCell parentCell, String label, String value) {
+        var innerTable = new PdfPTable(1);
+        innerTable.setWidthPercentage(100);
+        var innerCell = new PdfPCell();
+        innerCell.setBorder(0);
+        innerCell.setMinimumHeight(TWO_LINE_HEIGHT);
+        var phrase = new Phrase();
+        phrase.add(new Phrase(label, FONT_NORMAL));
+        phrase.add(new Phrase(value != null ? value : "", FONT_FIELD_VALUE));
+        var p = new Paragraph(phrase);
+        innerCell.addElement(p);
+        innerTable.addCell(innerCell);
+        parentCell.addElement(innerTable);
+    }
+
     private void addSeparator(PdfPCell cell) {
         var separatorTable = new PdfPTable(1);
         separatorTable.setWidthPercentage(100);
@@ -216,7 +236,38 @@ public class LabelPdfService {
         cell.addElement(separatorTable);
     }
 
-    private void addQrCode(PdfPCell cell, String content) throws WriterException, IOException {
+    private void addQrAndNotesRow(PdfPCell parentCell, String qrContent) throws Exception {
+        var qrImage = generateQrImage(qrContent);
+
+        var rowTable = new PdfPTable(2);
+        rowTable.setWidthPercentage(100);
+        rowTable.setWidths(new float[]{45, 55});
+
+        // Left: QR code
+        var qrCell = new PdfPCell(qrImage, false);
+        qrCell.setBorderWidth(0);
+        qrCell.setBorderWidthRight(0.5f);
+        qrCell.setBorderColorRight(Color.LIGHT_GRAY);
+        qrCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+        qrCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+        qrCell.setPaddingRight(8);
+        rowTable.addCell(qrCell);
+
+        // Right: notes area
+        var notesCell = new PdfPCell();
+        notesCell.setBorderWidth(0);
+        notesCell.setVerticalAlignment(Element.ALIGN_TOP);
+        notesCell.setPaddingLeft(8);
+        var notesLabel = new Paragraph("For official notes. Leave blank.", FONT_SMALL);
+        notesLabel.setAlignment(Element.ALIGN_RIGHT);
+        notesCell.addElement(notesLabel);
+        notesCell.setMinimumHeight(QR_CODE_SIZE);
+        rowTable.addCell(notesCell);
+
+        parentCell.addElement(rowTable);
+    }
+
+    private Image generateQrImage(String content) throws WriterException, IOException {
         var qrCodeWriter = new QRCodeWriter();
         var bitMatrix = qrCodeWriter.encode(content, BarcodeFormat.QR_CODE, QR_CODE_SIZE, QR_CODE_SIZE);
         var binaryImage = MatrixToImageWriter.toBufferedImage(bitMatrix);
@@ -233,15 +284,7 @@ public class LabelPdfService {
         ImageIO.write(rgbImage, "PNG", imageBytes);
         var image = Image.getInstance(imageBytes.toByteArray());
         image.scaleAbsolute(QR_CODE_SIZE, QR_CODE_SIZE);
-
-        // Use nested table to properly embed image in cell
-        var imgTable = new PdfPTable(1);
-        imgTable.setWidthPercentage(100);
-        var imgCell = new PdfPCell(image, false);
-        imgCell.setBorder(0);
-        imgCell.setHorizontalAlignment(Element.ALIGN_CENTER);
-        imgTable.addCell(imgCell);
-        cell.addElement(imgTable);
+        return image;
     }
 
     String formatEntryId(Entry entry, Division division) {

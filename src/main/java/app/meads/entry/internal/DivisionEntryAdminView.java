@@ -340,6 +340,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             resource.setContentType("application/pdf");
             var downloadAnchor = new Anchor(resource, "Download");
             downloadAnchor.getElement().setAttribute("download", true);
+            downloadAnchor.getElement().addEventListener("click", ev -> dialog.close());
 
             var cancelBtn = new Button("Cancel", ev -> dialog.close());
             dialog.getFooter().add(cancelBtn, downloadAnchor);
@@ -641,11 +642,23 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         dialog.add(new VerticalLayout(productIdField, skuField, nameField, creditsField));
 
         var addButton = new Button("Add", e -> {
-            if (!StringUtils.hasText(productIdField.getValue())
-                    || !StringUtils.hasText(nameField.getValue())
-                    || creditsField.getValue() == null) {
-                return;
+            var valid = true;
+            if (!StringUtils.hasText(productIdField.getValue())) {
+                productIdField.setInvalid(true);
+                productIdField.setErrorMessage("Product ID is required");
+                valid = false;
             }
+            if (!StringUtils.hasText(nameField.getValue())) {
+                nameField.setInvalid(true);
+                nameField.setErrorMessage("Product name is required");
+                valid = false;
+            }
+            if (creditsField.getValue() == null) {
+                creditsField.setInvalid(true);
+                creditsField.setErrorMessage("Credits per unit is required");
+                valid = false;
+            }
+            if (!valid) return;
             try {
                 entryService.createProductMapping(divisionId,
                         productIdField.getValue().trim(),

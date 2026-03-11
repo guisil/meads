@@ -5,6 +5,7 @@ import app.meads.competition.CompetitionService;
 import app.meads.competition.Division;
 import app.meads.entry.internal.SubmissionConfirmationListener;
 import app.meads.identity.EmailService;
+import app.meads.identity.JwtMagicLinkService;
 import app.meads.identity.User;
 import app.meads.identity.UserService;
 import org.junit.jupiter.api.Test;
@@ -13,11 +14,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 
-import static org.mockito.ArgumentMatchers.contains;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -26,10 +28,11 @@ class SubmissionConfirmationListenerTest {
     @Mock CompetitionService competitionService;
     @Mock UserService userService;
     @Mock EmailService emailService;
+    @Mock JwtMagicLinkService jwtMagicLinkService;
     @InjectMocks SubmissionConfirmationListener listener;
 
     @Test
-    void shouldSendSummaryEmailWithEntryDetails() {
+    void shouldSendSummaryEmailWithMagicLink() {
         var divisionId = UUID.randomUUID();
         var userId = UUID.randomUUID();
         var competitionId = UUID.randomUUID();
@@ -37,17 +40,18 @@ class SubmissionConfirmationListenerTest {
         var division = mock(Division.class);
         given(division.getName()).willReturn("Amadora");
         given(division.getCompetitionId()).willReturn(competitionId);
-        given(division.getShortName()).willReturn("amadora");
         given(competitionService.findDivisionById(divisionId)).willReturn(division);
 
         var competition = mock(Competition.class);
         given(competition.getName()).willReturn("CHIP 2026");
-        given(competition.getShortName()).willReturn("chip-2026");
         given(competitionService.findCompetitionById(competitionId)).willReturn(competition);
 
         var user = mock(User.class);
         given(user.getEmail()).willReturn("entrant@test.com");
         given(userService.findById(userId)).willReturn(user);
+
+        given(jwtMagicLinkService.generateLink(eq("entrant@test.com"), any(Duration.class)))
+                .willReturn("http://localhost:8080/login/magic?token=abc123");
 
         var details = List.of(
                 new EntryDetail(1, "My Mead", "M1A", "Traditional Mead (Dry)"),
@@ -59,7 +63,7 @@ class SubmissionConfirmationListenerTest {
         then(emailService).should().sendSubmissionConfirmation(
                 eq("entrant@test.com"), eq("CHIP 2026"), eq("Amadora"),
                 contains("My Mead"),
-                contains("chip-2026/divisions/amadora/my-entries"));
+                eq("http://localhost:8080/login/magic?token=abc123"));
     }
 
     @Test
@@ -71,17 +75,18 @@ class SubmissionConfirmationListenerTest {
         var division = mock(Division.class);
         given(division.getName()).willReturn("Pro");
         given(division.getCompetitionId()).willReturn(competitionId);
-        given(division.getShortName()).willReturn("pro");
         given(competitionService.findDivisionById(divisionId)).willReturn(division);
 
         var competition = mock(Competition.class);
         given(competition.getName()).willReturn("Test Comp");
-        given(competition.getShortName()).willReturn("test-comp");
         given(competitionService.findCompetitionById(competitionId)).willReturn(competition);
 
         var user = mock(User.class);
         given(user.getEmail()).willReturn("solo@test.com");
         given(userService.findById(userId)).willReturn(user);
+
+        given(jwtMagicLinkService.generateLink(eq("solo@test.com"), any(Duration.class)))
+                .willReturn("http://localhost:8080/login/magic?token=xyz");
 
         var details = List.of(
                 new EntryDetail(1, "Solo Mead", "M4B", "Historical Mead"));
@@ -93,9 +98,8 @@ class SubmissionConfirmationListenerTest {
         then(emailService).should().sendSubmissionConfirmation(
                 eq("solo@test.com"), eq("Test Comp"), eq("Pro"),
                 summaryCaptor.capture(),
-                contains("test-comp/divisions/pro/my-entries"));
-        var summary = summaryCaptor.getValue();
-        org.assertj.core.api.Assertions.assertThat(summary)
+                eq("http://localhost:8080/login/magic?token=xyz"));
+        assertThat(summaryCaptor.getValue())
                 .contains("#1")
                 .contains("Solo Mead")
                 .contains("M4B")

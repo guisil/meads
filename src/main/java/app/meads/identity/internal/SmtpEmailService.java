@@ -140,7 +140,7 @@ class SmtpEmailService implements EmailService {
         ctx.setVariable("heading", "Entries Submitted");
         ctx.setVariable("bodyText",
                 "All your entries for " + divisionName + " (" + competitionName
-                        + ") have been submitted. You can download your entry labels from the link below.");
+                        + ") have been submitted. Click the button below to view your entries and download your labels.");
         ctx.setVariable("detailHtml", entrySummary.replace("\n", "<br>"));
         ctx.setVariable("ctaLabel", "View My Entries");
         ctx.setVariable("ctaUrl", entriesUrl);
@@ -161,7 +161,7 @@ class SmtpEmailService implements EmailService {
                 "You've received " + credits + " entry "
                         + (credits == 1 ? "credit" : "credits")
                         + " for " + divisionName + " (" + competitionName
-                        + "). You can now start registering your meads.");
+                        + "). Click the button below to view your entries and start registering your meads.");
         ctx.setVariable("ctaLabel", "View My Entries");
         ctx.setVariable("ctaUrl", myEntriesUrl);
         ctx.setVariable("contactEmail", contactEmail);

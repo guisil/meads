@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `competition-module`
-**Tests:** 511 passing (`mvn test -Dsurefire.useFile=false`)
+**Tests:** 511 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-03-11
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -103,7 +103,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 #### Services
 - **EntryService** — Product mapping CRUD, credit management, entry CRUD, submission, limits enforcement (total, subcategory, main category)
 - **WebhookService** — HMAC signature verification, `processOrderPaid` (JSON parsing, idempotency, mutual exclusivity, credit creation, country enrichment from shipping/billing address, publishes `OrderRequiresReviewEvent` for NEEDS_REVIEW/PARTIALLY_PROCESSED orders)
-- **LabelPdfService** — PDF label generation (OpenPDF + ZXing QR codes). Single entry or batch. A4 landscape, instruction header, 3 identical labels per page. Public API for cross-module access.
+- **LabelPdfService** — PDF label generation (OpenPDF + ZXing QR codes). Single entry or batch. A4 landscape, 2-line instruction header (line 1: print/attach instructions, line 2: shipping address if set), 3 identical labels per page. Labels include: competition/division name, entry ID, mead name (2-line min height), category code, characteristics with field names (Sweetness/Strength/Carbonation), ingredients (Honey/Other/Wood, 2-line min height each), QR code (left) + notes area (right), "FREE SAMPLES. NOT FOR RESALE." disclaimer. Public API for cross-module access.
 
 #### Events
 - `CreditsAwardedEvent(divisionId, userId, amount, source)`
@@ -128,8 +128,8 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 #### Event Listeners
 - `RegistrationClosedListener` — skeleton for `DivisionStatusAdvancedEvent` (REGISTRATION_CLOSED)
 - `OrderReviewNotificationListener` — sends admin alert emails when `OrderRequiresReviewEvent` is published
-- `SubmissionConfirmationListener` — sends entrant confirmation email with entry summary when `EntriesSubmittedEvent` is published (conditional: only when all credits used and no drafts remain)
-- `CreditNotificationListener` — sends entrant credit notification email when `CreditsAwardedEvent` is published (both webhook and admin grants)
+- `SubmissionConfirmationListener` — sends entrant confirmation email with entry summary when `EntriesSubmittedEvent` is published (conditional: only when all credits used and no drafts remain). CTA is a magic link (7-day validity via JwtMagicLinkService).
+- `CreditNotificationListener` — sends entrant credit notification email when `CreditsAwardedEvent` is published (both webhook and admin grants). CTA is a magic link (7-day validity via JwtMagicLinkService).
 
 #### Changes to other modules
 - `SecurityConfig` — separate `SecurityFilterChain` with `@Order(1)` for webhook API (CSRF disabled, permitAll)
@@ -174,56 +174,46 @@ docs/
 
 ## What's Next
 
-### Priority 1: Entry labels layout adjustments
-QR code now renders correctly (was broken: ZXing TYPE_BYTE_BINARY incompatible with OpenPDF).
-Additional layout improvements to consider:
-- Review spacing, font sizes, and overall label aesthetics
-- Verify QR code scannability at print resolution
-- Consider adding ABV to label characteristics line
-- Review instruction header formatting
-- Test with various entry data (long names, many ingredients, etc.)
+### Priority 1: Manual walkthrough (continue from Section 9)
+Sections 1–8 completed with fixes along the way. Continue from Section 9 (Webhook — Order
+Paid) through Section 14. **Go through every test item without skipping anything.** May
+produce bug fixes or UX improvements.
 
-### Priority 2: Manual walkthrough (full redo)
-Redo the **entire** manual-test walkthrough from Section 1. Previous partial run covered
-Sections 2–8 with many fixes along the way; this is a fresh pass through all sections
-(1–14) to validate the current state end-to-end. **Go through every test item without
-skipping anything.** May produce bug fixes or UX improvements.
-
-### Priority 3: Release creation
+### Priority 2: Release creation
 Create a versioned release (merge to main, tag, changelog) to establish a clean baseline
 before deployment.
 
-### Priority 4: Deployment
+### Priority 3: Deployment
 **Investigation complete** — see `docs/plans/2026-03-10-deployment-design.md`.
 **Deployment checklist** — see `docs/plans/deployment-checklist.md` (step-by-step with
 redeployment/rollback procedures).
 Target: DigitalOcean App Platform + Managed PostgreSQL (~$20/mo). Needs Dockerfile,
 Maven production profile, logging config, DNS setup, Resend email, and env vars.
 
-### Priority 5: MFA for system admins
+### Priority 4: MFA for system admins
 Evaluate and implement multi-factor authentication for SYSTEM_ADMIN accounts.
 Password-only login for privileged accounts is a security risk post-deployment.
 
-### Priority 6: Auto-close + deadline reminders (deferred)
+### Priority 5: Auto-close + deadline reminders (deferred)
 - **Auto-close** — automatically advance division from REGISTRATION_OPEN → REGISTRATION_CLOSED
   when registration deadline passes (scheduled task)
 - **Entrant deadline reminder** — notify entrants who have DRAFT entries when the registration
   deadline is approaching (e.g., 7 days, 3 days, 1 day before deadline)
 - Other potential: entry received confirmation (when admin marks entry as RECEIVED), results published notification
 
-### Priority 7: Internationalization (i18n)
+### Priority 6: Internationalization (i18n)
 **Design complete** — see `docs/plans/2026-03-10-i18n-design.md`. Implementation deferred.
 Summary: Vaadin I18NProvider + Spring MessageSource, resource bundles, browser locale +
 UI switcher (cookie/localStorage), entrant-facing views only (6 views), MJP category
 translations via bundles keyed by code. ~100-120 strings to extract. No DB changes needed.
 
-### Priority 8: Judging module
+### Priority 7: Judging module
 Design and implementation. Reference: `docs/reference/chip-competition-rules.md`.
 
-### Priority 9: Awards module
+### Priority 8: Awards module
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md`.
 
-### Priority 10: Full category constraint system (low priority — future competition)
+### Priority 9: Full category constraint system (low priority — future competition)
 Full field locking/validation based on category selection. Design doc: `docs/plans/2026-03-11-category-hints-design.md` (appendix).
 Includes: sweetness locking (M1A→Dry, M1B→Medium, M1C→Sweet), ingredient restrictions (M1/M4E),
 strength locking (M4S→Hydromel), ABV caps (M4S→7.5%), ABV→Strength derivation (universal),
@@ -243,6 +233,9 @@ Requires: DB migration, admin UI for constraint config, cross-module data flow, 
 - **Credit notification emails** — `CreditNotificationListener` sends email to entrant when credits are awarded (webhook or admin). `WebhookService` now publishes `CreditsAwardedEvent`.
 - **Submission email redesign** — `EntriesSubmittedEvent` now carries `List<EntryDetail>` instead of `int entryCount`. Event published only when credits fully used and all entries submitted. Email includes per-entry summary (number, name, category). "Submit All" renamed to "Submit All Drafts". Process info box added to MyEntriesView.
 - **Email rate limiting + credentials reminder + set password info** — Per-user 5-min cooldown on user-triggered emails (magic link, password reset, credentials reminder). Daily email counter with WARN at 50. Credentials reminder email sent to password users who request magic links. Set Password page shows info message about login links being disabled after password is set.
+- **Entry labels layout redesign** — Characteristics with field names (Sweetness/Strength/Carbonation), fixed 2-line height for mead name and ingredients (Honey/Other/Wood), QR code (left) + notes area (right) in 45/55 split, "FREE SAMPLES. NOT FOR RESALE." disclaimer.
+- **Email CTA magic links** — Credit notification and submission confirmation emails now use magic links (7-day validity via JwtMagicLinkService) for the CTA button, so recipients can log in directly.
+- **Entry admin UX fixes** — Download dialog auto-closes on click, product mapping validation with field-level errors.
 
 ---
 

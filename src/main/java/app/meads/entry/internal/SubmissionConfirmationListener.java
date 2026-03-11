@@ -4,27 +4,34 @@ import app.meads.competition.CompetitionService;
 import app.meads.entry.EntriesSubmittedEvent;
 import app.meads.entry.EntryDetail;
 import app.meads.identity.EmailService;
+import app.meads.identity.JwtMagicLinkService;
 import app.meads.identity.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.util.List;
 
 @Slf4j
 @Component
 public class SubmissionConfirmationListener {
 
+    private static final Duration LINK_VALIDITY = Duration.ofDays(7);
+
     private final CompetitionService competitionService;
     private final UserService userService;
     private final EmailService emailService;
+    private final JwtMagicLinkService jwtMagicLinkService;
 
     SubmissionConfirmationListener(CompetitionService competitionService,
                                     UserService userService,
-                                    EmailService emailService) {
+                                    EmailService emailService,
+                                    JwtMagicLinkService jwtMagicLinkService) {
         this.competitionService = competitionService;
         this.userService = userService;
         this.emailService = emailService;
+        this.jwtMagicLinkService = jwtMagicLinkService;
     }
 
     @ApplicationModuleListener
@@ -33,14 +40,13 @@ public class SubmissionConfirmationListener {
         var competition = competitionService.findCompetitionById(division.getCompetitionId());
         var user = userService.findById(event.userId());
 
-        var entriesUrl = "/competitions/" + competition.getShortName()
-                + "/divisions/" + division.getShortName() + "/my-entries";
+        var loginLink = jwtMagicLinkService.generateLink(user.getEmail(), LINK_VALIDITY);
 
         var entrySummary = formatEntrySummary(event.entryDetails());
 
         emailService.sendSubmissionConfirmation(
                 user.getEmail(), competition.getName(),
-                division.getName(), entrySummary, entriesUrl);
+                division.getName(), entrySummary, loginLink);
         log.info("Sent submission confirmation to {} for {} entries in {}",
                 user.getEmail(), event.entryDetails().size(), division.getName());
     }
