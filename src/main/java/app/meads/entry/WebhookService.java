@@ -177,6 +177,11 @@ public class WebhookService {
                 competitionService.ensureEntrantParticipant(
                         division.getCompetitionId(), user.getId());
 
+                eventPublisher.publishEvent(new CreditsAwardedEvent(
+                        divisionId, user.getId(), credits, "WEBHOOK"));
+                log.info("Published CreditsAwardedEvent: division={}, user={}, credits={}",
+                        divisionId, user.getEmail(), credits);
+
                 processedCount++;
             }
 

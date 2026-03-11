@@ -530,4 +530,42 @@ class WebhookServiceTest {
 
         then(eventPublisher).should(never()).publishEvent(any(OrderRequiresReviewEvent.class));
     }
+
+    @Test
+    void shouldPublishCreditsAwardedEventOnSuccessfulOrder() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var competitionId = UUID.randomUUID();
+        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP,
+                LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
+        var user = new User("entrant@test.com", "Test Entrant", UserStatus.ACTIVE, Role.USER);
+        var mapping = new ProductMapping(divisionId, "101", "SKU-001", "Entry Pack", 1);
+
+        var payload = buildPayload("ORDER-EVT", "entrant@test.com", "Test Entrant",
+                buildProduct("101", "SKU-001", "Entry Pack", 3));
+
+        given(orderRepository.existsByJumpsellerOrderId("ORDER-EVT")).willReturn(false);
+        given(orderRepository.save(any(JumpsellerOrder.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(productMappingRepository.findByJumpsellerProductId("101"))
+                .willReturn(List.of(mapping));
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(creditRepository.findDistinctDivisionIdsByUserId(user.getId()))
+                .willReturn(List.of());
+        given(userService.findOrCreateByEmail("entrant@test.com", "Test Entrant")).willReturn(user);
+        given(lineItemRepository.save(any(JumpsellerOrderLineItem.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(creditRepository.save(any(EntryCredit.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.processOrderPaid(payload);
+
+        var eventCaptor = ArgumentCaptor.forClass(CreditsAwardedEvent.class);
+        then(eventPublisher).should().publishEvent(eventCaptor.capture());
+        var event = eventCaptor.getValue();
+        assertThat(event.divisionId()).isEqualTo(divisionId);
+        assertThat(event.userId()).isEqualTo(user.getId());
+        assertThat(event.amount()).isEqualTo(3);
+        assertThat(event.source()).isEqualTo("WEBHOOK");
+    }
 }

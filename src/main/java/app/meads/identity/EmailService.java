@@ -13,4 +13,9 @@ public interface EmailService {
 
     void sendSubmissionConfirmation(String recipientEmail, String competitionName,
                                     String divisionName, int entryCount, String entriesUrl);
+
+    void sendCreditNotification(String recipientEmail,
+                                int credits, String divisionName,
+                                String competitionName, String myEntriesUrl,
+                                String contactEmail);
 }

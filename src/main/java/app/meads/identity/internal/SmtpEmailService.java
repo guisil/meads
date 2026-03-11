@@ -110,6 +110,26 @@ class SmtpEmailService implements EmailService {
         sendEmail(recipientEmail, subject, ctx, entriesUrl);
     }
 
+    @Override
+    public void sendCreditNotification(String recipientEmail,
+                                        int credits, String divisionName,
+                                        String competitionName, String myEntriesUrl,
+                                        String contactEmail) {
+        var ctx = new Context();
+        var subject = "[MEADS] Entry credits received — " + divisionName;
+        ctx.setVariable("subject", subject);
+        ctx.setVariable("heading", "Entry Credits Received");
+        ctx.setVariable("bodyText",
+                "You've received " + credits + " entry "
+                        + (credits == 1 ? "credit" : "credits")
+                        + " for " + divisionName + " (" + competitionName
+                        + "). You can now start registering your meads.");
+        ctx.setVariable("ctaLabel", "View My Entries");
+        ctx.setVariable("ctaUrl", myEntriesUrl);
+        ctx.setVariable("contactEmail", contactEmail);
+        sendEmail(recipientEmail, subject, ctx, myEntriesUrl);
+    }
+
     private void sendEmail(String to, String subject, Context thymeleafContext, String fallbackLink) {
         try {
             var htmlBody = templateEngine.process(TEMPLATE_NAME, thymeleafContext);

@@ -274,7 +274,9 @@ After confirming admin login works:
 - [ ] Confirm App Platform auto-builds and deploys
 - [ ] Verify the app is running the new version after deploy
 
-### 7.4 Set up monitoring alerts (optional)
+### 7.4 Set up monitoring alerts
+
+**DigitalOcean resource alerts:**
 
 - [ ] DO Console → Monitoring → Create Alert
 - [ ] CPU usage > 80% for 5 minutes
@@ -282,6 +284,23 @@ After confirming admin login works:
 - [ ] Database disk usage > 80%
 - [ ] Database connection count anomaly
 - [ ] Alert destination: your email
+
+**Email sending — Resend limit awareness:**
+
+Resend free tier: **100 emails/day**, **3,000 emails/month**. When the daily limit is
+hit, sends fail with an API error (no auto-upgrade, no charges). The app logs the failure
+and continues running — emails silently stop until the next day.
+
+- [ ] Bookmark the Resend dashboard (resend.com → Usage) — check periodically during
+      active registration windows
+- [ ] Set up a **log-based alert** in DO App Platform for SMTP send failures:
+  - DO Console → App Platform → Settings → Log Forwarding (or use Runtime Logs search)
+  - Alert on `ERROR` logs containing `Failed to send` from `SmtpEmailService`
+  - This catches both Resend limit hits and any other email delivery failures
+- [ ] If approaching the limit regularly, upgrade to Resend Pro ($20/mo, 50k emails/month)
+- [ ] **Estimated volume:** ~15-30 emails/day during active registration (magic links,
+      credit notifications, submission confirmations, order alerts). Limit should only be
+      a concern with 100+ entrants registering on the same day
 
 ---
 

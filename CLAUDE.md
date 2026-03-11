@@ -181,6 +181,7 @@ app.meads.entry                              ← Entry module public API
     ├── RegistrationClosedListener.java      ← @ApplicationModuleListener (DivisionStatusAdvancedEvent)
     ├── OrderReviewNotificationListener.java ← @ApplicationModuleListener (OrderRequiresReviewEvent → admin emails)
     ├── SubmissionConfirmationListener.java  ← @ApplicationModuleListener (EntriesSubmittedEvent → entrant email)
+    ├── CreditNotificationListener.java      ← @ApplicationModuleListener (CreditsAwardedEvent → entrant email)
     ├── EntrantOverviewView.java             ← Cross-competition entrant hub (/my-entries, @PermitAll)
     ├── MyEntriesView.java                   ← Entrant-facing view (@PermitAll + beforeEnter auth)
     └── DivisionEntryAdminView.java          ← Admin view with Credits/Entries/Products/Orders tabs

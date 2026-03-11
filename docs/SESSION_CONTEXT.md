@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `competition-module`
-**Tests:** 494 passing (`mvn test -Dsurefire.useFile=false`)
+**Tests:** 496 passing (`mvn test -Dsurefire.useFile=false`)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -31,7 +31,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 - Password setup & reset: `SetPasswordView`, `setPasswordByToken()`, `generatePasswordSetupLink()`,
   `hasPassword()`, triggers on admin role assignment, "Forgot password?" on login, admin "Password Reset"
 - EmailService (public API) — `SmtpEmailService` (internal) with `JavaMailSender` + Thymeleaf HTML templates.
-  Sends magic link, password reset, password setup, order review alert, and submission confirmation emails. SMTP failure logged with fallback link (no crash).
+  Sends magic link, password reset, password setup, order review alert, submission confirmation, and credit notification emails. SMTP failure logged with fallback link (no crash).
   Mailpit for dev (port 1025 SMTP, port 8025 web UI). Resend SMTP for prod. 7-day token validity.
 - **Status:** Complete
 
@@ -127,6 +127,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 - `RegistrationClosedListener` — skeleton for `DivisionStatusAdvancedEvent` (REGISTRATION_CLOSED)
 - `OrderReviewNotificationListener` — sends admin alert emails when `OrderRequiresReviewEvent` is published
 - `SubmissionConfirmationListener` — sends entrant confirmation email when `EntriesSubmittedEvent` is published
+- `CreditNotificationListener` — sends entrant credit notification email when `CreditsAwardedEvent` is published (both webhook and admin grants)
 
 #### Changes to other modules
 - `SecurityConfig` — separate `SecurityFilterChain` with `@Order(1)` for webhook API (CSRF disabled, permitAll)
@@ -233,6 +234,7 @@ Requires: DB migration, admin UI for constraint config, cross-module data flow, 
 - **Registration deadline** — `registrationDeadline` (LocalDateTime) + `registrationDeadlineTimezone` fields on Division. Displayed in entrant view, editable in DRAFT/REGISTRATION_OPEN. V4 migration modified in-place.
 - **Admin order alert emails** — `OrderRequiresReviewEvent` published by WebhookService, `OrderReviewNotificationListener` sends alert to all competition admins.
 - **Entry submission confirmation emails** — `SubmissionConfirmationListener` sends confirmation to entrant when entries submitted, with link to MyEntriesView.
+- **Credit notification emails** — `CreditNotificationListener` sends email to entrant when credits are awarded (webhook or admin). `WebhookService` now publishes `CreditsAwardedEvent`.
 
 ---
 
@@ -299,6 +301,7 @@ Requires: DB migration, admin UI for constraint config, cross-module data flow, 
 - `RegistrationClosedListenerTest.java` — event listener unit tests
 - `OrderReviewNotificationListenerTest.java` — sends admin alert emails on order review event
 - `SubmissionConfirmationListenerTest.java` — sends entrant confirmation on submission event
+- `CreditNotificationListenerTest.java` — sends entrant credit notification on credits awarded event
 - `EntryDivisionRevertGuardTest.java` — blocks revert to DRAFT when entries exist
 
 ### Repository tests

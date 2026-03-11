@@ -75,6 +75,10 @@ CTA button, fallback URL, and optional contact footer.
 | "Password Reset" (key icon) in Users admin | Reset your MEADS password | Set your password | Set Password | No |
 | New SYSTEM_ADMIN created without password | Reset your MEADS password | Set your password | Set Password | No |
 | New competition ADMIN added without password | Set up your MEADS admin password | Set your admin password | Set Password | Yes (if competition has contactEmail) |
+| Webhook order awards credits | [MEADS] Entry credits received — {division} | Entry Credits Received | View My Entries | Yes (if competition has contactEmail) |
+| Admin manually adds credits | [MEADS] Entry credits received — {division} | Entry Credits Received | View My Entries | Yes (if competition has contactEmail) |
+| Entrant submits entries | [MEADS] Entries submitted — {division} | Entries Submitted | View My Entries | No |
+| Order requires manual review | [MEADS] Order requires review — {competition} | Order Requires Review | (none) | No |
 
 ---
 
@@ -836,6 +840,7 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] Click "Add"
 - [ ] **Expected:** Notification "Credits added" (green)
 - [ ] **Expected:** `user@example.com` credits now shows 7
+- [ ] **Check Mailpit:** credit notification email sent to `user@example.com`, subject "[MEADS] Entry credits received — Amadora"
 
 ### Adjust credits
 
@@ -987,6 +992,7 @@ curl -s -o /dev/null -w "%{http_code}" \
   - **Expected:** `webhooktest@example.com` exists (PENDING status, created automatically)
 - [ ] Verify country enrichment: Edit `webhooktest@example.com` in users list
   - **Expected:** Country field shows "Portugal" (enriched from webhook `shipping_address.country_code`)
+- [ ] **Check Mailpit:** credit notification email sent to `webhooktest@example.com`, subject "[MEADS] Entry credits received — Amadora", body says "3 entry credits", CTA button "View My Entries"
 
 ### Duplicate order -- idempotency
 
@@ -1074,6 +1080,7 @@ curl -s -o /dev/null -w "%{http_code}" \
   - Profissional Credits tab: `newbuyer@example.com` does NOT appear (mutual exclusivity conflict)
   - Amadora Orders tab: `WH-005` appears with status PARTIALLY_PROCESSED
 - [ ] **Check Mailpit:** admin alert email(s) sent for PARTIALLY_PROCESSED order
+- [ ] **Check Mailpit:** credit notification email sent to `newbuyer@example.com` for 2 credits in Amadora (the processed portion)
 
 ---
 
