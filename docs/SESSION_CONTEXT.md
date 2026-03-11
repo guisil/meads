@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `competition-module`
-**Tests:** 496 passing (`mvn test -Dsurefire.useFile=false`)
+**Tests:** 504 passing (`mvn test -Dsurefire.useFile=false`)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -106,15 +106,16 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 #### Events
 - `CreditsAwardedEvent(divisionId, userId, amount, source)`
-- `EntriesSubmittedEvent(divisionId, userId, entryCount)`
+- `EntriesSubmittedEvent(divisionId, userId, List<EntryDetail> entryDetails)`
 - `OrderRequiresReviewEvent(orderId, jumpsellerOrderId, customerName, customerEmail, affectedCompetitionIds, status)`
 
 #### DTOs
+- `EntryDetail(entryNumber, meadName, categoryCode, categoryName)` — DTO for submission event payload
 - `EntrantCreditSummary(userId, email, name, creditBalance, entryCount)`
 
 #### Views
 - `EntrantOverviewView` (`/my-entries`) — cross-competition entrant hub, shows all divisions with credits/entries, auto-redirects to single division
-- `MyEntriesView` (`/competitions/:compShortName/divisions/:divShortName/my-entries`) — entrant-facing, competition documents list, credits + limits display, registration deadline display, category guidance hints, entry grid with status badges/Final Category/Actions (view/edit/submit/download label)/filtering/sorting, add/edit dialog (full-width fields), submit all, "Download all labels" batch button, meadery name required warning + submit blocking
+- `MyEntriesView` (`/competitions/:compShortName/divisions/:divShortName/my-entries`) — entrant-facing, competition documents list, credits + limits display, process info box, registration deadline display, category guidance hints, entry grid with status badges/Final Category/Actions (view/edit/submit/download label)/filtering/sorting, add/edit dialog (full-width fields), "Submit All Drafts" button, "Download all labels" batch button, meadery name required warning + submit blocking
 - `DivisionEntryAdminView` (`/competitions/:compShortName/divisions/:divShortName/entry-admin`) — admin tabs: Credits, Entries (with Meadery/Country columns + individual label download + batch "Download all labels" with confirmation dialog), Products, Orders
 
 #### REST
@@ -126,7 +127,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 #### Event Listeners
 - `RegistrationClosedListener` — skeleton for `DivisionStatusAdvancedEvent` (REGISTRATION_CLOSED)
 - `OrderReviewNotificationListener` — sends admin alert emails when `OrderRequiresReviewEvent` is published
-- `SubmissionConfirmationListener` — sends entrant confirmation email when `EntriesSubmittedEvent` is published
+- `SubmissionConfirmationListener` — sends entrant confirmation email with entry summary when `EntriesSubmittedEvent` is published (conditional: only when all credits used and no drafts remain)
 - `CreditNotificationListener` — sends entrant credit notification email when `CreditsAwardedEvent` is published (both webhook and admin grants)
 
 #### Changes to other modules
@@ -233,8 +234,9 @@ Requires: DB migration, admin UI for constraint config, cross-module data flow, 
 - **Category guidance hints** — Informational hint text below category dropdown in entry dialog. All 16 MJP subcategories have style-specific guidance (ingredients, sweetness, ABV). No field locking or validation.
 - **Registration deadline** — `registrationDeadline` (LocalDateTime) + `registrationDeadlineTimezone` fields on Division. Displayed in entrant view, editable in DRAFT/REGISTRATION_OPEN. V4 migration modified in-place.
 - **Admin order alert emails** — `OrderRequiresReviewEvent` published by WebhookService, `OrderReviewNotificationListener` sends alert to all competition admins.
-- **Entry submission confirmation emails** — `SubmissionConfirmationListener` sends confirmation to entrant when entries submitted, with link to MyEntriesView.
+- **Entry submission confirmation emails** — `SubmissionConfirmationListener` sends confirmation to entrant when entries submitted, with entry summary and link to MyEntriesView. Conditional: only fires when all credits used AND no drafts remain.
 - **Credit notification emails** — `CreditNotificationListener` sends email to entrant when credits are awarded (webhook or admin). `WebhookService` now publishes `CreditsAwardedEvent`.
+- **Submission email redesign** — `EntriesSubmittedEvent` now carries `List<EntryDetail>` instead of `int entryCount`. Event published only when credits fully used and all entries submitted. Email includes per-entry summary (number, name, category). "Submit All" renamed to "Submit All Drafts". Process info box added to MyEntriesView.
 
 ---
 
@@ -260,6 +262,10 @@ Requires: DB migration, admin UI for constraint config, cross-module data flow, 
 - **`spring.thymeleaf.check-template-location=false`** — prevents Thymeleaf view resolver conflict
   with Vaadin (Thymeleaf used only for template rendering, not view resolution).
   MyEntriesView shows warning banner and blocks submit (all + individual) when required but missing.
+- **Submission email is conditional** — `EntriesSubmittedEvent` only published when `creditBalance - activeEntries == 0`
+  AND no DRAFT entries remain. Prevents email spam when entrant submits entries one by one.
+- **Email template `detailHtml`** — dedicated `th:utext` variable in `email-base.html` for rich content
+  (entry summary). Separate from `bodyText` (which uses safe `th:text`). HTML-escaped in listener via `escapeHtml()`.
 
 ### Known UX items (deferred)
 - After failed credentials login, page reloads at `/login?error` and shows error notification,
@@ -318,7 +324,7 @@ Requires: DB migration, admin UI for constraint config, cross-module data flow, 
 - `EntryModuleTest.java` — bootstrap + full credit → entry → submit workflow
 
 ### UI tests
-- `MyEntriesViewTest.java` — credits display, entry grid, authorization redirect, meadery name warning + submit blocking, download all labels button, download label for submitted entries, competition documents display
+- `MyEntriesViewTest.java` — credits display, entry grid, authorization redirect, meadery name warning + submit blocking, download all labels button, download label for submitted entries, competition documents display, process info box, "Submit All Drafts" button
 - `DivisionEntryAdminViewTest.java` — admin tabs rendering, meadery name + country columns, download all labels button
 
 ---

@@ -37,6 +37,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
@@ -724,18 +725,36 @@ class EntryServiceTest {
     void shouldSubmitAllDraftsAndPublishEvent() {
         var divisionId = UUID.randomUUID();
         var userId = UUID.randomUUID();
+        var categoryId = UUID.randomUUID();
         var entry1 = new Entry(divisionId, userId, 1, "ABC123",
-                "Mead One", UUID.randomUUID(), Sweetness.DRY, Strength.STANDARD,
+                "Mead One", categoryId, Sweetness.DRY, Strength.STANDARD,
                 new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null);
         var entry2 = new Entry(divisionId, userId, 2, "DEF456",
-                "Mead Two", UUID.randomUUID(), Sweetness.SWEET, Strength.SACK,
+                "Mead Two", categoryId, Sweetness.SWEET, Strength.SACK,
                 new BigDecimal("18.0"), Carbonation.SPARKLING,
                 "Orange blossom", null, false, null, null);
 
+        // First call returns drafts for the loop, second call (from helper) returns empty
         given(entryRepository.findByDivisionIdAndUserIdAndStatus(
                 divisionId, userId, EntryStatus.DRAFT))
+                .willReturn(List.of(entry1, entry2))
+                .willReturn(List.of());
+        // 2 credits, 2 active → 0 remaining
+        given(creditRepository.sumAmountByDivisionIdAndUserId(divisionId, userId)).willReturn(2);
+        given(entryRepository.countByDivisionIdAndUserIdAndStatusNot(
+                divisionId, userId, EntryStatus.WITHDRAWN)).willReturn(2L);
+        // Submitted entries for details
+        given(entryRepository.findByDivisionIdAndUserIdAndStatus(
+                divisionId, userId, EntryStatus.SUBMITTED))
                 .willReturn(List.of(entry1, entry2));
+        // Category resolution
+        var category = mock(DivisionCategory.class);
+        given(category.getId()).willReturn(categoryId);
+        given(category.getCode()).willReturn("M1A");
+        given(category.getName()).willReturn("Dry Mead");
+        given(competitionService.findDivisionCategories(divisionId))
+                .willReturn(List.of(category));
 
         entryService.submitAllDrafts(divisionId, userId);
 
@@ -748,7 +767,7 @@ class EntryServiceTest {
         then(eventPublisher).should().publishEvent(eventCaptor.capture());
         assertThat(eventCaptor.getValue().divisionId()).isEqualTo(divisionId);
         assertThat(eventCaptor.getValue().userId()).isEqualTo(userId);
-        assertThat(eventCaptor.getValue().entryCount()).isEqualTo(2);
+        assertThat(eventCaptor.getValue().entryDetails()).hasSize(2);
     }
 
     // Cycle 11: submitAllDrafts — no drafts = no-op
@@ -765,6 +784,190 @@ class EntryServiceTest {
         entryService.submitAllDrafts(divisionId, userId);
 
         then(eventPublisher).should(never()).publishEvent(any(EntriesSubmittedEvent.class));
+    }
+
+    // Cycle 18: submitEntry — conditional event (credits remain)
+
+    @Test
+    void shouldNotPublishEventWhenCreditsRemain() {
+        var divisionId = UUID.randomUUID();
+        var userId = UUID.randomUUID();
+        var entry = new Entry(divisionId, userId, 1, "ABC123",
+                "My Mead", UUID.randomUUID(), Sweetness.DRY, Strength.STANDARD,
+                new BigDecimal("12.5"), Carbonation.STILL,
+                "Wildflower honey", null, false, null, null);
+
+        given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
+        given(entryRepository.save(any(Entry.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        // 3 credits, 1 active entry after submit → 2 remaining
+        given(creditRepository.sumAmountByDivisionIdAndUserId(divisionId, userId)).willReturn(3);
+        given(entryRepository.countByDivisionIdAndUserIdAndStatusNot(
+                divisionId, userId, EntryStatus.WITHDRAWN)).willReturn(1L);
+
+        entryService.submitEntry(entry.getId(), userId);
+
+        assertThat(entry.getStatus()).isEqualTo(EntryStatus.SUBMITTED);
+        then(eventPublisher).should(never()).publishEvent(any(EntriesSubmittedEvent.class));
+    }
+
+    @Test
+    void shouldNotPublishEventWhenDraftsRemain() {
+        var divisionId = UUID.randomUUID();
+        var userId = UUID.randomUUID();
+        var entry = new Entry(divisionId, userId, 1, "ABC123",
+                "My Mead", UUID.randomUUID(), Sweetness.DRY, Strength.STANDARD,
+                new BigDecimal("12.5"), Carbonation.STILL,
+                "Wildflower honey", null, false, null, null);
+        var draftEntry = new Entry(divisionId, userId, 2, "DEF456",
+                "Other Mead", UUID.randomUUID(), Sweetness.SWEET, Strength.SACK,
+                new BigDecimal("14.0"), Carbonation.SPARKLING,
+                "Orange blossom", null, false, null, null);
+
+        given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
+        given(entryRepository.save(any(Entry.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        // 2 credits, 2 active entries → 0 remaining credits
+        given(creditRepository.sumAmountByDivisionIdAndUserId(divisionId, userId)).willReturn(2);
+        given(entryRepository.countByDivisionIdAndUserIdAndStatusNot(
+                divisionId, userId, EntryStatus.WITHDRAWN)).willReturn(2L);
+        // But there's still a draft entry
+        given(entryRepository.findByDivisionIdAndUserIdAndStatus(
+                divisionId, userId, EntryStatus.DRAFT))
+                .willReturn(List.of(draftEntry));
+
+        entryService.submitEntry(entry.getId(), userId);
+
+        assertThat(entry.getStatus()).isEqualTo(EntryStatus.SUBMITTED);
+        then(eventPublisher).should(never()).publishEvent(any(EntriesSubmittedEvent.class));
+    }
+
+    @Test
+    void shouldPublishEventWithDetailsWhenAllComplete() {
+        var divisionId = UUID.randomUUID();
+        var userId = UUID.randomUUID();
+        var categoryId = UUID.randomUUID();
+        var entry = new Entry(divisionId, userId, 1, "ABC123",
+                "My Mead", categoryId, Sweetness.DRY, Strength.STANDARD,
+                new BigDecimal("12.5"), Carbonation.STILL,
+                "Wildflower honey", null, false, null, null);
+
+        given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
+        given(entryRepository.save(any(Entry.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        // 1 credit, 1 active entry → 0 remaining
+        given(creditRepository.sumAmountByDivisionIdAndUserId(divisionId, userId)).willReturn(1);
+        given(entryRepository.countByDivisionIdAndUserIdAndStatusNot(
+                divisionId, userId, EntryStatus.WITHDRAWN)).willReturn(1L);
+        // No drafts remain
+        given(entryRepository.findByDivisionIdAndUserIdAndStatus(
+                divisionId, userId, EntryStatus.DRAFT))
+                .willReturn(List.of());
+        // The submitted entry
+        given(entryRepository.findByDivisionIdAndUserIdAndStatus(
+                divisionId, userId, EntryStatus.SUBMITTED))
+                .willReturn(List.of(entry));
+        // Category resolution
+        var category = mock(DivisionCategory.class);
+        given(category.getId()).willReturn(categoryId);
+        given(category.getCode()).willReturn("M1A");
+        given(category.getName()).willReturn("Traditional Mead (Dry)");
+        given(competitionService.findDivisionCategories(divisionId))
+                .willReturn(List.of(category));
+
+        entryService.submitEntry(entry.getId(), userId);
+
+        var eventCaptor = ArgumentCaptor.forClass(EntriesSubmittedEvent.class);
+        then(eventPublisher).should().publishEvent(eventCaptor.capture());
+        var event = eventCaptor.getValue();
+        assertThat(event.divisionId()).isEqualTo(divisionId);
+        assertThat(event.userId()).isEqualTo(userId);
+        assertThat(event.entryDetails()).hasSize(1);
+        assertThat(event.entryDetails().getFirst().entryNumber()).isEqualTo(1);
+        assertThat(event.entryDetails().getFirst().meadName()).isEqualTo("My Mead");
+        assertThat(event.entryDetails().getFirst().categoryCode()).isEqualTo("M1A");
+    }
+
+    @Test
+    void shouldNotPublishEventWhenNoSubmittedEntries() {
+        var divisionId = UUID.randomUUID();
+        var userId = UUID.randomUUID();
+        var entry = new Entry(divisionId, userId, 1, "ABC123",
+                "My Mead", UUID.randomUUID(), Sweetness.DRY, Strength.STANDARD,
+                new BigDecimal("12.5"), Carbonation.STILL,
+                "Wildflower honey", null, false, null, null);
+
+        given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
+        given(entryRepository.save(any(Entry.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        // 1 credit, 1 active entry → 0 remaining
+        given(creditRepository.sumAmountByDivisionIdAndUserId(divisionId, userId)).willReturn(1);
+        given(entryRepository.countByDivisionIdAndUserIdAndStatusNot(
+                divisionId, userId, EntryStatus.WITHDRAWN)).willReturn(1L);
+        // No drafts
+        given(entryRepository.findByDivisionIdAndUserIdAndStatus(
+                divisionId, userId, EntryStatus.DRAFT))
+                .willReturn(List.of());
+        // No submitted entries (edge case)
+        given(entryRepository.findByDivisionIdAndUserIdAndStatus(
+                divisionId, userId, EntryStatus.SUBMITTED))
+                .willReturn(List.of());
+
+        entryService.submitEntry(entry.getId(), userId);
+
+        then(eventPublisher).should(never()).publishEvent(any(EntriesSubmittedEvent.class));
+    }
+
+    @Test
+    void shouldPublishEventWhenLastSingleEntryCompletes() {
+        var divisionId = UUID.randomUUID();
+        var userId = UUID.randomUUID();
+        var categoryId = UUID.randomUUID();
+        // This is the last DRAFT entry — 2 others already submitted
+        var lastEntry = new Entry(divisionId, userId, 3, "GHI789",
+                "Third Mead", categoryId, Sweetness.SWEET, Strength.SACK,
+                new BigDecimal("16.0"), Carbonation.SPARKLING,
+                "Manuka honey", null, false, null, null);
+        var submitted1 = new Entry(divisionId, userId, 1, "ABC123",
+                "First Mead", categoryId, Sweetness.DRY, Strength.STANDARD,
+                new BigDecimal("12.5"), Carbonation.STILL,
+                "Wildflower honey", null, false, null, null);
+        submitted1.submit();
+        var submitted2 = new Entry(divisionId, userId, 2, "DEF456",
+                "Second Mead", categoryId, Sweetness.MEDIUM, Strength.STANDARD,
+                new BigDecimal("13.0"), Carbonation.PETILLANT,
+                "Clover honey", null, false, null, null);
+        submitted2.submit();
+
+        given(entryRepository.findById(lastEntry.getId())).willReturn(Optional.of(lastEntry));
+        given(entryRepository.save(any(Entry.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        // 3 credits, 3 active entries → 0 remaining
+        given(creditRepository.sumAmountByDivisionIdAndUserId(divisionId, userId)).willReturn(3);
+        given(entryRepository.countByDivisionIdAndUserIdAndStatusNot(
+                divisionId, userId, EntryStatus.WITHDRAWN)).willReturn(3L);
+        // No drafts remain after this submit
+        given(entryRepository.findByDivisionIdAndUserIdAndStatus(
+                divisionId, userId, EntryStatus.DRAFT))
+                .willReturn(List.of());
+        // All 3 entries are submitted
+        given(entryRepository.findByDivisionIdAndUserIdAndStatus(
+                divisionId, userId, EntryStatus.SUBMITTED))
+                .willReturn(List.of(submitted1, submitted2, lastEntry));
+        // Category resolution
+        var category = mock(DivisionCategory.class);
+        given(category.getId()).willReturn(categoryId);
+        given(category.getCode()).willReturn("M2C");
+        given(category.getName()).willReturn("Berry Melomel");
+        given(competitionService.findDivisionCategories(divisionId))
+                .willReturn(List.of(category));
+
+        entryService.submitEntry(lastEntry.getId(), userId);
+
+        var eventCaptor = ArgumentCaptor.forClass(EntriesSubmittedEvent.class);
+        then(eventPublisher).should().publishEvent(eventCaptor.capture());
+        var event = eventCaptor.getValue();
+        assertThat(event.entryDetails()).hasSize(3);
     }
 
     // Cycle 12: markReceived — admin only

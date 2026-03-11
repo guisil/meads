@@ -61,9 +61,9 @@ class EntryModuleTest {
         var entrant = userService.createUser(
                 "entrant-integration@test.com", "Entrant", UserStatus.ACTIVE, Role.USER);
 
-        // Add credits for the entrant
+        // Add credits for the entrant (1 credit so submission completes)
         entryService.addCredits(
-                division.getId(), entrant.getEmail(), 3, admin.getId());
+                division.getId(), entrant.getEmail(), 1, admin.getId());
 
         // Verify CreditsAwardedEvent was published
         var creditEvents = events.ofType(CreditsAwardedEvent.class);
@@ -73,7 +73,7 @@ class EntryModuleTest {
                 .satisfies(e -> {
                     assertThat(e.divisionId()).isEqualTo(division.getId());
                     assertThat(e.userId()).isEqualTo(entrant.getId());
-                    assertThat(e.amount()).isEqualTo(3);
+                    assertThat(e.amount()).isEqualTo(1);
                     assertThat(e.source()).isEqualTo("ADMIN");
                 });
 
@@ -100,7 +100,9 @@ class EntryModuleTest {
                 .satisfies(e -> {
                     assertThat(e.divisionId()).isEqualTo(division.getId());
                     assertThat(e.userId()).isEqualTo(entrant.getId());
-                    assertThat(e.entryCount()).isEqualTo(1);
+                    assertThat(e.entryDetails()).hasSize(1);
+                    assertThat(e.entryDetails().getFirst().meadName())
+                            .isEqualTo("My Traditional Mead");
                 });
 
         // Verify entry is now SUBMITTED

@@ -138,6 +138,26 @@ class SmtpEmailServiceTest {
     }
 
     @Test
+    void shouldSendSubmissionConfirmationWithEntrySummary() {
+        emailService.sendSubmissionConfirmation(
+                "entrant@test.com", "CHIP 2026", "Amadora",
+                "#1 — My Mead — M1A Traditional Mead (Dry)\n#2 — Berry Mead — M2C Berry Melomel",
+                "/competitions/chip-2026/divisions/amadora/my-entries");
+
+        verify(mailSender).send(any(MimeMessage.class));
+        var contextCaptor = ArgumentCaptor.forClass(IContext.class);
+        verify(templateEngine).process(eq("email/email-base"), contextCaptor.capture());
+        var ctx = contextCaptor.getValue();
+        assertThat(ctx.getVariable("heading")).isEqualTo("Entries Submitted");
+        assertThat((String) ctx.getVariable("bodyText")).contains("Amadora");
+        assertThat((String) ctx.getVariable("bodyText")).contains("CHIP 2026");
+        assertThat((String) ctx.getVariable("detailHtml"))
+                .contains("My Mead")
+                .contains("Berry Mead");
+        assertThat(ctx.getVariable("ctaLabel")).isEqualTo("View My Entries");
+    }
+
+    @Test
     void shouldUseSevenDayTokenValidityForPasswordReset() {
         given(jwtMagicLinkService.generatePasswordSetupLink(eq("user@example.com"), any()))
                 .willReturn("http://localhost:8080/set-password?token=abc");

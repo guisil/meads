@@ -1124,6 +1124,10 @@ curl -s -o /dev/null -w "%{http_code}" \
 - [ ] **Expected:** Total should be 7 (5 original + 2 added in section 8), used should be 3
 - [ ] **Expected:** Limits info shows: "Limits: 10 total, 5 per main category, 3 per subcategory"
 
+### Process info box
+
+- [ ] **Expected:** Blue info box below credits: "Use your entry credits to add meads, then submit them when ready. Submitted entries cannot be edited. Once all credits are used and all entries are submitted, you'll receive a confirmation email with a summary of your entries."
+
 ### Registration deadline display
 
 - [ ] **Expected:** "Registration closes: [date] [timezone]" shown below credit info
@@ -1215,15 +1219,15 @@ curl -s -o /dev/null -w "%{http_code}" \
 
 ### Submit all drafts
 
-- [ ] **Expected:** "Submit All" button is enabled (there are DRAFT entries)
-- [ ] Click "Submit All"
-- [ ] **Expected:** Confirmation dialog: "Submit N entries? Submitted entries can no longer be edited."
+- [ ] **Expected:** "Submit All Drafts" button is enabled (there are DRAFT entries)
+- [ ] Click "Submit All Drafts"
+- [ ] **Expected:** Confirmation dialog: "Submit N draft entries? Submitted entries can no longer be edited."
 - [ ] Click "Submit"
 - [ ] **Expected:** Notification "N entries submitted" (green)
 - [ ] **Expected:** All previously DRAFT entries now show status SUBMITTED
-- [ ] **Expected:** "Submit All" button is now disabled (no more drafts)
+- [ ] **Expected:** "Submit All Drafts" button is now disabled (no more drafts)
 - [ ] **Expected:** "Add Entry" button may still be enabled if credits remain
-- [ ] **Check Mailpit:** submission confirmation email sent to entrant, subject "[MEADS] Entries submitted — Amadora", body includes entry count and link to MyEntriesView
+- [ ] **Check Mailpit:** If all credits are used and no drafts remain, submission confirmation email sent to entrant, subject "[MEADS] Entries submitted — Amadora", body includes per-entry summary (number, name, category) and link to MyEntriesView. If credits remain unused, NO email is sent.
 
 ### Entry labels -- individual download (entrant)
 
@@ -1248,14 +1252,14 @@ Or use a test division where the flag is already set.*
 - [ ] Ensure your user has NO meadery name set (clear it via My Profile)
 - [ ] Navigate to a division with `meaderyNameRequired = true`
 - [ ] **Expected:** Warning banner at the top: "This division requires a meadery name..." with link to "My Profile"
-- [ ] **Expected:** "Submit All" button is disabled
+- [ ] **Expected:** "Submit All Drafts" button is disabled
 - [ ] **Expected:** Individual submit buttons (check icons) in the grid are disabled
 - [ ] Click the "My Profile" link in the warning banner
 - [ ] **Expected:** Navigated to `/profile`
 - [ ] Set a meadery name and save
 - [ ] Navigate back to the division's My Entries page
 - [ ] **Expected:** Warning banner is gone
-- [ ] **Expected:** "Submit All" and individual submit buttons are enabled
+- [ ] **Expected:** "Submit All Drafts" and individual submit buttons are enabled
 
 ### Entry limit enforcement
 

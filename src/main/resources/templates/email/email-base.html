@@ -21,6 +21,7 @@
                         <td style="padding: 40px;">
                             <h2 style="margin: 0 0 16px 0; color: #1a1a2e; font-size: 20px;" th:text="${heading}">Heading</h2>
                             <p style="margin: 0 0 32px 0; color: #333333; font-size: 16px; line-height: 1.5;" th:text="${bodyText}">Body text</p>
+                            <div th:if="${detailHtml != null}" th:utext="${detailHtml}" style="margin: 0 0 32px 0; color: #555555; font-size: 14px; line-height: 1.6; padding: 16px; background-color: #f8f8f8; border-radius: 6px;"></div>
                             <!-- CTA Button -->
                             <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto;">
                                 <tr>

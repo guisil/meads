@@ -25,6 +25,8 @@ import java.math.BigDecimal;
 import java.security.SecureRandom;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -266,8 +268,7 @@ public class EntryService {
         entry.submit();
         entryRepository.save(entry);
         log.info("Submitted entry: #{} ({})", entry.getEntryNumber(), entryId);
-        eventPublisher.publishEvent(new EntriesSubmittedEvent(
-                entry.getDivisionId(), userId, 1));
+        publishSubmissionEventIfComplete(entry.getDivisionId(), userId);
     }
 
     public void submitAllDrafts(@NotNull UUID divisionId, @NotNull UUID userId) {
@@ -281,8 +282,7 @@ public class EntryService {
             entryRepository.save(entry);
         }
         log.info("Submitted {} draft entries: division={}, userId={}", drafts.size(), divisionId, userId);
-        eventPublisher.publishEvent(new EntriesSubmittedEvent(
-                divisionId, userId, drafts.size()));
+        publishSubmissionEventIfComplete(divisionId, userId);
     }
 
     public Entry markReceived(@NotNull UUID entryId, @NotNull UUID requestingUserId) {
@@ -469,6 +469,45 @@ public class EntryService {
                         + division.getMaxEntriesPerMainCategory() + ")");
             }
         }
+    }
+
+    private void publishSubmissionEventIfComplete(UUID divisionId, UUID userId) {
+        var creditBalance = creditRepository.sumAmountByDivisionIdAndUserId(divisionId, userId);
+        var activeEntries = entryRepository.countByDivisionIdAndUserIdAndStatusNot(
+                divisionId, userId, EntryStatus.WITHDRAWN);
+        if (creditBalance - activeEntries > 0) {
+            log.debug("Submission event skipped: {} credits remaining (division={}, userId={})",
+                    creditBalance - activeEntries, divisionId, userId);
+            return;
+        }
+        var remainingDrafts = entryRepository.findByDivisionIdAndUserIdAndStatus(
+                divisionId, userId, EntryStatus.DRAFT);
+        if (!remainingDrafts.isEmpty()) {
+            log.debug("Submission event skipped: {} drafts remain (division={}, userId={})",
+                    remainingDrafts.size(), divisionId, userId);
+            return;
+        }
+        var submittedEntries = entryRepository.findByDivisionIdAndUserIdAndStatus(
+                divisionId, userId, EntryStatus.SUBMITTED);
+        if (submittedEntries.isEmpty()) {
+            log.debug("Submission event skipped: no submitted entries (division={}, userId={})",
+                    divisionId, userId);
+            return;
+        }
+        var categories = competitionService.findDivisionCategories(divisionId).stream()
+                .collect(Collectors.toMap(DivisionCategory::getId, Function.identity()));
+        var entryDetails = submittedEntries.stream()
+                .map(entry -> {
+                    var cat = categories.get(entry.getInitialCategoryId());
+                    return new EntryDetail(
+                            entry.getEntryNumber(), entry.getMeadName(),
+                            cat != null ? cat.getCode() : "—",
+                            cat != null ? cat.getName() : "Unknown");
+                })
+                .toList();
+        eventPublisher.publishEvent(new EntriesSubmittedEvent(divisionId, userId, entryDetails));
+        log.info("Published EntriesSubmittedEvent: division={}, userId={}, entries={}",
+                divisionId, userId, entryDetails.size());
     }
 
     private String generateEntryCode(UUID divisionId) {

@@ -222,7 +222,7 @@ class MyEntriesViewTest {
         assertThat(warnings).isNotEmpty();
 
         // Submit All button should be disabled
-        var submitButton = _get(Button.class, spec -> spec.withText("Submit All"));
+        var submitButton = _get(Button.class, spec -> spec.withText("Submit All Drafts"));
         assertThat(submitButton.isEnabled()).isFalse();
     }
 
@@ -379,5 +379,39 @@ class MyEntriesViewTest {
         categorySelect.setValue(m2aCategory);
         assertThat(hint.isVisible()).isTrue();
         assertThat(hint.getText()).containsIgnoringCase("pome fruit");
+    }
+
+    @Test
+    @WithMockUser(username = ENTRANT_EMAIL, roles = "USER")
+    void shouldShowProcessInfoBox() {
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/my-entries");
+
+        var infoBoxes = _find(Div.class).stream()
+                .filter(d -> {
+                    var spans = _find(d, Span.class);
+                    return spans.stream().anyMatch(s ->
+                            s.getText() != null && s.getText().contains("confirmation email"));
+                })
+                .toList();
+        assertThat(infoBoxes).hasSize(1);
+    }
+
+    @Test
+    @WithMockUser(username = ENTRANT_EMAIL, roles = "USER")
+    void shouldShowSubmitAllDraftsButton() {
+        // Create a category and a draft entry so the button is enabled
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Dry mead", null, 1));
+        entryService.createEntry(division.getId(), entrant.getId(),
+                "Test Mead", category.getId(),
+                Sweetness.DRY, Strength.STANDARD, new BigDecimal("12.0"),
+                Carbonation.STILL, "Honey", null, false, null, null);
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/my-entries");
+
+        var submitButton = _get(Button.class, spec -> spec.withText("Submit All Drafts"));
+        assertThat(submitButton.isEnabled()).isTrue();
     }
 }

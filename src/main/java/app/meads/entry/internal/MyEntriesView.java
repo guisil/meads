@@ -139,6 +139,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         }
         add(createDocumentsSection());
         add(createCreditInfo());
+        add(createProcessInfo());
         if (division.getRegistrationDeadline() != null) {
             add(createDeadlineInfo());
         }
@@ -303,7 +304,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         var entries = entryService.findEntriesByDivisionAndUser(divisionId, currentUserId);
         var hasDrafts = entries.stream().anyMatch(en -> en.getStatus() == EntryStatus.DRAFT);
 
-        var submitButton = new Button("Submit All", e -> submitAll());
+        var submitButton = new Button("Submit All Drafts", e -> submitAll());
         submitButton.setEnabled(hasDrafts && !meaderyNameMissing);
         if (meaderyNameMissing) {
             submitButton.setTooltipText("Meadery name required — update your profile");
@@ -736,8 +737,8 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                 .filter(en -> en.getStatus() == EntryStatus.DRAFT).count();
 
         var dialog = new Dialog();
-        dialog.setHeaderTitle("Submit All Entries");
-        dialog.add("Submit " + draftCount + " entries? Submitted entries can no longer be edited.");
+        dialog.setHeaderTitle("Submit All Drafts");
+        dialog.add("Submit " + draftCount + " draft entries? Submitted entries can no longer be edited.");
 
         var confirmButton = new Button("Submit", e -> {
             try {
@@ -766,6 +767,21 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                 .set("color", "var(--lumo-secondary-text-color)")
                 .set("font-size", "var(--lumo-font-size-s)");
         return deadlineSpan;
+    }
+
+    private Div createProcessInfo() {
+        var info = new Div();
+        info.getStyle()
+                .set("background-color", "var(--lumo-primary-color-10pct)")
+                .set("color", "var(--lumo-body-text-color)")
+                .set("padding", "var(--lumo-space-m)")
+                .set("border-radius", "var(--lumo-border-radius-m)")
+                .set("font-size", "var(--lumo-font-size-s)")
+                .set("line-height", "var(--lumo-line-height-m)");
+        info.add(new Span("Use your entry credits to add meads, then submit them when ready. "
+                + "Submitted entries cannot be edited. Once all credits are used and all entries "
+                + "are submitted, you'll receive a confirmation email with a summary of your entries."));
+        return info;
     }
 
     private static final Map<String, String> CATEGORY_HINTS = Map.ofEntries(

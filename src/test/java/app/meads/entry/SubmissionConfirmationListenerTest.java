@@ -13,6 +13,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.contains;
@@ -28,7 +29,7 @@ class SubmissionConfirmationListenerTest {
     @InjectMocks SubmissionConfirmationListener listener;
 
     @Test
-    void shouldSendConfirmationEmailOnSubmission() {
+    void shouldSendSummaryEmailWithEntryDetails() {
         var divisionId = UUID.randomUUID();
         var userId = UUID.randomUUID();
         var competitionId = UUID.randomUUID();
@@ -48,17 +49,21 @@ class SubmissionConfirmationListenerTest {
         given(user.getEmail()).willReturn("entrant@test.com");
         given(userService.findById(userId)).willReturn(user);
 
-        var event = new EntriesSubmittedEvent(divisionId, userId, 3);
+        var details = List.of(
+                new EntryDetail(1, "My Mead", "M1A", "Traditional Mead (Dry)"),
+                new EntryDetail(2, "Berry Mead", "M2C", "Berry Melomel"));
+        var event = new EntriesSubmittedEvent(divisionId, userId, details);
 
         listener.on(event);
 
         then(emailService).should().sendSubmissionConfirmation(
                 eq("entrant@test.com"), eq("CHIP 2026"), eq("Amadora"),
-                eq(3), contains("chip-2026/divisions/amadora/my-entries"));
+                contains("My Mead"),
+                contains("chip-2026/divisions/amadora/my-entries"));
     }
 
     @Test
-    void shouldUseSingularEntryForOneEntry() {
+    void shouldFormatEntryDetailsInSummary() {
         var divisionId = UUID.randomUUID();
         var userId = UUID.randomUUID();
         var competitionId = UUID.randomUUID();
@@ -78,12 +83,22 @@ class SubmissionConfirmationListenerTest {
         given(user.getEmail()).willReturn("solo@test.com");
         given(userService.findById(userId)).willReturn(user);
 
-        var event = new EntriesSubmittedEvent(divisionId, userId, 1);
+        var details = List.of(
+                new EntryDetail(1, "Solo Mead", "M4B", "Historical Mead"));
+        var event = new EntriesSubmittedEvent(divisionId, userId, details);
 
         listener.on(event);
 
+        var summaryCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
         then(emailService).should().sendSubmissionConfirmation(
                 eq("solo@test.com"), eq("Test Comp"), eq("Pro"),
-                eq(1), contains("test-comp/divisions/pro/my-entries"));
+                summaryCaptor.capture(),
+                contains("test-comp/divisions/pro/my-entries"));
+        var summary = summaryCaptor.getValue();
+        org.assertj.core.api.Assertions.assertThat(summary)
+                .contains("#1")
+                .contains("Solo Mead")
+                .contains("M4B")
+                .contains("Historical Mead");
     }
 }

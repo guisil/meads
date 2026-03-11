@@ -94,16 +94,16 @@ class SmtpEmailService implements EmailService {
 
     @Override
     public void sendSubmissionConfirmation(String recipientEmail, String competitionName,
-                                            String divisionName, int entryCount,
+                                            String divisionName, String entrySummary,
                                             String entriesUrl) {
         var ctx = new Context();
         var subject = "[MEADS] Entries submitted — " + divisionName;
         ctx.setVariable("subject", subject);
         ctx.setVariable("heading", "Entries Submitted");
         ctx.setVariable("bodyText",
-                "Your " + entryCount + " " + (entryCount == 1 ? "entry" : "entries")
-                        + " in " + divisionName + " (" + competitionName
-                        + ") have been submitted successfully. You can download your entry labels from the link below.");
+                "All your entries for " + divisionName + " (" + competitionName
+                        + ") have been submitted. You can download your entry labels from the link below.");
+        ctx.setVariable("detailHtml", entrySummary.replace("\n", "<br>"));
         ctx.setVariable("ctaLabel", "View My Entries");
         ctx.setVariable("ctaUrl", entriesUrl);
         ctx.setVariable("contactEmail", null);
