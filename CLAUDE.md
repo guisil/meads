@@ -108,7 +108,7 @@ app.meads.identity                       ← Identity module public API
 ├── LoginView.java                       ← Vaadin login view (public — referenced by SecurityConfig)
 └── internal/                            ← Module-private
     ├── UserRepository.java              ← JPA repository
-    ├── SmtpEmailService.java            ← SMTP email implementation (JavaMailSender + Thymeleaf)
+    ├── SmtpEmailService.java            ← SMTP email implementation (JavaMailSender + Thymeleaf, per-user rate limiting)
     ├── SecurityConfig.java              ← Spring Security filter chain (formLogin + JWT filter)
     ├── MagicLinkAuthenticationFilter.java ← JWT magic link authentication filter
     ├── AccessCodeAuthenticationProvider.java ← Access code authentication provider

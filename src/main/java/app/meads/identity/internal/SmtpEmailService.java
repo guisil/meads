@@ -13,6 +13,11 @@ import org.thymeleaf.ITemplateEngine;
 import org.thymeleaf.context.Context;
 
 import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Slf4j
 @Service
@@ -25,19 +30,32 @@ class SmtpEmailService implements EmailService {
     private final JwtMagicLinkService jwtMagicLinkService;
     private final ITemplateEngine templateEngine;
     private final String fromAddress;
+    private final int rateLimitMinutes;
+    private final int dailyWarningThreshold;
+
+    private final ConcurrentHashMap<String, Instant> rateLimitMap = new ConcurrentHashMap<>();
+    private final AtomicInteger dailyCount = new AtomicInteger(0);
+    private final AtomicReference<LocalDate> dailyCountDate = new AtomicReference<>(LocalDate.now());
 
     SmtpEmailService(JavaMailSender mailSender,
                      JwtMagicLinkService jwtMagicLinkService,
                      ITemplateEngine templateEngine,
-                     @Value("${app.email.from}") String fromAddress) {
+                     @Value("${app.email.from}") String fromAddress,
+                     @Value("${app.email.rate-limit-minutes:5}") int rateLimitMinutes,
+                     @Value("${app.email.daily-warning-threshold:50}") int dailyWarningThreshold) {
         this.mailSender = mailSender;
         this.jwtMagicLinkService = jwtMagicLinkService;
         this.templateEngine = templateEngine;
         this.fromAddress = fromAddress;
+        this.rateLimitMinutes = rateLimitMinutes;
+        this.dailyWarningThreshold = dailyWarningThreshold;
     }
 
     @Override
     public void sendMagicLink(String recipientEmail) {
+        if (isRateLimited(recipientEmail, "magic-link")) {
+            return;
+        }
         var link = jwtMagicLinkService.generateLink(recipientEmail, TOKEN_VALIDITY);
         var ctx = new Context();
         ctx.setVariable("subject", "Your MEADS login link");
@@ -50,7 +68,27 @@ class SmtpEmailService implements EmailService {
     }
 
     @Override
+    public void sendCredentialsReminder(String recipientEmail) {
+        if (isRateLimited(recipientEmail, "credentials-reminder")) {
+            return;
+        }
+        var ctx = new Context();
+        ctx.setVariable("subject", "MEADS login reminder");
+        ctx.setVariable("heading", "Login Reminder");
+        ctx.setVariable("bodyText",
+                "You have a password set on your MEADS account. Please use your credentials to log in "
+                        + "instead of requesting a login link.");
+        ctx.setVariable("ctaLabel", null);
+        ctx.setVariable("ctaUrl", null);
+        ctx.setVariable("contactEmail", null);
+        sendEmail(recipientEmail, "MEADS login reminder", ctx, "");
+    }
+
+    @Override
     public void sendPasswordReset(String recipientEmail) {
+        if (isRateLimited(recipientEmail, "password-reset")) {
+            return;
+        }
         var link = jwtMagicLinkService.generatePasswordSetupLink(recipientEmail, TOKEN_VALIDITY);
         var ctx = new Context();
         ctx.setVariable("subject", "Reset your MEADS password");
@@ -130,6 +168,30 @@ class SmtpEmailService implements EmailService {
         sendEmail(recipientEmail, subject, ctx, myEntriesUrl);
     }
 
+    private boolean isRateLimited(String email, String type) {
+        var key = email + ":" + type;
+        var now = Instant.now();
+        var lastSent = rateLimitMap.get(key);
+        if (lastSent != null && now.isBefore(lastSent.plus(Duration.ofMinutes(rateLimitMinutes)))) {
+            log.info("Rate limited: email type '{}' for {} (cooldown {} min)", type, email, rateLimitMinutes);
+            return true;
+        }
+        rateLimitMap.put(key, now);
+        return false;
+    }
+
+    private void trackDailyCount() {
+        var today = LocalDate.now();
+        if (!today.equals(dailyCountDate.get())) {
+            dailyCount.set(0);
+            dailyCountDate.set(today);
+        }
+        var count = dailyCount.incrementAndGet();
+        if (count == dailyWarningThreshold) {
+            log.warn("Daily email count has reached {} — approaching quota limits", count);
+        }
+    }
+
     private void sendEmail(String to, String subject, Context thymeleafContext, String fallbackLink) {
         try {
             var htmlBody = templateEngine.process(TEMPLATE_NAME, thymeleafContext);
@@ -140,6 +202,7 @@ class SmtpEmailService implements EmailService {
             helper.setSubject(subject);
             helper.setText(htmlBody, true);
             mailSender.send(message);
+            trackDailyCount();
             log.info("Email sent: subject='{}', to={}", subject, to);
         } catch (MailException | MessagingException e) {
             log.warn("Failed to send email to {} (subject='{}'): {}. Link: {}",

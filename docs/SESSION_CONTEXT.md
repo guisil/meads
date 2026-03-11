@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `competition-module`
-**Tests:** 504 passing (`mvn test -Dsurefire.useFile=false`)
+**Tests:** 511 passing (`mvn test -Dsurefire.useFile=false`)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -31,7 +31,8 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 - Password setup & reset: `SetPasswordView`, `setPasswordByToken()`, `generatePasswordSetupLink()`,
   `hasPassword()`, triggers on admin role assignment, "Forgot password?" on login, admin "Password Reset"
 - EmailService (public API) — `SmtpEmailService` (internal) with `JavaMailSender` + Thymeleaf HTML templates.
-  Sends magic link, password reset, password setup, order review alert, submission confirmation, and credit notification emails. SMTP failure logged with fallback link (no crash).
+  Sends magic link, password reset, password setup, credentials reminder, order review alert, submission confirmation, and credit notification emails. SMTP failure logged with fallback link (no crash).
+  Per-user rate limiting (5-min cooldown per email type) on user-triggered emails (magic link, password reset, credentials reminder). Daily email counter with WARN at threshold (50).
   Mailpit for dev (port 1025 SMTP, port 8025 web UI). Resend SMTP for prod. 7-day token validity.
 - **Status:** Complete
 
@@ -237,6 +238,7 @@ Requires: DB migration, admin UI for constraint config, cross-module data flow, 
 - **Entry submission confirmation emails** — `SubmissionConfirmationListener` sends confirmation to entrant when entries submitted, with entry summary and link to MyEntriesView. Conditional: only fires when all credits used AND no drafts remain.
 - **Credit notification emails** — `CreditNotificationListener` sends email to entrant when credits are awarded (webhook or admin). `WebhookService` now publishes `CreditsAwardedEvent`.
 - **Submission email redesign** — `EntriesSubmittedEvent` now carries `List<EntryDetail>` instead of `int entryCount`. Event published only when credits fully used and all entries submitted. Email includes per-entry summary (number, name, category). "Submit All" renamed to "Submit All Drafts". Process info box added to MyEntriesView.
+- **Email rate limiting + credentials reminder + set password info** — Per-user 5-min cooldown on user-triggered emails (magic link, password reset, credentials reminder). Daily email counter with WARN at 50. Credentials reminder email sent to password users who request magic links. Set Password page shows info message about login links being disabled after password is set.
 
 ---
 
@@ -254,6 +256,7 @@ Requires: DB migration, admin UI for constraint config, cross-module data flow, 
 - **Meadery name stays on User profile only** — no per-entry override needed.
 - **`meaderyNameRequired` on Division** — boolean flag, changeable only in DRAFT status.
 - **Email SMTP failure resilience** — catch and log with fallback link, never crash UI actions.
+- **Email rate limiting** — in-memory `ConcurrentHashMap<String, Instant>` keyed by `email:type`, 5-min cooldown (configurable via `app.email.rate-limit-minutes`). Only user-triggered emails are rate-limited. Daily counter logs WARN at threshold (`app.email.daily-warning-threshold=50`). Resets on date change.
 - **Token validity (7 days)** — private constant in `SmtpEmailService`, not mentioned in email body.
 - **Competition `contactEmail`** — optional field, shown in password setup and credit notification
   emails as visible footer contact. Saved via `CompetitionService.updateCompetitionContactEmail()`.

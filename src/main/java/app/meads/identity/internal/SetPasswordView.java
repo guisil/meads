@@ -5,6 +5,7 @@ import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.Shortcuts;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
@@ -48,6 +49,8 @@ public class SetPasswordView extends VerticalLayout implements BeforeEnterObserv
         removeAll();
 
         add(new H2("Set Password"));
+        add(new Paragraph("Once you set a password, you'll need to use your credentials to log in "
+                + "— login links will no longer work for your account."));
 
         passwordField = new PasswordField("Password");
         passwordField.setValueChangeMode(ValueChangeMode.EAGER);

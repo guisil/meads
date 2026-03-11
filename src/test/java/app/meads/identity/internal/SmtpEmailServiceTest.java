@@ -22,6 +22,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -47,7 +48,7 @@ class SmtpEmailServiceTest {
         given(templateEngine.process(eq("email/email-base"), any(IContext.class)))
                 .willReturn("<html>rendered</html>");
         emailService = new SmtpEmailService(mailSender, jwtMagicLinkService,
-                templateEngine, "MEADS <noreply@meads.app>");
+                templateEngine, "MEADS <noreply@meads.app>", 5, 50);
     }
 
     @Test
@@ -155,6 +156,60 @@ class SmtpEmailServiceTest {
                 .contains("My Mead")
                 .contains("Berry Mead");
         assertThat(ctx.getVariable("ctaLabel")).isEqualTo("View My Entries");
+    }
+
+    @Test
+    void shouldNotSendMagicLinkWhenRateLimited() {
+        given(jwtMagicLinkService.generateLink(eq("user@example.com"), any()))
+                .willReturn("http://localhost:8080/login/magic?token=abc123");
+
+        emailService.sendMagicLink("user@example.com");
+        emailService.sendMagicLink("user@example.com");
+
+        verify(mailSender, times(1)).send(any(MimeMessage.class));
+    }
+
+    @Test
+    void shouldNotSendPasswordResetWhenRateLimited() {
+        given(jwtMagicLinkService.generatePasswordSetupLink(eq("user@example.com"), any()))
+                .willReturn("http://localhost:8080/set-password?token=xyz789");
+
+        emailService.sendPasswordReset("user@example.com");
+        emailService.sendPasswordReset("user@example.com");
+
+        verify(mailSender, times(1)).send(any(MimeMessage.class));
+    }
+
+    @Test
+    void shouldSendCredentialsReminderEmail() {
+        emailService.sendCredentialsReminder("user@example.com");
+
+        verify(mailSender).send(any(MimeMessage.class));
+        var contextCaptor = ArgumentCaptor.forClass(IContext.class);
+        verify(templateEngine).process(eq("email/email-base"), contextCaptor.capture());
+        var ctx = contextCaptor.getValue();
+        assertThat(ctx.getVariable("heading")).isEqualTo("Login Reminder");
+        assertThat((String) ctx.getVariable("bodyText")).contains("credentials");
+        assertThat(ctx.getVariable("ctaLabel")).isNull();
+        assertThat(ctx.getVariable("ctaUrl")).isNull();
+    }
+
+    @Test
+    void shouldRateLimitCredentialsReminderEmail() {
+        emailService.sendCredentialsReminder("user@example.com");
+        emailService.sendCredentialsReminder("user@example.com");
+
+        verify(mailSender, times(1)).send(any(MimeMessage.class));
+    }
+
+    @Test
+    void shouldNotRateLimitSystemTriggeredEmails() {
+        emailService.sendSubmissionConfirmation("user@example.com", "CHIP 2026", "Amadora",
+                "#1 — My Mead", "/my-entries");
+        emailService.sendSubmissionConfirmation("user@example.com", "CHIP 2026", "Amadora",
+                "#1 — My Mead", "/my-entries");
+
+        verify(mailSender, times(2)).send(any(MimeMessage.class));
     }
 
     @Test

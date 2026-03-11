@@ -9,6 +9,7 @@ import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.router.QueryParameters;
 import org.junit.jupiter.api.AfterEach;
@@ -53,6 +54,18 @@ class SetPasswordViewTest {
     void tearDown() {
         MockVaadin.tearDown();
         SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void shouldDisplayInfoMessageAboutLoginLinksBeingDisabled() {
+        User user = userService.createUser("setpw-info@example.com", "Info User", UserStatus.PENDING, Role.USER);
+        String link = jwtMagicLinkService.generatePasswordSetupLink(user.getEmail(), Duration.ofDays(7));
+        String token = link.substring(link.indexOf("token=") + "token=".length());
+
+        UI.getCurrent().navigate("set-password", QueryParameters.of("token", token));
+
+        var infoParagraph = _get(Paragraph.class);
+        assertThat(infoParagraph.getText()).contains("login links will no longer work");
     }
 
     @Test

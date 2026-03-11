@@ -6,6 +6,8 @@ public interface EmailService {
 
     void sendPasswordReset(String recipientEmail);
 
+    void sendCredentialsReminder(String recipientEmail);
+
     void sendPasswordSetup(String recipientEmail, String competitionName, String contactEmail);
 
     void sendOrderReviewAlert(String recipientEmail, String competitionName,

@@ -101,7 +101,7 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
         try {
             var user = userService.findByEmail(emailValue);
             if (user.getPasswordHash() != null) {
-                log.info("User {} has a password — suggesting credentials login", emailValue);
+                emailService.sendCredentialsReminder(emailValue);
             } else {
                 emailService.sendMagicLink(emailValue);
             }

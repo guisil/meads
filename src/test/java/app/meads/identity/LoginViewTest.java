@@ -190,6 +190,21 @@ class LoginViewTest {
     }
 
     @Test
+    void shouldShowSameNotificationWhenUserHasPassword() {
+        var user = userService.findByEmail("user@example.com");
+        userService.setPassword(user.getId(), "testpassword");
+
+        var emailField = _get(EmailField.class, spec -> spec.withLabel("Email"));
+        emailField.setValue("user@example.com");
+
+        _click(_get(Button.class, spec -> spec.withText("Get Login Link")));
+
+        assertThat(getNotifications()).hasSize(1);
+        assertThat(getNotifications().getFirst().getElement().getProperty("text"))
+                .isEqualTo("If this email is registered, a login link has been sent.");
+    }
+
+    @Test
     void shouldShowValidationErrorWhenForgotPasswordEmailIsBlank() {
         _get(Details.class).setOpened(true);
         _click(_get(Button.class, spec -> spec.withText("Forgot password?")));

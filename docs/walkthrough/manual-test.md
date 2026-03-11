@@ -70,7 +70,8 @@ CTA button, fallback URL, and optional contact footer.
 
 | Trigger | Subject | Heading | CTA Label | Contact Footer |
 |---------|---------|---------|-----------|----------------|
-| "Get Login Link" on login page | Your MEADS login link | Log in to MEADS | Log In | No |
+| "Get Login Link" on login page (no password) | Your MEADS login link | Log in to MEADS | Log In | No |
+| "Get Login Link" on login page (has password) | MEADS login reminder | Login Reminder | None | No |
 | "Forgot password?" on login page | Reset your MEADS password | Set your password | Set Password | No |
 | "Password Reset" (key icon) in Users admin | Reset your MEADS password | Set your password | Set Password | No |
 | New SYSTEM_ADMIN created without password | Reset your MEADS password | Set your password | Set Password | No |
@@ -119,15 +120,23 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] Click the "Log In" button (or copy the link from the email)
 - [ ] **Expected:** Authenticated as `user@example.com`, redirected to `/my-entries` (regular user with credits)
 
-### Magic link blocked for password user
+### Credentials reminder for password user
 
 - [ ] Log out (or open incognito window)
 - [ ] Navigate to `/login`
 - [ ] Enter email: `admin@example.com` (has a password)
 - [ ] Click "Get Login Link"
 - [ ] **Expected:** Same notification "If this email is registered, a login link has been sent."
-- [ ] **Expected:** Server logs show "User admin@example.com has a password — suggesting credentials login" (NO email sent)
-- [ ] **Expected:** No email appears in Mailpit for `admin@example.com`
+- [ ] **Expected:** Mailpit shows "MEADS login reminder" email for `admin@example.com` (tells user to use credentials)
+
+### Email rate limiting
+
+- [ ] Stay on `/login` with `admin@example.com` in the email field
+- [ ] Click "Get Login Link" again immediately
+- [ ] **Expected:** Same notification shown, but server logs show "Rate limited: email type 'credentials-reminder' for admin@example.com" (NO second email)
+- [ ] **Expected:** No second email in Mailpit
+- [ ] Test with magic link user: enter `user@example.com`, click "Get Login Link" twice quickly
+- [ ] **Expected:** Only one magic link email in Mailpit, second is rate-limited (5-min cooldown)
 
 ### Magic link validation (blank email)
 
@@ -217,7 +226,8 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] Open Mailpit — find the password reset email for `user@example.com`
 - [ ] Copy the "Set Password" link from the email (format: `http://localhost:8080/set-password?token=...`)
 - [ ] Open the URL in a browser (can be logged out)
-- [ ] **Expected:** Set Password page with "Password" and "Confirm Password" fields
+- [ ] **Expected:** Set Password page with info message "Once you set a password, you'll need to use your credentials to log in — login links will no longer work for your account."
+- [ ] **Expected:** "Password" and "Confirm Password" fields visible
 - [ ] Enter mismatched passwords → click "Set Password"
 - [ ] **Expected:** "Passwords do not match" error on confirm field
 - [ ] Enter a matching password shorter than 8 characters → click "Set Password"
