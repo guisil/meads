@@ -1182,7 +1182,7 @@ curl -s -o /dev/null -w "%{http_code}" \
 
 - [ ] Find a DRAFT entry in the grid
 - [ ] Click the submit (check) icon in the Actions column
-- [ ] **Expected:** Confirmation dialog: "Submit entry #N (Mead Name)? This cannot be undone."
+- [ ] **Expected:** Confirmation dialog: "Submit entry #N (Mead Name)? Submitted entries can no longer be edited."
 - [ ] Click "Cancel" (don't submit yet)
 
 ### Filter and sort
@@ -1198,7 +1198,7 @@ curl -s -o /dev/null -w "%{http_code}" \
 
 - [ ] **Expected:** "Submit All" button is enabled (there are DRAFT entries)
 - [ ] Click "Submit All"
-- [ ] **Expected:** Confirmation dialog: "Submit N entries? This cannot be undone."
+- [ ] **Expected:** Confirmation dialog: "Submit N entries? Submitted entries can no longer be edited."
 - [ ] Click "Submit"
 - [ ] **Expected:** Notification "N entries submitted" (green)
 - [ ] **Expected:** All previously DRAFT entries now show status SUBMITTED

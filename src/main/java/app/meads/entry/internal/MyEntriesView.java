@@ -526,7 +526,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         var dialog = new Dialog();
         dialog.setHeaderTitle("Submit Entry");
         dialog.add("Submit entry #" + entry.getEntryNumber()
-                + " (" + entry.getMeadName() + ")? This cannot be undone.");
+                + " (" + entry.getMeadName() + ")? Submitted entries can no longer be edited.");
 
         var confirmButton = new Button("Submit", e -> {
             try {
@@ -734,7 +734,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
 
         var dialog = new Dialog();
         dialog.setHeaderTitle("Submit All Entries");
-        dialog.add("Submit " + draftCount + " entries? This cannot be undone.");
+        dialog.add("Submit " + draftCount + " entries? Submitted entries can no longer be edited.");
 
         var confirmButton = new Button("Submit", e -> {
             try {
