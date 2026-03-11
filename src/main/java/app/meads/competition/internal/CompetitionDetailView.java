@@ -27,6 +27,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.tabs.TabSheet;
 import com.vaadin.flow.component.textfield.EmailField;
+import com.vaadin.flow.component.textfield.IntegerField;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.upload.Upload;
@@ -43,6 +44,7 @@ import org.springframework.util.StringUtils;
 
 import java.io.ByteArrayInputStream;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.Locale;
 import java.util.Map;
@@ -204,6 +206,13 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 .setHeader("Status").setAutoWidth(true);
         divisionsGrid.addColumn(div -> div.getScoringSystem().name())
                 .setHeader("Scoring").setAutoWidth(true);
+        divisionsGrid.addColumn(div -> {
+            if (div.getRegistrationDeadline() == null) return "";
+            var deadline = div.getRegistrationDeadline()
+                    .atZone(ZoneId.of(div.getRegistrationDeadlineTimezone()))
+                    .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            return deadline + " " + div.getRegistrationDeadlineTimezone();
+        }).setHeader("Registration Deadline").setSortable(true).setAutoWidth(true);
         divisionsGrid.addComponentColumn(div -> {
             var revertButton = new Button(new Icon(VaadinIcon.BACKWARDS));
             revertButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
@@ -307,7 +316,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
             actions.add(removeButton);
 
             return actions;
-        }).setHeader("").setAutoWidth(true);
+        }).setHeader("Actions").setAutoWidth(true);
 
         participantsGrid.getColumns().forEach(col -> col.setResizable(true));
 
@@ -578,6 +587,24 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         timezoneCombo.setRequired(true);
         timezoneCombo.setAllowCustomValue(false);
 
+        var maxPerSubcategoryField = new IntegerField("Max Entries per Subcategory");
+        maxPerSubcategoryField.setMin(1);
+        maxPerSubcategoryField.setStepButtonsVisible(true);
+        maxPerSubcategoryField.setClearButtonVisible(true);
+        maxPerSubcategoryField.setHelperText("Per entrant per subcategory (empty = unlimited)");
+
+        var maxPerMainCategoryField = new IntegerField("Max Entries per Main Category");
+        maxPerMainCategoryField.setMin(1);
+        maxPerMainCategoryField.setStepButtonsVisible(true);
+        maxPerMainCategoryField.setClearButtonVisible(true);
+        maxPerMainCategoryField.setHelperText("Per entrant per main category (empty = unlimited)");
+
+        var maxTotalField = new IntegerField("Max Total Entries");
+        maxTotalField.setMin(1);
+        maxTotalField.setStepButtonsVisible(true);
+        maxTotalField.setClearButtonVisible(true);
+        maxTotalField.setHelperText("Per entrant total in this division (empty = unlimited)");
+
         var saveButton = new Button("Save", e -> {
             if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
@@ -590,11 +617,12 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 return;
             }
             if (deadlinePicker.getValue() == null) {
-                Notification.show("Registration deadline is required");
+                deadlinePicker.setInvalid(true);
+                deadlinePicker.setErrorMessage("Registration deadline is required");
                 return;
             }
             try {
-                competitionService.createDivision(
+                var division = competitionService.createDivision(
                         competitionId,
                         nameField.getValue(),
                         shortNameField.getValue(),
@@ -602,6 +630,16 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                         deadlinePicker.getValue(),
                         timezoneCombo.getValue(),
                         getCurrentUserId());
+                if (maxPerSubcategoryField.getValue() != null
+                        || maxPerMainCategoryField.getValue() != null
+                        || maxTotalField.getValue() != null) {
+                    competitionService.updateDivisionEntryLimits(
+                            division.getId(),
+                            maxPerSubcategoryField.getValue(),
+                            maxPerMainCategoryField.getValue(),
+                            maxTotalField.getValue(),
+                            getCurrentUserId());
+                }
                 refreshDivisionsGrid();
                 var notification = Notification.show("Division created successfully");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
@@ -614,6 +652,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         var cancelButton = new Button("Cancel", e -> dialog.close());
 
         var form = new VerticalLayout(nameField, shortNameField, scoringSelect,
+                maxPerSubcategoryField, maxPerMainCategoryField, maxTotalField,
                 deadlinePicker, timezoneCombo);
         form.setPadding(false);
         dialog.add(form);

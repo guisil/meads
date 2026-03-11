@@ -198,7 +198,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
             removeButton.addClickListener(e -> openRemoveCategoryDialog(dc));
             removeButton.setEnabled(allowModification);
             return removeButton;
-        }).setHeader("").setAutoWidth(true);
+        }).setHeader("Actions").setAutoWidth(true);
 
         refreshCategoriesGrid();
         tab.add(categoriesGrid);

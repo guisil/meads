@@ -525,7 +525,7 @@ CTA button, fallback URL, and optional contact footer.
 ### Divisions tab
 
 - [ ] **Expected:** Default tab is "Divisions"
-- [ ] **Expected:** Grid with columns: Name, Status, Scoring, Actions (icon buttons)
+- [ ] **Expected:** Grid with columns: Name, Status, Scoring, Registration Deadline (ISO format with timezone), Actions (icon buttons)
 - [ ] **Expected:** "Amadora" row -- Status badge "Registration Open", Scoring "MJP"
 - [ ] **Expected:** "Profissional" row -- Status badge "Registration Open", Scoring "MJP"
 - [ ] **Expected:** Each row has Advance (forward icon), Revert (backwards icon, hidden for DRAFT), and Delete (trash icon) buttons
@@ -534,14 +534,15 @@ CTA button, fallback URL, and optional contact footer.
 ### Create division
 
 - [ ] Click "Create Division"
-- [ ] **Expected:** Dialog with fields: Name, Short Name, Scoring System (default: MJP), Registration Deadline (date+time picker), Timezone (combo box, default UTC)
+- [ ] **Expected:** Dialog with fields: Name, Short Name, Scoring System (default: MJP), Max Entries per Subcategory, Max Entries per Main Category, Max Total Entries, Registration Deadline (date+time picker), Timezone (combo box, default UTC)
 - [ ] Enter name: `Test Division`, short name: `test-division`
+- [ ] Optionally set entry limits (step buttons, clear button, helper text matching Settings tab)
 - [ ] Set registration deadline to a future date/time
 - [ ] Select timezone (e.g., `Europe/Lisbon`)
 - [ ] Click "Save"
 - [ ] **Expected:** Notification "Division created successfully" (green)
 - [ ] **Expected:** New division appears in grid with status "Draft"
-- [ ] Try saving without setting deadline → **Expected:** "Registration deadline is required" notification
+- [ ] Try saving without setting deadline → **Expected:** "Registration deadline is required" error on the field
 
 ### Advance division status
 
@@ -569,7 +570,7 @@ CTA button, fallback URL, and optional contact footer.
 
 - [ ] Click the "Participants" tab
 - [ ] **Expected:** Filter field with search icon and placeholder "Filter by name or email..."
-- [ ] **Expected:** Grid with columns: Name (sortable), Email (sortable), Meadery (sortable), Country (sortable), Role (sortable), Access Code, Actions (envelope + remove icons). All columns resizable.
+- [ ] **Expected:** Grid with columns: Name (sortable), Email (sortable), Meadery (sortable), Country (sortable), Role (sortable), Access Code, Actions (envelope + remove icons, header "Actions"). All columns resizable.
 - [ ] **Expected:** Rows for compadmin (Admin, no code), judge (Judge, 8-char code), steward (Steward, 8-char code), user (Entrant, no code), entrant (Entrant, no code)
 - [ ] **Expected:** Envelope icon (send login link) shown only for participants without passwords (magic-link-only users)
 - [ ] Type a name fragment in the filter field

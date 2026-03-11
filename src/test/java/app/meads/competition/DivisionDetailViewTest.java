@@ -294,7 +294,7 @@ class DivisionDetailViewTest {
         var headerNames = grid.getColumns().stream()
                 .map(c -> c.getHeaderText())
                 .toList();
-        assertThat(headerNames).containsExactly("Code", "Name", "Description", "");
+        assertThat(headerNames).containsExactly("Code", "Name", "Description", "Actions");
     }
 
     @Test

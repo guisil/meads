@@ -267,8 +267,11 @@ public class CompetitionService {
         var division = divisionRepository.findById(divisionId)
                 .orElseThrow(() -> new IllegalArgumentException("Division not found"));
         requireAuthorized(division.getCompetitionId(), requestingUserId);
-        divisionCategoryRepository.deleteAll(
-                divisionCategoryRepository.findByDivisionIdOrderByCode(divisionId));
+        var categories = divisionCategoryRepository.findByDivisionIdOrderByCode(divisionId);
+        var children = categories.stream().filter(c -> c.getParentId() != null).toList();
+        var parents = categories.stream().filter(c -> c.getParentId() == null).toList();
+        divisionCategoryRepository.deleteAll(children);
+        divisionCategoryRepository.deleteAll(parents);
         divisionRepository.delete(division);
         log.info("Deleted division: {} ({})", divisionId, division.getShortName());
     }
