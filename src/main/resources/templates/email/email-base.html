@@ -23,7 +23,7 @@
                             <p style="margin: 0 0 32px 0; color: #333333; font-size: 16px; line-height: 1.5;" th:text="${bodyText}">Body text</p>
                             <div th:if="${detailHtml != null}" th:utext="${detailHtml}" style="margin: 0 0 32px 0; color: #555555; font-size: 14px; line-height: 1.6; padding: 16px; background-color: #f8f8f8; border-radius: 6px;"></div>
                             <!-- CTA Button -->
-                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto;">
+                            <table th:if="${ctaUrl != null}" role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto;">
                                 <tr>
                                     <td style="border-radius: 6px; background-color: #1a1a2e;">
                                         <a th:href="${ctaUrl}" th:text="${ctaLabel}" style="display: inline-block; padding: 14px 32px; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: bold;">Button</a>
@@ -31,7 +31,7 @@
                                 </tr>
                             </table>
                             <!-- Fallback URL -->
-                            <p style="margin: 32px 0 0 0; color: #888888; font-size: 12px; line-height: 1.4;">
+                            <p th:if="${ctaUrl != null}" style="margin: 32px 0 0 0; color: #888888; font-size: 12px; line-height: 1.4;">
                                 If the button doesn't work, copy and paste this link into your browser:<br/>
                                 <a th:href="${ctaUrl}" th:text="${ctaUrl}" style="color: #1a1a2e; word-break: break-all;">https://example.com</a>
                             </p>
