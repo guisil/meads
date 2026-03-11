@@ -24,6 +24,7 @@ import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.server.VaadinServletRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -341,5 +342,41 @@ class MyEntriesViewTest {
                 .filter(a -> "Competition Rules".equals(a.getText()))
                 .findFirst();
         assertThat(docAnchor).isPresent();
+    }
+
+    @Test
+    @WithMockUser(username = ENTRANT_EMAIL, roles = "USER")
+    void shouldShowCategoryHintWhenCategorySelected() {
+        // Create MJP subcategories
+        var parentCategory = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1", "Traditional Mead",
+                "Traditional mead", null, 1));
+        var m1aCategory = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Traditional Mead (Dry)",
+                "Dry traditional mead", parentCategory.getId(), 2));
+        var m2aCategory = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M2A", "Pome Fruit Melomel",
+                "Pome fruit melomel", null, 3));
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/my-entries");
+
+        // Open the Add Entry dialog
+        var addButton = _get(Button.class, spec -> spec.withText("Add Entry"));
+        _click(addButton);
+
+        // Select M1A — should show hint about traditional mead
+        @SuppressWarnings("unchecked")
+        var categorySelect = _get(Select.class, spec -> spec.withLabel("Category"));
+        categorySelect.setValue(m1aCategory);
+        var hint = _get(Span.class, spec -> spec.withId("category-hint"));
+        assertThat(hint.isVisible()).isTrue();
+        assertThat(hint.getText()).contains("honey");
+        assertThat(hint.getText()).containsIgnoringCase("dry");
+
+        // Select M2A — should show fruit hint
+        categorySelect.setValue(m2aCategory);
+        assertThat(hint.isVisible()).isTrue();
+        assertThat(hint.getText()).containsIgnoringCase("pome fruit");
     }
 }

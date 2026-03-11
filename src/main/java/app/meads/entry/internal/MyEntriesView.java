@@ -584,6 +584,24 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                 .filter(dc -> dc.getParentId() != null)
                 .toList());
 
+        var categoryHint = new Span();
+        categoryHint.setId("category-hint");
+        categoryHint.setVisible(false);
+        categoryHint.setWidthFull();
+        categoryHint.getStyle()
+                .set("color", "var(--lumo-secondary-text-color)")
+                .set("font-size", "var(--lumo-font-size-s)");
+
+        categorySelect.addValueChangeListener(e -> {
+            var selected = e.getValue();
+            if (selected != null && CATEGORY_HINTS.containsKey(selected.getCode())) {
+                categoryHint.setText(CATEGORY_HINTS.get(selected.getCode()));
+                categoryHint.setVisible(true);
+            } else {
+                categoryHint.setVisible(false);
+            }
+        });
+
         var sweetness = new Select<Sweetness>();
         sweetness.setLabel("Sweetness");
         sweetness.setWidthFull();
@@ -647,7 +665,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
             }
         }
 
-        layout.add(meadName, categorySelect, sweetness, strength, abv, carbonation,
+        layout.add(meadName, categorySelect, categoryHint, sweetness, strength, abv, carbonation,
                 honeyVarieties, otherIngredients, woodAged, woodAgeingDetails, additionalInfo);
         dialog.add(layout);
 
@@ -735,6 +753,26 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         dialog.getFooter().add(cancelButton, confirmButton);
         dialog.open();
     }
+
+    private static final Map<String, String> CATEGORY_HINTS = Map.ofEntries(
+            Map.entry("M1A", "Traditional mead: only honey (and optionally wood). Expected sweetness: Dry."),
+            Map.entry("M1B", "Traditional mead: only honey (and optionally wood). Expected sweetness: Medium."),
+            Map.entry("M1C", "Traditional mead: only honey (and optionally wood). Expected sweetness: Sweet."),
+            Map.entry("M2A", "Pome fruit melomel: apples, pears, quince."),
+            Map.entry("M2B", "Pyment: made with grapes."),
+            Map.entry("M2C", "Berry melomel: berry fruits."),
+            Map.entry("M2D", "Stone fruit melomel: peaches, cherries, plums, etc."),
+            Map.entry("M2E", "Other melomel: other fruits or fruit combinations."),
+            Map.entry("M3A", "Fruit and spice mead: one or more fruits combined with one or more spices."),
+            Map.entry("M3B", "Metheglin: herbs, spices, or vegetables."),
+            Map.entry("M3C", "Other metheglin: coffee, chocolate, chili, nuts, or seeds."),
+            Map.entry("M4A", "Braggot: mead with malt / beer-style honey beverage."),
+            Map.entry("M4B", "Historical mead: made using historical methods or recipes."),
+            Map.entry("M4C", "Experimental mead: novel ingredients or processes."),
+            Map.entry("M4D", "Honey alcoholic beverage: distillates, tinctures, liqueurs."),
+            Map.entry("M4E", "Bochet: caramelized honey should be a significant character. May include other ingredients."),
+            Map.entry("M4S", "Session mead: ABV should be under 7.5%, strength should be Hydromel.")
+    );
 
     private UUID getCurrentUserId() {
         var email = authenticationContext.getAuthenticatedUser(UserDetails.class)

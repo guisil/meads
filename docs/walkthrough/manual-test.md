@@ -1128,7 +1128,11 @@ curl -s -o /dev/null -w "%{http_code}" \
 
 - [ ] **Expected:** "Add Entry" button is enabled (remaining credits > 0)
 - [ ] Click "Add Entry"
-- [ ] **Expected:** Dialog (600px wide) with full-width fields: Mead Name, Category (subcategories only, shows "code — name"), Sweetness, Strength, ABV (%), Carbonation, Honey Varieties, Other Ingredients, Wood Aged checkbox, Additional Information
+- [ ] **Expected:** Dialog (600px wide) with full-width fields: Mead Name, Category (subcategories only, shows "code — name"), category hint (initially hidden), Sweetness, Strength, ABV (%), Carbonation, Honey Varieties, Other Ingredients, Wood Aged checkbox, Additional Information
+- [ ] Select Category: M1B
+- [ ] **Expected:** Category hint appears below the dropdown: "Traditional mead: only honey (and optionally wood). Expected sweetness: Medium."
+- [ ] Change Category to M2A
+- [ ] **Expected:** Hint updates to: "Pome fruit melomel: apples, pears, quince."
 - [ ] Fill in: Mead Name: `Spring Blossom`, Category: M1B, Sweetness: Medium, Strength: Standard, ABV: 12.0, Carbonation: Still, Honey: `Orange blossom`
 - [ ] Click "Save"
 - [ ] **Expected:** Notification "Entry created" (green)

@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `competition-module`
-**Tests:** 482 passing (`mvn test -Dsurefire.useFile=false`)
+**Tests:** 483 passing (`mvn test -Dsurefire.useFile=false`)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -171,14 +171,7 @@ Sections 2–8 with many fixes along the way; this is a fresh pass through all s
 (1–14) to validate the current state end-to-end. **Go through every test item without
 skipping anything.** May produce bug fixes or UX improvements.
 
-### Priority 2: Category value locking / auto-fill
-Investigate and implement category-driven field locking. Examples:
-- ABV range could lock the Strength field (e.g., <7.5% → Hydromel, 7.5-14% → Standard, >14% → Sack)
-- Selecting M1A (Dry Traditional) could lock Sweetness to "Dry"
-- Choosing a specific subcategory could constrain or suggest characteristics
-This needs design work first — which fields, which categories, how strict (lock vs. suggest).
-
-### Priority 3: Entry labels layout adjustments
+### Priority 2: Entry labels layout adjustments
 QR code now renders correctly (was broken: ZXing TYPE_BYTE_BINARY incompatible with OpenPDF).
 Additional layout improvements to consider:
 - Review spacing, font sizes, and overall label aesthetics
@@ -187,7 +180,7 @@ Additional layout improvements to consider:
 - Review instruction header formatting
 - Test with various entry data (long names, many ingredients, etc.)
 
-### Priority 4: Email notifications
+### Priority 3: Email notifications
 Design and implement email notifications beyond magic links:
 - **Admin alert on invalid/partially processed webhook orders** — notify competition admin when
   an order arrives with NEEDS_REVIEW or PARTIALLY_PROCESSED status
@@ -197,24 +190,31 @@ Design and implement email notifications beyond magic links:
 - Other potential: entry received confirmation, results published notification
 Needs design: triggers, templates, frequency/dedup, configuration per competition.
 
-### Priority 5: Deployment
+### Priority 4: Deployment
 **Investigation complete** — see `docs/plans/2026-03-10-deployment-design.md`.
 Summary: Evaluated Railway, DigitalOcean (App Platform, Droplet), AWS (Lightsail, EB+RDS).
 Recommendation: DigitalOcean App Platform + Managed PostgreSQL (~$20/mo) — best balance of
 cost, automatic backups (daily + PITR), and zero ops. Needs Dockerfile, DNS setup, email
 provider (Resend), and prod config before deploying.
 
-### Priority 6: Internationalization (i18n)
+### Priority 5: Internationalization (i18n)
 **Design complete** — see `docs/plans/2026-03-10-i18n-design.md`. Implementation deferred.
 Summary: Vaadin I18NProvider + Spring MessageSource, resource bundles, browser locale +
 UI switcher (cookie/localStorage), entrant-facing views only (6 views), MJP category
 translations via bundles keyed by code. ~100-120 strings to extract. No DB changes needed.
 
-### Priority 7: Judging module
+### Priority 6: Judging module
 Design and implementation. Reference: `docs/reference/chip-competition-rules.md`.
 
-### Priority 8: Awards module
+### Priority 7: Awards module
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md`.
+
+### Priority 8: Full category constraint system (low priority — future competition)
+Full field locking/validation based on category selection. Design doc: `docs/plans/2026-03-11-category-hints-design.md` (appendix).
+Includes: sweetness locking (M1A→Dry, M1B→Medium, M1C→Sweet), ingredient restrictions (M1/M4E),
+strength locking (M4S→Hydromel), ABV caps (M4S→7.5%), ABV→Strength derivation (universal),
+carbonation locking (custom categories), and admin-configurable constraints for custom categories.
+Requires: DB migration, admin UI for constraint config, cross-module data flow, server-side validation.
 
 ### Completed priorities
 - **Configuration audit** — Properties reorganized, secrets in profile-specific files.
@@ -222,6 +222,7 @@ Design and implementation, after judging module. Reference: `docs/reference/chip
 - **Entry labels (PDF)** — OpenPDF + ZXing, LabelPdfService, individual + batch download. QR code fix: ZXing TYPE_BYTE_BINARY → TYPE_INT_RGB conversion + nested PdfPTable for cell embedding.
 - **Competition documents** — PDF upload + external links, admin Documents tab, entrant list.
 - **Category code display** — Grid columns show code (e.g. M1A) with tooltip for full name in both MyEntriesView and DivisionEntryAdminView. View entry dialog shows "code — name" format. Entry creation filtered to subcategories only.
+- **Category guidance hints** — Informational hint text below category dropdown in entry dialog. All 16 MJP subcategories have style-specific guidance (ingredients, sweetness, ABV). No field locking or validation.
 
 ---
 
