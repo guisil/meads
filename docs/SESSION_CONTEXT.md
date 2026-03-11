@@ -203,7 +203,7 @@ Maven production profile, logging config, DNS setup, Resend email, and env vars.
   when registration deadline passes (scheduled task)
 - **Entrant deadline reminder** — notify entrants who have DRAFT entries when the registration
   deadline is approaching (e.g., 7 days, 3 days, 1 day before deadline)
-- Other potential: entry received confirmation, results published notification
+- Other potential: entry received confirmation (when admin marks entry as RECEIVED), results published notification
 
 ### Priority 6: Internationalization (i18n)
 **Design complete** — see `docs/plans/2026-03-10-i18n-design.md`. Implementation deferred.
@@ -253,8 +253,8 @@ Requires: DB migration, admin UI for constraint config, cross-module data flow, 
 - **`meaderyNameRequired` on Division** — boolean flag, changeable only in DRAFT status.
 - **Email SMTP failure resilience** — catch and log with fallback link, never crash UI actions.
 - **Token validity (7 days)** — private constant in `SmtpEmailService`, not mentioned in email body.
-- **Competition `contactEmail`** — optional field, shown in password setup emails as reply-to
-  and visible footer contact. Saved via `CompetitionService.updateCompetitionContactEmail()`.
+- **Competition `contactEmail`** — optional field, shown in password setup and credit notification
+  emails as visible footer contact. Saved via `CompetitionService.updateCompetitionContactEmail()`.
 - **DevUserInitializer uses EmailService** — sends magic link emails via `EmailService.sendMagicLink()`
   at startup. Emails are captured by Mailpit in dev. Password users (admin, compadmin) still log to console.
 - **`spring.thymeleaf.check-template-location=false`** — prevents Thymeleaf view resolver conflict
@@ -293,7 +293,7 @@ Requires: DB migration, admin UI for constraint config, cross-module data flow, 
 
 ### Unit tests
 - `EntryServiceTest.java` — product mapping CRUD + credit methods + entry CRUD + submission + limits (subcategory, main category, total)
-- `WebhookServiceTest.java` — HMAC verification + processOrderPaid variants
+- `WebhookServiceTest.java` — HMAC verification + processOrderPaid variants + CreditsAwardedEvent publication
 - `LabelPdfServiceTest.java` — single/batch PDF generation, missing fields, QR code format, entry prefix handling
 - `JumpsellerOrderTest.java` — entity domain methods
 - `JumpsellerOrderLineItemTest.java` — entity domain methods
