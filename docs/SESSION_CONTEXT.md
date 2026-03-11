@@ -155,7 +155,8 @@ docs/
 │   ├── 2026-03-10-profile-meadery-country-design.md  ← Design reference for profile/meadery/country
 │   ├── 2026-03-10-email-sending-design.md  ← Email sending design (implemented)
 │   ├── 2026-03-10-i18n-design.md          ← i18n design (implementation deferred)
-│   └── 2026-03-10-deployment-design.md    ← Deployment options + config checklist (decision deferred)
+│   ├── 2026-03-10-deployment-design.md    ← Deployment options evaluation + recommendation
+│   └── deployment-checklist.md           ← Step-by-step deployment + redeployment procedures
 ├── reference/
 │   └── chip-competition-rules.md          ← CHIP competition rules (active reference)
 ├── specs/
@@ -170,13 +171,7 @@ docs/
 
 ## What's Next
 
-### Priority 1: Manual walkthrough (full redo)
-Redo the **entire** manual-test walkthrough from Section 1. Previous partial run covered
-Sections 2–8 with many fixes along the way; this is a fresh pass through all sections
-(1–14) to validate the current state end-to-end. **Go through every test item without
-skipping anything.** May produce bug fixes or UX improvements.
-
-### Priority 2: Entry labels layout adjustments
+### Priority 1: Entry labels layout adjustments
 QR code now renders correctly (was broken: ZXing TYPE_BYTE_BINARY incompatible with OpenPDF).
 Additional layout improvements to consider:
 - Review spacing, font sizes, and overall label aesthetics
@@ -185,33 +180,43 @@ Additional layout improvements to consider:
 - Review instruction header formatting
 - Test with various entry data (long names, many ingredients, etc.)
 
-### Priority 3: Auto-close + deadline reminders (deferred)
+### Priority 2: Manual walkthrough (full redo)
+Redo the **entire** manual-test walkthrough from Section 1. Previous partial run covered
+Sections 2–8 with many fixes along the way; this is a fresh pass through all sections
+(1–14) to validate the current state end-to-end. **Go through every test item without
+skipping anything.** May produce bug fixes or UX improvements.
+
+### Priority 3: Release creation
+Create a versioned release (merge to main, tag, changelog) to establish a clean baseline
+before deployment.
+
+### Priority 4: Deployment
+**Investigation complete** — see `docs/plans/2026-03-10-deployment-design.md`.
+**Deployment checklist** — see `docs/plans/deployment-checklist.md` (step-by-step with
+redeployment/rollback procedures).
+Target: DigitalOcean App Platform + Managed PostgreSQL (~$20/mo). Needs Dockerfile,
+Maven production profile, logging config, DNS setup, Resend email, and env vars.
+
+### Priority 5: Auto-close + deadline reminders (deferred)
 - **Auto-close** — automatically advance division from REGISTRATION_OPEN → REGISTRATION_CLOSED
   when registration deadline passes (scheduled task)
 - **Entrant deadline reminder** — notify entrants who have DRAFT entries when the registration
   deadline is approaching (e.g., 7 days, 3 days, 1 day before deadline)
 - Other potential: entry received confirmation, results published notification
 
-### Priority 4: Deployment
-**Investigation complete** — see `docs/plans/2026-03-10-deployment-design.md`.
-Summary: Evaluated Railway, DigitalOcean (App Platform, Droplet), AWS (Lightsail, EB+RDS).
-Recommendation: DigitalOcean App Platform + Managed PostgreSQL (~$20/mo) — best balance of
-cost, automatic backups (daily + PITR), and zero ops. Needs Dockerfile, DNS setup, email
-provider (Resend), and prod config before deploying.
-
-### Priority 5: Internationalization (i18n)
+### Priority 6: Internationalization (i18n)
 **Design complete** — see `docs/plans/2026-03-10-i18n-design.md`. Implementation deferred.
 Summary: Vaadin I18NProvider + Spring MessageSource, resource bundles, browser locale +
 UI switcher (cookie/localStorage), entrant-facing views only (6 views), MJP category
 translations via bundles keyed by code. ~100-120 strings to extract. No DB changes needed.
 
-### Priority 6: Judging module
+### Priority 7: Judging module
 Design and implementation. Reference: `docs/reference/chip-competition-rules.md`.
 
-### Priority 7: Awards module
+### Priority 8: Awards module
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md`.
 
-### Priority 8: Full category constraint system (low priority — future competition)
+### Priority 9: Full category constraint system (low priority — future competition)
 Full field locking/validation based on category selection. Design doc: `docs/plans/2026-03-11-category-hints-design.md` (appendix).
 Includes: sweetness locking (M1A→Dry, M1B→Medium, M1C→Sweet), ingredient restrictions (M1/M4E),
 strength locking (M4S→Hydromel), ABV caps (M4S→7.5%), ABV→Strength derivation (universal),
