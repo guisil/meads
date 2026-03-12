@@ -139,10 +139,14 @@ class SmtpEmailServiceTest {
     }
 
     @Test
-    void shouldSendSubmissionConfirmationWithEntrySummary() {
+    void shouldSendSubmissionConfirmationWithEntryLines() {
+        var entryLines = java.util.List.of(
+                "#1 — My Mead — M1A Traditional Mead (Dry)",
+                "#2 — Berry Mead — M2C Berry Melomel");
+
         emailService.sendSubmissionConfirmation(
                 "entrant@test.com", "CHIP 2026", "Amadora",
-                "#1 — My Mead — M1A Traditional Mead (Dry)\n#2 — Berry Mead — M2C Berry Melomel",
+                entryLines,
                 "/competitions/chip-2026/divisions/amadora/my-entries");
 
         verify(mailSender).send(any(MimeMessage.class));
@@ -152,9 +156,11 @@ class SmtpEmailServiceTest {
         assertThat(ctx.getVariable("heading")).isEqualTo("Entries Submitted");
         assertThat((String) ctx.getVariable("bodyText")).contains("Amadora");
         assertThat((String) ctx.getVariable("bodyText")).contains("CHIP 2026");
-        assertThat((String) ctx.getVariable("detailHtml"))
-                .contains("My Mead")
-                .contains("Berry Mead");
+        @SuppressWarnings("unchecked")
+        var lines = (java.util.List<String>) ctx.getVariable("entryLines");
+        assertThat(lines).containsExactly(
+                "#1 — My Mead — M1A Traditional Mead (Dry)",
+                "#2 — Berry Mead — M2C Berry Melomel");
         assertThat(ctx.getVariable("ctaLabel")).isEqualTo("View My Entries");
     }
 
@@ -205,9 +211,9 @@ class SmtpEmailServiceTest {
     @Test
     void shouldNotRateLimitSystemTriggeredEmails() {
         emailService.sendSubmissionConfirmation("user@example.com", "CHIP 2026", "Amadora",
-                "#1 — My Mead", "/my-entries");
+                java.util.List.of("#1 — My Mead"), "/my-entries");
         emailService.sendSubmissionConfirmation("user@example.com", "CHIP 2026", "Amadora",
-                "#1 — My Mead", "/my-entries");
+                java.util.List.of("#1 — My Mead"), "/my-entries");
 
         verify(mailSender, times(2)).send(any(MimeMessage.class));
     }

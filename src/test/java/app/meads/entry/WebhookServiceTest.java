@@ -496,6 +496,7 @@ class WebhookServiceTest {
         assertThat(event.jumpsellerOrderId()).isEqualTo("ORDER-EVENT");
         assertThat(event.status()).isEqualTo(OrderStatus.NEEDS_REVIEW);
         assertThat(event.affectedCompetitionIds()).contains(competitionId);
+        assertThat(event.affectedDivisionNames()).containsExactly("Home");
         assertThat(event.customerName()).isEqualTo("Test Entrant");
     }
 

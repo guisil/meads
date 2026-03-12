@@ -108,7 +108,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 #### Events
 - `CreditsAwardedEvent(divisionId, userId, amount, source)`
 - `EntriesSubmittedEvent(divisionId, userId, List<EntryDetail> entryDetails)`
-- `OrderRequiresReviewEvent(orderId, jumpsellerOrderId, customerName, customerEmail, affectedCompetitionIds, status)`
+- `OrderRequiresReviewEvent(orderId, jumpsellerOrderId, customerName, customerEmail, affectedCompetitionIds, affectedDivisionNames, status)`
 
 #### DTOs
 - `EntryDetail(entryNumber, meadName, categoryCode, categoryName)` — DTO for submission event payload
@@ -127,8 +127,8 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 #### Event Listeners
 - `RegistrationClosedListener` — skeleton for `DivisionStatusAdvancedEvent` (REGISTRATION_CLOSED)
-- `OrderReviewNotificationListener` — sends admin alert emails when `OrderRequiresReviewEvent` is published
-- `SubmissionConfirmationListener` — sends entrant confirmation email with entry summary when `EntriesSubmittedEvent` is published (conditional: only when all credits used and no drafts remain). CTA is a magic link (7-day validity via JwtMagicLinkService).
+- `OrderReviewNotificationListener` — sends admin alert emails when `OrderRequiresReviewEvent` is published, includes competition name and affected division(s)
+- `SubmissionConfirmationListener` — sends entrant confirmation email with entry summary when `EntriesSubmittedEvent` is published (conditional: only when all credits used and no drafts remain). CTA is a magic link (7-day validity via JwtMagicLinkService). Entry lines passed as `List<String>` to template.
 - `CreditNotificationListener` — sends entrant credit notification email when `CreditsAwardedEvent` is published (both webhook and admin grants). CTA is a magic link (7-day validity via JwtMagicLinkService).
 
 #### Changes to other modules
@@ -174,9 +174,9 @@ docs/
 
 ## What's Next
 
-### Priority 1: Manual walkthrough (continue from Section 9)
-Sections 1–8 completed with fixes along the way. Continue from Section 9 (Webhook — Order
-Paid) through Section 14. **Go through every test item without skipping anything.** May
+### Priority 1: Manual walkthrough (continue from Section 10)
+Sections 1–9 completed with fixes along the way. Continue from Section 10 (My Entries
+Overview) through Section 14. **Go through every test item without skipping anything.** May
 produce bug fixes or UX improvements.
 
 ### Priority 2: Release creation
@@ -236,6 +236,7 @@ Requires: DB migration, admin UI for constraint config, cross-module data flow, 
 - **Entry labels layout redesign** — Characteristics with field names (Sweetness/Strength/Carbonation), fixed 2-line height for mead name and ingredients (Honey/Other/Wood), QR code (left) + notes area (right) in 45/55 split, "FREE SAMPLES. NOT FOR RESALE." disclaimer.
 - **Email CTA magic links** — Credit notification and submission confirmation emails now use magic links (7-day validity via JwtMagicLinkService) for the CTA button, so recipients can log in directly.
 - **Entry admin UX fixes** — Download dialog auto-closes on click, product mapping validation with field-level errors.
+- **Order review email improvements** — Added competition name and affected division(s) to admin alert email. Refactored all email detail content from inline HTML strings (`detailHtml`/`th:utext`) to Thymeleaf template variables (`th:text`/`th:each`) for proper escaping and separation of concerns.
 
 ---
 
@@ -264,8 +265,10 @@ Requires: DB migration, admin UI for constraint config, cross-module data flow, 
   MyEntriesView shows warning banner and blocks submit (all + individual) when required but missing.
 - **Submission email is conditional** — `EntriesSubmittedEvent` only published when `creditBalance - activeEntries == 0`
   AND no DRAFT entries remain. Prevents email spam when entrant submits entries one by one.
-- **Email template `detailHtml`** — dedicated `th:utext` variable in `email-base.html` for rich content
-  (entry summary). Separate from `bodyText` (which uses safe `th:text`). HTML-escaped in listener via `escapeHtml()`.
+- **Email template detail blocks** — `email-base.html` uses Thymeleaf-driven blocks for structured content:
+  `orderReviewCompetition`/`orderReviewDivisions` (plain strings via `th:text`) for order alerts, and
+  `entryLines` (`List<String>` via `th:each` + `th:text`) for submission summaries. No inline HTML or
+  `th:utext` — all content is auto-escaped by Thymeleaf.
 
 ### Known UX items (deferred)
 - After failed credentials login, page reloads at `/login?error` and shows error notification,

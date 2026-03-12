@@ -18,7 +18,6 @@ import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.*;
 
@@ -62,7 +61,7 @@ class SubmissionConfirmationListenerTest {
 
         then(emailService).should().sendSubmissionConfirmation(
                 eq("entrant@test.com"), eq("CHIP 2026"), eq("Amadora"),
-                contains("My Mead"),
+                argThat(lines -> lines.stream().anyMatch(l -> l.contains("My Mead"))),
                 eq("http://localhost:8080/login/magic?token=abc123"));
     }
 
@@ -94,12 +93,15 @@ class SubmissionConfirmationListenerTest {
 
         listener.on(event);
 
-        var summaryCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+        @SuppressWarnings("unchecked")
+        var linesCaptor = org.mockito.ArgumentCaptor.forClass(java.util.List.class);
         then(emailService).should().sendSubmissionConfirmation(
                 eq("solo@test.com"), eq("Test Comp"), eq("Pro"),
-                summaryCaptor.capture(),
+                linesCaptor.capture(),
                 eq("http://localhost:8080/login/magic?token=xyz"));
-        assertThat(summaryCaptor.getValue())
+        var lines = linesCaptor.getValue();
+        org.assertj.core.api.Assertions.assertThat(lines).hasSize(1);
+        org.assertj.core.api.Assertions.assertThat((String) lines.getFirst())
                 .contains("#1")
                 .contains("Solo Mead")
                 .contains("M4B")

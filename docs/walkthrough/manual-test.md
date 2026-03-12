@@ -955,23 +955,23 @@ CTA button, fallback URL, and optional contact footer.
 The webhook endpoint requires an `Jumpseller-Hmac-Sha256` header with an HMAC-SHA256
 signature of the request body, computed using the hooks token as the secret key.
 
-The dev token is configured in `application.properties` as `your-jumpseller-hooks-token-here`.
+The dev token is configured in `application.properties` as `dev-jumpseller-hooks-token`.
 
 To compute the signature for a given payload:
 
 ```bash
-echo -n '<payload>' | openssl dgst -sha256 -hmac 'your-jumpseller-hooks-token-here' | awk '{print $2}'
+echo -n '<payload>' | openssl dgst -sha256 -hmac 'dev-jumpseller-hooks-token' | awk '{print $2}'
 ```
 
 Or as a reusable shell function:
 
 ```bash
-sign() { echo -n "$1" | openssl dgst -sha256 -hmac 'your-jumpseller-hooks-token-here' | sed 's/.*= //'; }
+sign() { echo -n "$1" | openssl dgst -sha256 -hmac 'dev-jumpseller-hooks-token' | sed 's/.*= //'; }
 ```
 
 #### Alternative: Postman
 
-1. Create a Postman environment variable `hooks_token` = `your-jumpseller-hooks-token-here`
+1. Create a Postman environment variable `hooks_token` = `dev-jumpseller-hooks-token`
 2. Add a **Pre-request Script** to automatically compute the signature:
    ```javascript
    const payload = pm.request.body.raw;
@@ -1076,7 +1076,7 @@ curl -s -o /dev/null -w "%{http_code}" \
   - Amadora Orders tab: No `WH-004` (this order targets Profissional)
   - Profissional entry-admin Orders tab: `WH-004` appears with status NEEDS_REVIEW
   - Profissional Credits tab: `webhooktest@example.com` does NOT appear (no credits awarded)
-- [ ] **Check Mailpit:** admin alert email(s) sent to competition admin(s) for CHIP 2026, subject "[MEADS] Order requires review — CHIP 2026"
+- [ ] **Check Mailpit:** admin alert email(s) sent to competition admin(s) for CHIP 2026, subject "[MEADS] Order requires review — CHIP 2026", body includes competition name and affected division(s)
 
 ### Mixed order -- some mapped, some conflicting
 
@@ -1096,7 +1096,7 @@ curl -s -o /dev/null -w "%{http_code}" \
   - Amadora Credits tab: `newbuyer@example.com` appears with 2 credits
   - Profissional Credits tab: `newbuyer@example.com` does NOT appear (mutual exclusivity conflict)
   - Amadora Orders tab: `WH-005` appears with status PARTIALLY_PROCESSED
-- [ ] **Check Mailpit:** admin alert email(s) sent for PARTIALLY_PROCESSED order
+- [ ] **Check Mailpit:** admin alert email(s) sent for PARTIALLY_PROCESSED order, body includes competition name and affected division(s)
 - [ ] **Check Mailpit:** credit notification email sent to `newbuyer@example.com` for 2 credits in Amadora (the processed portion)
 
 ---

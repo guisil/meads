@@ -9,5 +9,6 @@ public record OrderRequiresReviewEvent(
         String customerName,
         String customerEmail,
         Set<UUID> affectedCompetitionIds,
+        Set<String> affectedDivisionNames,
         OrderStatus status
 ) {}

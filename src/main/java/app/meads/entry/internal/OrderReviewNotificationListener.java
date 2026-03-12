@@ -22,13 +22,15 @@ public class OrderReviewNotificationListener {
 
     @ApplicationModuleListener
     public void on(OrderRequiresReviewEvent event) {
+        var divisionNames = String.join(", ", event.affectedDivisionNames());
         for (var competitionId : event.affectedCompetitionIds()) {
             var competition = competitionService.findCompetitionById(competitionId);
             var adminEmails = competitionService.findAdminEmailsByCompetitionId(competitionId);
             for (var email : adminEmails) {
                 emailService.sendOrderReviewAlert(
                         email, competition.getName(),
-                        event.jumpsellerOrderId(), event.customerName());
+                        event.jumpsellerOrderId(), event.customerName(),
+                        divisionNames);
                 log.info("Sent order review alert to {} for competition {}",
                         email, competition.getName());
             }

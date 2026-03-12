@@ -116,7 +116,8 @@ class SmtpEmailService implements EmailService {
 
     @Override
     public void sendOrderReviewAlert(String recipientEmail, String competitionName,
-                                      String jumpsellerOrderId, String customerName) {
+                                      String jumpsellerOrderId, String customerName,
+                                      String divisionNames) {
         var ctx = new Context();
         var subject = "[MEADS] Order requires review — " + competitionName;
         ctx.setVariable("subject", subject);
@@ -124,6 +125,8 @@ class SmtpEmailService implements EmailService {
         ctx.setVariable("bodyText",
                 "Order #" + jumpsellerOrderId + " from " + customerName
                         + " could not be fully processed and requires manual review.");
+        ctx.setVariable("orderReviewCompetition", competitionName);
+        ctx.setVariable("orderReviewDivisions", divisionNames);
         ctx.setVariable("ctaLabel", null);
         ctx.setVariable("ctaUrl", null);
         ctx.setVariable("contactEmail", null);
@@ -132,7 +135,7 @@ class SmtpEmailService implements EmailService {
 
     @Override
     public void sendSubmissionConfirmation(String recipientEmail, String competitionName,
-                                            String divisionName, String entrySummary,
+                                            String divisionName, java.util.List<String> entryLines,
                                             String entriesUrl) {
         var ctx = new Context();
         var subject = "[MEADS] Entries submitted — " + divisionName;
@@ -141,7 +144,7 @@ class SmtpEmailService implements EmailService {
         ctx.setVariable("bodyText",
                 "All your entries for " + divisionName + " (" + competitionName
                         + ") have been submitted. Click the button below to view your entries and download your labels.");
-        ctx.setVariable("detailHtml", entrySummary.replace("\n", "<br>"));
+        ctx.setVariable("entryLines", entryLines);
         ctx.setVariable("ctaLabel", "View My Entries");
         ctx.setVariable("ctaUrl", entriesUrl);
         ctx.setVariable("contactEmail", null);

@@ -21,7 +21,15 @@
                         <td style="padding: 40px;">
                             <h2 style="margin: 0 0 16px 0; color: #1a1a2e; font-size: 20px;" th:text="${heading}">Heading</h2>
                             <p style="margin: 0 0 32px 0; color: #333333; font-size: 16px; line-height: 1.5;" th:text="${bodyText}">Body text</p>
-                            <div th:if="${detailHtml != null}" th:utext="${detailHtml}" style="margin: 0 0 32px 0; color: #555555; font-size: 14px; line-height: 1.6; padding: 16px; background-color: #f8f8f8; border-radius: 6px;"></div>
+                            <!-- Order review details -->
+                            <div th:if="${orderReviewCompetition != null}" style="margin: 0 0 32px 0; color: #555555; font-size: 14px; line-height: 1.6; padding: 16px; background-color: #f8f8f8; border-radius: 6px;">
+                                <strong>Competition:</strong> <span th:text="${orderReviewCompetition}">Competition</span><br/>
+                                <strong>Affected division(s):</strong> <span th:text="${orderReviewDivisions}">Divisions</span>
+                            </div>
+                            <!-- Entry summary list -->
+                            <div th:if="${entryLines != null}" style="margin: 0 0 32px 0; color: #555555; font-size: 14px; line-height: 1.6; padding: 16px; background-color: #f8f8f8; border-radius: 6px;">
+                                <span th:each="line : ${entryLines}" th:text="${line}" style="display: block;">Entry line</span>
+                            </div>
                             <!-- CTA Button -->
                             <table th:if="${ctaUrl != null}" role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto;">
                                 <tr>

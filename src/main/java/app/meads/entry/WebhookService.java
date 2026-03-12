@@ -125,6 +125,7 @@ public class WebhookService {
             int ignoredCount = 0;
             int totalItems = 0;
             Set<UUID> affectedCompetitionIds = new HashSet<>();
+            Set<String> affectedDivisionNames = new HashSet<>();
 
             for (JsonNode product : products) {
                 totalItems++;
@@ -156,6 +157,7 @@ public class WebhookService {
                     var intendedCredits = quantity * mapping.getCreditsPerUnit();
                     lineItem.markNeedsReview(divisionId, intendedCredits, "Mutual exclusivity conflict: user already has credits in another division of the same competition");
                     lineItemRepository.save(lineItem);
+                    affectedDivisionNames.add(division.getName());
                     needsReviewCount++;
                     log.warn("Webhook line item needs review (mutual exclusivity): product={}, user={}",
                             productId, customerEmail);
@@ -206,7 +208,7 @@ public class WebhookService {
                     || order.getStatus() == OrderStatus.PARTIALLY_PROCESSED) {
                 eventPublisher.publishEvent(new OrderRequiresReviewEvent(
                         order.getId(), orderId, customerName, customerEmail,
-                        affectedCompetitionIds, order.getStatus()));
+                        affectedCompetitionIds, affectedDivisionNames, order.getStatus()));
                 log.info("Published OrderRequiresReviewEvent for order {}", orderId);
             }
 

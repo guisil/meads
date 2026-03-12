@@ -34,14 +34,14 @@ class OrderReviewNotificationListenerTest {
 
         var event = new OrderRequiresReviewEvent(
                 UUID.randomUUID(), "ORD-123", "John", "john@test.com",
-                Set.of(competitionId), OrderStatus.NEEDS_REVIEW);
+                Set.of(competitionId), Set.of("Profissional"), OrderStatus.NEEDS_REVIEW);
 
         listener.on(event);
 
         then(emailService).should().sendOrderReviewAlert(
-                "admin1@test.com", "Test Comp", "ORD-123", "John");
+                "admin1@test.com", "Test Comp", "ORD-123", "John", "Profissional");
         then(emailService).should().sendOrderReviewAlert(
-                "admin2@test.com", "Test Comp", "ORD-123", "John");
+                "admin2@test.com", "Test Comp", "ORD-123", "John", "Profissional");
     }
 
     @Test
@@ -54,7 +54,7 @@ class OrderReviewNotificationListenerTest {
 
         var event = new OrderRequiresReviewEvent(
                 UUID.randomUUID(), "ORD-456", "Jane", "jane@test.com",
-                Set.of(competitionId), OrderStatus.PARTIALLY_PROCESSED);
+                Set.of(competitionId), Set.of("Amadora"), OrderStatus.PARTIALLY_PROCESSED);
 
         listener.on(event);
 

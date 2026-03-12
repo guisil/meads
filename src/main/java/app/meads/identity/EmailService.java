@@ -11,10 +11,11 @@ public interface EmailService {
     void sendPasswordSetup(String recipientEmail, String competitionName, String contactEmail);
 
     void sendOrderReviewAlert(String recipientEmail, String competitionName,
-                              String jumpsellerOrderId, String customerName);
+                              String jumpsellerOrderId, String customerName,
+                              String divisionNames);
 
     void sendSubmissionConfirmation(String recipientEmail, String competitionName,
-                                    String divisionName, String entrySummary, String entriesUrl);
+                                    String divisionName, java.util.List<String> entryLines, String entriesUrl);
 
     void sendCreditNotification(String recipientEmail,
                                 int credits, String divisionName,
