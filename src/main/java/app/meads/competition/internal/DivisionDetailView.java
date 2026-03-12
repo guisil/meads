@@ -288,8 +288,11 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         customLayout.setPadding(false);
 
         var codeField = new TextField("Code");
+        codeField.setMaxLength(50);
         var nameField = new TextField("Name");
+        nameField.setMaxLength(255);
         var descriptionField = new TextField("Description");
+        descriptionField.setMaxLength(255);
 
         var parentSelect = new Select<DivisionCategory>();
         parentSelect.setLabel("Parent Category (optional)");
@@ -360,9 +363,11 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         boolean isDraft = division.getStatus() == DivisionStatus.DRAFT;
 
         var nameField = new TextField("Name");
+        nameField.setMaxLength(255);
         nameField.setValue(division.getName());
 
         var shortNameField = new TextField("Short Name");
+        shortNameField.setMaxLength(100);
         shortNameField.setValue(division.getShortName());
         shortNameField.setHelperText("URL-friendly identifier (e.g. amadora)");
 

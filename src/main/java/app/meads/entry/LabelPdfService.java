@@ -45,7 +45,7 @@ public class LabelPdfService {
     private static final Font FONT_SMALL_BOLD = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 7);
     private static final Font FONT_DISCLAIMER = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8);
     private static final int QR_CODE_SIZE = 130;
-    private static final float TWO_LINE_HEIGHT = 28f; // 2 lines at 8pt font (~14pt per line)
+    private static final float TWO_LINE_HEIGHT = 21f; // 2 lines at 8pt font with 10pt leading
 
     public byte[] generateLabel(Entry entry, Competition competition,
                                  Division division, DivisionCategory category) {
@@ -148,6 +148,11 @@ public class LabelPdfService {
         var entryId = formatEntryId(entry, division);
         addFieldLine(cell, "ID: ", entryId);
 
+        // Small spacer before name
+        var spacer = new Paragraph(" ");
+        spacer.setLeading(3f);
+        cell.addElement(spacer);
+
         // Name (fixed 2-line height)
         addFixedHeightFieldLine(cell, "Name: ", entry.getMeadName());
 
@@ -212,11 +217,12 @@ public class LabelPdfService {
         innerTable.setWidthPercentage(100);
         var innerCell = new PdfPCell();
         innerCell.setBorder(0);
-        innerCell.setMinimumHeight(TWO_LINE_HEIGHT);
-        var phrase = new Phrase();
-        phrase.add(new Phrase(label, FONT_NORMAL));
-        phrase.add(new Phrase(value != null ? value : "", FONT_FIELD_VALUE));
-        var p = new Paragraph(phrase);
+        innerCell.setPadding(0);
+        innerCell.setFixedHeight(TWO_LINE_HEIGHT);
+        innerCell.setNoWrap(false);
+        var p = new Paragraph(10f, "", FONT_NORMAL);
+        p.add(new Phrase(label, FONT_NORMAL));
+        p.add(new Phrase(value != null ? value : "", FONT_FIELD_VALUE));
         innerCell.addElement(p);
         innerTable.addCell(innerCell);
         parentCell.addElement(innerTable);

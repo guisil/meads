@@ -37,10 +37,12 @@ public class ProfileView extends VerticalLayout {
         var nameField = new TextField("Name");
         nameField.setValue(user.getName());
         nameField.setRequired(true);
+        nameField.setMaxLength(255);
         nameField.setWidthFull();
 
         var meaderyField = new TextField("Meadery Name");
         meaderyField.setValue(user.getMeaderyName() != null ? user.getMeaderyName() : "");
+        meaderyField.setMaxLength(255);
         meaderyField.setWidthFull();
 
         var countryCombo = new ComboBox<String>("Country");

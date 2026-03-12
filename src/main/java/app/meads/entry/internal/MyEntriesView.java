@@ -10,6 +10,7 @@ import app.meads.competition.DivisionStatus;
 import app.meads.entry.*;
 import app.meads.identity.Role;
 import app.meads.identity.UserService;
+import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
@@ -310,26 +311,34 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
             submitButton.setTooltipText("Meadery name required — update your profile");
         }
 
-        // Download all labels (SUBMITTED entries)
-        var downloadAllResource = new StreamResource("all-labels.pdf", () -> {
-            var submittedEntries = entries != null
-                    ? entries.stream().filter(e2 -> e2.getStatus() == EntryStatus.SUBMITTED).toList()
-                    : List.<Entry>of();
-            if (submittedEntries.isEmpty()) {
-                return new ByteArrayInputStream(new byte[0]);
-            }
-            return new ByteArrayInputStream(
-                    labelPdfService.generateLabels(submittedEntries, competition, division, categoriesById::get));
-        });
-        downloadAllResource.setContentType("application/pdf");
-        var downloadAllAnchor = new Anchor(downloadAllResource, "");
-        downloadAllAnchor.getElement().setAttribute("download", true);
+        // Download all labels (SUBMITTED entries) — only enabled when no drafts remain
         var downloadAllBtn = new Button("Download all labels", new Icon(VaadinIcon.DOWNLOAD_ALT));
-        downloadAllAnchor.add(downloadAllBtn);
+        Component downloadAllComponent;
+        if (hasDrafts) {
+            downloadAllBtn.setEnabled(false);
+            downloadAllBtn.setTooltipText("Submit all draft entries before downloading labels");
+            downloadAllComponent = downloadAllBtn;
+        } else {
+            var downloadAllResource = new StreamResource("all-labels.pdf", () -> {
+                var submittedEntries = entries != null
+                        ? entries.stream().filter(e2 -> e2.getStatus() == EntryStatus.SUBMITTED).toList()
+                        : List.<Entry>of();
+                if (submittedEntries.isEmpty()) {
+                    return new ByteArrayInputStream(new byte[0]);
+                }
+                return new ByteArrayInputStream(
+                        labelPdfService.generateLabels(submittedEntries, competition, division, categoriesById::get));
+            });
+            downloadAllResource.setContentType("application/pdf");
+            var downloadAllAnchor = new Anchor(downloadAllResource, "");
+            downloadAllAnchor.getElement().setAttribute("download", true);
+            downloadAllAnchor.add(downloadAllBtn);
+            downloadAllComponent = downloadAllAnchor;
+        }
 
         // Spacer pushes buttons to the right
         var spacer = new Div();
-        toolbar.add(nameField, statusSelect, spacer, addButton, submitButton, downloadAllAnchor);
+        toolbar.add(nameField, statusSelect, spacer, addButton, submitButton, downloadAllComponent);
         toolbar.expand(spacer);
 
         return toolbar;
@@ -482,7 +491,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
 
     private void openViewDialog(Entry entry) {
         var dialog = new Dialog();
-        dialog.setHeaderTitle("Entry #" + entry.getEntryNumber() + " — " + entry.getMeadName());
+        dialog.setHeaderTitle("Entry " + formatEntryId(entry) + " — " + entry.getMeadName());
         dialog.setWidth("600px");
 
         var layout = new VerticalLayout();
@@ -529,7 +538,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
     private void submitSingle(Entry entry) {
         var dialog = new Dialog();
         dialog.setHeaderTitle("Submit Entry");
-        dialog.add("Submit entry #" + entry.getEntryNumber()
+        dialog.add("Submit entry " + formatEntryId(entry)
                 + " (" + entry.getMeadName() + ")? Submitted entries can no longer be edited.");
 
         var confirmButton = new Button("Submit", e -> {
@@ -579,6 +588,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
 
         var meadName = new TextField("Mead Name");
         meadName.setWidthFull();
+        meadName.setMaxLength(255);
         var categorySelect = new Select<DivisionCategory>();
         categorySelect.setLabel("Category");
         categorySelect.setWidthFull();
@@ -632,22 +642,25 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
 
         var honeyVarieties = new TextArea("Honey Varieties");
         honeyVarieties.setWidthFull();
+        honeyVarieties.setMaxLength(500);
         var otherIngredients = new TextArea("Other Ingredients");
         otherIngredients.setWidthFull();
+        otherIngredients.setMaxLength(500);
 
         var woodAged = new Checkbox("Wood Aged");
         var woodAgeingDetails = new TextArea("Wood Ageing Details");
         woodAgeingDetails.setWidthFull();
+        woodAgeingDetails.setMaxLength(500);
         woodAgeingDetails.setVisible(false);
         woodAged.addValueChangeListener(e -> woodAgeingDetails.setVisible(e.getValue()));
 
         var additionalInfo = new TextArea("Additional Information");
         additionalInfo.setWidthFull();
+        additionalInfo.setMaxLength(1000);
 
         if (existing != null) {
             meadName.setValue(existing.getMeadName());
-            var categories = competitionService.findDivisionCategories(divisionId);
-            categories.stream()
+            categorySelect.getListDataView().getItems()
                     .filter(c -> c.getId().equals(existing.getInitialCategoryId()))
                     .findFirst()
                     .ifPresent(categorySelect::setValue);
@@ -679,11 +692,38 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                 meadName.setErrorMessage("Mead name is required");
                 return;
             }
-            if (categorySelect.getValue() == null || sweetness.getValue() == null
-                    || strength.getValue() == null || abv.getValue() == null
-                    || carbonation.getValue() == null
-                    || !StringUtils.hasText(honeyVarieties.getValue())) {
-                Notification.show("Please fill in all required fields");
+            var valid = true;
+            if (categorySelect.getValue() == null) {
+                categorySelect.setInvalid(true);
+                categorySelect.setErrorMessage("Category is required");
+                valid = false;
+            }
+            if (sweetness.getValue() == null) {
+                sweetness.setInvalid(true);
+                sweetness.setErrorMessage("Sweetness is required");
+                valid = false;
+            }
+            if (strength.getValue() == null) {
+                strength.setInvalid(true);
+                strength.setErrorMessage("Strength is required");
+                valid = false;
+            }
+            if (abv.getValue() == null) {
+                abv.setInvalid(true);
+                abv.setErrorMessage("ABV is required");
+                valid = false;
+            }
+            if (carbonation.getValue() == null) {
+                carbonation.setInvalid(true);
+                carbonation.setErrorMessage("Carbonation is required");
+                valid = false;
+            }
+            if (!StringUtils.hasText(honeyVarieties.getValue())) {
+                honeyVarieties.setInvalid(true);
+                honeyVarieties.setErrorMessage("Honey varieties is required");
+                valid = false;
+            }
+            if (!valid) {
                 return;
             }
             try {

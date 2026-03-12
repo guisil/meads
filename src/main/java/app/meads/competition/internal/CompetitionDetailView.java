@@ -375,6 +375,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         dialog.setHeaderTitle("Add Participant");
 
         var emailField = new TextField("Email");
+        emailField.setMaxLength(255);
 
         var roleSelect = new Select<CompetitionRole>();
         roleSelect.setLabel("Role");
@@ -434,9 +435,11 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
         var nameField = new TextField("Name");
         nameField.setValue(competition.getName());
+        nameField.setMaxLength(255);
 
         var shortNameField = new TextField("Short Name");
         shortNameField.setValue(competition.getShortName());
+        shortNameField.setMaxLength(100);
         shortNameField.setHelperText("URL-friendly identifier (e.g. chip-2026)");
 
         var startDatePicker = new DatePicker("Start Date");
@@ -447,19 +450,23 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
         var locationField = new TextField("Location");
         locationField.setValue(competition.getLocation() != null ? competition.getLocation() : "");
+        locationField.setMaxLength(500);
 
         var contactEmailField = new EmailField("Contact Email");
         contactEmailField.setValue(competition.getContactEmail() != null ? competition.getContactEmail() : "");
         contactEmailField.setHelperText("Shown in emails sent to competition participants");
         contactEmailField.setClearButtonVisible(true);
+        contactEmailField.setMaxLength(255);
 
         var shippingAddressField = new TextArea("Shipping Address");
         shippingAddressField.setValue(competition.getShippingAddress() != null ? competition.getShippingAddress() : "");
         shippingAddressField.setHelperText("Shown on entry labels — where entrants should ship their bottles");
         shippingAddressField.setWidthFull();
+        shippingAddressField.setMaxLength(1000);
 
         var phoneNumberField = new TextField("Phone Number");
         phoneNumberField.setValue(competition.getPhoneNumber() != null ? competition.getPhoneNumber() : "");
+        phoneNumberField.setMaxLength(50);
         phoneNumberField.setHelperText("Contact phone number shown on entry labels");
         phoneNumberField.setClearButtonVisible(true);
 
@@ -567,9 +574,11 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
         var nameField = new TextField("Name");
         nameField.setRequired(true);
+        nameField.setMaxLength(255);
 
         var shortNameField = new TextField("Short Name");
         shortNameField.setRequired(true);
+        shortNameField.setMaxLength(100);
         shortNameField.setHelperText("URL-friendly identifier (e.g. amadora)");
         shortNameField.setPattern("[a-z0-9][a-z0-9-]*[a-z0-9]");
 
@@ -849,6 +858,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         var nameField = new TextField("Name");
         nameField.setRequired(true);
         nameField.setWidthFull();
+        nameField.setMaxLength(255);
 
         var typeSelect = new Select<DocumentType>();
         typeSelect.setLabel("Type");
@@ -858,6 +868,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
         var urlField = new TextField("URL");
         urlField.setWidthFull();
+        urlField.setMaxLength(2000);
         urlField.setVisible(false);
 
         var pdfData = new byte[1][];
@@ -940,6 +951,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         dialog.setHeaderTitle("Edit Document Name");
 
         var nameField = new TextField("Name");
+        nameField.setMaxLength(255);
         nameField.setValue(doc.getName());
         nameField.setWidthFull();
 

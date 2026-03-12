@@ -122,6 +122,10 @@ class DevDataInitializer {
                 profissional.getName(), profissional.getShortName(), profissional.getScoringSystem(),
                 "PRO", compAdminId);
 
+        // 5c. Profissional requires meadery name
+        competitionService.updateDivisionMeaderyNameRequired(
+                profissional.getId(), true, compAdminId);
+
         // 6. Advance CHIP divisions: DRAFT → REGISTRATION_OPEN
         competitionService.advanceDivisionStatus(amadora.getId(), compAdminId);
         competitionService.advanceDivisionStatus(profissional.getId(), compAdminId);

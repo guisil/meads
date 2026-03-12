@@ -238,6 +238,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         dialog.setHeaderTitle("Add Credits");
 
         var emailField = new TextField("Entrant Email");
+        emailField.setMaxLength(255);
         var amountField = new IntegerField("Amount");
         amountField.setMin(1);
         amountField.setValue(1);
@@ -502,6 +503,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         dialog.setHeaderTitle("Edit Entry — " + formatEntryNumber(entry.getEntryNumber()));
 
         var meadNameField = new TextField("Mead Name");
+        meadNameField.setMaxLength(255);
         meadNameField.setValue(entry.getMeadName());
 
         dialog.add(new VerticalLayout(meadNameField));
@@ -633,8 +635,11 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         dialog.setHeaderTitle("Add Product Mapping");
 
         var productIdField = new TextField("Jumpseller Product ID");
+        productIdField.setMaxLength(255);
         var skuField = new TextField("SKU (optional)");
+        skuField.setMaxLength(255);
         var nameField = new TextField("Product Name");
+        nameField.setMaxLength(255);
         var creditsField = new IntegerField("Credits Per Unit");
         creditsField.setMin(1);
         creditsField.setValue(1);
@@ -686,6 +691,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         dialog.setHeaderTitle("Edit Product Mapping");
 
         var nameField = new TextField("Product Name");
+        nameField.setMaxLength(255);
         nameField.setValue(mapping.getProductName());
         var creditsField = new IntegerField("Credits Per Unit");
         creditsField.setMin(1);

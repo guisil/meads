@@ -121,9 +121,11 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
 
         var nameField = new TextField("Name");
         nameField.setRequired(true);
+        nameField.setMaxLength(255);
 
         var shortNameField = new TextField("Short Name");
         shortNameField.setRequired(true);
+        shortNameField.setMaxLength(100);
         shortNameField.setHelperText("URL-friendly identifier (e.g. chip-2026)");
         shortNameField.setPattern("[a-z0-9][a-z0-9-]*[a-z0-9]");
 
@@ -134,6 +136,7 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
         endDatePicker.setRequired(true);
 
         var locationField = new TextField("Location");
+        locationField.setMaxLength(500);
 
         var logoData = new byte[1][];
         var logoContentType = new String[1];

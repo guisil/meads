@@ -224,6 +224,7 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
 
         TextField nameField = new TextField("Name");
         nameField.setRequired(true);
+        nameField.setMaxLength(255);
 
         Select<Role> roleSelect = new Select<>();
         roleSelect.setLabel("Role");
@@ -231,6 +232,7 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
 
         var meaderyField = new TextField("Meadery Name");
         meaderyField.setWidthFull();
+        meaderyField.setMaxLength(255);
         if (!isCreate && existingUser.getMeaderyName() != null) {
             meaderyField.setValue(existingUser.getMeaderyName());
         }

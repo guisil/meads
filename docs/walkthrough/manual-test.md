@@ -1189,6 +1189,8 @@ curl -s -o /dev/null -w "%{http_code}" \
 
 ### Add entry -- validation (blank mead name)
 
+*Pre-requisite: entrant must have remaining credits. If all credits are used, add more via entry-admin Credits tab first.*
+
 - [ ] Click "Add Entry"
 - [ ] Leave mead name blank, fill in other required fields
 - [ ] Click "Save"
@@ -1196,16 +1198,18 @@ curl -s -o /dev/null -w "%{http_code}" \
 
 ### Add entry -- validation (missing required fields)
 
+*Pre-requisite: entrant must have remaining credits.*
+
 - [ ] Click "Add Entry"
 - [ ] Enter only mead name, leave other required fields empty
 - [ ] Click "Save"
-- [ ] **Expected:** Notification "Please fill in all required fields"
+- [ ] **Expected:** Each missing required field shows its own inline error (e.g. "Category is required", "Sweetness is required", etc.)
 
 ### View entry details
 
 - [ ] Find "Blueberry Bliss" (SUBMITTED) in the grid
 - [ ] Click the view (eye) icon in the Actions column
-- [ ] **Expected:** Read-only dialog showing all entry fields (Mead Name, Category (code — name format), Sweetness, Strength, ABV, Carbonation, Honey Varieties, Status, etc.). Entry code is NOT shown (only visible to admins).
+- [ ] **Expected:** Read-only dialog with title "Entry AMA-N — Blueberry Bliss" showing all entry fields (Mead Name, Category (code — name format), Sweetness, Strength, ABV, Carbonation, Honey Varieties, Status, etc.). Entry code is NOT shown (only visible to admins).
 - [ ] Click "Close"
 
 ### Edit draft entry
@@ -1222,7 +1226,7 @@ curl -s -o /dev/null -w "%{http_code}" \
 
 - [ ] Find a DRAFT entry in the grid
 - [ ] Click the submit (check) icon in the Actions column
-- [ ] **Expected:** Confirmation dialog: "Submit entry #N (Mead Name)? Submitted entries can no longer be edited."
+- [ ] **Expected:** Confirmation dialog: "Submit entry AMA-N (Mead Name)? Submitted entries can no longer be edited."
 - [ ] Click "Cancel" (don't submit yet)
 
 ### Filter and sort
@@ -1257,6 +1261,8 @@ curl -s -o /dev/null -w "%{http_code}" \
 ### Entry labels -- batch download (entrant)
 
 - [ ] **Expected:** "Download all labels" button exists in the toolbar area (wrapped in an Anchor)
+- [ ] If there are DRAFT entries: **Expected:** button is disabled with tooltip "Submit all draft entries before downloading labels"
+- [ ] After all entries are submitted: button is enabled
 - [ ] Click "Download all labels"
 - [ ] **Expected:** Browser downloads `all-labels.pdf` containing one page per SUBMITTED entry
 - [ ] **Expected:** No confirmation dialog for entrants (direct download)
