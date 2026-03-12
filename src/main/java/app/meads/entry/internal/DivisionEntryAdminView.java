@@ -25,7 +25,10 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.tabs.TabSheet;
+import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.textfield.IntegerField;
+import com.vaadin.flow.component.textfield.NumberField;
+import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.BeforeEnterEvent;
@@ -38,6 +41,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.util.StringUtils;
 
 import java.io.ByteArrayInputStream;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
@@ -365,6 +369,12 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 .setHeader("Category").setSortable(true)
                 .setComparator((a, b) -> resolveCategoryCode(a.getInitialCategoryId())
                         .compareTo(resolveCategoryCode(b.getInitialCategoryId())));
+        entriesGrid.addComponentColumn(entry -> {
+            if (entry.getFinalCategoryId() == null) {
+                return new Span("—");
+            }
+            return createCategorySpan(entry.getFinalCategoryId());
+        }).setHeader("Final Category").setSortable(true);
         entriesGrid.addColumn(entry -> userService.findById(entry.getUserId()).getEmail())
                 .setHeader("Entrant").setSortable(true).setFlexGrow(2);
         entriesGrid.addColumn(entry -> {
@@ -380,6 +390,12 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         entriesGrid.addColumn(entry -> entry.getStatus().name())
                 .setHeader("Status").setSortable(true).setAutoWidth(true);
         entriesGrid.addComponentColumn(entry -> {
+            var viewButton = new Button(new Icon(VaadinIcon.EYE));
+            viewButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            viewButton.setAriaLabel("View");
+            viewButton.setTooltipText("View");
+            viewButton.addClickListener(e -> openViewEntryDialog(entry));
+
             var editButton = new Button(new Icon(VaadinIcon.EDIT));
             editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
             editButton.setAriaLabel("Edit");
@@ -401,7 +417,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             withdrawButton.setEnabled(entry.getStatus() != EntryStatus.WITHDRAWN);
             withdrawButton.addClickListener(e -> openWithdrawEntryDialog(entry));
 
-            var actions = new HorizontalLayout(editButton, deleteButton, withdrawButton);
+            var actions = new HorizontalLayout(viewButton, editButton, deleteButton, withdrawButton);
 
             if (entry.getStatus() == EntryStatus.SUBMITTED || entry.getStatus() == EntryStatus.RECEIVED) {
                 var category = getCategoryById(entry.getInitialCategoryId());
@@ -498,15 +514,163 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         entriesGrid.setItems(entries);
     }
 
+    private void openViewEntryDialog(Entry entry) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle("Entry " + formatEntryNumber(entry.getEntryNumber())
+                + " — " + entry.getMeadName());
+        dialog.setWidth("600px");
+
+        var layout = new VerticalLayout();
+        layout.setPadding(false);
+
+        layout.add(readOnlyField("Mead Name", entry.getMeadName()));
+        layout.add(readOnlyField("Category",
+                resolveCategoryCodeAndName(entry.getInitialCategoryId())));
+        if (entry.getFinalCategoryId() != null) {
+            layout.add(readOnlyField("Final Category",
+                    resolveCategoryCodeAndName(entry.getFinalCategoryId())));
+        }
+        layout.add(readOnlyField("Sweetness", entry.getSweetness().getDisplayName()));
+        layout.add(readOnlyField("Strength", entry.getStrength().getDisplayName()));
+        layout.add(readOnlyField("ABV", entry.getAbv() + "%"));
+        layout.add(readOnlyField("Carbonation", entry.getCarbonation().getDisplayName()));
+        layout.add(readOnlyField("Honey Varieties", entry.getHoneyVarieties()));
+        if (StringUtils.hasText(entry.getOtherIngredients())) {
+            layout.add(readOnlyField("Other Ingredients", entry.getOtherIngredients()));
+        }
+        layout.add(readOnlyField("Wood Aged", entry.isWoodAged() ? "Yes" : "No"));
+        if (entry.isWoodAged() && StringUtils.hasText(entry.getWoodAgeingDetails())) {
+            layout.add(readOnlyField("Wood Ageing Details", entry.getWoodAgeingDetails()));
+        }
+        if (StringUtils.hasText(entry.getAdditionalInformation())) {
+            layout.add(readOnlyField("Additional Information",
+                    entry.getAdditionalInformation()));
+        }
+        layout.add(readOnlyField("Status", entry.getStatus().name()));
+        layout.add(readOnlyField("Entrant", userService.findById(entry.getUserId()).getEmail()));
+
+        dialog.add(layout);
+        dialog.getFooter().add(new Button("Close", e -> dialog.close()));
+        dialog.open();
+    }
+
+    private TextField readOnlyField(String label, String value) {
+        var field = new TextField(label);
+        field.setValue(value != null ? value : "");
+        field.setReadOnly(true);
+        field.setWidthFull();
+        return field;
+    }
+
+    private String resolveCategoryCodeAndName(UUID categoryId) {
+        return divisionCategories.stream()
+                .filter(c -> c.getId().equals(categoryId))
+                .findFirst()
+                .map(c -> c.getCode() + " — " + c.getName())
+                .orElse("—");
+    }
+
     private void openEditEntryDialog(Entry entry) {
+        var confirmDialog = new Dialog();
+        confirmDialog.setHeaderTitle("Edit Entry — " + formatEntryNumber(entry.getEntryNumber()));
+        confirmDialog.add("Are you sure you want to edit this entry's data? "
+                + "This should only be done to correct mistakes.");
+        var proceedButton = new Button("Proceed", e -> {
+            confirmDialog.close();
+            openEditEntryForm(entry);
+        });
+        var cancelButton = new Button("Cancel", e -> confirmDialog.close());
+        confirmDialog.getFooter().add(cancelButton, proceedButton);
+        confirmDialog.open();
+    }
+
+    private void openEditEntryForm(Entry entry) {
         var dialog = new Dialog();
         dialog.setHeaderTitle("Edit Entry — " + formatEntryNumber(entry.getEntryNumber()));
+        dialog.setWidth("600px");
+
+        var layout = new VerticalLayout();
+        layout.setPadding(false);
 
         var meadNameField = new TextField("Mead Name");
+        meadNameField.setWidthFull();
         meadNameField.setMaxLength(255);
         meadNameField.setValue(entry.getMeadName());
 
-        dialog.add(new VerticalLayout(meadNameField));
+        var categorySelect = new Select<DivisionCategory>();
+        categorySelect.setLabel("Category");
+        categorySelect.setWidthFull();
+        categorySelect.setItemLabelGenerator(dc ->
+                dc.getCode() + " — " + dc.getName());
+        categorySelect.setItems(divisionCategories.stream()
+                .filter(dc -> dc.getParentId() != null)
+                .toList());
+        categorySelect.getListDataView().getItems()
+                .filter(c -> c.getId().equals(entry.getInitialCategoryId()))
+                .findFirst()
+                .ifPresent(categorySelect::setValue);
+
+        var sweetness = new Select<Sweetness>();
+        sweetness.setLabel("Sweetness");
+        sweetness.setWidthFull();
+        sweetness.setItems(Sweetness.values());
+        sweetness.setItemLabelGenerator(Sweetness::getDisplayName);
+        sweetness.setValue(entry.getSweetness());
+
+        var strength = new Select<Strength>();
+        strength.setLabel("Strength");
+        strength.setWidthFull();
+        strength.setItems(Strength.values());
+        strength.setItemLabelGenerator(Strength::getDisplayName);
+        strength.setValue(entry.getStrength());
+
+        var abv = new NumberField("ABV (%)");
+        abv.setWidthFull();
+        abv.setStep(0.1);
+        abv.setMin(0);
+        abv.setMax(30);
+        abv.setValue(entry.getAbv().doubleValue());
+
+        var carbonation = new Select<Carbonation>();
+        carbonation.setLabel("Carbonation");
+        carbonation.setWidthFull();
+        carbonation.setItems(Carbonation.values());
+        carbonation.setItemLabelGenerator(Carbonation::getDisplayName);
+        carbonation.setValue(entry.getCarbonation());
+
+        var honeyVarieties = new TextArea("Honey Varieties");
+        honeyVarieties.setWidthFull();
+        honeyVarieties.setMaxLength(500);
+        honeyVarieties.setValue(entry.getHoneyVarieties());
+
+        var otherIngredients = new TextArea("Other Ingredients");
+        otherIngredients.setWidthFull();
+        otherIngredients.setMaxLength(500);
+        if (entry.getOtherIngredients() != null) {
+            otherIngredients.setValue(entry.getOtherIngredients());
+        }
+
+        var woodAged = new Checkbox("Wood Aged");
+        woodAged.setValue(entry.isWoodAged());
+        var woodAgeingDetails = new TextArea("Wood Ageing Details");
+        woodAgeingDetails.setWidthFull();
+        woodAgeingDetails.setMaxLength(500);
+        woodAgeingDetails.setVisible(entry.isWoodAged());
+        if (entry.getWoodAgeingDetails() != null) {
+            woodAgeingDetails.setValue(entry.getWoodAgeingDetails());
+        }
+        woodAged.addValueChangeListener(e -> woodAgeingDetails.setVisible(e.getValue()));
+
+        var additionalInfo = new TextArea("Additional Information");
+        additionalInfo.setWidthFull();
+        additionalInfo.setMaxLength(1000);
+        if (entry.getAdditionalInformation() != null) {
+            additionalInfo.setValue(entry.getAdditionalInformation());
+        }
+
+        layout.add(meadNameField, categorySelect, sweetness, strength, abv, carbonation,
+                honeyVarieties, otherIngredients, woodAged, woodAgeingDetails, additionalInfo);
+        dialog.add(layout);
 
         var saveButton = new Button("Save", e -> {
             if (!StringUtils.hasText(meadNameField.getValue())) {
@@ -514,12 +678,53 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 meadNameField.setErrorMessage("Mead name is required");
                 return;
             }
+            var valid = true;
+            if (categorySelect.getValue() == null) {
+                categorySelect.setInvalid(true);
+                categorySelect.setErrorMessage("Category is required");
+                valid = false;
+            }
+            if (sweetness.getValue() == null) {
+                sweetness.setInvalid(true);
+                sweetness.setErrorMessage("Sweetness is required");
+                valid = false;
+            }
+            if (strength.getValue() == null) {
+                strength.setInvalid(true);
+                strength.setErrorMessage("Strength is required");
+                valid = false;
+            }
+            if (abv.getValue() == null) {
+                abv.setInvalid(true);
+                abv.setErrorMessage("ABV is required");
+                valid = false;
+            }
+            if (carbonation.getValue() == null) {
+                carbonation.setInvalid(true);
+                carbonation.setErrorMessage("Carbonation is required");
+                valid = false;
+            }
+            if (!StringUtils.hasText(honeyVarieties.getValue())) {
+                honeyVarieties.setInvalid(true);
+                honeyVarieties.setErrorMessage("Honey varieties is required");
+                valid = false;
+            }
+            if (!valid) {
+                return;
+            }
             try {
                 entryService.adminUpdateEntry(entry.getId(), meadNameField.getValue().trim(),
-                        entry.getInitialCategoryId(), entry.getSweetness(), entry.getStrength(),
-                        entry.getAbv(), entry.getCarbonation(), entry.getHoneyVarieties(),
-                        entry.getOtherIngredients(), entry.isWoodAged(),
-                        entry.getWoodAgeingDetails(), entry.getAdditionalInformation(),
+                        categorySelect.getValue().getId(),
+                        sweetness.getValue(), strength.getValue(),
+                        BigDecimal.valueOf(abv.getValue()),
+                        carbonation.getValue(),
+                        honeyVarieties.getValue().trim(),
+                        StringUtils.hasText(otherIngredients.getValue())
+                                ? otherIngredients.getValue().trim() : null,
+                        woodAged.getValue(),
+                        woodAged.getValue() ? woodAgeingDetails.getValue().trim() : null,
+                        StringUtils.hasText(additionalInfo.getValue())
+                                ? additionalInfo.getValue().trim() : null,
                         currentUserId);
                 var notification = Notification.show("Entry updated");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);

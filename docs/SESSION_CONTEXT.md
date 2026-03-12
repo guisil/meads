@@ -117,7 +117,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 #### Views
 - `EntrantOverviewView` (`/my-entries`) — cross-competition entrant hub, shows all divisions with credits/entries, auto-redirects to single division
 - `MyEntriesView` (`/competitions/:compShortName/divisions/:divShortName/my-entries`) — entrant-facing, competition documents list, credits + limits display, process info box, registration deadline display, category guidance hints, entry grid with status badges/Final Category/Actions (view/edit/submit/download label)/filtering/sorting, add/edit dialog (full-width fields, per-field validation, prefixed entry IDs), "Submit All Drafts" button, "Download all labels" batch button (disabled until all entries submitted), meadery name required warning + submit blocking
-- `DivisionEntryAdminView` (`/competitions/:compShortName/divisions/:divShortName/entry-admin`) — admin tabs: Credits, Entries (with Meadery/Country columns + individual label download + batch "Download all labels" with confirmation dialog), Products, Orders
+- `DivisionEntryAdminView` (`/competitions/:compShortName/divisions/:divShortName/entry-admin`) — admin tabs: Credits, Entries (with Meadery/Country/Final Category columns + view/edit/delete/withdraw actions + individual label download + batch "Download all labels" with confirmation dialog), Products, Orders. View dialog shows all entry fields read-only. Edit has confirmation gate then full edit dialog (all fields, per-field validation, works for any status except WITHDRAWN).
 
 #### REST
 - `JumpsellerWebhookController` — `POST /api/webhooks/jumpseller/order-paid` (HMAC-verified)
@@ -174,9 +174,9 @@ docs/
 
 ## What's Next
 
-### Priority 1: Manual walkthrough (continue from Section 10)
-Sections 1–9 completed with fixes along the way. Continue from Section 10 (My Entries
-Overview) through Section 14. **Go through every test item without skipping anything.** May
+### Priority 1: Manual walkthrough (continue from Section 12)
+Sections 1–11 completed with fixes along the way. Continue from Section 12 (Cross-cutting
+Concerns) through Section 14. **Go through every test item without skipping anything.** May
 produce bug fixes or UX improvements.
 
 ### Priority 2: Release creation
@@ -241,6 +241,7 @@ Requires: DB migration, admin UI for constraint config, cross-module data flow, 
 - **Label PDF fixed height** — Changed from `setMinimumHeight` to `setFixedHeight` for mead name and ingredient fields so labels don't expand with long text. Text wraps within 2 lines then clips.
 - **Entry dialog improvements** — Per-field validation errors instead of generic notification. Category pre-populates correctly on edit (searches Select items, not full category list). View/submit dialogs use prefixed entry ID (e.g. AMA-1). "Download all labels" disabled until all entries submitted.
 - **Dev data** — Profissional division now has `meaderyNameRequired = true`.
+- **Admin entry view/edit** — Added view button (eye icon) to admin entries grid with read-only dialog showing all fields + status + entrant. Added Final Category column to grid. Expanded edit dialog from mead-name-only to all entry fields with per-field validation and confirmation gate. Edit works for any status except WITHDRAWN.
 
 ---
 

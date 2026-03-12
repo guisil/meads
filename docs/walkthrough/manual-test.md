@@ -875,7 +875,7 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] Navigate back to Amadora entry-admin
 - [ ] Click the "Entries" tab
 - [ ] **Expected:** Filter field: "Filter by mead name, entrant, or entry code..."
-- [ ] **Expected:** Grid with columns: Entry # (with AMA prefix, e.g. "AMA-1"), Code, Mead Name, Category (code with tooltip for full name), Entrant, Meadery, Country, Status, Actions (edit/delete/withdraw icons)
+- [ ] **Expected:** Grid with columns: Entry # (with AMA prefix, e.g. "AMA-1"), Code, Mead Name, Category (code with tooltip for full name), Final Category (code with tooltip, or "—" if not set), Entrant, Meadery, Country, Status, Actions (view/edit/delete/withdraw icons)
 - [ ] **Expected:** Meadery column shows user's meadery name (or empty if not set)
 - [ ] **Expected:** Country column shows display name (e.g. "Portugal") based on user's ISO country code
 - [ ] **Expected:** 4 entries total (3 from user@example.com, 1 from entrant@example.com), sorted by entry number
@@ -884,7 +884,9 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] **Expected:** Columns are sortable
 - [ ] **Expected:** Delete button (trash) only enabled for DRAFT entries
 - [ ] **Expected:** Withdraw button (ban) disabled for WITHDRAWN entries
-- [ ] **Expected:** Edit button opens dialog to change mead name
+- [ ] **Expected:** View button (eye) opens read-only dialog showing all entry fields, status, and entrant email
+- [ ] **Expected:** Edit button opens confirmation dialog ("Are you sure you want to edit this entry's data?"), then full edit dialog with all fields (mead name, category, sweetness, strength, ABV, carbonation, honey, other ingredients, wood aged, wood ageing details, additional info)
+- [ ] **Expected:** Edit works for entries in any status except WITHDRAWN
 - [ ] **Expected:** Delete button opens confirmation dialog
 - [ ] **Expected:** Withdraw button opens confirmation dialog
 
