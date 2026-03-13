@@ -189,8 +189,12 @@ class DivisionDetailViewTest {
     @WithMockUser(username = "comp-admin@example.com", roles = "USER")
     void shouldAllowCompetitionAdminAccess() {
         var compAdminUser = userRepository.findByEmail("comp-admin@example.com")
-                .orElseGet(() -> userRepository.save(new User("comp-admin@example.com",
-                        "Comp Admin", UserStatus.ACTIVE, Role.USER)));
+                .orElseGet(() -> {
+                    var u = new User("comp-admin@example.com",
+                            "Comp Admin", UserStatus.ACTIVE, Role.USER);
+                    u.setPasswordHash("$2a$10$dummyhash");
+                    return userRepository.save(u);
+                });
         var participant = participantRepository.save(
                 new Participant(testCompetition.getId(), compAdminUser.getId()));
         participantRoleRepository.save(

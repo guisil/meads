@@ -136,6 +136,13 @@ public class EntryService {
                     + "user already has credits in another division of the same competition");
         }
 
+        // Role compatibility check
+        if (competitionService.hasIncompatibleRolesForEntrant(
+                division.getCompetitionId(), user.getId())) {
+            throw new IllegalArgumentException(
+                    "Cannot add credits: user has a role in this competition that cannot be combined with Entrant");
+        }
+
         var credit = new EntryCredit(divisionId, user.getId(), amount,
                 "ADMIN", userService.findById(requestingUserId).getEmail());
         creditRepository.save(credit);

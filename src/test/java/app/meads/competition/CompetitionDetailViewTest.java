@@ -188,14 +188,14 @@ class CompetitionDetailViewTest {
         tabSheet.setSelectedIndex(1); // Participants tab
 
         @SuppressWarnings("unchecked")
-        var grid = (Grid<ParticipantRole>) _find(Grid.class).stream()
+        var grid = (Grid<Participant>) _find(Grid.class).stream()
                 .filter(g -> !(g instanceof com.vaadin.flow.component.treegrid.TreeGrid))
                 .reduce((first, second) -> second) // get the last non-TreeGrid
                 .orElseThrow();
         var headers = grid.getColumns().stream()
                 .map(c -> c.getHeaderText())
                 .toList();
-        assertThat(headers).contains("Name", "Email", "Role", "Access Code");
+        assertThat(headers).contains("Name", "Email", "Roles", "Access Code");
     }
 
     @Test

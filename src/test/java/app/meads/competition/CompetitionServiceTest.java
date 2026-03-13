@@ -700,7 +700,7 @@ class CompetitionServiceTest {
     }
 
     @Test
-    void shouldAllowMultipleRolesForSameParticipant() {
+    void shouldAllowAddingEntrantToExistingJudge() {
         var admin = createAdmin();
         var user = createRegularUser();
         var competition = createCompetition();
@@ -713,6 +713,8 @@ class CompetitionServiceTest {
                 .willReturn(Optional.of(existingParticipant));
         given(participantRoleRepository.existsByParticipantIdAndRole(
                 existingParticipant.getId(), CompetitionRole.ENTRANT)).willReturn(false);
+        given(participantRoleRepository.findByParticipantId(existingParticipant.getId()))
+                .willReturn(List.of(new ParticipantRole(existingParticipant.getId(), CompetitionRole.JUDGE)));
         given(participantRoleRepository.save(any(ParticipantRole.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 
@@ -721,6 +723,106 @@ class CompetitionServiceTest {
 
         assertThat(result.getRole()).isEqualTo(CompetitionRole.ENTRANT);
         then(participantRoleRepository).should().save(any(ParticipantRole.class));
+    }
+
+    @Test
+    void shouldAllowAddingJudgeToExistingEntrant() {
+        var admin = createAdmin();
+        var user = createRegularUser();
+        var competition = createCompetition();
+        var existingParticipant = new Participant(competition.getId(), user.getId());
+        given(competitionRepository.findById(competition.getId()))
+                .willReturn(Optional.of(competition));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(userService.findById(user.getId())).willReturn(user);
+        given(participantRepository.findByCompetitionIdAndUserId(competition.getId(), user.getId()))
+                .willReturn(Optional.of(existingParticipant));
+        given(participantRoleRepository.existsByParticipantIdAndRole(
+                existingParticipant.getId(), CompetitionRole.JUDGE)).willReturn(false);
+        given(participantRoleRepository.findByParticipantId(existingParticipant.getId()))
+                .willReturn(List.of(new ParticipantRole(existingParticipant.getId(), CompetitionRole.ENTRANT)));
+        given(participantRoleRepository.save(any(ParticipantRole.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var result = competitionService.addParticipant(
+                competition.getId(), user.getId(), CompetitionRole.JUDGE, admin.getId());
+
+        assertThat(result.getRole()).isEqualTo(CompetitionRole.JUDGE);
+    }
+
+    @Test
+    void shouldRejectAddingAdminToExistingJudge() {
+        var admin = createAdmin();
+        var user = createRegularUser();
+        var competition = createCompetition();
+        var existingParticipant = new Participant(competition.getId(), user.getId());
+        given(competitionRepository.findById(competition.getId()))
+                .willReturn(Optional.of(competition));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(userService.findById(user.getId())).willReturn(user);
+        given(participantRepository.findByCompetitionIdAndUserId(competition.getId(), user.getId()))
+                .willReturn(Optional.of(existingParticipant));
+        given(participantRoleRepository.existsByParticipantIdAndRole(
+                existingParticipant.getId(), CompetitionRole.ADMIN)).willReturn(false);
+        given(participantRoleRepository.findByParticipantId(existingParticipant.getId()))
+                .willReturn(List.of(new ParticipantRole(existingParticipant.getId(), CompetitionRole.JUDGE)));
+
+        assertThatThrownBy(() -> competitionService.addParticipant(
+                competition.getId(), user.getId(), CompetitionRole.ADMIN, admin.getId()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("cannot be combined");
+
+        then(participantRoleRepository).should(never()).save(any());
+    }
+
+    @Test
+    void shouldRejectAddingStewardToExistingEntrant() {
+        var admin = createAdmin();
+        var user = createRegularUser();
+        var competition = createCompetition();
+        var existingParticipant = new Participant(competition.getId(), user.getId());
+        given(competitionRepository.findById(competition.getId()))
+                .willReturn(Optional.of(competition));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(userService.findById(user.getId())).willReturn(user);
+        given(participantRepository.findByCompetitionIdAndUserId(competition.getId(), user.getId()))
+                .willReturn(Optional.of(existingParticipant));
+        given(participantRoleRepository.existsByParticipantIdAndRole(
+                existingParticipant.getId(), CompetitionRole.STEWARD)).willReturn(false);
+        given(participantRoleRepository.findByParticipantId(existingParticipant.getId()))
+                .willReturn(List.of(new ParticipantRole(existingParticipant.getId(), CompetitionRole.ENTRANT)));
+
+        assertThatThrownBy(() -> competitionService.addParticipant(
+                competition.getId(), user.getId(), CompetitionRole.STEWARD, admin.getId()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("cannot be combined");
+
+        then(participantRoleRepository).should(never()).save(any());
+    }
+
+    @Test
+    void shouldRejectAddingEntrantToExistingAdmin() {
+        var admin = createAdmin();
+        var user = createRegularUser();
+        var competition = createCompetition();
+        var existingParticipant = new Participant(competition.getId(), user.getId());
+        given(competitionRepository.findById(competition.getId()))
+                .willReturn(Optional.of(competition));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(userService.findById(user.getId())).willReturn(user);
+        given(participantRepository.findByCompetitionIdAndUserId(competition.getId(), user.getId()))
+                .willReturn(Optional.of(existingParticipant));
+        given(participantRoleRepository.existsByParticipantIdAndRole(
+                existingParticipant.getId(), CompetitionRole.ENTRANT)).willReturn(false);
+        given(participantRoleRepository.findByParticipantId(existingParticipant.getId()))
+                .willReturn(List.of(new ParticipantRole(existingParticipant.getId(), CompetitionRole.ADMIN)));
+
+        assertThatThrownBy(() -> competitionService.addParticipant(
+                competition.getId(), user.getId(), CompetitionRole.ENTRANT, admin.getId()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("cannot be combined");
+
+        then(participantRoleRepository).should(never()).save(any());
     }
 
     @Test
@@ -742,6 +844,30 @@ class CompetitionServiceTest {
                 competition.getId(), user.getId(), CompetitionRole.JUDGE, admin.getId()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("JUDGE");
+
+        then(participantRoleRepository).should(never()).save(any());
+    }
+
+    // --- ensureEntrantParticipant ---
+
+    @Test
+    void shouldRejectEnsureEntrantWhenUserIsAdmin() {
+        var competition = createCompetition();
+        var userId = UUID.randomUUID();
+        var existingParticipant = new Participant(competition.getId(), userId);
+        given(competitionRepository.findById(competition.getId()))
+                .willReturn(Optional.of(competition));
+        given(participantRepository.findByCompetitionIdAndUserId(competition.getId(), userId))
+                .willReturn(Optional.of(existingParticipant));
+        given(participantRoleRepository.existsByParticipantIdAndRole(
+                existingParticipant.getId(), CompetitionRole.ENTRANT)).willReturn(false);
+        given(participantRoleRepository.findByParticipantId(existingParticipant.getId()))
+                .willReturn(List.of(new ParticipantRole(existingParticipant.getId(), CompetitionRole.ADMIN)));
+
+        assertThatThrownBy(() -> competitionService.ensureEntrantParticipant(
+                competition.getId(), userId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("cannot be combined");
 
         then(participantRoleRepository).should(never()).save(any());
     }
@@ -871,6 +997,81 @@ class CompetitionServiceTest {
                 competition.getId(), participant.getId(), admin.getId());
 
         then(participantRoleRepository).should().deleteAll(List.of(pr));
+        then(participantRepository).should().delete(participant);
+    }
+
+    // --- removeParticipantRole ---
+
+    @Test
+    void shouldRemoveSingleRoleFromParticipantWithMultipleRoles() {
+        var admin = createAdmin();
+        var competition = createCompetition();
+        var participant = new Participant(competition.getId(), UUID.randomUUID());
+        var judgeRole = new ParticipantRole(participant.getId(), CompetitionRole.JUDGE);
+        var entrantRole = new ParticipantRole(participant.getId(), CompetitionRole.ENTRANT);
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(participantRepository.findById(participant.getId()))
+                .willReturn(Optional.of(participant));
+        given(participantRoleRepository.findByParticipantId(participant.getId()))
+                .willReturn(List.of(judgeRole, entrantRole));
+
+        competitionService.removeParticipantRole(
+                competition.getId(), participant.getId(), CompetitionRole.ENTRANT, admin.getId());
+
+        then(participantRoleRepository).should().delete(entrantRole);
+        then(participantRepository).should(never()).delete(any());
+    }
+
+    @Test
+    void shouldRemoveParticipantWhenLastRoleRemoved() {
+        var admin = createAdmin();
+        var competition = createCompetition();
+        var participant = new Participant(competition.getId(), UUID.randomUUID());
+        var judgeRole = new ParticipantRole(participant.getId(), CompetitionRole.JUDGE);
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(participantRepository.findById(participant.getId()))
+                .willReturn(Optional.of(participant));
+        given(participantRoleRepository.findByParticipantId(participant.getId()))
+                .willReturn(List.of(judgeRole));
+
+        competitionService.removeParticipantRole(
+                competition.getId(), participant.getId(), CompetitionRole.JUDGE, admin.getId());
+
+        then(participantRoleRepository).should().delete(judgeRole);
+        then(participantRepository).should().delete(participant);
+    }
+
+    @Test
+    void shouldRejectRemoveRoleWhenParticipantDoesNotHaveRole() {
+        var admin = createAdmin();
+        var competition = createCompetition();
+        var participant = new Participant(competition.getId(), UUID.randomUUID());
+        var judgeRole = new ParticipantRole(participant.getId(), CompetitionRole.JUDGE);
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(participantRepository.findById(participant.getId()))
+                .willReturn(Optional.of(participant));
+        given(participantRoleRepository.findByParticipantId(participant.getId()))
+                .willReturn(List.of(judgeRole));
+
+        assertThatThrownBy(() -> competitionService.removeParticipantRole(
+                competition.getId(), participant.getId(), CompetitionRole.ENTRANT, admin.getId()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("ENTRANT");
+    }
+
+    // --- findRolesForParticipant ---
+
+    @Test
+    void shouldFindRolesForParticipant() {
+        var participantId = UUID.randomUUID();
+        var judgeRole = new ParticipantRole(participantId, CompetitionRole.JUDGE);
+        var entrantRole = new ParticipantRole(participantId, CompetitionRole.ENTRANT);
+        given(participantRoleRepository.findByParticipantId(participantId))
+                .willReturn(List.of(judgeRole, entrantRole));
+
+        var result = competitionService.findRolesForParticipant(participantId);
+
+        assertThat(result).containsExactlyInAnyOrder(judgeRole, entrantRole);
     }
 
     // --- addParticipantByEmail ---

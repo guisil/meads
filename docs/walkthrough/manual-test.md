@@ -570,9 +570,10 @@ CTA button, fallback URL, and optional contact footer.
 
 - [ ] Click the "Participants" tab
 - [ ] **Expected:** Filter field with search icon and placeholder "Filter by name or email..."
-- [ ] **Expected:** Grid with columns: Name (sortable), Email (sortable), Meadery (sortable), Country (sortable), Role (sortable), Access Code, Actions (envelope + remove icons, header "Actions"). All columns resizable.
+- [ ] **Expected:** Grid with columns: Name (sortable), Email (sortable), Meadery (sortable), Country (sortable), Roles (sortable), Access Code, Actions (edit pencil + envelope + remove X icons, header "Actions"). All columns resizable. One row per participant with comma-separated roles.
 - [ ] **Expected:** Rows for compadmin (Admin, no code), judge (Judge, 8-char code), steward (Steward, 8-char code), user (Entrant, no code), entrant (Entrant, no code)
 - [ ] **Expected:** Envelope icon (send login link) shown only for participants without passwords (magic-link-only users)
+- [ ] **Expected:** Edit icon (pencil) opens dialog with role checkboxes + name/meadery/country fields
 - [ ] Type a name fragment in the filter field
 - [ ] **Expected:** Grid filters immediately (EAGER mode), showing only matching participants
 - [ ] Clear the filter
@@ -581,11 +582,12 @@ CTA button, fallback URL, and optional contact footer.
 ### Add participant
 
 - [ ] Click "Add Participant"
-- [ ] **Expected:** Dialog with fields: Email, Role (default: Judge)
-- [ ] Enter email: `newjudge@test.com`
+- [ ] **Expected:** Dialog with fields: Email, Role (default: Judge), Name, Meadery Name, Country
+- [ ] Enter email: `newjudge@test.com`, optionally fill name/meadery/country
 - [ ] Click "Add"
 - [ ] **Expected:** Notification "Participant added successfully" (green)
 - [ ] **Expected:** New participant appears in grid with role "Judge" and an 8-char access code
+- [ ] **Expected:** Name/meadery/country only applied if user didn't already have them set
 
 ### Add participant -- blank email
 
@@ -600,14 +602,26 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] **Expected:** Notification "Login link sent to user@example.com" (green)
 - [ ] **Expected:** Login email appears in Mailpit with subject "Your MEADS login link"
 
+### Edit participant roles
+
+- [ ] Find a participant with one role (e.g., `judge@example.com` — Judge)
+- [ ] Click the pencil icon (tooltip: "Edit")
+- [ ] **Expected:** Dialog with role checkboxes (Judge checked), name/meadery/country fields (read-only if already set on user)
+- [ ] Check "Entrant" checkbox (JUDGE + ENTRANT is the only allowed combination)
+- [ ] Click "Save"
+- [ ] **Expected:** Roles column now shows "Entrant, Judge" (comma-separated)
+- [ ] Edit again, try checking "Admin" or "Steward" alongside existing roles
+- [ ] **Expected:** Error notification about invalid role combination
+- [ ] Uncheck "Entrant" to restore original single role, save
+
 ### Remove participant
 
 - [ ] Find `newjudge@test.com` in the grid
 - [ ] Click the X icon button (tooltip: "Remove")
-- [ ] **Expected:** Confirmation dialog: "Remove newjudge@test.com (Judge) from this competition?"
+- [ ] **Expected:** Confirmation dialog: "Remove newjudge@test.com from this competition?" (mentions all roles)
 - [ ] Click "Remove"
 - [ ] **Expected:** Notification "Participant removed" (green)
-- [ ] **Expected:** Participant removed from grid
+- [ ] **Expected:** Participant completely removed from grid (participant entity and all roles deleted)
 
 ### Settings tab
 
@@ -938,11 +952,14 @@ CTA button, fallback URL, and optional contact footer.
 
 - [ ] Click the "Orders" tab
 - [ ] **Expected:** Filter field: "Filter by order ID or customer email..."
-- [ ] **Expected:** Grid with columns: Order ID, Customer, Status, Awarded Credits, Pending Credits, Date (ISO-8601 UTC), Note, Actions (edit icon)
+- [ ] **Expected:** Grid with columns: Order ID, Customer (with tooltip), Status, Awarded Credits, Pending Credits, Date (ISO-8601 UTC), Review Reason (with tooltip), Note, Actions (edit icon)
 - [ ] **Expected:** All columns are resizable and sortable
+- [ ] **Expected:** Customer email column has tooltip showing full email on hover
+- [ ] **Expected:** Review Reason column has tooltip showing full reason text on hover (useful for long reasons without resizing)
 - [ ] **Expected:** 1 seeded order: JS-1001 (buyer1@example.com, PROCESSED)
 - [ ] **Expected:** Edit icon opens dialog with Status (dropdown) and Admin Note fields
 - [ ] **Expected:** Admin can change order status (e.g. NEEDS_REVIEW → PROCESSED after manual resolution)
+- [ ] **Expected:** Orders with NEEDS_REVIEW status show review reason (e.g., "Mutual exclusivity conflict..." or "Incompatible role conflict...")
 
 ---
 
@@ -1373,62 +1390,52 @@ the actual behavior and decide whether it needs to change.
 
 ### Same competition: multiple roles
 
-- [ ] Log in as `compadmin@example.com`
-- [ ] Navigate to CHIP 2026 > Participants tab
-- [ ] Add `judge@example.com` as ENTRANT (judge is already a JUDGE in CHIP)
-- [ ] **Observe:** Does the system allow a user to be both JUDGE and ENTRANT?
-- [ ] **Decide:** Should this be allowed? (CHIP rules say judges cannot judge their own entries, but they might enter in a different category/division)
-- [ ] If allowed: verify `judge@example.com` can access both My Entries and any future judge views
-- [ ] Clean up: remove the ENTRANT role from `judge@example.com` if needed
+- [x] Log in as `compadmin@example.com`
+- [x] Navigate to CHIP 2026 > Participants tab
+- [x] Add `judge@example.com` as ENTRANT (judge is already a JUDGE in CHIP)
+- [x] **Observe:** JUDGE + ENTRANT is allowed. All other role combinations are rejected with a validation error.
+- [x] **Decision:** Only JUDGE + ENTRANT combination is valid in the same competition. Enforced at service level (`CompetitionService.validateRoleCombination`).
+- [x] Participant grid shows one row per participant with comma-separated roles. Edit button (pencil icon) opens role checkboxes + user fields dialog.
+- [x] Remove button removes the entire participant (all roles). Role removal via edit dialog (uncheck a role).
+- [x] Clean up: remove the ENTRANT role from `judge@example.com` if needed
 
 ### Cross-competition: entrant becomes competition admin
 
 This is the most important edge case. A user who is an ENTRANT in one competition
 may be invited as a competition ADMIN for a different competition.
 
-- [ ] Log in as `admin@example.com` (SYSTEM_ADMIN)
-- [ ] Create a new competition (e.g., "Regional 2026")
-- [ ] Add `entrant@example.com` as ADMIN of "Regional 2026"
-- [ ] Log out
-- [ ] **Test:** How does `entrant@example.com` log in?
-  - They have no password (magic link only)
-  - They have no access code (access codes are for JUDGE/STEWARD roles)
-  - As competition admin, they need reliable access (magic links expire)
-- [ ] **Decide:** What's the credential setup flow when a user becomes a competition admin?
-  - Option A: SYSTEM_ADMIN sets a password for them via the Users page
-  - Option B: Automatic password setup email/link when added as ADMIN
-  - Option C: Competition admins can also use magic links (current behavior)
-- [ ] **Test navigation:** If `entrant@example.com` logs in via magic link:
-  - Do they see "My Competitions" in the sidebar? (Should show "Regional 2026")
-  - Can they still access their entries in CHIP 2026 Amadora?
+- [x] Log in as `admin@example.com` (SYSTEM_ADMIN)
+- [x] Create a new competition (e.g., "Regional 2026")
+- [x] Add `entrant@example.com` as ADMIN of "Regional 2026"
+- [x] Log out
+- [x] **Test:** `entrant@example.com` receives a password setup email when added as ADMIN.
+- [x] **Decision:** Competition admins must have a password. Admin views (MyCompetitionsView, CompetitionDetailView, DivisionDetailView, DivisionEntryAdminView) check for password and block access with a notification if not set.
+- [x] **Decision:** RootView checks if comp admin has a password before redirecting to `/my-competitions` — prevents redirect loop for passwordless comp admins (they fall through to `/my-entries` instead).
+- [x] **Test navigation:** After setting password, `entrant@example.com` sees "My Competitions" in sidebar and can still access entries in CHIP 2026 Amadora.
 
 ### Cross-competition: competition admin is also entrant/judge elsewhere
 
-- [ ] Log in as `compadmin@example.com`
-- [ ] Navigate to CHIP 2026 > Participants tab
-- [ ] Add credits for `compadmin@example.com` in Amadora (makes them an ENTRANT)
-- [ ] Log out, log back in as `compadmin@example.com`
-- [ ] **Test:** Can they access both:
-  - "My Competitions" to manage CHIP 2026 (as ADMIN)?
-  - `/competitions/chip-2026/divisions/amadora/my-entries` to manage their entries (as ENTRANT)?
-- [ ] **Observe:** Is the navigation clear? Can they tell which "hat" they're wearing?
-- [ ] Clean up if needed
+- [x] Log in as `compadmin@example.com`
+- [x] Navigate to CHIP 2026 > Participants tab
+- [x] Add credits for `compadmin@example.com` in Amadora (makes them an ENTRANT)
+- [x] Log out, log back in as `compadmin@example.com`
+- [x] **Test:** Can access both "My Competitions" (as ADMIN) and My Entries (as ENTRANT). Works correctly.
+- [x] **Tested role conflict:** Adding credits to a user with an incompatible role (e.g., STEWARD) triggers role validation. WebhookService and EntryService both check `hasIncompatibleRolesForEntrant()` before awarding credits. Orders/line items marked NEEDS_REVIEW with reason visible in Orders grid (Review Reason column with tooltip).
+- [x] Clean up if needed
 
 ### Login mechanism with mixed credentials
 
-- [ ] A user with both a password and a magic link should be able to use either
-- [ ] A user with an access code (JUDGE/STEWARD) and a password (competition ADMIN in another competition) should be able to use either
-- [ ] **Test:** Log in as `judge@example.com` with their access code -- does it still work after they've been made ADMIN of another competition?
-- [ ] **Decide:** Should access codes work across competitions or only for the competition that issued them?
+- [x] A user with both a password and a magic link should be able to use either — password users requesting magic link get a credentials reminder email (intended behavior)
+- [x] A user with an access code (JUDGE/STEWARD) and a password (competition ADMIN in another competition) should be able to use either — confirmed working
+- [x] **Test:** `judge@example.com` can still log in with access code after being made ADMIN of another competition
+- [x] **Decision:** Access codes authenticate user identity (full account access), not per-competition session. Password requirement on admin views prevents access code users from reaching admin features without a password. Per-competition scoping deferred — acceptable for now, revisit when multiple competitions exist.
 
-### Summary of decisions needed
+### Summary of decisions made
 
-After running the above tests, document decisions on:
-
-1. **Multiple roles in same competition** — allowed or not? Any restrictions?
-2. **Credential setup for new competition admins** — what's the flow?
-3. **Navigation clarity** — does the UI make it clear when a user has multiple roles?
-4. **Access code scope** — per-competition or per-user?
+1. **Multiple roles in same competition** — Only JUDGE + ENTRANT combination allowed. All others rejected at service level. Enforced in participant management, webhook processing, and admin credit assignment.
+2. **Credential setup for new competition admins** — Password setup email sent automatically. Admin views require password (check in `beforeEnter()`). RootView prevents redirect loop for passwordless comp admins.
+3. **Navigation clarity** — Participant grid shows one row per participant with comma-separated roles. Edit dialog with role checkboxes + user info fields. Remove button removes entire participant.
+4. **Access code scope** — Per-user identity authentication (not per-competition session). Password gate on admin views provides sufficient separation. Per-competition scoping deferred to when multiple competitions exist.
 
 ---
 

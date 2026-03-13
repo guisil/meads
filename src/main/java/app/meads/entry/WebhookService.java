@@ -164,6 +164,20 @@ public class WebhookService {
                     continue;
                 }
 
+                // Role compatibility check
+                if (competitionService.hasIncompatibleRolesForEntrant(
+                        division.getCompetitionId(), user.getId())) {
+                    var intendedCredits = quantity * mapping.getCreditsPerUnit();
+                    lineItem.markNeedsReview(divisionId, intendedCredits,
+                            "Incompatible role conflict: user has a role in this competition that cannot be combined with Entrant");
+                    lineItemRepository.save(lineItem);
+                    affectedDivisionNames.add(division.getName());
+                    needsReviewCount++;
+                    log.warn("Webhook line item needs review (role conflict): product={}, user={}",
+                            productId, customerEmail);
+                    continue;
+                }
+
                 // Create credits
                 var credits = quantity * mapping.getCreditsPerUnit();
                 lineItem.markProcessed(divisionId, credits);

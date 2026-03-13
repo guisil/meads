@@ -18,9 +18,12 @@ import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -525,6 +528,8 @@ public class CompetitionService {
                     "User already has the " + role.name() + " role in this competition");
         }
 
+        validateRoleCombination(participant.getId(), role);
+
         var pr = new ParticipantRole(participant.getId(), role);
         log.info("Added participant role: userId={}, role={}, competition={}", userId, role, competitionId);
         return participantRoleRepository.save(pr);
@@ -541,6 +546,7 @@ public class CompetitionService {
         var participant = findOrCreateParticipant(competitionId, userId, CompetitionRole.ENTRANT);
         if (!participantRoleRepository.existsByParticipantIdAndRole(
                 participant.getId(), CompetitionRole.ENTRANT)) {
+            validateRoleCombination(participant.getId(), CompetitionRole.ENTRANT);
             participantRoleRepository.save(new ParticipantRole(participant.getId(), CompetitionRole.ENTRANT));
             log.debug("Auto-added ENTRANT role: userId={}, competition={}", userId, competitionId);
         }
@@ -565,7 +571,35 @@ public class CompetitionService {
         }
         var roles = participantRoleRepository.findByParticipantId(participantId);
         participantRoleRepository.deleteAll(roles);
+        participantRepository.delete(participant);
         log.info("Removed participant: participantId={}, competition={}", participantId, competitionId);
+    }
+
+    public void removeParticipantRole(@NotNull UUID competitionId,
+                                       @NotNull UUID participantId,
+                                       @NotNull CompetitionRole role,
+                                       @NotNull UUID requestingUserId) {
+        requireAuthorized(competitionId, requestingUserId);
+        var participant = participantRepository.findById(participantId)
+                .orElseThrow(() -> new IllegalArgumentException("Participant not found"));
+        if (!participant.getCompetitionId().equals(competitionId)) {
+            throw new IllegalArgumentException("Participant does not belong to this competition");
+        }
+        var roles = participantRoleRepository.findByParticipantId(participantId);
+        var roleToRemove = roles.stream()
+                .filter(r -> r.getRole() == role)
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Participant does not have the " + role.name() + " role"));
+        participantRoleRepository.delete(roleToRemove);
+        if (roles.size() == 1) {
+            participantRepository.delete(participant);
+            log.info("Removed participant (last role): participantId={}, role={}, competition={}",
+                    participantId, role, competitionId);
+        } else {
+            log.info("Removed role from participant: participantId={}, role={}, competition={}",
+                    participantId, role, competitionId);
+        }
     }
 
     public List<Participant> findParticipantsByCompetition(@NotNull UUID competitionId) {
@@ -577,6 +611,35 @@ public class CompetitionService {
         return participants.stream()
                 .flatMap(p -> participantRoleRepository.findByParticipantId(p.getId()).stream())
                 .toList();
+    }
+
+    public List<ParticipantRole> findRolesForParticipant(@NotNull UUID participantId) {
+        return participantRoleRepository.findByParticipantId(participantId);
+    }
+
+    public boolean hasIncompatibleRolesForEntrant(@NotNull UUID competitionId, @NotNull UUID userId) {
+        var participant = participantRepository.findByCompetitionIdAndUserId(competitionId, userId)
+                .orElse(null);
+        if (participant == null) return false;
+        var existingRoles = participantRoleRepository.findByParticipantId(participant.getId())
+                .stream().map(ParticipantRole::getRole).collect(Collectors.toSet());
+        if (existingRoles.isEmpty() || existingRoles.contains(CompetitionRole.ENTRANT)) return false;
+        // Only JUDGE is compatible with ENTRANT
+        return existingRoles.stream().anyMatch(r -> r != CompetitionRole.JUDGE);
+    }
+
+    private void validateRoleCombination(UUID participantId, CompetitionRole newRole) {
+        var existingRoles = participantRoleRepository.findByParticipantId(participantId)
+                .stream().map(ParticipantRole::getRole).collect(Collectors.toSet());
+        if (!existingRoles.isEmpty()) {
+            var combined = new HashSet<>(existingRoles);
+            combined.add(newRole);
+            var allowedCombination = Set.of(CompetitionRole.JUDGE, CompetitionRole.ENTRANT);
+            if (!allowedCombination.containsAll(combined)) {
+                throw new IllegalArgumentException(
+                        newRole.getDisplayName() + " cannot be combined with existing roles in this competition");
+            }
+        }
     }
 
     // --- Authorization methods ---

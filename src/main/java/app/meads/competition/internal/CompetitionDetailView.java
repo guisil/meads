@@ -3,9 +3,11 @@ package app.meads.competition.internal;
 import app.meads.MainLayout;
 import app.meads.competition.*;
 import app.meads.identity.EmailService;
+import app.meads.identity.Role;
 import app.meads.identity.User;
 import app.meads.identity.UserService;
 import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
@@ -42,12 +44,17 @@ import org.springframework.security.core.userdetails.UserDetails;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
 
+import java.util.Arrays;
 import java.io.ByteArrayInputStream;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -67,10 +74,10 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
     private HorizontalLayout header;
     private Nav breadcrumb;
     private Grid<Division> divisionsGrid;
-    private Grid<ParticipantRole> participantsGrid;
+    private Grid<Participant> participantsGrid;
     private Grid<CompetitionDocument> documentsGrid;
-    private Map<UUID, Participant> participantMap;
     private Map<UUID, User> userMap;
+    private Map<UUID, List<ParticipantRole>> rolesMap;
 
     public CompetitionDetailView(CompetitionService competitionService,
                                   UserService userService,
@@ -100,7 +107,14 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
             return;
         }
 
-        if (!competitionService.isAuthorizedForCompetition(competitionId, getCurrentUserId())) {
+        var currentUserId = getCurrentUserId();
+        if (!competitionService.isAuthorizedForCompetition(competitionId, currentUserId)) {
+            beforeEnterEvent.forwardTo("");
+            return;
+        }
+
+        var currentUser = userService.findById(currentUserId);
+        if (currentUser.getRole() != Role.SYSTEM_ADMIN && !userService.hasPassword(currentUserId)) {
             beforeEnterEvent.forwardTo("");
             return;
         }
@@ -266,40 +280,39 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
         participantsGrid = new Grid<>();
         participantsGrid.setAllRowsVisible(true);
-        participantsGrid.addColumn(pr -> {
-            var participant = participantMap.get(pr.getParticipantId());
-            var user = participant != null ? userMap.get(participant.getUserId()) : null;
+        participantsGrid.addColumn(p -> {
+            var user = userMap.get(p.getUserId());
             return user != null ? user.getName() : "Unknown";
         }).setHeader("Name").setSortable(true).setFlexGrow(2);
-        participantsGrid.addColumn(pr -> {
-            var participant = participantMap.get(pr.getParticipantId());
-            var user = participant != null ? userMap.get(participant.getUserId()) : null;
+        participantsGrid.addColumn(p -> {
+            var user = userMap.get(p.getUserId());
             return user != null ? user.getEmail() : "—";
         }).setHeader("Email").setSortable(true).setFlexGrow(3);
-        participantsGrid.addColumn(pr -> {
-            var participant = participantMap.get(pr.getParticipantId());
-            var user = participant != null ? userMap.get(participant.getUserId()) : null;
+        participantsGrid.addColumn(p -> {
+            var user = userMap.get(p.getUserId());
             return user != null && user.getMeaderyName() != null ? user.getMeaderyName() : "—";
         }).setHeader("Meadery").setSortable(true).setFlexGrow(2);
-        participantsGrid.addColumn(pr -> {
-            var participant = participantMap.get(pr.getParticipantId());
-            var user = participant != null ? userMap.get(participant.getUserId()) : null;
+        participantsGrid.addColumn(p -> {
+            var user = userMap.get(p.getUserId());
             if (user == null || user.getCountry() == null) return "—";
             return new Locale("", user.getCountry()).getDisplayCountry(Locale.ENGLISH);
         }).setHeader("Country").setSortable(true).setAutoWidth(true);
-        participantsGrid.addColumn(pr -> pr.getRole().getDisplayName()).setHeader("Role").setSortable(true).setAutoWidth(true);
-        participantsGrid.addColumn(pr -> {
-            var participant = participantMap.get(pr.getParticipantId());
-            return participant != null && participant.getAccessCode() != null
-                    ? participant.getAccessCode() : "—";
-        }).setHeader("Access Code").setAutoWidth(true);
-        participantsGrid.addComponentColumn(pr -> {
+        participantsGrid.addColumn(p -> {
+            var roles = rolesMap.getOrDefault(p.getId(), List.of());
+            return roles.stream()
+                    .map(r -> r.getRole().getDisplayName())
+                    .sorted()
+                    .collect(Collectors.joining(", "));
+        }).setHeader("Roles").setSortable(true).setAutoWidth(true);
+        participantsGrid.addColumn(p ->
+            p.getAccessCode() != null ? p.getAccessCode() : "—"
+        ).setHeader("Access Code").setAutoWidth(true);
+        participantsGrid.addComponentColumn(p -> {
             var actions = new HorizontalLayout();
             actions.setSpacing(false);
             actions.getStyle().set("gap", "var(--lumo-space-xs)");
 
-            var participant = participantMap.get(pr.getParticipantId());
-            var user = participant != null ? userMap.get(participant.getUserId()) : null;
+            var user = userMap.get(p.getUserId());
 
             if (user != null && user.getPasswordHash() == null) {
                 var sendLinkButton = new Button(new Icon(VaadinIcon.ENVELOPE));
@@ -309,10 +322,16 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 actions.add(sendLinkButton);
             }
 
+            var editButton = new Button(new Icon(VaadinIcon.EDIT));
+            editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            editButton.setTooltipText("Edit roles");
+            editButton.addClickListener(e -> openEditRolesDialog(p));
+            actions.add(editButton);
+
             var removeButton = new Button(new Icon(VaadinIcon.CLOSE));
             removeButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
             removeButton.setTooltipText("Remove");
-            removeButton.addClickListener(e -> openRemoveParticipantDialog(pr));
+            removeButton.addClickListener(e -> openRemoveParticipantDialog(p));
             actions.add(removeButton);
 
             return actions;
@@ -327,9 +346,8 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
             if (filterString.isBlank()) {
                 participantsGrid.getListDataView().removeFilters();
             } else {
-                participantsGrid.getListDataView().setFilter(pr -> {
-                    var participant = participantMap.get(pr.getParticipantId());
-                    var user = participant != null ? userMap.get(participant.getUserId()) : null;
+                participantsGrid.getListDataView().setFilter(p -> {
+                    var user = userMap.get(p.getUserId());
                     if (user == null) return false;
                     return user.getName().toLowerCase().contains(filterString)
                             || user.getEmail().toLowerCase().contains(filterString);
@@ -341,20 +359,23 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         return tab;
     }
 
-    private void openRemoveParticipantDialog(ParticipantRole participantRole) {
-        var participant = participantMap.get(participantRole.getParticipantId());
-        var user = participant != null ? userMap.get(participant.getUserId()) : null;
+    private void openRemoveParticipantDialog(Participant participant) {
+        var user = userMap.get(participant.getUserId());
         var displayName = user != null ? user.getEmail() : "this participant";
+        var roles = rolesMap.getOrDefault(participant.getId(), List.of());
+        var rolesDisplay = roles.stream()
+                .map(r -> r.getRole().getDisplayName())
+                .sorted()
+                .collect(Collectors.joining(", "));
 
         var dialog = new Dialog();
         dialog.setHeaderTitle("Remove Participant");
-        dialog.add("Remove " + displayName + " ("
-                + participantRole.getRole().getDisplayName() + ") from this competition?");
+        dialog.add("Remove " + displayName + " (" + rolesDisplay + ") from this competition?");
 
         var confirmButton = new Button("Remove", e -> {
             try {
                 competitionService.removeParticipant(
-                        competitionId, participantRole.getParticipantId(), getCurrentUserId());
+                        competitionId, participant.getId(), getCurrentUserId());
                 refreshParticipantsGrid();
                 var notification = Notification.show("Participant removed");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
@@ -370,12 +391,126 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         dialog.open();
     }
 
+    private void openEditRolesDialog(Participant participant) {
+        var user = userMap.get(participant.getUserId());
+        var displayName = user != null ? user.getEmail() : "Unknown";
+        var currentRoles = rolesMap.getOrDefault(participant.getId(), List.of());
+        var currentRoleSet = currentRoles.stream()
+                .map(ParticipantRole::getRole)
+                .collect(Collectors.toSet());
+
+        var dialog = new Dialog();
+        dialog.setHeaderTitle("Edit Participant — " + displayName);
+
+        var nameField = new TextField("Name");
+        nameField.setMaxLength(255);
+        nameField.setWidthFull();
+        if (user != null && StringUtils.hasText(user.getName()) && !user.getName().equals(user.getEmail())) {
+            nameField.setValue(user.getName());
+            nameField.setReadOnly(true);
+        }
+
+        var meaderyField = new TextField("Meadery");
+        meaderyField.setMaxLength(255);
+        meaderyField.setWidthFull();
+        if (user != null && StringUtils.hasText(user.getMeaderyName())) {
+            meaderyField.setValue(user.getMeaderyName());
+            meaderyField.setReadOnly(true);
+        }
+
+        var countryCombo = createCountryComboBox();
+        if (user != null && user.getCountry() != null) {
+            countryCombo.setValue(user.getCountry());
+            countryCombo.setReadOnly(true);
+        }
+
+        var checkboxes = new LinkedHashMap<CompetitionRole, Checkbox>();
+        var rolesLayout = new VerticalLayout();
+        rolesLayout.setPadding(false);
+        rolesLayout.setSpacing(false);
+        for (var role : CompetitionRole.values()) {
+            var checkbox = new Checkbox(role.getDisplayName());
+            checkbox.setValue(currentRoleSet.contains(role));
+            checkboxes.put(role, checkbox);
+            rolesLayout.add(checkbox);
+        }
+
+        var form = new VerticalLayout(nameField, meaderyField, countryCombo, rolesLayout);
+        form.setPadding(false);
+        dialog.add(form);
+
+        var saveButton = new Button("Save", e -> {
+            var selectedRoles = checkboxes.entrySet().stream()
+                    .filter(entry -> entry.getValue().getValue())
+                    .map(Map.Entry::getKey)
+                    .collect(Collectors.toSet());
+
+            if (selectedRoles.isEmpty()) {
+                Notification.show("At least one role must be selected");
+                return;
+            }
+
+            var allowedCombination = Set.of(CompetitionRole.JUDGE, CompetitionRole.ENTRANT);
+            if (selectedRoles.size() > 1 && !allowedCombination.containsAll(selectedRoles)) {
+                Notification.show("Only Judge and Entrant roles can be combined");
+                return;
+            }
+
+            try {
+                // Fill in blank user fields
+                if (user != null) {
+                    fillInBlankUserFields(user.getEmail(),
+                            nameField.isReadOnly() ? "" : nameField.getValue(),
+                            meaderyField.isReadOnly() ? "" : meaderyField.getValue(),
+                            countryCombo.isReadOnly() ? null : countryCombo.getValue());
+                }
+
+                // Remove roles that were unchecked
+                for (var role : currentRoleSet) {
+                    if (!selectedRoles.contains(role)) {
+                        competitionService.removeParticipantRole(
+                                competitionId, participant.getId(), role, getCurrentUserId());
+                    }
+                }
+                // Add roles that were checked
+                var userEmail = user != null ? user.getEmail() : null;
+                for (var role : selectedRoles) {
+                    if (!currentRoleSet.contains(role) && userEmail != null) {
+                        competitionService.addParticipantByEmail(
+                                competitionId, userEmail, role, getCurrentUserId());
+                    }
+                }
+                refreshParticipantsGrid();
+                var notification = Notification.show("Participant updated");
+                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                dialog.close();
+            } catch (IllegalArgumentException ex) {
+                Notification.show(ex.getMessage());
+            }
+        });
+
+        var cancelButton = new Button("Cancel", e -> dialog.close());
+        dialog.getFooter().add(cancelButton, saveButton);
+        dialog.open();
+    }
+
     private void openAddParticipantDialog() {
         var dialog = new Dialog();
         dialog.setHeaderTitle("Add Participant");
 
         var emailField = new TextField("Email");
         emailField.setMaxLength(255);
+        emailField.setWidthFull();
+
+        var nameField = new TextField("Name");
+        nameField.setMaxLength(255);
+        nameField.setWidthFull();
+
+        var meaderyField = new TextField("Meadery");
+        meaderyField.setMaxLength(255);
+        meaderyField.setWidthFull();
+
+        var countryCombo = createCountryComboBox();
 
         var roleSelect = new Select<CompetitionRole>();
         roleSelect.setLabel("Role");
@@ -391,8 +526,13 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
             try {
                 var email = emailField.getValue().trim();
                 var role = roleSelect.getValue();
+                var name = nameField.getValue() != null ? nameField.getValue().trim() : "";
+                var meadery = meaderyField.getValue() != null ? meaderyField.getValue().trim() : "";
+                var country = countryCombo.getValue();
+
                 competitionService.addParticipantByEmail(
                         competitionId, email, role, getCurrentUserId());
+                fillInBlankUserFields(email, name, meadery, country);
                 refreshParticipantsGrid();
                 var notification = Notification.show("Participant added successfully");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
@@ -405,7 +545,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
         var cancelButton = new Button("Cancel", e -> dialog.close());
 
-        var form = new VerticalLayout(emailField, roleSelect);
+        var form = new VerticalLayout(emailField, nameField, meaderyField, countryCombo, roleSelect);
         form.setPadding(false);
         dialog.add(form);
         dialog.getFooter().add(cancelButton, addButton);
@@ -413,11 +553,12 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
     }
 
     private void refreshParticipantsGrid() {
-        var roles = competitionService.findRolesByCompetition(competitionId);
-
         var participants = competitionService.findParticipantsByCompetition(competitionId);
-        participantMap = participants.stream()
-                .collect(Collectors.toMap(Participant::getId, Function.identity()));
+
+        rolesMap = participants.stream()
+                .collect(Collectors.toMap(
+                        Participant::getId,
+                        p -> competitionService.findRolesForParticipant(p.getId())));
 
         var userIds = participants.stream()
                 .map(Participant::getUserId)
@@ -426,7 +567,38 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         userMap = userService.findAllByIds(userIds).stream()
                 .collect(Collectors.toMap(User::getId, Function.identity()));
 
-        participantsGrid.setItems(roles);
+        participantsGrid.setItems(participants);
+    }
+
+    private ComboBox<String> createCountryComboBox() {
+        var countryCombo = new ComboBox<String>("Country");
+        var countries = Arrays.stream(Locale.getISOCountries())
+                .sorted((a, b) -> new Locale("", a).getDisplayCountry(Locale.ENGLISH)
+                        .compareTo(new Locale("", b).getDisplayCountry(Locale.ENGLISH)))
+                .toList();
+        countryCombo.setItems(countries);
+        countryCombo.setItemLabelGenerator(code ->
+                new Locale("", code).getDisplayCountry(Locale.ENGLISH));
+        countryCombo.setClearButtonVisible(true);
+        countryCombo.setWidthFull();
+        return countryCombo;
+    }
+
+    private void fillInBlankUserFields(String email, String name, String meadery, String country) {
+        var user = userService.findByEmail(email);
+        if (user == null) return;
+        var currentName = user.getName();
+        var currentMeadery = user.getMeaderyName();
+        var currentCountry = user.getCountry();
+        var updatedName = (!StringUtils.hasText(currentName) || currentName.equals(email))
+                && StringUtils.hasText(name) ? name : currentName;
+        var updatedMeadery = !StringUtils.hasText(currentMeadery)
+                && StringUtils.hasText(meadery) ? meadery : currentMeadery;
+        var updatedCountry = currentCountry == null && country != null ? country : currentCountry;
+        if (!updatedName.equals(currentName) || !Objects.equals(updatedMeadery, currentMeadery)
+                || !Objects.equals(updatedCountry, currentCountry)) {
+            userService.updateProfile(user.getId(), updatedName, updatedMeadery, updatedCountry);
+        }
     }
 
     private VerticalLayout createSettingsTab() {

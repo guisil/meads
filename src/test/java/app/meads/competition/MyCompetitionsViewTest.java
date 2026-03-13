@@ -55,8 +55,10 @@ class MyCompetitionsViewTest {
     @BeforeEach
     void setup(TestInfo testInfo) {
         if (userRepository.findByEmail(COMP_ADMIN_EMAIL).isEmpty()) {
-            userRepository.save(new User(COMP_ADMIN_EMAIL,
-                    "Comp Admin", UserStatus.ACTIVE, Role.USER));
+            var u = new User(COMP_ADMIN_EMAIL,
+                    "Comp Admin", UserStatus.ACTIVE, Role.USER);
+            u.setPasswordHash("$2a$10$dummyhash");
+            userRepository.save(u);
         }
         if (userRepository.findByEmail(REGULAR_USER_EMAIL).isEmpty()) {
             userRepository.save(new User(REGULAR_USER_EMAIL,

@@ -2,6 +2,7 @@ package app.meads.competition.internal;
 
 import app.meads.MainLayout;
 import app.meads.competition.*;
+import app.meads.identity.Role;
 import app.meads.identity.UserService;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
@@ -80,7 +81,14 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
             return;
         }
 
-        if (!competitionService.isAuthorizedForDivision(divisionId, getCurrentUserId())) {
+        var currentUserId = getCurrentUserId();
+        if (!competitionService.isAuthorizedForDivision(divisionId, currentUserId)) {
+            beforeEnterEvent.forwardTo("");
+            return;
+        }
+
+        var currentUser = userService.findById(currentUserId);
+        if (currentUser.getRole() != Role.SYSTEM_ADMIN && !userService.hasPassword(currentUserId)) {
             beforeEnterEvent.forwardTo("");
             return;
         }

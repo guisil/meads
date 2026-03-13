@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `competition-module`
-**Tests:** 511 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-03-11
+**Tests:** 521 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-03-13
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -58,7 +58,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 - `DocumentType`: PDF, LINK
 
 #### Service — `CompetitionService` (public API)
-- Competition CRUD, Division CRUD, Participant management, Category management
+- Competition CRUD, Division CRUD, Participant management (add/remove participant, add/remove individual role, role combination validation), Category management
 - Document management: `addDocument`, `removeDocument`, `updateDocumentName`, `reorderDocuments`, `getDocuments`, `getDocument`
 - Authorization: `isAuthorizedForCompetition()`, `isAuthorizedForDivision()`
 - `findCompetitionsByAdmin(userId)` — finds competitions where user has ADMIN participant role
@@ -175,51 +175,71 @@ docs/
 
 ## What's Next
 
-### Priority 1: Manual walkthrough (continue from Section 12)
-Sections 1–11 completed with fixes along the way. Continue from Section 12 (Cross-cutting
-Concerns) through Section 14. **Go through every test item without skipping anything.** May
-produce bug fixes or UX improvements.
+### Priority 1: Manual walkthrough (continue from Section 14)
+Sections 1–13 completed with fixes along the way. Continue from Section 14 (Security Testing).
+**Go through every test item without skipping anything.** May produce bug fixes or UX improvements.
 
-### Priority 2: Release creation
-Create a versioned release (merge to main, tag, changelog) to establish a clean baseline
-before deployment.
+**Changes made during Section 12–13 walkthrough:**
+- **Participant grid refactoring** — One row per participant with comma-separated roles column, edit button (pencil icon) with role checkboxes + name/meadery/country fields, remove button removes entire participant
+- **Role combination validation** — Only JUDGE + ENTRANT allowed in same competition. Enforced in `CompetitionService.validateRoleCombination()`, `ensureEntrantParticipant()`, `WebhookService`, and `EntryService.addCredits()`
+- **Password requirement for comp admins** — `beforeEnter()` checks in MyCompetitionsView, CompetitionDetailView, DivisionDetailView, DivisionEntryAdminView. RootView prevents redirect loop for passwordless comp admins.
+- **Role conflict checks in credit paths** — `hasIncompatibleRolesForEntrant()` check in WebhookService (marks NEEDS_REVIEW) and EntryService (throws exception)
+- **Orders grid improvements** — Review Reason column + tooltips on Customer email and Review Reason columns
+- **New service methods** — `removeParticipantRole()`, `findRolesForParticipant()`, `validateRoleCombination()`, `hasIncompatibleRolesForEntrant()`
+- **Bug fix** — `removeParticipant()` now also deletes the Participant entity (was only deleting roles)
+- **Access code scoping** — Deferred. Current behavior (identity auth, not per-competition) is acceptable with password gate on admin views.
 
-### Priority 3: Deployment
+### Priority 2: PR, code review & merge
+Create PR from `competition-module` to `main`, perform code review, address any findings,
+and merge.
+
+### Priority 3: Full regression walkthrough
+Go through the entire manual walkthrough (`docs/walkthrough/manual-test.md`) from Section 1
+through Section 14, to verify no regressions after all the changes made during the initial
+walkthrough pass.
+
+### Priority 4: Release creation
+Create a versioned release (tag, changelog) to establish a clean baseline before deployment.
+
+### Priority 5: Deployment
 **Investigation complete** — see `docs/plans/2026-03-10-deployment-design.md`.
 **Deployment checklist** — see `docs/plans/deployment-checklist.md` (step-by-step with
 redeployment/rollback procedures).
-Target: DigitalOcean App Platform + Managed PostgreSQL (~$20/mo). Needs Dockerfile,
+**Before proceeding:** Evaluate local deployment on Raspberry Pi as a complement to remote
+deployment. Remote deployment is essential. Decide whether to also do local deployment
+and, if so, whether before or after the remote deployment.
+Remote target: DigitalOcean App Platform + Managed PostgreSQL (~$20/mo). Needs Dockerfile,
 Maven production profile, logging config, DNS setup, Resend email, and env vars.
 
-### Priority 4: Post-deployment walkthrough
+### Priority 6: Post-deployment walkthrough
 Execute `docs/walkthrough/post-deployment-test.md` against the deployed application.
 Covers the full workflow from a clean database: admin login, competition/division setup,
 participant onboarding, entry submission, labels, and security checks.
 
-### Priority 5: MFA for system admins
+### Priority 7: MFA for system admins
 Evaluate and implement multi-factor authentication for SYSTEM_ADMIN accounts.
 Password-only login for privileged accounts is a security risk post-deployment.
 
-### Priority 6: Auto-close + deadline reminders (deferred)
+### Priority 8: Auto-close + deadline reminders (deferred)
 - **Auto-close** — automatically advance division from REGISTRATION_OPEN → REGISTRATION_CLOSED
   when registration deadline passes (scheduled task)
 - **Entrant deadline reminder** — notify entrants who have DRAFT entries when the registration
   deadline is approaching (e.g., 7 days, 3 days, 1 day before deadline)
 - Other potential: entry received confirmation (when admin marks entry as RECEIVED), results published notification
 
-### Priority 7: Internationalization (i18n)
+### Priority 9: Internationalization (i18n)
 **Design complete** — see `docs/plans/2026-03-10-i18n-design.md`. Implementation deferred.
 Summary: Vaadin I18NProvider + Spring MessageSource, resource bundles, browser locale +
 UI switcher (cookie/localStorage), entrant-facing views only (6 views), MJP category
 translations via bundles keyed by code. ~100-120 strings to extract. No DB changes needed.
 
-### Priority 8: Judging module
+### Priority 10: Judging module
 Design and implementation. Reference: `docs/reference/chip-competition-rules.md`.
 
-### Priority 9: Awards module
+### Priority 11: Awards module
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md`.
 
-### Priority 10: Full category constraint system (low priority — future competition)
+### Priority 12: Full category constraint system (low priority — future competition)
 Full field locking/validation based on category selection. Design doc: `docs/plans/2026-03-11-category-hints-design.md` (appendix).
 Includes: sweetness locking (M1A→Dry, M1B→Medium, M1C→Sweet), ingredient restrictions (M1/M4E),
 strength locking (M4S→Hydromel), ABV caps (M4S→7.5%), ABV→Strength derivation (universal),
@@ -280,6 +300,19 @@ Requires: DB migration, admin UI for constraint config, cross-module data flow, 
   `orderReviewCompetition`/`orderReviewDivisions` (plain strings via `th:text`) for order alerts, and
   `entryLines` (`List<String>` via `th:each` + `th:text`) for submission summaries. No inline HTML or
   `th:utext` — all content is auto-escaped by Thymeleaf.
+
+- **Role combination restriction** — Only JUDGE + ENTRANT combination is allowed in the same
+  competition. All other multi-role combinations are rejected. Enforced at three levels:
+  `CompetitionService.validateRoleCombination()` (participant management),
+  `CompetitionService.ensureEntrantParticipant()` (webhook auto-assignment),
+  `EntryService.addCredits()` and `WebhookService.processOrderPaid()` (credit paths).
+- **Password requirement for competition admins** — Non-SYSTEM_ADMIN users with competition ADMIN
+  role must have a password set. Admin views check in `beforeEnter()` and block access with a
+  notification if no password. RootView skips `/my-competitions` redirect for passwordless comp
+  admins to prevent redirect loops.
+- **Access code scoping** — Access codes authenticate user identity (full account access), not
+  per-competition sessions. Password gate on admin views provides sufficient separation. Per-competition
+  scoping deferred to when multiple competitions exist.
 
 ### Known UX items (deferred)
 - After failed credentials login, page reloads at `/login?error` and shows error notification,

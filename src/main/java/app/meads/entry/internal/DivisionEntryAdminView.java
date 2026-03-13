@@ -122,6 +122,11 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             return;
         }
 
+        if (user.getRole() != Role.SYSTEM_ADMIN && !userService.hasPassword(currentUserId)) {
+            beforeEnterEvent.forwardTo("");
+            return;
+        }
+
         divisionCategories = competitionService.findDivisionCategories(divisionId);
 
         removeAll();
@@ -972,7 +977,8 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         ordersGrid.addColumn(JumpsellerOrder::getJumpsellerOrderId)
                 .setHeader("Order ID").setSortable(true);
         ordersGrid.addColumn(JumpsellerOrder::getCustomerEmail)
-                .setHeader("Customer").setSortable(true).setFlexGrow(2);
+                .setHeader("Customer").setSortable(true).setFlexGrow(2)
+                .setTooltipGenerator(JumpsellerOrder::getCustomerEmail);
         ordersGrid.addColumn(order -> order.getStatus().name())
                 .setHeader("Status").setSortable(true).setAutoWidth(true);
         ordersGrid.addColumn(order -> {
@@ -989,6 +995,23 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                     .mapToInt(JumpsellerOrderLineItem::getCreditsAwarded)
                     .sum();
         }).setHeader("Pending Credits").setSortable(true).setAutoWidth(true);
+        ordersGrid.addColumn(order -> {
+            var items = lineItemsByOrderId.getOrDefault(order.getId(), List.of());
+            return items.stream()
+                    .filter(i -> i.getStatus() == LineItemStatus.NEEDS_REVIEW && i.getReviewReason() != null)
+                    .map(JumpsellerOrderLineItem::getReviewReason)
+                    .distinct()
+                    .collect(Collectors.joining("; "));
+        }).setHeader("Review Reason").setSortable(true).setFlexGrow(2)
+                .setTooltipGenerator(order -> {
+                    var items = lineItemsByOrderId.getOrDefault(order.getId(), List.of());
+                    var reason = items.stream()
+                            .filter(i -> i.getStatus() == LineItemStatus.NEEDS_REVIEW && i.getReviewReason() != null)
+                            .map(JumpsellerOrderLineItem::getReviewReason)
+                            .distinct()
+                            .collect(Collectors.joining("; "));
+                    return reason.isEmpty() ? null : reason;
+                });
         ordersGrid.addColumn(order -> formatInstant(order.getCreatedAt()))
                 .setHeader("Date").setSortable(true).setAutoWidth(true);
         ordersGrid.addColumn(JumpsellerOrder::getAdminNote)

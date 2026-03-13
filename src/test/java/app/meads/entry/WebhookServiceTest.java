@@ -268,6 +268,44 @@ class WebhookServiceTest {
     }
 
     @Test
+    void shouldFlagRoleConflictWhenUserHasIncompatibleRole() {
+        var service = createService();
+        var competitionId = UUID.randomUUID();
+        var divisionId = UUID.randomUUID();
+        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
+        var user = new User("admin@test.com", "Comp Admin", UserStatus.ACTIVE, Role.USER);
+        var mapping = new ProductMapping(divisionId, "101", "SKU-001", "Entry Pack", 1);
+
+        var payload = buildPayload("ORDER-ROLE", "admin@test.com", "Comp Admin",
+                buildProduct("101", "SKU-001", "Entry Pack", 2));
+
+        given(orderRepository.existsByJumpsellerOrderId("ORDER-ROLE")).willReturn(false);
+        given(orderRepository.save(any(JumpsellerOrder.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(productMappingRepository.findByJumpsellerProductId("101"))
+                .willReturn(List.of(mapping));
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(creditRepository.findDistinctDivisionIdsByUserId(user.getId()))
+                .willReturn(List.of());
+        given(competitionService.hasIncompatibleRolesForEntrant(competitionId, user.getId()))
+                .willReturn(true);
+        given(userService.findOrCreateByEmail("admin@test.com", "Comp Admin")).willReturn(user);
+        given(lineItemRepository.save(any(JumpsellerOrderLineItem.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.processOrderPaid(payload);
+
+        // Line item should be NEEDS_REVIEW due to role conflict
+        var lineItemCaptor = ArgumentCaptor.forClass(JumpsellerOrderLineItem.class);
+        then(lineItemRepository).should().save(lineItemCaptor.capture());
+        assertThat(lineItemCaptor.getValue().getStatus()).isEqualTo(LineItemStatus.NEEDS_REVIEW);
+        assertThat(lineItemCaptor.getValue().getReviewReason()).contains("role conflict");
+
+        // No credits should be created
+        then(creditRepository).should(never()).save(any());
+    }
+
+    @Test
     void shouldCreateUserForUnknownEmail() {
         var service = createService();
         var divisionId = UUID.randomUUID();
