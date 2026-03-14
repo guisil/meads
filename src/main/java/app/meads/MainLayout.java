@@ -15,17 +15,22 @@ import com.vaadin.flow.component.sidenav.SideNav;
 import com.vaadin.flow.component.sidenav.SideNavItem;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 import com.vaadin.flow.spring.security.AuthenticationContext;
+import org.springframework.boot.info.BuildProperties;
+import org.springframework.lang.Nullable;
 
 @AnonymousAllowed
 public class MainLayout extends AppLayout {
 
     private final transient AuthenticationContext authenticationContext;
     private final CompetitionAdminChecker competitionAdminChecker;
+    private final String appVersion;
 
     public MainLayout(AuthenticationContext authenticationContext,
-                       CompetitionAdminChecker competitionAdminChecker) {
+                       CompetitionAdminChecker competitionAdminChecker,
+                       @Nullable BuildProperties buildProperties) {
         this.authenticationContext = authenticationContext;
         this.competitionAdminChecker = competitionAdminChecker;
+        this.appVersion = buildProperties != null ? "v" + buildProperties.getVersion() : "";
 
         var toggle = new DrawerToggle();
         var logo = new Image("images/meads-logo.svg", "MEADS");
@@ -54,6 +59,10 @@ public class MainLayout extends AppLayout {
             userItem.getSubMenu().addItem("My Profile", e ->
                     getUI().ifPresent(ui -> ui.navigate("profile")));
             userItem.getSubMenu().addItem("Logout", e -> authenticationContext.logout());
+            if (!appVersion.isEmpty()) {
+                var versionItem = userItem.getSubMenu().addItem(appVersion);
+                versionItem.setEnabled(false);
+            }
 
             navbar.add(userMenu);
         }
