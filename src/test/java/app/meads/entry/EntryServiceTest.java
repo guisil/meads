@@ -341,6 +341,25 @@ class EntryServiceTest {
     }
 
     @Test
+    void shouldRejectRemoveCreditsWhenResultingBalanceBelowEntryCount() {
+        var divisionId = UUID.randomUUID();
+        var userId = UUID.randomUUID();
+        var adminUser = createSystemAdmin();
+
+        given(userService.findById(adminUser.getId())).willReturn(adminUser);
+        given(creditRepository.sumAmountByDivisionIdAndUserId(divisionId, userId))
+                .willReturn(5);
+        given(entryRepository.countByDivisionIdAndUserIdAndStatusNot(
+                divisionId, userId, EntryStatus.WITHDRAWN))
+                .willReturn(4L);
+
+        assertThatThrownBy(() -> entryService.removeCredits(
+                divisionId, userId, 3, adminUser.getId()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Cannot reduce credits below active entry count");
+    }
+
+    @Test
     void shouldCheckHasCreditsInOtherDivision() {
         var competitionId = UUID.randomUUID();
         var divisionId = UUID.randomUUID();

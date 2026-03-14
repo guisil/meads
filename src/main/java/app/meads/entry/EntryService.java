@@ -167,6 +167,13 @@ public class EntryService {
             throw new IllegalArgumentException(
                     "Insufficient credit balance: has " + balance + ", trying to remove " + amount);
         }
+        var activeEntries = entryRepository.countByDivisionIdAndUserIdAndStatusNot(
+                divisionId, userId, EntryStatus.WITHDRAWN);
+        if (balance - amount < activeEntries) {
+            throw new IllegalArgumentException(
+                    "Cannot reduce credits below active entry count: balance would be "
+                    + (balance - amount) + ", active entries: " + activeEntries);
+        }
         var credit = new EntryCredit(divisionId, userId, -amount,
                 "ADMIN", userService.findById(requestingUserId).getEmail());
         creditRepository.save(credit);
