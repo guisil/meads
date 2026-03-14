@@ -1415,11 +1415,11 @@ may be invited as a competition ADMIN for a different competition.
 
 ### Cross-competition: competition admin is also entrant/judge elsewhere
 
-- [x] Log in as `compadmin@example.com`
-- [x] Navigate to CHIP 2026 > Participants tab
-- [x] Add credits for `compadmin@example.com` in Amadora (makes them an ENTRANT)
+- [x] Log in as `admin@example.com` (SYSTEM_ADMIN)
+- [x] Navigate to a different competition's division entry-admin (e.g., Regional 2026 or Test Competition 2026)
+- [x] Add credits for `compadmin@example.com` in that division (makes them an ENTRANT in a different competition)
 - [x] Log out, log back in as `compadmin@example.com`
-- [x] **Test:** Can access both "My Competitions" (as ADMIN) and My Entries (as ENTRANT). Works correctly.
+- [x] **Test:** Can access both "My Competitions" (as ADMIN of CHIP 2026) and My Entries (as ENTRANT in the other competition). Works correctly.
 - [x] **Tested role conflict:** Adding credits to a user with an incompatible role (e.g., STEWARD) triggers role validation. WebhookService and EntryService both check `hasIncompatibleRolesForEntrant()` before awarding credits. Orders/line items marked NEEDS_REVIEW with reason visible in Orders grid (Review Reason column with tooltip).
 - [x] Clean up if needed
 
