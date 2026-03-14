@@ -14,7 +14,7 @@ needed to continue even without memory files or prior conversation history.
 Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
-**Branch:** `competition-module`
+**Branch:** `main`
 **Tests:** 530 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-03-14
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
@@ -199,34 +199,15 @@ All 14 sections completed with fixes along the way.
 - **Contact email on My Entries** — Shows "Questions or need help? Contact: {email}" as mailto link, opposite the registration deadline
 - **Settings field widths** — Widened Name, Location, Contact Email fields in Competition Settings and Name in Division Settings to 400px
 
-### Priority 1: PR, code review & merge
-PR #4 created and code reviewed. 5 bugs fixed (2 critical, 3 moderate) and 4 convention
-fixes applied. Ready to merge.
-
-**Code review fixes (commits `6be3d93`, `f030473`, `c6fff42`):**
-- `EntryService.updateOrderAdminDetails` — added missing authorization check
-- `CompetitionService.findOrCreateParticipant` — assign access code when promoting ENTRANT to JUDGE/STEWARD
-- `WebhookService.verifySignature` — constant-time HMAC comparison (`MessageDigest.isEqual`)
-- `WebhookService.hasCreditConflict` — matched stricter early-exit logic from `EntryService`
-- `Division.updateDetails` — added DRAFT guard on `entryPrefix` (matched existing `scoringSystem` guard)
-- `ProfileView` — replaced `SecurityContextHolder` with `transient AuthenticationContext`
-- `User.passwordHash` — replaced `@Setter` with `assignPasswordHash()` domain method
-- `JumpsellerOrder.customerCountry` — renamed `setCustomerCountry` to `assignCustomerCountry`
-- `Category` — added public constructor with UUID self-generation
-
-**Deferred (low priority, convention-only):**
-- Test naming — 313 methods missing `When{Condition}` clause
-- Cross-module `internal/` imports in tests — pragmatic for test data setup
-
-### Priority 2: Full regression walkthrough
+### Priority 1: Full regression walkthrough
 Go through the entire manual walkthrough (`docs/walkthrough/manual-test.md`) from Section 1
 through Section 14, to verify no regressions after all the changes made during the initial
 walkthrough pass.
 
-### Priority 3: Release creation
+### Priority 2: Release creation
 Create a versioned release (tag, changelog) to establish a clean baseline before deployment.
 
-### Priority 4: Deployment
+### Priority 3: Deployment
 **Investigation complete** — see `docs/plans/2026-03-10-deployment-design.md`.
 **Deployment checklist** — see `docs/plans/deployment-checklist.md` (step-by-step with
 redeployment/rollback procedures).
@@ -236,35 +217,35 @@ and, if so, whether before or after the remote deployment.
 Remote target: DigitalOcean App Platform + Managed PostgreSQL (~$20/mo). Needs Dockerfile,
 Maven production profile, logging config, DNS setup, Resend email, and env vars.
 
-### Priority 5: Post-deployment walkthrough
+### Priority 4: Post-deployment walkthrough
 Execute `docs/walkthrough/post-deployment-test.md` against the deployed application.
 Covers the full workflow from a clean database: admin login, competition/division setup,
 participant onboarding, entry submission, labels, and security checks.
 
-### Priority 6: MFA for system admins
+### Priority 5: MFA for system admins
 Evaluate and implement multi-factor authentication for SYSTEM_ADMIN accounts.
 Password-only login for privileged accounts is a security risk post-deployment.
 
-### Priority 7: Auto-close + deadline reminders (deferred)
+### Priority 6: Auto-close + deadline reminders (deferred)
 - **Auto-close** — automatically advance division from REGISTRATION_OPEN → REGISTRATION_CLOSED
   when registration deadline passes (scheduled task)
 - **Entrant deadline reminder** — notify entrants who have DRAFT entries when the registration
   deadline is approaching (e.g., 7 days, 3 days, 1 day before deadline)
 - Other potential: entry received confirmation (when admin marks entry as RECEIVED), results published notification
 
-### Priority 8: Internationalization (i18n)
+### Priority 7: Internationalization (i18n)
 **Design complete** — see `docs/plans/2026-03-10-i18n-design.md`. Implementation deferred.
 Summary: Vaadin I18NProvider + Spring MessageSource, resource bundles, browser locale +
 UI switcher (cookie/localStorage), entrant-facing views only (6 views), MJP category
 translations via bundles keyed by code. ~100-120 strings to extract. No DB changes needed.
 
-### Priority 9: Judging module
+### Priority 8: Judging module
 Design and implementation. Reference: `docs/reference/chip-competition-rules.md`.
 
-### Priority 10: Awards module
+### Priority 9: Awards module
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md`.
 
-### Priority 11: Full category constraint system (low priority — future competition)
+### Priority 10: Full category constraint system (low priority — future competition)
 Full field locking/validation based on category selection. Design doc: `docs/plans/2026-03-11-category-hints-design.md` (appendix).
 Includes: sweetness locking (M1A→Dry, M1B→Medium, M1C→Sweet), ingredient restrictions (M1/M4E),
 strength locking (M4S→Hydromel), ABV caps (M4S→7.5%), ABV→Strength derivation (universal),
@@ -272,6 +253,7 @@ carbonation locking (custom categories), and admin-configurable constraints for 
 Requires: DB migration, admin UI for constraint config, cross-module data flow, server-side validation.
 
 ### Completed priorities
+- **PR #4 code review & merge** — Merged `competition-module` into `main` (2026-03-14). Code review found 5 bugs (missing auth check, missing access code on role promotion, HMAC timing attack, hasCreditConflict inconsistency, entryPrefix DRAFT guard) and 4 convention fixes (ProfileView auth context, @Setter removal, setter→domain method renames, Category constructor). Deferred: test naming (313 methods) and cross-module test imports.
 - **Manual walkthrough (Sections 1–14)** — All sections completed. Security testing (Section 14) produced 7 fixes: SetPasswordView eager token validation, webhook missing HMAC header (401), webhook HTTP method tampering (405), webhook email length validation, field length limits on email/password fields, dev password logging cleanup, and UX improvements (contact email on My Entries, mead name tooltips, settings field widths).
 - **Configuration audit** — Properties reorganized, secrets in profile-specific files.
 - **Email sending** — SMTP with Thymeleaf templates, Mailpit dev, Resend prod.
