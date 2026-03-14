@@ -199,48 +199,35 @@ All 14 sections completed with fixes along the way.
 - **Contact email on My Entries** — Shows "Questions or need help? Contact: {email}" as mailto link, opposite the registration deadline
 - **Settings field widths** — Widened Name, Location, Contact Email fields in Competition Settings and Name in Division Settings to 400px
 
-### Priority 1: Release creation
-Create a versioned release (tag, changelog) to establish a clean baseline before deployment.
-
-### Priority 2: Deployment
-**Investigation complete** — see `docs/plans/2026-03-10-deployment-design.md`.
-**Deployment checklist** — see `docs/plans/deployment-checklist.md` (step-by-step with
-redeployment/rollback procedures).
-**Before proceeding:** Evaluate local deployment on Raspberry Pi as a complement to remote
-deployment. Remote deployment is essential. Decide whether to also do local deployment
-and, if so, whether before or after the remote deployment.
-Remote target: DigitalOcean App Platform + Managed PostgreSQL (~$20/mo). Needs Dockerfile,
-Maven production profile, logging config, DNS setup, Resend email, and env vars.
-
-### Priority 3: Post-deployment walkthrough
+### Priority 1: Post-deployment walkthrough
 Execute `docs/walkthrough/post-deployment-test.md` against the deployed application.
 Covers the full workflow from a clean database: admin login, competition/division setup,
 participant onboarding, entry submission, labels, and security checks.
 
-### Priority 4: MFA for system admins
+### Priority 2: MFA for system admins
 Evaluate and implement multi-factor authentication for SYSTEM_ADMIN accounts.
 Password-only login for privileged accounts is a security risk post-deployment.
 
-### Priority 5: Auto-close + deadline reminders (deferred)
+### Priority 3: Auto-close + deadline reminders (deferred)
 - **Auto-close** — automatically advance division from REGISTRATION_OPEN → REGISTRATION_CLOSED
   when registration deadline passes (scheduled task)
 - **Entrant deadline reminder** — notify entrants who have DRAFT entries when the registration
   deadline is approaching (e.g., 7 days, 3 days, 1 day before deadline)
 - Other potential: entry received confirmation (when admin marks entry as RECEIVED), results published notification
 
-### Priority 6: Internationalization (i18n)
+### Priority 4: Internationalization (i18n)
 **Design complete** — see `docs/plans/2026-03-10-i18n-design.md`. Implementation deferred.
 Summary: Vaadin I18NProvider + Spring MessageSource, resource bundles, browser locale +
 UI switcher (cookie/localStorage), entrant-facing views only (6 views), MJP category
 translations via bundles keyed by code. ~100-120 strings to extract. No DB changes needed.
 
-### Priority 7: Judging module
+### Priority 5: Judging module
 Design and implementation. Reference: `docs/reference/chip-competition-rules.md`.
 
-### Priority 8: Awards module
+### Priority 6: Awards module
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md`.
 
-### Priority 9: Full category constraint system (low priority — future competition)
+### Priority 7: Full category constraint system (low priority — future competition)
 Full field locking/validation based on category selection. Design doc: `docs/plans/2026-03-11-category-hints-design.md` (appendix).
 Includes: sweetness locking (M1A→Dry, M1B→Medium, M1C→Sweet), ingredient restrictions (M1/M4E),
 strength locking (M4S→Hydromel), ABV caps (M4S→7.5%), ABV→Strength derivation (universal),
@@ -277,6 +264,7 @@ Requires: DB migration, admin UI for constraint config, cross-module data flow, 
 - **Participant action icon reorder** — Edit (pencil) now appears before Send Login Link (envelope) in participants grid, consistent with Users grid.
 - **Full regression walkthrough (Sections 1–14)** — Completed 2026-03-14. All sections passed. No regressions found. Minor improvements made during walkthrough: competition logo/name in division views, participant icon reorder, credit removal guard, admin entries status filter.
 - **MEADS logo branding** — Replaced "MEADS" text with SVG logo in navbar (44px, left-aligned) and PNG logo as CID inline image in email header. Logo files at `META-INF/resources/images/meads-logo.{svg,png}`. SecurityConfig permits `/images/**`. Navbar height increased to 60px.
+- **Deployment (2026-03-14)** — Deployed to DigitalOcean App Platform (Amsterdam) + Managed PostgreSQL 18 ($20/mo). Resend for email (free tier). GitHub Actions CI (test + production build on push/PR). Auto-deploy on push to `main` with zero-downtime deploys. Domain `meads.app` (Namecheap) with Let's Encrypt SSL. Deployment artifacts: `Dockerfile` (multi-stage, Temurin 25), `.dockerignore`, Maven `production` profile, `logback-spring.xml`, `.github/workflows/ci.yml`. Full reference: `docs/plans/deployment-checklist.md`.
 
 ---
 
