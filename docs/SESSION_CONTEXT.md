@@ -278,6 +278,7 @@ Requires: DB migration, admin UI for constraint config, cross-module data flow, 
 - **Admin entry view/edit** — Added view button (eye icon) to admin entries grid with read-only dialog showing all fields + status + entrant. Added Final Category column to grid. Expanded edit dialog from mead-name-only to all entry fields with per-field validation and confirmation gate. Edit works for any status except WITHDRAWN.
 - **Competition logo + name in division views** — DivisionDetailView, MyEntriesView, and DivisionEntryAdminView now show the competition logo (64px) and include the competition name in the header title (e.g. "CHIP 2026 — Amadora — My Entries").
 - **Credit removal guard** — `removeCredits()` now rejects adjustments that would drop balance below active entry count.
+- **Admin entries status filter** — DivisionEntryAdminView Entries tab now has a status dropdown filter alongside the text filter.
 
 ---
 

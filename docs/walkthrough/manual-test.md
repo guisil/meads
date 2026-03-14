@@ -888,7 +888,7 @@ CTA button, fallback URL, and optional contact footer.
 
 - [ ] Navigate back to Amadora entry-admin
 - [ ] Click the "Entries" tab
-- [ ] **Expected:** Filter field: "Filter by mead name, entrant, or entry code..."
+- [ ] **Expected:** Filter field: "Filter by mead name, entrant, or entry code..." + status dropdown ("All statuses")
 - [ ] **Expected:** Grid with columns: Entry # (with AMA prefix, e.g. "AMA-1"), Code, Mead Name, Category (code with tooltip for full name), Final Category (code with tooltip, or "—" if not set), Entrant, Meadery, Country, Status, Actions (view/edit/delete/withdraw icons)
 - [ ] **Expected:** Meadery column shows user's meadery name (or empty if not set)
 - [ ] **Expected:** Country column shows display name (e.g. "Portugal") based on user's ISO country code

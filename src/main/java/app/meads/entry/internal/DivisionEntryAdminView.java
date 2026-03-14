@@ -77,6 +77,10 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
     private Map<UUID, List<JumpsellerOrderLineItem>> lineItemsByOrderId;
     private List<DivisionCategory> divisionCategories;
 
+    // Entries tab filter state
+    private String entriesNameFilter = "";
+    private EntryStatus entriesStatusFilter;
+
     public DivisionEntryAdminView(EntryService entryService,
                                    CompetitionService competitionService,
                                    UserService userService,
@@ -369,7 +373,17 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             dialog.open();
         });
 
-        var toolbar = new HorizontalLayout(filterField, downloadAllBtn);
+        var statusSelect = new Select<EntryStatus>();
+        statusSelect.setPlaceholder("All statuses");
+        statusSelect.setItems(EntryStatus.values());
+        statusSelect.setItemLabelGenerator(s -> s != null ? s.getDisplayName() : "All statuses");
+        statusSelect.setEmptySelectionAllowed(true);
+        statusSelect.addValueChangeListener(e -> {
+            entriesStatusFilter = e.getValue();
+            applyEntriesFilters();
+        });
+
+        var toolbar = new HorizontalLayout(filterField, statusSelect, downloadAllBtn);
         toolbar.setWidthFull();
         toolbar.setFlexGrow(1, filterField);
         toolbar.setDefaultVerticalComponentAlignment(Alignment.BASELINE);
@@ -466,20 +480,28 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         refreshEntriesGrid();
 
         filterField.addValueChangeListener(e -> {
-            var filterString = e.getValue().toLowerCase();
-            if (filterString.isBlank()) {
-                entriesGrid.getListDataView().removeFilters();
-            } else {
-                entriesGrid.getListDataView().setFilter(entry ->
-                        entry.getMeadName().toLowerCase().contains(filterString)
-                                || entry.getEntryCode().toLowerCase().contains(filterString)
-                                || userService.findById(entry.getUserId()).getEmail()
-                                        .toLowerCase().contains(filterString));
-            }
+            entriesNameFilter = e.getValue();
+            applyEntriesFilters();
         });
 
         tab.add(entriesGrid);
         return tab;
+    }
+
+    private void applyEntriesFilters() {
+        entriesGrid.getListDataView().setFilter(entry -> {
+            if (entriesStatusFilter != null && entry.getStatus() != entriesStatusFilter) {
+                return false;
+            }
+            if (entriesNameFilter != null && !entriesNameFilter.isBlank()) {
+                var filterString = entriesNameFilter.toLowerCase();
+                return entry.getMeadName().toLowerCase().contains(filterString)
+                        || entry.getEntryCode().toLowerCase().contains(filterString)
+                        || userService.findById(entry.getUserId()).getEmail()
+                                .toLowerCase().contains(filterString);
+            }
+            return true;
+        });
     }
 
     private String formatEntryNumber(int entryNumber) {
