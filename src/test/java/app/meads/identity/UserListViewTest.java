@@ -4,7 +4,6 @@ import app.meads.TestcontainersConfiguration;
 import app.meads.identity.internal.UserListView;
 import app.meads.identity.internal.UserRepository;
 import com.github.mvysny.fakeservlet.FakeRequest;
-import com.github.mvysny.kaributesting.v10.MockAccessDeniedException;
 import com.github.mvysny.kaributesting.v10.MockVaadin;
 import com.github.mvysny.kaributesting.v10.Routes;
 import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
@@ -13,6 +12,7 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.TextField;
@@ -38,7 +38,8 @@ import java.util.UUID;
 
 import static com.github.mvysny.kaributesting.v10.LocatorJ.*;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import app.meads.identity.JwtMagicLinkService;
 
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
@@ -49,6 +50,9 @@ class UserListViewTest {
 
     @Autowired
     UserRepository userRepository;
+
+    @Autowired
+    UserService userService;
 
     @BeforeEach
     void setup(TestInfo testInfo) {
@@ -64,14 +68,10 @@ class UserListViewTest {
     }
 
     private Authentication resolveAuthentication(TestInfo testInfo) {
-        // Try SecurityContextHolder first (works when @WithMockUser pipeline is intact)
         var auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null) {
             return auth;
         }
-        // Fall back to reading @WithMockUser annotation directly.
-        // VaadinAwareSecurityContextHolderStrategy can lose the context set by
-        // @WithMockUser when other test classes modify the SecurityContextHolder strategy.
         var method = testInfo.getTestMethod().orElse(null);
         if (method == null) {
             return null;
@@ -122,9 +122,10 @@ class UserListViewTest {
 
     @Test
     @WithMockUser(roles = "USER")
-    void shouldDenyAccessToUsersViewForRegularUser() {
-        assertThatThrownBy(() -> UI.getCurrent().navigate("users"))
-                .isInstanceOf(MockAccessDeniedException.class);
+    void shouldRedirectToRootWhenRegularUserAccessesUsersView() {
+        UI.getCurrent().navigate("users");
+
+        assertThat(UI.getCurrent().getInternals().getActiveViewLocation().getPath()).isEqualTo("my-entries");
     }
 
     @Test
@@ -140,10 +141,8 @@ class UserListViewTest {
     @WithMockUser(roles = "SYSTEM_ADMIN")
     void shouldOpenDialogWhenEditButtonClicked() {
         // Arrange - create a test user
-        var userId = UUID.randomUUID();
         var user = new User(
-                userId,
-                "edit-test-" + userId + "@example.com",
+                "edit-test-" + UUID.randomUUID() + "@example.com",
                 "Test User",
                 UserStatus.ACTIVE,
                 Role.USER
@@ -151,8 +150,6 @@ class UserListViewTest {
         userRepository.save(user);
 
         // Act - navigate and trigger edit dialog
-        // Note: Buttons in grid component columns aren't accessible via Karibu Testing locators,
-        // so we test the dialog opening logic directly
         UI.getCurrent().navigate("users");
         var view = _get(UserListView.class);
         view.openEditDialog(user);
@@ -166,10 +163,8 @@ class UserListViewTest {
     @WithMockUser(roles = "SYSTEM_ADMIN")
     void shouldDisplayFormFieldsInEditDialog() {
         // Arrange - create a test user
-        var userId = UUID.randomUUID();
         var user = new User(
-                userId,
-                "form-test-" + userId + "@example.com",
+                "form-test-" + UUID.randomUUID() + "@example.com",
                 "Test User",
                 UserStatus.ACTIVE,
                 Role.USER
@@ -195,10 +190,8 @@ class UserListViewTest {
     @WithMockUser(roles = "SYSTEM_ADMIN")
     void shouldUpdateUserWhenSaveButtonClicked() {
         // Arrange - create a test user
-        var userId = UUID.randomUUID();
         var user = new User(
-                userId,
-                "save-test-" + userId + "@example.com",
+                "save-test-" + UUID.randomUUID() + "@example.com",
                 "Original Name",
                 UserStatus.PENDING,
                 Role.USER
@@ -222,7 +215,7 @@ class UserListViewTest {
         _click(saveButton);
 
         // Assert - user should be updated in database and dialog closed
-        var updatedUser = userRepository.findById(userId).orElseThrow();
+        var updatedUser = userRepository.findById(user.getId()).orElseThrow();
         assertThat(updatedUser.getName()).isEqualTo("Updated Name");
         assertThat(updatedUser.getRole()).isEqualTo(Role.SYSTEM_ADMIN);
         assertThat(updatedUser.getStatus()).isEqualTo(UserStatus.ACTIVE);
@@ -235,10 +228,8 @@ class UserListViewTest {
     @WithMockUser(roles = "SYSTEM_ADMIN")
     void shouldCloseDialogWithoutSavingWhenCancelButtonClicked() {
         // Arrange - create a test user
-        var userId = UUID.randomUUID();
         var user = new User(
-                userId,
-                "cancel-test-" + userId + "@example.com",
+                "cancel-test-" + UUID.randomUUID() + "@example.com",
                 "Original Name",
                 UserStatus.PENDING,
                 Role.USER
@@ -262,7 +253,7 @@ class UserListViewTest {
         _click(cancelButton);
 
         // Assert - user should be unchanged in database and dialog closed
-        var unchangedUser = userRepository.findById(userId).orElseThrow();
+        var unchangedUser = userRepository.findById(user.getId()).orElseThrow();
         assertThat(unchangedUser.getName()).isEqualTo("Original Name");
         assertThat(unchangedUser.getRole()).isEqualTo(Role.USER);
         assertThat(unchangedUser.getStatus()).isEqualTo(UserStatus.PENDING);
@@ -275,10 +266,8 @@ class UserListViewTest {
     @WithMockUser(roles = "SYSTEM_ADMIN")
     void shouldNotSaveWhenNameFieldIsEmpty() {
         // Arrange - create a test user
-        var userId = UUID.randomUUID();
         var user = new User(
-                userId,
-                "validation-test-" + userId + "@example.com",
+                "validation-test-" + UUID.randomUUID() + "@example.com",
                 "Original Name",
                 UserStatus.PENDING,
                 Role.USER
@@ -297,7 +286,7 @@ class UserListViewTest {
         _click(saveButton);
 
         // Assert - user should be unchanged in database
-        var unchangedUser = userRepository.findById(userId).orElseThrow();
+        var unchangedUser = userRepository.findById(user.getId()).orElseThrow();
         assertThat(unchangedUser.getName()).isEqualTo("Original Name");
 
         // Dialog should still be open (save failed due to validation)
@@ -312,10 +301,8 @@ class UserListViewTest {
     @WithMockUser(roles = "SYSTEM_ADMIN")
     void shouldRefreshGridAfterSavingChanges() {
         // Arrange - create a test user
-        var userId = UUID.randomUUID();
         var user = new User(
-                userId,
-                "refresh-test-" + userId + "@example.com",
+                "refresh-test-" + UUID.randomUUID() + "@example.com",
                 "Original Name",
                 UserStatus.PENDING,
                 Role.USER
@@ -344,7 +331,7 @@ class UserListViewTest {
         // Assert - grid should display updated values
         var gridItems = grid.getListDataView().getItems().toList();
         var updatedUserInGrid = gridItems.stream()
-                .filter(u -> u.getId().equals(userId))
+                .filter(u -> u.getId().equals(user.getId()))
                 .findFirst()
                 .orElseThrow();
 
@@ -357,10 +344,8 @@ class UserListViewTest {
     @WithMockUser(roles = "SYSTEM_ADMIN")
     void shouldShowErrorWhenSaveFails() {
         // Arrange - create a test user
-        var userId = UUID.randomUUID();
         var user = new User(
-                userId,
-                "error-test-" + userId + "@example.com",
+                "error-test-" + UUID.randomUUID() + "@example.com",
                 "Original Name",
                 UserStatus.PENDING,
                 Role.USER
@@ -376,7 +361,7 @@ class UserListViewTest {
         nameField.setValue("Updated Name");
 
         // Delete the user while dialog is open (simulates concurrent deletion or database error)
-        userRepository.deleteById(userId);
+        userRepository.deleteById(user.getId());
 
         var saveButton = _get(Button.class, spec -> spec.withText("Save"));
         _click(saveButton);
@@ -394,10 +379,8 @@ class UserListViewTest {
     @WithMockUser(roles = "SYSTEM_ADMIN")
     void shouldShowSuccessNotificationAfterSaving() {
         // Arrange - create a test user
-        var userId = UUID.randomUUID();
         var user = new User(
-                userId,
-                "notification-test-" + userId + "@example.com",
+                "notification-test-" + UUID.randomUUID() + "@example.com",
                 "Original Name",
                 UserStatus.PENDING,
                 Role.USER
@@ -424,9 +407,7 @@ class UserListViewTest {
     @DirtiesContext
     void shouldDisableRoleAndStatusFieldsWhenEditingSelf() {
         // Arrange - create a user with the same email as the logged-in user
-        var userId = UUID.randomUUID();
         var currentUser = new User(
-                userId,
                 "admin@example.com",
                 "Admin User",
                 UserStatus.ACTIVE,
@@ -465,40 +446,36 @@ class UserListViewTest {
     @Test
     @WithMockUser(username = "admin@example.com", roles = "SYSTEM_ADMIN")
     @DirtiesContext
-    void shouldSoftDeleteUserWhenStatusIsNotDisabled() {
+    void shouldDeactivateUserWhenStatusIsNotInactive() {
         // Arrange - create a test user
-        var userId = UUID.randomUUID();
         var user = new User(
-                userId,
-                "delete-test-" + userId + "@example.com",
+                "delete-test-" + UUID.randomUUID() + "@example.com",
                 "Test User",
                 UserStatus.ACTIVE,
                 Role.USER
         );
         userRepository.save(user);
 
-        // Act - navigate and trigger delete
+        // Act - navigate and trigger remove
         UI.getCurrent().navigate("users");
         var view = _get(UserListView.class);
-        view.deleteUser(user);
+        view.removeUser(user);
 
-        // Assert - user should be soft deleted (status changed to DISABLED)
-        var deletedUser = userRepository.findById(userId).orElseThrow();
-        assertThat(deletedUser.getStatus()).isEqualTo(UserStatus.DISABLED);
-        assertThat(userRepository.findById(userId)).isPresent(); // Still in database
+        // Assert - user should be deactivated (status changed to INACTIVE)
+        var deactivatedUser = userRepository.findById(user.getId()).orElseThrow();
+        assertThat(deactivatedUser.getStatus()).isEqualTo(UserStatus.INACTIVE);
+        assertThat(userRepository.findById(user.getId())).isPresent(); // Still in database
     }
 
     @Test
     @WithMockUser(username = "admin@example.com", roles = "SYSTEM_ADMIN")
     @DirtiesContext
     void shouldShowConfirmationDialogBeforeHardDelete() {
-        // Arrange - create a DISABLED user
-        var userId = UUID.randomUUID();
+        // Arrange - create an INACTIVE user
         var user = new User(
-                userId,
-                "hard-delete-test-" + userId + "@example.com",
+                "hard-delete-test-" + UUID.randomUUID() + "@example.com",
                 "Test User",
-                UserStatus.DISABLED,
+                UserStatus.INACTIVE,
                 Role.USER
         );
         userRepository.save(user);
@@ -517,13 +494,11 @@ class UserListViewTest {
     @WithMockUser(username = "admin@example.com", roles = "SYSTEM_ADMIN")
     @DirtiesContext
     void shouldHardDeleteUserWhenConfirmed() {
-        // Arrange - create a DISABLED user
-        var userId = UUID.randomUUID();
+        // Arrange - create an INACTIVE user
         var user = new User(
-                userId,
-                "confirm-delete-test-" + userId + "@example.com",
+                "confirm-delete-test-" + UUID.randomUUID() + "@example.com",
                 "Test User",
-                UserStatus.DISABLED,
+                UserStatus.INACTIVE,
                 Role.USER
         );
         userRepository.save(user);
@@ -538,7 +513,7 @@ class UserListViewTest {
         _click(confirmButton);
 
         // Assert - user should be hard deleted (removed from database)
-        assertThat(userRepository.findById(userId)).isEmpty();
+        assertThat(userRepository.findById(user.getId())).isEmpty();
     }
 
     @Test
@@ -546,10 +521,8 @@ class UserListViewTest {
     @DirtiesContext
     void shouldSendMagicLinkWhenButtonClicked() {
         // Arrange - create a test user
-        var userId = UUID.randomUUID();
         var user = new User(
-                userId,
-                "magic-link-test-" + userId + "@example.com",
+                "magic-link-test-" + UUID.randomUUID() + "@example.com",
                 "Test User",
                 UserStatus.ACTIVE,
                 Role.USER
@@ -587,16 +560,15 @@ class UserListViewTest {
         var createButton = _get(Button.class, spec -> spec.withText("Create User"));
         _click(createButton);
 
-        // Assert - form fields should be present (email/name empty, role defaults to USER, status defaults to PENDING)
+        // Assert - form fields should be present (email/name empty, role defaults to USER, no status field)
         var emailField = _get(EmailField.class, spec -> spec.withLabel("Email"));
         var nameField = _get(TextField.class, spec -> spec.withLabel("Name"));
         var roleSelect = _get(Select.class, spec -> spec.withLabel("Role"));
-        var statusSelect = _get(Select.class, spec -> spec.withLabel("Status"));
 
         assertThat(emailField.getValue()).isEmpty();
         assertThat(nameField.getValue()).isEmpty();
         assertThat(roleSelect.getValue()).isEqualTo(Role.USER);
-        assertThat(statusSelect.getValue()).isEqualTo(UserStatus.PENDING);
+        assertThat(_find(Select.class, spec -> spec.withLabel("Status"))).isEmpty();
     }
 
     @Test
@@ -611,25 +583,43 @@ class UserListViewTest {
         var emailField = _get(EmailField.class, spec -> spec.withLabel("Email"));
         var nameField = _get(TextField.class, spec -> spec.withLabel("Name"));
         var roleSelect = _get(Select.class, spec -> spec.withLabel("Role"));
-        var statusSelect = _get(Select.class, spec -> spec.withLabel("Status"));
 
         emailField.setValue("newuser@example.com");
         nameField.setValue("New User");
         roleSelect.setValue(Role.USER);
-        statusSelect.setValue(UserStatus.ACTIVE);
 
         var saveButton = _get(Button.class, spec -> spec.withText("Save"));
         _click(saveButton);
 
-        // Assert - user should be created in database
+        // Assert - user should be created in database with PENDING status
         var createdUser = userRepository.findByEmail("newuser@example.com");
         assertThat(createdUser).isPresent();
         assertThat(createdUser.get().getName()).isEqualTo("New User");
         assertThat(createdUser.get().getRole()).isEqualTo(Role.USER);
-        assertThat(createdUser.get().getStatus()).isEqualTo(UserStatus.ACTIVE);
+        assertThat(createdUser.get().getStatus()).isEqualTo(UserStatus.PENDING);
 
         // Dialog should be closed
         assertThat(_find(Dialog.class)).isEmpty();
+    }
+
+    @Test
+    @WithMockUser(roles = "SYSTEM_ADMIN")
+    @DirtiesContext
+    void shouldPersistMeaderyNameAndCountryWhenCreatingUser() {
+        UI.getCurrent().navigate("users");
+        _click(_get(Button.class, spec -> spec.withText("Create User")));
+
+        _get(EmailField.class, spec -> spec.withLabel("Email")).setValue("meadmaker@example.com");
+        _get(TextField.class, spec -> spec.withLabel("Name")).setValue("Mead Maker");
+        _get(TextField.class, spec -> spec.withLabel("Meadery Name")).setValue("Golden Hive");
+        _get(ComboBox.class, spec -> spec.withLabel("Country")).setValue("PT");
+
+        _click(_get(Button.class, spec -> spec.withText("Save")));
+
+        var createdUser = userRepository.findByEmail("meadmaker@example.com");
+        assertThat(createdUser).isPresent();
+        assertThat(createdUser.get().getMeaderyName()).isEqualTo("Golden Hive");
+        assertThat(createdUser.get().getCountry()).isEqualTo("PT");
     }
 
     @Test
@@ -647,12 +637,10 @@ class UserListViewTest {
         var emailField = _get(EmailField.class, spec -> spec.withLabel("Email"));
         var nameField = _get(TextField.class, spec -> spec.withLabel("Name"));
         var roleSelect = _get(Select.class, spec -> spec.withLabel("Role"));
-        var statusSelect = _get(Select.class, spec -> spec.withLabel("Status"));
 
         // Leave email empty
         nameField.setValue("Test User");
         roleSelect.setValue(Role.USER);
-        statusSelect.setValue(UserStatus.ACTIVE);
 
         var saveButton = _get(Button.class, spec -> spec.withText("Save"));
         _click(saveButton);
@@ -674,7 +662,6 @@ class UserListViewTest {
     void shouldNotCreateUserWhenEmailAlreadyExists() {
         // Arrange - create an existing user with a specific email
         var existingUser = new User(
-                UUID.randomUUID(),
                 "existing@example.com",
                 "Existing User",
                 UserStatus.ACTIVE,
@@ -690,12 +677,10 @@ class UserListViewTest {
         var emailField = _get(EmailField.class, spec -> spec.withLabel("Email"));
         var nameField = _get(TextField.class, spec -> spec.withLabel("Name"));
         var roleSelect = _get(Select.class, spec -> spec.withLabel("Role"));
-        var statusSelect = _get(Select.class, spec -> spec.withLabel("Status"));
 
         emailField.setValue("existing@example.com");
         nameField.setValue("New User");
         roleSelect.setValue(Role.USER);
-        statusSelect.setValue(UserStatus.ACTIVE);
 
         var saveButton = _get(Button.class, spec -> spec.withText("Save"));
         _click(saveButton);
@@ -714,6 +699,26 @@ class UserListViewTest {
 
     @Test
     @WithMockUser(roles = "SYSTEM_ADMIN")
+    void shouldDisplayMeaderyNameAndCountryInEditDialog() {
+        var user = new User("meadery@test.com", "Meadery User", UserStatus.ACTIVE, Role.USER);
+        user.updateMeaderyName("Golden Mead");
+        user.updateCountry("PT");
+        userRepository.save(user);
+
+        UI.getCurrent().navigate("users");
+        var view = _get(UserListView.class);
+        view.openEditDialog(user);
+
+        var meaderyField = _get(TextField.class, spec -> spec.withLabel("Meadery Name"));
+        assertThat(meaderyField.getValue()).isEqualTo("Golden Mead");
+
+        @SuppressWarnings("unchecked")
+        var countryCombo = (ComboBox<String>) _get(ComboBox.class, spec -> spec.withLabel("Country"));
+        assertThat(countryCombo.getValue()).isEqualTo("PT");
+    }
+
+    @Test
+    @WithMockUser(roles = "SYSTEM_ADMIN")
     @DirtiesContext
     void shouldNotCreateUserWhenEmailFormatIsInvalid() {
         // Arrange - count users before
@@ -727,12 +732,10 @@ class UserListViewTest {
         var emailField = _get(EmailField.class, spec -> spec.withLabel("Email"));
         var nameField = _get(TextField.class, spec -> spec.withLabel("Name"));
         var roleSelect = _get(Select.class, spec -> spec.withLabel("Role"));
-        var statusSelect = _get(Select.class, spec -> spec.withLabel("Status"));
 
         emailField.setValue("notanemail");
         nameField.setValue("Test User");
         roleSelect.setValue(Role.USER);
-        statusSelect.setValue(UserStatus.ACTIVE);
 
         var saveButton = _get(Button.class, spec -> spec.withText("Save"));
         _click(saveButton);
@@ -764,12 +767,10 @@ class UserListViewTest {
         var emailField = _get(EmailField.class, spec -> spec.withLabel("Email"));
         var nameField = _get(TextField.class, spec -> spec.withLabel("Name"));
         var roleSelect = _get(Select.class, spec -> spec.withLabel("Role"));
-        var statusSelect = _get(Select.class, spec -> spec.withLabel("Status"));
 
         emailField.setValue("validuser@example.com");
         // Leave name empty
         roleSelect.setValue(Role.USER);
-        statusSelect.setValue(UserStatus.ACTIVE);
 
         var saveButton = _get(Button.class, spec -> spec.withText("Save"));
         _click(saveButton);
@@ -800,13 +801,11 @@ class UserListViewTest {
         var emailField = _get(EmailField.class, spec -> spec.withLabel("Email"));
         var nameField = _get(TextField.class, spec -> spec.withLabel("Name"));
         var roleSelect = _get(Select.class, spec -> spec.withLabel("Role"));
-        var statusSelect = _get(Select.class, spec -> spec.withLabel("Status"));
 
         emailField.setValue("validuser@example.com");
         nameField.setValue("Valid User");
         // Clear the default role to test validation
         roleSelect.clear();
-        statusSelect.setValue(UserStatus.ACTIVE);
 
         var saveButton = _get(Button.class, spec -> spec.withText("Save"));
         _click(saveButton);
@@ -824,15 +823,14 @@ class UserListViewTest {
 
     @Test
     @WithMockUser(roles = "SYSTEM_ADMIN")
-    void shouldDefaultStatusToPendingInCreateDialog() {
+    void shouldNotShowStatusFieldInCreateDialog() {
         // Act - navigate and open create dialog
         UI.getCurrent().navigate("users");
         var createButton = _get(Button.class, spec -> spec.withText("Create User"));
         _click(createButton);
 
-        // Assert - status field should default to PENDING
-        var statusSelect = _get(Select.class, spec -> spec.withLabel("Status"));
-        assertThat(statusSelect.getValue()).isEqualTo(UserStatus.PENDING);
+        // Assert - status field should not be present (always PENDING on create)
+        assertThat(_find(Select.class, spec -> spec.withLabel("Status"))).isEmpty();
     }
 
     @Test
@@ -860,25 +858,23 @@ class UserListViewTest {
     @Test
     @WithMockUser(username = "admin@example.com", roles = "SYSTEM_ADMIN")
     @DirtiesContext
-    void shouldShowDisabledMessageWhenSoftDeletingUser() {
-        var userId = UUID.randomUUID();
-        var user = new User(userId, "disable-msg-" + userId + "@example.com", "Test User", UserStatus.ACTIVE, Role.USER);
+    void shouldShowDeactivatedMessageWhenDeactivatingUser() {
+        var user = new User("deactivate-msg-" + UUID.randomUUID() + "@example.com", "Test User", UserStatus.ACTIVE, Role.USER);
         userRepository.save(user);
 
         UI.getCurrent().navigate("users");
         var view = _get(UserListView.class);
-        view.deleteUser(user);
+        view.removeUser(user);
 
         assertThat(_get(Notification.class).getElement().getProperty("text"))
-                .isEqualTo("User disabled successfully");
+                .isEqualTo("User deactivated successfully");
     }
 
     @Test
     @WithMockUser(username = "admin@example.com", roles = "SYSTEM_ADMIN")
     @DirtiesContext
     void shouldShowSuccessVariantOnMagicLinkNotification() {
-        var userId = UUID.randomUUID();
-        var user = new User(userId, "magic-variant-" + userId + "@example.com", "Test User", UserStatus.ACTIVE, Role.USER);
+        var user = new User("magic-variant-" + UUID.randomUUID() + "@example.com", "Test User", UserStatus.ACTIVE, Role.USER);
         userRepository.save(user);
 
         UI.getCurrent().navigate("users");
@@ -905,14 +901,13 @@ class UserListViewTest {
     @Test
     @WithMockUser(username = "admin@example.com", roles = "SYSTEM_ADMIN")
     @DirtiesContext
-    void shouldShowSuccessVariantOnDisableNotification() {
-        var userId = UUID.randomUUID();
-        var user = new User(userId, "disable-variant-" + userId + "@example.com", "Test User", UserStatus.ACTIVE, Role.USER);
+    void shouldShowSuccessVariantOnDeactivateNotification() {
+        var user = new User("deactivate-variant-" + UUID.randomUUID() + "@example.com", "Test User", UserStatus.ACTIVE, Role.USER);
         userRepository.save(user);
 
         UI.getCurrent().navigate("users");
         var view = _get(UserListView.class);
-        view.deleteUser(user);
+        view.removeUser(user);
 
         assertThat(_get(Notification.class).getThemeNames()).contains("success");
     }
@@ -921,8 +916,7 @@ class UserListViewTest {
     @WithMockUser(roles = "SYSTEM_ADMIN")
     @DirtiesContext
     void shouldShowSuccessVariantOnSaveNotification() {
-        var userId = UUID.randomUUID();
-        var user = new User(userId, "notify-test-" + userId + "@example.com", "Test User", UserStatus.PENDING, Role.USER);
+        var user = new User("notify-test-" + UUID.randomUUID() + "@example.com", "Test User", UserStatus.PENDING, Role.USER);
         userRepository.save(user);
 
         UI.getCurrent().navigate("users");
@@ -932,5 +926,86 @@ class UserListViewTest {
         _click(_get(Button.class, spec -> spec.withText("Save")));
 
         assertThat(_get(Notification.class).getThemeNames()).contains("success");
+    }
+
+    @Test
+    @WithMockUser(username = "admin@example.com", roles = "SYSTEM_ADMIN")
+    @DirtiesContext
+    void shouldSendPasswordResetLinkWhenButtonClicked() {
+        var user = new User("resetpw-" + UUID.randomUUID() + "@example.com", "Reset User", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
+        userRepository.save(user);
+
+        UI.getCurrent().navigate("users");
+        var view = _get(UserListView.class);
+        view.sendPasswordResetLink(user);
+
+        var notification = _get(Notification.class);
+        assertThat(notification.getElement().getProperty("text")).contains("Password reset link");
+        assertThat(notification.getThemeNames()).contains("success");
+    }
+
+    @Test
+    @WithMockUser(roles = "SYSTEM_ADMIN")
+    @DirtiesContext
+    void shouldLogPasswordSetupLinkWhenCreatingSystemAdmin() {
+        UI.getCurrent().navigate("users");
+        _click(_get(Button.class, spec -> spec.withText("Create User")));
+
+        _get(EmailField.class, spec -> spec.withLabel("Email")).setValue("newadmin@example.com");
+        _get(TextField.class, spec -> spec.withLabel("Name")).setValue("New Admin");
+        _get(Select.class, spec -> spec.withLabel("Role")).setValue(Role.SYSTEM_ADMIN);
+        _click(_get(Button.class, spec -> spec.withText("Save")));
+
+        // Should show both "User created" and "Password setup link" notifications
+        var notifications = _find(Notification.class);
+        assertThat(notifications).hasSizeGreaterThanOrEqualTo(2);
+        var notificationTexts = notifications.stream()
+                .map(n -> n.getElement().getProperty("text"))
+                .toList();
+        assertThat(notificationTexts).anyMatch(t -> t.contains("Password setup link"));
+
+        // User should have no password
+        var createdUser = userRepository.findByEmail("newadmin@example.com").orElseThrow();
+        assertThat(createdUser.getPasswordHash()).isNull();
+    }
+
+    @Test
+    @WithMockUser(roles = "SYSTEM_ADMIN")
+    @DirtiesContext
+    void shouldLogPasswordSetupLinkWhenEditingUserToSystemAdmin() {
+        var user = new User("promote-test-" + UUID.randomUUID() + "@example.com", "User To Promote", UserStatus.ACTIVE, Role.USER);
+        userRepository.save(user);
+
+        UI.getCurrent().navigate("users");
+        var view = _get(UserListView.class);
+        view.openEditDialog(user);
+        _get(Select.class, spec -> spec.withLabel("Role")).setValue(Role.SYSTEM_ADMIN);
+        _click(_get(Button.class, spec -> spec.withText("Save")));
+
+        var notifications = _find(Notification.class);
+        var notificationTexts = notifications.stream()
+                .map(n -> n.getElement().getProperty("text"))
+                .toList();
+        assertThat(notificationTexts).anyMatch(t -> t.contains("Password setup link"));
+    }
+
+    @Test
+    @WithMockUser(roles = "SYSTEM_ADMIN")
+    @DirtiesContext
+    void shouldNotLogPasswordSetupLinkWhenCreatingRegularUser() {
+        UI.getCurrent().navigate("users");
+        _click(_get(Button.class, spec -> spec.withText("Create User")));
+
+        _get(EmailField.class, spec -> spec.withLabel("Email")).setValue("regularuser@example.com");
+        _get(TextField.class, spec -> spec.withLabel("Name")).setValue("Regular User");
+        _get(Select.class, spec -> spec.withLabel("Role")).setValue(Role.USER);
+        _click(_get(Button.class, spec -> spec.withText("Save")));
+
+        // Should only show "User created" notification, not a password setup link
+        var notifications = _find(Notification.class);
+        var notificationTexts = notifications.stream()
+                .map(n -> n.getElement().getProperty("text"))
+                .toList();
+        assertThat(notificationTexts).noneMatch(t -> t != null && t.contains("Password setup link"));
     }
 }

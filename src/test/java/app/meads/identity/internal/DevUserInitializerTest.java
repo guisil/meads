@@ -1,6 +1,6 @@
 package app.meads.identity.internal;
 
-import app.meads.identity.JwtMagicLinkService;
+import app.meads.identity.EmailService;
 import app.meads.identity.Role;
 import app.meads.identity.User;
 import app.meads.identity.UserStatus;
@@ -10,7 +10,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
@@ -28,72 +27,89 @@ class DevUserInitializerTest {
 
     @InjectMocks DevUserInitializer devUserInitializer;
     @Mock UserRepository userRepository;
-    @Mock JwtMagicLinkService jwtMagicLinkService;
+    @Mock EmailService emailService;
     @Mock PasswordEncoder passwordEncoder;
-    @Mock Environment environment;
 
     @Test
-    void shouldNotCreateDevUsersWhenDevProfileNotActive() {
-        given(environment.getActiveProfiles()).willReturn(new String[]{});
-
-        devUserInitializer.initializeDevUsers();
-
-        then(userRepository).should(never()).save(any());
-    }
-
-    @Test
-    void shouldCreateThreeDevUsersWhenDevProfileActive() {
-        given(environment.getActiveProfiles()).willReturn(new String[]{"dev"});
+    void shouldCreateSevenDevUsersWhenDevProfileActive() {
         given(userRepository.existsByEmail(any())).willReturn(false);
         given(passwordEncoder.encode("admin")).willReturn("$2a$10$adminHash");
+        given(passwordEncoder.encode("compadmin")).willReturn("$2a$10$compadminHash");
 
         devUserInitializer.initializeDevUsers();
 
         var captor = ArgumentCaptor.forClass(User.class);
-        then(userRepository).should(times(3)).save(captor.capture());
+        then(userRepository).should(times(7)).save(captor.capture());
         List<User> savedUsers = captor.getAllValues();
 
         // Admin user
-        var admin = savedUsers.stream().filter(u -> u.getEmail().equals("admin@localhost")).findFirst().orElseThrow();
+        var admin = savedUsers.stream().filter(u -> u.getEmail().equals("admin@example.com")).findFirst().orElseThrow();
         assertThat(admin.getRole()).isEqualTo(Role.SYSTEM_ADMIN);
         assertThat(admin.getStatus()).isEqualTo(UserStatus.ACTIVE);
         assertThat(admin.getPasswordHash()).isEqualTo("$2a$10$adminHash");
 
+        // Competition admin user
+        var compAdmin = savedUsers.stream().filter(u -> u.getEmail().equals("compadmin@example.com")).findFirst().orElseThrow();
+        assertThat(compAdmin.getRole()).isEqualTo(Role.USER);
+        assertThat(compAdmin.getStatus()).isEqualTo(UserStatus.ACTIVE);
+        assertThat(compAdmin.getPasswordHash()).isEqualTo("$2a$10$compadminHash");
+
         // Active user
-        var user = savedUsers.stream().filter(u -> u.getEmail().equals("user@localhost")).findFirst().orElseThrow();
+        var user = savedUsers.stream().filter(u -> u.getEmail().equals("user@example.com")).findFirst().orElseThrow();
         assertThat(user.getRole()).isEqualTo(Role.USER);
         assertThat(user.getStatus()).isEqualTo(UserStatus.ACTIVE);
 
         // Pending user
-        var pending = savedUsers.stream().filter(u -> u.getEmail().equals("pending@localhost")).findFirst().orElseThrow();
+        var pending = savedUsers.stream().filter(u -> u.getEmail().equals("pending@example.com")).findFirst().orElseThrow();
         assertThat(pending.getRole()).isEqualTo(Role.USER);
         assertThat(pending.getStatus()).isEqualTo(UserStatus.PENDING);
+
+        // Judge user
+        var judge = savedUsers.stream().filter(u -> u.getEmail().equals("judge@example.com")).findFirst().orElseThrow();
+        assertThat(judge.getRole()).isEqualTo(Role.USER);
+        assertThat(judge.getStatus()).isEqualTo(UserStatus.ACTIVE);
+
+        // Steward user
+        var steward = savedUsers.stream().filter(u -> u.getEmail().equals("steward@example.com")).findFirst().orElseThrow();
+        assertThat(steward.getRole()).isEqualTo(Role.USER);
+        assertThat(steward.getStatus()).isEqualTo(UserStatus.ACTIVE);
+
+        // Entrant user
+        var entrant = savedUsers.stream().filter(u -> u.getEmail().equals("entrant@example.com")).findFirst().orElseThrow();
+        assertThat(entrant.getRole()).isEqualTo(Role.USER);
+        assertThat(entrant.getStatus()).isEqualTo(UserStatus.ACTIVE);
     }
 
     @Test
     void shouldSkipUsersWhenTheyAlreadyExist() {
-        given(environment.getActiveProfiles()).willReturn(new String[]{"dev"});
-        given(userRepository.existsByEmail("admin@localhost")).willReturn(true);
-        given(userRepository.existsByEmail("user@localhost")).willReturn(false);
-        given(userRepository.existsByEmail("pending@localhost")).willReturn(true);
+        given(userRepository.existsByEmail("admin@example.com")).willReturn(true);
+        given(userRepository.existsByEmail("compadmin@example.com")).willReturn(true);
+        given(userRepository.existsByEmail("user@example.com")).willReturn(false);
+        given(userRepository.existsByEmail("pending@example.com")).willReturn(true);
+        given(userRepository.existsByEmail("judge@example.com")).willReturn(true);
+        given(userRepository.existsByEmail("steward@example.com")).willReturn(true);
+        given(userRepository.existsByEmail("entrant@example.com")).willReturn(true);
 
         devUserInitializer.initializeDevUsers();
 
-        // Only one user saved (user@localhost)
+        // Only one user saved (user@example.com)
         then(userRepository).should(times(1)).save(any());
     }
 
     @Test
-    void shouldGenerateMagicLinksForNonAdminDevUsers() {
-        given(environment.getActiveProfiles()).willReturn(new String[]{"dev"});
+    void shouldSendMagicLinkEmailsForNonPasswordDevUsers() {
         given(userRepository.existsByEmail(any())).willReturn(false);
         given(passwordEncoder.encode("admin")).willReturn("$2a$10$adminHash");
 
         devUserInitializer.initializeDevUsers();
 
-        // Magic links for user@localhost and pending@localhost, not admin@localhost
-        then(jwtMagicLinkService).should().generateLink(eq("user@localhost"), any());
-        then(jwtMagicLinkService).should().generateLink(eq("pending@localhost"), any());
-        then(jwtMagicLinkService).should(never()).generateLink(eq("admin@localhost"), any());
+        // Magic link emails for non-password users only
+        then(emailService).should().sendMagicLink("user@example.com");
+        then(emailService).should().sendMagicLink("pending@example.com");
+        then(emailService).should().sendMagicLink("judge@example.com");
+        then(emailService).should().sendMagicLink("steward@example.com");
+        then(emailService).should().sendMagicLink("entrant@example.com");
+        then(emailService).should(never()).sendMagicLink("admin@example.com");
+        then(emailService).should(never()).sendMagicLink("compadmin@example.com");
     }
 }

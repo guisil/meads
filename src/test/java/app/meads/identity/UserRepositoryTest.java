@@ -8,8 +8,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
@@ -24,7 +22,7 @@ class UserRepositoryTest {
 
     @Test
     void shouldSaveAndRetrieveUserByEmail() {
-        var user = new User(UUID.randomUUID(), "test@repository.com", "John Doe", UserStatus.ACTIVE, Role.USER);
+        var user = new User("test@repository.com", "John Doe", UserStatus.ACTIVE, Role.USER);
 
         userRepository.save(user);
         var found = userRepository.findByEmail("test@repository.com");
@@ -39,8 +37,8 @@ class UserRepositoryTest {
 
     @Test
     void shouldPersistUserWithPasswordHash() {
-        var user = new User(UUID.randomUUID(), "hashed@repository.com", "Hashed User", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
-        user.setPasswordHash("$2a$10$someBcryptHashValue");
+        var user = new User("hashed@repository.com", "Hashed User", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
+        user.assignPasswordHash("$2a$10$someBcryptHashValue");
 
         userRepository.save(user);
         var found = userRepository.findByEmail("hashed@repository.com");
@@ -51,12 +49,35 @@ class UserRepositoryTest {
 
     @Test
     void shouldPersistUserWithNullPasswordHash() {
-        var user = new User(UUID.randomUUID(), "nopassword@repository.com", "No Password", UserStatus.ACTIVE, Role.USER);
+        var user = new User("nopassword@repository.com", "No Password", UserStatus.ACTIVE, Role.USER);
 
         userRepository.save(user);
         var found = userRepository.findByEmail("nopassword@repository.com");
 
         assertThat(found).isPresent();
         assertThat(found.get().getPasswordHash()).isNull();
+    }
+
+    @Test
+    void shouldPersistMeaderyName() {
+        var user = new User("meadery@repository.com", "Meadery Owner", UserStatus.ACTIVE, Role.USER);
+        user.updateMeaderyName("Golden Meadery");
+
+        userRepository.save(user);
+        var found = userRepository.findByEmail("meadery@repository.com");
+
+        assertThat(found).isPresent();
+        assertThat(found.get().getMeaderyName()).isEqualTo("Golden Meadery");
+    }
+
+    @Test
+    void shouldPersistUserWithNullMeaderyName() {
+        var user = new User("nomeadery@repository.com", "No Meadery", UserStatus.ACTIVE, Role.USER);
+
+        userRepository.save(user);
+        var found = userRepository.findByEmail("nomeadery@repository.com");
+
+        assertThat(found).isPresent();
+        assertThat(found.get().getMeaderyName()).isNull();
     }
 }

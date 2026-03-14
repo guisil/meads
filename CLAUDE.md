@@ -5,8 +5,8 @@
 **MEADS (Mead Evaluation and Awards Data System)** is a Spring Boot 4 web application for
 managing mead competitions — from registration through judging and results. Built with
 Vaadin 25 (Java Flow, server-side), PostgreSQL 18 (Flyway-managed), and Spring Modulith
-for modular DDD architecture. The `identity` module is the reference implementation;
-future modules will follow the same patterns.
+for modular DDD architecture. The `identity`, `competition`, and `entry` modules are the
+reference implementations; future modules will follow the same patterns.
 
 ---
 
@@ -17,6 +17,7 @@ future modules will follow the same patterns.
 - **PostgreSQL 18**, Flyway (managed by Boot)
 - **Testcontainers 2.0.3**, Karibu Testing 2.6.2, Mockito, Awaitility 4.3.0
 - **jjwt 0.13.0** (JWT magic link tokens)
+- **spring-boot-starter-mail** + **spring-boot-starter-thymeleaf** (SMTP email with HTML templates)
 - **JUnit 5**, AssertJ, Spring Security 7.0.2
 
 ---
@@ -55,6 +56,11 @@ When uncertain, default to **full cycle**.
 **Step 3: REFACTOR**
 - Review both test and production code.
 - Run: `mvn test -Dsurefire.useFile=false` (full suite)
+- **Update all affected docs before suggesting a commit message** (see Commit Hygiene):
+  1. `docs/SESSION_CONTEXT.md` — test count, module status, what's next
+  2. `docs/walkthrough/manual-test.md` — if any UI changed
+  3. `CLAUDE.md` — if conventions, patterns, or migrations changed
+  4. Clean up completed plans/specs
 - Suggest a commit message. State what to test next.
 - **STOP. Wait for confirmation before next cycle.**
 
@@ -64,7 +70,8 @@ When uncertain, default to **full cycle**.
 2. Make the change.
 3. Run: `mvn test -Dsurefire.useFile=false` (full suite)
 4. If any test breaks, stop and escalate to full cycle.
-5. Suggest a commit message.
+5. **Update all affected docs** (see Commit Hygiene).
+6. Suggest a commit message.
 
 Multiple related fast-cycle changes can be batched in one response.
 
@@ -85,9 +92,9 @@ Multiple related fast-cycle changes can be batched in one response.
 ```
 app.meads                                ← @SpringBootApplication (root module)
 ├── MeadsApplication.java               ← Entry point
-├── MainLayout.java                      ← AppLayout wrapper (public API — shared by all views)
+├── MainLayout.java                      ← AppLayout wrapper (public API — shared by all views, includes "My Profile" nav)
 └── internal/
-    └── RootView.java                    ← Root route, redirects unauthenticated to /login
+    └── RootView.java                    ← Root route, redirects by role (login/competitions/my-competitions/my-entries)
 
 app.meads.identity                       ← Identity module public API
 ├── package-info.java                    ← @ApplicationModule(allowedDependencies = {})
@@ -96,10 +103,12 @@ app.meads.identity                       ← Identity module public API
 ├── Role.java                            ← Enum: USER, SYSTEM_ADMIN
 ├── UserService.java                     ← Application service (public API)
 ├── JwtMagicLinkService.java            ← JWT token generation + validation (public API)
+├── EmailService.java                    ← Email sending interface (public API)
 ├── AccessCodeValidator.java             ← Interface for access code validation (public API)
 ├── LoginView.java                       ← Vaadin login view (public — referenced by SecurityConfig)
 └── internal/                            ← Module-private
     ├── UserRepository.java              ← JPA repository
+    ├── SmtpEmailService.java            ← SMTP email implementation (JavaMailSender + Thymeleaf, per-user rate limiting)
     ├── SecurityConfig.java              ← Spring Security filter chain (formLogin + JWT filter)
     ├── MagicLinkAuthenticationFilter.java ← JWT magic link authentication filter
     ├── AccessCodeAuthenticationProvider.java ← Access code authentication provider
@@ -108,7 +117,74 @@ app.meads.identity                       ← Identity module public API
     ├── UserListView.java                ← Admin CRUD view (@RolesAllowed("SYSTEM_ADMIN"))
     ├── AdminInitializer.java            ← Seeds initial admin with password on startup
     ├── DevUserInitializer.java          ← Seeds dev users (dev profile only)
+    ├── SetPasswordView.java              ← Set password via token (@AnonymousAllowed)
+    ├── ProfileView.java                  ← User profile self-edit (@PermitAll)
     └── UserActivationListener.java      ← PENDING → ACTIVE on first login
+
+app.meads.competition                    ← Competition module public API
+├── package-info.java                    ← @ApplicationModule(allowedDependencies = {"identity"})
+├── Competition.java                     ← JPA entity / aggregate root (top-level)
+├── Division.java                        ← JPA entity (sub-level, belongs to competition)
+├── Participant.java                     ← JPA entity (competition-scoped, holds access code)
+├── ParticipantRole.java                 ← JPA entity (references Participant, competition-scoped role)
+├── Category.java                        ← JPA entity (read-only reference data)
+├── DivisionCategory.java               ← JPA entity (per-division category, optional parent for hierarchy)
+├── DivisionStatus.java                  ← Enum: DRAFT → REGISTRATION_OPEN → ... → RESULTS_PUBLISHED
+├── CompetitionRole.java                 ← Enum: JUDGE, STEWARD, ENTRANT, ADMIN
+├── ScoringSystem.java                   ← Enum: MJP
+├── CompetitionService.java              ← Application service (public API)
+├── DivisionRevertGuard.java             ← Guard interface for blocking unsafe status reverts
+├── DivisionStatusAdvancedEvent.java     ← Spring application event
+├── CompetitionDocument.java             ← JPA entity (competition-scoped document, PDF or link)
+├── DocumentType.java                    ← Enum: PDF, LINK
+└── internal/                            ← Module-private
+    ├── CompetitionRepository.java       ← JPA repository
+    ├── DivisionRepository.java          ← JPA repository
+    ├── ParticipantRepository.java       ← JPA repository
+    ├── ParticipantRoleRepository.java   ← JPA repository
+    ├── CategoryRepository.java          ← JPA repository
+    ├── DivisionCategoryRepository.java  ← JPA repository
+    ├── CompetitionDocumentRepository.java ← JPA repository
+    ├── CompetitionAccessCodeValidator.java  ← AccessCodeValidator implementation
+    ├── CompetitionListView.java         ← Competitions CRUD view (@RolesAllowed("SYSTEM_ADMIN"))
+    ├── CompetitionDetailView.java       ← Competition detail with Divisions/Participants/Settings/Documents tabs (@PermitAll + beforeEnter auth)
+    ├── DivisionDetailView.java          ← Division detail with Categories/Settings tabs, breadcrumb (@PermitAll + beforeEnter auth)
+    └── MyCompetitionsView.java          ← Competitions where user is ADMIN (@PermitAll)
+app.meads.entry                              ← Entry module public API
+├── package-info.java                        ← @ApplicationModule(allowedDependencies = {"competition", "identity"})
+├── ProductMapping.java                      ← JPA entity (product-to-division mapping)
+├── JumpsellerOrder.java                     ← JPA entity (webhook order storage, idempotency)
+├── JumpsellerOrderLineItem.java             ← JPA entity (individual line items)
+├── EntryCredit.java                         ← JPA entity (credits per user per division, append-only ledger)
+├── Entry.java                               ← JPA entity / aggregate root (mead entry)
+├── EntryStatus.java                         ← Enum: DRAFT, SUBMITTED, RECEIVED, WITHDRAWN
+├── Sweetness.java                           ← Enum: DRY, MEDIUM, SWEET
+├── Strength.java                            ← Enum: HYDROMEL, STANDARD, SACK
+├── Carbonation.java                         ← Enum: STILL, PETILLANT, SPARKLING
+├── OrderStatus.java                         ← Enum: PROCESSED, PARTIALLY_PROCESSED, NEEDS_REVIEW, UNPROCESSED
+├── LineItemStatus.java                      ← Enum: PROCESSED, NEEDS_REVIEW, IGNORED, UNPROCESSED
+├── EntryService.java                        ← Application service (public API)
+├── WebhookService.java                      ← Webhook processing service (public API)
+├── LabelPdfService.java                     ← PDF label generation (OpenPDF + ZXing QR codes)
+├── CreditsAwardedEvent.java                 ← Spring application event (record)
+├── EntriesSubmittedEvent.java               ← Spring application event (record)
+├── OrderRequiresReviewEvent.java            ← Spring application event (record)
+├── EntrantCreditSummary.java                ← DTO record (userId, email, name, creditBalance, entryCount)
+└── internal/                                ← Module-private
+    ├── ProductMappingRepository.java        ← JPA repository
+    ├── JumpsellerOrderRepository.java       ← JPA repository
+    ├── JumpsellerOrderLineItemRepository.java ← JPA repository
+    ├── EntryCreditRepository.java           ← JPA repository
+    ├── EntryRepository.java                 ← JPA repository
+    ├── JumpsellerWebhookController.java     ← @RestController (webhook endpoint)
+    ├── EntryDivisionRevertGuard.java        ← DivisionRevertGuard impl (blocks revert to DRAFT with entries)
+    ├── RegistrationClosedListener.java      ← @ApplicationModuleListener (DivisionStatusAdvancedEvent)
+    ├── OrderReviewNotificationListener.java ← @ApplicationModuleListener (OrderRequiresReviewEvent → admin emails)
+    ├── SubmissionConfirmationListener.java  ← @ApplicationModuleListener (EntriesSubmittedEvent → entrant email)
+    ├── CreditNotificationListener.java      ← @ApplicationModuleListener (CreditsAwardedEvent → entrant email)
+    ├── EntrantOverviewView.java             ← Cross-competition entrant hub (/my-entries, @PermitAll)
+    ├── MyEntriesView.java                   ← Entrant-facing view (@PermitAll + beforeEnter auth)
+    └── DivisionEntryAdminView.java          ← Admin view with Credits/Entries/Products/Orders tabs
 ```
 
 ### Module Rules
@@ -138,25 +214,27 @@ Read `.claude/skills/new-module.md` before creating a module.
 | Module | Status | Description |
 |--------|--------|-------------|
 | `identity` | **Exists** | User management, authentication (JWT magic links, admin passwords, access codes), roles, admin CRUD |
-| `competition` | Planned | Events, competitions, scoring systems (MJP/BJCP), categories, competition admins |
-| `entry` | Planned | Entry credits (external webhook), mead registration, credit consumption |
-| `judging` | Planned | Judging sessions, tables, judge assignments, scoresheets (polymorphic via ScoreField child table) |
-| `awards` | Planned | Score aggregation, rankings, medal determination, results publication |
+| `competition` | **Exists** | Events, competitions, scoring systems (MJP), categories, participants, access codes, status workflow, competition admin authorization |
+| `entry` | **Exists** | Jumpseller webhook, entry credits (ledger), mead entry registration, entry limits, admin management. Design: `docs/plans/2026-03-02-entry-module-design.md` |
+| `judging` | Planned | Judging sessions, tables, judge assignments, scoresheets, conflict of interest. Reference: `docs/reference/chip-competition-rules.md` |
+| `awards` | Planned | Score aggregation, rankings, medal determination (withholding), BOS (variable places), results publication. Reference: `docs/reference/chip-competition-rules.md` |
 
 ---
 
-## Code Conventions (from identity module)
+## Code Conventions (from identity and competition modules)
 
 ### Entity Pattern
-**Reference:** `User.java`
+**Reference:** `User.java`, `Competition.java`
 - JPA `@Entity` with `@Table(name = "...")` — explicit table naming
-- `UUID` primary key, assigned in constructor (not auto-generated)
+- `UUID` primary key, self-generated in constructor via `UUID.randomUUID()` (not passed as parameter)
+- `@Getter` (Lombok) for accessor methods — no manual getters
 - Enums stored as `@Enumerated(EnumType.STRING)`
+- `Instant` for timestamps (`createdAt`, `updatedAt`) with `TIMESTAMP WITH TIME ZONE` in DB
 - `@PrePersist` / `@PreUpdate` for automatic timestamps
 - Protected no-arg constructor for JPA
-- Public constructor with all required fields
-- Domain methods on the entity (e.g., `activate()`, `updateDetails()`)
-- No Lombok on entities — manual getters, no setters (immutable where possible)
+- Public constructor with required business fields (not including `id` — self-generated)
+- Domain methods on the entity (e.g., `activate()`, `updateDetails()`, `advanceStatus()`)
+- No setters — state changes via domain methods only
 
 ### Repository Pattern
 **Reference:** `UserRepository.java`
@@ -183,7 +261,10 @@ Read `.claude/skills/new-module.md` before creating a module.
 ### View Pattern
 **Reference:** `UserListView.java`, `LoginView.java`
 - `@Route(value = "path", layout = MainLayout.class)` for protected views
-- `@RolesAllowed("ROLE_NAME")` for access control
+- `@RolesAllowed("ROLE_NAME")` for simple role-based access control
+- `@PermitAll` + `beforeEnter()` auth check for finer-grained authorization (e.g., per-competition).
+  Use a service-level boolean helper (e.g., `isAuthorizedForCompetition()`). Forward unauthorized
+  users to `""` (root). Reference: `CompetitionDetailView.java`, `CompetitionListView.java`.
 - `@AnonymousAllowed` for public views (LoginView, RootView)
 - `transient AuthenticationContext` field for Spring Security context
 - Dialog-based forms for create/edit operations
@@ -199,7 +280,8 @@ Read `.claude/skills/new-module.md` before creating a module.
 ### Auth-Coupled Code (NOT reference patterns for other modules)
 The following are specific to the authentication mechanism and should NOT be
 treated as canonical patterns for other modules:
-- `LoginView.java` — auth-mechanism-specific UI (TabSheet: magic link tab + LoginForm credentials tab)
+- `LoginView.java` — auth-mechanism-specific UI (email + magic link, collapsible credentials + forgot password)
+- `SetPasswordView.java` — token-based password setup (`@AnonymousAllowed`)
 - `SecurityConfig.java` — formLogin + JWT filter + access code provider configuration
 - `JwtMagicLinkService.java` — JWT token generation/validation
 - `MagicLinkAuthenticationFilter.java` — JWT magic link filter
@@ -208,6 +290,22 @@ treated as canonical patterns for other modules:
 
 Auth-agnostic patterns that ARE canonical: `User.java`, `Role.java`, `UserStatus.java`,
 `UserService.java`, `UserListView.java`, `AdminInitializer.java`, `UserActivationListener.java`.
+
+### Enum Pattern
+**Reference:** `CompetitionStatus.java`
+- `@Getter` + `@RequiredArgsConstructor` (Lombok) for enums with fields
+- Display/UI methods on the enum (e.g., `getDisplayName()`, `getBadgeCssClass()`)
+- State machine helpers (e.g., `next()` returning `Optional`) for display; enforcement via entity domain methods
+
+### View Dialog Pattern
+**Reference:** `MeadEventListView.openMeadEventDialog()`
+- Combine create/edit dialogs into one method: `openDialog(Entity existing)` where `null` = create mode
+- Same pattern as `UserListView`
+
+### View-to-Service Persistence
+- Views must NEVER mutate detached entities and assume persistence
+- Always call a service method (e.g., `competitionService.updateCompetition(...)`) for state changes
+- Views keep basic `StringUtils.hasText()` checks for UX; delegate enforcement to services
 
 ---
 
@@ -277,7 +375,7 @@ void tearDown() {
 ## Database & Migrations
 
 - **Location:** `src/main/resources/db/migration/V{N}__{description}.sql`
-- **Current highest version:** V4 (`V4__add_password_hash_to_users.sql`)
+- **Current highest version:** V14 (`V14__create_competition_documents_table.sql`). V2 includes users + meadery_name. V3–V8 are competition module (V3 includes contact_email + shipping_address + phone_number, V4 includes entry limits + prefix). V9–V13 are entry module. V14 is competition documents.
 - **Naming:** `V{next}__{snake_case_description}.sql` (double underscore)
 - Migrations are created in **Step 2** (GREEN), when a repository test needs a table.
 - **Never edit existing migrations.** Always create new ones.
@@ -343,8 +441,8 @@ Stay within the current module's package.
 
 - **No cross-module repository access.** Repositories are `internal/`. Use events or services.
 - **No `@Autowired` field injection.** Use constructor injection only.
-- **No `@Data` on entities.** Entities use manual getters, no setters. State changes via methods.
-- **No Lombok `@Builder` on entities.** Use explicit constructors.
+- **No `@Data` or `@Builder` on entities.** Use `@Getter` only. No setters — state changes via domain methods.
+- **No `@Setter` on entities.** State changes via domain methods only.
 - **No Selenium/browser-based UI tests.** Use Karibu Testing.
 - **No mocking the database in integration tests.** Use Testcontainers.
 - **No making `internal/` classes public for test access.** Test through the module's public API.
@@ -383,6 +481,65 @@ mvn spring-boot:run                                       # start app (needs Pos
 
 ---
 
+## Resuming Work (New Session or New Machine)
+
+The project is designed so that work can be resumed from any machine with a cleared context,
+as long as the repository is up to date. On a new session:
+
+1. **Read `docs/SESSION_CONTEXT.md` first** — this is the primary bootstrap file. It contains
+   the current state of all modules, what's done, what's next, in-progress work details,
+   and key technical notes. Everything needed to continue is here.
+2. **`CLAUDE.md`** (this file) is auto-loaded and provides conventions, architecture, and
+   workflow rules.
+3. No other files need to be read to resume — all accumulated knowledge is captured in
+   these two files plus the codebase itself.
+
+---
+
+## Commit Hygiene — Documentation Freshness & Session Portability
+
+Doc updates are part of Step 3 (REFACTOR) and Fast Cycle step 5 — not a post-commit task.
+**Do NOT suggest a commit message until all affected docs are updated.** The goal is
+**session portability**: after every commit-and-push, anyone (including the same developer
+on a different machine with a cleared context) must be able to resume work with no loss of
+context by reading `docs/SESSION_CONTEXT.md` and `CLAUDE.md`.
+
+Checklist — update each if affected:
+
+1. **`docs/SESSION_CONTEXT.md`** — The most critical file. Update:
+   - Test count (run `mvn test -Dsurefire.useFile=false` and record the number)
+   - Module status changes (new entities, services, views added)
+   - "What's Next" section (reorder or add items as work progresses)
+   - **In-progress work** — If the commit is mid-feature, document what's done and what
+     remains with enough detail to continue without prior conversation context. Include
+     the current TDD step (RED/GREEN/REFACTOR), which test is being worked on, and any
+     decisions or blockers discovered during the session.
+   - Documentation structure (if files were added or removed)
+2. **`CLAUDE.md`** — Update if conventions, module map, package layout, or migration versions
+   changed. Any new pattern or quirk discovered during development should be added to the
+   relevant section (Testing Conventions, Code Conventions, Common Pitfalls) so it's available
+   in future sessions.
+3. **Module specs** (`docs/specs/`) — Update if the committed work changes or completes a
+   planned feature. Delete specs for completed modules (the implementation is the source of
+   truth). Keep specs for unimplemented modules current with the latest naming and conventions.
+4. **Design docs** (`docs/plans/`) — Delete design docs for fully implemented features.
+   Only keep active/in-progress plans. The codebase is the source of truth for completed work.
+5. **Walkthrough** (`docs/walkthrough/manual-test.md`) — **Must be updated with every UI or
+   API change.** This is a living document: add test steps for new features, update existing
+   steps if behavior changed, and keep the coverage mapping appendix current. The walkthrough
+   must always be executable end-to-end against the current codebase.
+6. **Example files** (`docs/examples/`) — Update if testing or domain model conventions changed.
+   Examples must always reflect the actual patterns used in the codebase.
+
+**Cleanup rule:** Documentation for completed work should be removed rather than left to go stale.
+The entry module design doc (`docs/plans/2026-03-02-entry-module-design.md`) is retained as
+a reference for how to structure future module designs.
+
+**Self-check before committing:** _"If I clear my context right now and start fresh on another
+machine, can I resume this work by reading `docs/SESSION_CONTEXT.md`?"_ If no, update it.
+
+---
+
 ## Common Pitfalls
 
 - Creating production classes during Step 1. **The test must fail first.**
@@ -392,7 +549,8 @@ mvn spring-boot:run                                       # start app (needs Pos
 - Referencing another module's `internal` package. Use events.
 - Mocking the database in integration tests. Use Testcontainers.
 - Using Selenium for Vaadin tests. Use Karibu Testing.
-- Using generic Spring/Vaadin patterns instead of checking what the identity module actually does.
+- Mutating a detached entity in a view and assuming it persists. **Always call a service method.**
+- Using generic Spring/Vaadin patterns instead of checking what the existing modules actually do.
 - Treating auth-coupled code (LoginView, SecurityConfig, JwtMagicLinkService, MagicLinkAuthenticationFilter) as canonical patterns.
 - Reinventing Vaadin components in JavaScript. **Always check the Vaadin component catalog first** —
   e.g., use `LoginForm` instead of building a form POST with `executeJs()`, use `Upload` instead of

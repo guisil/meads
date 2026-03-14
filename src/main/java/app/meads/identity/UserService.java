@@ -5,23 +5,34 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
+import lombok.extern.slf4j.Slf4j;
+
+import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @Transactional
 @Validated
 public class UserService {
 
+    private static final Set<String> VALID_COUNTRY_CODES = Set.of(Locale.getISOCountries());
+
     private final UserRepository userRepository;
+    private final JwtMagicLinkService jwtMagicLinkService;
     private final PasswordEncoder passwordEncoder;
 
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository userRepository, JwtMagicLinkService jwtMagicLinkService, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.jwtMagicLinkService = jwtMagicLinkService;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -29,8 +40,10 @@ public class UserService {
         if (userRepository.existsByEmail(email)) {
             throw new IllegalArgumentException("Email already exists");
         }
-        User user = new User(UUID.randomUUID(), email, name, status, role);
-        return userRepository.save(user);
+        User user = new User(email, name, status, role);
+        var saved = userRepository.save(user);
+        log.info("Created user: {} (email={}, role={}, status={})", saved.getId(), email, role, status);
+        return saved;
     }
 
     public User updateUser(UUID userId, @NotBlank String name, Role role, UserStatus status, String currentUserEmail) {
@@ -45,16 +58,66 @@ public class UserService {
             }
         }
         user.updateDetails(name, role, status);
+        log.info("Updated user: {} (name={}, role={}, status={})", userId, name, role, status);
         return userRepository.save(user);
     }
 
     public List<User> findAll() {
-        return userRepository.findAll();
+        return userRepository.findAll(Sort.by("name"));
     }
 
     public User findById(UUID userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
+    }
+
+    public List<User> findAllByIds(Collection<UUID> ids) {
+        return userRepository.findAllById(ids);
+    }
+
+    public User findByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+    }
+
+    public User findOrCreateByEmail(@Email @NotBlank String email) {
+        return findOrCreateByEmail(email, email);
+    }
+
+    public User findOrCreateByEmail(@Email @NotBlank String email, @NotBlank String name) {
+        return userRepository.findByEmail(email)
+                .orElseGet(() -> {
+                    var user = new User(email, name, UserStatus.PENDING, Role.USER);
+                    log.info("Auto-created user for email: {}", email);
+                    return userRepository.save(user);
+                });
+    }
+
+    public User updateProfile(@NotNull UUID userId, @NotBlank String name,
+                               String meaderyName, String country) {
+        if (country != null && !VALID_COUNTRY_CODES.contains(country)) {
+            throw new IllegalArgumentException("Invalid ISO 3166-1 alpha-2 country code: " + country);
+        }
+        var user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+        user.updateDetails(name, user.getRole(), user.getStatus());
+        user.updateMeaderyName(meaderyName);
+        user.updateCountry(country);
+        log.info("Profile updated for user {} ({})", user.getEmail(), userId);
+        return userRepository.save(user);
+    }
+
+    public User updateMeaderyName(@NotNull UUID userId, String meaderyName) {
+        var user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        user.updateMeaderyName(meaderyName);
+        return userRepository.save(user);
+    }
+
+    public boolean hasPassword(@NotNull UUID userId) {
+        return userRepository.findById(userId)
+                .map(user -> user.getPasswordHash() != null)
+                .orElse(false);
     }
 
     public boolean isEditingSelf(UUID userId, String currentUserEmail) {
@@ -64,23 +127,43 @@ public class UserService {
     }
 
     public void setPassword(UUID userId, String rawPassword) {
+        validatePassword(rawPassword);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
-        user.setPasswordHash(passwordEncoder.encode(rawPassword));
+        user.assignPasswordHash(passwordEncoder.encode(rawPassword));
         userRepository.save(user);
+        log.info("Password set for user: {} ({})", userId, user.getEmail());
     }
 
-    public void deleteUser(UUID userId, String currentUserEmail) {
+    public void setPasswordByToken(String token, String rawPassword) {
+        String email = jwtMagicLinkService.extractEmail(token);
+        validatePassword(rawPassword);
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        user.assignPasswordHash(passwordEncoder.encode(rawPassword));
+        userRepository.save(user);
+        log.info("Password set via token for user: {}", email);
+    }
+
+    private void validatePassword(String rawPassword) {
+        if (rawPassword == null || rawPassword.length() < 8) {
+            throw new IllegalArgumentException("Password must be at least 8 characters");
+        }
+    }
+
+    public void removeUser(UUID userId, String currentUserEmail) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
         if (user.getEmail().equals(currentUserEmail)) {
-            throw new IllegalArgumentException("Cannot disable or delete your own account");
+            throw new IllegalArgumentException("Cannot deactivate or delete your own account");
         }
-        if (user.getStatus() == UserStatus.DISABLED) {
+        if (user.getStatus() == UserStatus.INACTIVE) {
             userRepository.delete(user);
+            log.info("Deleted inactive user: {} ({})", userId, user.getEmail());
         } else {
-            user.updateDetails(user.getName(), user.getRole(), UserStatus.DISABLED);
+            user.deactivate();
             userRepository.save(user);
+            log.info("Deactivated user: {} ({})", userId, user.getEmail());
         }
     }
 }

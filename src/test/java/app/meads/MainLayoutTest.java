@@ -6,10 +6,12 @@ import com.github.mvysny.kaributesting.v10.MockVaadin;
 import com.github.mvysny.kaributesting.v10.Routes;
 import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
 import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.Text;
 import com.vaadin.flow.component.applayout.AppLayout;
-import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.menubar.MenuBar;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import com.vaadin.flow.component.sidenav.SideNavItem;
 import com.vaadin.flow.server.VaadinServletRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -113,27 +115,59 @@ class MainLayoutTest {
     }
 
     @Test
-    @WithMockUser(roles = "USER")
-    void shouldDisplayLogoutButtonInNavbarWhenAuthenticated() {
+    @WithMockUser(username = "user@example.com", roles = "USER")
+    void shouldDisplayUserMenuInNavbarWhenAuthenticated() {
         UI.getCurrent().navigate("");
 
-        assertThat(_find(Button.class, spec -> spec.withText("Logout"))).hasSize(1);
+        var menuBar = _get(MenuBar.class);
+        assertThat(menuBar.getItems()).hasSize(1);
+
+        var userItem = menuBar.getItems().getFirst();
+        var emailText = userItem.getChildren()
+                .filter(c -> c instanceof Text)
+                .map(c -> ((Text) c).getText())
+                .findFirst().orElse("");
+        assertThat(emailText).isEqualTo("user@example.com");
     }
 
     @Test
     @WithMockUser(roles = "SYSTEM_ADMIN")
-    void shouldDisplayUsersLinkInNavbarForAdmin() {
+    void shouldDisplayUsersLinkInDrawerForAdmin() {
         UI.getCurrent().navigate("");
 
-        assertThat(_find(Button.class, spec -> spec.withText("Users"))).hasSize(1);
+        assertThat(_find(SideNavItem.class))
+                .extracting(SideNavItem::getLabel)
+                .contains("Users");
     }
 
     @Test
     @WithMockUser(roles = "USER")
-    void shouldNotDisplayUsersLinkInNavbarForRegularUser() {
+    void shouldNotDisplayUsersLinkInDrawerForRegularUser() {
         UI.getCurrent().navigate("");
 
-        assertThat(_find(Button.class, spec -> spec.withText("Users"))).isEmpty();
+        assertThat(_find(SideNavItem.class))
+                .extracting(SideNavItem::getLabel)
+                .doesNotContain("Users");
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void shouldNotDisplayMyCompetitionsLinkForRegularUserWithoutAdminCompetitions() {
+        UI.getCurrent().navigate("");
+
+        assertThat(_find(SideNavItem.class))
+                .extracting(SideNavItem::getLabel)
+                .doesNotContain("My Competitions");
+    }
+
+    @Test
+    @WithMockUser(roles = "SYSTEM_ADMIN")
+    void shouldNotDisplayMyCompetitionsLinkForSystemAdmin() {
+        UI.getCurrent().navigate("");
+
+        assertThat(_find(SideNavItem.class))
+                .extracting(SideNavItem::getLabel)
+                .doesNotContain("My Competitions");
     }
 
     @Test
@@ -142,6 +176,26 @@ class MainLayoutTest {
         UI.getCurrent().navigate("users");
 
         assertThat(_find(AppLayout.class)).isNotEmpty();
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void shouldDisplayMyEntriesLinkInDrawerForRegularUser() {
+        UI.getCurrent().navigate("");
+
+        assertThat(_find(SideNavItem.class))
+                .extracting(SideNavItem::getLabel)
+                .contains("My Entries");
+    }
+
+    @Test
+    @WithMockUser(roles = "SYSTEM_ADMIN")
+    void shouldNotDisplayMyEntriesLinkInDrawerForSystemAdmin() {
+        UI.getCurrent().navigate("");
+
+        assertThat(_find(SideNavItem.class))
+                .extracting(SideNavItem::getLabel)
+                .doesNotContain("My Entries");
     }
 
     @Test

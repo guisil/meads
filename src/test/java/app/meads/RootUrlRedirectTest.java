@@ -1,22 +1,27 @@
 package app.meads;
 
+import com.github.mvysny.fakeservlet.FakeRequest;
 import com.github.mvysny.kaributesting.v10.MockVaadin;
 import com.github.mvysny.kaributesting.v10.Routes;
 import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
 import com.vaadin.flow.component.UI;
-import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.server.VaadinServletRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.test.context.support.WithMockUser;
 
-import static com.github.mvysny.kaributesting.v10.LocatorJ._click;
-import static com.github.mvysny.kaributesting.v10.LocatorJ._get;
+import java.util.Arrays;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
@@ -27,15 +32,60 @@ class RootUrlRedirectTest {
     ApplicationContext ctx;
 
     @BeforeEach
-    void setup() {
+    void setup(TestInfo testInfo) {
         var routes = new Routes().autoDiscoverViews("app.meads");
         var servlet = new MockSpringServlet(routes, ctx, UI::new);
         MockVaadin.setup(UI::new, servlet);
+
+        var authentication = resolveAuthentication(testInfo);
+        if (authentication != null) {
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+        }
+        propagateSecurityContext(authentication);
+    }
+
+    private Authentication resolveAuthentication(TestInfo testInfo) {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null) {
+            return auth;
+        }
+        var method = testInfo.getTestMethod().orElse(null);
+        if (method == null) {
+            return null;
+        }
+        var withMockUser = method.getAnnotation(WithMockUser.class);
+        if (withMockUser == null) {
+            return null;
+        }
+        var username = withMockUser.username().isEmpty() ? withMockUser.value() : withMockUser.username();
+        if (username.isEmpty()) {
+            username = "user";
+        }
+        var authorities = Arrays.stream(withMockUser.roles())
+                .map(r -> new SimpleGrantedAuthority("ROLE_" + r))
+                .toList();
+        var userDetails = org.springframework.security.core.userdetails.User.builder()
+                .username(username)
+                .password("password")
+                .authorities(authorities)
+                .build();
+        return new UsernamePasswordAuthenticationToken(userDetails, null, authorities);
+    }
+
+    private void propagateSecurityContext(Authentication authentication) {
+        if (authentication != null) {
+            var fakeRequest = (FakeRequest) VaadinServletRequest.getCurrent().getRequest();
+            fakeRequest.setUserPrincipalInt(authentication);
+            fakeRequest.setUserInRole((principal, role) ->
+                    authentication.getAuthorities().stream()
+                            .anyMatch(a -> a.getAuthority().equals("ROLE_" + role)));
+        }
     }
 
     @AfterEach
     void tearDown() {
         MockVaadin.tearDown();
+        SecurityContextHolder.clearContext();
     }
 
     @Test
@@ -47,63 +97,20 @@ class RootUrlRedirectTest {
     }
 
     @Test
-    @WithMockUser
-    void shouldShowHomePageWhenAuthenticatedUserAccessesRootUrl() {
-        UI.getCurrent().navigate("");
-
-        var heading = _get(H1.class, spec -> spec.withText("Welcome user"));
-        assertThat(heading.getText()).contains("Welcome");
-    }
-
-    @Test
-    @WithMockUser(username = "test@example.com")
-    void shouldDisplayUserEmailWhenAuthenticated() {
-        UI.getCurrent().navigate("");
-
-        var heading = _get(H1.class, spec -> spec.withText("Welcome test@example.com"));
-        assertThat(heading.getText()).contains("test@example.com");
-    }
-
-    @Test
-    @WithMockUser
-    void shouldDisplayLogoutButtonWhenAuthenticated() {
-        UI.getCurrent().navigate("");
-
-        var button = _get(Button.class);
-        assertThat(button.getText()).isEqualTo("Logout");
-    }
-
-    @Test
-    @WithMockUser
-    void shouldHaveLogoutButtonThatNavigatesToLogoutEndpoint() {
-        UI.getCurrent().navigate("");
-
-        var button = _get(Button.class, spec -> spec.withText("Logout"));
-        assertThat(button.getText()).isEqualTo("Logout");
-
-        // The button should not throw NPE when clicked
-        // In production, it will navigate to /logout endpoint via setLocation()
-        // In Karibu tests, setLocation() doesn't actually navigate, but shouldn't error
-        org.junit.jupiter.api.Assertions.assertDoesNotThrow(() -> {
-            _click(button);
-        });
-    }
-
-    @Test
     @WithMockUser(roles = "SYSTEM_ADMIN")
-    void shouldHaveUserListLinkForAdminUsers() {
+    void shouldRedirectToCompetitionsForSystemAdmin() {
         UI.getCurrent().navigate("");
 
-        var button = _get(Button.class, spec -> spec.withText("Users"));
-        assertThat(button).isNotNull();
+        var location = UI.getCurrent().getInternals().getActiveViewLocation();
+        assertThat(location.getPath()).isEqualTo("competitions");
     }
 
     @Test
     @WithMockUser(roles = "USER")
-    void shouldNotShowUserListLinkForRegularUsers() {
+    void shouldRedirectToMyEntriesForRegularUser() {
         UI.getCurrent().navigate("");
 
-        var buttons = com.github.mvysny.kaributesting.v10.LocatorJ._find(Button.class);
-        assertThat(buttons).noneMatch(button -> "Users".equals(button.getText()));
+        var location = UI.getCurrent().getInternals().getActiveViewLocation();
+        assertThat(location.getPath()).isEqualTo("my-entries");
     }
 }

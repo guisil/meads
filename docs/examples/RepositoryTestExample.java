@@ -1,31 +1,30 @@
 // == RepositoryTestExample.java ==
 // JPA repository test with real PostgreSQL via Testcontainers.
 // USE WHEN: Testing persistence — saves, queries, schema correctness.
+// REFERENCE: EntryRepositoryTest.java, UserRepositoryTest.java
 
-package com.example.app.order;
+package app.meads.order;
 
-import com.example.app.TestcontainersConfiguration;
-import com.example.app.order.internal.OrderRepository;
+import app.meads.TestcontainersConfiguration;
+import app.meads.order.internal.OrderRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
-
-import java.util.UUID;
+import org.springframework.transaction.annotation.Transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@DataJpaTest
+@SpringBootTest
 @Import(TestcontainersConfiguration.class)
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Transactional
 class OrderRepositoryTest {
 
     @Autowired OrderRepository orderRepository;
 
     @Test
     void shouldSaveAndRetrieveOrder() {
-        var order = new Order(UUID.randomUUID(), OrderStatus.CREATED);
+        var order = new Order("Test order");
 
         orderRepository.save(order);
         var found = orderRepository.findById(order.getId());
@@ -36,9 +35,12 @@ class OrderRepositoryTest {
 
     @Test
     void shouldFindOrdersByStatus() {
-        orderRepository.save(new Order(UUID.randomUUID(), OrderStatus.CREATED));
-        orderRepository.save(new Order(UUID.randomUUID(), OrderStatus.CONFIRMED));
-        orderRepository.save(new Order(UUID.randomUUID(), OrderStatus.CREATED));
+        orderRepository.save(new Order("Order 1"));
+        orderRepository.save(new Order("Order 2"));
+
+        var confirmed = new Order("Order 3");
+        confirmed.confirm();
+        orderRepository.save(confirmed);
 
         var result = orderRepository.findByStatus(OrderStatus.CREATED);
 
@@ -52,5 +54,6 @@ class OrderRepositoryTest {
 // 3. Create Flyway migration → GREEN
 // 4. Refactor → all tests pass
 //
-// @DataJpaTest + Replace.NONE = uses Testcontainers PostgreSQL, not H2.
+// @SpringBootTest + @Transactional = full Spring context, real Testcontainers PostgreSQL.
 // Each test runs in a rolled-back transaction.
+// NOTE: NOT @DataJpaTest — this project uses @SpringBootTest for all repository tests.

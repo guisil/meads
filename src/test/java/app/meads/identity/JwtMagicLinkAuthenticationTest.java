@@ -11,9 +11,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
-import java.time.Duration;
-import java.util.UUID;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.Duration;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.authenticated;
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.unauthenticated;
@@ -34,6 +34,9 @@ class JwtMagicLinkAuthenticationTest {
     @Autowired
     UserRepository userRepository;
 
+    @Autowired
+    PasswordEncoder passwordEncoder;
+
     MockMvc mockMvc;
 
     @BeforeEach
@@ -48,7 +51,7 @@ class JwtMagicLinkAuthenticationTest {
     void shouldAuthenticateUserWhenValidJwtMagicLinkClicked() throws Exception {
         // Given — an active user exists and a JWT magic link is generated
         String email = "jwt-test@example.com";
-        var user = new User(UUID.randomUUID(), email, "JWT Test User", UserStatus.ACTIVE, Role.USER);
+        var user = new User(email, "JWT Test User", UserStatus.ACTIVE, Role.USER);
         userRepository.save(user);
 
         String link = jwtMagicLinkService.generateLink(email, Duration.ofDays(7));
@@ -74,7 +77,7 @@ class JwtMagicLinkAuthenticationTest {
     void shouldRejectAuthenticationWhenTokenIsExpired() throws Exception {
         // Given — a user exists and an expired token is generated
         String email = "expired-jwt@example.com";
-        var user = new User(UUID.randomUUID(), email, "Expired JWT User", UserStatus.ACTIVE, Role.USER);
+        var user = new User(email, "Expired JWT User", UserStatus.ACTIVE, Role.USER);
         userRepository.save(user);
 
         String link = jwtMagicLinkService.generateLink(email, Duration.ofSeconds(-1));
@@ -91,7 +94,7 @@ class JwtMagicLinkAuthenticationTest {
     void shouldActivatePendingUserWhenAuthenticatedViaJwtMagicLink() throws Exception {
         // Given — a pending user exists
         String email = "pending-jwt@example.com";
-        var user = new User(UUID.randomUUID(), email, "Pending JWT User", UserStatus.PENDING, Role.USER);
+        var user = new User(email, "Pending JWT User", UserStatus.PENDING, Role.USER);
         userRepository.save(user);
 
         String link = jwtMagicLinkService.generateLink(email, Duration.ofDays(7));
@@ -105,5 +108,23 @@ class JwtMagicLinkAuthenticationTest {
         // Then — user should now be ACTIVE
         var activatedUser = userRepository.findByEmail(email).orElseThrow();
         assertThat(activatedUser.getStatus()).isEqualTo(UserStatus.ACTIVE);
+    }
+
+    @Test
+    void shouldRejectMagicLinkWhenUserHasPassword() throws Exception {
+        // Given — a user with a password set
+        String email = "password-user@example.com";
+        var user = new User(email, "Password User", UserStatus.ACTIVE, Role.USER);
+        user.assignPasswordHash(passwordEncoder.encode("securepassword"));
+        userRepository.save(user);
+
+        String link = jwtMagicLinkService.generateLink(email, Duration.ofDays(7));
+        String token = link.substring(link.indexOf("token=") + "token=".length());
+
+        // When — the magic link is clicked
+        mockMvc.perform(get("/login/magic").param("token", token))
+                // Then — user should not be authenticated (redirected to login with error)
+                .andExpect(status().is3xxRedirection())
+                .andExpect(unauthenticated());
     }
 }

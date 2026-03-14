@@ -60,6 +60,7 @@ node_modules/
 **/frontend/index.html
 vite.generated.ts
 vite.config.ts.timestamp*
+src/main/bundles/
 
 # Spring Boot
 *.pid

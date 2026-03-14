@@ -10,7 +10,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
-import java.util.UUID;
 
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
@@ -27,8 +26,7 @@ class DatabaseUserDetailsServiceTest {
     void shouldReturnUserDetailsWhenUserExists() {
         // Arrange
         var user = new User(
-                UUID.randomUUID(),
-                "user@example.com",
+"user@example.com",
                 "Test User",
                 UserStatus.ACTIVE,
                 Role.USER
@@ -47,13 +45,12 @@ class DatabaseUserDetailsServiceTest {
     }
 
     @Test
-    void shouldReturnDisabledUserDetailsWhenUserIsDisabled() {
+    void shouldReturnDisabledUserDetailsWhenUserIsInactive() {
         // Arrange
         var user = new User(
-                UUID.randomUUID(),
-                "disabled@example.com",
+"disabled@example.com",
                 "Disabled User",
-                UserStatus.DISABLED,
+                UserStatus.INACTIVE,
                 Role.USER
         );
         given(userRepository.findByEmail("disabled@example.com")).willReturn(Optional.of(user));
@@ -69,8 +66,7 @@ class DatabaseUserDetailsServiceTest {
     void shouldReturnLockedUserDetailsWhenUserIsLocked() {
         // Arrange
         var user = new User(
-                UUID.randomUUID(),
-                "locked@example.com",
+"locked@example.com",
                 "Locked User",
                 UserStatus.LOCKED,
                 Role.USER
@@ -87,8 +83,8 @@ class DatabaseUserDetailsServiceTest {
     @Test
     void shouldReturnPasswordHashWhenUserHasPassword() {
         // Arrange
-        var user = new User(UUID.randomUUID(), "admin@example.com", "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
-        user.setPasswordHash("$2a$10$someBcryptHash");
+        var user = new User("admin@example.com", "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
+        user.assignPasswordHash("$2a$10$someBcryptHash");
         given(userRepository.findByEmail("admin@example.com")).willReturn(Optional.of(user));
 
         // Act
@@ -101,7 +97,7 @@ class DatabaseUserDetailsServiceTest {
     @Test
     void shouldReturnEmptyPasswordWhenUserHasNoPasswordHash() {
         // Arrange
-        var user = new User(UUID.randomUUID(), "user@example.com", "User", UserStatus.ACTIVE, Role.USER);
+        var user = new User("user@example.com", "User", UserStatus.ACTIVE, Role.USER);
         given(userRepository.findByEmail("user@example.com")).willReturn(Optional.of(user));
 
         // Act

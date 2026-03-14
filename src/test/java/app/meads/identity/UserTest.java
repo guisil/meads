@@ -1,9 +1,6 @@
 package app.meads.identity;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.security.core.GrantedAuthority;
-
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -13,7 +10,6 @@ class UserTest {
     void shouldHaveRoleWhenCreated() {
         // Arrange & Act
         var user = new User(
-                UUID.randomUUID(),
                 "test@example.com",
                 "Test User",
                 UserStatus.ACTIVE,
@@ -25,52 +21,23 @@ class UserTest {
     }
 
     @Test
-    void shouldReturnAuthoritiesWithRolePrefixForUser() {
-        // Arrange
+    void shouldGenerateIdWhenCreated() {
+        // Arrange & Act
         var user = new User(
-                UUID.randomUUID(),
-                "user@example.com",
-                "Regular User",
+                "test@example.com",
+                "Test User",
                 UserStatus.ACTIVE,
                 Role.USER
         );
 
-        // Act
-        var authorities = user.getAuthorities();
-
         // Assert
-        assertThat(authorities)
-                .hasSize(1)
-                .extracting(GrantedAuthority::getAuthority)
-                .containsExactly("ROLE_USER");
+        assertThat(user.getId()).isNotNull();
     }
 
     @Test
-    void shouldReturnAuthoritiesWithRolePrefixForSystemAdmin() {
+    void shouldTransitionToActiveWhenActivated() {
         // Arrange
         var user = new User(
-                UUID.randomUUID(),
-                "admin@example.com",
-                "System Admin",
-                UserStatus.ACTIVE,
-                Role.SYSTEM_ADMIN
-        );
-
-        // Act
-        var authorities = user.getAuthorities();
-
-        // Assert
-        assertThat(authorities)
-                .hasSize(1)
-                .extracting(GrantedAuthority::getAuthority)
-                .containsExactly("ROLE_SYSTEM_ADMIN");
-    }
-
-    @Test
-    void shouldTransitionFromPendingToActiveWhenActivated() {
-        // Arrange
-        var user = new User(
-                UUID.randomUUID(),
                 "pending@example.com",
                 "Pending User",
                 UserStatus.PENDING,
@@ -85,42 +52,9 @@ class UserTest {
     }
 
     @Test
-    void shouldThrowWhenActivatingDisabledUser() {
-        // Arrange
-        var user = new User(
-                UUID.randomUUID(),
-                "disabled@example.com",
-                "Disabled User",
-                UserStatus.DISABLED,
-                Role.USER
-        );
-
-        // Act & Assert
-        assertThatThrownBy(user::activate)
-                .isInstanceOf(IllegalStateException.class);
-    }
-
-    @Test
-    void shouldThrowWhenActivatingLockedUser() {
-        // Arrange
-        var user = new User(
-                UUID.randomUUID(),
-                "locked@example.com",
-                "Locked User",
-                UserStatus.LOCKED,
-                Role.USER
-        );
-
-        // Act & Assert
-        assertThatThrownBy(user::activate)
-                .isInstanceOf(IllegalStateException.class);
-    }
-
-    @Test
     void shouldRemainActiveWhenActivatingActiveUser() {
         // Arrange
         var user = new User(
-                UUID.randomUUID(),
                 "active@example.com",
                 "Active User",
                 UserStatus.ACTIVE,
@@ -135,10 +69,57 @@ class UserTest {
     }
 
     @Test
+    void shouldTransitionToInactiveWhenDeactivated() {
+        // Arrange
+        var user = new User(
+                "active@example.com",
+                "Active User",
+                UserStatus.ACTIVE,
+                Role.USER
+        );
+
+        // Act
+        user.deactivate();
+
+        // Assert
+        assertThat(user.getStatus()).isEqualTo(UserStatus.INACTIVE);
+    }
+
+    @Test
+    void shouldUpdateMeaderyName() {
+        var user = new User("user@example.com", "Test User", UserStatus.ACTIVE, Role.USER);
+
+        user.updateMeaderyName("Golden Meadery");
+
+        assertThat(user.getMeaderyName()).isEqualTo("Golden Meadery");
+    }
+
+    @Test
+    void shouldHaveNullMeaderyNameByDefault() {
+        var user = new User("user@example.com", "Test User", UserStatus.ACTIVE, Role.USER);
+
+        assertThat(user.getMeaderyName()).isNull();
+    }
+
+    @Test
+    void shouldUpdateCountry() {
+        var user = new User("test@example.com", "Test", UserStatus.ACTIVE, Role.USER);
+        user.updateCountry("PT");
+        assertThat(user.getCountry()).isEqualTo("PT");
+    }
+
+    @Test
+    void shouldAllowNullCountry() {
+        var user = new User("test@example.com", "Test", UserStatus.ACTIVE, Role.USER);
+        user.updateCountry("PT");
+        user.updateCountry(null);
+        assertThat(user.getCountry()).isNull();
+    }
+
+    @Test
     void shouldUpdateDetailsWhenValidDataProvided() {
         // Arrange
         var user = new User(
-                UUID.randomUUID(),
                 "user@example.com",
                 "Original Name",
                 UserStatus.PENDING,

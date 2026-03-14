@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.mockito.ArgumentMatchers.eq;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -29,38 +31,41 @@ class UserServiceTest {
     UserRepository userRepository;
 
     @Mock
+    JwtMagicLinkService jwtMagicLinkService;
+
+    @Mock
     PasswordEncoder passwordEncoder;
 
     @Test
-    void shouldSoftDeleteUserWhenStatusIsNotDisabled() {
+    void shouldDeactivateUserWhenStatusIsNotInactive() {
         // Arrange
-        UUID userId = UUID.randomUUID();
-        User user = new User(userId, "user@example.com", "Test User", UserStatus.ACTIVE, Role.USER);
+        User user = new User("user@example.com", "Test User", UserStatus.ACTIVE, Role.USER);
+        UUID userId = user.getId();
         String currentUserEmail = "admin@example.com";
 
         given(userRepository.findById(userId)).willReturn(Optional.of(user));
         given(userRepository.save(any(User.class))).willAnswer(inv -> inv.getArgument(0));
 
         // Act
-        userService.deleteUser(userId, currentUserEmail);
+        userService.removeUser(userId, currentUserEmail);
 
         // Assert
-        assertThat(user.getStatus()).isEqualTo(UserStatus.DISABLED);
+        assertThat(user.getStatus()).isEqualTo(UserStatus.INACTIVE);
         then(userRepository).should().save(user);
         then(userRepository).shouldHaveNoMoreInteractions();
     }
 
     @Test
-    void shouldHardDeleteUserWhenStatusIsDisabled() {
+    void shouldHardDeleteUserWhenStatusIsInactive() {
         // Arrange
-        UUID userId = UUID.randomUUID();
-        User user = new User(userId, "user@example.com", "Test User", UserStatus.DISABLED, Role.USER);
+        User user = new User("user@example.com", "Test User", UserStatus.INACTIVE, Role.USER);
+        UUID userId = user.getId();
         String currentUserEmail = "admin@example.com";
 
         given(userRepository.findById(userId)).willReturn(Optional.of(user));
 
         // Act
-        userService.deleteUser(userId, currentUserEmail);
+        userService.removeUser(userId, currentUserEmail);
 
         // Assert
         then(userRepository).should().delete(user);
@@ -68,18 +73,18 @@ class UserServiceTest {
     }
 
     @Test
-    void shouldRejectDeletingOwnAccount() {
+    void shouldRejectRemovingOwnAccount() {
         // Arrange
-        UUID userId = UUID.randomUUID();
-        User user = new User(userId, "user@example.com", "Test User", UserStatus.ACTIVE, Role.USER);
+        User user = new User("user@example.com", "Test User", UserStatus.ACTIVE, Role.USER);
+        UUID userId = user.getId();
         String currentUserEmail = "user@example.com";
 
         given(userRepository.findById(userId)).willReturn(Optional.of(user));
 
         // Act & Assert
-        assertThatThrownBy(() -> userService.deleteUser(userId, currentUserEmail))
+        assertThatThrownBy(() -> userService.removeUser(userId, currentUserEmail))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Cannot disable or delete your own account");
+                .hasMessageContaining("Cannot deactivate or delete your own account");
     }
 
     // --- createUser tests ---
@@ -119,8 +124,8 @@ class UserServiceTest {
 
     @Test
     void shouldUpdateUserSuccessfully() {
-        UUID userId = UUID.randomUUID();
-        User user = new User(userId, "user@example.com", "Old Name", UserStatus.ACTIVE, Role.USER);
+        User user = new User("user@example.com", "Old Name", UserStatus.ACTIVE, Role.USER);
+        UUID userId = user.getId();
         String currentUserEmail = "admin@example.com";
         given(userRepository.findById(userId)).willReturn(Optional.of(user));
         given(userRepository.save(any(User.class))).willAnswer(inv -> inv.getArgument(0));
@@ -134,8 +139,8 @@ class UserServiceTest {
 
     @Test
     void shouldRejectSelfRoleChange() {
-        UUID userId = UUID.randomUUID();
-        User user = new User(userId, "admin@example.com", "Admin", UserStatus.ACTIVE, Role.USER);
+        User user = new User("admin@example.com", "Admin", UserStatus.ACTIVE, Role.USER);
+        UUID userId = user.getId();
         given(userRepository.findById(userId)).willReturn(Optional.of(user));
 
         assertThatThrownBy(() -> userService.updateUser(userId, "Admin", Role.SYSTEM_ADMIN, UserStatus.ACTIVE, "admin@example.com"))
@@ -145,11 +150,11 @@ class UserServiceTest {
 
     @Test
     void shouldRejectSelfStatusChange() {
-        UUID userId = UUID.randomUUID();
-        User user = new User(userId, "admin@example.com", "Admin", UserStatus.ACTIVE, Role.USER);
+        User user = new User("admin@example.com", "Admin", UserStatus.ACTIVE, Role.USER);
+        UUID userId = user.getId();
         given(userRepository.findById(userId)).willReturn(Optional.of(user));
 
-        assertThatThrownBy(() -> userService.updateUser(userId, "Admin", Role.USER, UserStatus.DISABLED, "admin@example.com"))
+        assertThatThrownBy(() -> userService.updateUser(userId, "Admin", Role.USER, UserStatus.INACTIVE, "admin@example.com"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Cannot change your own status");
     }
@@ -159,21 +164,21 @@ class UserServiceTest {
     @Test
     void shouldFindAllUsers() {
         var users = List.of(
-                new User(UUID.randomUUID(), "a@example.com", "A", UserStatus.ACTIVE, Role.USER),
-                new User(UUID.randomUUID(), "b@example.com", "B", UserStatus.PENDING, Role.SYSTEM_ADMIN)
+                new User("a@example.com", "A", UserStatus.ACTIVE, Role.USER),
+                new User("b@example.com", "B", UserStatus.PENDING, Role.SYSTEM_ADMIN)
         );
-        given(userRepository.findAll()).willReturn(users);
+        given(userRepository.findAll(any(org.springframework.data.domain.Sort.class))).willReturn(users);
 
         List<User> result = userService.findAll();
 
         assertThat(result).hasSize(2);
-        then(userRepository).should().findAll();
+        then(userRepository).should().findAll(any(org.springframework.data.domain.Sort.class));
     }
 
     @Test
     void shouldFindUserById() {
-        UUID userId = UUID.randomUUID();
-        User user = new User(userId, "user@example.com", "User", UserStatus.ACTIVE, Role.USER);
+        User user = new User("user@example.com", "User", UserStatus.ACTIVE, Role.USER);
+        UUID userId = user.getId();
         given(userRepository.findById(userId)).willReturn(Optional.of(user));
 
         User result = userService.findById(userId);
@@ -195,8 +200,8 @@ class UserServiceTest {
 
     @Test
     void shouldReturnTrueWhenEditingSelf() {
-        UUID userId = UUID.randomUUID();
-        User user = new User(userId, "admin@example.com", "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
+        User user = new User("admin@example.com", "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
+        UUID userId = user.getId();
         given(userRepository.findById(userId)).willReturn(Optional.of(user));
 
         boolean result = userService.isEditingSelf(userId, "admin@example.com");
@@ -206,8 +211,8 @@ class UserServiceTest {
 
     @Test
     void shouldReturnFalseWhenNotEditingSelf() {
-        UUID userId = UUID.randomUUID();
-        User user = new User(userId, "user@example.com", "User", UserStatus.ACTIVE, Role.USER);
+        User user = new User("user@example.com", "User", UserStatus.ACTIVE, Role.USER);
+        UUID userId = user.getId();
         given(userRepository.findById(userId)).willReturn(Optional.of(user));
 
         boolean result = userService.isEditingSelf(userId, "other@example.com");
@@ -215,13 +220,55 @@ class UserServiceTest {
         assertThat(result).isFalse();
     }
 
+    // --- findAllByIds ---
+
+    @Test
+    void shouldFindAllUsersByIds() {
+        var user1 = new User("a@example.com", "A", UserStatus.ACTIVE, Role.USER);
+        var user2 = new User("b@example.com", "B", UserStatus.ACTIVE, Role.USER);
+        var ids = List.of(user1.getId(), user2.getId());
+        given(userRepository.findAllById(ids)).willReturn(List.of(user1, user2));
+
+        var result = userService.findAllByIds(ids);
+
+        assertThat(result).hasSize(2);
+        then(userRepository).should().findAllById(ids);
+    }
+
+    // --- findOrCreateByEmail tests ---
+
+    @Test
+    void shouldReturnExistingUserWhenFindOrCreate() {
+        var existing = new User("existing@example.com", "Existing User", UserStatus.ACTIVE, Role.USER);
+        given(userRepository.findByEmail("existing@example.com")).willReturn(Optional.of(existing));
+
+        var result = userService.findOrCreateByEmail("existing@example.com");
+
+        assertThat(result).isSameAs(existing);
+        then(userRepository).should(never()).save(any());
+    }
+
+    @Test
+    void shouldCreatePendingUserWhenFindOrCreate() {
+        given(userRepository.findByEmail("new@example.com")).willReturn(Optional.empty());
+        given(userRepository.save(any(User.class))).willAnswer(inv -> inv.getArgument(0));
+
+        var result = userService.findOrCreateByEmail("new@example.com");
+
+        assertThat(result.getEmail()).isEqualTo("new@example.com");
+        assertThat(result.getName()).isEqualTo("new@example.com");
+        assertThat(result.getStatus()).isEqualTo(UserStatus.PENDING);
+        assertThat(result.getRole()).isEqualTo(Role.USER);
+        then(userRepository).should().save(any(User.class));
+    }
+
     // --- setPassword tests ---
 
     @Test
     void shouldSetPasswordHashOnUser() {
         // Arrange
-        UUID userId = UUID.randomUUID();
-        User user = new User(userId, "admin@example.com", "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
+        User user = new User("admin@example.com", "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
+        UUID userId = user.getId();
         given(userRepository.findById(userId)).willReturn(Optional.of(user));
         given(passwordEncoder.encode("rawPassword")).willReturn("$2a$10$encodedHash");
         given(userRepository.save(any(User.class))).willAnswer(inv -> inv.getArgument(0));
@@ -234,6 +281,68 @@ class UserServiceTest {
         then(userRepository).should().save(user);
     }
 
+    // --- updateProfile tests ---
+
+    @Test
+    void shouldUpdateProfile() {
+        var user = new User("test@example.com", "Old Name", UserStatus.ACTIVE, Role.USER);
+        given(userRepository.findById(user.getId())).willReturn(Optional.of(user));
+        given(userRepository.save(any(User.class))).willAnswer(i -> i.getArgument(0));
+
+        var result = userService.updateProfile(user.getId(), "New Name", "My Meadery", "PT");
+
+        assertThat(result.getName()).isEqualTo("New Name");
+        assertThat(result.getMeaderyName()).isEqualTo("My Meadery");
+        assertThat(result.getCountry()).isEqualTo("PT");
+    }
+
+    @Test
+    void shouldRejectInvalidCountryCode() {
+        var userId = UUID.randomUUID();
+
+        assertThatThrownBy(() -> userService.updateProfile(userId, "Name", null, "XX"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("country code");
+    }
+
+    @Test
+    void shouldAllowNullCountryInProfile() {
+        var user = new User("test@example.com", "Name", UserStatus.ACTIVE, Role.USER);
+        given(userRepository.findById(user.getId())).willReturn(Optional.of(user));
+        given(userRepository.save(any(User.class))).willAnswer(i -> i.getArgument(0));
+
+        var result = userService.updateProfile(user.getId(), "Name", null, null);
+
+        assertThat(result.getCountry()).isNull();
+        assertThat(result.getMeaderyName()).isNull();
+    }
+
+    // --- updateMeaderyName tests ---
+
+    @Test
+    void shouldUpdateMeaderyName() {
+        var user = new User("user@example.com", "User", UserStatus.ACTIVE, Role.USER);
+        given(userRepository.findById(user.getId())).willReturn(Optional.of(user));
+        given(userRepository.save(any(User.class))).willAnswer(inv -> inv.getArgument(0));
+
+        var result = userService.updateMeaderyName(user.getId(), "Golden Meadery");
+
+        assertThat(result.getMeaderyName()).isEqualTo("Golden Meadery");
+        then(userRepository).should().save(user);
+    }
+
+    @Test
+    void shouldRejectPasswordShorterThanEightCharacters() {
+        UUID userId = UUID.randomUUID();
+
+        assertThatThrownBy(() -> userService.setPassword(userId, "short"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("at least 8 characters");
+
+        then(passwordEncoder).shouldHaveNoInteractions();
+        then(userRepository).shouldHaveNoInteractions();
+    }
+
     @Test
     void shouldThrowWhenSettingPasswordForNonExistentUser() {
         // Arrange
@@ -244,5 +353,51 @@ class UserServiceTest {
         assertThatThrownBy(() -> userService.setPassword(userId, "rawPassword"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("User not found");
+    }
+
+    // --- setPasswordByToken tests ---
+
+    @Test
+    void shouldSetPasswordByToken() {
+        User user = new User("admin@example.com", "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
+        given(jwtMagicLinkService.extractEmail("valid-token")).willReturn("admin@example.com");
+        given(userRepository.findByEmail("admin@example.com")).willReturn(Optional.of(user));
+        given(passwordEncoder.encode("newPassword123")).willReturn("$2a$10$encoded");
+        given(userRepository.save(any(User.class))).willAnswer(inv -> inv.getArgument(0));
+
+        userService.setPasswordByToken("valid-token", "newPassword123");
+
+        assertThat(user.getPasswordHash()).isEqualTo("$2a$10$encoded");
+        then(userRepository).should().save(user);
+    }
+
+    @Test
+    void shouldRejectShortPasswordByToken() {
+        given(jwtMagicLinkService.extractEmail("valid-token")).willReturn("admin@example.com");
+
+        assertThatThrownBy(() -> userService.setPasswordByToken("valid-token", "short"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("at least 8 characters");
+
+        then(userRepository).should(never()).save(any());
+    }
+
+    // --- hasPassword tests ---
+
+    @Test
+    void shouldReturnTrueWhenUserHasPassword() {
+        User user = new User("admin@example.com", "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
+        user.assignPasswordHash("$2a$10$someHash");
+        given(userRepository.findById(user.getId())).willReturn(Optional.of(user));
+
+        assertThat(userService.hasPassword(user.getId())).isTrue();
+    }
+
+    @Test
+    void shouldReturnFalseWhenUserHasNoPassword() {
+        User user = new User("user@example.com", "User", UserStatus.ACTIVE, Role.USER);
+        given(userRepository.findById(user.getId())).willReturn(Optional.of(user));
+
+        assertThat(userService.hasPassword(user.getId())).isFalse();
     }
 }

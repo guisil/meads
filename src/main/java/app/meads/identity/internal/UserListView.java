@@ -1,149 +1,156 @@
 package app.meads.identity.internal;
 
 import app.meads.MainLayout;
-import app.meads.identity.JwtMagicLinkService;
+import app.meads.identity.EmailService;
 import app.meads.identity.Role;
 import app.meads.identity.User;
 import app.meads.identity.UserService;
 import app.meads.identity.UserStatus;
 import jakarta.validation.ConstraintViolationException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
-import java.time.Duration;
+import java.util.Arrays;
+import java.util.Locale;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.data.value.ValueChangeMode;
+import com.vaadin.flow.router.BeforeEnterEvent;
+import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.spring.security.AuthenticationContext;
-import jakarta.annotation.security.RolesAllowed;
+import jakarta.annotation.security.PermitAll;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.util.StringUtils;
 
+@Slf4j
 @Route(value = "users", layout = MainLayout.class)
-@RolesAllowed("SYSTEM_ADMIN")
-public class UserListView extends VerticalLayout {
-
-    private static final Logger log = LoggerFactory.getLogger(UserListView.class);
+@PermitAll
+public class UserListView extends VerticalLayout implements BeforeEnterObserver {
 
     private final UserService userService;
-    private final JwtMagicLinkService jwtMagicLinkService;
+    private final EmailService emailService;
     private final transient AuthenticationContext authenticationContext;
     private final Grid<User> grid;
 
-    public UserListView(UserService userService, JwtMagicLinkService jwtMagicLinkService, AuthenticationContext authenticationContext) {
+    public UserListView(UserService userService, EmailService emailService, AuthenticationContext authenticationContext) {
         this.userService = userService;
-        this.jwtMagicLinkService = jwtMagicLinkService;
+        this.emailService = emailService;
         this.authenticationContext = authenticationContext;
         add(new H1("Users"));
 
+        TextField filterField = new TextField();
+        filterField.setPlaceholder("Filter by email or name...");
+        filterField.setValueChangeMode(ValueChangeMode.EAGER);
+        filterField.setWidthFull();
+        filterField.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
+        filterField.setClearButtonVisible(true);
+
         Button createUserButton = new Button("Create User");
         createUserButton.addClickListener(e -> openCreateUserDialog());
-        add(createUserButton);
+
+        var toolbar = new HorizontalLayout(filterField, createUserButton);
+        toolbar.setWidthFull();
+        toolbar.setFlexGrow(1, filterField);
+        add(toolbar);
 
         grid = new Grid<>(User.class, false);
-        grid.addColumn(User::getEmail).setHeader("Email");
-        grid.addColumn(User::getName).setHeader("Name");
-        grid.addColumn(User::getRole).setHeader("Role");
-        grid.addColumn(User::getStatus).setHeader("Status");
+        grid.setAllRowsVisible(true);
+        grid.addColumn(User::getName).setHeader("Name").setSortable(true).setFlexGrow(2);
+        grid.addColumn(User::getEmail).setHeader("Email").setSortable(true).setFlexGrow(3);
+        grid.addColumn(user -> user.getMeaderyName() != null ? user.getMeaderyName() : "—")
+                .setHeader("Meadery").setSortable(true).setFlexGrow(2);
+        grid.addColumn(user -> {
+            if (user.getCountry() == null) return "—";
+            return new Locale("", user.getCountry()).getDisplayCountry(Locale.ENGLISH);
+        }).setHeader("Country").setSortable(true).setAutoWidth(true);
+        grid.addColumn(User::getRole).setHeader("Role").setSortable(true).setAutoWidth(true);
+        grid.addColumn(User::getStatus).setHeader("Status").setSortable(true).setAutoWidth(true);
         grid.addComponentColumn(user -> {
-            Button editButton = new Button("Edit");
+            Button editButton = new Button(new Icon(VaadinIcon.EDIT));
+            editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            editButton.setAriaLabel("Edit");
+            editButton.setTooltipText("Edit");
             editButton.addClickListener(e -> openEditDialog(user));
 
-            String deleteButtonText = user.getStatus() == UserStatus.DISABLED ? "Delete" : "Disable";
-            Button deleteButton = new Button(deleteButtonText);
+            boolean isInactive = user.getStatus() == UserStatus.INACTIVE;
+            Button deleteButton = new Button(new Icon(isInactive ? VaadinIcon.TRASH : VaadinIcon.BAN));
+            deleteButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            deleteButton.setAriaLabel(isInactive ? "Delete" : "Deactivate");
+            deleteButton.setTooltipText(isInactive ? "Delete" : "Deactivate");
             deleteButton.addClickListener(e -> handleDeleteClick(user));
 
-            Button magicLinkButton = new Button("Send Magic Link");
-            magicLinkButton.addClickListener(e -> sendMagicLink(user));
+            HorizontalLayout actions = new HorizontalLayout(editButton, deleteButton);
 
-            HorizontalLayout actions = new HorizontalLayout(editButton, deleteButton, magicLinkButton);
-            actions.setSpacing(true);
+            if (user.getPasswordHash() == null) {
+                Button loginLinkButton = new Button(new Icon(VaadinIcon.ENVELOPE));
+                loginLinkButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+                loginLinkButton.setAriaLabel("Send Login Link");
+                loginLinkButton.setTooltipText("Send Login Link");
+                loginLinkButton.addClickListener(e -> sendMagicLink(user));
+                actions.add(loginLinkButton);
+            }
+
+            Button passwordResetButton = new Button(new Icon(VaadinIcon.KEY));
+            passwordResetButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            passwordResetButton.setAriaLabel("Password Reset");
+            passwordResetButton.setTooltipText("Password Reset");
+            passwordResetButton.addClickListener(e -> sendPasswordResetLink(user));
+            actions.add(passwordResetButton);
             return actions;
-        }).setHeader("Actions");
+        }).setHeader("Actions").setAutoWidth(true);
 
-        grid.setItems(userService.findAll());
+        grid.getColumns().forEach(col -> col.setResizable(true));
+
+        var dataView = grid.setItems(userService.findAll());
+        filterField.addValueChangeListener(e -> {
+            var filterString = e.getValue().toLowerCase();
+            if (filterString.isBlank()) {
+                dataView.removeFilters();
+            } else {
+                dataView.setFilter(user ->
+                        user.getEmail().toLowerCase().contains(filterString) ||
+                        user.getName().toLowerCase().contains(filterString));
+            }
+        });
 
         add(grid);
     }
 
-    public void openEditDialog(User user) {
-        Dialog dialog = new Dialog();
-
-        TextField nameField = new TextField("Name");
-        nameField.setValue(user.getName());
-        nameField.setRequired(true);
-
-        Select<Role> roleSelect = new Select<>();
-        roleSelect.setLabel("Role");
-        roleSelect.setItems(Role.values());
-        roleSelect.setValue(user.getRole());
-
-        Select<UserStatus> statusSelect = new Select<>();
-        statusSelect.setLabel("Status");
-        statusSelect.setItems(UserStatus.values());
-        statusSelect.setValue(user.getStatus());
-
-        // Prevent users from editing their own role or status
-        String currentUserEmail = authenticationContext.getAuthenticatedUser(UserDetails.class)
-                .map(UserDetails::getUsername)
-                .orElse("");
-        boolean isEditingSelf = userService.isEditingSelf(user.getId(), currentUserEmail);
-        if (isEditingSelf) {
-            roleSelect.setEnabled(false);
-            statusSelect.setEnabled(false);
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        var isAdmin = authenticationContext.getAuthenticatedUser(UserDetails.class)
+                .map(user -> user.getAuthorities().stream()
+                        .anyMatch(a -> a.getAuthority().equals("ROLE_SYSTEM_ADMIN")))
+                .orElse(false);
+        if (!isAdmin) {
+            event.forwardTo("");
         }
+    }
 
-        Button saveButton = new Button("Save");
-        saveButton.addClickListener(e -> {
-            // Validate name field is not empty
-            if (nameField.getValue().isBlank()) {
-                nameField.setInvalid(true);
-                nameField.setErrorMessage("Name is required");
-                return;
-            }
-
-            try {
-                userService.updateUser(
-                    user.getId(),
-                    nameField.getValue(),
-                    roleSelect.getValue(),
-                    statusSelect.getValue(),
-                    currentUserEmail
-                );
-                grid.setItems(userService.findAll());
-                var notification = Notification.show("User saved successfully");
-                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-                dialog.close();
-            } catch (Exception ex) {
-                nameField.setInvalid(true);
-                nameField.setErrorMessage("Failed to save user. Please try again.");
-            }
-        });
-
-        Button cancelButton = new Button("Cancel");
-        cancelButton.addClickListener(e -> dialog.close());
-
-        VerticalLayout formLayout = new VerticalLayout(nameField, roleSelect, statusSelect, saveButton, cancelButton);
-        dialog.add(formLayout);
-
-        dialog.open();
+    public void openEditDialog(User user) {
+        openUserDialog(user);
     }
 
     public void handleDeleteClick(User user) {
-        if (user.getStatus() == UserStatus.DISABLED) {
+        if (user.getStatus() == UserStatus.INACTIVE) {
             // Hard delete - show confirmation dialog
             showDeleteConfirmationDialog(user);
         } else {
             // Soft delete - no confirmation needed
             try {
-                deleteUser(user);
+                removeUser(user);
             } catch (IllegalArgumentException ex) {
                 Notification.show(ex.getMessage());
             }
@@ -161,7 +168,7 @@ public class UserListView extends VerticalLayout {
         Button confirmButton = new Button("Confirm");
         confirmButton.addClickListener(e -> {
             try {
-                deleteUser(user);
+                removeUser(user);
                 dialog.close();
             } catch (IllegalArgumentException ex) {
                 Notification.show(ex.getMessage());
@@ -172,91 +179,162 @@ public class UserListView extends VerticalLayout {
         Button cancelButton = new Button("Cancel");
         cancelButton.addClickListener(e -> dialog.close());
 
-        HorizontalLayout buttons = new HorizontalLayout(confirmButton, cancelButton);
-        content.add(buttons);
-
         dialog.add(content);
+        dialog.getFooter().add(cancelButton, confirmButton);
         dialog.open();
     }
 
-    public void deleteUser(User user) {
-        String currentUserEmail = authenticationContext.getAuthenticatedUser(UserDetails.class)
-                .map(UserDetails::getUsername)
-                .orElse("");
+    public void removeUser(User user) {
+        String currentUserEmail = getCurrentUserEmail();
 
-        boolean isSoftDelete = user.getStatus() != UserStatus.DISABLED;
-        userService.deleteUser(user.getId(), currentUserEmail);
+        boolean isSoftDelete = user.getStatus() != UserStatus.INACTIVE;
+        userService.removeUser(user.getId(), currentUserEmail);
         grid.setItems(userService.findAll());
-        var notification = Notification.show(isSoftDelete ? "User disabled successfully" : "User deleted successfully");
+        var notification = Notification.show(isSoftDelete ? "User deactivated successfully" : "User deleted successfully");
         notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
     }
 
     public void sendMagicLink(User user) {
-        String link = jwtMagicLinkService.generateLink(user.getEmail(), Duration.ofDays(7));
-        log.info("\n\n\tMagic link for {}: {}\n", user.getEmail(), link);
-        var notification = Notification.show("Magic link sent successfully");
+        emailService.sendMagicLink(user.getEmail());
+        var notification = Notification.show("Login link sent successfully");
+        notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+    }
+
+    public void sendPasswordResetLink(User user) {
+        emailService.sendPasswordReset(user.getEmail());
+        var notification = Notification.show("Password reset link sent successfully");
         notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
     }
 
     public void openCreateUserDialog() {
+        openUserDialog(null);
+    }
+
+    private void openUserDialog(User existingUser) {
         Dialog dialog = new Dialog();
+        boolean isCreate = existingUser == null;
 
         EmailField emailField = new EmailField("Email");
-        emailField.setRequired(true);
+        emailField.setMaxLength(255);
+        if (isCreate) {
+            emailField.setRequired(true);
+        } else {
+            emailField.setValue(existingUser.getEmail());
+            emailField.setReadOnly(true);
+        }
 
         TextField nameField = new TextField("Name");
         nameField.setRequired(true);
+        nameField.setMaxLength(255);
 
         Select<Role> roleSelect = new Select<>();
         roleSelect.setLabel("Role");
         roleSelect.setItems(Role.values());
-        roleSelect.setValue(Role.USER);
 
-        Select<UserStatus> statusSelect = new Select<>();
-        statusSelect.setLabel("Status");
-        statusSelect.setItems(UserStatus.values());
-        statusSelect.setValue(UserStatus.PENDING);
+        var meaderyField = new TextField("Meadery Name");
+        meaderyField.setWidthFull();
+        meaderyField.setMaxLength(255);
+        if (!isCreate && existingUser.getMeaderyName() != null) {
+            meaderyField.setValue(existingUser.getMeaderyName());
+        }
 
+        var countryCombo = new ComboBox<String>("Country");
+        var countries = Arrays.stream(Locale.getISOCountries())
+                .sorted((a, b) -> new Locale("", a).getDisplayCountry(Locale.ENGLISH)
+                        .compareTo(new Locale("", b).getDisplayCountry(Locale.ENGLISH)))
+                .toList();
+        countryCombo.setItems(countries);
+        countryCombo.setItemLabelGenerator(code ->
+                new Locale("", code).getDisplayCountry(Locale.ENGLISH));
+        countryCombo.setClearButtonVisible(true);
+        countryCombo.setWidthFull();
+        if (!isCreate && existingUser.getCountry() != null) {
+            countryCombo.setValue(existingUser.getCountry());
+        }
+
+        Select<UserStatus> statusSelect = null;
+
+        if (isCreate) {
+            roleSelect.setValue(Role.USER);
+        } else {
+            statusSelect = new Select<>();
+            statusSelect.setLabel("Status");
+            statusSelect.setItems(UserStatus.values());
+
+            nameField.setValue(existingUser.getName());
+            roleSelect.setValue(existingUser.getRole());
+            statusSelect.setValue(existingUser.getStatus());
+
+            String currentUserEmail = getCurrentUserEmail();
+            if (userService.isEditingSelf(existingUser.getId(), currentUserEmail)) {
+                roleSelect.setEnabled(false);
+                statusSelect.setEnabled(false);
+            }
+        }
+
+        var statusSelectRef = statusSelect;
         Button saveButton = new Button("Save");
         saveButton.addClickListener(e -> {
-            // Validate email field is not empty
-            if (emailField.getValue().isBlank()) {
+            if (isCreate && !StringUtils.hasText(emailField.getValue())) {
                 emailField.setInvalid(true);
                 emailField.setErrorMessage("Email is required");
                 return;
             }
-
-            // Validate name field is not empty
-            if (nameField.getValue().isBlank()) {
+            if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
                 nameField.setErrorMessage("Name is required");
                 return;
             }
-
-            // Validate role is selected
-            if (roleSelect.isEmpty()) {
+            if (isCreate && roleSelect.isEmpty()) {
                 roleSelect.setInvalid(true);
                 roleSelect.setErrorMessage("Role is required");
                 return;
             }
 
             try {
-                userService.createUser(
-                    emailField.getValue(),
-                    nameField.getValue(),
-                    statusSelect.getValue(),
-                    roleSelect.getValue()
-                );
+                User savedUser;
+                if (isCreate) {
+                    savedUser = userService.createUser(
+                        emailField.getValue(),
+                        nameField.getValue(),
+                        UserStatus.PENDING,
+                        roleSelect.getValue()
+                    );
+                    var meadery = meaderyField.getValue();
+                    userService.updateProfile(savedUser.getId(), savedUser.getName(),
+                            meadery != null && !meadery.isBlank() ? meadery.trim() : null,
+                            countryCombo.getValue());
+                } else {
+                    savedUser = userService.updateUser(
+                        existingUser.getId(),
+                        nameField.getValue(),
+                        roleSelect.getValue(),
+                        statusSelectRef.getValue(),
+                        getCurrentUserEmail()
+                    );
+                    var meadery = meaderyField.getValue();
+                    userService.updateProfile(existingUser.getId(), nameField.getValue(),
+                            meadery != null && !meadery.isBlank() ? meadery.trim() : null,
+                            countryCombo.getValue());
+                }
                 grid.setItems(userService.findAll());
-                var notification = Notification.show("User created successfully");
+                var notification = Notification.show(isCreate ? "User created successfully" : "User saved successfully");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                generatePasswordSetupLinkIfNeeded(savedUser);
                 dialog.close();
             } catch (IllegalArgumentException ex) {
-                emailField.setInvalid(true);
-                emailField.setErrorMessage(ex.getMessage());
+                if (isCreate) {
+                    emailField.setInvalid(true);
+                    emailField.setErrorMessage(ex.getMessage());
+                } else {
+                    nameField.setInvalid(true);
+                    nameField.setErrorMessage("Failed to save user. Please try again.");
+                }
             } catch (ConstraintViolationException ex) {
-                emailField.setInvalid(true);
-                emailField.setErrorMessage("Please enter a valid email address");
+                if (isCreate) {
+                    emailField.setInvalid(true);
+                    emailField.setErrorMessage("Please enter a valid email address");
+                }
             } catch (Exception ex) {
                 Notification.show("Failed to save user. Please try again.");
             }
@@ -265,9 +343,28 @@ public class UserListView extends VerticalLayout {
         Button cancelButton = new Button("Cancel");
         cancelButton.addClickListener(e -> dialog.close());
 
-        VerticalLayout formLayout = new VerticalLayout(emailField, nameField, roleSelect, statusSelect, saveButton, cancelButton);
+        VerticalLayout formLayout = new VerticalLayout();
+        formLayout.add(emailField, nameField, meaderyField, countryCombo, roleSelect);
+        if (statusSelect != null) {
+            formLayout.add(statusSelect);
+        }
+        var buttonRow = new HorizontalLayout(cancelButton, saveButton);
+        formLayout.add(buttonRow);
         dialog.add(formLayout);
 
         dialog.open();
+    }
+
+    private void generatePasswordSetupLinkIfNeeded(User user) {
+        if (user.getRole() == Role.SYSTEM_ADMIN && !userService.hasPassword(user.getId())) {
+            emailService.sendPasswordReset(user.getEmail());
+            Notification.show("Password setup link sent successfully");
+        }
+    }
+
+    private String getCurrentUserEmail() {
+        return authenticationContext.getAuthenticatedUser(UserDetails.class)
+                .map(UserDetails::getUsername)
+                .orElse("");
     }
 }
