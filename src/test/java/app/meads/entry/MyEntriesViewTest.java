@@ -383,6 +383,33 @@ class MyEntriesViewTest {
 
     @Test
     @WithMockUser(username = ENTRANT_EMAIL, roles = "USER")
+    void shouldShowContactEmailWhenCompetitionHasOne() {
+        competitionService.updateCompetitionContactEmail(
+                competition.getId(), "help@meadcomp.com", admin.getId());
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/my-entries");
+
+        var contactLinks = _find(Anchor.class).stream()
+                .filter(a -> "mailto:help@meadcomp.com".equals(a.getHref()))
+                .toList();
+        assertThat(contactLinks).isNotEmpty();
+    }
+
+    @Test
+    @WithMockUser(username = ENTRANT_EMAIL, roles = "USER")
+    void shouldNotShowContactEmailWhenCompetitionHasNone() {
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/my-entries");
+
+        var contactSpans = _find(Span.class).stream()
+                .filter(s -> s.getText() != null && s.getText().contains("Contact:"))
+                .toList();
+        assertThat(contactSpans).isEmpty();
+    }
+
+    @Test
+    @WithMockUser(username = ENTRANT_EMAIL, roles = "USER")
     void shouldShowProcessInfoBox() {
         UI.getCurrent().navigate("competitions/" + competition.getShortName()
                 + "/divisions/" + division.getShortName() + "/my-entries");

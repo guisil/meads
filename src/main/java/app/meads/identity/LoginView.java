@@ -44,6 +44,7 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
         // --- Email + Get Login Link ---
         emailField = new EmailField("Email");
         emailField.setWidthFull();
+        emailField.setMaxLength(255);
         emailField.setValueChangeMode(ValueChangeMode.EAGER);
         var magicLinkButton = new Button("Get Login Link");
         magicLinkButton.addClickListener(e -> sendMagicLink());
@@ -55,6 +56,7 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
         // --- Password + Login (collapsible) ---
         passwordField = new PasswordField("Code / Password");
         passwordField.setWidthFull();
+        passwordField.setMaxLength(128);
         passwordField.setValueChangeMode(ValueChangeMode.EAGER);
         var loginButton = new Button("Login");
         loginButton.addClickListener(e -> loginWithCredentials());

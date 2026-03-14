@@ -83,6 +83,12 @@ public class WebhookService {
             var orderId = root.get("id").asText();
             var customerEmail = root.get("customer").get("email").asText();
             var customerName = root.get("customer").get("full_name").asText();
+
+            if (customerEmail.length() > 255) {
+                log.warn("Webhook rejected: customer email exceeds 255 characters (orderId={})", orderId);
+                return;
+            }
+
             var products = root.get("products");
 
             // Extract country code from shipping address (fallback to billing)

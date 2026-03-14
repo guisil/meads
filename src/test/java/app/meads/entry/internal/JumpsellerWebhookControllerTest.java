@@ -14,7 +14,9 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(MockitoExtension.class)
@@ -63,5 +65,31 @@ class JumpsellerWebhookControllerTest {
                 .andExpect(status().isUnauthorized());
 
         then(webhookService).should(never()).processOrderPaid(payload);
+    }
+
+    @Test
+    void shouldReturn401WhenSignatureHeaderIsMissing() throws Exception {
+        var payload = "{\"id\":\"12345\"}";
+
+        mockMvc.perform(post("/api/webhooks/jumpseller/order-paid")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isUnauthorized());
+
+        then(webhookService).should(never()).processOrderPaid(payload);
+    }
+
+    @Test
+    void shouldReturn405ForGetRequest() throws Exception {
+        mockMvc.perform(get("/api/webhooks/jumpseller/order-paid"))
+                .andExpect(status().isMethodNotAllowed());
+    }
+
+    @Test
+    void shouldReturn405ForPutRequest() throws Exception {
+        mockMvc.perform(put("/api/webhooks/jumpseller/order-paid")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isMethodNotAllowed());
     }
 }

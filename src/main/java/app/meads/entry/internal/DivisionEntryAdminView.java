@@ -369,7 +369,12 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         entriesGrid.addColumn(entry -> formatEntryNumber(entry.getEntryNumber()))
                 .setHeader("Entry #").setSortable(true).setAutoWidth(true);
         entriesGrid.addColumn(Entry::getEntryCode).setHeader("Code").setSortable(true).setAutoWidth(true);
-        entriesGrid.addColumn(Entry::getMeadName).setHeader("Mead Name").setSortable(true).setFlexGrow(2);
+        entriesGrid.addComponentColumn(entry -> {
+            var span = new Span(entry.getMeadName());
+            span.setTitle(entry.getMeadName());
+            return span;
+        }).setHeader("Mead Name").setSortable(true).setFlexGrow(2)
+                .setComparator((a, b) -> a.getMeadName().compareToIgnoreCase(b.getMeadName()));
         entriesGrid.addComponentColumn(entry -> createCategorySpan(entry.getInitialCategoryId()))
                 .setHeader("Category").setSortable(true)
                 .setComparator((a, b) -> resolveCategoryCode(a.getInitialCategoryId())

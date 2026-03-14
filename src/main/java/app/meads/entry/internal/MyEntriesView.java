@@ -141,8 +141,22 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         add(createDocumentsSection());
         add(createCreditInfo());
         add(createProcessInfo());
-        if (division.getRegistrationDeadline() != null) {
-            add(createDeadlineInfo());
+        var hasDeadline = division.getRegistrationDeadline() != null;
+        var hasContact = StringUtils.hasText(competition.getContactEmail());
+        if (hasDeadline || hasContact) {
+            var infoRow = new HorizontalLayout();
+            infoRow.setWidthFull();
+            infoRow.setDefaultVerticalComponentAlignment(Alignment.CENTER);
+            if (hasDeadline) {
+                infoRow.add(createDeadlineInfo());
+            }
+            var spacer = new Div();
+            infoRow.add(spacer);
+            infoRow.expand(spacer);
+            if (hasContact) {
+                infoRow.add(createContactInfo());
+            }
+            add(infoRow);
         }
         var toolbar = createToolbar();
         toolbar.getStyle().set("margin-top", "var(--lumo-space-s)");
@@ -372,9 +386,12 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                 .setFlexGrow(0);
 
         // Mead Name
-        entriesGrid.addColumn(Entry::getMeadName)
-                .setHeader("Mead Name")
-                .setSortable(true);
+        entriesGrid.addComponentColumn(entry -> {
+            var span = new Span(entry.getMeadName());
+            span.setTitle(entry.getMeadName());
+            return span;
+        }).setHeader("Mead Name").setSortable(true)
+                .setComparator((a, b) -> a.getMeadName().compareToIgnoreCase(b.getMeadName()));
 
         // Category (initial) — show code with tooltip
         entriesGrid.addComponentColumn(entry -> createCategorySpan(entry.getInitialCategoryId()))
@@ -796,6 +813,17 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         var cancelButton = new Button("Cancel", e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
         dialog.open();
+    }
+
+    private Span createContactInfo() {
+        var label = new Span("Questions or need help? Contact: ");
+        var emailLink = new Anchor("mailto:" + competition.getContactEmail(),
+                competition.getContactEmail());
+        var contactSpan = new Span(label, emailLink);
+        contactSpan.getStyle()
+                .set("color", "var(--lumo-secondary-text-color)")
+                .set("font-size", "var(--lumo-font-size-s)");
+        return contactSpan;
     }
 
     private Span createDeadlineInfo() {

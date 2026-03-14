@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 @Slf4j
@@ -21,14 +22,20 @@ class JumpsellerWebhookController {
         this.webhookService = webhookService;
     }
 
+    @RequestMapping(value = "/order-paid", method = {RequestMethod.GET, RequestMethod.PUT,
+            RequestMethod.DELETE, RequestMethod.PATCH})
+    public ResponseEntity<Void> rejectNonPost() {
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).build();
+    }
+
     @PostMapping("/order-paid")
     public ResponseEntity<Void> handleOrderPaid(
-            @RequestHeader("Jumpseller-Hmac-Sha256") String signature,
+            @RequestHeader(value = "Jumpseller-Hmac-Sha256", required = false) String signature,
             @RequestBody String rawPayload) {
 
         log.debug("Received webhook: order-paid");
-        if (!webhookService.verifySignature(rawPayload, signature)) {
-            log.warn("Webhook rejected: invalid HMAC signature");
+        if (signature == null || !webhookService.verifySignature(rawPayload, signature)) {
+            log.warn("Webhook rejected: {} HMAC signature", signature == null ? "missing" : "invalid");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 

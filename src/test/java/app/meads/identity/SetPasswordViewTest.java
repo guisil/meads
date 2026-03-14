@@ -145,6 +145,25 @@ class SetPasswordViewTest {
     }
 
     @Test
+    void shouldRedirectToLoginWhenTokenIsEmpty() {
+        UI.getCurrent().navigate("set-password", QueryParameters.of("token", ""));
+
+        // Should forward to login — no "Set Password" button, but login's "Get Login Link" is present
+        assertThat(_find(Button.class, spec -> spec.withText("Set Password"))).isEmpty();
+        assertThat(_find(Button.class, spec -> spec.withText("Get Login Link"))).hasSize(1);
+    }
+
+    @Test
+    void shouldShowErrorAndHideFormWhenTokenIsInvalid() {
+        UI.getCurrent().navigate("set-password", QueryParameters.of("token", "invalid.token.here"));
+
+        var notification = _get(Notification.class);
+        assertThat(notification.getElement().getProperty("text")).contains("Invalid or expired token");
+        assertThat(_find(PasswordField.class)).isEmpty();
+        assertThat(_find(Button.class, spec -> spec.withText("Set Password"))).isEmpty();
+    }
+
+    @Test
     void shouldSubmitPasswordOnEnterKey() {
         User user = userService.createUser("setpw-enter@example.com", "Enter Key User", UserStatus.PENDING, Role.USER);
         String link = jwtMagicLinkService.generatePasswordSetupLink(user.getEmail(), Duration.ofDays(7));

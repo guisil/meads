@@ -1474,21 +1474,19 @@ but verify each surface.
 - [ ] Delete or withdraw the entry
 
 - [ ] Create a competition with contact email: `"><script>alert(1)</script>@evil.com`
-- [ ] Add a new ADMIN participant (without password) to trigger password setup email
-- [ ] Open Mailpit — verify the email renders the contact email as literal text, not executed HTML
-- [ ] **Expected:** Thymeleaf's `th:text` escapes the value; no script in the rendered email
+- [ ] **Expected:** Vaadin's `EmailField` rejects the input as invalid — XSS payload cannot be stored
 
 ### XSS — Reflected (URL parameters)
 
 - [ ] Navigate to `http://localhost:8080/login?error=<script>alert(1)</script>`
 - [ ] **Expected:** Error notification shows generic "Invalid email or password" text, not the parameter value
 - [ ] Navigate to `http://localhost:8080/set-password?token=<script>alert(1)</script>`
-- [ ] **Expected:** "Invalid or expired token" error (JWT parse failure), no script execution
+- [ ] **Expected:** "Invalid or expired token" error notification, no form rendered, no script execution
 
 ### XSS — Route parameters
 
 - [ ] Navigate to `http://localhost:8080/competitions/<script>alert(1)</script>`
-- [ ] **Expected:** Competition not found — redirected to `/competitions` or root. No script execution.
+- [ ] **Expected:** "Access denied" — Spring Security's `StrictHttpFirewall` blocks URLs with `<` and `>`. No script execution.
 - [ ] Navigate to `http://localhost:8080/competitions/chip-2026/divisions/<img%20src=x%20onerror=alert(1)>`
 - [ ] **Expected:** Division not found — redirected. No script execution.
 
@@ -1527,14 +1525,14 @@ curl -X POST http://localhost:8080/api/webhooks/jumpseller/order-paid \
 
 ### JWT Token Manipulation
 
-- [ ] Navigate to `http://localhost:8080/set-password?token=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsImV4cCI6OTk5OTk5OTk5OX0.invalidsignature`
-- [ ] **Expected:** "Invalid or expired token" error — forged tokens rejected
 - [ ] Navigate to `http://localhost:8080/login/magic?token=expired.token.here`
 - [ ] **Expected:** Redirected to `/login?error` — expired/invalid tokens rejected
 - [ ] Navigate to `http://localhost:8080/set-password?token=` (empty token)
-- [ ] **Expected:** Redirected to `/login` (missing token handled)
+- [ ] **Expected:** Redirected to `/login` (empty token handled gracefully)
 - [ ] Navigate to `http://localhost:8080/set-password` (no token parameter)
 - [ ] **Expected:** Redirected to `/login`
+- [ ] Navigate to `http://localhost:8080/set-password?token=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsImV4cCI6OTk5OTk5OTk5OX0.invalidsignature`
+- [ ] **Expected:** "Invalid or expired token" error notification — forged tokens rejected, no form rendered
 
 ### Authorization Bypass — Direct URL access
 
@@ -1579,18 +1577,20 @@ curl -X POST http://localhost:8080/api/webhooks/jumpseller/order-paid \
 
 ### CSRF Protection
 
-Vaadin views use server-side state with automatic CSRF token handling. The webhook
-endpoint has a dedicated `SecurityFilterChain` with CSRF disabled (stateless API).
+Vaadin uses its own CSRF mechanism via sync tokens in the UIDL protocol (not traditional
+`_csrf` form fields). The login POST is exempted by `VaadinSecurityConfigurer` (standard
+Vaadin behavior). The webhook endpoint has a dedicated `SecurityFilterChain` with CSRF
+disabled (stateless API, authenticated via HMAC).
 
-- [ ] Open browser dev tools, inspect any Vaadin form POST (e.g., login)
-- [ ] **Expected:** Vaadin includes CSRF token automatically in its communication protocol
-- [ ] Attempt to submit the login form from an external HTML page (create a simple form POSTing to `/login`)
-- [ ] **Expected:** Login fails (CSRF token missing or invalid)
+- [ ] Open browser dev tools, inspect any Vaadin UIDL POST (e.g., click a button)
+- [ ] **Expected:** Request includes `csrfToken` in the Vaadin communication protocol
+- [ ] The login `POST /login` does not include a `_csrf` field — this is expected (Vaadin exempts it)
+- [ ] **Expected:** CSRF protection is active for all Vaadin UI interactions
 
 ### Email Enumeration Prevention
 
 - [ ] Navigate to `/login`
-- [ ] Enter email: `existing-user@example.com` (registered), click "Get Login Link"
+- [ ] Enter email: `user@example.com` (registered), click "Get Login Link"
 - [ ] **Expected:** Notification: "If this email is registered, a login link has been sent."
 - [ ] Enter email: `nonexistent@example.com` (not registered), click "Get Login Link"
 - [ ] **Expected:** Same notification: "If this email is registered, a login link has been sent."
@@ -1599,10 +1599,11 @@ endpoint has a dedicated `SecurityFilterChain` with CSRF disabled (stateless API
 
 ### Path Traversal — Route parameters
 
-- [ ] Navigate to `http://localhost:8080/competitions/../../users`
-- [ ] **Expected:** Competition not found — redirect. No access to `/users` path.
-- [ ] Navigate to `http://localhost:8080/competitions/chip-2026/divisions/../../`
-- [ ] **Expected:** Division not found — redirect. No traversal outside expected routes.
+- [ ] Navigate to `http://localhost:8080/competitions/../../users` (as non-admin)
+- [ ] **Expected:** Redirected away — authorization prevents access regardless of path tricks
+- [ ] Navigate to `http://localhost:8080/competitions/chip-2026/divisions/../../` (as non-admin)
+- [ ] **Expected:** Redirected — the Vaadin router treats the full path segment as a route parameter,
+  so `../../` is treated as a short name, not a traversal. Authorization layer blocks access.
 
 ### File Upload Validation
 
@@ -1617,12 +1618,15 @@ endpoint has a dedicated `SecurityFilterChain` with CSRF disabled (stateless API
 
 ### Input Length / Boundary Testing
 
-- [ ] Create a competition with a very long name (500+ characters)
-- [ ] **Expected:** Either accepted (VARCHAR 255 truncation or DB constraint error) or graceful validation error
-- [ ] Create an entry with very long text in all TextArea fields (honey varieties, ingredients, additional info — 10,000+ characters)
-- [ ] **Expected:** Accepted or graceful error — no server crash, no memory exhaustion
-- [ ] Enter an extremely long email in the login field (500+ characters)
-- [ ] **Expected:** EmailField validation rejects it, or server-side Bean Validation catches it
+All text fields have `setMaxLength()` matching their DB column sizes. All email fields
+have `maxLength(255)`, all password fields have `maxLength(128)`.
+
+- [ ] Attempt to type 500+ characters in a competition name field
+- [ ] **Expected:** Input is blocked at 255 characters (client-side `maxLength`)
+- [ ] Attempt to type 10,000+ characters in an entry TextArea field
+- [ ] **Expected:** Input is blocked at field limit (500 for most, 1000 for additional info)
+- [ ] Attempt to paste an extremely long email (500+ characters) in the login field
+- [ ] **Expected:** Input is blocked at 255 characters (client-side `maxLength`)
 
 ### IDOR — Accessing other users' entries
 
@@ -1656,8 +1660,8 @@ curl -X PUT http://localhost:8080/api/webhooks/jumpseller/order-paid \
   - Competition not found → redirect (no error details)
   - Authorization failure → redirect (no "you don't have permission" leaking resource existence)
 - [ ] Check server logs for any sensitive data exposure (passwords, tokens in log messages)
-- [ ] **Expected:** Passwords are never logged. JWT tokens appear only in fallback log messages
-  (when email fails to send). Access codes appear in participant grids only.
+- [ ] **Expected:** Passwords are never logged (dev user passwords removed from log output).
+  JWT tokens never appear in logs. Access codes appear in participant grids only.
 
 ---
 

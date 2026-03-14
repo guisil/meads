@@ -1,5 +1,6 @@
 package app.meads.identity.internal;
 
+import app.meads.identity.JwtMagicLinkService;
 import app.meads.identity.UserService;
 import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.Shortcuts;
@@ -16,19 +17,23 @@ import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 import io.jsonwebtoken.JwtException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
 
+@Slf4j
 @Route("set-password")
 @AnonymousAllowed
 public class SetPasswordView extends VerticalLayout implements BeforeEnterObserver {
 
     private final UserService userService;
+    private final JwtMagicLinkService jwtMagicLinkService;
     private String token;
     private PasswordField passwordField;
     private PasswordField confirmField;
 
-    public SetPasswordView(UserService userService) {
+    public SetPasswordView(UserService userService, JwtMagicLinkService jwtMagicLinkService) {
         this.userService = userService;
+        this.jwtMagicLinkService = jwtMagicLinkService;
         setWidth("auto");
         getStyle().set("margin", "0 auto");
     }
@@ -42,6 +47,18 @@ public class SetPasswordView extends VerticalLayout implements BeforeEnterObserv
             return;
         }
         this.token = tokenValues.getFirst();
+        if (!StringUtils.hasText(this.token)) {
+            event.forwardTo("login");
+            return;
+        }
+        try {
+            jwtMagicLinkService.extractEmail(this.token);
+        } catch (JwtException ex) {
+            log.warn("Invalid or expired set-password token");
+            Notification.show("Invalid or expired token. Please request a new link.")
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            return;
+        }
         buildForm();
     }
 
@@ -53,9 +70,11 @@ public class SetPasswordView extends VerticalLayout implements BeforeEnterObserv
                 + "— login links will no longer work for your account."));
 
         passwordField = new PasswordField("Password");
+        passwordField.setMaxLength(128);
         passwordField.setValueChangeMode(ValueChangeMode.EAGER);
 
         confirmField = new PasswordField("Confirm Password");
+        confirmField.setMaxLength(128);
         confirmField.setValueChangeMode(ValueChangeMode.EAGER);
 
         var submitButton = new Button("Set Password");

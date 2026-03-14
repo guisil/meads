@@ -215,6 +215,7 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
         boolean isCreate = existingUser == null;
 
         EmailField emailField = new EmailField("Email");
+        emailField.setMaxLength(255);
         if (isCreate) {
             emailField.setRequired(true);
         } else {

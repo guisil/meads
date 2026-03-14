@@ -608,6 +608,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         var nameField = new TextField("Name");
         nameField.setValue(competition.getName());
         nameField.setMaxLength(255);
+        nameField.setWidth("400px");
 
         var shortNameField = new TextField("Short Name");
         shortNameField.setValue(competition.getShortName());
@@ -623,12 +624,14 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         var locationField = new TextField("Location");
         locationField.setValue(competition.getLocation() != null ? competition.getLocation() : "");
         locationField.setMaxLength(500);
+        locationField.setWidth("400px");
 
         var contactEmailField = new EmailField("Contact Email");
         contactEmailField.setValue(competition.getContactEmail() != null ? competition.getContactEmail() : "");
         contactEmailField.setHelperText("Shown in emails sent to competition participants");
         contactEmailField.setClearButtonVisible(true);
         contactEmailField.setMaxLength(255);
+        contactEmailField.setWidth("400px");
 
         var shippingAddressField = new TextArea("Shipping Address");
         shippingAddressField.setValue(competition.getShippingAddress() != null ? competition.getShippingAddress() : "");

@@ -373,6 +373,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         var nameField = new TextField("Name");
         nameField.setMaxLength(255);
         nameField.setValue(division.getName());
+        nameField.setWidth("400px");
 
         var shortNameField = new TextField("Short Name");
         shortNameField.setMaxLength(100);
