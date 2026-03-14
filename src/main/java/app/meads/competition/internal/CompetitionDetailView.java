@@ -314,6 +314,12 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
             var user = userMap.get(p.getUserId());
 
+            var editButton = new Button(new Icon(VaadinIcon.EDIT));
+            editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            editButton.setTooltipText("Edit roles");
+            editButton.addClickListener(e -> openEditRolesDialog(p));
+            actions.add(editButton);
+
             if (user != null && user.getPasswordHash() == null) {
                 var sendLinkButton = new Button(new Icon(VaadinIcon.ENVELOPE));
                 sendLinkButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
@@ -321,12 +327,6 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 sendLinkButton.addClickListener(e -> sendMagicLink(user));
                 actions.add(sendLinkButton);
             }
-
-            var editButton = new Button(new Icon(VaadinIcon.EDIT));
-            editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            editButton.setTooltipText("Edit roles");
-            editButton.addClickListener(e -> openEditRolesDialog(p));
-            actions.add(editButton);
 
             var removeButton = new Button(new Icon(VaadinIcon.CLOSE));
             removeButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
