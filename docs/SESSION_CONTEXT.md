@@ -158,8 +158,8 @@ docs/
 │   ├── 2026-03-10-profile-meadery-country-design.md  ← Design reference for profile/meadery/country
 │   ├── 2026-03-10-email-sending-design.md  ← Email sending design (implemented)
 │   ├── 2026-03-10-i18n-design.md          ← i18n design (implementation deferred)
-│   ├── 2026-03-10-deployment-design.md    ← Deployment options evaluation + recommendation
-│   └── deployment-checklist.md           ← Step-by-step deployment + redeployment procedures
+│   ├── 2026-03-10-deployment-design.md    ← Deployment options evaluation (decision: DO App Platform)
+│   └── deployment-checklist.md           ← Deployment reference: setup, release process, redeployment, rollback
 ├── reference/
 │   └── chip-competition-rules.md          ← CHIP competition rules (active reference)
 ├── specs/

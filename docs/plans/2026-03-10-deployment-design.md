@@ -1,7 +1,7 @@
 # Deployment Design — MEADS Project
 
 **Date:** 2026-03-10
-**Status:** Investigation complete, decision deferred
+**Status:** Deployed (2026-03-14) — DigitalOcean App Platform + Managed PostgreSQL
 **Domain:** meads.app (Namecheap)
 
 ---
