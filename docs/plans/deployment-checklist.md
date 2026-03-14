@@ -313,18 +313,38 @@ Domain status in DO goes through: Pending → Configuring → Active. This can t
 ## Deployment pipeline (how updates work)
 
 ```
-Push to main → GitHub Actions (test + build) → DO App Platform auto-deploy
+Push to main     → GitHub Actions: test + build (CI only, no deploy)
+Push v* tag      → GitHub Actions: test + build → trigger DO deployment via doctl
 ```
 
-- **GitHub Actions** runs tests on every push/PR to `main`. Blocks merge if tests fail.
-- **DO App Platform** auto-detects pushes to `main` and builds/deploys.
+- **Push to `main` / PRs:** GitHub Actions runs tests + production build. No deployment.
+- **Release tags (`v*`):** GitHub Actions runs tests, then triggers DO deployment via
+  `doctl apps create-deployment`. DO auto-deploy is **disabled** — only GitHub Actions
+  triggers deploys.
 - **Zero-downtime deploys:** DO builds new version, health-checks it, then routes traffic.
   Old version keeps serving until new one is confirmed healthy.
 - **If build fails:** DO keeps previous version running. Fix and push again.
 
+### GitHub Actions secrets (required)
+
+| Secret | Description |
+|--------|-------------|
+| `DIGITALOCEAN_ACCESS_TOKEN` | DO API token with `app:create` scope |
+| `DIGITALOCEAN_APP_ID` | App Platform app UUID |
+
+### Release process
+
+1. Update version in `pom.xml` (remove `-SNAPSHOT`)
+2. Commit: `Release vX.Y.Z`
+3. Tag: `git tag -a vX.Y.Z -m "vX.Y.Z — description"`
+4. Push: `git push && git push origin vX.Y.Z`
+5. Create GitHub release: `gh release create vX.Y.Z --title "..." --notes "..."`
+6. Bump version to next `-SNAPSHOT` and push
+7. Monitor: App Platform → Activity → current deployment
+
 ### Standard update (code-only)
 
-1. Merge/push to `main`
+1. Follow the release process above
 2. Monitor: App Platform → Activity → current deployment
 3. Verify: app loads, quick smoke test, check runtime logs
 
