@@ -161,8 +161,8 @@ class DivisionDetailViewTest {
     void shouldDisplayDivisionHeader() {
         UI.getCurrent().navigate("competitions/" + testCompetition.getShortName() + "/divisions/" + testDivision.getShortName());
 
-        var heading = _get(H2.class, spec -> spec.withText("Home"));
-        assertThat(heading).isNotNull();
+        var heading = _get(H2.class);
+        assertThat(heading.getText()).contains(testCompetition.getName()).contains(testDivision.getName());
     }
 
     @Test
@@ -202,8 +202,8 @@ class DivisionDetailViewTest {
 
         UI.getCurrent().navigate("competitions/" + testCompetition.getShortName() + "/divisions/" + testDivision.getShortName());
 
-        var heading = _get(H2.class, spec -> spec.withText("Home"));
-        assertThat(heading).isNotNull();
+        var heading = _get(H2.class);
+        assertThat(heading.getText()).contains(testCompetition.getName()).contains(testDivision.getName());
     }
 
     @Test
@@ -217,7 +217,7 @@ class DivisionDetailViewTest {
 
         // Should have been forwarded away — no H2 heading should be present
         var headings = _find(H2.class);
-        assertThat(headings).noneMatch(h -> h.getText().equals("Home"));
+        assertThat(headings).noneMatch(h -> h.getText().contains(testDivision.getName()));
     }
 
     @Test

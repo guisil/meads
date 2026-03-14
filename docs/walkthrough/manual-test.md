@@ -718,7 +718,7 @@ CTA button, fallback URL, and optional contact footer.
 ### Header
 
 - [ ] Navigate to Amadora division detail
-- [ ] **Expected:** Division name "Amadora" displayed
+- [ ] **Expected:** Header shows "CHIP 2026 — Amadora" with competition logo (if set)
 - [ ] **Expected:** Status badge "Registration Open"
 - [ ] **Expected:** Scoring system "MJP"
 
@@ -844,7 +844,7 @@ CTA button, fallback URL, and optional contact footer.
 
 - [ ] From Amadora division detail, click "Manage Entries"
 - [ ] **Expected:** Breadcrumb "My Competitions / CHIP 2026 / Amadora / Entry Admin" — first 3 segments are clickable links
-- [ ] **Expected:** Page title "Amadora — Entry Admin"
+- [ ] **Expected:** Header shows "CHIP 2026 — Amadora — Entry Admin" with competition logo (if set)
 - [ ] **Expected:** TabSheet with 4 tabs: Credits, Entries, Products, Orders
 
 ### Credits tab
@@ -1146,7 +1146,7 @@ curl -s -o /dev/null -w "%{http_code}" \
 
 - [ ] Log in as `user@example.com`
 - [ ] Navigate via "My Entries" → click Amadora link (or go directly to `/competitions/chip-2026/divisions/amadora/my-entries`)
-- [ ] **Expected:** Page title "Amadora -- My Entries"
+- [ ] **Expected:** Header shows "CHIP 2026 — Amadora — My Entries" with competition logo (if set)
 
 ### Competition documents
 

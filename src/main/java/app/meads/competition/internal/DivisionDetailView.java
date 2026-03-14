@@ -134,10 +134,18 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         header.setDefaultVerticalComponentAlignment(Alignment.CENTER);
         header.setWidthFull();
 
+        if (competition.hasLogo()) {
+            var dataUri = "data:" + competition.getLogoContentType() + ";base64,"
+                    + java.util.Base64.getEncoder().encodeToString(competition.getLogo());
+            var logo = new com.vaadin.flow.component.html.Image(dataUri, competition.getName() + " logo");
+            logo.setHeight("64px");
+            header.add(logo);
+        }
+
         var textBlock = new VerticalLayout();
         textBlock.setPadding(false);
         textBlock.setSpacing(false);
-        textBlock.add(new H2(division.getName()));
+        textBlock.add(new H2(competition.getName() + " — " + division.getName()));
 
         var details = new HorizontalLayout();
         details.setDefaultVerticalComponentAlignment(Alignment.CENTER);

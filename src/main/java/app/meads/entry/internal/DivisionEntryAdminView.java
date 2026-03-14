@@ -156,8 +156,20 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         return nav;
     }
 
-    private H2 createHeader() {
-        return new H2(division.getName() + " — Entry Admin");
+    private HorizontalLayout createHeader() {
+        var header = new HorizontalLayout();
+        header.setDefaultVerticalComponentAlignment(Alignment.CENTER);
+
+        if (competition.hasLogo()) {
+            var dataUri = "data:" + competition.getLogoContentType() + ";base64,"
+                    + java.util.Base64.getEncoder().encodeToString(competition.getLogo());
+            var logo = new com.vaadin.flow.component.html.Image(dataUri, competition.getName() + " logo");
+            logo.setHeight("64px");
+            header.add(logo);
+        }
+
+        header.add(new H2(competition.getName() + " — " + division.getName() + " — Entry Admin"));
+        return header;
     }
 
     private TabSheet createTabSheet() {

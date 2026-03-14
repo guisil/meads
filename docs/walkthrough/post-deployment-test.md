@@ -231,7 +231,7 @@ If Jumpseller integration is configured:
 
 ### My Entries page
 
-- [ ] **Expected:** Page title "{Division Name} -- My Entries"
+- [ ] **Expected:** Header shows "{Competition Name} — {Division Name} — My Entries" with competition logo (if set)
 - [ ] **Expected:** Breadcrumb: "My Entries / {Competition Name} / {Division Name}"
 - [ ] **Expected:** Credit info: "Credits: N remaining (N total, 0 used)"
 - [ ] **Expected:** Limits info shows configured limits (if any)
