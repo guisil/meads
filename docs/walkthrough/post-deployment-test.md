@@ -10,6 +10,47 @@ admin setup, competition creation, entrant registration, entry submission, and l
 
 ---
 
+## 0. Infrastructure Verification
+
+Before testing the application itself, verify that all infrastructure components are
+accessible and functioning. Reference: `docs/plans/deployment-checklist.md` (operations
+reference section).
+
+### Database
+
+- [ ] Navigate to DO Console → Databases → meads-db
+- [ ] **Overview:** Connection details are visible, cluster status is "Online"
+- [ ] **Insights:** Active connections from the app are shown
+- [ ] **Backups:** At least one automatic backup exists, daily schedule is active
+- [ ] **Settings → Trusted Sources:** App Platform app is listed
+
+### Application
+
+- [ ] Navigate to DO Console → App Platform → meads app
+- [ ] **Runtime Logs:** Logs are streaming, no recurring errors
+- [ ] **Activity:** Latest deployment shows as "Active"
+- [ ] **Insights:** CPU and memory usage are within normal range
+- [ ] **Settings → Domains:** `meads.app` shows as "Active" with SSL
+
+### Monitoring
+
+- [ ] **Alert Policies:** CPU and Memory alert policies are configured
+- [ ] Verify alert destination email is correct
+
+### Email
+
+- [ ] Navigate to resend.com → Domains
+- [ ] **Expected:** `meads.app` shows as "Verified"
+- [ ] Check Usage tab for current email counts
+
+### Version
+
+- [ ] Open `https://meads.app`, log in
+- [ ] Click user dropdown (top right) → version number is displayed
+- [ ] **Expected:** Version matches the latest release tag
+
+---
+
 ## 1. Prerequisites
 
 ### Verify the application is running

@@ -136,7 +136,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 - `User.java` — added `meaderyName` and `country` fields (now in V2)
 - `Division.java` — added `maxEntriesPerSubcategory`, `maxEntriesPerMainCategory`, `maxEntriesTotal`, `entryPrefix`, `meaderyNameRequired`, `registrationDeadline`, `registrationDeadlineTimezone`
 - `DivisionDetailView` — "Manage Entries" button, entry prefix (DRAFT-only) + entry limits in Settings tab (DRAFT-only for limits and prefix), meaderyNameRequired checkbox (DRAFT-only), registration deadline fields (DRAFT/REGISTRATION_OPEN)
-- `MainLayout` — "My Profile" as submenu item in user dropdown menu (navigates to `/profile`)
+- `MainLayout` — "My Profile" as submenu item in user dropdown menu (navigates to `/profile`), app version display (from `BuildProperties`)
 - `application.properties` — added `app.jumpseller.hooks-token`
 
 #### Migrations: V9–V13

@@ -310,6 +310,30 @@ Domain status in DO goes through: Pending → Configuring → Active. This can t
 
 ---
 
+## DigitalOcean operations reference
+
+Quick reference for finding things in the DO Console.
+
+| What | Where |
+|------|-------|
+| **DB backups + restore** | Databases → meads-db → **Backups** tab |
+| **DB metrics** (connections, queries, disk) | Databases → meads-db → **Insights** tab |
+| **DB connection details** | Databases → meads-db → **Overview** → Connection Details |
+| **DB trusted sources** | Databases → meads-db → **Settings** → Trusted Sources |
+| **App runtime logs** | App Platform → meads app → **Runtime Logs** tab |
+| **Build/deploy logs** | App Platform → meads app → **Activity** tab → click deployment |
+| **App metrics** (CPU, memory) | App Platform → meads app → **Insights** tab |
+| **Deployments / rollback** | App Platform → meads app → **Activity** tab |
+| **Env vars** | App Platform → meads app → **Settings** → App-Level Environment Variables |
+| **Health check config** | App Platform → meads app → **Settings** → Components → web service |
+| **Alert policies** | App Platform → meads app → **Settings** → Alert Policies |
+| **Domain / SSL** | App Platform → meads app → **Settings** → Domains |
+| **Resend usage / limits** | resend.com → Usage |
+| **Resend domain status** | resend.com → Domains |
+| **DNS records** | Namecheap → Domain List → meads.app → Advanced DNS |
+
+---
+
 ## Deployment pipeline (how updates work)
 
 ```

@@ -92,7 +92,7 @@ Multiple related fast-cycle changes can be batched in one response.
 ```
 app.meads                                ← @SpringBootApplication (root module)
 ├── MeadsApplication.java               ← Entry point
-├── MainLayout.java                      ← AppLayout wrapper (public API — shared by all views, includes "My Profile" nav)
+├── MainLayout.java                      ← AppLayout wrapper (public API — shared by all views, includes "My Profile" nav + version display)
 └── internal/
     └── RootView.java                    ← Root route, redirects by role (login/competitions/my-competitions/my-entries)
 
