@@ -691,15 +691,21 @@ public class CompetitionService {
 
     private Participant findOrCreateParticipant(UUID competitionId, UUID userId,
                                                   CompetitionRole role) {
-        return participantRepository
-                .findByCompetitionIdAndUserId(competitionId, userId)
-                .orElseGet(() -> {
-                    var p = new Participant(competitionId, userId);
-                    if (role.requiresAccessCode()) {
-                        p.assignAccessCode(generateUniqueAccessCode());
-                    }
-                    return participantRepository.save(p);
-                });
+        var existing = participantRepository
+                .findByCompetitionIdAndUserId(competitionId, userId);
+        if (existing.isPresent()) {
+            var participant = existing.get();
+            if (role.requiresAccessCode() && participant.getAccessCode() == null) {
+                participant.assignAccessCode(generateUniqueAccessCode());
+                return participantRepository.save(participant);
+            }
+            return participant;
+        }
+        var p = new Participant(competitionId, userId);
+        if (role.requiresAccessCode()) {
+            p.assignAccessCode(generateUniqueAccessCode());
+        }
+        return participantRepository.save(p);
     }
 
     private void initializeCategories(Division division) {

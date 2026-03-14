@@ -395,6 +395,19 @@ public class EntryService {
                                                      @NotNull UUID requestingUserId) {
         var order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("Order not found"));
+        var divisionId = lineItemRepository.findByOrderId(orderId).stream()
+                .map(JumpsellerOrderLineItem::getDivisionId)
+                .filter(java.util.Objects::nonNull)
+                .findFirst()
+                .orElse(null);
+        if (divisionId != null) {
+            requireAuthorizedForDivision(divisionId, requestingUserId);
+        } else {
+            var user = userService.findById(requestingUserId);
+            if (user.getRole() != Role.SYSTEM_ADMIN) {
+                throw new IllegalArgumentException("User is not authorized to perform this action");
+            }
+        }
         order.updateAdminDetails(status, adminNote);
         log.debug("Updated order admin details: {} (status={})", orderId, status);
         return orderRepository.save(order);

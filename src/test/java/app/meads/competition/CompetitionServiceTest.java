@@ -687,6 +687,9 @@ class CompetitionServiceTest {
         given(userService.findById(user.getId())).willReturn(user);
         given(participantRepository.findByCompetitionIdAndUserId(competition.getId(), user.getId()))
                 .willReturn(Optional.of(existingParticipant));
+        given(participantRepository.existsByAccessCode(any())).willReturn(false);
+        given(participantRepository.save(any(Participant.class)))
+                .willAnswer(inv -> inv.getArgument(0));
         given(participantRoleRepository.existsByParticipantIdAndRole(
                 existingParticipant.getId(), CompetitionRole.JUDGE)).willReturn(false);
         given(participantRoleRepository.save(any(ParticipantRole.class)))
@@ -696,7 +699,9 @@ class CompetitionServiceTest {
                 competition.getId(), user.getId(), CompetitionRole.JUDGE, admin.getId());
 
         assertThat(result.getParticipantId()).isEqualTo(existingParticipant.getId());
-        then(participantRepository).should(never()).save(any());
+        // Participant is saved now because access code is assigned for JUDGE role
+        then(participantRepository).should().save(argThat(
+                (Participant p) -> p.getAccessCode() != null));
     }
 
     @Test
@@ -737,6 +742,9 @@ class CompetitionServiceTest {
         given(userService.findById(user.getId())).willReturn(user);
         given(participantRepository.findByCompetitionIdAndUserId(competition.getId(), user.getId()))
                 .willReturn(Optional.of(existingParticipant));
+        given(participantRepository.existsByAccessCode(any())).willReturn(false);
+        given(participantRepository.save(any(Participant.class)))
+                .willAnswer(inv -> inv.getArgument(0));
         given(participantRoleRepository.existsByParticipantIdAndRole(
                 existingParticipant.getId(), CompetitionRole.JUDGE)).willReturn(false);
         given(participantRoleRepository.findByParticipantId(existingParticipant.getId()))
@@ -748,6 +756,38 @@ class CompetitionServiceTest {
                 competition.getId(), user.getId(), CompetitionRole.JUDGE, admin.getId());
 
         assertThat(result.getRole()).isEqualTo(CompetitionRole.JUDGE);
+    }
+
+    @Test
+    void shouldAssignAccessCodeWhenPromotingEntrantToJudge() {
+        var admin = createAdmin();
+        var user = createRegularUser();
+        var competition = createCompetition();
+        var existingParticipant = new Participant(competition.getId(), user.getId());
+        // existingParticipant has no access code (was created as ENTRANT)
+        assertThat(existingParticipant.getAccessCode()).isNull();
+
+        given(competitionRepository.findById(competition.getId()))
+                .willReturn(Optional.of(competition));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(userService.findById(user.getId())).willReturn(user);
+        given(participantRepository.findByCompetitionIdAndUserId(competition.getId(), user.getId()))
+                .willReturn(Optional.of(existingParticipant));
+        given(participantRoleRepository.existsByParticipantIdAndRole(
+                existingParticipant.getId(), CompetitionRole.JUDGE)).willReturn(false);
+        given(participantRoleRepository.findByParticipantId(existingParticipant.getId()))
+                .willReturn(List.of(new ParticipantRole(existingParticipant.getId(), CompetitionRole.ENTRANT)));
+        given(participantRepository.existsByAccessCode(any())).willReturn(false);
+        given(participantRepository.save(any(Participant.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(participantRoleRepository.save(any(ParticipantRole.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        competitionService.addParticipant(
+                competition.getId(), user.getId(), CompetitionRole.JUDGE, admin.getId());
+
+        then(participantRepository).should().save(argThat(
+                (Participant p) -> p.getAccessCode() != null));
     }
 
     @Test
@@ -787,6 +827,9 @@ class CompetitionServiceTest {
         given(userService.findById(user.getId())).willReturn(user);
         given(participantRepository.findByCompetitionIdAndUserId(competition.getId(), user.getId()))
                 .willReturn(Optional.of(existingParticipant));
+        given(participantRepository.existsByAccessCode(any())).willReturn(false);
+        given(participantRepository.save(any(Participant.class)))
+                .willAnswer(inv -> inv.getArgument(0));
         given(participantRoleRepository.existsByParticipantIdAndRole(
                 existingParticipant.getId(), CompetitionRole.STEWARD)).willReturn(false);
         given(participantRoleRepository.findByParticipantId(existingParticipant.getId()))
@@ -837,6 +880,9 @@ class CompetitionServiceTest {
         given(userService.findById(user.getId())).willReturn(user);
         given(participantRepository.findByCompetitionIdAndUserId(competition.getId(), user.getId()))
                 .willReturn(Optional.of(existingParticipant));
+        given(participantRepository.existsByAccessCode(any())).willReturn(false);
+        given(participantRepository.save(any(Participant.class)))
+                .willAnswer(inv -> inv.getArgument(0));
         given(participantRoleRepository.existsByParticipantIdAndRole(
                 existingParticipant.getId(), CompetitionRole.JUDGE)).willReturn(true);
 

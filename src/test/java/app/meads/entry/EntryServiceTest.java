@@ -1151,6 +1151,27 @@ class EntryServiceTest {
     }
 
     @Test
+    void shouldRejectUpdateOrderAdminDetailsWhenNotAuthorized() {
+        var divisionId = UUID.randomUUID();
+        var order = new JumpsellerOrder("ORDER-001", "user@test.com", "User", "{}");
+        var lineItem = new JumpsellerOrderLineItem(order.getId(), "PROD-001", "SKU-001",
+                "Mead Pack", 1);
+        lineItem.markProcessed(divisionId, 1);
+
+        var regularUser = new User("user@test.com", "User", UserStatus.ACTIVE, Role.USER);
+        given(orderRepository.findById(order.getId())).willReturn(Optional.of(order));
+        given(lineItemRepository.findByOrderId(order.getId())).willReturn(List.of(lineItem));
+        given(userService.findById(regularUser.getId())).willReturn(regularUser);
+        given(competitionService.isAuthorizedForDivision(divisionId, regularUser.getId()))
+                .willReturn(false);
+
+        assertThatThrownBy(() -> entryService.updateOrderAdminDetails(
+                order.getId(), OrderStatus.PROCESSED, "note", regularUser.getId()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("not authorized");
+    }
+
+    @Test
     void shouldReturnEmptyOverviewsWhenNoCredits() {
         var userId = UUID.randomUUID();
         given(creditRepository.findDistinctDivisionIdsByUserId(userId))
