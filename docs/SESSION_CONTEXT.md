@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `competition-module`
-**Tests:** 528 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-03-14
+**Tests:** 530 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-03-14
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -200,8 +200,23 @@ All 14 sections completed with fixes along the way.
 - **Settings field widths** — Widened Name, Location, Contact Email fields in Competition Settings and Name in Division Settings to 400px
 
 ### Priority 1: PR, code review & merge
-Create PR from `competition-module` to `main`, perform code review, address any findings,
-and merge.
+PR #4 created and code reviewed. 5 bugs fixed (2 critical, 3 moderate) and 4 convention
+fixes applied. Ready to merge.
+
+**Code review fixes (commits `6be3d93`, `f030473`, `c6fff42`):**
+- `EntryService.updateOrderAdminDetails` — added missing authorization check
+- `CompetitionService.findOrCreateParticipant` — assign access code when promoting ENTRANT to JUDGE/STEWARD
+- `WebhookService.verifySignature` — constant-time HMAC comparison (`MessageDigest.isEqual`)
+- `WebhookService.hasCreditConflict` — matched stricter early-exit logic from `EntryService`
+- `Division.updateDetails` — added DRAFT guard on `entryPrefix` (matched existing `scoringSystem` guard)
+- `ProfileView` — replaced `SecurityContextHolder` with `transient AuthenticationContext`
+- `User.passwordHash` — replaced `@Setter` with `assignPasswordHash()` domain method
+- `JumpsellerOrder.customerCountry` — renamed `setCustomerCountry` to `assignCustomerCountry`
+- `Category` — added public constructor with UUID self-generation
+
+**Deferred (low priority, convention-only):**
+- Test naming — 313 methods missing `When{Condition}` clause
+- Cross-module `internal/` imports in tests — pragmatic for test data setup
 
 ### Priority 2: Full regression walkthrough
 Go through the entire manual walkthrough (`docs/walkthrough/manual-test.md`) from Section 1
@@ -391,7 +406,7 @@ Requires: DB migration, admin UI for constraint config, cross-module data flow, 
 
 - Karibu TabSheet: content is lazy-loaded. Must call `tabSheet.setSelectedIndex(N)` before finding components
 - Karibu component columns: buttons inside Grid `addComponentColumn` are not found by `_find(Button.class)`
-- `Category` has only protected no-arg constructor — use `Mockito.mock()` in unit tests
+- `Category` has a public constructor (code, name, description, scoringSystem, parentCode) and a protected no-arg for JPA
 - `Select.setEmptySelectionAllowed(true)` passes `null` to `setItemLabelGenerator` — must handle null
 - Service constructors are package-private (convention)
 - `@DirtiesContext` required on UI tests that modify security context strategy
