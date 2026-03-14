@@ -48,7 +48,7 @@ class DevUserInitializer {
 
         User user = new User(email, name, status, role);
         if (password != null) {
-            user.setPasswordHash(passwordEncoder.encode(password));
+            user.assignPasswordHash(passwordEncoder.encode(password));
             log.info("Created dev user {} with password", email);
         } else {
             emailService.sendMagicLink(email);

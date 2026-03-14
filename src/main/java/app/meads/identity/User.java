@@ -2,7 +2,6 @@ package app.meads.identity;
 
 import jakarta.persistence.*;
 import lombok.Getter;
-import lombok.Setter;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -29,7 +28,6 @@ public class User {
     @Column(nullable = false)
     private Role role;
 
-    @Setter
     @Column(name = "password_hash")
     private String passwordHash;
 
@@ -70,6 +68,10 @@ public class User {
 
     public void deactivate() {
         this.status = UserStatus.INACTIVE;
+    }
+
+    public void assignPasswordHash(String encodedPasswordHash) {
+        this.passwordHash = encodedPasswordHash;
     }
 
     public void updateMeaderyName(String meaderyName) {

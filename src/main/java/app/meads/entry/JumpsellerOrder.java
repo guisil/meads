@@ -55,7 +55,7 @@ public class JumpsellerOrder {
         this.createdAt = Instant.now();
     }
 
-    public void setCustomerCountry(String customerCountry) {
+    public void assignCustomerCountry(String customerCountry) {
         this.customerCountry = customerCountry;
     }
 

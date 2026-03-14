@@ -12,9 +12,10 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.spring.security.AuthenticationContext;
 import jakarta.annotation.security.PermitAll;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Arrays;
 import java.util.Locale;
@@ -25,8 +26,13 @@ import java.util.Locale;
 @PageTitle("My Profile")
 public class ProfileView extends VerticalLayout {
 
-    ProfileView(UserService userService) {
-        var email = SecurityContextHolder.getContext().getAuthentication().getName();
+    private final transient AuthenticationContext authenticationContext;
+
+    ProfileView(UserService userService, AuthenticationContext authenticationContext) {
+        this.authenticationContext = authenticationContext;
+        var email = authenticationContext.getAuthenticatedUser(UserDetails.class)
+                .map(UserDetails::getUsername)
+                .orElseThrow();
         var user = userService.findByEmail(email);
 
         var emailField = new TextField("Email");

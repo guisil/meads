@@ -192,7 +192,7 @@ class DivisionDetailViewTest {
                 .orElseGet(() -> {
                     var u = new User("comp-admin@example.com",
                             "Comp Admin", UserStatus.ACTIVE, Role.USER);
-                    u.setPasswordHash("$2a$10$dummyhash");
+                    u.assignPasswordHash("$2a$10$dummyhash");
                     return userRepository.save(u);
                 });
         var participant = participantRepository.save(

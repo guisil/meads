@@ -56,7 +56,7 @@ class JumpsellerOrderTest {
     @Test
     void shouldStoreCustomerCountry() {
         var order = new JumpsellerOrder("ORD-1", "test@example.com", "Test", "{}");
-        order.setCustomerCountry("PT");
+        order.assignCustomerCountry("PT");
         assertThat(order.getCustomerCountry()).isEqualTo("PT");
     }
 

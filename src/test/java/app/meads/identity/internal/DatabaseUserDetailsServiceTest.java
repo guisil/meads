@@ -84,7 +84,7 @@ class DatabaseUserDetailsServiceTest {
     void shouldReturnPasswordHashWhenUserHasPassword() {
         // Arrange
         var user = new User("admin@example.com", "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
-        user.setPasswordHash("$2a$10$someBcryptHash");
+        user.assignPasswordHash("$2a$10$someBcryptHash");
         given(userRepository.findByEmail("admin@example.com")).willReturn(Optional.of(user));
 
         // Act

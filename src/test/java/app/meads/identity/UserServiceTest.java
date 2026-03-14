@@ -387,7 +387,7 @@ class UserServiceTest {
     @Test
     void shouldReturnTrueWhenUserHasPassword() {
         User user = new User("admin@example.com", "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
-        user.setPasswordHash("$2a$10$someHash");
+        user.assignPasswordHash("$2a$10$someHash");
         given(userRepository.findById(user.getId())).willReturn(Optional.of(user));
 
         assertThat(userService.hasPassword(user.getId())).isTrue();

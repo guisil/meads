@@ -57,7 +57,7 @@ class MyCompetitionsViewTest {
         if (userRepository.findByEmail(COMP_ADMIN_EMAIL).isEmpty()) {
             var u = new User(COMP_ADMIN_EMAIL,
                     "Comp Admin", UserStatus.ACTIVE, Role.USER);
-            u.setPasswordHash("$2a$10$dummyhash");
+            u.assignPasswordHash("$2a$10$dummyhash");
             userRepository.save(u);
         }
         if (userRepository.findByEmail(REGULAR_USER_EMAIL).isEmpty()) {

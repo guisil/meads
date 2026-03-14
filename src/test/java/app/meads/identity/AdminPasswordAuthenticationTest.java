@@ -47,7 +47,7 @@ class AdminPasswordAuthenticationTest {
         // Given — an active admin with a password
         String email = "admin-auth@example.com";
         var admin = new User(email, "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
-        admin.setPasswordHash(passwordEncoder.encode("correctPassword"));
+        admin.assignPasswordHash(passwordEncoder.encode("correctPassword"));
         userRepository.save(admin);
 
         // When — POST /login with correct credentials
@@ -65,7 +65,7 @@ class AdminPasswordAuthenticationTest {
         // Given — an active admin with a password
         String email = "admin-wrong@example.com";
         var admin = new User(email, "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
-        admin.setPasswordHash(passwordEncoder.encode("correctPassword"));
+        admin.assignPasswordHash(passwordEncoder.encode("correctPassword"));
         userRepository.save(admin);
 
         // When — POST /login with wrong password

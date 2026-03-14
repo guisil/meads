@@ -130,7 +130,7 @@ public class UserService {
         validatePassword(rawPassword);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
-        user.setPasswordHash(passwordEncoder.encode(rawPassword));
+        user.assignPasswordHash(passwordEncoder.encode(rawPassword));
         userRepository.save(user);
         log.info("Password set for user: {} ({})", userId, user.getEmail());
     }
@@ -140,7 +140,7 @@ public class UserService {
         validatePassword(rawPassword);
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
-        user.setPasswordHash(passwordEncoder.encode(rawPassword));
+        user.assignPasswordHash(passwordEncoder.encode(rawPassword));
         userRepository.save(user);
         log.info("Password set via token for user: {}", email);
     }

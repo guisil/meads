@@ -38,7 +38,7 @@ class UserRepositoryTest {
     @Test
     void shouldPersistUserWithPasswordHash() {
         var user = new User("hashed@repository.com", "Hashed User", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
-        user.setPasswordHash("$2a$10$someBcryptHashValue");
+        user.assignPasswordHash("$2a$10$someBcryptHashValue");
 
         userRepository.save(user);
         var found = userRepository.findByEmail("hashed@repository.com");

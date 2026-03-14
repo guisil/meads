@@ -30,4 +30,14 @@ public class Category {
     private String parentCode;
 
     protected Category() {} // JPA
+
+    public Category(String code, String name, String description,
+                    ScoringSystem scoringSystem, String parentCode) {
+        this.id = UUID.randomUUID();
+        this.code = code;
+        this.name = name;
+        this.description = description;
+        this.scoringSystem = scoringSystem;
+        this.parentCode = parentCode;
+    }
 }

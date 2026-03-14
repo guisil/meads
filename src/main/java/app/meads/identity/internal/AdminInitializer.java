@@ -47,7 +47,7 @@ class AdminInitializer {
                 UserStatus.ACTIVE,
                 Role.SYSTEM_ADMIN
         );
-        admin.setPasswordHash(passwordEncoder.encode(adminPassword));
+        admin.assignPasswordHash(passwordEncoder.encode(adminPassword));
         userRepository.save(admin);
         log.info("Created initial admin user: {}", adminEmail);
     }

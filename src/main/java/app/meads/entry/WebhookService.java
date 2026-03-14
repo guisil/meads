@@ -125,7 +125,7 @@ public class WebhookService {
 
             // Save order first (line items have FK to this)
             var order = new JumpsellerOrder(orderId, customerEmail, customerName, rawPayload);
-            order.setCustomerCountry(customerCountry);
+            order.assignCustomerCountry(customerCountry);
             orderRepository.save(order);
 
             int processedCount = 0;

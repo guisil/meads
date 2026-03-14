@@ -115,7 +115,7 @@ class JwtMagicLinkAuthenticationTest {
         // Given — a user with a password set
         String email = "password-user@example.com";
         var user = new User(email, "Password User", UserStatus.ACTIVE, Role.USER);
-        user.setPasswordHash(passwordEncoder.encode("securepassword"));
+        user.assignPasswordHash(passwordEncoder.encode("securepassword"));
         userRepository.save(user);
 
         String link = jwtMagicLinkService.generateLink(email, Duration.ofDays(7));
