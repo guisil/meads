@@ -24,6 +24,7 @@ import org.springframework.validation.annotation.Validated;
 import java.math.BigDecimal;
 import java.security.SecureRandom;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -397,7 +398,7 @@ public class EntryService {
                 .orElseThrow(() -> new IllegalArgumentException("Order not found"));
         var divisionId = lineItemRepository.findByOrderId(orderId).stream()
                 .map(JumpsellerOrderLineItem::getDivisionId)
-                .filter(java.util.Objects::nonNull)
+                .filter(Objects::nonNull)
                 .findFirst()
                 .orElse(null);
         if (divisionId != null) {

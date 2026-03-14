@@ -19,6 +19,7 @@ import org.springframework.validation.annotation.Validated;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.security.InvalidKeyException;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashSet;
 import java.util.HexFormat;
@@ -70,7 +71,8 @@ public class WebhookService {
             var mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec(hooksToken.getBytes(), "HmacSHA256"));
             var expected = HexFormat.of().formatHex(mac.doFinal(payload.getBytes()));
-            return expected.equalsIgnoreCase(signature);
+            return MessageDigest.isEqual(
+                    expected.toLowerCase().getBytes(), signature.toLowerCase().getBytes());
         } catch (NoSuchAlgorithmException | InvalidKeyException e) {
             log.error("Webhook HMAC computation failed", e);
             return false;
@@ -243,8 +245,8 @@ public class WebhookService {
         if (existingDivisionIds.isEmpty()) {
             return false;
         }
-        if (existingDivisionIds.contains(divisionId)) {
-            return false; // Same division — no conflict
+        if (existingDivisionIds.size() == 1 && existingDivisionIds.contains(divisionId)) {
+            return false; // Same division only — no conflict
         }
         // Check if any existing divisions are in the same competition
         var competitionDivisions = competitionService.findDivisionsByCompetition(competitionId);

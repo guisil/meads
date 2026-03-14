@@ -5,6 +5,7 @@ import lombok.Getter;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
@@ -133,6 +134,9 @@ public class Division {
                               String entryPrefix) {
         if (status != DivisionStatus.DRAFT && scoringSystem != this.scoringSystem) {
             throw new IllegalStateException("Scoring system can only be changed in DRAFT status");
+        }
+        if (status != DivisionStatus.DRAFT && !Objects.equals(entryPrefix, this.entryPrefix)) {
+            throw new IllegalStateException("Entry prefix can only be changed in DRAFT status");
         }
         Competition.validateShortName(shortName);
         this.name = name;
