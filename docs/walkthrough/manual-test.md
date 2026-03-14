@@ -65,7 +65,7 @@ including dev user magic links sent by `DevUserInitializer` at startup.
 
 ### Email types (Mailpit reference)
 
-All emails use the Thymeleaf template `email/email-base.html` — dark header with "MEADS",
+All emails use the Thymeleaf template `email/email-base.html` — dark header with MEADS logo,
 CTA button, fallback URL, and optional contact footer.
 
 | Trigger | Subject | Heading | CTA Label | Contact Footer |
@@ -246,7 +246,7 @@ CTA button, fallback URL, and optional contact footer.
 ### Main layout structure
 
 - [ ] Log in as `admin@example.com`
-- [ ] **Expected:** Top navbar shows "MEADS" title and user menu (user icon + `admin@example.com`)
+- [ ] **Expected:** Top navbar shows MEADS logo (left) and user menu (user icon + `admin@example.com`, right)
 - [ ] Click the user menu
 - [ ] **Expected:** Dropdown opens with "Logout" option
 - [ ] **Expected:** Left sidebar (drawer) starts collapsed

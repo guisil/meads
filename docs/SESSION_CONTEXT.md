@@ -276,6 +276,7 @@ Requires: DB migration, admin UI for constraint config, cross-module data flow, 
 - **Admin entries status filter** — DivisionEntryAdminView Entries tab now has a status dropdown filter alongside the text filter.
 - **Participant action icon reorder** — Edit (pencil) now appears before Send Login Link (envelope) in participants grid, consistent with Users grid.
 - **Full regression walkthrough (Sections 1–14)** — Completed 2026-03-14. All sections passed. No regressions found. Minor improvements made during walkthrough: competition logo/name in division views, participant icon reorder, credit removal guard, admin entries status filter.
+- **MEADS logo branding** — Replaced "MEADS" text with SVG logo in navbar (44px, left-aligned) and PNG logo as CID inline image in email header. Logo files at `META-INF/resources/images/meads-logo.{svg,png}`. SecurityConfig permits `/images/**`. Navbar height increased to 60px.
 
 ---
 

@@ -38,12 +38,12 @@ vaadin-app-layout::part(navbar) {
   background: hsl(30, 15%, 18%);
   color: hsl(40, 30%, 92%);
   box-shadow: 0 1px 4px hsla(30, 20%, 10%, 0.15);
+  min-height: 60px;
 }
 
-.app-title {
-  font-size: 1.125rem;
+.app-logo {
+  height: 36px;
   margin: 0;
-  color: var(--lumo-base-color);
 }
 
 /* --- Drawer --- */

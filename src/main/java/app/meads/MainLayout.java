@@ -3,7 +3,7 @@ package app.meads;
 import com.vaadin.flow.component.Text;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.applayout.DrawerToggle;
-import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.menubar.MenuBar;
@@ -28,11 +28,14 @@ public class MainLayout extends AppLayout {
         this.competitionAdminChecker = competitionAdminChecker;
 
         var toggle = new DrawerToggle();
-        var title = new H1("MEADS");
-        title.addClassName("app-title");
+        var logo = new Image("images/meads-logo.svg", "MEADS");
+        logo.setHeight("44px");
+        logo.addClassName("app-logo");
 
-        var navbar = new HorizontalLayout(toggle, title);
-        navbar.setFlexGrow(1, title);
+        var spacer = new HorizontalLayout();
+
+        var navbar = new HorizontalLayout(toggle, logo, spacer);
+        navbar.setFlexGrow(1, spacer);
         navbar.setWidthFull();
         navbar.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.CENTER);
 

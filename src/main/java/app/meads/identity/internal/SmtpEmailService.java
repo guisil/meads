@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
 import org.thymeleaf.ITemplateEngine;
 import org.thymeleaf.context.Context;
 
+import org.springframework.core.io.ClassPathResource;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -199,11 +201,14 @@ class SmtpEmailService implements EmailService {
         try {
             var htmlBody = templateEngine.process(TEMPLATE_NAME, thymeleafContext);
             var message = mailSender.createMimeMessage();
-            var helper = new MimeMessageHelper(message, "UTF-8");
+            var helper = new MimeMessageHelper(message, true, "UTF-8");
             helper.setFrom(fromAddress);
             helper.setTo(to);
             helper.setSubject(subject);
             helper.setText(htmlBody, true);
+            helper.addInline("meads-logo",
+                    new ClassPathResource("META-INF/resources/images/meads-logo.png"),
+                    "image/png");
             mailSender.send(message);
             trackDailyCount();
             log.info("Email sent: subject='{}', to={}", subject, to);

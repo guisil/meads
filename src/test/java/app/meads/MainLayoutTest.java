@@ -8,7 +8,7 @@ import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.Text;
 import com.vaadin.flow.component.applayout.AppLayout;
-import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.menubar.MenuBar;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.sidenav.SideNavItem;
@@ -107,11 +107,12 @@ class MainLayoutTest {
 
     @Test
     @WithMockUser(roles = "USER")
-    void shouldDisplayAppTitleInNavbar() {
+    void shouldDisplayAppLogoInNavbar() {
         UI.getCurrent().navigate("");
 
-        var title = _get(H1.class, spec -> spec.withText("MEADS"));
-        assertThat(title).isNotNull();
+        var logo = _get(Image.class);
+        assertThat(logo.getSrc()).contains("meads-logo.svg");
+        assertThat(logo.getAlt().orElse("")).isEqualTo("MEADS");
     }
 
     @Test
