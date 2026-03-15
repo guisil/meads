@@ -79,5 +79,5 @@ jobs:
           VERSION: ${{ steps.version.outputs.VERSION }}
         run: |
           doctl apps spec get ${{ secrets.DIGITALOCEAN_APP_ID }} > /tmp/spec.yaml
-          yq eval -i '.services[0].image.tag = strenv(VERSION)' /tmp/spec.yaml
+          yq eval -i '.services[0].image.tag = strenv(VERSION) | del(.databases)' /tmp/spec.yaml
           doctl apps update ${{ secrets.DIGITALOCEAN_APP_ID }} --spec /tmp/spec.yaml --wait
