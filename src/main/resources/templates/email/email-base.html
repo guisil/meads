@@ -20,7 +20,8 @@
                     <tr>
                         <td style="padding: 40px;">
                             <h2 style="margin: 0 0 16px 0; color: #1a1a2e; font-size: 20px;" th:text="${heading}">Heading</h2>
-                            <p style="margin: 0 0 32px 0; color: #333333; font-size: 16px; line-height: 1.5;" th:text="${bodyText}">Body text</p>
+                            <p th:style="${bodyText2 != null} ? 'margin: 0 0 16px 0; color: #333333; font-size: 16px; line-height: 1.5;' : 'margin: 0 0 32px 0; color: #333333; font-size: 16px; line-height: 1.5;'" th:text="${bodyText}">Body text</p>
+                            <p th:if="${bodyText2 != null}" style="margin: 0 0 32px 0; color: #333333; font-size: 16px; line-height: 1.5;" th:text="${bodyText2}">Body text 2</p>
                             <!-- Order review details -->
                             <div th:if="${orderReviewCompetition != null}" style="margin: 0 0 32px 0; color: #555555; font-size: 14px; line-height: 1.6; padding: 16px; background-color: #f8f8f8; border-radius: 6px;">
                                 <strong>Competition:</strong> <span th:text="${orderReviewCompetition}">Competition</span><br/>

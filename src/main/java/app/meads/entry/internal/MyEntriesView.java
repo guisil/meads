@@ -229,7 +229,13 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                 .set("padding", "var(--lumo-space-m)")
                 .set("border-radius", "var(--lumo-border-radius-m)")
                 .set("margin-bottom", "var(--lumo-space-m)");
-        warning.add(new Span("This division requires a meadery name. Please update your profile (via the user menu on the top right corner of the page) before submitting entries."));
+        var userIcon = VaadinIcon.USER.create();
+        userIcon.getStyle().set("width", "1em");
+        userIcon.getStyle().set("height", "1em");
+        userIcon.getStyle().set("vertical-align", "middle");
+        warning.add(new Span("This division requires a meadery name. Please update your profile (via the user menu "));
+        warning.add(userIcon);
+        warning.add(new Span(") before submitting entries."));
         return warning;
     }
 

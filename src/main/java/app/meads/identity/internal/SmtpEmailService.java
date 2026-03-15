@@ -165,9 +165,10 @@ class SmtpEmailService implements EmailService {
         ctx.setVariable("bodyText",
                 "You've received " + credits + " entry "
                         + (credits == 1 ? "credit" : "credits")
-                        + " for " + divisionName + " (" + competitionName
-                        + "). Click the button below to view your entries and start registering your meads.");
-        ctx.setVariable("ctaLabel", "View My Entries");
+                        + " for " + divisionName + " (" + competitionName + ").");
+        ctx.setVariable("bodyText2",
+                "Click the button below to view your entries and start registering your meads.");
+        ctx.setVariable("ctaLabel", "Continue");
         ctx.setVariable("ctaUrl", myEntriesUrl);
         ctx.setVariable("contactEmail", contactEmail);
         sendEmail(recipientEmail, subject, ctx, myEntriesUrl);
