@@ -645,6 +645,12 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         phoneNumberField.setHelperText("Contact phone number shown on entry labels");
         phoneNumberField.setClearButtonVisible(true);
 
+        var websiteField = new TextField("Website");
+        websiteField.setValue(competition.getWebsite() != null ? competition.getWebsite() : "");
+        websiteField.setMaxLength(500);
+        websiteField.setHelperText("Shown on entry labels");
+        websiteField.setClearButtonVisible(true);
+
         var logoData = new byte[1][];
         var logoContentType = new String[1];
 
@@ -723,8 +729,10 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                         ? shippingAddressField.getValue().trim() : null;
                 var phoneNumber = StringUtils.hasText(phoneNumberField.getValue())
                         ? phoneNumberField.getValue().trim() : null;
+                var website = StringUtils.hasText(websiteField.getValue())
+                        ? websiteField.getValue().trim() : null;
                 competitionService.updateCompetitionShippingDetails(
-                        competitionId, shippingAddress, phoneNumber, getCurrentUserId());
+                        competitionId, shippingAddress, phoneNumber, website, getCurrentUserId());
                 if (logoData[0] != null) {
                     competitionService.updateCompetitionLogo(
                             competitionId, logoData[0], logoContentType[0],
@@ -739,7 +747,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
             }
         });
 
-        tab.add(nameField, shortNameField, startDatePicker, endDatePicker, locationField, contactEmailField, shippingAddressField, phoneNumberField, logoLabel, logoSection, saveButton);
+        tab.add(nameField, shortNameField, startDatePicker, endDatePicker, locationField, contactEmailField, shippingAddressField, phoneNumberField, websiteField, logoLabel, logoSection, saveButton);
         return tab;
     }
 

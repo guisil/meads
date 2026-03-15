@@ -910,7 +910,7 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] **Expected:** DRAFT and WITHDRAWN entries do NOT have a download icon
 - [ ] Click the download icon on a SUBMITTED entry
 - [ ] **Expected:** Browser downloads a PDF file named `label-AMA-{N}.pdf`
-- [ ] **Expected:** PDF is A4 landscape with 2-line instruction header (line 1: print/attach, line 2: shipping address + phone if set) and 3 identical labels
+- [ ] **Expected:** PDF is A4 landscape with instruction header (line 1: print/attach, line 2: shipping address if set, line 3: Tel. + Web. if set) and 3 identical labels
 - [ ] **Expected:** Each label shows: competition name, division name, entry ID, mead name (2-line fixed height), category code, sweetness/strength/carbonation (with field names: "Sweetness: dry | Strength: standard | Carbonation: still"), ingredients (Honey/Other/Wood, each with 2-line fixed height), QR code (left) + notes area (right), disclaimer "FREE SAMPLES. NOT FOR RESALE."
 
 ### Entry labels -- batch download (admin)

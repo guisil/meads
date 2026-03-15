@@ -154,11 +154,12 @@ public class CompetitionService {
     public Competition updateCompetitionShippingDetails(@NotNull UUID competitionId,
                                                            String shippingAddress,
                                                            String phoneNumber,
+                                                           String website,
                                                            @NotNull UUID requestingUserId) {
         var competition = competitionRepository.findById(competitionId)
                 .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
         requireAuthorized(competitionId, requestingUserId);
-        competition.updateShippingDetails(shippingAddress, phoneNumber);
+        competition.updateShippingDetails(shippingAddress, phoneNumber, website);
         log.info("Updated shipping details for competition: {}", competitionId);
         return competitionRepository.save(competition);
     }

@@ -154,7 +154,7 @@ Check the environment variables for the admin email and password
 ### Set competition settings
 
 - [ ] Click the "Settings" tab
-- [ ] Enter a contact email, shipping address, phone number
+- [ ] Enter a contact email, shipping address, phone number, website
 - [ ] Click "Save"
 
 ---
@@ -282,7 +282,7 @@ Check the environment variables for the admin email and password
 
 - [ ] **Expected:** "Download all labels" button is enabled
 - [ ] Click "Download all labels"
-- [ ] **Expected:** PDF with instruction header (shipping address), 3 labels per page
+- [ ] **Expected:** PDF with instruction header (shipping address, phone, website), 3 labels per page
 - [ ] **Expected:** Labels show: competition name, division name, entry ID, mead name, category, characteristics, ingredients, QR code, disclaimer
 - [ ] Download an individual entry label — verify it matches
 
@@ -403,7 +403,7 @@ is fully verified.
 ### Configure settings
 
 - [ ] Set contact email
-- [ ] Set shipping address and phone number (for entry labels)
+- [ ] Set shipping address, phone number, and website (for entry labels)
 
 ### Add documents
 

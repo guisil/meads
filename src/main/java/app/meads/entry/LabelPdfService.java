@@ -110,21 +110,31 @@ public class LabelPdfService {
         line1.setAlignment(Element.ALIGN_CENTER);
         document.add(line1);
 
-        var sb = new StringBuilder();
+        // Line 2: shipping address
         if (competition.getShippingAddress() != null && !competition.getShippingAddress().isBlank()) {
-            sb.append("Post your bottles to: ");
-            sb.append(competition.getShippingAddress().replace("\n", ", "));
-            if (competition.getPhoneNumber() != null && !competition.getPhoneNumber().isBlank()) {
-                sb.append(", Tel. ").append(competition.getPhoneNumber());
-            }
-        } else if (competition.getPhoneNumber() != null && !competition.getPhoneNumber().isBlank()) {
-            sb.append("Tel. ").append(competition.getPhoneNumber());
-        }
-
-        if (!sb.isEmpty()) {
-            var line2 = new Paragraph(sb.toString(), FONT_HEADER);
+            var line2 = new Paragraph(
+                    "Post your bottles to: "
+                            + competition.getShippingAddress().replace("\n", ", ") + ".",
+                    FONT_HEADER);
             line2.setAlignment(Element.ALIGN_CENTER);
             document.add(line2);
+        }
+
+        // Line 3: phone + website
+        var contactParts = new StringBuilder();
+        if (competition.getPhoneNumber() != null && !competition.getPhoneNumber().isBlank()) {
+            contactParts.append("Tel. ").append(competition.getPhoneNumber());
+        }
+        if (competition.getWebsite() != null && !competition.getWebsite().isBlank()) {
+            if (!contactParts.isEmpty()) {
+                contactParts.append(", ");
+            }
+            contactParts.append("Web. ").append(competition.getWebsite());
+        }
+        if (!contactParts.isEmpty()) {
+            var line3 = new Paragraph(contactParts.toString(), FONT_HEADER);
+            line3.setAlignment(Element.ALIGN_CENTER);
+            document.add(line3);
         }
     }
 

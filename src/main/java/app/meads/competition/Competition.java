@@ -50,6 +50,9 @@ public class Competition {
     @Column(name = "phone_number")
     private String phoneNumber;
 
+    @Column(name = "website", length = 500)
+    private String website;
+
     @Column(nullable = false)
     private Instant createdAt;
 
@@ -125,8 +128,9 @@ public class Competition {
         this.contactEmail = contactEmail;
     }
 
-    public void updateShippingDetails(String shippingAddress, String phoneNumber) {
+    public void updateShippingDetails(String shippingAddress, String phoneNumber, String website) {
         this.shippingAddress = shippingAddress;
         this.phoneNumber = phoneNumber;
+        this.website = website;
     }
 }

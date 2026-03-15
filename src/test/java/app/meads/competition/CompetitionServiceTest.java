@@ -265,10 +265,11 @@ class CompetitionServiceTest {
                 .willAnswer(inv -> inv.getArgument(0));
 
         var result = competitionService.updateCompetitionShippingDetails(
-                competition.getId(), "123 Main St", "+1-555-0123", admin.getId());
+                competition.getId(), "123 Main St", "+1-555-0123", "https://chip.pt", admin.getId());
 
         assertThat(result.getShippingAddress()).isEqualTo("123 Main St");
         assertThat(result.getPhoneNumber()).isEqualTo("+1-555-0123");
+        assertThat(result.getWebsite()).isEqualTo("https://chip.pt");
         then(competitionRepository).should().save(competition);
     }
 

@@ -34,7 +34,7 @@ class LabelPdfServiceTest {
     void shouldGenerateSingleEntryLabelPdf() throws Exception {
         var competition = new Competition("CHIP Mead 2026", "chip-2026",
                 LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 3), "Lisbon");
-        competition.updateShippingDetails("123 Main St\nCity, 12345\nPortugal", "+351-555-0123");
+        competition.updateShippingDetails("123 Main St\nCity, 12345\nPortugal", "+351-555-0123", null);
 
         var division = createDivision("Home Division", "HOME");
         var category = createDivisionCategory("M2B", "Sweet Mead");
@@ -66,7 +66,7 @@ class LabelPdfServiceTest {
     void shouldGenerateBatchLabelPdf() {
         var competition = new Competition("CHIP Mead 2026", "chip-2026",
                 LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 3), "Lisbon");
-        competition.updateShippingDetails("123 Main St", "+351-555-0123");
+        competition.updateShippingDetails("123 Main St", "+351-555-0123", null);
 
         var division = createDivision("Home Division", "HOME");
         var category = createDivisionCategory("M2B", "Sweet Mead");

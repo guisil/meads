@@ -89,19 +89,21 @@ class CompetitionTest {
     void shouldUpdateShippingDetails() {
         var competition = createCompetition();
 
-        competition.updateShippingDetails("123 Main St\nCity, 12345", "+1-555-0123");
+        competition.updateShippingDetails("123 Main St\nCity, 12345", "+1-555-0123", "https://chip.pt");
 
         assertThat(competition.getShippingAddress()).isEqualTo("123 Main St\nCity, 12345");
         assertThat(competition.getPhoneNumber()).isEqualTo("+1-555-0123");
+        assertThat(competition.getWebsite()).isEqualTo("https://chip.pt");
     }
 
     @Test
     void shouldUpdateShippingDetailsWithNulls() {
         var competition = createCompetition();
 
-        competition.updateShippingDetails(null, null);
+        competition.updateShippingDetails(null, null, null);
 
         assertThat(competition.getShippingAddress()).isNull();
         assertThat(competition.getPhoneNumber()).isNull();
+        assertThat(competition.getWebsite()).isNull();
     }
 }
