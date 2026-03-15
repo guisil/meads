@@ -163,11 +163,16 @@ email forwarding — this is fine since we're using Resend.
 - Note connection details: host, port, username, password
 - Connection URL format: `jdbc:postgresql://<host>:<port>/meads?sslmode=require`
 
-### 3.3 Verify backups
+### 3.3 Set up backups (SnapShooter)
 
-- Cluster → Backups tab
-- Daily automatic backups + point-in-time recovery (PITR) — enabled by default
-- 7-day retention, no configuration needed
+Managed database backups are handled via SnapShooter (not a built-in Backups tab).
+
+- DO Console → SnapShooter (or snapshooter.com, sign in with DO account)
+- Connect your DigitalOcean account
+- Add `meads-db` database
+- Set daily schedule with 7-day retention
+- Storage: SnapShooter Simple Storage (included in free tier)
+- Free tier covers 1 database
 
 ### 3.4 Configure trusted sources (after app is created)
 
@@ -322,7 +327,7 @@ Quick reference for finding things in the DO Console.
 
 | What | Where |
 |------|-------|
-| **DB backups + restore** | Databases → meads-db → **Backups** tab |
+| **DB backups + restore** | SnapShooter → meads-db backup job |
 | **DB metrics** (connections, queries, disk) | Databases → meads-db → **Insights** tab |
 | **DB connection details** | Databases → meads-db → **Overview** → Connection Details |
 | **DB trusted sources** | Databases → meads-db → **Settings** → Trusted Sources |

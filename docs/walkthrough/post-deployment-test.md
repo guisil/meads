@@ -21,7 +21,7 @@ reference section).
 - [ ] Navigate to DO Console → Databases → meads-db
 - [ ] **Overview:** Connection details are visible, cluster status is "Online"
 - [ ] **Insights:** Active connections from the app are shown
-- [ ] **Backups:** At least one automatic backup exists, daily schedule is active
+- [ ] **Backups (SnapShooter):** Daily backup job configured with 7-day retention
 - [ ] **Settings → Trusted Sources:** App Platform app is listed
 
 ### Application
