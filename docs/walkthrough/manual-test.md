@@ -1010,7 +1010,7 @@ sign() { echo -n "$1" | openssl dgst -sha256 -hmac 'dev-jumpseller-hooks-token' 
 This uses seeded product mapping: product ID `1001` → Amadora division (SKU `CHIP-AMA`, 1 credit/unit).
 
 ```bash
-PAYLOAD='{"id":"WH-001","customer":{"email":"webhooktest@example.com","full_name":"Webhook Tester"},"products":[{"product_id":"1001","sku":"CHIP-AMA","name":"CHIP Amadora Entry","qty":3}],"shipping_address":{"country_code":"PT"}}'
+PAYLOAD='{"order":{"id":"WH-001","customer":{"email":"webhooktest@example.com"},"shipping_address":{"name":"Webhook","surname":"Tester","country_code":"PT"},"products":[{"id":"1001","sku":"CHIP-AMA","name":"CHIP Amadora Entry","qty":3}]}}'
 SIGNATURE=$(sign "$PAYLOAD")
 
 curl -s -o /dev/null -w "%{http_code}" \
@@ -1028,7 +1028,7 @@ curl -s -o /dev/null -w "%{http_code}" \
   - **Expected:** `webhooktest@example.com` exists (PENDING status, created automatically)
 - [ ] Verify country enrichment: Edit `webhooktest@example.com` in users list
   - **Expected:** Country field shows "Portugal" (enriched from webhook `shipping_address.country_code`)
-- [ ] **Check Mailpit:** credit notification email sent to `webhooktest@example.com`, subject "[MEADS] Entry credits received — Amadora", body says "3 entry credits", CTA button "View My Entries" (magic link URL)
+- [ ] **Check Mailpit:** credit notification email sent to `webhooktest@example.com`, subject "[MEADS] Entry credits received — Amadora", body says "3 entry credits", CTA button "Continue" (magic link URL)
 
 ### Duplicate order -- idempotency
 
@@ -1047,7 +1047,7 @@ curl -s -o /dev/null -w "%{http_code}" \
 ### Non-mapped product -- ignored
 
 ```bash
-PAYLOAD2='{"id":"WH-002","customer":{"email":"webhooktest@example.com","full_name":"Webhook Tester"},"products":[{"product_id":"9876","sku":"TSHIRT","name":"Conference T-Shirt","qty":1}]}'
+PAYLOAD2='{"order":{"id":"WH-002","customer":{"email":"webhooktest@example.com"},"shipping_address":{"name":"Webhook","surname":"Tester"},"products":[{"id":"9876","sku":"TSHIRT","name":"Conference T-Shirt","qty":1}]}}'
 SIGNATURE2=$(sign "$PAYLOAD2")
 
 curl -s -o /dev/null -w "%{http_code}" \
@@ -1068,7 +1068,7 @@ curl -s -o /dev/null -w "%{http_code}" \
   -X POST http://localhost:8080/api/webhooks/jumpseller/order-paid \
   -H "Content-Type: application/json" \
   -H "Jumpseller-Hmac-Sha256: deadbeef" \
-  -d '{"id":"WH-003","customer":{"email":"test@example.com","full_name":"Test"},"products":[]}'
+  -d '{"order":{"id":"WH-003","customer":{"email":"test@example.com"},"shipping_address":{"name":"Test","surname":"User"},"products":[]}}'
 ```
 
 - [ ] **Expected:** HTTP 401 (Unauthorized)
@@ -1080,7 +1080,7 @@ curl -s -o /dev/null -w "%{http_code}" \
 (product ID `1002`) in the same competition (CHIP 2026) should be flagged.
 
 ```bash
-PAYLOAD3='{"id":"WH-004","customer":{"email":"webhooktest@example.com","full_name":"Webhook Tester"},"products":[{"product_id":"1002","sku":"CHIP-PRO","name":"CHIP Profissional Entry","qty":1}]}'
+PAYLOAD3='{"order":{"id":"WH-004","customer":{"email":"webhooktest@example.com"},"shipping_address":{"name":"Webhook","surname":"Tester"},"products":[{"id":"1002","sku":"CHIP-PRO","name":"CHIP Profissional Entry","qty":1}]}}'
 SIGNATURE3=$(sign "$PAYLOAD3")
 
 curl -s -o /dev/null -w "%{http_code}" \
@@ -1100,7 +1100,7 @@ curl -s -o /dev/null -w "%{http_code}" \
 ### Mixed order -- some mapped, some conflicting
 
 ```bash
-PAYLOAD4='{"id":"WH-005","customer":{"email":"newbuyer@example.com","full_name":"New Buyer"},"products":[{"product_id":"1001","sku":"CHIP-AMA","name":"CHIP Amadora Entry","qty":2},{"product_id":"1002","sku":"CHIP-PRO","name":"CHIP Profissional Entry","qty":1}]}'
+PAYLOAD4='{"order":{"id":"WH-005","customer":{"email":"newbuyer@example.com"},"shipping_address":{"name":"New","surname":"Buyer"},"products":[{"id":"1001","sku":"CHIP-AMA","name":"CHIP Amadora Entry","qty":2},{"id":"1002","sku":"CHIP-PRO","name":"CHIP Profissional Entry","qty":1}]}}'
 SIGNATURE4=$(sign "$PAYLOAD4")
 
 curl -s -o /dev/null -w "%{http_code}" \

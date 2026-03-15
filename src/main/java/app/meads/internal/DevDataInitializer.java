@@ -217,17 +217,20 @@ class DevDataInitializer {
                                       String productId, String sku, String productName,
                                       int quantity, String countryCode) {
         var root = MAPPER.createObjectNode();
-        root.put("id", orderId);
-        var customer = root.putObject("customer");
+        var orderNode = root.putObject("order");
+        orderNode.put("id", orderId);
+        var customer = orderNode.putObject("customer");
         customer.put("email", email);
-        customer.put("full_name", fullName);
+        var nameParts = fullName.split(" ", 2);
+        var shipping = orderNode.putObject("shipping_address");
+        shipping.put("name", nameParts[0]);
+        shipping.put("surname", nameParts.length > 1 ? nameParts[1] : "");
         if (countryCode != null) {
-            var shipping = root.putObject("shipping_address");
             shipping.put("country_code", countryCode);
         }
-        var products = root.putArray("products");
+        var products = orderNode.putArray("products");
         var product = products.addObject();
-        product.put("product_id", productId);
+        product.put("id", productId);
         product.put("sku", sku);
         product.put("name", productName);
         product.put("qty", quantity);

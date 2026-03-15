@@ -72,15 +72,7 @@ class WebhookServiceTest {
 
     private String buildPayload(String orderId, String email, String name,
                                  String... products) {
-        var productList = new StringBuilder("[");
-        for (int i = 0; i < products.length; i++) {
-            if (i > 0) productList.append(",");
-            productList.append(products[i]);
-        }
-        productList.append("]");
-        return """
-                {"id": "%s", "customer": {"email": "%s", "full_name": "%s"}, "products": %s}
-                """.formatted(orderId, email, name, productList).trim();
+        return buildPayloadWithAddress(orderId, email, name, null, products);
     }
 
     private String buildPayloadWithAddress(String orderId, String email, String name,
@@ -91,17 +83,20 @@ class WebhookServiceTest {
             productList.append(products[i]);
         }
         productList.append("]");
+        var nameParts = name.split(" ", 2);
+        var firstName = nameParts[0];
+        var surname = nameParts.length > 1 ? nameParts[1] : "";
         var addressBlock = countryCode != null
-                ? ", \"shipping_address\": {\"country_code\": \"%s\"}".formatted(countryCode)
-                : "";
+                ? ", \"shipping_address\": {\"name\": \"%s\", \"surname\": \"%s\", \"country_code\": \"%s\"}".formatted(firstName, surname, countryCode)
+                : ", \"shipping_address\": {\"name\": \"%s\", \"surname\": \"%s\"}".formatted(firstName, surname);
         return """
-                {"id": "%s", "customer": {"email": "%s", "full_name": "%s"}%s, "products": %s}
-                """.formatted(orderId, email, name, addressBlock, productList).trim();
+                {"order": {"id": "%s", "customer": {"email": "%s"}%s, "products": %s}}
+                """.formatted(orderId, email, addressBlock, productList).trim();
     }
 
     private String buildProduct(String productId, String sku, String name, int qty) {
         return """
-                {"product_id": "%s", "sku": "%s", "name": "%s", "qty": %d}
+                {"id": "%s", "sku": "%s", "name": "%s", "qty": %d}
                 """.formatted(productId, sku != null ? sku : "", name, qty).trim();
     }
 

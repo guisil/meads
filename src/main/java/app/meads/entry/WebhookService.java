@@ -82,25 +82,28 @@ public class WebhookService {
     public void processOrderPaid(String rawPayload) {
         try {
             var root = MAPPER.readTree(rawPayload);
-            var orderId = root.get("id").asText();
-            var customerEmail = root.get("customer").get("email").asText();
-            var customerName = root.get("customer").get("full_name").asText();
+            var orderNode = root.has("order") ? root.get("order") : root;
+            var orderId = orderNode.get("id").asText();
+            var customerEmail = orderNode.get("customer").get("email").asText();
+
+            // Build customer name from shipping address name + surname
+            var customerName = extractCustomerName(orderNode);
 
             if (customerEmail.length() > 255) {
                 log.warn("Webhook rejected: customer email exceeds 255 characters (orderId={})", orderId);
                 return;
             }
 
-            var products = root.get("products");
+            var products = orderNode.get("products");
 
             // Extract country code from shipping address (fallback to billing)
             String customerCountry = null;
-            var shippingAddress = root.get("shipping_address");
+            var shippingAddress = orderNode.get("shipping_address");
             if (shippingAddress != null && shippingAddress.has("country_code")) {
                 customerCountry = shippingAddress.get("country_code").asText();
             }
             if (customerCountry == null) {
-                var billingAddress = root.get("billing_address");
+                var billingAddress = orderNode.get("billing_address");
                 if (billingAddress != null && billingAddress.has("country_code")) {
                     customerCountry = billingAddress.get("country_code").asText();
                 }
@@ -137,7 +140,7 @@ public class WebhookService {
 
             for (JsonNode product : products) {
                 totalItems++;
-                var productId = product.get("product_id").asText();
+                var productId = product.get("id").asText();
                 var sku = product.has("sku") && !product.get("sku").asText().isEmpty()
                         ? product.get("sku").asText() : null;
                 var productName = product.get("name").asText();
@@ -238,6 +241,20 @@ public class WebhookService {
             log.error("Error processing order paid webhook", e);
             throw new IllegalArgumentException("Failed to process webhook payload", e);
         }
+    }
+
+    private String extractCustomerName(JsonNode order) {
+        var shippingAddress = order.get("shipping_address");
+        if (shippingAddress != null) {
+            var name = shippingAddress.has("name") ? shippingAddress.get("name").asText("") : "";
+            var surname = shippingAddress.has("surname") ? shippingAddress.get("surname").asText("") : "";
+            var fullName = (name + " " + surname).trim();
+            if (!fullName.isEmpty()) {
+                return fullName;
+            }
+        }
+        // Fallback to customer email prefix
+        return order.get("customer").get("email").asText().split("@")[0];
     }
 
     private boolean hasCreditConflict(UUID userId, UUID divisionId, UUID competitionId) {

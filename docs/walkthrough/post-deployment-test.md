@@ -205,10 +205,12 @@ Check the environment variables for the admin email and password
 
 ### Configure Jumpseller webhook
 
-- [ ] In Jumpseller admin, configure a webhook:
+- [ ] In Jumpseller admin (Config → Notifications / Webhooks), configure a webhook:
   - URL: `https://meads.app/api/webhooks/jumpseller/order-paid`
-  - Event: Order Paid
-  - Token: same value as the `APP_JUMPSELLER_HOOKS_TOKEN` environment variable
+  - Jumpseller sends all events to this URL — the app processes `order/paid` events
+- [ ] Copy the **webhook token** shown on the Jumpseller webhooks page
+- [ ] In DO (App Platform → Settings → Environment Variables), set `APP_JUMPSELLER_HOOKS_TOKEN`
+  to match the Jumpseller token (this triggers a redeploy)
 
 ### Test webhook with a real purchase
 
