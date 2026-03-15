@@ -93,6 +93,24 @@ class WebhookServiceTest {
                 """.formatted(orderId, email, addressBlock, productList).trim();
     }
 
+    private String buildPayloadWithBillingAddress(String orderId, String email, String name,
+                                                    String countryCode, String... products) {
+        var productList = new StringBuilder("[");
+        for (int i = 0; i < products.length; i++) {
+            if (i > 0) productList.append(",");
+            productList.append(products[i]);
+        }
+        productList.append("]");
+        var nameParts = name.split(" ", 2);
+        var firstName = nameParts[0];
+        var surname = nameParts.length > 1 ? nameParts[1] : "";
+        var addressBlock = ", \"billing_address\": {\"name\": \"%s\", \"surname\": \"%s\", \"country_code\": \"%s\"}"
+                .formatted(firstName, surname, countryCode);
+        return """
+                {"order": {"id": "%s", "customer": {"email": "%s"}%s, "products": %s}}
+                """.formatted(orderId, email, addressBlock, productList).trim();
+    }
+
     private String buildProduct(String productId, String sku, String name, int qty) {
         return """
                 {"id": "%s", "sku": "%s", "name": "%s", "qty": %d}
@@ -469,6 +487,38 @@ class WebhookServiceTest {
 
         // Should NOT overwrite existing country
         assertThat(user.getCountry()).isEqualTo("BR");
+    }
+
+    @Test
+    void shouldExtractCustomerNameFromBillingAddress() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var competitionId = UUID.randomUUID();
+        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
+        var user = new User("entrant@test.com", "Maria Silva", UserStatus.ACTIVE, Role.USER);
+        var mapping = new ProductMapping(divisionId, "101", "SKU-001", "Entry Pack", 1);
+
+        var payload = buildPayloadWithBillingAddress("ORDER-BILLING", "entrant@test.com", "Maria Silva",
+                "PT", buildProduct("101", "SKU-001", "Entry Pack", 1));
+
+        given(orderRepository.existsByJumpsellerOrderId("ORDER-BILLING")).willReturn(false);
+        given(orderRepository.save(any(JumpsellerOrder.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(productMappingRepository.findByJumpsellerProductId("101"))
+                .willReturn(List.of(mapping));
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(creditRepository.findDistinctDivisionIdsByUserId(user.getId()))
+                .willReturn(List.of());
+        given(userService.findOrCreateByEmail("entrant@test.com", "Maria Silva")).willReturn(user);
+        given(lineItemRepository.save(any(JumpsellerOrderLineItem.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(creditRepository.save(any(EntryCredit.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.processOrderPaid(payload);
+
+        // Should use name from billing address
+        then(userService).should().findOrCreateByEmail("entrant@test.com", "Maria Silva");
     }
 
     @Test

@@ -1054,7 +1054,8 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         ordersGrid.addColumn(order -> formatInstant(order.getCreatedAt()))
                 .setHeader("Date").setSortable(true).setAutoWidth(true);
         ordersGrid.addColumn(JumpsellerOrder::getAdminNote)
-                .setHeader("Note").setSortable(true).setFlexGrow(2);
+                .setHeader("Note").setSortable(true).setFlexGrow(2)
+                .setTooltipGenerator(order -> order.getAdminNote());
         ordersGrid.addComponentColumn(order -> {
             var editButton = new Button(new Icon(VaadinIcon.EDIT));
             editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);

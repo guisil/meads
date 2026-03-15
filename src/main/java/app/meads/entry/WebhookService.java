@@ -242,13 +242,16 @@ public class WebhookService {
     }
 
     private String extractCustomerName(JsonNode order) {
-        var shippingAddress = order.get("shipping_address");
-        if (shippingAddress != null) {
-            var name = shippingAddress.has("name") ? shippingAddress.get("name").asText("") : "";
-            var surname = shippingAddress.has("surname") ? shippingAddress.get("surname").asText("") : "";
-            var fullName = (name + " " + surname).trim();
-            if (!fullName.isEmpty()) {
-                return fullName;
+        // Try shipping address first, then billing address
+        for (var addressKey : List.of("shipping_address", "billing_address")) {
+            var address = order.get(addressKey);
+            if (address != null) {
+                var name = address.has("name") ? address.get("name").asText("") : "";
+                var surname = address.has("surname") ? address.get("surname").asText("") : "";
+                var fullName = (name + " " + surname).trim();
+                if (!fullName.isEmpty()) {
+                    return fullName;
+                }
             }
         }
         // Fallback to customer email prefix
