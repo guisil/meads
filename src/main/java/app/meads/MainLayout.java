@@ -3,7 +3,9 @@ package app.meads;
 import com.vaadin.flow.component.Text;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.applayout.DrawerToggle;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Image;
+import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.menubar.MenuBar;
@@ -59,10 +61,6 @@ public class MainLayout extends AppLayout {
             userItem.getSubMenu().addItem("My Profile", e ->
                     getUI().ifPresent(ui -> ui.navigate("profile")));
             userItem.getSubMenu().addItem("Logout", e -> authenticationContext.logout());
-            if (!appVersion.isEmpty()) {
-                var versionItem = userItem.getSubMenu().addItem(appVersion);
-                versionItem.setEnabled(false);
-            }
 
             navbar.add(userMenu);
         }
@@ -85,9 +83,26 @@ public class MainLayout extends AppLayout {
             nav.addItem(new SideNavItem("My Entries", "my-entries", VaadinIcon.LIST.create()));
         }
 
+        var drawerContent = new Div();
+        drawerContent.getStyle().set("display", "flex");
+        drawerContent.getStyle().set("flex-direction", "column");
+        drawerContent.getStyle().set("height", "100%");
+
         var scroller = new Scroller(nav);
         scroller.getStyle().set("padding", "var(--lumo-space-s)");
-        addToDrawer(scroller);
+        scroller.getStyle().set("flex", "1");
+        drawerContent.add(scroller);
+
+        if (!appVersion.isEmpty()) {
+            var versionLabel = new Span(appVersion);
+            versionLabel.getStyle().set("padding", "var(--lumo-space-s)");
+            versionLabel.getStyle().set("color", "var(--lumo-tertiary-text-color)");
+            versionLabel.getStyle().set("font-size", "var(--lumo-font-size-xs)");
+            versionLabel.getStyle().set("text-align", "center");
+            drawerContent.add(versionLabel);
+        }
+
+        addToDrawer(drawerContent);
 
         setPrimarySection(Section.DRAWER);
         setDrawerOpened(false);

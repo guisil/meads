@@ -4,7 +4,7 @@
 **Domain:** meads.app (Namecheap)
 **Email:** Resend SMTP
 **Region:** Amsterdam (AMS)
-**CI/CD:** GitHub Actions (test gate) + DO App Platform auto-deploy
+**CI/CD:** GitHub Actions (test + build Docker image + push to GHCR + update DO app)
 
 **First deployed:** 2026-03-14
 
@@ -80,9 +80,16 @@ Create `src/main/resources/logback-spring.xml` with profile-aware log levels:
 
 ### 1.4 GitHub Actions CI (`.github/workflows/ci.yml`)
 
-Runs on push/PR to `main`: `mvn test` + `mvn package -Pproduction -DskipTests`.
-Uses `actions/setup-java@v4` with Temurin, caches `~/.m2/repository`.
-Testcontainers works natively on GitHub Actions (Docker is pre-installed).
+Two jobs:
+
+- **test** (push/PR to `main` + tags): `mvn test` + `mvn package -Pproduction -DskipTests`.
+  Uses `actions/setup-java@v4` with Temurin, caches `~/.m2/repository`.
+  Testcontainers works natively on GitHub Actions (Docker is pre-installed).
+
+- **deploy** (only on `v*` tags): Builds Docker image from the tagged commit, pushes to
+  GHCR (`ghcr.io/guisil/meads:<tag>`), then updates the DO app spec to use that image
+  via `doctl apps update`. This ensures the deployed version matches the tag exactly —
+  no race condition with SNAPSHOT bumps on `main`.
 
 ### 1.5 Verify locally
 
@@ -175,12 +182,11 @@ email forwarding — this is fine since we're using Resend.
 ### 4.1 Create the app
 
 - App Platform → Create App
-- Source: **GitHub** → select `meads` repository, branch `main`
-- Auto-detect Dockerfile
-- Plan: **Basic** ($5/mo) — 512 MB RAM, 1 vCPU
+- Source: **GHCR image** (`ghcr.io/guisil/meads`) — managed by GitHub Actions CI
+- Plan: **Basic** ($12/mo) — 1 GB RAM, 1 vCPU
 - Region: **Amsterdam** (same as database)
 - HTTP port: `8080`
-- Auto-deploy: **enabled**
+- Auto-deploy: **disabled** (deploys triggered by CI on release tags only)
 - VPC network: **not needed** (DB connection uses SSL over public network)
 
 ### 4.2 Attach the managed database
@@ -338,15 +344,16 @@ Quick reference for finding things in the DO Console.
 
 ```
 Push to main     → GitHub Actions: test + build (CI only, no deploy)
-Push v* tag      → GitHub Actions: test + build → trigger DO deployment via doctl
+Push v* tag      → GitHub Actions: test + build → build Docker image → push to GHCR → update DO app
 ```
 
 - **Push to `main` / PRs:** GitHub Actions runs tests + production build. No deployment.
-- **Release tags (`v*`):** GitHub Actions runs tests, then triggers DO deployment via
-  `doctl apps create-deployment`. DO auto-deploy is **disabled** — only GitHub Actions
-  triggers deploys.
-- **Zero-downtime deploys:** DO builds new version, health-checks it, then routes traffic.
-  Old version keeps serving until new one is confirmed healthy.
+- **Release tags (`v*`):** GitHub Actions runs tests, builds a Docker image from the
+  **tagged commit**, pushes it to GHCR (`ghcr.io/guisil/meads:<tag>`), then updates the
+  DO app spec to use that image via `doctl apps update`. This eliminates the race condition
+  where the SNAPSHOT bump on `main` could be deployed instead of the tagged version.
+- **Zero-downtime deploys:** DO pulls the pre-built image, health-checks it, then routes
+  traffic. Old version keeps serving until new one is confirmed healthy.
 - **If build fails:** DO keeps previous version running. Fix and push again.
 
 ### GitHub Actions secrets (required)
@@ -355,6 +362,11 @@ Push v* tag      → GitHub Actions: test + build → trigger DO deployment via 
 |--------|-------------|
 | `DIGITALOCEAN_ACCESS_TOKEN` | DO API token with `app:create` scope |
 | `DIGITALOCEAN_APP_ID` | App Platform app UUID |
+| `GHCR_REGISTRY_CREDENTIALS` | `guisil:<PAT>` — GitHub PAT with `read:packages` scope, for DO to pull images |
+
+To create the PAT: GitHub → Settings → Developer settings → Personal access tokens →
+Fine-grained tokens → Generate. Scope: `read:packages` only. Format the secret as
+`guisil:<token>`.
 
 ### Release process
 
@@ -362,9 +374,10 @@ Push v* tag      → GitHub Actions: test + build → trigger DO deployment via 
 2. Commit: `Release vX.Y.Z`
 3. Tag: `git tag -a vX.Y.Z -m "vX.Y.Z — description"`
 4. Push: `git push && git push origin vX.Y.Z`
-5. Create GitHub release: `gh release create vX.Y.Z --title "..." --notes "..."`
-6. Bump version to next `-SNAPSHOT` and push
-7. Monitor: App Platform → Activity → current deployment
+5. CI automatically: runs tests → builds image → pushes to GHCR → updates DO app
+6. Create GitHub release: `gh release create vX.Y.Z --title "..." --notes "..."`
+7. Bump version to next `-SNAPSHOT` and push
+8. Monitor: App Platform → Activity → current deployment
 
 ### Standard update (code-only)
 
