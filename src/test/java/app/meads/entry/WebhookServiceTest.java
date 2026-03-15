@@ -21,7 +21,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.time.LocalDateTime;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
 
@@ -67,7 +66,7 @@ class WebhookServiceTest {
     private String computeHmac(String payload, String secret) throws Exception {
         var mac = Mac.getInstance("HmacSHA256");
         mac.init(new SecretKeySpec(secret.getBytes(), "HmacSHA256"));
-        return HexFormat.of().formatHex(mac.doFinal(payload.getBytes()));
+        return java.util.Base64.getEncoder().encodeToString(mac.doFinal(payload.getBytes()));
     }
 
     private String buildPayload(String orderId, String email, String name,

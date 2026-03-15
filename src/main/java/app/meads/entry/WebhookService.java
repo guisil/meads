@@ -22,7 +22,6 @@ import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashSet;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -70,9 +69,8 @@ public class WebhookService {
         try {
             var mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec(hooksToken.getBytes(), "HmacSHA256"));
-            var expected = HexFormat.of().formatHex(mac.doFinal(payload.getBytes()));
-            return MessageDigest.isEqual(
-                    expected.toLowerCase().getBytes(), signature.toLowerCase().getBytes());
+            var expected = java.util.Base64.getEncoder().encodeToString(mac.doFinal(payload.getBytes()));
+            return MessageDigest.isEqual(expected.getBytes(), signature.getBytes());
         } catch (NoSuchAlgorithmException | InvalidKeyException e) {
             log.error("Webhook HMAC computation failed", e);
             return false;

@@ -979,13 +979,13 @@ The dev token is configured in `application.properties` as `dev-jumpseller-hooks
 To compute the signature for a given payload:
 
 ```bash
-echo -n '<payload>' | openssl dgst -sha256 -hmac 'dev-jumpseller-hooks-token' | awk '{print $2}'
+echo -n '<payload>' | openssl dgst -sha256 -hmac 'dev-jumpseller-hooks-token' -binary | base64
 ```
 
 Or as a reusable shell function:
 
 ```bash
-sign() { echo -n "$1" | openssl dgst -sha256 -hmac 'dev-jumpseller-hooks-token' | sed 's/.*= //'; }
+sign() { echo -n "$1" | openssl dgst -sha256 -hmac 'dev-jumpseller-hooks-token' -binary | base64; }
 ```
 
 #### Alternative: Postman
@@ -995,7 +995,7 @@ sign() { echo -n "$1" | openssl dgst -sha256 -hmac 'dev-jumpseller-hooks-token' 
    ```javascript
    const payload = pm.request.body.raw;
    const token = pm.environment.get("hooks_token");
-   const signature = CryptoJS.HmacSHA256(payload, token).toString(CryptoJS.enc.Hex);
+   const signature = CryptoJS.HmacSHA256(payload, token).toString(CryptoJS.enc.Base64);
    pm.environment.set("hmac_signature", signature);
    ```
 3. Set headers:
