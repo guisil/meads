@@ -199,16 +199,31 @@ All 14 sections completed with fixes along the way.
 - **Contact email on My Entries** — Shows "Questions or need help? Contact: {email}" as mailto link, opposite the registration deadline
 - **Settings field widths** — Widened Name, Location, Contact Email fields in Competition Settings and Name in Division Settings to 400px
 
-### Priority 1: Participant/user deletion guards
-Block deletion of participants who have entries or credits in a competition. Also block
-deletion of users who have entries or credits anywhere. Design considerations:
+### Priority 1: Deletion guards and cascade testing
+Comprehensive review and hardening of all deletion operations across the application.
+Two parts: (a) implement guards to block unsafe deletions, (b) test all existing
+deletion paths for correct behavior.
+
+**Guards to implement:**
 - Participant with entries → block removal
 - Participant with credits (no entries) → block removal
 - Associated orders → handle constraint violations (remove or reassign)
 - User deletion → check entries/credits across all competitions
 - Cross-module: use guard interface pattern (like `DivisionRevertGuard`)
 - UI: show error notification (not exception) when blocked
-- Needs thorough TDD — multiple edge cases across modules
+
+**Deletion paths to test (with and without dependent data):**
+- Delete competition → what happens to divisions, participants, entries, credits, orders, documents?
+- Delete division → what happens to entries, credits, product mappings, categories?
+- Delete participant → what happens to entries, credits, orders linked to that user?
+- Delete user → what happens to entries, credits, participant records?
+- Delete product mapping → what happens to existing orders/line items referencing it?
+- Delete category from division → what happens to entries using that category?
+- Remove ENTRANT role from participant → what happens to their entries/credits?
+
+**Approach:** Start with a design pass to map all FK constraints and cascade behavior.
+Then TDD each guard and deletion path. Needs thorough testing — multiple edge cases
+across modules.
 
 ### Priority 2: Post-deployment walkthrough
 Execute `docs/walkthrough/post-deployment-test.md` against the deployed application.
