@@ -1,10 +1,10 @@
 # Post-Deployment Walkthrough
 
 End-to-end test plan for the MEADS application after deployment to production.
-Starts from a clean database (no seeded data) and walks through the full workflow:
-admin setup, competition creation, entrant registration, entry submission, and labels.
+Starts from a clean database (no seeded data) and walks through the full workflow
+in two stages: a test competition for verification, then the real competition setup.
 
-**Date:** 2026-03-12
+**Date:** 2026-03-15
 **Environment:** Production (no dev profile, no seeded data)
 **Initial state:** Only the bootstrapped SYSTEM_ADMIN exists (from `AdminInitializer`)
 
@@ -51,17 +51,25 @@ reference section).
 
 ---
 
+# Stage 1: Test Competition
+
+Purpose: verify the full workflow end-to-end, including the Jumpseller webhook
+integration, before setting up the real competition. The test competition and its
+data will be deleted after verification.
+
+---
+
 ## 1. Prerequisites
 
 ### Verify the application is running
 
-- [ ] Navigate to the application URL (e.g., `https://meads.example.com`)
+- [ ] Navigate to `https://meads.app`
 - [ ] **Expected:** Redirected to `/login`
 - [ ] **Expected:** Login page shows: email field, "Get Login Link" button, collapsible "Login with credentials" section
 
 ### Verify email delivery
 
-- [ ] Confirm SMTP is configured and working (Resend or other provider)
+- [ ] Confirm SMTP is configured and working (Resend)
 - [ ] Have access to at least 3 real email addresses for testing:
   - **Admin email** — for the system admin account
   - **Competition admin email** — for competition management
@@ -71,7 +79,7 @@ reference section).
 
 The initial SYSTEM_ADMIN is created by `AdminInitializer` on first startup.
 Check the environment variables for the admin email and password
-(`ADMIN_EMAIL` / `ADMIN_PASSWORD`, or defaults from `application.properties`).
+(`INITIAL_ADMIN_EMAIL` / `INITIAL_ADMIN_PASSWORD`).
 
 ---
 
@@ -121,291 +129,205 @@ Check the environment variables for the admin email and password
 
 ---
 
-## 4. Competition Setup
+## 4. Test Competition Setup
 
 *Log in as the SYSTEM_ADMIN for this section.*
 
-### Create a competition
+### Create a test competition
 
 - [ ] Navigate to `/competitions`
 - [ ] Click "Create Competition"
-- [ ] Fill in: Name, Short Name, Start Date, End Date, Location
-- [ ] Optionally upload a logo (PNG/JPEG, max 2.5 MB)
+- [ ] Fill in: Name: "Test Competition", Short Name: "test", Start Date, End Date, Location
+- [ ] Optionally upload a logo
 - [ ] Click "Save"
 - [ ] **Expected:** Notification "Competition created successfully" (green)
-- [ ] **Expected:** Competition appears in grid
-
-### Open the competition detail
-
-- [ ] Click the competition row in the grid
-- [ ] **Expected:** Competition detail page with tabs: Divisions, Participants, Settings, Documents
-- [ ] **Expected:** Breadcrumb: "Competitions / {Competition Name}"
 
 ### Add the competition admin as participant
 
+- [ ] Open the test competition detail
 - [ ] Click the "Participants" tab
 - [ ] Click "Add Participant"
 - [ ] Enter the competition admin email, select role: Admin
 - [ ] Click "Add"
-- [ ] **Expected:** Notification "Participant added successfully" (green)
-- [ ] **Expected:** Notification "Password setup email sent to {email}" (green) — if user has a password, a password setup email is sent
 - [ ] **Expected:** Participant appears in grid with role "Admin"
 
-### Set competition contact email (optional)
+### Set competition settings
 
 - [ ] Click the "Settings" tab
-- [ ] Enter a contact email in the "Contact Email" field
+- [ ] Enter a contact email, shipping address, phone number
 - [ ] Click "Save"
-- [ ] **Expected:** Notification "Competition updated successfully" (green)
-
-### Set shipping address and phone (optional)
-
-- [ ] In the Settings tab, enter a shipping address and phone number
-- [ ] Click "Save"
-- [ ] **Expected:** These will appear on entry labels (instruction header)
 
 ---
 
-## 5. Division Setup
+## 5. Test Division Setup
 
-*Log in as the competition admin for this section (or continue as SYSTEM_ADMIN).*
+### Create a test division
 
-### Create a division
-
-- [ ] Navigate to the competition detail (via "My Competitions" or `/competitions`)
 - [ ] On the "Divisions" tab, click "Create Division"
-- [ ] Fill in: Name, Short Name, Scoring System (MJP)
-- [ ] Set entry limits if desired (per subcategory, per main category, total)
-- [ ] Set a registration deadline and timezone
+- [ ] Fill in: Name: "Test Division", Short Name: "test", Scoring System: MJP
+- [ ] Set entry limits (e.g., 3 per subcategory, 5 per main category, 10 total)
+- [ ] Set a registration deadline (in the future) and timezone
 - [ ] Click "Save"
-- [ ] **Expected:** Notification "Division created successfully" (green)
-- [ ] **Expected:** Division appears in grid with status "Draft"
 
 ### Configure division settings
 
-- [ ] Click the division row to open the detail view
+- [ ] Open the test division detail
 - [ ] Click the "Settings" tab
-- [ ] Set Entry Prefix (e.g., "AMA") — only editable in DRAFT status
-- [ ] Set "Meadery Name Required" if needed — only editable in DRAFT status
-- [ ] Verify entry limit fields show the values set during creation
+- [ ] Set Entry Prefix (e.g., "TST")
+- [ ] Set "Meadery Name Required" to true
 - [ ] Click "Save"
-- [ ] **Expected:** Notification "Settings saved successfully" (green)
 
 ### Add categories
 
 - [ ] Click the "Categories" tab
-- [ ] Click "Add Category"
-- [ ] On "From Catalog" tab, select a main category (e.g., M1 — Traditional Mead)
-- [ ] Click "Add"
-- [ ] **Expected:** Main category and its subcategories appear in the TreeGrid
-- [ ] Repeat for other desired categories (M2, M3, M4, etc.)
-- [ ] Optionally remove unwanted subcategories (click X icon on the row)
-- [ ] Optionally add custom categories via the "Custom" tab
+- [ ] Add at least 2 main categories from catalog (e.g., M1 — Traditional Mead, M2 — Fruit Melomel)
+- [ ] Verify subcategories appear under each main category
 
-### Set up product mappings (for webhook integration)
+### Set up product mappings
 
 - [ ] Click "Manage Entries" in the division detail header
-- [ ] **Expected:** Entry admin view with tabs: Credits, Entries, Products, Orders
 - [ ] Click the "Products" tab
 - [ ] Click "Add Mapping"
 - [ ] Enter the Jumpseller Product ID, SKU (optional), Product Name, Credits Per Unit
 - [ ] Click "Add"
 - [ ] **Expected:** Notification "Product mapping added" (green)
 
-### Advance division to Registration Open
+### Advance to Registration Open
 
-- [ ] Navigate back to the competition detail > Divisions tab
-- [ ] Click the forward icon (tooltip: "Advance Status") on the division
-- [ ] **Expected:** Confirmation dialog: "Advance division '{name}' from Draft to Registration Open?"
-- [ ] Click "Advance"
-- [ ] **Expected:** Status badge changes to "Registration Open"
-- [ ] **Expected:** Division is now accepting entries
-
-### Add documents (optional)
-
-- [ ] Click the "Documents" tab on the competition detail
-- [ ] Add any relevant documents (rules PDF, external links)
-- [ ] These will be visible to entrants on their My Entries page
+- [ ] Navigate back to competition detail > Divisions tab
+- [ ] Click the forward icon on the test division
+- [ ] Confirm advance from Draft to Registration Open
+- [ ] **Expected:** Status changes to "Registration Open"
 
 ---
 
-## 6. Entrant Onboarding
+## 6. Jumpseller Webhook Test
 
-### Grant entry credits manually
+### Configure Jumpseller webhook
 
-*Log in as the competition admin.*
+- [ ] In Jumpseller admin, configure a webhook:
+  - URL: `https://meads.app/api/webhooks/jumpseller/order-paid`
+  - Event: Order Paid
+  - Token: same value as the `APP_JUMPSELLER_HOOKS_TOKEN` environment variable
 
-- [ ] Navigate to the division's entry admin (via division detail > "Manage Entries")
-- [ ] On the "Credits" tab, click "Add Credits"
-- [ ] Enter the entrant's email address and the number of credits
-- [ ] Click "Add"
-- [ ] **Expected:** Notification "Credits added" (green)
-- [ ] **Expected:** If the user doesn't exist, they are NOT created — the email must match an existing user
-- [ ] **Expected:** If the user exists, they appear in the Credits grid
-- [ ] **Expected:** Credit notification email sent to the entrant with subject "[MEADS] Entry credits received — {division}"
-- [ ] **Expected:** Email contains a magic link "View My Entries" button
+### Test webhook with a real purchase
 
-### Grant entry credits via webhook (alternative)
+- [ ] Make a test purchase on Jumpseller using the entrant email
+- [ ] **Expected:** Webhook fires to `/api/webhooks/jumpseller/order-paid`
+- [ ] **Expected:** Check app runtime logs for webhook processing messages
+- [ ] **Expected:** Credits awarded to the entrant
+- [ ] **Expected:** Credit notification email sent to the entrant with magic link
 
-If Jumpseller integration is configured:
+### Verify webhook results
 
-- [ ] A customer purchases an entry product on Jumpseller
-- [ ] **Expected:** Webhook `POST /api/webhooks/jumpseller/order-paid` fires
-- [ ] **Expected:** Credits are automatically awarded to the customer's email
-- [ ] **Expected:** If the user doesn't exist, a PENDING user is created automatically
-- [ ] **Expected:** Credit notification email sent to the customer
-- [ ] Verify in the entry admin Orders tab that the order appears with status PROCESSED
-- [ ] Verify in the Credits tab that the customer has the correct credit balance
+- [ ] Log in as competition admin
+- [ ] Navigate to test division entry admin
+- [ ] **Orders tab:** order appears with status PROCESSED (or NEEDS_REVIEW if issues)
+- [ ] **Credits tab:** entrant appears with correct credit balance
+- [ ] If order has NEEDS_REVIEW status, review the reason and resolve
+
+### Test webhook security
+
+- [ ] Send a request without HMAC signature → **Expected:** 401 Unauthorized
+- [ ] Send a request with invalid signature → **Expected:** 401 Unauthorized
+
+---
+
+## 7. Entrant Flow (Test)
 
 ### Entrant first login
 
 - [ ] The entrant receives the credit notification email
-- [ ] Click the "View My Entries" magic link in the email
-- [ ] **Expected:** Authenticated and redirected to My Entries page for the division
-- [ ] **Expected:** If user was PENDING, status is now ACTIVE (activated on first login)
+- [ ] Click the "View My Entries" magic link
+- [ ] **Expected:** Authenticated and redirected to My Entries page for the test division
 
----
+### Update profile
 
-## 7. Entry Submission (Entrant View)
-
-*Logged in as the entrant.*
-
-### My Entries page
-
-- [ ] **Expected:** Header shows "{Competition Name} — {Division Name} — My Entries" with competition logo (if set)
-- [ ] **Expected:** Breadcrumb: "My Entries / {Competition Name} / {Division Name}"
-- [ ] **Expected:** Credit info: "Credits: N remaining (N total, 0 used)"
-- [ ] **Expected:** Limits info shows configured limits (if any)
-- [ ] **Expected:** Process info box explaining the workflow
-- [ ] **Expected:** Registration deadline displayed (if set)
-- [ ] **Expected:** Competition documents listed (if any were added)
-- [ ] **Expected:** Empty entries grid
-
-### Update profile (if meadery name required)
-
-- [ ] If the division requires a meadery name and the entrant hasn't set one:
-- [ ] **Expected:** Warning banner: "This division requires a meadery name..." with "My Profile" link
+- [ ] **Expected:** Warning banner about meadery name required
 - [ ] **Expected:** Submit buttons are disabled
 - [ ] Click "My Profile", set meadery name and country, save
 - [ ] Navigate back to My Entries
 - [ ] **Expected:** Warning is gone, submit buttons enabled
 
+### My Entries page verification
+
+- [ ] **Expected:** Header shows "Test Competition — Test Division — My Entries"
+- [ ] **Expected:** Credit info, limits, process info box, registration deadline all displayed
+- [ ] **Expected:** Competition documents listed (if any)
+
 ### Add entries
 
 - [ ] Click "Add Entry"
-- [ ] **Expected:** Dialog with fields: Mead Name, Category (subcategories only), Sweetness, Strength, ABV (%), Carbonation, Honey Varieties, Other Ingredients, Wood Aged checkbox, Additional Information
-- [ ] **Expected:** Category hints appear when selecting certain categories
-- [ ] Fill in all required fields, click "Save"
-- [ ] **Expected:** Notification "Entry created" (green)
-- [ ] **Expected:** Entry appears in grid with status DRAFT
-- [ ] **Expected:** Credits used count increases
-- [ ] Repeat to add more entries (up to available credits)
+- [ ] **Expected:** Dialog with all fields, category hints when selecting categories
+- [ ] Fill in fields, click "Save"
+- [ ] **Expected:** Entry appears in grid with status DRAFT and prefixed ID (TST-1)
+- [ ] Add 1-2 more entries
 
 ### Edit a draft entry
 
-- [ ] Click the edit (pencil) icon on a DRAFT entry
-- [ ] **Expected:** Dialog pre-populated with entry data
-- [ ] Make changes, click "Save"
-- [ ] **Expected:** Notification "Entry updated" (green)
-
-### View entry details
-
-- [ ] Click the view (eye) icon on any entry
-- [ ] **Expected:** Read-only dialog showing all entry fields
+- [ ] Click the edit icon on a DRAFT entry
+- [ ] Make changes, save
+- [ ] **Expected:** Entry updated
 
 ### Submit entries
 
 - [ ] Click "Submit All Drafts"
-- [ ] **Expected:** Confirmation dialog: "Submit N draft entries? Submitted entries can no longer be edited."
-- [ ] Click "Submit"
-- [ ] **Expected:** Notification "N entries submitted" (green)
+- [ ] Confirm submission
 - [ ] **Expected:** All entries now show status SUBMITTED
-- [ ] **Expected:** Edit and submit buttons disabled for SUBMITTED entries
-- [ ] **Expected:** If all credits used and no drafts remain: confirmation email sent with entry summary
+- [ ] **Expected:** If all credits used and no drafts remain: confirmation email sent
 
 ### Download labels
 
-- [ ] **Expected:** "Download all labels" button is enabled (no drafts remain)
+- [ ] **Expected:** "Download all labels" button is enabled
 - [ ] Click "Download all labels"
-- [ ] **Expected:** PDF downloads with one page per entry
-- [ ] **Expected:** Each page has instruction header (with shipping address if set) and 3 identical labels
-- [ ] **Expected:** Labels show: competition name, division name, entry ID (with prefix), mead name, category, characteristics, ingredients, QR code, disclaimer
-- [ ] Click the download icon on an individual SUBMITTED entry
-- [ ] **Expected:** Single-entry label PDF downloads
+- [ ] **Expected:** PDF with instruction header (shipping address), 3 labels per page
+- [ ] **Expected:** Labels show: competition name, division name, entry ID, mead name, category, characteristics, ingredients, QR code, disclaimer
+- [ ] Download an individual entry label — verify it matches
 
 ---
 
-## 8. Admin Entry Management
+## 8. Admin Entry Management (Test)
 
 *Log in as the competition admin.*
 
-### View entries
+### View and edit entries
 
-- [ ] Navigate to division entry admin > "Entries" tab
-- [ ] **Expected:** Grid shows all entries with columns: Entry #, Code, Mead Name, Category, Final Category ("—"), Entrant, Meadery, Country, Status, Actions
-- [ ] Click the view (eye) icon on an entry
-- [ ] **Expected:** Read-only dialog with all fields, status, and entrant email
-
-### Edit an entry (admin)
-
-- [ ] Click the edit (pencil) icon on an entry
-- [ ] **Expected:** Confirmation dialog: "Are you sure you want to edit this entry's data? This should only be done to correct mistakes."
-- [ ] Click "Proceed"
-- [ ] **Expected:** Full edit dialog with all fields (works for any status except WITHDRAWN)
-- [ ] Make a correction, click "Save"
-- [ ] **Expected:** Notification "Entry updated" (green)
-
-### Withdraw an entry
-
-- [ ] Click the withdraw (ban) icon on an entry
-- [ ] **Expected:** Confirmation dialog
-- [ ] Click "Withdraw"
-- [ ] **Expected:** Entry status changes to WITHDRAWN
+- [ ] Navigate to test division entry admin > "Entries" tab
+- [ ] **Expected:** Grid shows all entries with correct columns
+- [ ] View an entry (eye icon) — read-only dialog with all fields
+- [ ] Edit an entry (pencil icon) — confirmation gate, then full edit dialog
+- [ ] Withdraw an entry (ban icon) — confirm, status changes to WITHDRAWN
 
 ### Download labels (admin)
 
-- [ ] Click "Download all labels" in the Entries tab toolbar
-- [ ] **Expected:** Confirmation dialog with entry count
-- [ ] Click "Download"
-- [ ] **Expected:** PDF with labels for all SUBMITTED + RECEIVED entries
+- [ ] Click "Download all labels"
+- [ ] **Expected:** PDF includes SUBMITTED + RECEIVED entries (not WITHDRAWN)
 
-### Review orders (if webhook used)
+### Manual credit grant
 
-- [ ] Click the "Orders" tab
-- [ ] **Expected:** Grid shows webhook orders with status, credits awarded/pending
-- [ ] If any orders have status NEEDS_REVIEW or PARTIALLY_PROCESSED:
-  - Click the edit icon to review
-  - Update status and add an admin note if needed
+- [ ] On the "Credits" tab, click "Add Credits"
+- [ ] Enter the entrant's email and a number of credits
+- [ ] **Expected:** Credits added, notification email sent to entrant
 
 ---
 
-## 9. Status Workflow
-
-*Log in as the competition admin.*
+## 9. Status Workflow (Test)
 
 ### Close registration
 
-- [ ] Navigate to competition detail > Divisions tab
-- [ ] Click the forward icon on the division (currently REGISTRATION_OPEN)
-- [ ] **Expected:** Confirmation: "Advance from Registration Open to Registration Closed?"
-- [ ] Click "Advance"
-- [ ] **Expected:** Status changes to "Registration Closed"
-- [ ] **Expected:** Entrants can no longer add new entries (verify by logging in as entrant — "Add Entry" should be disabled)
+- [ ] Advance division from REGISTRATION_OPEN → REGISTRATION_CLOSED
+- [ ] **Expected:** Entrants can no longer add new entries
 
-### Continue through the workflow
+### Continue through workflow
 
-- [ ] Advance through remaining statuses as needed:
-  - REGISTRATION_CLOSED → JUDGING
-  - JUDGING → DELIBERATION
-  - DELIBERATION → RESULTS_PUBLISHED
-- [ ] **Expected:** Each advance shows confirmation dialog with correct statuses
-- [ ] **Expected:** At RESULTS_PUBLISHED, "Advance Status" is hidden/disabled
+- [ ] Advance: REGISTRATION_CLOSED → JUDGING → DELIBERATION → RESULTS_PUBLISHED
+- [ ] **Expected:** Each advance shows confirmation dialog
+- [ ] **Expected:** At RESULTS_PUBLISHED, advance is hidden/disabled
 
-### Revert status (if needed)
+### Revert status
 
-- [ ] Click "Revert Status" to go back one step
-- [ ] **Expected:** Confirmation dialog with correct statuses
-- [ ] **Note:** Reverting to DRAFT is blocked if entries exist (entry guard)
+- [ ] Revert one step back
+- [ ] **Expected:** Confirmation dialog, status reverts
 
 ---
 
@@ -413,47 +335,113 @@ If Jumpseller integration is configured:
 
 ### Authorization boundaries
 
-- [ ] As entrant, navigate directly to `/competitions/{shortName}` — **Expected:** Redirected (not admin)
-- [ ] As entrant, navigate to entry admin URL — **Expected:** Redirected (not admin)
-- [ ] Log out, navigate to any protected URL — **Expected:** Redirected to `/login`
+- [ ] As entrant, navigate directly to `/competitions/test` → **Expected:** Redirected
+- [ ] As entrant, navigate to entry admin URL → **Expected:** Redirected
+- [ ] Log out, navigate to any protected URL → **Expected:** Redirected to `/login`
 
 ### XSS prevention
 
 - [ ] Create an entry with mead name: `<script>alert('xss')</script>`
-- [ ] **Expected:** Name appears as literal text everywhere (grid, dialog, labels)
-
-### Webhook security
-
-- [ ] Send a request to the webhook endpoint without HMAC signature
-- [ ] **Expected:** 401 Unauthorized
-- [ ] Send a request with an invalid signature
-- [ ] **Expected:** 401 Unauthorized
+- [ ] **Expected:** Name appears as literal text everywhere
 
 ### Email enumeration prevention
 
 - [ ] On `/login`, request a magic link for a non-existent email
-- [ ] **Expected:** Same generic message as for existing emails — no enumeration
+- [ ] **Expected:** Same generic message as for existing emails
 
 ---
 
-## 11. Cleanup / Verification
+## 11. Test Cleanup
 
-### Final checks
+Once all tests pass:
 
-- [ ] Verify all emails were delivered correctly (check email provider dashboard)
-- [ ] Verify labels PDF renders correctly in different PDF viewers
-- [ ] Verify the application responds under normal load
-- [ ] Check application logs for any unexpected errors or warnings
+- [ ] Log in as SYSTEM_ADMIN
+- [ ] Delete the test competition (this removes all divisions, entries, credits, etc.)
+- [ ] Optionally remove test users from the Users page (keep the competition admin if
+  they'll be used for the real competition)
+- [ ] **Do NOT delete the Jumpseller webhook configuration** — it will be used for the
+  real competition
+
+### Stage 1 sign-off
+
+- [ ] All infrastructure checks passed
+- [ ] User management works (create, password setup, login)
+- [ ] Competition/division CRUD works
+- [ ] Jumpseller webhook delivers and processes orders correctly
+- [ ] Entrant flow works end-to-end (credits → entries → submit → labels)
+- [ ] Admin entry management works (view, edit, withdraw, labels)
+- [ ] Status workflow advances and reverts correctly
+- [ ] Security checks passed
+- [ ] Emails delivered correctly (magic link, password reset, credit notification, submission confirmation)
+
+---
+
+# Stage 2: Real Competition Setup
+
+Purpose: set up the actual competition with real data. Only proceed after Stage 1
+is fully verified.
+
+---
+
+## 12. Create the Real Competition
+
+*Log in as the SYSTEM_ADMIN.*
+
+- [ ] Navigate to `/competitions`
+- [ ] Click "Create Competition"
+- [ ] Fill in the real competition details: Name, Short Name, Start Date, End Date, Location
+- [ ] Upload the competition logo
+- [ ] Click "Save"
+
+### Add participants
+
+- [ ] Add the competition admin(s) as participants with Admin role
+- [ ] Add any other known participants (judges, stewards) with appropriate roles
+
+### Configure settings
+
+- [ ] Set contact email
+- [ ] Set shipping address and phone number (for entry labels)
+
+### Add documents
+
+- [ ] Upload rules PDF and/or add external links
+- [ ] Reorder documents as needed
+
+---
+
+## 13. Create Real Division(s)
+
+- [ ] Create division(s) with real names, short names, and scoring system
+- [ ] Configure entry limits, entry prefix, meadery name requirement
+- [ ] Set registration deadline and timezone
+- [ ] Add categories from catalog (and custom categories if needed)
+- [ ] Set up product mappings matching real Jumpseller products
+- [ ] Verify all settings are correct
+
+### Advance to Registration Open
+
+- [ ] Advance each division to Registration Open when ready
+- [ ] **Expected:** The division is now live and accepting entries
+
+---
+
+## 14. Final Verification
+
+- [ ] Verify the competition admin can log in and see the competition in "My Competitions"
+- [ ] Verify the competition admin can access the division detail and entry admin views
+- [ ] Make a real test purchase on Jumpseller → verify credits are awarded correctly
+- [ ] Verify the entrant flow works end-to-end with the real competition data
+- [ ] Check application logs for any errors
+- [ ] Check email delivery (Resend dashboard)
 
 ### State summary
 
-After completing this walkthrough, the application should have:
+After completing this walkthrough, the production application should have:
 
 - 1 SYSTEM_ADMIN user
-- 1 competition admin user (with password)
-- 1+ entrant users (magic link)
-- 1 competition with at least 1 division
-- Categories configured per division
-- Product mappings (if using webhooks)
-- Entries submitted by entrants
-- Labels generated and downloaded
+- 1+ competition admin users (with passwords)
+- 1 real competition with division(s) in REGISTRATION_OPEN status
+- Categories and product mappings configured
+- Jumpseller webhook active and verified
+- Ready to accept entrant registrations
