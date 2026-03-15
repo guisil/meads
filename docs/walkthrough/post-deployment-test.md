@@ -46,7 +46,7 @@ reference section).
 ### Version
 
 - [ ] Open `https://meads.app`, log in
-- [ ] Click user dropdown (top right) → version number is displayed
+- [ ] Open sidebar drawer → version number is displayed at the bottom
 - [ ] **Expected:** Version matches the latest release tag
 
 ---

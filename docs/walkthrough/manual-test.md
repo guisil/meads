@@ -248,10 +248,10 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] Log in as `admin@example.com`
 - [ ] **Expected:** Top navbar shows MEADS logo (left) and user menu (user icon + `admin@example.com`, right)
 - [ ] Click the user menu
-- [ ] **Expected:** Dropdown opens with "Logout" option
+- [ ] **Expected:** Dropdown opens with "My Profile" and "Logout" options
 - [ ] **Expected:** Left sidebar (drawer) starts collapsed
 - [ ] Click the drawer toggle (hamburger icon)
-- [ ] **Expected:** Sidebar expands, shows: Competitions, Users
+- [ ] **Expected:** Sidebar expands, shows: Competitions, Users, and version number at the bottom
 
 ### SYSTEM_ADMIN nav items
 
