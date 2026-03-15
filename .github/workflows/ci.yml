@@ -74,19 +74,10 @@ jobs:
         with:
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
 
-      - name: Update app image and deploy
+      - name: Update image tag and deploy
         env:
           VERSION: ${{ steps.version.outputs.VERSION }}
-          REGISTRY_CREDENTIALS: ${{ secrets.GHCR_REGISTRY_CREDENTIALS }}
         run: |
           doctl apps spec get ${{ secrets.DIGITALOCEAN_APP_ID }} > /tmp/spec.yaml
-          yq eval -i '
-            del(.services[0].github) |
-            .services[0].image.registry_type = "GHCR" |
-            .services[0].image.registry = "guisil" |
-            .services[0].image.repository = "meads" |
-            .services[0].image.tag = strenv(VERSION) |
-            .services[0].image.registry_credentials = strenv(REGISTRY_CREDENTIALS) |
-            .services[0].image.deploy_on_push.enabled = false
-          ' /tmp/spec.yaml
+          yq eval -i '.services[0].image.tag = strenv(VERSION)' /tmp/spec.yaml
           doctl apps update ${{ secrets.DIGITALOCEAN_APP_ID }} --spec /tmp/spec.yaml --wait

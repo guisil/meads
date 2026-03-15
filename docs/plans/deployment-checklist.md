@@ -360,13 +360,14 @@ Push v* tag      → GitHub Actions: test + build → build Docker image → pus
 
 | Secret | Description |
 |--------|-------------|
-| `DIGITALOCEAN_ACCESS_TOKEN` | DO API token with `app:create` scope |
+| `DIGITALOCEAN_ACCESS_TOKEN` | DO API token with app create/read/update + database read scopes |
 | `DIGITALOCEAN_APP_ID` | App Platform app UUID |
-| `GHCR_REGISTRY_CREDENTIALS` | `guisil:<PAT>` — GitHub PAT with `read:packages` scope, for DO to pull images |
 
-To create the PAT: GitHub → Settings → Developer settings → Personal access tokens →
-Fine-grained tokens → Generate. Scope: `read:packages` only. Format the secret as
-`guisil:<token>`.
+### DO app spec (configured once in DO Console)
+
+The app spec uses GHCR image source with `registry_credentials` (`guisil:<PAT>` — classic
+GitHub PAT with `read:packages` scope). This is stored in the DO app spec, not in CI secrets.
+CI only updates the image tag on each release.
 
 ### Release process
 
