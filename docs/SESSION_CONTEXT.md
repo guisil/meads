@@ -199,35 +199,43 @@ All 14 sections completed with fixes along the way.
 - **Contact email on My Entries** — Shows "Questions or need help? Contact: {email}" as mailto link, opposite the registration deadline
 - **Settings field widths** — Widened Name, Location, Contact Email fields in Competition Settings and Name in Division Settings to 400px
 
-### Priority 1: Post-deployment walkthrough
+### Priority 1: Fix release process — deployed version shows 0.2.0-SNAPSHOT instead of 0.1.2
+The CI deploy job (`doctl apps create-deployment`) triggers DigitalOcean to build from `main` HEAD,
+not from the tagged commit. When the SNAPSHOT bump is pushed to `main` before DO pulls the source,
+the deployed app gets the SNAPSHOT version. Fix options: (a) reorder release process so tag push
+and deploy complete before SNAPSHOT bump reaches `main`, (b) have CI build the JAR from the tag
+and deploy the artifact directly, or (c) configure DO to build from the tag ref. Also redeploy
+v0.1.2 correctly once the process is fixed.
+
+### Priority 2: Post-deployment walkthrough
 Execute `docs/walkthrough/post-deployment-test.md` against the deployed application.
 Covers the full workflow from a clean database: admin login, competition/division setup,
 participant onboarding, entry submission, labels, and security checks.
 
-### Priority 2: MFA for system admins
+### Priority 3: MFA for system admins
 Evaluate and implement multi-factor authentication for SYSTEM_ADMIN accounts.
 Password-only login for privileged accounts is a security risk post-deployment.
 
-### Priority 3: Auto-close + deadline reminders (deferred)
+### Priority 4: Auto-close + deadline reminders (deferred)
 - **Auto-close** — automatically advance division from REGISTRATION_OPEN → REGISTRATION_CLOSED
   when registration deadline passes (scheduled task)
 - **Entrant deadline reminder** — notify entrants who have DRAFT entries when the registration
   deadline is approaching (e.g., 7 days, 3 days, 1 day before deadline)
 - Other potential: entry received confirmation (when admin marks entry as RECEIVED), results published notification
 
-### Priority 4: Internationalization (i18n)
+### Priority 5: Internationalization (i18n)
 **Design complete** — see `docs/plans/2026-03-10-i18n-design.md`. Implementation deferred.
 Summary: Vaadin I18NProvider + Spring MessageSource, resource bundles, browser locale +
 UI switcher (cookie/localStorage), entrant-facing views only (6 views), MJP category
 translations via bundles keyed by code. ~100-120 strings to extract. No DB changes needed.
 
-### Priority 5: Judging module
+### Priority 6: Judging module
 Design and implementation. Reference: `docs/reference/chip-competition-rules.md`.
 
-### Priority 6: Awards module
+### Priority 7: Awards module
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md`.
 
-### Priority 7: Full category constraint system (low priority — future competition)
+### Priority 8: Full category constraint system (low priority — future competition)
 Full field locking/validation based on category selection. Design doc: `docs/plans/2026-03-11-category-hints-design.md` (appendix).
 Includes: sweetness locking (M1A→Dry, M1B→Medium, M1C→Sweet), ingredient restrictions (M1/M4E),
 strength locking (M4S→Hydromel), ABV caps (M4S→7.5%), ABV→Strength derivation (universal),
