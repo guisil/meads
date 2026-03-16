@@ -1,6 +1,7 @@
 package app.meads.entry.internal;
 
 import app.meads.BusinessRuleException;
+import app.meads.LanguageMapping;
 import app.meads.MainLayout;
 import app.meads.competition.Competition;
 import app.meads.competition.CompetitionService;
@@ -74,6 +75,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
     private List<Entry> entries;
 
     private boolean meaderyNameMissing;
+    private java.util.Locale userLocale;
 
     // Filter state
     private String nameFilter = "";
@@ -124,6 +126,9 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
             beforeEnterEvent.forwardTo("");
             return;
         }
+
+        // Resolve user locale for date/timezone formatting
+        userLocale = LanguageMapping.resolveLocale(user.getPreferredLanguage(), user.getCountry());
 
         // Check meadery name requirement
         meaderyNameMissing = division.isMeaderyNameRequired()
@@ -863,11 +868,10 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
     }
 
     private Span createDeadlineInfo() {
-        var locale = getUI().map(ui -> ui.getLocale()).orElse(java.util.Locale.ENGLISH);
-        var formatter = java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm", locale);
+        var formatter = java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm", userLocale);
         var formatted = division.getRegistrationDeadline().format(formatter);
         var zoneId = java.time.ZoneId.of(division.getRegistrationDeadlineTimezone());
-        var zoneName = zoneId.getDisplayName(java.time.format.TextStyle.FULL, locale);
+        var zoneName = zoneId.getDisplayName(java.time.format.TextStyle.FULL, userLocale);
         var deadlineSpan = new Span(getTranslation("entries.deadline") + " " + formatted
                 + " " + zoneName);
         deadlineSpan.getStyle()
