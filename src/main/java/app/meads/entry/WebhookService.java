@@ -1,5 +1,6 @@
 package app.meads.entry;
 
+import app.meads.BusinessRuleException;
 import app.meads.competition.CompetitionService;
 import app.meads.competition.Division;
 import app.meads.entry.internal.EntryCreditRepository;
@@ -237,7 +238,7 @@ public class WebhookService {
 
         } catch (Exception e) {
             log.error("Error processing order paid webhook", e);
-            throw new IllegalArgumentException("Failed to process webhook payload", e);
+            throw new BusinessRuleException("error.webhook.payload-invalid");
         }
     }
 

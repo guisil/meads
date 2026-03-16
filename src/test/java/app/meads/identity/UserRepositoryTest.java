@@ -71,6 +71,29 @@ class UserRepositoryTest {
     }
 
     @Test
+    void shouldPersistPreferredLanguage() {
+        var user = new User("lang@repository.com", "Lang User", UserStatus.ACTIVE, Role.USER);
+        user.updatePreferredLanguage("pt");
+
+        userRepository.save(user);
+        var found = userRepository.findByEmail("lang@repository.com");
+
+        assertThat(found).isPresent();
+        assertThat(found.get().getPreferredLanguage()).isEqualTo("pt");
+    }
+
+    @Test
+    void shouldPersistUserWithNullPreferredLanguage() {
+        var user = new User("nolang@repository.com", "No Lang", UserStatus.ACTIVE, Role.USER);
+
+        userRepository.save(user);
+        var found = userRepository.findByEmail("nolang@repository.com");
+
+        assertThat(found).isPresent();
+        assertThat(found.get().getPreferredLanguage()).isNull();
+    }
+
+    @Test
     void shouldPersistUserWithNullMeaderyName() {
         var user = new User("nomeadery@repository.com", "No Meadery", UserStatus.ACTIVE, Role.USER);
 

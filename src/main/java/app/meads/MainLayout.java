@@ -58,9 +58,9 @@ public class MainLayout extends AppLayout {
             userMenu.addThemeVariants(MenuBarVariant.LUMO_TERTIARY_INLINE);
             var userItem = userMenu.addItem(userIcon);
             userItem.add(new Text(email));
-            userItem.getSubMenu().addItem("My Profile", e ->
+            userItem.getSubMenu().addItem(getTranslation("nav.my-profile"), e ->
                     getUI().ifPresent(ui -> ui.navigate("profile")));
-            userItem.getSubMenu().addItem("Logout", e -> authenticationContext.logout());
+            userItem.getSubMenu().addItem(getTranslation("nav.logout"), e -> authenticationContext.logout());
 
             navbar.add(userMenu);
         }
@@ -70,17 +70,17 @@ public class MainLayout extends AppLayout {
         var nav = new SideNav();
 
         if (authenticationContext.hasRole("SYSTEM_ADMIN")) {
-            nav.addItem(new SideNavItem("Competitions", "competitions", VaadinIcon.CALENDAR.create()));
-            nav.addItem(new SideNavItem("Users", "users", VaadinIcon.USERS.create()));
+            nav.addItem(new SideNavItem("Competitions", "competitions", VaadinIcon.CALENDAR.create())); // Admin-only, no i18n
+            nav.addItem(new SideNavItem("Users", "users", VaadinIcon.USERS.create())); // Admin-only, no i18n
         } else if (authenticationContext.isAuthenticated()) {
             var email = authenticationContext.getPrincipalName().orElse("");
             if (competitionAdminChecker.hasAdminCompetitions(email)) {
-                nav.addItem(new SideNavItem("My Competitions", "my-competitions", VaadinIcon.CALENDAR.create()));
+                nav.addItem(new SideNavItem("My Competitions", "my-competitions", VaadinIcon.CALENDAR.create())); // Admin-only, no i18n
             }
         }
 
         if (authenticationContext.isAuthenticated() && !authenticationContext.hasRole("SYSTEM_ADMIN")) {
-            nav.addItem(new SideNavItem("My Entries", "my-entries", VaadinIcon.LIST.create()));
+            nav.addItem(new SideNavItem(getTranslation("nav.my-entries"), "my-entries", VaadinIcon.LIST.create()));
         }
 
         var drawerContent = new Div();

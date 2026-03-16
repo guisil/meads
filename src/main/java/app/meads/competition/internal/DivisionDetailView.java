@@ -1,5 +1,6 @@
 package app.meads.competition.internal;
 
+import app.meads.BusinessRuleException;
 import app.meads.MainLayout;
 import app.meads.competition.*;
 import app.meads.identity.Role;
@@ -76,7 +77,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
             division = competitionService.findDivisionByShortName(
                     competition.getId(), divShortName);
             divisionId = division.getId();
-        } catch (IllegalArgumentException e) {
+        } catch (BusinessRuleException e) {
             beforeEnterEvent.forwardTo("competitions");
             return;
         }
@@ -248,7 +249,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                 var notification = Notification.show("Category removed");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
-            } catch (IllegalArgumentException ex) {
+            } catch (BusinessRuleException ex) {
                 Notification.show(ex.getMessage());
                 dialog.close();
             } catch (DataIntegrityViolationException ex) {
@@ -291,7 +292,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                 var notification = Notification.show("Category added");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
-            } catch (IllegalArgumentException ex) {
+            } catch (BusinessRuleException ex) {
                 Notification.show(ex.getMessage());
             }
         });
@@ -351,7 +352,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                 var notification = Notification.show("Custom category added");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
-            } catch (IllegalArgumentException ex) {
+            } catch (BusinessRuleException ex) {
                 Notification.show(ex.getMessage());
             }
         });
@@ -490,7 +491,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                 refreshBreadcrumbAndHeader();
                 var notification = Notification.show("Settings saved successfully");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-            } catch (IllegalStateException | IllegalArgumentException ex) {
+            } catch (BusinessRuleException | IllegalArgumentException ex) {
                 Notification.show(ex.getMessage());
             }
         });
@@ -518,7 +519,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                         "competitions/" + competition.getShortName()
                                 + "/divisions/" + division.getShortName()));
                 dialog.close();
-            } catch (IllegalArgumentException | IllegalStateException ex) {
+            } catch (BusinessRuleException ex) {
                 Notification.show(ex.getMessage());
                 dialog.close();
             }
@@ -545,7 +546,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                         "competitions/" + competition.getShortName()
                                 + "/divisions/" + division.getShortName()));
                 dialog.close();
-            } catch (IllegalArgumentException | IllegalStateException ex) {
+            } catch (BusinessRuleException ex) {
                 Notification.show(ex.getMessage());
                 dialog.close();
             }

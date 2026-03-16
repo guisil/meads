@@ -16,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.*;
@@ -62,7 +63,8 @@ class SubmissionConfirmationListenerTest {
         then(emailService).should().sendSubmissionConfirmation(
                 eq("entrant@test.com"), eq("CHIP 2026"), eq("Amadora"),
                 argThat(lines -> lines.stream().anyMatch(l -> l.contains("My Mead"))),
-                eq("http://localhost:8080/login/magic?token=abc123"));
+                eq("http://localhost:8080/login/magic?token=abc123"),
+                any(Locale.class));
     }
 
     @Test
@@ -98,7 +100,8 @@ class SubmissionConfirmationListenerTest {
         then(emailService).should().sendSubmissionConfirmation(
                 eq("solo@test.com"), eq("Test Comp"), eq("Pro"),
                 linesCaptor.capture(),
-                eq("http://localhost:8080/login/magic?token=xyz"));
+                eq("http://localhost:8080/login/magic?token=xyz"),
+                any(Locale.class));
         var lines = linesCaptor.getValue();
         org.assertj.core.api.Assertions.assertThat(lines).hasSize(1);
         org.assertj.core.api.Assertions.assertThat((String) lines.getFirst())

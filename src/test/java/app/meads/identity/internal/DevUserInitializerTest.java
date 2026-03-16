@@ -13,6 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
+import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -104,12 +105,12 @@ class DevUserInitializerTest {
         devUserInitializer.initializeDevUsers();
 
         // Magic link emails for non-password users only
-        then(emailService).should().sendMagicLink("user@example.com");
-        then(emailService).should().sendMagicLink("pending@example.com");
-        then(emailService).should().sendMagicLink("judge@example.com");
-        then(emailService).should().sendMagicLink("steward@example.com");
-        then(emailService).should().sendMagicLink("entrant@example.com");
-        then(emailService).should(never()).sendMagicLink("admin@example.com");
-        then(emailService).should(never()).sendMagicLink("compadmin@example.com");
+        then(emailService).should().sendMagicLink(eq("user@example.com"), any(Locale.class));
+        then(emailService).should().sendMagicLink(eq("pending@example.com"), any(Locale.class));
+        then(emailService).should().sendMagicLink(eq("judge@example.com"), any(Locale.class));
+        then(emailService).should().sendMagicLink(eq("steward@example.com"), any(Locale.class));
+        then(emailService).should().sendMagicLink(eq("entrant@example.com"), any(Locale.class));
+        then(emailService).should(never()).sendMagicLink(eq("admin@example.com"), any(Locale.class));
+        then(emailService).should(never()).sendMagicLink(eq("compadmin@example.com"), any(Locale.class));
     }
 }

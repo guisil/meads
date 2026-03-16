@@ -1,5 +1,6 @@
 package app.meads.competition;
 
+import app.meads.BusinessRuleException;
 import app.meads.competition.internal.*;
 import app.meads.identity.Role;
 import app.meads.identity.UserService;
@@ -78,7 +79,7 @@ public class CompetitionService {
                                           @NotNull UUID requestingUserId) {
         requireSystemAdmin(requestingUserId);
         if (competitionRepository.existsByShortName(shortName)) {
-            throw new IllegalArgumentException("Short name already in use");
+            throw new BusinessRuleException("error.competition.shortname-exists");
         }
         var competition = new Competition(name, shortName, startDate, endDate, location);
         var saved = competitionRepository.save(competition);
@@ -88,12 +89,12 @@ public class CompetitionService {
 
     public Competition findCompetitionById(@NotNull UUID competitionId) {
         return competitionRepository.findById(competitionId)
-                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.competition.not-found"));
     }
 
     public Competition findCompetitionByShortName(@NotBlank String shortName) {
         return competitionRepository.findByShortName(shortName)
-                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.competition.not-found"));
     }
 
     public List<Competition> findAllCompetitions() {
@@ -117,11 +118,11 @@ public class CompetitionService {
                                           String location,
                                           @NotNull UUID requestingUserId) {
         var competition = competitionRepository.findById(competitionId)
-                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.competition.not-found"));
         requireAuthorized(competitionId, requestingUserId);
         if (!competition.getShortName().equals(shortName)
                 && competitionRepository.existsByShortName(shortName)) {
-            throw new IllegalArgumentException("Short name already in use");
+            throw new BusinessRuleException("error.competition.shortname-exists");
         }
         competition.updateDetails(name, shortName, startDate, endDate, location);
         log.info("Updated competition: {} (shortName={})", competitionId, shortName);
@@ -133,7 +134,7 @@ public class CompetitionService {
                                               String contentType,
                                               @NotNull UUID requestingUserId) {
         var competition = competitionRepository.findById(competitionId)
-                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.competition.not-found"));
         requireAuthorized(competitionId, requestingUserId);
         competition.updateLogo(logo, contentType);
         log.info("Updated logo for competition: {}", competitionId);
@@ -144,7 +145,7 @@ public class CompetitionService {
                                                        @Email String contactEmail,
                                                        @NotNull UUID requestingUserId) {
         var competition = competitionRepository.findById(competitionId)
-                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.competition.not-found"));
         requireAuthorized(competitionId, requestingUserId);
         competition.updateContactEmail(contactEmail);
         log.info("Updated contact email for competition: {}", competitionId);
@@ -157,7 +158,7 @@ public class CompetitionService {
                                                            String website,
                                                            @NotNull UUID requestingUserId) {
         var competition = competitionRepository.findById(competitionId)
-                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.competition.not-found"));
         requireAuthorized(competitionId, requestingUserId);
         competition.updateShippingDetails(shippingAddress, phoneNumber, website);
         log.info("Updated shipping details for competition: {}", competitionId);
@@ -167,11 +168,11 @@ public class CompetitionService {
     public void deleteCompetition(@NotNull UUID competitionId,
                                    @NotNull UUID requestingUserId) {
         var competition = competitionRepository.findById(competitionId)
-                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.competition.not-found"));
         requireSystemAdmin(requestingUserId);
         var divisions = divisionRepository.findByCompetitionId(competitionId);
         if (!divisions.isEmpty()) {
-            throw new IllegalArgumentException("Cannot delete competition with divisions");
+            throw new BusinessRuleException("error.competition.has-divisions");
         }
         var documents = competitionDocumentRepository.findByCompetitionIdOrderByDisplayOrder(competitionId);
         competitionDocumentRepository.deleteAll(documents);
@@ -189,15 +190,15 @@ public class CompetitionService {
                                     @NotBlank String registrationDeadlineTimezone,
                                     @NotNull UUID requestingUserId) {
         competitionRepository.findById(competitionId)
-                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.competition.not-found"));
         requireAuthorized(competitionId, requestingUserId);
         if (divisionRepository.existsByCompetitionIdAndShortName(competitionId, shortName)) {
-            throw new IllegalArgumentException("Short name already in use in this competition");
+            throw new BusinessRuleException("error.division.shortname-exists");
         }
         try {
             ZoneId.of(registrationDeadlineTimezone);
         } catch (DateTimeException e) {
-            throw new IllegalArgumentException("Invalid timezone: " + registrationDeadlineTimezone);
+            throw new BusinessRuleException("error.division.invalid-timezone", registrationDeadlineTimezone);
         }
         var division = new Division(competitionId, name, shortName, scoringSystem,
                 registrationDeadline, registrationDeadlineTimezone);
@@ -209,19 +210,19 @@ public class CompetitionService {
 
     public Division findDivisionById(@NotNull UUID divisionId) {
         return divisionRepository.findById(divisionId)
-                .orElseThrow(() -> new IllegalArgumentException("Division not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.division.not-found"));
     }
 
     public Division findDivisionByShortName(@NotNull UUID competitionId,
                                              @NotBlank String shortName) {
         return divisionRepository.findByCompetitionIdAndShortName(competitionId, shortName)
-                .orElseThrow(() -> new IllegalArgumentException("Division not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.division.not-found"));
     }
 
     public Division advanceDivisionStatus(@NotNull UUID divisionId,
                                            @NotNull UUID requestingUserId) {
         var division = divisionRepository.findById(divisionId)
-                .orElseThrow(() -> new IllegalArgumentException("Division not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.division.not-found"));
         requireAuthorized(division.getCompetitionId(), requestingUserId);
         var previousStatus = division.getStatus();
         division.advanceStatus();
@@ -235,11 +236,11 @@ public class CompetitionService {
     public Division revertDivisionStatus(@NotNull UUID divisionId,
                                           @NotNull UUID requestingUserId) {
         var division = divisionRepository.findById(divisionId)
-                .orElseThrow(() -> new IllegalArgumentException("Division not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.division.not-found"));
         requireAuthorized(division.getCompetitionId(), requestingUserId);
         var previousStatus = division.getStatus();
         var targetStatus = previousStatus.previous()
-                .orElseThrow(() -> new IllegalStateException("Cannot revert from DRAFT"));
+                .orElseThrow(() -> new BusinessRuleException("error.division.cannot-revert-from-draft"));
         revertGuards.forEach(guard ->
                 guard.checkRevertAllowed(divisionId, previousStatus, targetStatus));
         division.revertStatus();
@@ -254,12 +255,12 @@ public class CompetitionService {
                                     String entryPrefix,
                                     @NotNull UUID requestingUserId) {
         var division = divisionRepository.findById(divisionId)
-                .orElseThrow(() -> new IllegalArgumentException("Division not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.division.not-found"));
         requireAuthorized(division.getCompetitionId(), requestingUserId);
         if (!division.getShortName().equals(shortName)
                 && divisionRepository.existsByCompetitionIdAndShortName(
                         division.getCompetitionId(), shortName)) {
-            throw new IllegalArgumentException("Short name already in use in this competition");
+            throw new BusinessRuleException("error.division.shortname-exists");
         }
         division.updateDetails(name, shortName, scoringSystem, entryPrefix);
         log.debug("Updated division settings: {} (shortName={})", divisionId, shortName);
@@ -269,7 +270,7 @@ public class CompetitionService {
     public void deleteDivision(@NotNull UUID divisionId,
                                 @NotNull UUID requestingUserId) {
         var division = divisionRepository.findById(divisionId)
-                .orElseThrow(() -> new IllegalArgumentException("Division not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.division.not-found"));
         requireAuthorized(division.getCompetitionId(), requestingUserId);
         var categories = divisionCategoryRepository.findByDivisionIdOrderByCode(divisionId);
         var children = categories.stream().filter(c -> c.getParentId() != null).toList();
@@ -307,7 +308,7 @@ public class CompetitionService {
         try {
             ZoneId.of(timezone);
         } catch (DateTimeException e) {
-            throw new IllegalArgumentException("Invalid timezone: " + timezone);
+            throw new BusinessRuleException("error.division.invalid-timezone", timezone);
         }
         division.updateRegistrationDeadline(deadline, timezone);
         log.debug("Updated registration deadline for division: {} ({} {})",
@@ -335,17 +336,16 @@ public class CompetitionService {
                                                 @NotNull UUID catalogCategoryId,
                                                 @NotNull UUID requestingUserId) {
         var division = divisionRepository.findById(divisionId)
-                .orElseThrow(() -> new IllegalArgumentException("Division not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.division.not-found"));
         requireAuthorized(division.getCompetitionId(), requestingUserId);
         if (!division.getStatus().allowsCategoryModification()) {
-            throw new IllegalArgumentException("Categories cannot be modified in status: "
-                    + division.getStatus().getDisplayName());
+            throw new BusinessRuleException("error.category.cannot-modify-status", division.getStatus().getDisplayName());
         }
         var catalogCategory = categoryRepository.findById(catalogCategoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Catalog category not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.category.not-found"));
         if (divisionCategoryRepository.existsByDivisionIdAndCatalogCategoryId(
                 divisionId, catalogCategoryId)) {
-            throw new IllegalArgumentException("Catalog category already added to this division");
+            throw new BusinessRuleException("error.category.already-added");
         }
         UUID parentId = null;
         if (catalogCategory.getParentCode() != null) {
@@ -369,18 +369,17 @@ public class CompetitionService {
                                                UUID parentId,
                                                @NotNull UUID requestingUserId) {
         var division = divisionRepository.findById(divisionId)
-                .orElseThrow(() -> new IllegalArgumentException("Division not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.division.not-found"));
         requireAuthorized(division.getCompetitionId(), requestingUserId);
         if (!division.getStatus().allowsCategoryModification()) {
-            throw new IllegalArgumentException("Categories cannot be modified in status: "
-                    + division.getStatus().getDisplayName());
+            throw new BusinessRuleException("error.category.cannot-modify-status", division.getStatus().getDisplayName());
         }
         if (divisionCategoryRepository.existsByDivisionIdAndCode(divisionId, code)) {
-            throw new IllegalArgumentException("Category code already exists in this division: " + code);
+            throw new BusinessRuleException("error.category.code-exists", code);
         }
         if (parentId != null) {
             divisionCategoryRepository.findById(parentId)
-                    .orElseThrow(() -> new IllegalArgumentException("Parent category not found"));
+                    .orElseThrow(() -> new BusinessRuleException("error.category.parent-not-found"));
         }
         var dc = new DivisionCategory(divisionId, null, code, name, description, parentId, 0);
         log.debug("Added custom category {} to division {}", code, divisionId);
@@ -394,14 +393,13 @@ public class CompetitionService {
                                                      @NotBlank String description,
                                                      @NotNull UUID requestingUserId) {
         var division = divisionRepository.findById(divisionId)
-                .orElseThrow(() -> new IllegalArgumentException("Division not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.division.not-found"));
         requireAuthorized(division.getCompetitionId(), requestingUserId);
         if (!division.getStatus().allowsCategoryModification()) {
-            throw new IllegalArgumentException("Categories cannot be modified in status: "
-                    + division.getStatus().getDisplayName());
+            throw new BusinessRuleException("error.category.cannot-modify-status", division.getStatus().getDisplayName());
         }
         var category = divisionCategoryRepository.findById(categoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Division category not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.category.not-found"));
         category.updateDetails(code, name, description);
         return divisionCategoryRepository.save(category);
     }
@@ -410,14 +408,13 @@ public class CompetitionService {
                                         @NotNull UUID categoryId,
                                         @NotNull UUID requestingUserId) {
         var division = divisionRepository.findById(divisionId)
-                .orElseThrow(() -> new IllegalArgumentException("Division not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.division.not-found"));
         requireAuthorized(division.getCompetitionId(), requestingUserId);
         if (!division.getStatus().allowsCategoryModification()) {
-            throw new IllegalArgumentException("Categories cannot be modified in status: "
-                    + division.getStatus().getDisplayName());
+            throw new BusinessRuleException("error.category.cannot-modify-status", division.getStatus().getDisplayName());
         }
         var category = divisionCategoryRepository.findById(categoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Division category not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.category.not-found"));
         var children = divisionCategoryRepository.findByParentId(categoryId);
         if (!children.isEmpty()) {
             divisionCategoryRepository.deleteAll(children);
@@ -428,7 +425,7 @@ public class CompetitionService {
 
     public List<Category> findAvailableCatalogCategories(@NotNull UUID divisionId) {
         var division = divisionRepository.findById(divisionId)
-                .orElseThrow(() -> new IllegalArgumentException("Division not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.division.not-found"));
         var allCatalog = categoryRepository.findByScoringSystemOrderByCode(division.getScoringSystem());
         return allCatalog.stream()
                 .filter(cat -> !divisionCategoryRepository
@@ -446,10 +443,10 @@ public class CompetitionService {
                                             String url,
                                             @NotNull UUID requestingUserId) {
         competitionRepository.findById(competitionId)
-                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.competition.not-found"));
         requireAuthorized(competitionId, requestingUserId);
         if (competitionDocumentRepository.existsByCompetitionIdAndName(competitionId, name)) {
-            throw new IllegalArgumentException("Document with this name already exists");
+            throw new BusinessRuleException("error.document.name-exists");
         }
         int nextOrder = competitionDocumentRepository.countByCompetitionId(competitionId);
         var doc = switch (type) {
@@ -462,7 +459,7 @@ public class CompetitionService {
 
     public void removeDocument(@NotNull UUID documentId, @NotNull UUID requestingUserId) {
         var doc = competitionDocumentRepository.findById(documentId)
-                .orElseThrow(() -> new IllegalArgumentException("Document not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.document.not-found"));
         requireAuthorized(doc.getCompetitionId(), requestingUserId);
         competitionDocumentRepository.delete(doc);
         log.info("Removed document '{}' from competition {}", doc.getName(), doc.getCompetitionId());
@@ -472,10 +469,10 @@ public class CompetitionService {
                                                     @NotBlank String name,
                                                     @NotNull UUID requestingUserId) {
         var doc = competitionDocumentRepository.findById(documentId)
-                .orElseThrow(() -> new IllegalArgumentException("Document not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.document.not-found"));
         requireAuthorized(doc.getCompetitionId(), requestingUserId);
         if (competitionDocumentRepository.existsByCompetitionIdAndName(doc.getCompetitionId(), name)) {
-            throw new IllegalArgumentException("Document with this name already exists");
+            throw new BusinessRuleException("error.document.name-exists");
         }
         doc.updateName(name);
         log.debug("Updated document name: {} → '{}'", documentId, name);
@@ -486,7 +483,7 @@ public class CompetitionService {
                                   @NotNull List<UUID> orderedIds,
                                   @NotNull UUID requestingUserId) {
         competitionRepository.findById(competitionId)
-                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.competition.not-found"));
         requireAuthorized(competitionId, requestingUserId);
         var docs = competitionDocumentRepository.findByCompetitionIdOrderByDisplayOrder(competitionId);
         var docMap = docs.stream()
@@ -508,7 +505,7 @@ public class CompetitionService {
 
     public CompetitionDocument getDocument(@NotNull UUID documentId) {
         return competitionDocumentRepository.findById(documentId)
-                .orElseThrow(() -> new IllegalArgumentException("Document not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.document.not-found"));
     }
 
     // --- Participant methods ---
@@ -518,15 +515,14 @@ public class CompetitionService {
                                     @NotNull CompetitionRole role,
                                     @NotNull UUID requestingUserId) {
         competitionRepository.findById(competitionId)
-                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.competition.not-found"));
         requireAuthorized(competitionId, requestingUserId);
         userService.findById(userId);
 
         var participant = findOrCreateParticipant(competitionId, userId, role);
 
         if (participantRoleRepository.existsByParticipantIdAndRole(participant.getId(), role)) {
-            throw new IllegalArgumentException(
-                    "User already has the " + role.name() + " role in this competition");
+            throw new BusinessRuleException("error.participant.role-exists", role.name());
         }
 
         validateRoleCombination(participant.getId(), role);
@@ -543,7 +539,7 @@ public class CompetitionService {
      */
     public void ensureEntrantParticipant(@NotNull UUID competitionId, @NotNull UUID userId) {
         competitionRepository.findById(competitionId)
-                .orElseThrow(() -> new IllegalArgumentException("Competition not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.competition.not-found"));
         var participant = findOrCreateParticipant(competitionId, userId, CompetitionRole.ENTRANT);
         if (!participantRoleRepository.existsByParticipantIdAndRole(
                 participant.getId(), CompetitionRole.ENTRANT)) {
@@ -566,9 +562,9 @@ public class CompetitionService {
                                    @NotNull UUID requestingUserId) {
         requireAuthorized(competitionId, requestingUserId);
         var participant = participantRepository.findById(participantId)
-                .orElseThrow(() -> new IllegalArgumentException("Participant not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.participant.not-found"));
         if (!participant.getCompetitionId().equals(competitionId)) {
-            throw new IllegalArgumentException("Participant does not belong to this competition");
+            throw new BusinessRuleException("error.participant.wrong-competition");
         }
         var roles = participantRoleRepository.findByParticipantId(participantId);
         participantRoleRepository.deleteAll(roles);
@@ -582,16 +578,15 @@ public class CompetitionService {
                                        @NotNull UUID requestingUserId) {
         requireAuthorized(competitionId, requestingUserId);
         var participant = participantRepository.findById(participantId)
-                .orElseThrow(() -> new IllegalArgumentException("Participant not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.participant.not-found"));
         if (!participant.getCompetitionId().equals(competitionId)) {
-            throw new IllegalArgumentException("Participant does not belong to this competition");
+            throw new BusinessRuleException("error.participant.wrong-competition");
         }
         var roles = participantRoleRepository.findByParticipantId(participantId);
         var roleToRemove = roles.stream()
                 .filter(r -> r.getRole() == role)
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Participant does not have the " + role.name() + " role"));
+                .orElseThrow(() -> new BusinessRuleException("error.participant.role-not-found", role.name()));
         participantRoleRepository.delete(roleToRemove);
         if (roles.size() == 1) {
             participantRepository.delete(participant);
@@ -637,8 +632,7 @@ public class CompetitionService {
             combined.add(newRole);
             var allowedCombination = Set.of(CompetitionRole.JUDGE, CompetitionRole.ENTRANT);
             if (!allowedCombination.containsAll(combined)) {
-                throw new IllegalArgumentException(
-                        newRole.getDisplayName() + " cannot be combined with existing roles in this competition");
+                throw new BusinessRuleException("error.participant.incompatible-role", newRole.getDisplayName());
             }
         }
     }
@@ -680,13 +674,13 @@ public class CompetitionService {
                 return code;
             }
         }
-        throw new IllegalStateException("Unable to generate a unique access code");
+        throw new BusinessRuleException("error.accesscode.generation-failed");
     }
 
     private void requireSystemAdmin(UUID userId) {
         var user = userService.findById(userId);
         if (user.getRole() != Role.SYSTEM_ADMIN) {
-            throw new IllegalArgumentException("User is not authorized to perform this action");
+            throw new BusinessRuleException("error.auth.unauthorized");
         }
     }
 
@@ -738,7 +732,7 @@ public class CompetitionService {
 
     private void requireAuthorized(UUID competitionId, UUID userId) {
         if (!isAuthorized(competitionId, userId)) {
-            throw new IllegalArgumentException("User is not authorized to perform this action");
+            throw new BusinessRuleException("error.auth.unauthorized");
         }
     }
 

@@ -117,6 +117,27 @@ class UserTest {
     }
 
     @Test
+    void shouldUpdatePreferredLanguage() {
+        var user = new User("test@example.com", "Test", UserStatus.ACTIVE, Role.USER);
+        user.updatePreferredLanguage("pt");
+        assertThat(user.getPreferredLanguage()).isEqualTo("pt");
+    }
+
+    @Test
+    void shouldAllowNullPreferredLanguage() {
+        var user = new User("test@example.com", "Test", UserStatus.ACTIVE, Role.USER);
+        user.updatePreferredLanguage("pt");
+        user.updatePreferredLanguage(null);
+        assertThat(user.getPreferredLanguage()).isNull();
+    }
+
+    @Test
+    void shouldHaveNullPreferredLanguageByDefault() {
+        var user = new User("test@example.com", "Test", UserStatus.ACTIVE, Role.USER);
+        assertThat(user.getPreferredLanguage()).isNull();
+    }
+
+    @Test
     void shouldUpdateDetailsWhenValidDataProvided() {
         // Arrange
         var user = new User(

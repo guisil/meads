@@ -1,5 +1,6 @@
 package app.meads.competition.internal;
 
+import app.meads.BusinessRuleException;
 import app.meads.MainLayout;
 import app.meads.competition.Competition;
 import app.meads.competition.CompetitionService;
@@ -172,7 +173,7 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
                         logoSection.remove(e.getSource());
                         var notification = Notification.show("Logo removed");
                         notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-                    } catch (IllegalArgumentException ex) {
+                    } catch (BusinessRuleException ex) {
                         Notification.show(ex.getMessage());
                     }
                 });
@@ -227,7 +228,7 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
                         isEdit ? "Competition updated successfully" : "Competition created successfully");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
-            } catch (IllegalArgumentException ex) {
+            } catch (BusinessRuleException ex) {
                 Notification.show(ex.getMessage());
             }
         });
@@ -253,7 +254,7 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
                 var notification = Notification.show("Competition deleted successfully");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
-            } catch (IllegalArgumentException ex) {
+            } catch (BusinessRuleException ex) {
                 Notification.show(ex.getMessage());
                 dialog.close();
             }

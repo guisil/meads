@@ -51,7 +51,7 @@ class DevUserInitializer {
             user.assignPasswordHash(passwordEncoder.encode(password));
             log.info("Created dev user {} with password", email);
         } else {
-            emailService.sendMagicLink(email);
+            emailService.sendMagicLink(email, java.util.Locale.ENGLISH);
             log.info("Sent magic link email to dev user {}", email);
         }
         userRepository.save(user);

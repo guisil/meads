@@ -1,5 +1,6 @@
 package app.meads.identity.internal;
 
+import app.meads.BusinessRuleException;
 import app.meads.identity.JwtMagicLinkService;
 import app.meads.identity.UserService;
 import com.vaadin.flow.component.Key;
@@ -106,7 +107,7 @@ public class SetPasswordView extends VerticalLayout implements BeforeEnterObserv
             Notification.show("Password set successfully")
                     .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
             getUI().ifPresent(ui -> ui.navigate("login"));
-        } catch (IllegalArgumentException ex) {
+        } catch (BusinessRuleException ex) {
             Notification.show(ex.getMessage())
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
         } catch (JwtException ex) {

@@ -141,7 +141,7 @@ class SetPasswordViewTest {
         _click(_get(Button.class, spec -> spec.withText("Set Password")));
 
         var notification = _get(Notification.class);
-        assertThat(notification.getElement().getProperty("text")).contains("at least 8 characters");
+        assertThat(notification.getElement().getProperty("text")).contains("error.user.password-too-short");
     }
 
     @Test

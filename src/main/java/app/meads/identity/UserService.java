@@ -1,5 +1,6 @@
 package app.meads.identity;
 
+import app.meads.BusinessRuleException;
 import app.meads.identity.internal.UserRepository;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -38,7 +39,7 @@ public class UserService {
 
     public User createUser(@Email @NotBlank String email, @NotBlank String name, @NotNull UserStatus status, @NotNull Role role) {
         if (userRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException("Email already exists");
+            throw new BusinessRuleException("error.user.email-exists");
         }
         User user = new User(email, name, status, role);
         var saved = userRepository.save(user);
@@ -48,13 +49,13 @@ public class UserService {
 
     public User updateUser(UUID userId, @NotBlank String name, Role role, UserStatus status, String currentUserEmail) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.user.not-found"));
         if (user.getEmail().equals(currentUserEmail)) {
             if (!role.equals(user.getRole())) {
-                throw new IllegalArgumentException("Cannot change your own role");
+                throw new BusinessRuleException("error.user.cannot-change-own-role");
             }
             if (!status.equals(user.getStatus())) {
-                throw new IllegalArgumentException("Cannot change your own status");
+                throw new BusinessRuleException("error.user.cannot-change-own-status");
             }
         }
         user.updateDetails(name, role, status);
@@ -68,7 +69,7 @@ public class UserService {
 
     public User findById(UUID userId) {
         return userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.user.not-found"));
     }
 
     public List<User> findAllByIds(Collection<UUID> ids) {
@@ -77,7 +78,7 @@ public class UserService {
 
     public User findByEmail(String email) {
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.user.not-found"));
     }
 
     public User findOrCreateByEmail(@Email @NotBlank String email) {
@@ -94,22 +95,23 @@ public class UserService {
     }
 
     public User updateProfile(@NotNull UUID userId, @NotBlank String name,
-                               String meaderyName, String country) {
+                               String meaderyName, String country, String preferredLanguage) {
         if (country != null && !VALID_COUNTRY_CODES.contains(country)) {
-            throw new IllegalArgumentException("Invalid ISO 3166-1 alpha-2 country code: " + country);
+            throw new BusinessRuleException("error.user.invalid-country", country);
         }
         var user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+                .orElseThrow(() -> new BusinessRuleException("error.user.not-found"));
         user.updateDetails(name, user.getRole(), user.getStatus());
         user.updateMeaderyName(meaderyName);
         user.updateCountry(country);
+        user.updatePreferredLanguage(preferredLanguage);
         log.info("Profile updated for user {} ({})", user.getEmail(), userId);
         return userRepository.save(user);
     }
 
     public User updateMeaderyName(@NotNull UUID userId, String meaderyName) {
         var user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.user.not-found"));
         user.updateMeaderyName(meaderyName);
         return userRepository.save(user);
     }
@@ -129,7 +131,7 @@ public class UserService {
     public void setPassword(UUID userId, String rawPassword) {
         validatePassword(rawPassword);
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.user.not-found"));
         user.assignPasswordHash(passwordEncoder.encode(rawPassword));
         userRepository.save(user);
         log.info("Password set for user: {} ({})", userId, user.getEmail());
@@ -139,7 +141,7 @@ public class UserService {
         String email = jwtMagicLinkService.extractEmail(token);
         validatePassword(rawPassword);
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.user.not-found"));
         user.assignPasswordHash(passwordEncoder.encode(rawPassword));
         userRepository.save(user);
         log.info("Password set via token for user: {}", email);
@@ -147,15 +149,15 @@ public class UserService {
 
     private void validatePassword(String rawPassword) {
         if (rawPassword == null || rawPassword.length() < 8) {
-            throw new IllegalArgumentException("Password must be at least 8 characters");
+            throw new BusinessRuleException("error.user.password-too-short");
         }
     }
 
     public void removeUser(UUID userId, String currentUserEmail) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.user.not-found"));
         if (user.getEmail().equals(currentUserEmail)) {
-            throw new IllegalArgumentException("Cannot deactivate or delete your own account");
+            throw new BusinessRuleException("error.user.cannot-remove-self");
         }
         if (user.getStatus() == UserStatus.INACTIVE) {
             userRepository.delete(user);

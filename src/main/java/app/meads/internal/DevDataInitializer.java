@@ -63,13 +63,13 @@ class DevDataInitializer {
 
     private void seedUserProfiles() {
         var compAdmin = userService.findByEmail("compadmin@example.com");
-        userService.updateProfile(compAdmin.getId(), compAdmin.getName(), "Hidroméis do Minho", "PT");
+        userService.updateProfile(compAdmin.getId(), compAdmin.getName(), "Hidroméis do Minho", "PT", "pt");
 
         var devUser = userService.findByEmail("user@example.com");
-        userService.updateProfile(devUser.getId(), devUser.getName(), null, "GB");
+        userService.updateProfile(devUser.getId(), devUser.getName(), null, "GB", null);
 
         var entrant = userService.findByEmail("entrant@example.com");
-        userService.updateProfile(entrant.getId(), entrant.getName(), null, "DE");
+        userService.updateProfile(entrant.getId(), entrant.getName(), null, "DE", null);
 
         log.info("Set meadery names and countries for dev users");
     }

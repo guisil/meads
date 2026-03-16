@@ -1,5 +1,6 @@
 package app.meads.competition.internal;
 
+import app.meads.BusinessRuleException;
 import app.meads.CompetitionAdminChecker;
 import app.meads.competition.CompetitionService;
 import app.meads.identity.UserService;
@@ -22,7 +23,7 @@ class CompetitionAdminCheckerImpl implements CompetitionAdminChecker {
         try {
             var user = userService.findByEmail(email);
             return !competitionService.findCompetitionsByAdmin(user.getId()).isEmpty();
-        } catch (IllegalArgumentException e) {
+        } catch (BusinessRuleException e) {
             return false;
         }
     }

@@ -1,5 +1,6 @@
 package app.meads.entry;
 
+import app.meads.BusinessRuleException;
 import app.meads.competition.Competition;
 import app.meads.competition.CompetitionRole;
 import app.meads.competition.CompetitionService;
@@ -123,8 +124,8 @@ class EntryServiceTest {
 
         assertThatThrownBy(() -> entryService.createProductMapping(
                 divisionId, "PROD-001", "SKU-001", "Mead Entry Pack", 1, adminUser.getId()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("already mapped");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.product.already-mapped");
     }
 
     @Test
@@ -137,8 +138,8 @@ class EntryServiceTest {
 
         assertThatThrownBy(() -> entryService.createProductMapping(
                 divisionId, "PROD-001", "SKU-001", "Mead Entry Pack", 1, regularUser.getId()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("not authorized");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.auth.unauthorized");
     }
 
     @Test
@@ -166,8 +167,8 @@ class EntryServiceTest {
 
         assertThatThrownBy(() -> entryService.updateProductMapping(
                 mappingId, "New Name", 3, UUID.randomUUID()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Product mapping not found");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.product.not-found");
     }
 
     @Test
@@ -277,8 +278,8 @@ class EntryServiceTest {
 
         assertThatThrownBy(() -> entryService.addCredits(
                 divisionId, "entrant@test.com", 3, adminUser.getId()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("mutual exclusivity");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.credits.mutual-exclusivity");
     }
 
     @Test
@@ -336,8 +337,8 @@ class EntryServiceTest {
 
         assertThatThrownBy(() -> entryService.removeCredits(
                 divisionId, userId, 5, adminUser.getId()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Insufficient credit balance");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.credits.insufficient-balance");
     }
 
     @Test
@@ -355,8 +356,8 @@ class EntryServiceTest {
 
         assertThatThrownBy(() -> entryService.removeCredits(
                 divisionId, userId, 3, adminUser.getId()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Cannot reduce credits below active entry count");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.credits.balance-below-entries");
     }
 
     @Test
@@ -456,8 +457,8 @@ class EntryServiceTest {
                 "My Mead", categoryId, Sweetness.DRY, Strength.STANDARD,
                 new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("credit");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.entry.no-credits");
     }
 
     // Cycle 2: createEntry rejects if division not REGISTRATION_OPEN
@@ -476,8 +477,8 @@ class EntryServiceTest {
                 "My Mead", categoryId, Sweetness.DRY, Strength.STANDARD,
                 new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("not open for registration");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.entry.division-not-open");
     }
 
     // Cycle 3: createEntry sequential entry number
@@ -556,8 +557,8 @@ class EntryServiceTest {
                 "My Mead", categoryId, Sweetness.DRY, Strength.STANDARD,
                 new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("subcategory");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.entry.limit-subcategory");
     }
 
     // Cycle 6: createEntry rejects if main category limit exceeded
@@ -592,8 +593,8 @@ class EntryServiceTest {
                 "My Mead", subCategoryA.getId(), Sweetness.DRY, Strength.STANDARD,
                 new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("main category");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.entry.limit-main-category");
     }
 
     @Test
@@ -613,8 +614,8 @@ class EntryServiceTest {
                 "My Mead", categoryId, Sweetness.DRY, Strength.STANDARD,
                 new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("total");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.entry.limit-total");
     }
 
     // Cycle 7: createEntry allows entry when limits are null (unlimited)
@@ -685,8 +686,8 @@ class EntryServiceTest {
                 "New Mead", UUID.randomUUID(), Sweetness.DRY, Strength.STANDARD,
                 new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("not the owner");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.entry.not-owner");
     }
 
     // Cycle 9: deleteEntry — only DRAFT
@@ -718,8 +719,8 @@ class EntryServiceTest {
         given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
 
         assertThatThrownBy(() -> entryService.deleteEntry(entry.getId(), userId))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("DRAFT");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.entry.wrong-status");
     }
 
     @Test
@@ -734,8 +735,8 @@ class EntryServiceTest {
         given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
 
         assertThatThrownBy(() -> entryService.deleteEntry(entry.getId(), otherUserId))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("not the owner");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.entry.not-owner");
     }
 
     // Cycle 10: submitAllDrafts — batch submit + event
@@ -1186,8 +1187,8 @@ class EntryServiceTest {
 
         assertThatThrownBy(() -> entryService.updateOrderAdminDetails(
                 order.getId(), OrderStatus.PROCESSED, "note", regularUser.getId()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("not authorized");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.auth.unauthorized");
     }
 
     @Test

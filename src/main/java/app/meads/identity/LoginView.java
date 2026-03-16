@@ -1,5 +1,6 @@
 package app.meads.identity;
 
+import app.meads.BusinessRuleException;
 import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.Shortcuts;
 import com.vaadin.flow.component.button.Button;
@@ -103,11 +104,11 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
         try {
             var user = userService.findByEmail(emailValue);
             if (user.getPasswordHash() != null) {
-                emailService.sendCredentialsReminder(emailValue);
+                emailService.sendCredentialsReminder(emailValue, java.util.Locale.ENGLISH);
             } else {
-                emailService.sendMagicLink(emailValue);
+                emailService.sendMagicLink(emailValue, java.util.Locale.ENGLISH);
             }
-        } catch (IllegalArgumentException ex) {
+        } catch (BusinessRuleException ex) {
             log.info("Magic link requested for non-existent email: {}", emailValue);
         }
         Notification.show("If this email is registered, a login link has been sent.");
@@ -122,8 +123,8 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
         }
         try {
             userService.findByEmail(emailValue);
-            emailService.sendPasswordReset(emailValue);
-        } catch (IllegalArgumentException ex) {
+            emailService.sendPasswordReset(emailValue, java.util.Locale.ENGLISH);
+        } catch (BusinessRuleException ex) {
             log.info("Password reset requested for non-existent email: {}", emailValue);
         }
         Notification.show("If this email is registered, a password reset link has been sent.");

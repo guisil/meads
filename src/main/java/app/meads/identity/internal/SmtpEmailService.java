@@ -5,6 +5,7 @@ import app.meads.identity.JwtMagicLinkService;
 import jakarta.mail.MessagingException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.MessageSource;
 import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -17,6 +18,7 @@ import org.springframework.core.io.ClassPathResource;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -31,6 +33,7 @@ class SmtpEmailService implements EmailService {
     private final JavaMailSender mailSender;
     private final JwtMagicLinkService jwtMagicLinkService;
     private final ITemplateEngine templateEngine;
+    private final MessageSource messageSource;
     private final String fromAddress;
     private final int rateLimitMinutes;
     private final int dailyWarningThreshold;
@@ -42,64 +45,73 @@ class SmtpEmailService implements EmailService {
     SmtpEmailService(JavaMailSender mailSender,
                      JwtMagicLinkService jwtMagicLinkService,
                      ITemplateEngine templateEngine,
+                     MessageSource messageSource,
                      @Value("${app.email.from}") String fromAddress,
                      @Value("${app.email.rate-limit-minutes:5}") int rateLimitMinutes,
                      @Value("${app.email.daily-warning-threshold:50}") int dailyWarningThreshold) {
         this.mailSender = mailSender;
         this.jwtMagicLinkService = jwtMagicLinkService;
         this.templateEngine = templateEngine;
+        this.messageSource = messageSource;
         this.fromAddress = fromAddress;
         this.rateLimitMinutes = rateLimitMinutes;
         this.dailyWarningThreshold = dailyWarningThreshold;
     }
 
     @Override
-    public void sendMagicLink(String recipientEmail) {
+    public void sendMagicLink(String recipientEmail, Locale locale) {
         if (isRateLimited(recipientEmail, "magic-link")) {
             return;
         }
         var link = jwtMagicLinkService.generateLink(recipientEmail, TOKEN_VALIDITY);
+        var subject = msg("email.magic-link.subject", locale);
         var ctx = new Context();
-        ctx.setVariable("subject", "Your MEADS login link");
-        ctx.setVariable("heading", "Log in to MEADS");
-        ctx.setVariable("bodyText", "Click the button below to log in.");
-        ctx.setVariable("ctaLabel", "Log In");
+        ctx.setVariable("subject", subject);
+        ctx.setVariable("heading", msg("email.magic-link.heading", locale));
+        ctx.setVariable("bodyText", msg("email.magic-link.body", locale));
+        ctx.setVariable("ctaLabel", msg("email.magic-link.cta", locale));
         ctx.setVariable("ctaUrl", link);
+        ctx.setVariable("fallbackText", msg("email.fallback", locale));
+        ctx.setVariable("footerText", msg("email.footer", locale));
         ctx.setVariable("contactEmail", null);
-        sendEmail(recipientEmail, "Your MEADS login link", ctx, link);
+        sendEmail(recipientEmail, subject, ctx, link);
     }
 
     @Override
-    public void sendCredentialsReminder(String recipientEmail) {
+    public void sendCredentialsReminder(String recipientEmail, Locale locale) {
         if (isRateLimited(recipientEmail, "credentials-reminder")) {
             return;
         }
+        var subject = msg("email.credentials-reminder.subject", locale);
         var ctx = new Context();
-        ctx.setVariable("subject", "MEADS login reminder");
-        ctx.setVariable("heading", "Login Reminder");
-        ctx.setVariable("bodyText",
-                "You have a password set on your MEADS account. Please use your credentials to log in "
-                        + "instead of requesting a login link.");
+        ctx.setVariable("subject", subject);
+        ctx.setVariable("heading", msg("email.credentials-reminder.heading", locale));
+        ctx.setVariable("bodyText", msg("email.credentials-reminder.body", locale));
         ctx.setVariable("ctaLabel", null);
         ctx.setVariable("ctaUrl", null);
+        ctx.setVariable("fallbackText", msg("email.fallback", locale));
+        ctx.setVariable("footerText", msg("email.footer", locale));
         ctx.setVariable("contactEmail", null);
-        sendEmail(recipientEmail, "MEADS login reminder", ctx, "");
+        sendEmail(recipientEmail, subject, ctx, "");
     }
 
     @Override
-    public void sendPasswordReset(String recipientEmail) {
+    public void sendPasswordReset(String recipientEmail, Locale locale) {
         if (isRateLimited(recipientEmail, "password-reset")) {
             return;
         }
         var link = jwtMagicLinkService.generatePasswordSetupLink(recipientEmail, TOKEN_VALIDITY);
+        var subject = msg("email.password-reset.subject", locale);
         var ctx = new Context();
-        ctx.setVariable("subject", "Reset your MEADS password");
-        ctx.setVariable("heading", "Set your password");
-        ctx.setVariable("bodyText", "Click the button below to set a new password.");
-        ctx.setVariable("ctaLabel", "Set Password");
+        ctx.setVariable("subject", subject);
+        ctx.setVariable("heading", msg("email.password-reset.heading", locale));
+        ctx.setVariable("bodyText", msg("email.password-reset.body", locale));
+        ctx.setVariable("ctaLabel", msg("email.password-reset.cta", locale));
         ctx.setVariable("ctaUrl", link);
+        ctx.setVariable("fallbackText", msg("email.fallback", locale));
+        ctx.setVariable("footerText", msg("email.footer", locale));
         ctx.setVariable("contactEmail", null);
-        sendEmail(recipientEmail, "Reset your MEADS password", ctx, link);
+        sendEmail(recipientEmail, subject, ctx, link);
     }
 
     @Override
@@ -138,17 +150,17 @@ class SmtpEmailService implements EmailService {
     @Override
     public void sendSubmissionConfirmation(String recipientEmail, String competitionName,
                                             String divisionName, java.util.List<String> entryLines,
-                                            String entriesUrl) {
+                                            String entriesUrl, Locale locale) {
+        var subject = msg("email.submission.subject", locale, divisionName);
         var ctx = new Context();
-        var subject = "[MEADS] Entries submitted — " + divisionName;
         ctx.setVariable("subject", subject);
-        ctx.setVariable("heading", "Entries Submitted");
-        ctx.setVariable("bodyText",
-                "All your entries for " + divisionName + " (" + competitionName
-                        + ") have been submitted. Click the button below to view your entries and download your labels.");
+        ctx.setVariable("heading", msg("email.submission.heading", locale));
+        ctx.setVariable("bodyText", msg("email.submission.body", locale, divisionName, competitionName));
         ctx.setVariable("entryLines", entryLines);
-        ctx.setVariable("ctaLabel", "View My Entries");
+        ctx.setVariable("ctaLabel", msg("email.submission.cta", locale));
         ctx.setVariable("ctaUrl", entriesUrl);
+        ctx.setVariable("fallbackText", msg("email.fallback", locale));
+        ctx.setVariable("footerText", msg("email.footer", locale));
         ctx.setVariable("contactEmail", null);
         sendEmail(recipientEmail, subject, ctx, entriesUrl);
     }
@@ -157,21 +169,26 @@ class SmtpEmailService implements EmailService {
     public void sendCreditNotification(String recipientEmail,
                                         int credits, String divisionName,
                                         String competitionName, String myEntriesUrl,
-                                        String contactEmail) {
+                                        String contactEmail, Locale locale) {
+        var creditWord = credits == 1
+                ? msg("email.credit.singular", locale)
+                : msg("email.credit.plural", locale);
+        var subject = msg("email.credit.subject", locale, divisionName);
         var ctx = new Context();
-        var subject = "[MEADS] Entry credits received — " + divisionName;
         ctx.setVariable("subject", subject);
-        ctx.setVariable("heading", "Entry Credits Received");
-        ctx.setVariable("bodyText",
-                "You've received " + credits + " entry "
-                        + (credits == 1 ? "credit" : "credits")
-                        + " for " + divisionName + " (" + competitionName + ").");
-        ctx.setVariable("bodyText2",
-                "Click the button below to view your entries and start registering your meads.");
-        ctx.setVariable("ctaLabel", "Continue");
+        ctx.setVariable("heading", msg("email.credit.heading", locale));
+        ctx.setVariable("bodyText", msg("email.credit.body", locale, credits, creditWord, divisionName, competitionName));
+        ctx.setVariable("bodyText2", msg("email.credit.body2", locale));
+        ctx.setVariable("ctaLabel", msg("email.credit.cta", locale));
         ctx.setVariable("ctaUrl", myEntriesUrl);
+        ctx.setVariable("fallbackText", msg("email.fallback", locale));
+        ctx.setVariable("footerText", msg("email.footer", locale));
         ctx.setVariable("contactEmail", contactEmail);
         sendEmail(recipientEmail, subject, ctx, myEntriesUrl);
+    }
+
+    private String msg(String key, Locale locale, Object... args) {
+        return messageSource.getMessage(key, args, key, locale);
     }
 
     private boolean isRateLimited(String email, String type) {

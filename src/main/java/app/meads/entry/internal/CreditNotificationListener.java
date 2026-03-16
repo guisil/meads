@@ -1,5 +1,6 @@
 package app.meads.entry.internal;
 
+import app.meads.LanguageMapping;
 import app.meads.competition.CompetitionService;
 import app.meads.entry.CreditsAwardedEvent;
 import app.meads.identity.EmailService;
@@ -40,11 +41,12 @@ public class CreditNotificationListener {
 
         var loginLink = jwtMagicLinkService.generateLink(user.getEmail(), LINK_VALIDITY);
 
+        var locale = LanguageMapping.resolveLocale(user.getPreferredLanguage(), user.getCountry());
         emailService.sendCreditNotification(
                 user.getEmail(),
                 event.amount(), division.getName(),
                 competition.getName(), loginLink,
-                competition.getContactEmail());
+                competition.getContactEmail(), locale);
         log.info("Sent credit notification to {} for {} credits in {}",
                 user.getEmail(), event.amount(), division.getName());
     }

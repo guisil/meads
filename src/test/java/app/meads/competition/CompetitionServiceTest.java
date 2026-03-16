@@ -1,5 +1,6 @@
 package app.meads.competition;
 
+import app.meads.BusinessRuleException;
 import app.meads.competition.internal.CategoryRepository;
 import app.meads.competition.internal.CompetitionDocumentRepository;
 import app.meads.competition.internal.CompetitionRepository;
@@ -117,8 +118,8 @@ class CompetitionServiceTest {
         assertThatThrownBy(() -> competitionService.createCompetition(
                 "Regional 2026", "regional-2026", LocalDate.of(2026, 6, 15),
                 LocalDate.of(2026, 6, 17), "Porto", user.getId()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("authorized");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.auth.unauthorized");
 
         then(competitionRepository).should(never()).save(any());
     }
@@ -193,8 +194,8 @@ class CompetitionServiceTest {
         assertThatThrownBy(() -> competitionService.updateCompetition(
                 competition.getId(), "Updated", "updated", LocalDate.of(2026, 7, 1),
                 LocalDate.of(2026, 7, 3), "Lisbon", user.getId()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("authorized");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.auth.unauthorized");
 
         then(competitionRepository).should(never()).save(any());
     }
@@ -305,8 +306,8 @@ class CompetitionServiceTest {
 
         assertThatThrownBy(() -> competitionService.deleteCompetition(
                 competition.getId(), admin.getId()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("divisions");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.competition.has-divisions");
 
         then(competitionRepository).should(never()).delete(any());
     }
@@ -379,8 +380,8 @@ class CompetitionServiceTest {
 
         assertThatThrownBy(() -> competitionService.createDivision(
                 competitionId, "Home", "home", ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC", admin.getId()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Competition not found");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.competition.not-found");
 
         then(divisionRepository).should(never()).save(any());
     }
@@ -396,8 +397,8 @@ class CompetitionServiceTest {
 
         assertThatThrownBy(() -> competitionService.createDivision(
                 competition.getId(), "Home", "home", ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC", user.getId()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("authorized");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.auth.unauthorized");
 
         then(divisionRepository).should(never()).save(any());
     }
@@ -460,8 +461,8 @@ class CompetitionServiceTest {
 
         assertThatThrownBy(() -> competitionService.advanceDivisionStatus(
                 division.getId(), user.getId()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("authorized");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.auth.unauthorized");
 
         then(divisionRepository).should(never()).save(any());
         then(eventPublisher).should(never()).publishEvent(any());
@@ -528,8 +529,8 @@ class CompetitionServiceTest {
 
         assertThatThrownBy(() -> competitionService.revertDivisionStatus(
                 division.getId(), user.getId()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("authorized");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.auth.unauthorized");
 
         then(divisionRepository).should(never()).save(any());
     }
@@ -547,13 +548,13 @@ class CompetitionServiceTest {
         given(divisionRepository.findById(division.getId()))
                 .willReturn(Optional.of(division));
         given(userService.findById(admin.getId())).willReturn(admin);
-        willThrow(new IllegalStateException("Cannot revert to DRAFT: entries exist in this division"))
+        willThrow(new BusinessRuleException("Cannot revert to DRAFT: entries exist in this division"))
                 .given(guard).checkRevertAllowed(division.getId(),
                         DivisionStatus.REGISTRATION_OPEN, DivisionStatus.DRAFT);
 
         assertThatThrownBy(() -> competitionService.revertDivisionStatus(
                 division.getId(), admin.getId()))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("entries exist");
 
         then(divisionRepository).should(never()).save(any());
@@ -595,8 +596,8 @@ class CompetitionServiceTest {
 
         assertThatThrownBy(() -> competitionService.updateDivision(
                 division.getId(), "Updated", "updated", ScoringSystem.MJP, null, user.getId()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("authorized");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.auth.unauthorized");
 
         then(divisionRepository).should(never()).save(any());
     }
@@ -810,8 +811,8 @@ class CompetitionServiceTest {
 
         assertThatThrownBy(() -> competitionService.addParticipant(
                 competition.getId(), user.getId(), CompetitionRole.ADMIN, admin.getId()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("cannot be combined");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.participant.incompatible-role");
 
         then(participantRoleRepository).should(never()).save(any());
     }
@@ -838,8 +839,8 @@ class CompetitionServiceTest {
 
         assertThatThrownBy(() -> competitionService.addParticipant(
                 competition.getId(), user.getId(), CompetitionRole.STEWARD, admin.getId()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("cannot be combined");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.participant.incompatible-role");
 
         then(participantRoleRepository).should(never()).save(any());
     }
@@ -863,8 +864,8 @@ class CompetitionServiceTest {
 
         assertThatThrownBy(() -> competitionService.addParticipant(
                 competition.getId(), user.getId(), CompetitionRole.ENTRANT, admin.getId()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("cannot be combined");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.participant.incompatible-role");
 
         then(participantRoleRepository).should(never()).save(any());
     }
@@ -889,8 +890,8 @@ class CompetitionServiceTest {
 
         assertThatThrownBy(() -> competitionService.addParticipant(
                 competition.getId(), user.getId(), CompetitionRole.JUDGE, admin.getId()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("JUDGE");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.participant.role-exists");
 
         then(participantRoleRepository).should(never()).save(any());
     }
@@ -913,8 +914,8 @@ class CompetitionServiceTest {
 
         assertThatThrownBy(() -> competitionService.ensureEntrantParticipant(
                 competition.getId(), userId))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("cannot be combined");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.participant.incompatible-role");
 
         then(participantRoleRepository).should(never()).save(any());
     }
@@ -989,8 +990,8 @@ class CompetitionServiceTest {
 
         assertThatThrownBy(() -> competitionService.addParticipant(
                 competition.getId(), UUID.randomUUID(), CompetitionRole.JUDGE, user.getId()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("authorized");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.auth.unauthorized");
 
         then(participantRoleRepository).should(never()).save(any());
     }
@@ -1102,8 +1103,8 @@ class CompetitionServiceTest {
 
         assertThatThrownBy(() -> competitionService.removeParticipantRole(
                 competition.getId(), participant.getId(), CompetitionRole.ENTRANT, admin.getId()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("ENTRANT");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.participant.role-not-found");
     }
 
     // --- findRolesForParticipant ---
@@ -1411,8 +1412,8 @@ class CompetitionServiceTest {
 
         assertThatThrownBy(() -> competitionService.addCatalogCategory(
                 division.getId(), catalogCat.getId(), admin.getId()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("already added");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.category.already-added");
 
         then(divisionCategoryRepository).should(never()).save(any());
     }
@@ -1570,18 +1571,18 @@ class CompetitionServiceTest {
         assertThatThrownBy(() -> competitionService.addCustomCategory(
                 division.getId(), "CUSTOM", "Custom",
                 "A custom category", null, admin.getId()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("cannot be modified");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.category.cannot-modify-status");
 
         assertThatThrownBy(() -> competitionService.addCatalogCategory(
                 division.getId(), UUID.randomUUID(), admin.getId()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("cannot be modified");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.category.cannot-modify-status");
 
         assertThatThrownBy(() -> competitionService.removeDivisionCategory(
                 division.getId(), UUID.randomUUID(), admin.getId()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("cannot be modified");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.category.cannot-modify-status");
 
         then(divisionCategoryRepository).should(never()).save(any());
         then(divisionCategoryRepository).should(never()).delete(any());
@@ -1741,8 +1742,8 @@ class CompetitionServiceTest {
 
         assertThatThrownBy(() -> competitionService.addDocument(competition.getId(), "Rules",
                 DocumentType.LINK, null, null, "https://example.com", admin.getId()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("already exists");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.document.name-exists");
     }
 
     @Test
@@ -1808,8 +1809,8 @@ class CompetitionServiceTest {
         given(competitionDocumentRepository.findById(randomId)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> competitionService.getDocument(randomId))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("not found");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.document.not-found");
     }
 
     @Test
@@ -1885,8 +1886,8 @@ class CompetitionServiceTest {
 
         assertThatThrownBy(() -> competitionService.updateDivisionDeadline(
                 division.getId(), LocalDateTime.now(), "Invalid/Zone", admin.getId()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Invalid timezone");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.division.invalid-timezone");
     }
 
     // --- findAdminEmailsByCompetitionId ---

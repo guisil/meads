@@ -1,5 +1,6 @@
 package app.meads.entry.internal;
 
+import app.meads.BusinessRuleException;
 import app.meads.competition.DivisionStatus;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,8 +30,8 @@ class EntryDivisionRevertGuardTest {
 
         assertThatThrownBy(() -> guard.checkRevertAllowed(
                 divisionId, DivisionStatus.REGISTRATION_OPEN, DivisionStatus.DRAFT))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("entries");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.division.cannot-revert-has-entries");
     }
 
     @Test

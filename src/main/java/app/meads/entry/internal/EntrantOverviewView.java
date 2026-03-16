@@ -1,5 +1,6 @@
 package app.meads.entry.internal;
 
+import app.meads.BusinessRuleException;
 import app.meads.MainLayout;
 import app.meads.entry.EntrantDivisionOverview;
 import app.meads.entry.EntryService;
@@ -45,7 +46,7 @@ public class EntrantOverviewView extends VerticalLayout implements BeforeEnterOb
         try {
             var userId = userService.findByEmail(email).getId();
             overviews = entryService.findEntrantDivisionOverviews(userId);
-        } catch (IllegalArgumentException e) {
+        } catch (BusinessRuleException e) {
             overviews = java.util.List.of();
         }
 
@@ -58,10 +59,10 @@ public class EntrantOverviewView extends VerticalLayout implements BeforeEnterOb
         }
 
         removeAll();
-        add(new H2("My Entries"));
+        add(new H2(getTranslation("overview.heading")));
 
         if (overviews.isEmpty()) {
-            add(new Span("You have no entries in any competition."));
+            add(new Span(getTranslation("overview.empty")));
             return;
         }
 
@@ -91,8 +92,8 @@ public class EntrantOverviewView extends VerticalLayout implements BeforeEnterOb
                         + "/my-entries",
                 overview.divisionName());
 
-        var credits = new Span("Credits: " + overview.creditBalance());
-        var entries = new Span("Entries: " + overview.activeEntryCount());
+        var credits = new Span(getTranslation("overview.credits") + " " + overview.creditBalance());
+        var entries = new Span(getTranslation("overview.entries") + " " + overview.activeEntryCount());
 
         row.add(link, credits, entries);
         row.setFlexGrow(1, link);

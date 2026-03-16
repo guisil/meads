@@ -1,5 +1,6 @@
 package app.meads.entry;
 
+import app.meads.BusinessRuleException;
 import app.meads.competition.CompetitionRole;
 import app.meads.competition.CompetitionService;
 import app.meads.competition.Division;
@@ -77,7 +78,7 @@ public class EntryService {
         requireAuthorizedForDivision(divisionId, requestingUserId);
         if (productMappingRepository.existsByDivisionIdAndJumpsellerProductId(
                 divisionId, jumpsellerProductId)) {
-            throw new IllegalArgumentException("Product is already mapped to this division");
+            throw new BusinessRuleException("error.product.already-mapped");
         }
         var mapping = new ProductMapping(divisionId, jumpsellerProductId, jumpsellerSku,
                 productName, creditsPerUnit);
@@ -91,7 +92,7 @@ public class EntryService {
                                                 int creditsPerUnit,
                                                 @NotNull UUID requestingUserId) {
         var mapping = productMappingRepository.findById(mappingId)
-                .orElseThrow(() -> new IllegalArgumentException("Product mapping not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.product.not-found"));
         requireAuthorizedForDivision(mapping.getDivisionId(), requestingUserId);
         mapping.updateDetails(productName, creditsPerUnit);
         log.debug("Updated product mapping: {}", mappingId);
@@ -101,7 +102,7 @@ public class EntryService {
     public void removeProductMapping(@NotNull UUID mappingId,
                                       @NotNull UUID requestingUserId) {
         var mapping = productMappingRepository.findById(mappingId)
-                .orElseThrow(() -> new IllegalArgumentException("Product mapping not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.product.not-found"));
         requireAuthorizedForDivision(mapping.getDivisionId(), requestingUserId);
         productMappingRepository.delete(mapping);
         log.info("Removed product mapping: {}", mappingId);
@@ -132,16 +133,13 @@ public class EntryService {
 
         // Mutual exclusivity check
         if (hasCreditConflict(user.getId(), divisionId, division.getCompetitionId())) {
-            throw new IllegalArgumentException(
-                    "Cannot add credits: mutual exclusivity violation — "
-                    + "user already has credits in another division of the same competition");
+            throw new BusinessRuleException("error.credits.mutual-exclusivity");
         }
 
         // Role compatibility check
         if (competitionService.hasIncompatibleRolesForEntrant(
                 division.getCompetitionId(), user.getId())) {
-            throw new IllegalArgumentException(
-                    "Cannot add credits: user has a role in this competition that cannot be combined with Entrant");
+            throw new BusinessRuleException("error.credits.incompatible-role");
         }
 
         var credit = new EntryCredit(divisionId, user.getId(), amount,
@@ -164,15 +162,12 @@ public class EntryService {
         requireAuthorizedForDivision(divisionId, requestingUserId);
         var balance = creditRepository.sumAmountByDivisionIdAndUserId(divisionId, userId);
         if (balance < amount) {
-            throw new IllegalArgumentException(
-                    "Insufficient credit balance: has " + balance + ", trying to remove " + amount);
+            throw new BusinessRuleException("error.credits.insufficient-balance", balance, amount);
         }
         var activeEntries = entryRepository.countByDivisionIdAndUserIdAndStatusNot(
                 divisionId, userId, EntryStatus.WITHDRAWN);
         if (balance - amount < activeEntries) {
-            throw new IllegalArgumentException(
-                    "Cannot reduce credits below active entry count: balance would be "
-                    + (balance - amount) + ", active entries: " + activeEntries);
+            throw new BusinessRuleException("error.credits.balance-below-entries", balance - amount, activeEntries);
         }
         var credit = new EntryCredit(divisionId, userId, -amount,
                 "ADMIN", userService.findById(requestingUserId).getEmail());
@@ -205,7 +200,7 @@ public class EntryService {
 
         // Division must be open for registration
         if (division.getStatus() != DivisionStatus.REGISTRATION_OPEN) {
-            throw new IllegalArgumentException("Division is not open for registration");
+            throw new BusinessRuleException("error.entry.division-not-open");
         }
 
         // Credit check: must have available credits
@@ -213,9 +208,7 @@ public class EntryService {
         var activeEntries = entryRepository.countByDivisionIdAndUserIdAndStatusNot(
                 divisionId, userId, EntryStatus.WITHDRAWN);
         if (creditBalance <= activeEntries) {
-            throw new IllegalArgumentException(
-                    "No available credits — balance: " + creditBalance
-                    + ", active entries: " + activeEntries);
+            throw new BusinessRuleException("error.entry.no-credits", creditBalance, activeEntries);
         }
 
         // Entry limits
@@ -249,9 +242,9 @@ public class EntryService {
                               String woodAgeingDetails,
                               String additionalInformation) {
         var entry = entryRepository.findById(entryId)
-                .orElseThrow(() -> new IllegalArgumentException("Entry not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
         if (!entry.getUserId().equals(userId)) {
-            throw new IllegalArgumentException("User is not the owner of this entry");
+            throw new BusinessRuleException("error.entry.not-owner");
         }
         entry.updateDetails(meadName, initialCategoryId, sweetness, strength, abv,
                 carbonation, honeyVarieties, otherIngredients, woodAged,
@@ -262,13 +255,12 @@ public class EntryService {
 
     public void deleteEntry(@NotNull UUID entryId, @NotNull UUID userId) {
         var entry = entryRepository.findById(entryId)
-                .orElseThrow(() -> new IllegalArgumentException("Entry not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
         if (!entry.getUserId().equals(userId)) {
-            throw new IllegalArgumentException("User is not the owner of this entry");
+            throw new BusinessRuleException("error.entry.not-owner");
         }
         if (entry.getStatus() != EntryStatus.DRAFT) {
-            throw new IllegalArgumentException("Can only delete entries in DRAFT status — "
-                    + "entry is " + entry.getStatus());
+            throw new BusinessRuleException("error.entry.wrong-status");
         }
         entryRepository.delete(entry);
         log.info("Deleted entry: #{} ({})", entry.getEntryNumber(), entryId);
@@ -276,9 +268,9 @@ public class EntryService {
 
     public void submitEntry(@NotNull UUID entryId, @NotNull UUID userId) {
         var entry = entryRepository.findById(entryId)
-                .orElseThrow(() -> new IllegalArgumentException("Entry not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
         if (!entry.getUserId().equals(userId)) {
-            throw new IllegalArgumentException("User is not the owner of this entry");
+            throw new BusinessRuleException("error.entry.not-owner");
         }
         entry.submit();
         entryRepository.save(entry);
@@ -302,7 +294,7 @@ public class EntryService {
 
     public Entry markReceived(@NotNull UUID entryId, @NotNull UUID requestingUserId) {
         var entry = entryRepository.findById(entryId)
-                .orElseThrow(() -> new IllegalArgumentException("Entry not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
         requireAuthorizedForDivision(entry.getDivisionId(), requestingUserId);
         entry.markReceived();
         log.info("Marked entry received: #{} ({})", entry.getEntryNumber(), entryId);
@@ -311,7 +303,7 @@ public class EntryService {
 
     public Entry withdrawEntry(@NotNull UUID entryId, @NotNull UUID requestingUserId) {
         var entry = entryRepository.findById(entryId)
-                .orElseThrow(() -> new IllegalArgumentException("Entry not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
         requireAuthorizedForDivision(entry.getDivisionId(), requestingUserId);
         entry.withdraw();
         log.info("Withdrew entry: #{} ({})", entry.getEntryNumber(), entryId);
@@ -332,7 +324,7 @@ public class EntryService {
                                     String additionalInformation,
                                     @NotNull UUID requestingUserId) {
         var entry = entryRepository.findById(entryId)
-                .orElseThrow(() -> new IllegalArgumentException("Entry not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
         requireAuthorizedForDivision(entry.getDivisionId(), requestingUserId);
         entry.adminUpdateDetails(meadName, initialCategoryId, sweetness, strength, abv,
                 carbonation, honeyVarieties, otherIngredients, woodAged,
@@ -352,7 +344,7 @@ public class EntryService {
 
     public Entry findEntryById(@NotNull UUID entryId) {
         return entryRepository.findById(entryId)
-                .orElseThrow(() -> new IllegalArgumentException("Entry not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
     }
 
     public long countActiveEntries(@NotNull UUID divisionId, @NotNull UUID userId) {
@@ -402,7 +394,7 @@ public class EntryService {
                                                      String adminNote,
                                                      @NotNull UUID requestingUserId) {
         var order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new IllegalArgumentException("Order not found"));
+                .orElseThrow(() -> new BusinessRuleException("error.order.not-found"));
         var divisionId = lineItemRepository.findByOrderId(orderId).stream()
                 .map(JumpsellerOrderLineItem::getDivisionId)
                 .filter(Objects::nonNull)
@@ -413,7 +405,7 @@ public class EntryService {
         } else {
             var user = userService.findById(requestingUserId);
             if (user.getRole() != Role.SYSTEM_ADMIN) {
-                throw new IllegalArgumentException("User is not authorized to perform this action");
+                throw new BusinessRuleException("error.auth.unauthorized");
             }
         }
         order.updateAdminDetails(status, adminNote);
@@ -429,7 +421,7 @@ public class EntryService {
             return;
         }
         if (!competitionService.isAuthorizedForDivision(divisionId, userId)) {
-            throw new IllegalArgumentException("User is not authorized to perform this action");
+            throw new BusinessRuleException("error.auth.unauthorized");
         }
     }
 
@@ -456,9 +448,7 @@ public class EntryService {
             var totalCount = entryRepository.countByDivisionIdAndUserIdAndStatusNot(
                     divisionId, userId, EntryStatus.WITHDRAWN);
             if (totalCount >= division.getMaxEntriesTotal()) {
-                throw new IllegalArgumentException(
-                        "Entry limit reached for this division (max "
-                        + division.getMaxEntriesTotal() + " total)");
+                throw new BusinessRuleException("error.entry.limit-total", division.getMaxEntriesTotal());
             }
         }
 
@@ -467,9 +457,7 @@ public class EntryService {
             var count = entryRepository.countByDivisionIdAndUserIdAndInitialCategoryIdAndStatusNot(
                     divisionId, userId, initialCategoryId, EntryStatus.WITHDRAWN);
             if (count >= division.getMaxEntriesPerSubcategory()) {
-                throw new IllegalArgumentException(
-                        "Entry limit reached for this subcategory (max "
-                        + division.getMaxEntriesPerSubcategory() + ")");
+                throw new BusinessRuleException("error.entry.limit-subcategory", division.getMaxEntriesPerSubcategory());
             }
         }
 
@@ -479,7 +467,7 @@ public class EntryService {
             var category = categories.stream()
                     .filter(c -> c.getId().equals(initialCategoryId))
                     .findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException("Category not found"));
+                    .orElseThrow(() -> new BusinessRuleException("error.category.not-found"));
 
             var mainCategoryId = category.getParentId() != null
                     ? category.getParentId() : category.getId();
@@ -492,9 +480,7 @@ public class EntryService {
             var count = entryRepository.countByDivisionIdAndUserIdAndInitialCategoryIdInAndStatusNot(
                     divisionId, userId, mainCategoryGroupIds, EntryStatus.WITHDRAWN);
             if (count >= division.getMaxEntriesPerMainCategory()) {
-                throw new IllegalArgumentException(
-                        "Entry limit reached for this main category (max "
-                        + division.getMaxEntriesPerMainCategory() + ")");
+                throw new BusinessRuleException("error.entry.limit-main-category", division.getMaxEntriesPerMainCategory());
             }
         }
     }
@@ -549,6 +535,6 @@ public class EntryService {
                 return code;
             }
         }
-        throw new IllegalStateException("Unable to generate a unique entry code");
+        throw new BusinessRuleException("error.entry.code-generation-failed");
     }
 }

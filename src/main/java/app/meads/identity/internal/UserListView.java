@@ -1,5 +1,6 @@
 package app.meads.identity.internal;
 
+import app.meads.BusinessRuleException;
 import app.meads.MainLayout;
 import app.meads.identity.EmailService;
 import app.meads.identity.Role;
@@ -151,7 +152,7 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
             // Soft delete - no confirmation needed
             try {
                 removeUser(user);
-            } catch (IllegalArgumentException ex) {
+            } catch (BusinessRuleException ex) {
                 Notification.show(ex.getMessage());
             }
         }
@@ -170,7 +171,7 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
             try {
                 removeUser(user);
                 dialog.close();
-            } catch (IllegalArgumentException ex) {
+            } catch (BusinessRuleException ex) {
                 Notification.show(ex.getMessage());
                 dialog.close();
             }
@@ -195,13 +196,13 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
     }
 
     public void sendMagicLink(User user) {
-        emailService.sendMagicLink(user.getEmail());
+        emailService.sendMagicLink(user.getEmail(), java.util.Locale.ENGLISH);
         var notification = Notification.show("Login link sent successfully");
         notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
     }
 
     public void sendPasswordResetLink(User user) {
-        emailService.sendPasswordReset(user.getEmail());
+        emailService.sendPasswordReset(user.getEmail(), java.util.Locale.ENGLISH);
         var notification = Notification.show("Password reset link sent successfully");
         notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
     }
@@ -303,7 +304,7 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
                     var meadery = meaderyField.getValue();
                     userService.updateProfile(savedUser.getId(), savedUser.getName(),
                             meadery != null && !meadery.isBlank() ? meadery.trim() : null,
-                            countryCombo.getValue());
+                            countryCombo.getValue(), null);
                 } else {
                     savedUser = userService.updateUser(
                         existingUser.getId(),
@@ -315,14 +316,14 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
                     var meadery = meaderyField.getValue();
                     userService.updateProfile(existingUser.getId(), nameField.getValue(),
                             meadery != null && !meadery.isBlank() ? meadery.trim() : null,
-                            countryCombo.getValue());
+                            countryCombo.getValue(), null);
                 }
                 grid.setItems(userService.findAll());
                 var notification = Notification.show(isCreate ? "User created successfully" : "User saved successfully");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 generatePasswordSetupLinkIfNeeded(savedUser);
                 dialog.close();
-            } catch (IllegalArgumentException ex) {
+            } catch (BusinessRuleException ex) {
                 if (isCreate) {
                     emailField.setInvalid(true);
                     emailField.setErrorMessage(ex.getMessage());
@@ -357,7 +358,7 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
 
     private void generatePasswordSetupLinkIfNeeded(User user) {
         if (user.getRole() == Role.SYSTEM_ADMIN && !userService.hasPassword(user.getId())) {
-            emailService.sendPasswordReset(user.getEmail());
+            emailService.sendPasswordReset(user.getEmail(), java.util.Locale.ENGLISH);
             Notification.show("Password setup link sent successfully");
         }
     }

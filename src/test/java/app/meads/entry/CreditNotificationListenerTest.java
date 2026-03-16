@@ -15,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Duration;
+import java.util.Locale;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.*;
@@ -60,6 +61,7 @@ class CreditNotificationListenerTest {
                 eq("entrant@test.com"),
                 eq(3), eq("Home"), eq("CHIP 2026"),
                 eq("http://localhost:8080/login/magic?token=abc123"),
-                eq("admin@chip.pt"));
+                eq("admin@chip.pt"),
+                any(Locale.class));
     }
 }

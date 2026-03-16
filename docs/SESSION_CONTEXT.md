@@ -225,35 +225,30 @@ deletion paths for correct behavior.
 Then TDD each guard and deletion path. Needs thorough testing — multiple edge cases
 across modules.
 
-### Priority 2: Post-deployment walkthrough
-Execute `docs/walkthrough/post-deployment-test.md` against the deployed application.
-Covers the full workflow from a clean database: admin login, competition/division setup,
-participant onboarding, entry submission, labels, and security checks.
-
-### Priority 3: MFA for system admins
+### Priority 2: MFA for system admins
 Evaluate and implement multi-factor authentication for SYSTEM_ADMIN accounts.
 Password-only login for privileged accounts is a security risk post-deployment.
 
-### Priority 4: Auto-close + deadline reminders (deferred)
+### Priority 3: Auto-close + deadline reminders (deferred)
 - **Auto-close** — automatically advance division from REGISTRATION_OPEN → REGISTRATION_CLOSED
   when registration deadline passes (scheduled task)
 - **Entrant deadline reminder** — notify entrants who have DRAFT entries when the registration
   deadline is approaching (e.g., 7 days, 3 days, 1 day before deadline)
 - Other potential: entry received confirmation (when admin marks entry as RECEIVED), results published notification
 
-### Priority 5: Internationalization (i18n)
+### Priority 4: Internationalization (i18n)
 **Design complete** — see `docs/plans/2026-03-10-i18n-design.md`. Implementation deferred.
 Summary: Vaadin I18NProvider + Spring MessageSource, resource bundles, browser locale +
 UI switcher (cookie/localStorage), entrant-facing views only (6 views), MJP category
 translations via bundles keyed by code. ~100-120 strings to extract. No DB changes needed.
 
-### Priority 6: Judging module
+### Priority 5: Judging module
 Design and implementation. Reference: `docs/reference/chip-competition-rules.md`.
 
-### Priority 7: Awards module
+### Priority 6: Awards module
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md`.
 
-### Priority 8: Full category constraint system (low priority — future competition)
+### Priority 7: Full category constraint system (low priority — future competition)
 Full field locking/validation based on category selection. Design doc: `docs/plans/2026-03-11-category-hints-design.md` (appendix).
 Includes: sweetness locking (M1A→Dry, M1B→Medium, M1C→Sweet), ingredient restrictions (M1/M4E),
 strength locking (M4S→Hydromel), ABV caps (M4S→7.5%), ABV→Strength derivation (universal),
@@ -261,6 +256,7 @@ carbonation locking (custom categories), and admin-configurable constraints for 
 Requires: DB migration, admin UI for constraint config, cross-module data flow, server-side validation.
 
 ### Completed priorities
+- **Post-deployment walkthrough** — Completed 2026-03-16. `docs/walkthrough/post-deployment-test.md` retained as reference for re-running after major changes.
 - **PR #4 code review & merge** — Merged `competition-module` into `main` (2026-03-14). Code review found 5 bugs (missing auth check, missing access code on role promotion, HMAC timing attack, hasCreditConflict inconsistency, entryPrefix DRAFT guard) and 4 convention fixes (ProfileView auth context, @Setter removal, setter→domain method renames, Category constructor). Deferred: test naming (313 methods) and cross-module test imports.
 - **Manual walkthrough (Sections 1–14)** — All sections completed. Security testing (Section 14) produced 7 fixes: SetPasswordView eager token validation, webhook missing HMAC header (401), webhook HTTP method tampering (405), webhook email length validation, field length limits on email/password fields, dev password logging cleanup, and UX improvements (contact email on My Entries, mead name tooltips, settings field widths).
 - **Configuration audit** — Properties reorganized, secrets in profile-specific files.

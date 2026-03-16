@@ -40,6 +40,9 @@ public class User {
     @Column(length = 2)
     private String country;
 
+    @Column(name = "preferred_language", length = 5)
+    private String preferredLanguage;
+
     private Instant updatedAt;
 
     protected User() {} // JPA
@@ -80,6 +83,10 @@ public class User {
 
     public void updateCountry(String country) {
         this.country = country;
+    }
+
+    public void updatePreferredLanguage(String preferredLanguage) {
+        this.preferredLanguage = preferredLanguage;
     }
 
     public void updateDetails(String name, Role role, UserStatus status) {

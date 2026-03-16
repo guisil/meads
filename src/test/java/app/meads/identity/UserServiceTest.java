@@ -1,5 +1,6 @@
 package app.meads.identity;
 
+import app.meads.BusinessRuleException;
 import app.meads.identity.internal.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -83,8 +84,8 @@ class UserServiceTest {
 
         // Act & Assert
         assertThatThrownBy(() -> userService.removeUser(userId, currentUserEmail))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Cannot deactivate or delete your own account");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.user.cannot-remove-self");
     }
 
     // --- createUser tests ---
@@ -114,8 +115,8 @@ class UserServiceTest {
         given(userRepository.existsByEmail(email)).willReturn(true);
 
         assertThatThrownBy(() -> userService.createUser(email, "Name", UserStatus.PENDING, Role.USER))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Email already exists");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.user.email-exists");
 
         then(userRepository).should(never()).save(any());
     }
@@ -144,8 +145,8 @@ class UserServiceTest {
         given(userRepository.findById(userId)).willReturn(Optional.of(user));
 
         assertThatThrownBy(() -> userService.updateUser(userId, "Admin", Role.SYSTEM_ADMIN, UserStatus.ACTIVE, "admin@example.com"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Cannot change your own role");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.user.cannot-change-own-role");
     }
 
     @Test
@@ -155,8 +156,8 @@ class UserServiceTest {
         given(userRepository.findById(userId)).willReturn(Optional.of(user));
 
         assertThatThrownBy(() -> userService.updateUser(userId, "Admin", Role.USER, UserStatus.INACTIVE, "admin@example.com"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Cannot change your own status");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.user.cannot-change-own-status");
     }
 
     // --- findAll / findById tests ---
@@ -192,8 +193,8 @@ class UserServiceTest {
         given(userRepository.findById(userId)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> userService.findById(userId))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("User not found");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.user.not-found");
     }
 
     // --- isEditingSelf tests ---
@@ -289,7 +290,7 @@ class UserServiceTest {
         given(userRepository.findById(user.getId())).willReturn(Optional.of(user));
         given(userRepository.save(any(User.class))).willAnswer(i -> i.getArgument(0));
 
-        var result = userService.updateProfile(user.getId(), "New Name", "My Meadery", "PT");
+        var result = userService.updateProfile(user.getId(), "New Name", "My Meadery", "PT", null);
 
         assertThat(result.getName()).isEqualTo("New Name");
         assertThat(result.getMeaderyName()).isEqualTo("My Meadery");
@@ -297,12 +298,34 @@ class UserServiceTest {
     }
 
     @Test
+    void shouldUpdateProfileWithPreferredLanguage() {
+        var user = new User("test@example.com", "Name", UserStatus.ACTIVE, Role.USER);
+        given(userRepository.findById(user.getId())).willReturn(Optional.of(user));
+        given(userRepository.save(any(User.class))).willAnswer(i -> i.getArgument(0));
+
+        var result = userService.updateProfile(user.getId(), "Name", "Meadery", "PT", "pt");
+
+        assertThat(result.getPreferredLanguage()).isEqualTo("pt");
+    }
+
+    @Test
+    void shouldAllowNullPreferredLanguageInProfile() {
+        var user = new User("test@example.com", "Name", UserStatus.ACTIVE, Role.USER);
+        given(userRepository.findById(user.getId())).willReturn(Optional.of(user));
+        given(userRepository.save(any(User.class))).willAnswer(i -> i.getArgument(0));
+
+        var result = userService.updateProfile(user.getId(), "Name", null, null, null);
+
+        assertThat(result.getPreferredLanguage()).isNull();
+    }
+
+    @Test
     void shouldRejectInvalidCountryCode() {
         var userId = UUID.randomUUID();
 
-        assertThatThrownBy(() -> userService.updateProfile(userId, "Name", null, "XX"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("country code");
+        assertThatThrownBy(() -> userService.updateProfile(userId, "Name", null, "XX", null))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.user.invalid-country");
     }
 
     @Test
@@ -311,7 +334,7 @@ class UserServiceTest {
         given(userRepository.findById(user.getId())).willReturn(Optional.of(user));
         given(userRepository.save(any(User.class))).willAnswer(i -> i.getArgument(0));
 
-        var result = userService.updateProfile(user.getId(), "Name", null, null);
+        var result = userService.updateProfile(user.getId(), "Name", null, null, null);
 
         assertThat(result.getCountry()).isNull();
         assertThat(result.getMeaderyName()).isNull();
@@ -336,8 +359,8 @@ class UserServiceTest {
         UUID userId = UUID.randomUUID();
 
         assertThatThrownBy(() -> userService.setPassword(userId, "short"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("at least 8 characters");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.user.password-too-short");
 
         then(passwordEncoder).shouldHaveNoInteractions();
         then(userRepository).shouldHaveNoInteractions();
@@ -351,8 +374,8 @@ class UserServiceTest {
 
         // Act & Assert
         assertThatThrownBy(() -> userService.setPassword(userId, "rawPassword"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("User not found");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.user.not-found");
     }
 
     // --- setPasswordByToken tests ---
@@ -376,8 +399,8 @@ class UserServiceTest {
         given(jwtMagicLinkService.extractEmail("valid-token")).willReturn("admin@example.com");
 
         assertThatThrownBy(() -> userService.setPasswordByToken("valid-token", "short"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("at least 8 characters");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.user.password-too-short");
 
         then(userRepository).should(never()).save(any());
     }

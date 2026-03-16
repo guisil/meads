@@ -1,5 +1,6 @@
 package app.meads.entry.internal;
 
+import app.meads.LanguageMapping;
 import app.meads.competition.CompetitionService;
 import app.meads.entry.EntriesSubmittedEvent;
 import app.meads.identity.EmailService;
@@ -45,9 +46,10 @@ public class SubmissionConfirmationListener {
                         + " — " + d.categoryCode() + " " + d.categoryName())
                 .toList();
 
+        var locale = LanguageMapping.resolveLocale(user.getPreferredLanguage(), user.getCountry());
         emailService.sendSubmissionConfirmation(
                 user.getEmail(), competition.getName(),
-                division.getName(), entryLines, loginLink);
+                division.getName(), entryLines, loginLink, locale);
         log.info("Sent submission confirmation to {} for {} entries in {}",
                 user.getEmail(), event.entryDetails().size(), division.getName());
     }

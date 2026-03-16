@@ -1,5 +1,6 @@
 package app.meads.entry.internal;
 
+import app.meads.BusinessRuleException;
 import app.meads.MainLayout;
 import app.meads.competition.Competition;
 import app.meads.competition.CompetitionService;
@@ -108,7 +109,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
             division = competitionService.findDivisionByShortName(
                     competition.getId(), divShortName);
             divisionId = division.getId();
-        } catch (IllegalArgumentException e) {
+        } catch (BusinessRuleException e) {
             beforeEnterEvent.forwardTo("");
             return;
         }
@@ -166,7 +167,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
 
     private Nav createBreadcrumb() {
         var nav = new Nav();
-        nav.add(new Anchor("my-entries", "My Entries"));
+        nav.add(new Anchor("my-entries", getTranslation("nav.my-entries")));
         nav.add(new Span(" / "));
         nav.add(new Span(competitionName));
         nav.add(new Span(" / "));
@@ -186,7 +187,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
             header.add(logo);
         }
 
-        header.add(new H2(competition.getName() + " — " + division.getName() + " — My Entries"));
+        header.add(new H2(competition.getName() + " — " + division.getName() + " — " + getTranslation("nav.my-entries")));
         return header;
     }
 
@@ -200,7 +201,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         section.setPadding(false);
         section.setSpacing(false);
 
-        var header = new Span("Competition Documents");
+        var header = new Span(getTranslation("entries.documents"));
         header.getStyle().set("font-weight", "600");
         section.add(header);
 
@@ -233,9 +234,9 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         userIcon.getStyle().set("width", "1em");
         userIcon.getStyle().set("height", "1em");
         userIcon.getStyle().set("vertical-align", "middle");
-        warning.add(new Span("This division requires a meadery name. Please update your profile (via the user menu "));
+        warning.add(new Span(getTranslation("entries.meadery-warning.part1") + " "));
         warning.add(userIcon);
-        warning.add(new Span(") before submitting entries."));
+        warning.add(new Span(getTranslation("entries.meadery-warning.part2")));
         return warning;
     }
 
@@ -252,16 +253,16 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         var activeEntries = entryService.countActiveEntries(divisionId, currentUserId);
         var remaining = creditBalance - activeEntries;
 
-        var creditsLabel = new Span("Credits:");
+        var creditsLabel = new Span(getTranslation("entries.credits.label"));
         creditsLabel.getStyle().set("font-weight", "600");
 
-        var remainingBadge = new Span(remaining + " remaining");
+        var remainingBadge = new Span(getTranslation("entries.credits.remaining", remaining));
         remainingBadge.getElement().getThemeList().add("badge pill small");
         if (remaining > 0) {
             remainingBadge.getElement().getThemeList().add("success");
         }
 
-        var detailSpan = new Span("(" + creditBalance + " total, " + activeEntries + " used)");
+        var detailSpan = new Span(getTranslation("entries.credits.detail", creditBalance, activeEntries));
         detailSpan.getStyle().set("color", "var(--lumo-secondary-text-color)")
                 .set("font-size", "var(--lumo-font-size-s)");
 
@@ -276,18 +277,18 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
             layout.add(spacer);
             layout.expand(spacer);
 
-            var limitsLabel = new Span("Limits:");
+            var limitsLabel = new Span(getTranslation("entries.limits.label"));
             limitsLabel.getStyle().set("font-weight", "600");
             layout.add(limitsLabel);
 
             if (division.getMaxEntriesPerSubcategory() != null) {
-                layout.add(createLimitBadge(division.getMaxEntriesPerSubcategory() + " per subcategory"));
+                layout.add(createLimitBadge(getTranslation("entries.limits.per-subcategory", division.getMaxEntriesPerSubcategory())));
             }
             if (division.getMaxEntriesPerMainCategory() != null) {
-                layout.add(createLimitBadge(division.getMaxEntriesPerMainCategory() + " per main category"));
+                layout.add(createLimitBadge(getTranslation("entries.limits.per-main-category", division.getMaxEntriesPerMainCategory())));
             }
             if (division.getMaxEntriesTotal() != null) {
-                layout.add(createLimitBadge(division.getMaxEntriesTotal() + " total"));
+                layout.add(createLimitBadge(getTranslation("entries.limits.total", division.getMaxEntriesTotal())));
             }
         }
 
@@ -307,7 +308,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
 
         // Filters (left)
         var nameField = new TextField();
-        nameField.setPlaceholder("Filter by mead name...");
+        nameField.setPlaceholder(getTranslation("entries.filter.placeholder"));
         nameField.setWidth("300px");
         nameField.setClearButtonVisible(true);
         nameField.setValueChangeMode(ValueChangeMode.EAGER);
@@ -317,9 +318,11 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         });
 
         var statusSelect = new Select<EntryStatus>();
-        statusSelect.setPlaceholder("All statuses");
+        statusSelect.setPlaceholder(getTranslation("entries.filter.all-statuses"));
         statusSelect.setItems(EntryStatus.values());
-        statusSelect.setItemLabelGenerator(s -> s != null ? s.getDisplayName() : "All statuses");
+        statusSelect.setItemLabelGenerator(s -> s != null
+                ? getTranslation("entry.status." + s.name())
+                : getTranslation("entries.filter.all-statuses"));
         statusSelect.setEmptySelectionAllowed(true);
         statusSelect.addValueChangeListener(e -> {
             statusFilter = e.getValue();
@@ -331,24 +334,24 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         var activeEntries = entryService.countActiveEntries(divisionId, currentUserId);
         var isOpen = division.getStatus() == DivisionStatus.REGISTRATION_OPEN;
 
-        var addButton = new Button("Add Entry", e -> openEntryDialog(null));
+        var addButton = new Button(getTranslation("entries.add"), e -> openEntryDialog(null));
         addButton.setEnabled(isOpen && creditBalance > activeEntries);
 
         var entries = entryService.findEntriesByDivisionAndUser(divisionId, currentUserId);
         var hasDrafts = entries.stream().anyMatch(en -> en.getStatus() == EntryStatus.DRAFT);
 
-        var submitButton = new Button("Submit All Drafts", e -> submitAll());
+        var submitButton = new Button(getTranslation("entries.submit-all"), e -> submitAll());
         submitButton.setEnabled(hasDrafts && !meaderyNameMissing);
         if (meaderyNameMissing) {
-            submitButton.setTooltipText("Meadery name required — update your profile");
+            submitButton.setTooltipText(getTranslation("entries.meadery-required.tooltip"));
         }
 
         // Download all labels (SUBMITTED entries) — only enabled when no drafts remain
-        var downloadAllBtn = new Button("Download all labels", new Icon(VaadinIcon.DOWNLOAD_ALT));
+        var downloadAllBtn = new Button(getTranslation("entries.download-all"), new Icon(VaadinIcon.DOWNLOAD_ALT));
         Component downloadAllComponent;
         if (hasDrafts) {
             downloadAllBtn.setEnabled(false);
-            downloadAllBtn.setTooltipText("Submit all draft entries before downloading labels");
+            downloadAllBtn.setTooltipText(getTranslation("entries.download-all.disabled"));
             downloadAllComponent = downloadAllBtn;
         } else {
             var downloadAllResource = new StreamResource("all-labels.pdf", () -> {
@@ -397,7 +400,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
 
         // 1. Entry # — smaller column
         var entryNumCol = entriesGrid.addColumn(entry -> formatEntryId(entry))
-                .setHeader("Entry #")
+                .setHeader(getTranslation("entries.column.entry-number"))
                 .setSortable(true)
                 .setComparator((a, b) -> Integer.compare(a.getEntryNumber(), b.getEntryNumber()))
                 .setWidth("110px")
@@ -408,12 +411,12 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
             var span = new Span(entry.getMeadName());
             span.setTitle(entry.getMeadName());
             return span;
-        }).setHeader("Mead Name").setSortable(true)
+        }).setHeader(getTranslation("entries.column.mead-name")).setSortable(true)
                 .setComparator((a, b) -> a.getMeadName().compareToIgnoreCase(b.getMeadName()));
 
         // Category (initial) — show code with tooltip
         entriesGrid.addComponentColumn(entry -> createCategorySpan(entry.getInitialCategoryId()))
-                .setHeader("Category")
+                .setHeader(getTranslation("entries.column.category"))
                 .setSortable(true)
                 .setComparator((a, b) -> resolveCategoryCode(a.getInitialCategoryId())
                         .compareTo(resolveCategoryCode(b.getInitialCategoryId())));
@@ -421,20 +424,20 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         // Final Category — show code with tooltip
         entriesGrid.addComponentColumn(entry -> {
             if (entry.getFinalCategoryId() == null) {
-                return new Span("—");
+                return new Span(getTranslation("entries.column.final-category.none"));
             }
             return createCategorySpan(entry.getFinalCategoryId());
-        }).setHeader("Final Category").setSortable(true);
+        }).setHeader(getTranslation("entries.column.final-category")).setSortable(true);
 
         // 2. Status badge — styled like DivisionStatus
         entriesGrid.addComponentColumn(this::createStatusBadge)
-                .setHeader("Status")
+                .setHeader(getTranslation("entries.column.status"))
                 .setSortable(true)
                 .setComparator((a, b) -> a.getStatus().compareTo(b.getStatus()));
 
         // 4. Actions column
         entriesGrid.addComponentColumn(this::createActions)
-                .setHeader("Actions")
+                .setHeader(getTranslation("entries.column.actions"))
                 .setWidth("140px")
                 .setFlexGrow(0);
 
@@ -468,7 +471,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
     }
 
     private Span createStatusBadge(Entry entry) {
-        var badge = new Span(entry.getStatus().getDisplayName());
+        var badge = new Span(getTranslation("entry.status." + entry.getStatus().name()));
         badge.getElement().getThemeList().add("badge pill small");
         badge.addClassName(entry.getStatus().getBadgeCssClass());
         return badge;
@@ -482,7 +485,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         // View — always available
         var viewBtn = new Button(new Icon(VaadinIcon.EYE), e -> openViewDialog(entry));
         viewBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE, ButtonVariant.LUMO_SMALL);
-        viewBtn.setTooltipText("View entry details");
+        viewBtn.setTooltipText(getTranslation("entries.action.view"));
         actions.add(viewBtn);
 
         var isOpen = division.getStatus() == DivisionStatus.REGISTRATION_OPEN;
@@ -491,7 +494,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         // Edit — only DRAFT entries when registration is open
         var editBtn = new Button(new Icon(VaadinIcon.EDIT), e -> openEntryDialog(entry));
         editBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE, ButtonVariant.LUMO_SMALL);
-        editBtn.setTooltipText("Edit entry");
+        editBtn.setTooltipText(getTranslation("entries.action.edit"));
         editBtn.setEnabled(isDraft && isOpen);
         actions.add(editBtn);
 
@@ -500,8 +503,8 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         submitBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE, ButtonVariant.LUMO_SMALL);
         submitBtn.setEnabled(isDraft && isOpen && !meaderyNameMissing);
         submitBtn.setTooltipText(meaderyNameMissing
-                ? "Meadery name required — update your profile"
-                : "Submit entry");
+                ? getTranslation("entries.meadery-required.tooltip")
+                : getTranslation("entries.action.submit"));
         actions.add(submitBtn);
 
         // Download label — only SUBMITTED entries
@@ -516,7 +519,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
             downloadAnchor.getElement().setAttribute("download", true);
             var downloadIcon = new Button(new Icon(VaadinIcon.DOWNLOAD_ALT));
             downloadIcon.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE, ButtonVariant.LUMO_SMALL);
-            downloadIcon.setTooltipText("Download label");
+            downloadIcon.setTooltipText(getTranslation("entries.action.download"));
             downloadAnchor.add(downloadIcon);
             actions.add(downloadAnchor);
         }
@@ -526,39 +529,44 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
 
     private void openViewDialog(Entry entry) {
         var dialog = new Dialog();
-        dialog.setHeaderTitle("Entry " + formatEntryId(entry) + " — " + entry.getMeadName());
+        dialog.setHeaderTitle(getTranslation("entries.view.title", formatEntryId(entry), entry.getMeadName()));
         dialog.setWidth("600px");
 
         var layout = new VerticalLayout();
         layout.setPadding(false);
 
-        layout.add(readOnlyField("Mead Name", entry.getMeadName()));
-        layout.add(readOnlyField("Category",
+        layout.add(readOnlyField(getTranslation("entries.view.mead-name"), entry.getMeadName()));
+        layout.add(readOnlyField(getTranslation("entries.view.category"),
                 resolveCategoryCodeAndName(entry.getInitialCategoryId())));
         if (entry.getFinalCategoryId() != null) {
-            layout.add(readOnlyField("Final Category",
+            layout.add(readOnlyField(getTranslation("entries.view.final-category"),
                     resolveCategoryCodeAndName(entry.getFinalCategoryId())));
         }
-        layout.add(readOnlyField("Sweetness", entry.getSweetness().getDisplayName()));
-        layout.add(readOnlyField("Strength", entry.getStrength().getDisplayName()));
-        layout.add(readOnlyField("ABV", entry.getAbv() + "%"));
-        layout.add(readOnlyField("Carbonation", entry.getCarbonation().getDisplayName()));
-        layout.add(readOnlyField("Honey Varieties", entry.getHoneyVarieties()));
+        layout.add(readOnlyField(getTranslation("entries.view.sweetness"),
+                getTranslation("entry.sweetness." + entry.getSweetness().name())));
+        layout.add(readOnlyField(getTranslation("entries.view.strength"),
+                getTranslation("entry.strength." + entry.getStrength().name())));
+        layout.add(readOnlyField(getTranslation("entries.view.abv"), entry.getAbv() + "%"));
+        layout.add(readOnlyField(getTranslation("entries.view.carbonation"),
+                getTranslation("entry.carbonation." + entry.getCarbonation().name())));
+        layout.add(readOnlyField(getTranslation("entries.view.honey"), entry.getHoneyVarieties()));
         if (StringUtils.hasText(entry.getOtherIngredients())) {
-            layout.add(readOnlyField("Other Ingredients", entry.getOtherIngredients()));
+            layout.add(readOnlyField(getTranslation("entries.view.other-ingredients"), entry.getOtherIngredients()));
         }
-        layout.add(readOnlyField("Wood Aged", entry.isWoodAged() ? "Yes" : "No"));
+        layout.add(readOnlyField(getTranslation("entries.view.wood-aged"),
+                entry.isWoodAged() ? getTranslation("entries.view.wood-aged.yes") : getTranslation("entries.view.wood-aged.no")));
         if (entry.isWoodAged() && StringUtils.hasText(entry.getWoodAgeingDetails())) {
-            layout.add(readOnlyField("Wood Ageing Details", entry.getWoodAgeingDetails()));
+            layout.add(readOnlyField(getTranslation("entries.view.wood-details"), entry.getWoodAgeingDetails()));
         }
         if (StringUtils.hasText(entry.getAdditionalInformation())) {
-            layout.add(readOnlyField("Additional Information",
+            layout.add(readOnlyField(getTranslation("entries.view.additional-info"),
                     entry.getAdditionalInformation()));
         }
-        layout.add(readOnlyField("Status", entry.getStatus().getDisplayName()));
+        layout.add(readOnlyField(getTranslation("entries.view.status"),
+                getTranslation("entry.status." + entry.getStatus().name())));
 
         dialog.add(layout);
-        dialog.getFooter().add(new Button("Close", e -> dialog.close()));
+        dialog.getFooter().add(new Button(getTranslation("entries.view.close"), e -> dialog.close()));
         dialog.open();
     }
 
@@ -572,24 +580,23 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
 
     private void submitSingle(Entry entry) {
         var dialog = new Dialog();
-        dialog.setHeaderTitle("Submit Entry");
-        dialog.add("Submit entry " + formatEntryId(entry)
-                + " (" + entry.getMeadName() + ")? Submitted entries can no longer be edited.");
+        dialog.setHeaderTitle(getTranslation("entries.submit.title"));
+        dialog.add(getTranslation("entries.submit.confirm", formatEntryId(entry), entry.getMeadName()));
 
-        var confirmButton = new Button("Submit", e -> {
+        var confirmButton = new Button(getTranslation("entries.submit.button"), e -> {
             try {
                 entryService.submitEntry(entry.getId(), currentUserId);
                 refreshPage();
-                var notification = Notification.show("Entry submitted");
+                var notification = Notification.show(getTranslation("entries.submit.success"));
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
-            } catch (IllegalArgumentException ex) {
+            } catch (BusinessRuleException ex) {
                 Notification.show(ex.getMessage());
                 dialog.close();
             }
         });
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("entries.submit.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
         dialog.open();
     }
@@ -615,17 +622,19 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
 
     private void openEntryDialog(Entry existing) {
         var dialog = new Dialog();
-        dialog.setHeaderTitle(existing == null ? "Add Entry" : "Edit Entry");
+        dialog.setHeaderTitle(existing == null
+                ? getTranslation("entries.dialog.title.add")
+                : getTranslation("entries.dialog.title.edit"));
         dialog.setWidth("600px");
 
         var layout = new VerticalLayout();
         layout.setPadding(false);
 
-        var meadName = new TextField("Mead Name");
+        var meadName = new TextField(getTranslation("entries.dialog.mead-name"));
         meadName.setWidthFull();
         meadName.setMaxLength(255);
         var categorySelect = new Select<DivisionCategory>();
-        categorySelect.setLabel("Category");
+        categorySelect.setLabel(getTranslation("entries.dialog.category"));
         categorySelect.setWidthFull();
         categorySelect.setItemLabelGenerator(dc ->
                 dc.getCode() + " — " + dc.getName());
@@ -643,53 +652,59 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
 
         categorySelect.addValueChangeListener(e -> {
             var selected = e.getValue();
-            if (selected != null && CATEGORY_HINTS.containsKey(selected.getCode())) {
-                categoryHint.setText(CATEGORY_HINTS.get(selected.getCode()));
-                categoryHint.setVisible(true);
+            if (selected != null) {
+                var hintKey = "category.hint." + selected.getCode();
+                var hint = getTranslation(hintKey);
+                if (!hint.equals(hintKey)) {
+                    categoryHint.setText(hint);
+                    categoryHint.setVisible(true);
+                } else {
+                    categoryHint.setVisible(false);
+                }
             } else {
                 categoryHint.setVisible(false);
             }
         });
 
         var sweetness = new Select<Sweetness>();
-        sweetness.setLabel("Sweetness");
+        sweetness.setLabel(getTranslation("entries.dialog.sweetness"));
         sweetness.setWidthFull();
         sweetness.setItems(Sweetness.values());
-        sweetness.setItemLabelGenerator(Sweetness::getDisplayName);
+        sweetness.setItemLabelGenerator(s -> getTranslation("entry.sweetness." + s.name()));
 
         var strength = new Select<Strength>();
-        strength.setLabel("Strength");
+        strength.setLabel(getTranslation("entries.dialog.strength"));
         strength.setWidthFull();
         strength.setItems(Strength.values());
-        strength.setItemLabelGenerator(Strength::getDisplayName);
+        strength.setItemLabelGenerator(s -> getTranslation("entry.strength." + s.name()));
 
-        var abv = new NumberField("ABV (%)");
+        var abv = new NumberField(getTranslation("entries.dialog.abv"));
         abv.setWidthFull();
         abv.setStep(0.1);
         abv.setMin(0);
         abv.setMax(30);
 
         var carbonation = new Select<Carbonation>();
-        carbonation.setLabel("Carbonation");
+        carbonation.setLabel(getTranslation("entries.dialog.carbonation"));
         carbonation.setWidthFull();
         carbonation.setItems(Carbonation.values());
-        carbonation.setItemLabelGenerator(Carbonation::getDisplayName);
+        carbonation.setItemLabelGenerator(c -> getTranslation("entry.carbonation." + c.name()));
 
-        var honeyVarieties = new TextArea("Honey Varieties");
+        var honeyVarieties = new TextArea(getTranslation("entries.dialog.honey"));
         honeyVarieties.setWidthFull();
         honeyVarieties.setMaxLength(500);
-        var otherIngredients = new TextArea("Other Ingredients");
+        var otherIngredients = new TextArea(getTranslation("entries.dialog.other-ingredients"));
         otherIngredients.setWidthFull();
         otherIngredients.setMaxLength(500);
 
-        var woodAged = new Checkbox("Wood Aged");
-        var woodAgeingDetails = new TextArea("Wood Ageing Details");
+        var woodAged = new Checkbox(getTranslation("entries.dialog.wood-aged"));
+        var woodAgeingDetails = new TextArea(getTranslation("entries.dialog.wood-details"));
         woodAgeingDetails.setWidthFull();
         woodAgeingDetails.setMaxLength(500);
         woodAgeingDetails.setVisible(false);
         woodAged.addValueChangeListener(e -> woodAgeingDetails.setVisible(e.getValue()));
 
-        var additionalInfo = new TextArea("Additional Information");
+        var additionalInfo = new TextArea(getTranslation("entries.dialog.additional-info"));
         additionalInfo.setWidthFull();
         additionalInfo.setMaxLength(1000);
 
@@ -721,41 +736,41 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                 honeyVarieties, otherIngredients, woodAged, woodAgeingDetails, additionalInfo);
         dialog.add(layout);
 
-        var saveButton = new Button("Save", e -> {
+        var saveButton = new Button(getTranslation("entries.dialog.save"), e -> {
             if (!StringUtils.hasText(meadName.getValue())) {
                 meadName.setInvalid(true);
-                meadName.setErrorMessage("Mead name is required");
+                meadName.setErrorMessage(getTranslation("entries.validation.mead-name-required"));
                 return;
             }
             var valid = true;
             if (categorySelect.getValue() == null) {
                 categorySelect.setInvalid(true);
-                categorySelect.setErrorMessage("Category is required");
+                categorySelect.setErrorMessage(getTranslation("entries.validation.category-required"));
                 valid = false;
             }
             if (sweetness.getValue() == null) {
                 sweetness.setInvalid(true);
-                sweetness.setErrorMessage("Sweetness is required");
+                sweetness.setErrorMessage(getTranslation("entries.validation.sweetness-required"));
                 valid = false;
             }
             if (strength.getValue() == null) {
                 strength.setInvalid(true);
-                strength.setErrorMessage("Strength is required");
+                strength.setErrorMessage(getTranslation("entries.validation.strength-required"));
                 valid = false;
             }
             if (abv.getValue() == null) {
                 abv.setInvalid(true);
-                abv.setErrorMessage("ABV is required");
+                abv.setErrorMessage(getTranslation("entries.validation.abv-required"));
                 valid = false;
             }
             if (carbonation.getValue() == null) {
                 carbonation.setInvalid(true);
-                carbonation.setErrorMessage("Carbonation is required");
+                carbonation.setErrorMessage(getTranslation("entries.validation.carbonation-required"));
                 valid = false;
             }
             if (!StringUtils.hasText(honeyVarieties.getValue())) {
                 honeyVarieties.setInvalid(true);
-                honeyVarieties.setErrorMessage("Honey varieties is required");
+                honeyVarieties.setErrorMessage(getTranslation("entries.validation.honey-required"));
                 valid = false;
             }
             if (!valid) {
@@ -793,15 +808,15 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                 }
                 refreshPage();
                 var notification = Notification.show(existing == null
-                        ? "Entry created" : "Entry updated");
+                        ? getTranslation("entries.dialog.created") : getTranslation("entries.dialog.updated"));
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
-            } catch (IllegalArgumentException ex) {
+            } catch (BusinessRuleException ex) {
                 Notification.show(ex.getMessage());
             }
         });
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("entries.dialog.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, saveButton);
         dialog.open();
     }
@@ -812,29 +827,29 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                 .filter(en -> en.getStatus() == EntryStatus.DRAFT).count();
 
         var dialog = new Dialog();
-        dialog.setHeaderTitle("Submit All Drafts");
-        dialog.add("Submit " + draftCount + " draft entries? Submitted entries can no longer be edited.");
+        dialog.setHeaderTitle(getTranslation("entries.submit-all.title"));
+        dialog.add(getTranslation("entries.submit-all.confirm", draftCount));
 
-        var confirmButton = new Button("Submit", e -> {
+        var confirmButton = new Button(getTranslation("entries.submit-all.button"), e -> {
             try {
                 entryService.submitAllDrafts(divisionId, currentUserId);
                 refreshPage();
-                var notification = Notification.show(draftCount + " entries submitted");
+                var notification = Notification.show(getTranslation("entries.submit-all.success", draftCount));
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
-            } catch (IllegalArgumentException ex) {
+            } catch (BusinessRuleException ex) {
                 Notification.show(ex.getMessage());
                 dialog.close();
             }
         });
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("entries.submit-all.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
         dialog.open();
     }
 
     private Span createContactInfo() {
-        var label = new Span("Questions or need help? Contact: ");
+        var label = new Span(getTranslation("entries.contact") + " ");
         var emailLink = new Anchor("mailto:" + competition.getContactEmail(),
                 competition.getContactEmail());
         var contactSpan = new Span(label, emailLink);
@@ -847,7 +862,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
     private Span createDeadlineInfo() {
         var formatter = java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm");
         var formatted = division.getRegistrationDeadline().format(formatter);
-        var deadlineSpan = new Span("Registration closes: " + formatted
+        var deadlineSpan = new Span(getTranslation("entries.deadline") + " " + formatted
                 + " " + division.getRegistrationDeadlineTimezone());
         deadlineSpan.getStyle()
                 .set("color", "var(--lumo-secondary-text-color)")
@@ -864,31 +879,9 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                 .set("border-radius", "var(--lumo-border-radius-m)")
                 .set("font-size", "var(--lumo-font-size-s)")
                 .set("line-height", "var(--lumo-line-height-m)");
-        info.add(new Span("Use your entry credits to add meads, then submit them when ready. "
-                + "Submitted entries cannot be edited. Once all credits are used and all entries "
-                + "are submitted, you'll receive a confirmation email with a summary of your entries."));
+        info.add(new Span(getTranslation("entries.process-info")));
         return info;
     }
-
-    private static final Map<String, String> CATEGORY_HINTS = Map.ofEntries(
-            Map.entry("M1A", "Traditional mead: only honey (and optionally wood). Expected sweetness: Dry."),
-            Map.entry("M1B", "Traditional mead: only honey (and optionally wood). Expected sweetness: Medium."),
-            Map.entry("M1C", "Traditional mead: only honey (and optionally wood). Expected sweetness: Sweet."),
-            Map.entry("M2A", "Pome fruit melomel: apples, pears, quince."),
-            Map.entry("M2B", "Pyment: made with grapes."),
-            Map.entry("M2C", "Berry melomel: berry fruits."),
-            Map.entry("M2D", "Stone fruit melomel: peaches, cherries, plums, etc."),
-            Map.entry("M2E", "Other melomel: other fruits or fruit combinations."),
-            Map.entry("M3A", "Fruit and spice mead: one or more fruits combined with one or more spices."),
-            Map.entry("M3B", "Metheglin: herbs, spices, or vegetables."),
-            Map.entry("M3C", "Other metheglin: coffee, chocolate, chili, nuts, or seeds."),
-            Map.entry("M4A", "Braggot: mead with malt / beer-style honey beverage."),
-            Map.entry("M4B", "Historical mead: made using historical methods or recipes."),
-            Map.entry("M4C", "Experimental mead: novel ingredients or processes."),
-            Map.entry("M4D", "Honey alcoholic beverage: distillates, tinctures, liqueurs."),
-            Map.entry("M4E", "Bochet: caramelized honey should be a significant character. May include other ingredients."),
-            Map.entry("M4S", "Session mead: ABV should be under 7.5%, strength should be Hydromel.")
-    );
 
     private UUID getCurrentUserId() {
         var email = authenticationContext.getAuthenticatedUser(UserDetails.class)

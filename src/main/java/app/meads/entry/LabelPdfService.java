@@ -19,6 +19,7 @@ import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
 
 import javax.imageio.ImageIO;
@@ -26,6 +27,7 @@ import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.function.Function;
 
@@ -47,14 +49,32 @@ public class LabelPdfService {
     private static final int QR_CODE_SIZE = 130;
     private static final float TWO_LINE_HEIGHT = 21f; // 2 lines at 8pt font with 10pt leading
 
+    private final MessageSource messageSource;
+
+    public LabelPdfService(MessageSource messageSource) {
+        this.messageSource = messageSource;
+    }
+
     public byte[] generateLabel(Entry entry, Competition competition,
                                  Division division, DivisionCategory category) {
         return generateLabels(List.of(entry), competition, division, id -> category);
     }
 
+    public byte[] generateLabel(Entry entry, Competition competition,
+                                 Division division, DivisionCategory category, Locale locale) {
+        return generateLabels(List.of(entry), competition, division, id -> category, locale);
+    }
+
     public byte[] generateLabels(List<Entry> entries, Competition competition,
                                   Division division,
                                   Function<UUID, DivisionCategory> categoryResolver) {
+        return generateLabels(entries, competition, division, categoryResolver, Locale.ENGLISH);
+    }
+
+    public byte[] generateLabels(List<Entry> entries, Competition competition,
+                                  Division division,
+                                  Function<UUID, DivisionCategory> categoryResolver,
+                                  Locale locale) {
         var baos = new ByteArrayOutputStream();
         var document = new Document(PageSize.A4.rotate(), 20, 20, 20, 20);
 
@@ -68,7 +88,7 @@ public class LabelPdfService {
                 }
                 var entry = entries.get(i);
                 var category = categoryResolver.apply(entry.getInitialCategoryId());
-                addPage(document, entry, competition, division, category);
+                addPage(document, entry, competition, division, category, locale);
             }
 
             document.close();
@@ -83,9 +103,9 @@ public class LabelPdfService {
     }
 
     private void addPage(Document document, Entry entry, Competition competition,
-                          Division division, DivisionCategory category) throws Exception {
+                          Division division, DivisionCategory category, Locale locale) throws Exception {
         // Instruction header
-        addInstructionHeader(document, competition);
+        addInstructionHeader(document, competition, locale);
 
         document.add(new Paragraph(" ", FONT_SMALL)); // spacer
 
@@ -102,18 +122,15 @@ public class LabelPdfService {
         document.add(table);
     }
 
-    private void addInstructionHeader(Document document, Competition competition) throws Exception {
-        var line1 = new Paragraph(
-                "Print the labels and cut along the lines. "
-                        + "Attach one label to each bottle using elastic bands (do not use sticky tape).",
-                FONT_HEADER);
+    private void addInstructionHeader(Document document, Competition competition, Locale locale) throws Exception {
+        var line1 = new Paragraph(msg("pdf.instructions.line1", locale), FONT_HEADER);
         line1.setAlignment(Element.ALIGN_CENTER);
         document.add(line1);
 
         // Line 2: shipping address
         if (competition.getShippingAddress() != null && !competition.getShippingAddress().isBlank()) {
             var line2 = new Paragraph(
-                    "Post your bottles to: "
+                    msg("pdf.instructions.post-to", locale) + " "
                             + competition.getShippingAddress().replace("\n", ", ") + ".",
                     FONT_HEADER);
             line2.setAlignment(Element.ALIGN_CENTER);
@@ -123,13 +140,13 @@ public class LabelPdfService {
         // Line 3: phone + website
         var contactParts = new StringBuilder();
         if (competition.getPhoneNumber() != null && !competition.getPhoneNumber().isBlank()) {
-            contactParts.append("Tel. ").append(competition.getPhoneNumber());
+            contactParts.append(msg("pdf.instructions.tel", locale)).append(" ").append(competition.getPhoneNumber());
         }
         if (competition.getWebsite() != null && !competition.getWebsite().isBlank()) {
             if (!contactParts.isEmpty()) {
                 contactParts.append(", ");
             }
-            contactParts.append("Web. ").append(competition.getWebsite());
+            contactParts.append(msg("pdf.instructions.web", locale)).append(" ").append(competition.getWebsite());
         }
         if (!contactParts.isEmpty()) {
             var line3 = new Paragraph(contactParts.toString(), FONT_HEADER);
@@ -301,6 +318,10 @@ public class LabelPdfService {
         var image = Image.getInstance(imageBytes.toByteArray());
         image.scaleAbsolute(QR_CODE_SIZE, QR_CODE_SIZE);
         return image;
+    }
+
+    private String msg(String key, Locale locale, Object... args) {
+        return messageSource.getMessage(key, args, key, locale);
     }
 
     String formatEntryId(Entry entry, Division division) {

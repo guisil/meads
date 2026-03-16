@@ -1,5 +1,6 @@
 package app.meads.competition.internal;
 
+import app.meads.BusinessRuleException;
 import app.meads.MainLayout;
 import app.meads.competition.*;
 import app.meads.identity.EmailService;
@@ -102,7 +103,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         try {
             competition = competitionService.findCompetitionByShortName(shortName);
             competitionId = competition.getId();
-        } catch (IllegalArgumentException e) {
+        } catch (BusinessRuleException e) {
             beforeEnterEvent.forwardTo("competitions");
             return;
         }
@@ -380,7 +381,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 var notification = Notification.show("Participant removed");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
-            } catch (IllegalArgumentException ex) {
+            } catch (BusinessRuleException ex) {
                 Notification.show(ex.getMessage());
                 dialog.close();
             }
@@ -484,7 +485,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 var notification = Notification.show("Participant updated");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
-            } catch (IllegalArgumentException ex) {
+            } catch (BusinessRuleException ex) {
                 Notification.show(ex.getMessage());
             }
         });
@@ -538,7 +539,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 generatePasswordSetupLinkIfNeeded(email, role);
                 dialog.close();
-            } catch (IllegalArgumentException ex) {
+            } catch (BusinessRuleException ex) {
                 Notification.show(ex.getMessage());
             }
         });
@@ -597,7 +598,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         var updatedCountry = currentCountry == null && country != null ? country : currentCountry;
         if (!updatedName.equals(currentName) || !Objects.equals(updatedMeadery, currentMeadery)
                 || !Objects.equals(updatedCountry, currentCountry)) {
-            userService.updateProfile(user.getId(), updatedName, updatedMeadery, updatedCountry);
+            userService.updateProfile(user.getId(), updatedName, updatedMeadery, updatedCountry, user.getPreferredLanguage());
         }
     }
 
@@ -682,7 +683,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                     logoSection.remove(e.getSource());
                     var notification = Notification.show("Logo removed");
                     notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-                } catch (IllegalArgumentException ex) {
+                } catch (BusinessRuleException ex) {
                     Notification.show(ex.getMessage());
                 }
             });
@@ -742,7 +743,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 refreshHeader();
                 var notification = Notification.show("Competition updated successfully");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-            } catch (IllegalArgumentException ex) {
+            } catch (BusinessRuleException ex) {
                 Notification.show(ex.getMessage());
             }
         });
@@ -836,7 +837,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 var notification = Notification.show("Division created successfully");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
-            } catch (IllegalArgumentException ex) {
+            } catch (BusinessRuleException ex) {
                 Notification.show(ex.getMessage());
             }
         });
@@ -867,7 +868,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 var notification = Notification.show("Status reverted successfully");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
-            } catch (IllegalArgumentException | IllegalStateException ex) {
+            } catch (BusinessRuleException ex) {
                 Notification.show(ex.getMessage());
                 dialog.close();
             }
@@ -893,7 +894,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 var notification = Notification.show("Status advanced successfully");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
-            } catch (IllegalArgumentException | IllegalStateException ex) {
+            } catch (BusinessRuleException ex) {
                 Notification.show(ex.getMessage());
                 dialog.close();
             }
@@ -917,7 +918,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 var notification = Notification.show("Division deleted successfully");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
-            } catch (IllegalArgumentException ex) {
+            } catch (BusinessRuleException ex) {
                 Notification.show(ex.getMessage());
                 dialog.close();
             }
@@ -940,7 +941,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
     }
 
     private void sendMagicLink(User user) {
-        emailService.sendMagicLink(user.getEmail());
+        emailService.sendMagicLink(user.getEmail(), java.util.Locale.ENGLISH);
         var notification = Notification.show("Login link sent to " + user.getEmail());
         notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
     }
@@ -954,7 +955,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                             competition.getContactEmail());
                     Notification.show("Password setup email sent to " + email);
                 }
-            } catch (IllegalArgumentException ignored) {
+            } catch (BusinessRuleException ignored) {
                 // User not found — shouldn't happen since we just added them
             }
         }
@@ -1099,7 +1100,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 var notification = Notification.show("Document added successfully");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
-            } catch (IllegalArgumentException ex) {
+            } catch (BusinessRuleException ex) {
                 Notification.show(ex.getMessage());
             }
         });
@@ -1124,7 +1125,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         try {
             competitionService.reorderDocuments(competitionId, ids, getCurrentUserId());
             grid.setItems(competitionService.getDocuments(competitionId));
-        } catch (IllegalArgumentException ex) {
+        } catch (BusinessRuleException ex) {
             Notification.show(ex.getMessage());
         }
     }
@@ -1151,7 +1152,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 var notification = Notification.show("Document name updated");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
-            } catch (IllegalArgumentException ex) {
+            } catch (BusinessRuleException ex) {
                 Notification.show(ex.getMessage());
             }
         });
@@ -1174,7 +1175,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 var notification = Notification.show("Document deleted");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
-            } catch (IllegalArgumentException ex) {
+            } catch (BusinessRuleException ex) {
                 Notification.show(ex.getMessage());
                 dialog.close();
             }

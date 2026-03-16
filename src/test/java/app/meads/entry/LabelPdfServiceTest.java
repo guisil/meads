@@ -11,6 +11,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.lowagie.text.pdf.PdfName;
 import com.lowagie.text.pdf.PdfReader;
 
+import org.springframework.context.support.ResourceBundleMessageSource;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -27,7 +29,11 @@ class LabelPdfServiceTest {
 
     @BeforeEach
     void setUp() {
-        labelPdfService = new LabelPdfService();
+        var messageSource = new ResourceBundleMessageSource();
+        messageSource.setBasename("messages");
+        messageSource.setDefaultEncoding("UTF-8");
+        messageSource.setFallbackToSystemLocale(false);
+        labelPdfService = new LabelPdfService(messageSource);
     }
 
     @Test

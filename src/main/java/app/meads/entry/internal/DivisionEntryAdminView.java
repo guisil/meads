@@ -1,5 +1,6 @@
 package app.meads.entry.internal;
 
+import app.meads.BusinessRuleException;
 import app.meads.MainLayout;
 import app.meads.competition.Competition;
 import app.meads.competition.CompetitionService;
@@ -111,7 +112,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             division = competitionService.findDivisionByShortName(
                     competition.getId(), divShortName);
             divisionId = division.getId();
-        } catch (IllegalArgumentException e) {
+        } catch (BusinessRuleException e) {
             beforeEnterEvent.forwardTo("");
             return;
         }
@@ -281,7 +282,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
                 refreshCreditsGrid();
-            } catch (IllegalArgumentException ex) {
+            } catch (BusinessRuleException ex) {
                 Notification.show(ex.getMessage());
             }
         });
@@ -317,7 +318,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
                 refreshCreditsGrid();
-            } catch (IllegalArgumentException ex) {
+            } catch (BusinessRuleException ex) {
                 Notification.show(ex.getMessage());
             }
         });
@@ -774,7 +775,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
                 refreshEntriesGrid();
-            } catch (IllegalArgumentException | IllegalStateException ex) {
+            } catch (BusinessRuleException ex) {
                 Notification.show(ex.getMessage());
             }
         });
@@ -798,7 +799,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
                 refreshEntriesGrid();
-            } catch (IllegalArgumentException | IllegalStateException ex) {
+            } catch (BusinessRuleException ex) {
                 Notification.show(ex.getMessage());
             }
         });
@@ -822,7 +823,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
                 refreshEntriesGrid();
-            } catch (IllegalArgumentException | IllegalStateException ex) {
+            } catch (BusinessRuleException ex) {
                 Notification.show(ex.getMessage());
             }
         });
@@ -925,7 +926,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
                 refreshProductsGrid();
-            } catch (IllegalArgumentException ex) {
+            } catch (BusinessRuleException ex) {
                 Notification.show(ex.getMessage());
             }
         });
@@ -959,7 +960,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
                 refreshProductsGrid();
-            } catch (IllegalArgumentException ex) {
+            } catch (BusinessRuleException ex) {
                 Notification.show(ex.getMessage());
             }
         });
@@ -982,7 +983,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
                 refreshProductsGrid();
-            } catch (IllegalArgumentException ex) {
+            } catch (BusinessRuleException ex) {
                 Notification.show(ex.getMessage());
             }
         });
@@ -1117,7 +1118,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
                 refreshOrdersGrid();
-            } catch (IllegalArgumentException ex) {
+            } catch (BusinessRuleException ex) {
                 Notification.show(ex.getMessage());
             }
         });
