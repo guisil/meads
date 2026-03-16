@@ -370,7 +370,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                     return new ByteArrayInputStream(new byte[0]);
                 }
                 return new ByteArrayInputStream(
-                        labelPdfService.generateLabels(submittedEntries, competition, division, categoriesById::get));
+                        labelPdfService.generateLabels(submittedEntries, competition, division, categoriesById::get, userLocale));
             });
             downloadAllResource.setContentType("application/pdf");
             var downloadAllAnchor = new Anchor(downloadAllResource, "");
@@ -527,7 +527,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
             var resource = new StreamResource(
                     "label-" + formatEntryId(entry) + ".pdf",
                     () -> new ByteArrayInputStream(
-                            labelPdfService.generateLabel(entry, competition, division, category)));
+                            labelPdfService.generateLabel(entry, competition, division, category, userLocale)));
             resource.setContentType("application/pdf");
             var downloadAnchor = new Anchor(resource, "");
             downloadAnchor.getElement().setAttribute("download", true);
