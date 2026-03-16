@@ -465,16 +465,22 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         return cat != null ? cat.getCode() : "—";
     }
 
+    private String translateCategoryName(DivisionCategory cat) {
+        var key = "category." + cat.getCode() + ".name";
+        var translated = getTranslation(key);
+        return translated.equals(key) ? cat.getName() : translated;
+    }
+
     private String resolveCategoryCodeAndName(UUID categoryId) {
         var cat = categoriesById.get(categoryId);
-        return cat != null ? cat.getCode() + " — " + cat.getName() : "—";
+        return cat != null ? cat.getCode() + " — " + translateCategoryName(cat) : "—";
     }
 
     private Span createCategorySpan(UUID categoryId) {
         var cat = categoriesById.get(categoryId);
         if (cat == null) return new Span("—");
         var span = new Span(cat.getCode());
-        span.setTitle(cat.getName());
+        span.setTitle(translateCategoryName(cat));
         return span;
     }
 
@@ -645,7 +651,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         categorySelect.setLabel(getTranslation("entries.dialog.category"));
         categorySelect.setWidthFull();
         categorySelect.setItemLabelGenerator(dc ->
-                dc.getCode() + " — " + dc.getName());
+                dc.getCode() + " — " + translateCategoryName(dc));
         categorySelect.setItems(competitionService.findDivisionCategories(divisionId).stream()
                 .filter(dc -> dc.getParentId() != null)
                 .toList());
