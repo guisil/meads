@@ -100,8 +100,8 @@ public class ProfileView extends VerticalLayout {
                         countryCombo.getValue(), languageSelect.getValue());
                 Notification.show(getTranslation("profile.updated"))
                         .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-                // Full reload so MainLayout reconstructs with new locale
-                getUI().ifPresent(ui -> ui.getPage().reload());
+                // Full browser navigation so MainLayout reconstructs with new locale
+                getUI().ifPresent(ui -> ui.getPage().setLocation(""));
             } catch (Exception ex) {
                 Notification.show(ex.getMessage());
             }
