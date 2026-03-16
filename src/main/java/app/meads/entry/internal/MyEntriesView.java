@@ -860,10 +860,13 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
     }
 
     private Span createDeadlineInfo() {
-        var formatter = java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm");
+        var locale = getUI().map(ui -> ui.getLocale()).orElse(java.util.Locale.ENGLISH);
+        var formatter = java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm", locale);
         var formatted = division.getRegistrationDeadline().format(formatter);
+        var zoneId = java.time.ZoneId.of(division.getRegistrationDeadlineTimezone());
+        var zoneName = zoneId.getDisplayName(java.time.format.TextStyle.FULL, locale);
         var deadlineSpan = new Span(getTranslation("entries.deadline") + " " + formatted
-                + " " + division.getRegistrationDeadlineTimezone());
+                + " " + zoneName);
         deadlineSpan.getStyle()
                 .set("color", "var(--lumo-secondary-text-color)")
                 .set("font-size", "var(--lumo-font-size-s)");
