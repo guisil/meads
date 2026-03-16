@@ -14,12 +14,16 @@ import com.vaadin.flow.component.menubar.MenuBarVariant;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.Scroller;
+import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.sidenav.SideNav;
 import com.vaadin.flow.component.sidenav.SideNavItem;
+import com.vaadin.flow.i18n.I18NProvider;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 import com.vaadin.flow.spring.security.AuthenticationContext;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.lang.Nullable;
+
+import java.util.Locale;
 
 @AnonymousAllowed
 public class MainLayout extends AppLayout {
@@ -27,15 +31,21 @@ public class MainLayout extends AppLayout {
     private final transient AuthenticationContext authenticationContext;
     private final CompetitionAdminChecker competitionAdminChecker;
     private final UserLocaleResolver userLocaleResolver;
+    private final UserLanguageUpdater userLanguageUpdater;
+    private final I18NProvider i18nProvider;
     private final String appVersion;
 
     public MainLayout(AuthenticationContext authenticationContext,
                        CompetitionAdminChecker competitionAdminChecker,
                        UserLocaleResolver userLocaleResolver,
+                       UserLanguageUpdater userLanguageUpdater,
+                       I18NProvider i18nProvider,
                        @Nullable BuildProperties buildProperties) {
         this.authenticationContext = authenticationContext;
         this.competitionAdminChecker = competitionAdminChecker;
         this.userLocaleResolver = userLocaleResolver;
+        this.userLanguageUpdater = userLanguageUpdater;
+        this.i18nProvider = i18nProvider;
         this.appVersion = buildProperties != null ? "v" + buildProperties.getVersion() : "";
 
         var toggle = new DrawerToggle();
@@ -54,7 +64,25 @@ public class MainLayout extends AppLayout {
             var email = authenticationContext.getPrincipalName().orElse("");
 
             // Set UI locale from user preference
-            UI.getCurrent().setLocale(userLocaleResolver.resolveLocale(email));
+            var currentLocale = userLocaleResolver.resolveLocale(email);
+            UI.getCurrent().setLocale(currentLocale);
+
+            // Language switcher
+            var langSelect = new Select<String>();
+            langSelect.setItems(i18nProvider.getProvidedLocales().stream()
+                    .map(Locale::getLanguage)
+                    .toList());
+            langSelect.setItemLabelGenerator(MeadsI18NProvider::getLanguageLabel);
+            langSelect.setValue(currentLocale.getLanguage());
+            langSelect.setWidth("130px");
+            langSelect.getStyle().set("--vaadin-input-field-height", "var(--lumo-size-s)");
+            langSelect.addValueChangeListener(e -> {
+                if (e.isFromClient()) {
+                    userLanguageUpdater.updatePreferredLanguage(email, e.getValue());
+                    UI.getCurrent().getPage().reload();
+                }
+            });
+            navbar.add(langSelect);
 
             var userIcon = new Icon(VaadinIcon.USER);
             userIcon.getStyle().setWidth("var(--lumo-icon-size-s)");

@@ -2,6 +2,7 @@ package app.meads.identity.internal;
 
 import app.meads.LanguageMapping;
 import app.meads.MainLayout;
+import app.meads.MeadsI18NProvider;
 import app.meads.identity.UserService;
 import com.vaadin.flow.i18n.I18NProvider;
 import com.vaadin.flow.component.button.Button;
@@ -22,18 +23,13 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Arrays;
 import java.util.Locale;
-import java.util.Map;
+
 
 @Slf4j
 @Route(value = "profile", layout = MainLayout.class)
 @PermitAll
 @PageTitle("My Profile")
 public class ProfileView extends VerticalLayout {
-
-    private static final Map<String, String> LANGUAGE_LABELS = Map.of(
-            "en", "English",
-            "pt", "Portugu\u00eas"
-    );
 
     private final transient AuthenticationContext authenticationContext;
 
@@ -81,7 +77,7 @@ public class ProfileView extends VerticalLayout {
                 .map(Locale::getLanguage)
                 .toList();
         languageSelect.setItems(supportedLanguages);
-        languageSelect.setItemLabelGenerator(lang -> LANGUAGE_LABELS.getOrDefault(lang, lang));
+        languageSelect.setItemLabelGenerator(MeadsI18NProvider::getLanguageLabel);
         languageSelect.setWidthFull();
 
         // Set current value: explicit preference, or derived from country

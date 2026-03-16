@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 @Slf4j
 @Component
@@ -16,6 +17,15 @@ public class MeadsI18NProvider implements I18NProvider {
     private static final List<Locale> PROVIDED_LOCALES = List.of(
             Locale.ENGLISH,
             Locale.of("pt")
+    );
+
+    // Native language names — displayed in the language switcher regardless of current locale
+    private static final Map<String, String> LANGUAGE_LABELS = Map.of(
+            "en", "English",
+            "pt", "Portugu\u00eas",
+            "es", "Espa\u00f1ol",
+            "it", "Italiano",
+            "pl", "Polski"
     );
 
     private final MessageSource messageSource;
@@ -27,6 +37,10 @@ public class MeadsI18NProvider implements I18NProvider {
     @Override
     public List<Locale> getProvidedLocales() {
         return PROVIDED_LOCALES;
+    }
+
+    public static String getLanguageLabel(String languageCode) {
+        return LANGUAGE_LABELS.getOrDefault(languageCode, languageCode);
     }
 
     @Override
