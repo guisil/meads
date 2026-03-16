@@ -199,7 +199,13 @@ All 14 sections completed with fixes along the way.
 - **Contact email on My Entries** — Shows "Questions or need help? Contact: {email}" as mailto link, opposite the registration deadline
 - **Settings field widths** — Widened Name, Location, Contact Email fields in Competition Settings and Name in Division Settings to 400px
 
-### Priority 1: Deletion guards and cascade testing
+### Priority 1: Double-click protection on all admin dialog buttons
+Check all dialog save/confirm/delete buttons across admin views (CompetitionDetailView,
+CompetitionListView, DivisionDetailView, DivisionEntryAdminView, UserListView) for
+double-click issues. Disable the button on click, re-enable on validation failure or
+service error. Same pattern as the fix applied to MyEntriesView entrant dialogs.
+
+### Priority 2: Deletion guards and cascade testing
 Comprehensive review and hardening of all deletion operations across the application.
 Two parts: (a) implement guards to block unsafe deletions, (b) test all existing
 deletion paths for correct behavior.
@@ -225,27 +231,22 @@ deletion paths for correct behavior.
 Then TDD each guard and deletion path. Needs thorough testing — multiple edge cases
 across modules.
 
-### Priority 2: MFA for system admins
+### Priority 3: MFA for system admins
 Evaluate and implement multi-factor authentication for SYSTEM_ADMIN accounts.
 Password-only login for privileged accounts is a security risk post-deployment.
 
-### Priority 3: Auto-close + deadline reminders (deferred)
+### Priority 4: Auto-close + deadline reminders (deferred)
 - **Auto-close** — automatically advance division from REGISTRATION_OPEN → REGISTRATION_CLOSED
   when registration deadline passes (scheduled task)
 - **Entrant deadline reminder** — notify entrants who have DRAFT entries when the registration
   deadline is approaching (e.g., 7 days, 3 days, 1 day before deadline)
 - Other potential: entry received confirmation (when admin marks entry as RECEIVED), results published notification
 
-### Priority 4: Internationalization (i18n)
-**Design complete** — see `docs/plans/2026-03-10-i18n-design.md`. Implementation deferred.
-Summary: Vaadin I18NProvider + Spring MessageSource, resource bundles, browser locale +
-UI switcher (cookie/localStorage), entrant-facing views only (6 views), MJP category
-translations via bundles keyed by code. ~100-120 strings to extract. No DB changes needed.
-
 ### Priority 5: Judging module
 Design and implementation. Reference: `docs/reference/chip-competition-rules.md`.
 
 ### Priority 6: Awards module
+
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md`.
 
 ### Priority 7: Full category constraint system (low priority — future competition)
@@ -256,6 +257,7 @@ carbonation locking (custom categories), and admin-configurable constraints for 
 Requires: DB migration, admin UI for constraint config, cross-module data flow, server-side validation.
 
 ### Completed priorities
+- **Internationalization (i18n)** — Completed 2026-03-16. Vaadin I18NProvider + Spring MessageSource, resource bundles (EN + PT), User.preferredLanguage (V16 migration), BusinessRuleException across all services, entrant-facing view string extraction (MyEntriesView, EntrantOverviewView, ProfileView, MainLayout), email i18n with Locale, PDF label instructions i18n, MJP category translations, locale-aware date/timezone formatting. 585 tests. Design: `docs/plans/2026-03-10-i18n-design.md`.
 - **Post-deployment walkthrough** — Completed 2026-03-16. `docs/walkthrough/post-deployment-test.md` retained as reference for re-running after major changes.
 - **PR #4 code review & merge** — Merged `competition-module` into `main` (2026-03-14). Code review found 5 bugs (missing auth check, missing access code on role promotion, HMAC timing attack, hasCreditConflict inconsistency, entryPrefix DRAFT guard) and 4 convention fixes (ProfileView auth context, @Setter removal, setter→domain method renames, Category constructor). Deferred: test naming (313 methods) and cross-module test imports.
 - **Manual walkthrough (Sections 1–14)** — All sections completed. Security testing (Section 14) produced 7 fixes: SetPasswordView eager token validation, webhook missing HMAC header (401), webhook HTTP method tampering (405), webhook email length validation, field length limits on email/password fields, dev password logging cleanup, and UX improvements (contact email on My Entries, mead name tooltips, settings field widths).
