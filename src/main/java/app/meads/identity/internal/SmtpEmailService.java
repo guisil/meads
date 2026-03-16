@@ -183,6 +183,7 @@ class SmtpEmailService implements EmailService {
         ctx.setVariable("ctaUrl", myEntriesUrl);
         ctx.setVariable("fallbackText", msg("email.fallback", locale));
         ctx.setVariable("footerText", msg("email.footer", locale));
+        ctx.setVariable("contactText", msg("email.contact", locale));
         ctx.setVariable("contactEmail", contactEmail);
         sendEmail(recipientEmail, subject, ctx, myEntriesUrl);
     }

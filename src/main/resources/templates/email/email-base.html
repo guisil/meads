@@ -41,7 +41,7 @@
                             </table>
                             <!-- Fallback URL -->
                             <p th:if="${ctaUrl != null}" style="margin: 32px 0 0 0; color: #888888; font-size: 12px; line-height: 1.4;">
-                                If the button doesn't work, copy and paste this link into your browser:<br/>
+                                <span th:text="${fallbackText != null} ? ${fallbackText} : 'If the button doesn\'t work, copy and paste this link into your browser:'">If the button doesn't work, copy and paste this link into your browser:</span><br/>
                                 <a th:href="${ctaUrl}" th:text="${ctaUrl}" style="color: #1a1a2e; word-break: break-all;">https://example.com</a>
                             </p>
                         </td>
@@ -50,7 +50,7 @@
                     <tr th:if="${contactEmail != null}">
                         <td style="padding: 0 40px 24px 40px; border-top: 1px solid #eeeeee;">
                             <p style="margin: 24px 0 0 0; color: #666666; font-size: 14px;">
-                                Questions? Contact
+                                <span th:text="${contactText != null} ? ${contactText} : 'Questions? Contact'">Questions? Contact</span>
                                 <a th:href="'mailto:' + ${contactEmail}" th:text="${contactEmail}" style="color: #1a1a2e;">organizer@example.com</a>
                             </p>
                         </td>
@@ -59,7 +59,7 @@
                     <tr>
                         <td style="background-color: #f8f8f8; padding: 20px 40px; text-align: center; border-top: 1px solid #eeeeee;">
                             <p style="margin: 0; color: #999999; font-size: 12px;">
-                                MEADS &mdash; Mead Evaluation and Awards Data System
+                                <span th:text="${footerText != null} ? ${footerText} : 'MEADS — Mead Evaluation and Awards Data System'">MEADS — Mead Evaluation and Awards Data System</span>
                             </p>
                         </td>
                     </tr>
