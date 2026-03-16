@@ -411,7 +411,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                 .setHeader(getTranslation("entries.column.entry-number"))
                 .setSortable(true)
                 .setComparator((a, b) -> Integer.compare(a.getEntryNumber(), b.getEntryNumber()))
-                .setWidth("140px")
+                .setWidth("130px")
                 .setFlexGrow(0);
 
         // Mead Name
@@ -446,7 +446,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         // 4. Actions column
         entriesGrid.addComponentColumn(this::createActions)
                 .setHeader(getTranslation("entries.column.actions"))
-                .setWidth("140px")
+                .setWidth("130px")
                 .setFlexGrow(0);
 
         // Make all columns resizable

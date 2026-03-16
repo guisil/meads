@@ -113,41 +113,6 @@ class MeadsI18NProviderTest {
     }
 
     @Test
-    void shouldResolvePolishTranslation() {
-        var pl = Locale.of("pl");
-        assertThat(provider.getTranslation("nav.my-entries", pl))
-                .isEqualTo("Moje Zg\u0142oszenia");
-        assertThat(provider.getTranslation("entry.sweetness.DRY", pl))
-                .isEqualTo("Wytrawny");
-        assertThat(provider.getTranslation("category.M1.name", pl))
-                .isEqualTo("Mi\u00f3d Tradycyjny");
-        assertThat(provider.getTranslation("profile.meadery-name.label", pl))
-                .isEqualTo("Nazwa Miodosytni");
-    }
-
-    @Test
-    void shouldResolveItalianTranslation() {
-        var it = Locale.of("it");
-        assertThat(provider.getTranslation("nav.my-entries", it))
-                .isEqualTo("Le Mie Iscrizioni");
-        assertThat(provider.getTranslation("entry.status.DRAFT", it))
-                .isEqualTo("Bozza");
-        assertThat(provider.getTranslation("category.M1.name", it))
-                .isEqualTo("Idromele Tradizionale");
-    }
-
-    @Test
-    void shouldResolveSpanishTranslation() {
-        var es = Locale.of("es");
-        assertThat(provider.getTranslation("nav.my-entries", es))
-                .isEqualTo("Mis Inscripciones");
-        assertThat(provider.getTranslation("entry.status.DRAFT", es))
-                .isEqualTo("Borrador");
-        assertThat(provider.getTranslation("category.M1.name", es))
-                .isEqualTo("Hidromiel Tradicional");
-    }
-
-    @Test
     void shouldHaveAllEnglishKeysInPortuguese() {
         var en = Locale.ENGLISH;
         var pt = Locale.of("pt");

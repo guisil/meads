@@ -15,7 +15,6 @@ import com.lowagie.text.Image;
 import com.lowagie.text.PageSize;
 import com.lowagie.text.Paragraph;
 import com.lowagie.text.Phrase;
-import com.lowagie.text.pdf.BaseFont;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
@@ -36,49 +35,24 @@ import java.util.function.Function;
 @Slf4j
 public class LabelPdfService {
 
+    private static final Font FONT_NORMAL = FontFactory.getFont(FontFactory.HELVETICA, 8);
+    private static final Font FONT_BOLD = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8);
+    private static final Font FONT_HEADER = FontFactory.getFont(FontFactory.HELVETICA, 9);
+    private static final Font FONT_COMPETITION = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10);
+    private static final Font FONT_DIVISION = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14);
+    private static final Font FONT_FIELD_VALUE = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8);
+    private static final Font FONT_CHAR_LABEL = FontFactory.getFont(FontFactory.HELVETICA, 7);
+    private static final Font FONT_CHAR_VALUE = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 7);
+    private static final Font FONT_SMALL = FontFactory.getFont(FontFactory.HELVETICA, 7);
+    private static final Font FONT_SMALL_BOLD = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 7);
+    private static final Font FONT_DISCLAIMER = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8);
     private static final int QR_CODE_SIZE = 130;
     private static final float TWO_LINE_HEIGHT = 21f; // 2 lines at 8pt font with 10pt leading
 
     private final MessageSource messageSource;
-    private final Font fontNormal;
-    private final Font fontBold;
-    private final Font fontHeader;
-    private final Font fontCompetition;
-    private final Font fontDivision;
-    private final Font fontFieldValue;
-    private final Font fontCharLabel;
-    private final Font fontCharValue;
-    private final Font fontSmall;
-    private final Font fontSmallBold;
-    private final Font fontDisclaimer;
 
     public LabelPdfService(MessageSource messageSource) {
         this.messageSource = messageSource;
-        FontFactory.registerDirectories();
-        fontNormal = unicodeFont(Font.NORMAL, 8);
-        fontBold = unicodeFont(Font.BOLD, 8);
-        fontHeader = unicodeFont(Font.NORMAL, 9);
-        fontCompetition = unicodeFont(Font.BOLD, 10);
-        fontDivision = unicodeFont(Font.BOLD, 14);
-        fontFieldValue = unicodeFont(Font.BOLD, 8);
-        fontCharLabel = unicodeFont(Font.NORMAL, 7);
-        fontCharValue = unicodeFont(Font.BOLD, 7);
-        fontSmall = unicodeFont(Font.NORMAL, 7);
-        fontSmallBold = unicodeFont(Font.BOLD, 7);
-        fontDisclaimer = unicodeFont(Font.BOLD, 8);
-    }
-
-    private static Font unicodeFont(int style, float size) {
-        // Try common sans-serif TTF fonts available on Linux (Docker) and macOS
-        for (var name : List.of("Liberation Sans", "DejaVu Sans", "Arial")) {
-            var font = FontFactory.getFont(name, BaseFont.IDENTITY_H, BaseFont.EMBEDDED, size, style);
-            if (font.getBaseFont() != null) {
-                return font;
-            }
-        }
-        // Fallback to built-in Helvetica (Latin-1 only — Polish chars won't render)
-        log.warn("No Unicode TTF font found, falling back to Helvetica (Latin-1 only)");
-        return FontFactory.getFont(FontFactory.HELVETICA, size, style);
     }
 
     public byte[] generateLabel(Entry entry, Competition competition,
@@ -133,7 +107,7 @@ public class LabelPdfService {
         // Instruction header
         addInstructionHeader(document, competition, locale);
 
-        document.add(new Paragraph(" ", fontSmall)); // spacer
+        document.add(new Paragraph(" ", FONT_SMALL)); // spacer
 
         // 3 labels side by side
         var table = new PdfPTable(3);
@@ -149,7 +123,7 @@ public class LabelPdfService {
     }
 
     private void addInstructionHeader(Document document, Competition competition, Locale locale) throws Exception {
-        var line1 = new Paragraph(msg("pdf.instructions.line1", locale), fontHeader);
+        var line1 = new Paragraph(msg("pdf.instructions.line1", locale), FONT_HEADER);
         line1.setAlignment(Element.ALIGN_CENTER);
         document.add(line1);
 
@@ -158,7 +132,7 @@ public class LabelPdfService {
             var line2 = new Paragraph(
                     msg("pdf.instructions.post-to", locale) + " "
                             + competition.getShippingAddress().replace("\n", ", ") + ".",
-                    fontHeader);
+                    FONT_HEADER);
             line2.setAlignment(Element.ALIGN_CENTER);
             document.add(line2);
         }
@@ -175,7 +149,7 @@ public class LabelPdfService {
             contactParts.append(msg("pdf.instructions.web", locale)).append(" ").append(competition.getWebsite());
         }
         if (!contactParts.isEmpty()) {
-            var line3 = new Paragraph(contactParts.toString(), fontHeader);
+            var line3 = new Paragraph(contactParts.toString(), FONT_HEADER);
             line3.setAlignment(Element.ALIGN_CENTER);
             document.add(line3);
         }
@@ -190,10 +164,10 @@ public class LabelPdfService {
         cell.setVerticalAlignment(Element.ALIGN_TOP);
 
         // Competition name (bold)
-        addParagraph(cell, competition.getName(), fontCompetition, Element.ALIGN_CENTER);
+        addParagraph(cell, competition.getName(), FONT_COMPETITION, Element.ALIGN_CENTER);
 
         // Division name (large)
-        addParagraph(cell, division.getName(), fontDivision, Element.ALIGN_CENTER);
+        addParagraph(cell, division.getName(), FONT_DIVISION, Element.ALIGN_CENTER);
 
         addSeparator(cell);
 
@@ -215,12 +189,12 @@ public class LabelPdfService {
 
         // Sweetness | Strength | Carbonation (compact with field names)
         var charPhrase = new Phrase();
-        charPhrase.add(new Phrase("Sweetness: ", fontCharLabel));
-        charPhrase.add(new Phrase(entry.getSweetness().name().toLowerCase(), fontCharValue));
-        charPhrase.add(new Phrase("  |  Strength: ", fontCharLabel));
-        charPhrase.add(new Phrase(entry.getStrength().name().toLowerCase(), fontCharValue));
-        charPhrase.add(new Phrase("  |  Carbonation: ", fontCharLabel));
-        charPhrase.add(new Phrase(entry.getCarbonation().name().toLowerCase(), fontCharValue));
+        charPhrase.add(new Phrase("Sweetness: ", FONT_CHAR_LABEL));
+        charPhrase.add(new Phrase(entry.getSweetness().name().toLowerCase(), FONT_CHAR_VALUE));
+        charPhrase.add(new Phrase("  |  Strength: ", FONT_CHAR_LABEL));
+        charPhrase.add(new Phrase(entry.getStrength().name().toLowerCase(), FONT_CHAR_VALUE));
+        charPhrase.add(new Phrase("  |  Carbonation: ", FONT_CHAR_LABEL));
+        charPhrase.add(new Phrase(entry.getCarbonation().name().toLowerCase(), FONT_CHAR_VALUE));
         var charParagraph = new Paragraph(charPhrase);
         cell.addElement(charParagraph);
 
@@ -244,7 +218,7 @@ public class LabelPdfService {
         addSeparator(cell);
 
         // Disclaimer
-        var disclaimer = new Paragraph("FREE SAMPLES. NOT FOR RESALE.", fontDisclaimer);
+        var disclaimer = new Paragraph("FREE SAMPLES. NOT FOR RESALE.", FONT_DISCLAIMER);
         disclaimer.setAlignment(Element.ALIGN_CENTER);
         cell.addElement(disclaimer);
 
@@ -259,8 +233,8 @@ public class LabelPdfService {
 
     private void addFieldLine(PdfPCell cell, String label, String value) {
         var phrase = new Phrase();
-        phrase.add(new Phrase(label, fontNormal));
-        phrase.add(new Phrase(value != null ? value : "—", fontFieldValue));
+        phrase.add(new Phrase(label, FONT_NORMAL));
+        phrase.add(new Phrase(value != null ? value : "—", FONT_FIELD_VALUE));
         var p = new Paragraph(phrase);
         cell.addElement(p);
     }
@@ -273,9 +247,9 @@ public class LabelPdfService {
         innerCell.setPadding(0);
         innerCell.setFixedHeight(TWO_LINE_HEIGHT);
         innerCell.setNoWrap(false);
-        var p = new Paragraph(10f, "", fontNormal);
-        p.add(new Phrase(label, fontNormal));
-        p.add(new Phrase(value != null ? value : "", fontFieldValue));
+        var p = new Paragraph(10f, "", FONT_NORMAL);
+        p.add(new Phrase(label, FONT_NORMAL));
+        p.add(new Phrase(value != null ? value : "", FONT_FIELD_VALUE));
         innerCell.addElement(p);
         innerTable.addCell(innerCell);
         parentCell.addElement(innerTable);
@@ -317,7 +291,7 @@ public class LabelPdfService {
         notesCell.setBorderWidth(0);
         notesCell.setVerticalAlignment(Element.ALIGN_TOP);
         notesCell.setPaddingLeft(8);
-        var notesLabel = new Paragraph("For official notes. Leave blank.", fontSmall);
+        var notesLabel = new Paragraph("For official notes. Leave blank.", FONT_SMALL);
         notesLabel.setAlignment(Element.ALIGN_RIGHT);
         notesCell.addElement(notesLabel);
         notesCell.setMinimumHeight(QR_CODE_SIZE);
