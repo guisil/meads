@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `main`
-**Tests:** 531 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-03-14
+**Tests:** 585 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-03-16
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -199,11 +199,66 @@ All 14 sections completed with fixes along the way.
 - **Contact email on My Entries** — Shows "Questions or need help? Contact: {email}" as mailto link, opposite the registration deadline
 - **Settings field widths** — Widened Name, Location, Contact Email fields in Competition Settings and Name in Division Settings to 400px
 
-### Priority 1: Double-click protection on all admin dialog buttons
-Check all dialog save/confirm/delete buttons across admin views (CompetitionDetailView,
-CompetitionListView, DivisionDetailView, DivisionEntryAdminView, UserListView) for
-double-click issues. Disable the button on click, re-enable on validation failure or
-service error. Same pattern as the fix applied to MyEntriesView entrant dialogs.
+### Priority 1: Post-i18n comprehensive walkthrough and hardening
+
+Full manual walkthrough required after the i18n implementation (2026-03-16). The i18n
+work touched all services (BusinessRuleException), all views (catch blocks), email
+interface (Locale parameter), MainLayout (language switcher + locale init), and the
+User entity (preferredLanguage + V16 migration). 585 tests pass, but a thorough manual
+walkthrough is needed before releasing.
+
+**Part A — Error notification verification (all views):**
+Every `catch (BusinessRuleException)` block now resolves messages via
+`getTranslation(ex.getMessageKey(), ex.getParams())`. Verify that error notifications
+show readable messages (not raw keys like `error.division.shortname-exists`) in:
+- CompetitionListView: create competition with duplicate short name
+- CompetitionDetailView: duplicate division short name, duplicate participant role,
+  duplicate document name, advance/revert status errors
+- DivisionDetailView: duplicate short name, category modification in wrong status,
+  invalid timezone
+- DivisionEntryAdminView: add credits with invalid email (ConstraintViolationException
+  — fixed 2026-03-16), mutual exclusivity, role conflict
+- UserListView: create user with duplicate email, self-role change, self-status change
+- SetPasswordView: password too short
+- MyEntriesView: no credits, entry limit, division not open
+
+**Part B — Entrant view & actions (thorough):**
+- Language switcher in navbar: switch EN ↔ PT, verify all labels update
+- Profile: change language, save → redirects to root with new locale, navbar/sidebar updated
+- EntrantOverviewView: heading, credits/entries labels translated
+- MyEntriesView: all labels, buttons, column headers, tooltips, notifications in PT
+- Entry dialog: field labels, validation messages, category names + hints translated
+- Submit single/all: confirmation dialog text, success notification translated
+- View entry dialog: all field labels + enum values (sweetness, strength, carbonation) translated
+- Download label: PDF instruction header translated (PT uses Latin-1 chars, works with Helvetica)
+- Deadline display: date format + timezone name localized
+- Competition documents section: heading translated
+- Meadery name warning: translated
+- Contact info: translated
+- Process info box: translated
+- Category names in grid tooltips and view dialog: translated
+- Submission confirmation email: categories translated in entry summary
+
+**Part C — Double-click protection (all dialogs):**
+Add `e.getSource().setEnabled(false)` on click + re-enable on error to ALL dialog
+save/confirm/delete buttons. Currently only MyEntriesView entrant dialogs have this.
+Views to fix:
+- CompetitionDetailView: all dialogs (participant add/edit/remove, division create/delete,
+  status advance/revert, settings save, document add/edit/delete, logo remove)
+- CompetitionListView: competition create/edit/delete dialogs
+- DivisionDetailView: settings save, category add/edit/remove, status advance/revert
+- DivisionEntryAdminView: credits add/edit, product mapping add/edit/delete, entry
+  edit/withdraw/receive, order edit
+- UserListView: user create/edit, delete confirmation
+
+**Part D — Email verification:**
+- Magic link email: sent and received (EN locale for login page)
+- Credit notification email: in recipient's language
+- Submission confirmation email: in recipient's language, categories translated
+- Password reset email: sent correctly
+
+**Not yet released.** 30 commits on main ahead of origin. Do the walkthrough, fix any
+issues found, then release all together.
 
 ### Priority 2: Deletion guards and cascade testing
 Comprehensive review and hardening of all deletion operations across the application.
@@ -257,7 +312,7 @@ carbonation locking (custom categories), and admin-configurable constraints for 
 Requires: DB migration, admin UI for constraint config, cross-module data flow, server-side validation.
 
 ### Completed priorities
-- **Internationalization (i18n)** — Completed 2026-03-16. Vaadin I18NProvider + Spring MessageSource, resource bundles (EN + PT), User.preferredLanguage (V16 migration), BusinessRuleException across all services, entrant-facing view string extraction (MyEntriesView, EntrantOverviewView, ProfileView, MainLayout), email i18n with Locale, PDF label instructions i18n, MJP category translations, locale-aware date/timezone formatting. 585 tests. Design: `docs/plans/2026-03-10-i18n-design.md`.
+- **Internationalization (i18n)** — Implementation completed 2026-03-16, pending walkthrough before release. EN + PT active. ES/IT/PL draft translations saved in `docs/i18n-drafts/` (need review + Unicode font for Polish PDF labels before re-adding). Infrastructure: Vaadin I18NProvider + Spring MessageSource, BusinessRuleException across all services, entrant-facing view string extraction, email i18n with Locale, PDF label instructions i18n, MJP category translations, locale-aware date/timezone formatting, language switcher in navbar, User.preferredLanguage (V16 migration). 585 tests. Design: `docs/plans/2026-03-10-i18n-design.md`.
 - **Post-deployment walkthrough** — Completed 2026-03-16. `docs/walkthrough/post-deployment-test.md` retained as reference for re-running after major changes.
 - **PR #4 code review & merge** — Merged `competition-module` into `main` (2026-03-14). Code review found 5 bugs (missing auth check, missing access code on role promotion, HMAC timing attack, hasCreditConflict inconsistency, entryPrefix DRAFT guard) and 4 convention fixes (ProfileView auth context, @Setter removal, setter→domain method renames, Category constructor). Deferred: test naming (313 methods) and cross-module test imports.
 - **Manual walkthrough (Sections 1–14)** — All sections completed. Security testing (Section 14) produced 7 fixes: SetPasswordView eager token validation, webhook missing HMAC header (401), webhook HTTP method tampering (405), webhook email length validation, field length limits on email/password fields, dev password logging cleanup, and UX improvements (contact email on My Entries, mead name tooltips, settings field widths).

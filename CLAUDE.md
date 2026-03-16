@@ -92,7 +92,13 @@ Multiple related fast-cycle changes can be batched in one response.
 ```
 app.meads                                ← @SpringBootApplication (root module)
 ├── MeadsApplication.java               ← Entry point
-├── MainLayout.java                      ← AppLayout wrapper (public API — shared by all views, includes "My Profile" nav + version display)
+├── MainLayout.java                      ← AppLayout wrapper (public API — shared by all views, includes language switcher + "My Profile" nav + version display)
+├── BusinessRuleException.java           ← Exception with message key + params (replaces IllegalArgumentException in services)
+├── MeadsI18NProvider.java               ← Vaadin I18NProvider backed by Spring MessageSource
+├── LanguageMapping.java                 ← Country → language mapping + locale resolution
+├── CompetitionAdminChecker.java         ← Interface (avoids circular dependency root ↔ competition)
+├── UserLocaleResolver.java              ← Interface (avoids circular dependency root ↔ identity)
+├── UserLanguageUpdater.java             ← Interface (avoids circular dependency root ↔ identity)
 └── internal/
     └── RootView.java                    ← Root route, redirects by role (login/competitions/my-competitions/my-entries)
 
@@ -118,7 +124,9 @@ app.meads.identity                       ← Identity module public API
     ├── AdminInitializer.java            ← Seeds initial admin with password on startup
     ├── DevUserInitializer.java          ← Seeds dev users (dev profile only)
     ├── SetPasswordView.java              ← Set password via token (@AnonymousAllowed)
-    ├── ProfileView.java                  ← User profile self-edit (@PermitAll)
+    ├── ProfileView.java                  ← User profile self-edit + language dropdown (@PermitAll)
+    ├── UserLocaleResolverImpl.java      ← UserLocaleResolver implementation
+    ├── UserLanguageUpdaterImpl.java     ← UserLanguageUpdater implementation
     └── UserActivationListener.java      ← PENDING → ACTIVE on first login
 
 app.meads.competition                    ← Competition module public API
@@ -375,7 +383,7 @@ void tearDown() {
 ## Database & Migrations
 
 - **Location:** `src/main/resources/db/migration/V{N}__{description}.sql`
-- **Current highest version:** V15 (`V15__add_website_to_competitions.sql`). V2 includes users + meadery_name. V3–V8 are competition module (V3 includes contact_email + shipping_address + phone_number, V4 includes entry limits + prefix). V9–V13 are entry module. V14 is competition documents. V15 adds website to competitions.
+- **Current highest version:** V16 (`V16__add_preferred_language_to_users.sql`). V2 includes users + meadery_name. V3–V8 are competition module (V3 includes contact_email + shipping_address + phone_number, V4 includes entry limits + prefix). V9–V13 are entry module. V14 is competition documents. V15 adds website to competitions. V16 adds preferred_language to users (i18n).
 - **Naming:** `V{next}__{snake_case_description}.sql` (double underscore)
 - Migrations are created in **Step 2** (GREEN), when a repository test needs a table.
 - **Never edit existing migrations.** Always create new ones.
