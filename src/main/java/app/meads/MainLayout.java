@@ -14,7 +14,6 @@ import com.vaadin.flow.component.menubar.MenuBarVariant;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.Scroller;
-import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.sidenav.SideNav;
 import com.vaadin.flow.component.sidenav.SideNavItem;
 import com.vaadin.flow.i18n.I18NProvider;
@@ -68,21 +67,24 @@ public class MainLayout extends AppLayout {
             UI.getCurrent().setLocale(currentLocale);
 
             // Language switcher
-            var langSelect = new Select<String>();
-            langSelect.setItems(i18nProvider.getProvidedLocales().stream()
-                    .map(Locale::getLanguage)
-                    .toList());
-            langSelect.setItemLabelGenerator(MeadsI18NProvider::getLanguageLabel);
-            langSelect.setValue(currentLocale.getLanguage());
-            langSelect.setWidth("130px");
-            langSelect.getStyle().set("--vaadin-input-field-height", "var(--lumo-size-s)");
-            langSelect.addValueChangeListener(e -> {
-                if (e.isFromClient()) {
-                    userLanguageUpdater.updatePreferredLanguage(email, e.getValue());
+            var langIcon = new Icon(VaadinIcon.GLOBE);
+            langIcon.getStyle().setWidth("var(--lumo-icon-size-s)");
+            langIcon.getStyle().setHeight("var(--lumo-icon-size-s)");
+
+            var langMenu = new MenuBar();
+            langMenu.addThemeVariants(MenuBarVariant.LUMO_TERTIARY_INLINE);
+            var langItem = langMenu.addItem(langIcon);
+            langItem.add(new Text(" " + MeadsI18NProvider.getLanguageLabel(currentLocale.getLanguage())));
+            for (var locale : i18nProvider.getProvidedLocales()) {
+                var lang = locale.getLanguage();
+                var label = MeadsI18NProvider.getLanguageLabel(lang);
+                var menuItem = langItem.getSubMenu().addItem(label, e -> {
+                    userLanguageUpdater.updatePreferredLanguage(email, lang);
                     UI.getCurrent().getPage().reload();
-                }
-            });
-            navbar.add(langSelect);
+                });
+                menuItem.setEnabled(!lang.equals(currentLocale.getLanguage()));
+            }
+            navbar.add(langMenu);
 
             var userIcon = new Icon(VaadinIcon.USER);
             userIcon.getStyle().setWidth("var(--lumo-icon-size-s)");

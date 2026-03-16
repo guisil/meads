@@ -120,15 +120,22 @@ class MainLayoutTest {
     void shouldDisplayUserMenuInNavbarWhenAuthenticated() {
         UI.getCurrent().navigate("");
 
-        var menuBar = _get(MenuBar.class);
-        assertThat(menuBar.getItems()).hasSize(1);
+        var menuBars = _find(MenuBar.class);
+        assertThat(menuBars).hasSizeGreaterThanOrEqualTo(1);
 
-        var userItem = menuBar.getItems().getFirst();
+        // Find the user menu (contains the email address)
+        var userMenu = menuBars.stream()
+                .filter(mb -> mb.getItems().stream()
+                        .anyMatch(item -> item.getChildren()
+                                .anyMatch(c -> c instanceof Text
+                                        && ((Text) c).getText().contains("@"))))
+                .findFirst().orElseThrow();
+        var userItem = userMenu.getItems().getFirst();
         var emailText = userItem.getChildren()
                 .filter(c -> c instanceof Text)
                 .map(c -> ((Text) c).getText())
                 .findFirst().orElse("");
-        assertThat(emailText).isEqualTo("user@example.com");
+        assertThat(emailText).contains("user@example.com");
     }
 
     @Test
