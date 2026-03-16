@@ -284,6 +284,9 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 refreshCreditsGrid();
             } catch (BusinessRuleException ex) {
                 Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+            } catch (jakarta.validation.ConstraintViolationException ex) {
+                emailField.setInvalid(true);
+                emailField.setErrorMessage("Please enter a valid email address");
             }
         });
 
