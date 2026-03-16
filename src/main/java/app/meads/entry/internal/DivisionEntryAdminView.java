@@ -283,7 +283,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 dialog.close();
                 refreshCreditsGrid();
             } catch (BusinessRuleException ex) {
-                Notification.show(ex.getMessage());
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
             }
         });
 
@@ -319,7 +319,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 dialog.close();
                 refreshCreditsGrid();
             } catch (BusinessRuleException ex) {
-                Notification.show(ex.getMessage());
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
             }
         });
 
@@ -776,7 +776,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 dialog.close();
                 refreshEntriesGrid();
             } catch (BusinessRuleException ex) {
-                Notification.show(ex.getMessage());
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
             }
         });
 
@@ -800,7 +800,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 dialog.close();
                 refreshEntriesGrid();
             } catch (BusinessRuleException ex) {
-                Notification.show(ex.getMessage());
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
             }
         });
 
@@ -824,7 +824,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 dialog.close();
                 refreshEntriesGrid();
             } catch (BusinessRuleException ex) {
-                Notification.show(ex.getMessage());
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
             }
         });
 
@@ -927,7 +927,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 dialog.close();
                 refreshProductsGrid();
             } catch (BusinessRuleException ex) {
-                Notification.show(ex.getMessage());
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
             }
         });
 
@@ -961,7 +961,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 dialog.close();
                 refreshProductsGrid();
             } catch (BusinessRuleException ex) {
-                Notification.show(ex.getMessage());
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
             }
         });
 
@@ -984,7 +984,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 dialog.close();
                 refreshProductsGrid();
             } catch (BusinessRuleException ex) {
-                Notification.show(ex.getMessage());
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
             }
         });
 
@@ -1119,7 +1119,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 dialog.close();
                 refreshOrdersGrid();
             } catch (BusinessRuleException ex) {
-                Notification.show(ex.getMessage());
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
             }
         });
 

@@ -153,7 +153,7 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
             try {
                 removeUser(user);
             } catch (BusinessRuleException ex) {
-                Notification.show(ex.getMessage());
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
             }
         }
     }
@@ -172,7 +172,7 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
                 removeUser(user);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(ex.getMessage());
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 dialog.close();
             }
         });
@@ -326,7 +326,7 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
             } catch (BusinessRuleException ex) {
                 if (isCreate) {
                     emailField.setInvalid(true);
-                    emailField.setErrorMessage(ex.getMessage());
+                    emailField.setErrorMessage(getTranslation(ex.getMessageKey(), ex.getParams()));
                 } else {
                     nameField.setInvalid(true);
                     nameField.setErrorMessage("Failed to save user. Please try again.");

@@ -606,7 +606,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(ex.getMessage());
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 e.getSource().setEnabled(true);
                 dialog.close();
             }
@@ -831,7 +831,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(ex.getMessage());
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 e.getSource().setEnabled(true);
             }
         });
@@ -859,7 +859,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(ex.getMessage());
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 e.getSource().setEnabled(true);
                 dialog.close();
             }

@@ -694,7 +694,7 @@ class UserListViewTest {
 
         // Email field should show validation error
         assertThat(emailField.isInvalid()).isTrue();
-        assertThat(emailField.getErrorMessage()).contains("error.user.email-exists");
+        assertThat(emailField.getErrorMessage()).contains("Email already exists");
     }
 
     @Test

@@ -1,5 +1,6 @@
 package app.meads.identity.internal;
 
+import app.meads.BusinessRuleException;
 import app.meads.LanguageMapping;
 import app.meads.MainLayout;
 import app.meads.MeadsI18NProvider;
@@ -102,8 +103,8 @@ public class ProfileView extends VerticalLayout {
                         .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 // Full browser navigation so MainLayout reconstructs with new locale
                 getUI().ifPresent(ui -> ui.getPage().setLocation("/"));
-            } catch (Exception ex) {
-                Notification.show(ex.getMessage());
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
             }
         });
         saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);

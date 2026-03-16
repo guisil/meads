@@ -174,7 +174,7 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
                         var notification = Notification.show("Logo removed");
                         notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                     } catch (BusinessRuleException ex) {
-                        Notification.show(ex.getMessage());
+                        Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                     }
                 });
                 logoSection.add(removeLogoButton);
@@ -229,7 +229,7 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(ex.getMessage());
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
             }
         });
 
@@ -255,7 +255,7 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(ex.getMessage());
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 dialog.close();
             }
         });

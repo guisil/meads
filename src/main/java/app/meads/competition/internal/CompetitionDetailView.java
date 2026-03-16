@@ -382,7 +382,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(ex.getMessage());
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 dialog.close();
             }
         });
@@ -486,7 +486,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(ex.getMessage());
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
             }
         });
 
@@ -540,7 +540,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 generatePasswordSetupLinkIfNeeded(email, role);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(ex.getMessage());
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
             }
         });
 
@@ -684,7 +684,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                     var notification = Notification.show("Logo removed");
                     notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 } catch (BusinessRuleException ex) {
-                    Notification.show(ex.getMessage());
+                    Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 }
             });
             logoSection.add(removeLogoButton);
@@ -744,7 +744,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 var notification = Notification.show("Competition updated successfully");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
             } catch (BusinessRuleException ex) {
-                Notification.show(ex.getMessage());
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
             }
         });
 
@@ -838,7 +838,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(ex.getMessage());
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
             }
         });
 
@@ -869,7 +869,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(ex.getMessage());
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 dialog.close();
             }
         });
@@ -895,7 +895,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(ex.getMessage());
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 dialog.close();
             }
         });
@@ -919,7 +919,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(ex.getMessage());
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 dialog.close();
             }
         });
@@ -1101,7 +1101,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(ex.getMessage());
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
             }
         });
 
@@ -1126,7 +1126,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
             competitionService.reorderDocuments(competitionId, ids, getCurrentUserId());
             grid.setItems(competitionService.getDocuments(competitionId));
         } catch (BusinessRuleException ex) {
-            Notification.show(ex.getMessage());
+            Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
         }
     }
 
@@ -1153,7 +1153,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(ex.getMessage());
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
             }
         });
 
@@ -1176,7 +1176,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(ex.getMessage());
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 dialog.close();
             }
         });

@@ -250,7 +250,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(ex.getMessage());
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 dialog.close();
             } catch (DataIntegrityViolationException ex) {
                 Notification.show("Cannot remove category: it is used by one or more entries");
@@ -293,7 +293,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(ex.getMessage());
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
             }
         });
 
@@ -353,7 +353,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(ex.getMessage());
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
             }
         });
 
@@ -491,7 +491,9 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                 refreshBreadcrumbAndHeader();
                 var notification = Notification.show("Settings saved successfully");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-            } catch (BusinessRuleException | IllegalArgumentException ex) {
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+            } catch (IllegalArgumentException ex) {
                 Notification.show(ex.getMessage());
             }
         });
@@ -520,7 +522,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                                 + "/divisions/" + division.getShortName()));
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(ex.getMessage());
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 dialog.close();
             }
         });
@@ -547,7 +549,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                                 + "/divisions/" + division.getShortName()));
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(ex.getMessage());
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 dialog.close();
             }
         });

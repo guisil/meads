@@ -108,7 +108,7 @@ public class SetPasswordView extends VerticalLayout implements BeforeEnterObserv
                     .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
             getUI().ifPresent(ui -> ui.navigate("login"));
         } catch (BusinessRuleException ex) {
-            Notification.show(ex.getMessage())
+            Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
         } catch (JwtException ex) {
             Notification.show("Invalid or expired token. Please request a new link.")
