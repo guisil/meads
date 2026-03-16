@@ -346,12 +346,15 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
             submitButton.setTooltipText(getTranslation("entries.meadery-required.tooltip"));
         }
 
-        // Download all labels (SUBMITTED entries) — only enabled when no drafts remain
+        // Download all labels (SUBMITTED entries) — only enabled when all entries are submitted
         var downloadAllBtn = new Button(getTranslation("entries.download-all"), new Icon(VaadinIcon.DOWNLOAD_ALT));
         Component downloadAllComponent;
-        if (hasDrafts) {
+        var hasSubmitted = entries.stream().anyMatch(en -> en.getStatus() == EntryStatus.SUBMITTED);
+        if (hasDrafts || !hasSubmitted) {
             downloadAllBtn.setEnabled(false);
-            downloadAllBtn.setTooltipText(getTranslation("entries.download-all.disabled"));
+            if (hasDrafts) {
+                downloadAllBtn.setTooltipText(getTranslation("entries.download-all.disabled"));
+            }
             downloadAllComponent = downloadAllBtn;
         } else {
             var downloadAllResource = new StreamResource("all-labels.pdf", () -> {

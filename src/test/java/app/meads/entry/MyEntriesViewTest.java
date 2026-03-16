@@ -283,19 +283,12 @@ class MyEntriesViewTest {
 
     @Test
     @WithMockUser(username = ENTRANT_EMAIL, roles = "USER")
-    void shouldShowDownloadAllLabelsButton() {
+    void shouldShowDownloadAllLabelsButtonDisabledWhenNoSubmittedEntries() {
         UI.getCurrent().navigate("competitions/" + competition.getShortName()
                 + "/divisions/" + division.getShortName() + "/my-entries");
 
-        var anchors = _find(Anchor.class);
-        var downloadAllAnchors = anchors.stream()
-                .filter(a -> {
-                    var buttons = _find(a, Button.class);
-                    return buttons.stream().anyMatch(b ->
-                            b.getText() != null && b.getText().contains("Download all labels"));
-                })
-                .toList();
-        assertThat(downloadAllAnchors).hasSize(1);
+        var downloadBtn = _get(Button.class, spec -> spec.withText("Download all labels"));
+        assertThat(downloadBtn.isEnabled()).isFalse();
     }
 
     @Test
