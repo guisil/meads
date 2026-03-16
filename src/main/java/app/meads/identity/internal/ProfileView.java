@@ -101,7 +101,7 @@ public class ProfileView extends VerticalLayout {
                 Notification.show(getTranslation("profile.updated"))
                         .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 // Full browser navigation so MainLayout reconstructs with new locale
-                getUI().ifPresent(ui -> ui.getPage().setLocation(""));
+                getUI().ifPresent(ui -> ui.getPage().setLocation("/"));
             } catch (Exception ex) {
                 Notification.show(ex.getMessage());
             }
