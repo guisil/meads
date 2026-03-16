@@ -13,6 +13,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.MessageSource;
 
 import java.time.Duration;
 import java.util.List;
@@ -29,10 +30,13 @@ class SubmissionConfirmationListenerTest {
     @Mock UserService userService;
     @Mock EmailService emailService;
     @Mock JwtMagicLinkService jwtMagicLinkService;
+    @Mock MessageSource messageSource;
     @InjectMocks SubmissionConfirmationListener listener;
 
     @Test
     void shouldSendSummaryEmailWithMagicLink() {
+        given(messageSource.getMessage(any(String.class), any(), any(String.class), any(Locale.class)))
+                .willAnswer(inv -> inv.getArgument(2));
         var divisionId = UUID.randomUUID();
         var userId = UUID.randomUUID();
         var competitionId = UUID.randomUUID();
@@ -69,6 +73,8 @@ class SubmissionConfirmationListenerTest {
 
     @Test
     void shouldFormatEntryDetailsInSummary() {
+        given(messageSource.getMessage(any(String.class), any(), any(String.class), any(Locale.class)))
+                .willAnswer(inv -> inv.getArgument(2));
         var divisionId = UUID.randomUUID();
         var userId = UUID.randomUUID();
         var competitionId = UUID.randomUUID();
