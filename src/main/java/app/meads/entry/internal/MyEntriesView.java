@@ -411,7 +411,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                 .setHeader(getTranslation("entries.column.entry-number"))
                 .setSortable(true)
                 .setComparator((a, b) -> Integer.compare(a.getEntryNumber(), b.getEntryNumber()))
-                .setWidth("130px")
+                .setWidth("140px")
                 .setFlexGrow(0);
 
         // Mead Name
