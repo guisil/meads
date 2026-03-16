@@ -15,11 +15,11 @@ import java.util.Map;
 public class MeadsI18NProvider implements I18NProvider {
 
     private static final List<Locale> PROVIDED_LOCALES = List.of(
-            Locale.ENGLISH,
-            Locale.of("pt"),
-            Locale.of("es"),
-            Locale.of("it"),
-            Locale.of("pl")
+            Locale.ENGLISH,        // English
+            Locale.of("es"),       // Espa\u00f1ol
+            Locale.of("it"),       // Italiano
+            Locale.of("pl"),       // Polski
+            Locale.of("pt")        // Portugu\u00eas
     );
 
     // Native language names — displayed in the language switcher regardless of current locale
