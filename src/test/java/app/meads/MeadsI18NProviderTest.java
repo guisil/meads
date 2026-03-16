@@ -113,6 +113,17 @@ class MeadsI18NProviderTest {
     }
 
     @Test
+    void shouldResolveSpanishTranslation() {
+        var es = Locale.of("es");
+        assertThat(provider.getTranslation("nav.my-entries", es))
+                .isEqualTo("Mis Inscripciones");
+        assertThat(provider.getTranslation("entry.status.DRAFT", es))
+                .isEqualTo("Borrador");
+        assertThat(provider.getTranslation("category.M1.name", es))
+                .isEqualTo("Hidromiel Tradicional");
+    }
+
+    @Test
     void shouldHaveAllEnglishKeysInPortuguese() {
         var en = Locale.ENGLISH;
         var pt = Locale.of("pt");
