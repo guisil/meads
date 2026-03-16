@@ -2,8 +2,8 @@ package app.meads.identity.internal;
 
 import app.meads.LanguageMapping;
 import app.meads.MainLayout;
-import app.meads.MeadsI18NProvider;
 import app.meads.identity.UserService;
+import com.vaadin.flow.i18n.I18NProvider;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
@@ -38,7 +38,7 @@ public class ProfileView extends VerticalLayout {
     private final transient AuthenticationContext authenticationContext;
 
     ProfileView(UserService userService, AuthenticationContext authenticationContext,
-                MeadsI18NProvider i18nProvider) {
+                I18NProvider i18nProvider) {
         this.authenticationContext = authenticationContext;
         var email = authenticationContext.getAuthenticatedUser(UserDetails.class)
                 .map(UserDetails::getUsername)

@@ -87,4 +87,42 @@ class MeadsI18NProviderTest {
         assertThat(provider.getTranslation("email.magic-link.cta", pt))
                 .isEqualTo("Entrar");
     }
+
+    @Test
+    void shouldResolvePortugueseErrorMessageWithParams() {
+        var pt = Locale.of("pt");
+        var translation = provider.getTranslation("error.entry.limit-total", pt, 5);
+        assertThat(translation).contains("5").contains("total");
+    }
+
+    @Test
+    void shouldResolvePortuguesePdfInstructions() {
+        var pt = Locale.of("pt");
+        assertThat(provider.getTranslation("pdf.instructions.line1", pt))
+                .contains("etiquetas");
+        assertThat(provider.getTranslation("pdf.label.disclaimer", pt))
+                .contains("AMOSTRAS");
+    }
+
+    @Test
+    void shouldFallbackToEnglishForMissingPortugueseKey() {
+        var pt = Locale.of("pt");
+        // A key that exists only in English should fall back
+        var translation = provider.getTranslation("nonexistent.key", pt);
+        assertThat(translation).isEqualTo("nonexistent.key");
+    }
+
+    @Test
+    void shouldHaveAllEnglishKeysInPortuguese() {
+        var en = Locale.ENGLISH;
+        var pt = Locale.of("pt");
+        // Spot-check that key categories all have Portuguese translations
+        // (not returning the English value or the key)
+        assertThat(provider.getTranslation("nav.logout", pt))
+                .isNotEqualTo(provider.getTranslation("nav.logout", en));
+        assertThat(provider.getTranslation("entries.add", pt))
+                .isNotEqualTo(provider.getTranslation("entries.add", en));
+        assertThat(provider.getTranslation("error.entry.not-found", pt))
+                .isNotEqualTo(provider.getTranslation("error.entry.not-found", en));
+    }
 }

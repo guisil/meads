@@ -1,6 +1,7 @@
 package app.meads;
 
 import com.vaadin.flow.component.Text;
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.applayout.DrawerToggle;
 import com.vaadin.flow.component.html.Div;
@@ -25,13 +26,16 @@ public class MainLayout extends AppLayout {
 
     private final transient AuthenticationContext authenticationContext;
     private final CompetitionAdminChecker competitionAdminChecker;
+    private final UserLocaleResolver userLocaleResolver;
     private final String appVersion;
 
     public MainLayout(AuthenticationContext authenticationContext,
                        CompetitionAdminChecker competitionAdminChecker,
+                       UserLocaleResolver userLocaleResolver,
                        @Nullable BuildProperties buildProperties) {
         this.authenticationContext = authenticationContext;
         this.competitionAdminChecker = competitionAdminChecker;
+        this.userLocaleResolver = userLocaleResolver;
         this.appVersion = buildProperties != null ? "v" + buildProperties.getVersion() : "";
 
         var toggle = new DrawerToggle();
@@ -48,6 +52,9 @@ public class MainLayout extends AppLayout {
 
         if (authenticationContext.isAuthenticated()) {
             var email = authenticationContext.getPrincipalName().orElse("");
+
+            // Set UI locale from user preference
+            UI.getCurrent().setLocale(userLocaleResolver.resolveLocale(email));
 
             var userIcon = new Icon(VaadinIcon.USER);
             userIcon.getStyle().setWidth("var(--lumo-icon-size-s)");
