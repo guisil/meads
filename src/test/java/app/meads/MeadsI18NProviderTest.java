@@ -113,6 +113,17 @@ class MeadsI18NProviderTest {
     }
 
     @Test
+    void shouldResolveItalianTranslation() {
+        var it = Locale.of("it");
+        assertThat(provider.getTranslation("nav.my-entries", it))
+                .isEqualTo("Le Mie Iscrizioni");
+        assertThat(provider.getTranslation("entry.status.DRAFT", it))
+                .isEqualTo("Bozza");
+        assertThat(provider.getTranslation("category.M1.name", it))
+                .isEqualTo("Idromele Tradizionale");
+    }
+
+    @Test
     void shouldResolveSpanishTranslation() {
         var es = Locale.of("es");
         assertThat(provider.getTranslation("nav.my-entries", es))
