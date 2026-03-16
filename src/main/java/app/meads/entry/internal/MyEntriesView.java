@@ -598,6 +598,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         dialog.add(getTranslation("entries.submit.confirm", formatEntryId(entry), entry.getMeadName()));
 
         var confirmButton = new Button(getTranslation("entries.submit.button"), e -> {
+            e.getSource().setEnabled(false);
             try {
                 entryService.submitEntry(entry.getId(), currentUserId);
                 refreshPage();
@@ -606,6 +607,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                 dialog.close();
             } catch (BusinessRuleException ex) {
                 Notification.show(ex.getMessage());
+                e.getSource().setEnabled(true);
                 dialog.close();
             }
         });
@@ -751,9 +753,11 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         dialog.add(layout);
 
         var saveButton = new Button(getTranslation("entries.dialog.save"), e -> {
+            e.getSource().setEnabled(false);
             if (!StringUtils.hasText(meadName.getValue())) {
                 meadName.setInvalid(true);
                 meadName.setErrorMessage(getTranslation("entries.validation.mead-name-required"));
+                e.getSource().setEnabled(true);
                 return;
             }
             var valid = true;
@@ -788,6 +792,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                 valid = false;
             }
             if (!valid) {
+                e.getSource().setEnabled(true);
                 return;
             }
             try {
@@ -827,6 +832,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                 dialog.close();
             } catch (BusinessRuleException ex) {
                 Notification.show(ex.getMessage());
+                e.getSource().setEnabled(true);
             }
         });
 
@@ -845,6 +851,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         dialog.add(getTranslation("entries.submit-all.confirm", draftCount));
 
         var confirmButton = new Button(getTranslation("entries.submit-all.button"), e -> {
+            e.getSource().setEnabled(false);
             try {
                 entryService.submitAllDrafts(divisionId, currentUserId);
                 refreshPage();
@@ -853,6 +860,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                 dialog.close();
             } catch (BusinessRuleException ex) {
                 Notification.show(ex.getMessage());
+                e.getSource().setEnabled(true);
                 dialog.close();
             }
         });
