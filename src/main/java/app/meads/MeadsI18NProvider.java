@@ -18,7 +18,8 @@ public class MeadsI18NProvider implements I18NProvider {
             Locale.ENGLISH,
             Locale.of("pt"),
             Locale.of("es"),
-            Locale.of("it")
+            Locale.of("it"),
+            Locale.of("pl")
     );
 
     // Native language names — displayed in the language switcher regardless of current locale

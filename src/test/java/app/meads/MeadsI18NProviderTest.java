@@ -113,6 +113,19 @@ class MeadsI18NProviderTest {
     }
 
     @Test
+    void shouldResolvePolishTranslation() {
+        var pl = Locale.of("pl");
+        assertThat(provider.getTranslation("nav.my-entries", pl))
+                .isEqualTo("Moje Zg\u0142oszenia");
+        assertThat(provider.getTranslation("entry.sweetness.DRY", pl))
+                .isEqualTo("Wytrawny");
+        assertThat(provider.getTranslation("category.M1.name", pl))
+                .isEqualTo("Mi\u00f3d Tradycyjny");
+        assertThat(provider.getTranslation("profile.meadery-name.label", pl))
+                .isEqualTo("Nazwa Miodosytni");
+    }
+
+    @Test
     void shouldResolveItalianTranslation() {
         var it = Locale.of("it");
         assertThat(provider.getTranslation("nav.my-entries", it))
