@@ -50,4 +50,41 @@ class MeadsI18NProviderTest {
         var translation = provider.getTranslation("error.entry.limit-total", Locale.ENGLISH, 10);
         assertThat(translation).isEqualTo("Entry limit reached for this division (max 10 total)");
     }
+
+    @Test
+    void shouldResolvePortugueseTranslation() {
+        var pt = Locale.of("pt");
+        assertThat(provider.getTranslation("nav.my-entries", pt))
+                .isEqualTo("As Minhas Inscri\u00e7\u00f5es");
+    }
+
+    @Test
+    void shouldResolvePortugueseEnumTranslation() {
+        var pt = Locale.of("pt");
+        assertThat(provider.getTranslation("entry.status.DRAFT", pt))
+                .isEqualTo("Rascunho");
+        assertThat(provider.getTranslation("entry.sweetness.DRY", pt))
+                .isEqualTo("Seco");
+    }
+
+    @Test
+    void shouldResolvePortugueseCategoryTranslation() {
+        var pt = Locale.of("pt");
+        assertThat(provider.getTranslation("category.M1.name", pt))
+                .isEqualTo("Hidromel Tradicional");
+    }
+
+    @Test
+    void shouldResolvePortugueseParameterizedTranslation() {
+        var pt = Locale.of("pt");
+        var translation = provider.getTranslation("entries.credits.remaining", pt, 3);
+        assertThat(translation).isEqualTo("3 disponíveis");
+    }
+
+    @Test
+    void shouldResolvePortugueseEmailTranslation() {
+        var pt = Locale.of("pt");
+        assertThat(provider.getTranslation("email.magic-link.cta", pt))
+                .isEqualTo("Entrar");
+    }
 }
