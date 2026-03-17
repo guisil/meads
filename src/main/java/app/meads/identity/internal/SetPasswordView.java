@@ -31,6 +31,7 @@ public class SetPasswordView extends VerticalLayout implements BeforeEnterObserv
     private String token;
     private PasswordField passwordField;
     private PasswordField confirmField;
+    private Button submitButton;
 
     public SetPasswordView(UserService userService, JwtMagicLinkService jwtMagicLinkService) {
         this.userService = userService;
@@ -78,7 +79,8 @@ public class SetPasswordView extends VerticalLayout implements BeforeEnterObserv
         confirmField.setMaxLength(128);
         confirmField.setValueChangeMode(ValueChangeMode.EAGER);
 
-        var submitButton = new Button("Set Password");
+        submitButton = new Button("Set Password");
+        submitButton.setDisableOnClick(true);
         submitButton.addClickListener(e -> handleSubmit());
 
         Shortcuts.addShortcutListener(this, this::handleSubmit, Key.ENTER);
@@ -93,12 +95,14 @@ public class SetPasswordView extends VerticalLayout implements BeforeEnterObserv
         if (!StringUtils.hasText(password)) {
             passwordField.setInvalid(true);
             passwordField.setErrorMessage("Password is required");
+            submitButton.setEnabled(true);
             return;
         }
 
         if (!password.equals(confirm)) {
             confirmField.setInvalid(true);
             confirmField.setErrorMessage("Passwords do not match");
+            submitButton.setEnabled(true);
             return;
         }
 
@@ -110,9 +114,11 @@ public class SetPasswordView extends VerticalLayout implements BeforeEnterObserv
         } catch (BusinessRuleException ex) {
             Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            submitButton.setEnabled(true);
         } catch (JwtException ex) {
             Notification.show("Invalid or expired token. Please request a new link.")
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            submitButton.setEnabled(true);
         }
     }
 }

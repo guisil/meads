@@ -199,66 +199,27 @@ All 14 sections completed with fixes along the way.
 - **Contact email on My Entries** — Shows "Questions or need help? Contact: {email}" as mailto link, opposite the registration deadline
 - **Settings field widths** — Widened Name, Location, Contact Email fields in Competition Settings and Name in Division Settings to 400px
 
-### Priority 1: Post-i18n comprehensive walkthrough and hardening
+### Priority 1: Post-i18n comprehensive walkthrough and hardening — COMPLETE
 
-Full manual walkthrough required after the i18n implementation (2026-03-16). The i18n
-work touched all services (BusinessRuleException), all views (catch blocks), email
-interface (Locale parameter), MainLayout (language switcher + locale init), and the
-User entity (preferredLanguage + V16 migration). 585 tests pass, but a thorough manual
-walkthrough is needed before releasing.
+Full manual walkthrough completed 2026-03-17. All 4 parts done.
 
-**Part A — Error notification verification (all views):**
-Every `catch (BusinessRuleException)` block now resolves messages via
-`getTranslation(ex.getMessageKey(), ex.getParams())`. Verify that error notifications
-show readable messages (not raw keys like `error.division.shortname-exists`) in:
-- CompetitionListView: create competition with duplicate short name
-- CompetitionDetailView: duplicate division short name, duplicate participant role,
-  duplicate document name, advance/revert status errors
-- DivisionDetailView: duplicate short name, category modification in wrong status,
-  invalid timezone
-- DivisionEntryAdminView: add credits with invalid email (ConstraintViolationException
-  — fixed 2026-03-16), mutual exclusivity, role conflict
-- UserListView: create user with duplicate email, self-role change, self-status change
-- SetPasswordView: password too short
-- MyEntriesView: no credits, entry limit, division not open
-
-**Part B — Entrant view & actions (thorough):**
-- Language switcher in navbar: switch EN ↔ PT, verify all labels update
-- Profile: change language, save → redirects to root with new locale, navbar/sidebar updated
-- EntrantOverviewView: heading, credits/entries labels translated
-- MyEntriesView: all labels, buttons, column headers, tooltips, notifications in PT
-- Entry dialog: field labels, validation messages, category names + hints translated
-- Submit single/all: confirmation dialog text, success notification translated
-- View entry dialog: all field labels + enum values (sweetness, strength, carbonation) translated
-- Download label: PDF instruction header translated (PT uses Latin-1 chars, works with Helvetica)
-- Deadline display: date format + timezone name localized
-- Competition documents section: heading translated
-- Meadery name warning: translated
-- Contact info: translated
-- Process info box: translated
-- Category names in grid tooltips and view dialog: translated
-- Submission confirmation email: categories translated in entry summary
-
-**Part C — Double-click protection (all dialogs):**
-Add `e.getSource().setEnabled(false)` on click + re-enable on error to ALL dialog
-save/confirm/delete buttons. Currently only MyEntriesView entrant dialogs have this.
-Views to fix:
-- CompetitionDetailView: all dialogs (participant add/edit/remove, division create/delete,
-  status advance/revert, settings save, document add/edit/delete, logo remove)
-- CompetitionListView: competition create/edit/delete dialogs
-- DivisionDetailView: settings save, category add/edit/remove, status advance/revert
-- DivisionEntryAdminView: credits add/edit, product mapping add/edit/delete, entry
-  edit/withdraw/receive, order edit
-- UserListView: user create/edit, delete confirmation
-
-**Part D — Email verification:**
-- Magic link email: sent and received (EN locale for login page)
-- Credit notification email: in recipient's language
-- Submission confirmation email: in recipient's language, categories translated
-- Password reset email: sent correctly
-
-**Not yet released.** 30 commits on main ahead of origin. Do the walkthrough, fix any
-issues found, then release all together.
+**Changes made during walkthrough:**
+- **Part A — Error notification fix:** DivisionDetailView settings save caught wrong exception
+  type (`IllegalArgumentException` instead of `IllegalStateException`). Fixed. Admin views
+  now force `Locale.ENGLISH` in all `getTranslation()` calls for `BusinessRuleException`,
+  so error messages are consistently English regardless of user's locale preference.
+- **Part C — Double-click protection:** Added `setDisableOnClick(true)` (Vaadin built-in API)
+  to all dialog save/confirm/delete buttons across all views (40+ buttons). Re-enables on
+  validation failure and in catch blocks. LoginView: magic link and forgot password buttons
+  left unprotected (rate limiting handles abuse, and mistyped emails need easy retry);
+  login button is protected (form POST navigates away).
+- **Add Credits validation:** Empty email/amount now shows field-level errors instead of
+  silently returning.
+- **Meadery name confirmation banner:** MyEntriesView now shows green confirmation banner
+  with meadery name when set (divisions that require it), instead of just hiding the warning.
+- **Admin error locale consistency:** All admin view `BusinessRuleException` catch blocks use
+  `getTranslation(key, Locale.ENGLISH, params)` to force English errors, avoiding the
+  mixed-language issue where some errors were translated and others fell back to English.
 
 ### Priority 2: Deletion guards and cascade testing
 Comprehensive review and hardening of all deletion operations across the application.
@@ -286,25 +247,54 @@ deletion paths for correct behavior.
 Then TDD each guard and deletion path. Needs thorough testing — multiple edge cases
 across modules.
 
-### Priority 3: MFA for system admins
+### Priority 3: Admin view i18n
+Translate all admin views to support the same language switching as entrant views.
+~270 hardcoded English strings across 8 views to extract to message keys and translate
+to PT. Mechanical work — no new patterns or dependencies, `getTranslation()` infrastructure
+already in place. Biggest files: CompetitionDetailView (~82 strings), DivisionEntryAdminView
+(~90 strings). Also include LoginView and SetPasswordView — entrants with passwords use
+these views too, not just admins.
+
+### Priority 4: Re-add stashed languages (ES/IT/PL)
+Draft translations for Spanish, Italian, and Polish are in `docs/i18n-drafts/`. All need
+native-speaker review before activating. Polish requires embedding a Unicode TTF font
+(e.g., Liberation Sans or Noto Sans) in LabelPdfService for PDF labels — Helvetica only
+supports Latin-1, and Polish characters (ł, ż, ą, ę, ś, ć, ń) are outside that range.
+Portuguese and Spanish/Italian work fine with Helvetica since their characters are within
+Latin-1.
+
+### Priority 5: Post-registration actions audit
+Review what actions should be allowed/blocked after a division moves past REGISTRATION_OPEN.
+Currently some actions remain available that may need restricting or scoping. Design pass
+needed to decide per-status rules:
+- **Add credits** — currently allowed in any status. Should it be blocked after registration closes?
+- **Admin edit entries** — should remain possible to some extent (e.g., setting final category,
+  correcting admin fields), but perhaps not full edits (mead name, category change)
+- **Entrant edit entries** — currently blocked after submit. Should view-only access persist?
+- **Add/remove participants** — should participant management be locked at some point?
+- **Product mappings** — should these be locked after registration?
+Do this audit after the i18n work (priorities 3–4) since translated views may surface
+additional UX considerations.
+
+### Priority 6: MFA for system admins
 Evaluate and implement multi-factor authentication for SYSTEM_ADMIN accounts.
 Password-only login for privileged accounts is a security risk post-deployment.
 
-### Priority 4: Auto-close + deadline reminders (deferred)
+### Priority 7: Auto-close + deadline reminders (deferred)
 - **Auto-close** — automatically advance division from REGISTRATION_OPEN → REGISTRATION_CLOSED
   when registration deadline passes (scheduled task)
 - **Entrant deadline reminder** — notify entrants who have DRAFT entries when the registration
   deadline is approaching (e.g., 7 days, 3 days, 1 day before deadline)
 - Other potential: entry received confirmation (when admin marks entry as RECEIVED), results published notification
 
-### Priority 5: Judging module
+### Priority 8: Judging module
 Design and implementation. Reference: `docs/reference/chip-competition-rules.md`.
 
-### Priority 6: Awards module
+### Priority 9: Awards module
 
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md`.
 
-### Priority 7: Full category constraint system (low priority — future competition)
+### Priority 10: Full category constraint system (low priority — future competition)
 Full field locking/validation based on category selection. Design doc: `docs/plans/2026-03-11-category-hints-design.md` (appendix).
 Includes: sweetness locking (M1A→Dry, M1B→Medium, M1C→Sweet), ingredient restrictions (M1/M4E),
 strength locking (M4S→Hydromel), ABV caps (M4S→7.5%), ABV→Strength derivation (universal),
@@ -394,6 +384,14 @@ Requires: DB migration, admin UI for constraint config, cross-module data flow, 
 ### Known UX items (deferred)
 - After failed credentials login, page reloads at `/login?error` and shows error notification,
   but password field is cleared (expected browser behavior for form POST). Not blocking.
+- Competition dates allow past values — no validation prevents creating or editing a competition
+  with start/end dates in the past. Add date validation (start date >= today on create,
+  end date >= start date already enforced).
+- Withdrawn entries have no way to revert status — consider adding an "undo withdraw" action
+  (e.g., revert to SUBMITTED or DRAFT) for admin use.
+- Credits can be added beyond the division's total entry limit — no validation prevents granting
+  more credits than the entrant could ever use. Low priority since it's an admin action and
+  unlikely in practice.
 
 ### Configuration
 - **Properties reorganized** — `application.properties` contains only non-sensitive,

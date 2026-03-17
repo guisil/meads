@@ -272,7 +272,19 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         dialog.add(new VerticalLayout(emailField, amountField));
 
         var addButton = new Button("Add", e -> {
-            if (!StringUtils.hasText(emailField.getValue()) || amountField.getValue() == null) {
+            var valid = true;
+            if (!StringUtils.hasText(emailField.getValue())) {
+                emailField.setInvalid(true);
+                emailField.setErrorMessage("Email is required");
+                valid = false;
+            }
+            if (amountField.getValue() == null) {
+                amountField.setInvalid(true);
+                amountField.setErrorMessage("Amount is required");
+                valid = false;
+            }
+            if (!valid) {
+                e.getSource().setEnabled(true);
                 return;
             }
             try {
@@ -283,12 +295,15 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 dialog.close();
                 refreshCreditsGrid();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                e.getSource().setEnabled(true);
             } catch (jakarta.validation.ConstraintViolationException ex) {
                 emailField.setInvalid(true);
                 emailField.setErrorMessage("Please enter a valid email address");
+                e.getSource().setEnabled(true);
             }
         });
+        addButton.setDisableOnClick(true);
 
         var cancelButton = new Button("Cancel", e -> dialog.close());
         dialog.getFooter().add(cancelButton, addButton);
@@ -307,7 +322,10 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         dialog.add(new VerticalLayout(amountField));
 
         var saveButton = new Button("Save", e -> {
-            if (amountField.getValue() == null || amountField.getValue() == 0) return;
+            if (amountField.getValue() == null || amountField.getValue() == 0) {
+                e.getSource().setEnabled(true);
+                return;
+            }
             try {
                 var amount = amountField.getValue();
                 if (amount > 0) {
@@ -322,9 +340,11 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 dialog.close();
                 refreshCreditsGrid();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                e.getSource().setEnabled(true);
             }
         });
+        saveButton.setDisableOnClick(true);
 
         var cancelButton = new Button("Cancel", e -> dialog.close());
         dialog.getFooter().add(cancelButton, saveButton);
@@ -724,6 +744,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             if (!StringUtils.hasText(meadNameField.getValue())) {
                 meadNameField.setInvalid(true);
                 meadNameField.setErrorMessage("Mead name is required");
+                e.getSource().setEnabled(true);
                 return;
             }
             var valid = true;
@@ -758,6 +779,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 valid = false;
             }
             if (!valid) {
+                e.getSource().setEnabled(true);
                 return;
             }
             try {
@@ -779,9 +801,11 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 dialog.close();
                 refreshEntriesGrid();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                e.getSource().setEnabled(true);
             }
         });
+        saveButton.setDisableOnClick(true);
 
         var cancelButton = new Button("Cancel", e -> dialog.close());
         dialog.getFooter().add(cancelButton, saveButton);
@@ -803,9 +827,11 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 dialog.close();
                 refreshEntriesGrid();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                e.getSource().setEnabled(true);
             }
         });
+        confirmButton.setDisableOnClick(true);
 
         var cancelButton = new Button("Cancel", e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
@@ -827,9 +853,11 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 dialog.close();
                 refreshEntriesGrid();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                e.getSource().setEnabled(true);
             }
         });
+        confirmButton.setDisableOnClick(true);
 
         var cancelButton = new Button("Cancel", e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
@@ -916,7 +944,10 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 creditsField.setErrorMessage("Credits per unit is required");
                 valid = false;
             }
-            if (!valid) return;
+            if (!valid) {
+                e.getSource().setEnabled(true);
+                return;
+            }
             try {
                 entryService.createProductMapping(divisionId,
                         productIdField.getValue().trim(),
@@ -930,9 +961,11 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 dialog.close();
                 refreshProductsGrid();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                e.getSource().setEnabled(true);
             }
         });
+        addButton.setDisableOnClick(true);
 
         var cancelButton = new Button("Cancel", e -> dialog.close());
         dialog.getFooter().add(cancelButton, addButton);
@@ -954,6 +987,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
 
         var saveButton = new Button("Save", e -> {
             if (!StringUtils.hasText(nameField.getValue()) || creditsField.getValue() == null) {
+                e.getSource().setEnabled(true);
                 return;
             }
             try {
@@ -964,9 +998,11 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 dialog.close();
                 refreshProductsGrid();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                e.getSource().setEnabled(true);
             }
         });
+        saveButton.setDisableOnClick(true);
 
         var cancelButton = new Button("Cancel", e -> dialog.close());
         dialog.getFooter().add(cancelButton, saveButton);
@@ -987,9 +1023,11 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 dialog.close();
                 refreshProductsGrid();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                e.getSource().setEnabled(true);
             }
         });
+        confirmButton.setDisableOnClick(true);
 
         var cancelButton = new Button("Cancel", e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
@@ -1122,9 +1160,11 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 dialog.close();
                 refreshOrdersGrid();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                e.getSource().setEnabled(true);
             }
         });
+        saveButton.setDisableOnClick(true);
 
         var cancelButton = new Button("Cancel", e -> dialog.close());
         dialog.getFooter().add(cancelButton, saveButton);

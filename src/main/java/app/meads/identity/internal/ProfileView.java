@@ -92,6 +92,7 @@ public class ProfileView extends VerticalLayout {
             if (name == null || name.isBlank()) {
                 nameField.setInvalid(true);
                 nameField.setErrorMessage(getTranslation("profile.name-required"));
+                e.getSource().setEnabled(true);
                 return;
             }
             try {
@@ -99,14 +100,17 @@ public class ProfileView extends VerticalLayout {
                 userService.updateProfile(user.getId(), name.trim(),
                         meadery != null && !meadery.isBlank() ? meadery.trim() : null,
                         countryCombo.getValue(), languageSelect.getValue());
+                e.getSource().setEnabled(true);
                 Notification.show(getTranslation("profile.updated"))
                         .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 // Full browser navigation so MainLayout reconstructs with new locale
                 getUI().ifPresent(ui -> ui.getPage().setLocation("/"));
             } catch (BusinessRuleException ex) {
                 Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+                e.getSource().setEnabled(true);
             }
         });
+        saveButton.setDisableOnClick(true);
         saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
         var cancelButton = new Button(getTranslation("profile.cancel"), e -> navigateBack());

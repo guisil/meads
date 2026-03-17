@@ -174,9 +174,11 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
                         var notification = Notification.show("Logo removed");
                         notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                     } catch (BusinessRuleException ex) {
-                        Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+                        e.getSource().setEnabled(true);
+                        Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
                     }
                 });
+                removeLogoButton.setDisableOnClick(true);
                 logoSection.add(removeLogoButton);
             }
         }
@@ -185,21 +187,25 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
             if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
                 nameField.setErrorMessage("Name is required");
+                e.getSource().setEnabled(true);
                 return;
             }
             if (!StringUtils.hasText(shortNameField.getValue())) {
                 shortNameField.setInvalid(true);
                 shortNameField.setErrorMessage("Short name is required");
+                e.getSource().setEnabled(true);
                 return;
             }
             if (startDatePicker.getValue() == null) {
                 startDatePicker.setInvalid(true);
                 startDatePicker.setErrorMessage("Start date is required");
+                e.getSource().setEnabled(true);
                 return;
             }
             if (endDatePicker.getValue() == null) {
                 endDatePicker.setInvalid(true);
                 endDatePicker.setErrorMessage("End date is required");
+                e.getSource().setEnabled(true);
                 return;
             }
 
@@ -229,9 +235,11 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+                e.getSource().setEnabled(true);
+                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
             }
         });
+        submitButton.setDisableOnClick(true);
 
         var cancelButton = new Button("Cancel", e -> dialog.close());
 
@@ -255,10 +263,12 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+                e.getSource().setEnabled(true);
+                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
                 dialog.close();
             }
         });
+        confirmButton.setDisableOnClick(true);
 
         var cancelButton = new Button("Cancel", e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);

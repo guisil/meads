@@ -382,10 +382,12 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                e.getSource().setEnabled(true);
                 dialog.close();
             }
         });
+        confirmButton.setDisableOnClick(true);
 
         var cancelButton = new Button("Cancel", e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
@@ -448,12 +450,14 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
             if (selectedRoles.isEmpty()) {
                 Notification.show("At least one role must be selected");
+                e.getSource().setEnabled(true);
                 return;
             }
 
             var allowedCombination = Set.of(CompetitionRole.JUDGE, CompetitionRole.ENTRANT);
             if (selectedRoles.size() > 1 && !allowedCombination.containsAll(selectedRoles)) {
                 Notification.show("Only Judge and Entrant roles can be combined");
+                e.getSource().setEnabled(true);
                 return;
             }
 
@@ -486,9 +490,11 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                e.getSource().setEnabled(true);
             }
         });
+        saveButton.setDisableOnClick(true);
 
         var cancelButton = new Button("Cancel", e -> dialog.close());
         dialog.getFooter().add(cancelButton, saveButton);
@@ -522,6 +528,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
             if (!StringUtils.hasText(emailField.getValue())) {
                 emailField.setInvalid(true);
                 emailField.setErrorMessage("Email is required");
+                e.getSource().setEnabled(true);
                 return;
             }
             try {
@@ -540,9 +547,11 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 generatePasswordSetupLinkIfNeeded(email, role);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                e.getSource().setEnabled(true);
             }
         });
+        addButton.setDisableOnClick(true);
 
         var cancelButton = new Button("Cancel", e -> dialog.close());
 
@@ -684,9 +693,11 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                     var notification = Notification.show("Logo removed");
                     notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 } catch (BusinessRuleException ex) {
-                    Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+                    Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                    e.getSource().setEnabled(true);
                 }
             });
+            removeLogoButton.setDisableOnClick(true);
             logoSection.add(removeLogoButton);
         }
 
@@ -694,25 +705,30 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
             if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
                 nameField.setErrorMessage("Name is required");
+                e.getSource().setEnabled(true);
                 return;
             }
             if (!StringUtils.hasText(shortNameField.getValue())) {
                 shortNameField.setInvalid(true);
                 shortNameField.setErrorMessage("Short name is required");
+                e.getSource().setEnabled(true);
                 return;
             }
             if (startDatePicker.getValue() == null) {
                 startDatePicker.setInvalid(true);
                 startDatePicker.setErrorMessage("Start date is required");
+                e.getSource().setEnabled(true);
                 return;
             }
             if (endDatePicker.getValue() == null) {
                 endDatePicker.setInvalid(true);
                 endDatePicker.setErrorMessage("End date is required");
+                e.getSource().setEnabled(true);
                 return;
             }
             if (StringUtils.hasText(contactEmailField.getValue()) && contactEmailField.isInvalid()) {
                 contactEmailField.setErrorMessage("Please enter a valid email address");
+                e.getSource().setEnabled(true);
                 return;
             }
             try {
@@ -743,10 +759,13 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 refreshHeader();
                 var notification = Notification.show("Competition updated successfully");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                e.getSource().setEnabled(true);
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                e.getSource().setEnabled(true);
             }
         });
+        saveButton.setDisableOnClick(true);
 
         tab.add(nameField, shortNameField, startDatePicker, endDatePicker, locationField, contactEmailField, shippingAddressField, phoneNumberField, websiteField, logoLabel, logoSection, saveButton);
         return tab;
@@ -802,16 +821,19 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
             if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
                 nameField.setErrorMessage("Name is required");
+                e.getSource().setEnabled(true);
                 return;
             }
             if (!StringUtils.hasText(shortNameField.getValue())) {
                 shortNameField.setInvalid(true);
                 shortNameField.setErrorMessage("Short name is required");
+                e.getSource().setEnabled(true);
                 return;
             }
             if (deadlinePicker.getValue() == null) {
                 deadlinePicker.setInvalid(true);
                 deadlinePicker.setErrorMessage("Registration deadline is required");
+                e.getSource().setEnabled(true);
                 return;
             }
             try {
@@ -838,9 +860,11 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                e.getSource().setEnabled(true);
             }
         });
+        saveButton.setDisableOnClick(true);
 
         var cancelButton = new Button("Cancel", e -> dialog.close());
 
@@ -869,10 +893,12 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                e.getSource().setEnabled(true);
                 dialog.close();
             }
         });
+        confirmButton.setDisableOnClick(true);
 
         var cancelButton = new Button("Cancel", e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
@@ -895,10 +921,12 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                e.getSource().setEnabled(true);
                 dialog.close();
             }
         });
+        confirmButton.setDisableOnClick(true);
 
         var cancelButton = new Button("Cancel", e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
@@ -919,10 +947,12 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                e.getSource().setEnabled(true);
                 dialog.close();
             }
         });
+        confirmButton.setDisableOnClick(true);
 
         var cancelButton = new Button("Cancel", e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
@@ -1079,17 +1109,20 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
             if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
                 nameField.setErrorMessage("Name is required");
+                e.getSource().setEnabled(true);
                 return;
             }
             try {
                 var type = typeSelect.getValue();
                 if (type == DocumentType.PDF && pdfData[0] == null) {
                     Notification.show("Please upload a PDF file");
+                    e.getSource().setEnabled(true);
                     return;
                 }
                 if (type == DocumentType.LINK && !StringUtils.hasText(urlField.getValue())) {
                     urlField.setInvalid(true);
                     urlField.setErrorMessage("URL is required");
+                    e.getSource().setEnabled(true);
                     return;
                 }
                 competitionService.addDocument(competitionId, nameField.getValue().trim(),
@@ -1101,9 +1134,11 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                e.getSource().setEnabled(true);
             }
         });
+        saveButton.setDisableOnClick(true);
 
         var cancelButton = new Button("Cancel", e -> dialog.close());
 
@@ -1126,7 +1161,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
             competitionService.reorderDocuments(competitionId, ids, getCurrentUserId());
             grid.setItems(competitionService.getDocuments(competitionId));
         } catch (BusinessRuleException ex) {
-            Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+            Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
         }
     }
 
@@ -1143,6 +1178,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
             if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
                 nameField.setErrorMessage("Name is required");
+                e.getSource().setEnabled(true);
                 return;
             }
             try {
@@ -1153,9 +1189,11 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                e.getSource().setEnabled(true);
             }
         });
+        saveButton.setDisableOnClick(true);
 
         var cancelButton = new Button("Cancel", e -> dialog.close());
         dialog.add(nameField);
@@ -1176,10 +1214,12 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                e.getSource().setEnabled(true);
                 dialog.close();
             }
         });
+        confirmButton.setDisableOnClick(true);
 
         var cancelButton = new Button("Cancel", e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);

@@ -250,13 +250,16 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                e.getSource().setEnabled(true);
                 dialog.close();
             } catch (DataIntegrityViolationException ex) {
                 Notification.show("Cannot remove category: it is used by one or more entries");
+                e.getSource().setEnabled(true);
                 dialog.close();
             }
         });
+        confirmButton.setDisableOnClick(true);
 
         var cancelButton = new Button("Cancel", e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
@@ -283,6 +286,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
 
         var catalogAddButton = new Button("Add", e -> {
             if (catalogSelect.getValue() == null) {
+                e.getSource().setEnabled(true);
                 return;
             }
             try {
@@ -293,9 +297,11 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                e.getSource().setEnabled(true);
             }
         });
+        catalogAddButton.setDisableOnClick(true);
 
         catalogLayout.add(catalogSelect);
         dialogTabs.add("From Catalog", catalogLayout);
@@ -338,6 +344,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                     descriptionField.setInvalid(true);
                     descriptionField.setErrorMessage("Description is required");
                 }
+                e.getSource().setEnabled(true);
                 return;
             }
             try {
@@ -353,9 +360,11 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                e.getSource().setEnabled(true);
             }
         });
+        customAddButton.setDisableOnClick(true);
 
         customLayout.add(codeField, nameField, descriptionField, parentSelect);
         dialogTabs.add("Custom", customLayout);
@@ -457,11 +466,13 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
             if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
                 nameField.setErrorMessage("Name is required");
+                e.getSource().setEnabled(true);
                 return;
             }
             if (!StringUtils.hasText(shortNameField.getValue())) {
                 shortNameField.setInvalid(true);
                 shortNameField.setErrorMessage("Short name is required");
+                e.getSource().setEnabled(true);
                 return;
             }
             try {
@@ -491,12 +502,16 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                 refreshBreadcrumbAndHeader();
                 var notification = Notification.show("Settings saved successfully");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                e.getSource().setEnabled(true);
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
-            } catch (IllegalArgumentException ex) {
-                Notification.show(ex.getMessage());
+                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                e.getSource().setEnabled(true);
+            } catch (IllegalStateException ex) {
+                Notification.show("Settings cannot be changed in the current status");
+                e.getSource().setEnabled(true);
             }
         });
+        saveButton.setDisableOnClick(true);
 
         tab.add(nameField, shortNameField, entryPrefixField, scoringSelect,
                 maxPerSubcategoryField, maxPerMainCategoryField, maxTotalField,
@@ -522,10 +537,12 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                                 + "/divisions/" + division.getShortName()));
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                e.getSource().setEnabled(true);
                 dialog.close();
             }
         });
+        confirmButton.setDisableOnClick(true);
 
         var cancelButton = new Button("Cancel", e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
@@ -549,10 +566,12 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                                 + "/divisions/" + division.getShortName()));
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                e.getSource().setEnabled(true);
                 dialog.close();
             }
         });
+        confirmButton.setDisableOnClick(true);
 
         var cancelButton = new Button("Cancel", e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);

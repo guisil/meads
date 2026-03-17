@@ -75,6 +75,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
     private List<Entry> entries;
 
     private boolean meaderyNameMissing;
+    private String meaderyName;
     private java.util.Locale userLocale;
 
     // Filter state
@@ -133,6 +134,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         // Check meadery name requirement
         meaderyNameMissing = division.isMeaderyNameRequired()
                 && (user.getMeaderyName() == null || user.getMeaderyName().isBlank());
+        meaderyName = user.getMeaderyName();
 
         // Pre-load categories for the division
         categoriesById = competitionService.findDivisionCategories(divisionId).stream()
@@ -141,8 +143,12 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         removeAll();
         add(createBreadcrumb());
         add(createHeader());
-        if (meaderyNameMissing) {
-            add(createMeaderyWarning());
+        if (division.isMeaderyNameRequired()) {
+            if (meaderyNameMissing) {
+                add(createMeaderyWarning());
+            } else {
+                add(createMeaderyConfirmation());
+            }
         }
         add(createDocumentsSection());
         add(createCreditInfo());
@@ -243,6 +249,18 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         warning.add(userIcon);
         warning.add(new Span(getTranslation("entries.meadery-warning.part2")));
         return warning;
+    }
+
+    private Div createMeaderyConfirmation() {
+        var confirmation = new Div();
+        confirmation.getStyle()
+                .set("background-color", "var(--lumo-success-color-10pct)")
+                .set("color", "var(--lumo-success-text-color)")
+                .set("padding", "var(--lumo-space-m)")
+                .set("border-radius", "var(--lumo-border-radius-m)")
+                .set("margin-bottom", "var(--lumo-space-m)");
+        confirmation.add(new Span(getTranslation("entries.meadery-confirmed", meaderyName)));
+        return confirmation;
     }
 
     private HorizontalLayout createCreditInfo() {
@@ -598,7 +616,6 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         dialog.add(getTranslation("entries.submit.confirm", formatEntryId(entry), entry.getMeadName()));
 
         var confirmButton = new Button(getTranslation("entries.submit.button"), e -> {
-            e.getSource().setEnabled(false);
             try {
                 entryService.submitEntry(entry.getId(), currentUserId);
                 refreshPage();
@@ -611,6 +628,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                 dialog.close();
             }
         });
+        confirmButton.setDisableOnClick(true);
 
         var cancelButton = new Button(getTranslation("entries.submit.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
@@ -753,7 +771,6 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         dialog.add(layout);
 
         var saveButton = new Button(getTranslation("entries.dialog.save"), e -> {
-            e.getSource().setEnabled(false);
             if (!StringUtils.hasText(meadName.getValue())) {
                 meadName.setInvalid(true);
                 meadName.setErrorMessage(getTranslation("entries.validation.mead-name-required"));
@@ -835,6 +852,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                 e.getSource().setEnabled(true);
             }
         });
+        saveButton.setDisableOnClick(true);
 
         var cancelButton = new Button(getTranslation("entries.dialog.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, saveButton);
@@ -851,7 +869,6 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         dialog.add(getTranslation("entries.submit-all.confirm", draftCount));
 
         var confirmButton = new Button(getTranslation("entries.submit-all.button"), e -> {
-            e.getSource().setEnabled(false);
             try {
                 entryService.submitAllDrafts(divisionId, currentUserId);
                 refreshPage();
@@ -864,6 +881,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                 dialog.close();
             }
         });
+        confirmButton.setDisableOnClick(true);
 
         var cancelButton = new Button(getTranslation("entries.submit-all.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);

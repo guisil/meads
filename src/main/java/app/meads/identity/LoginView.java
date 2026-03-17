@@ -33,6 +33,7 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
     private final Element passwordInput;
     private final EmailService emailService;
     private final UserService userService;
+    private final Button loginButton;
 
     public LoginView(EmailService emailService, UserService userService) {
         this.emailService = emailService;
@@ -59,7 +60,8 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
         passwordField.setWidthFull();
         passwordField.setMaxLength(128);
         passwordField.setValueChangeMode(ValueChangeMode.EAGER);
-        var loginButton = new Button("Login");
+        loginButton = new Button("Login");
+        loginButton.setDisableOnClick(true);
         loginButton.addClickListener(e -> loginWithCredentials());
         var passwordRow = new HorizontalLayout(passwordField, loginButton);
         passwordRow.setWidthFull();
@@ -136,11 +138,13 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
         if (!StringUtils.hasText(email) || emailField.isInvalid()) {
             emailField.setInvalid(true);
             emailField.setErrorMessage("Please enter a valid email address");
+            loginButton.setEnabled(true);
             return;
         }
         if (!StringUtils.hasText(password)) {
             passwordField.setInvalid(true);
             passwordField.setErrorMessage("Code or password is required");
+            loginButton.setEnabled(true);
             return;
         }
         usernameInput.setProperty("value", email);

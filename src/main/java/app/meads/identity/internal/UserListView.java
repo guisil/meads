@@ -153,7 +153,7 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
             try {
                 removeUser(user);
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
             }
         }
     }
@@ -167,12 +167,14 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
         content.add("This action cannot be undone.");
 
         Button confirmButton = new Button("Confirm");
+        confirmButton.setDisableOnClick(true);
         confirmButton.addClickListener(e -> {
             try {
                 removeUser(user);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                e.getSource().setEnabled(true);
                 dialog.close();
             }
         });
@@ -275,20 +277,24 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
 
         var statusSelectRef = statusSelect;
         Button saveButton = new Button("Save");
+        saveButton.setDisableOnClick(true);
         saveButton.addClickListener(e -> {
             if (isCreate && !StringUtils.hasText(emailField.getValue())) {
                 emailField.setInvalid(true);
                 emailField.setErrorMessage("Email is required");
+                e.getSource().setEnabled(true);
                 return;
             }
             if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
                 nameField.setErrorMessage("Name is required");
+                e.getSource().setEnabled(true);
                 return;
             }
             if (isCreate && roleSelect.isEmpty()) {
                 roleSelect.setInvalid(true);
                 roleSelect.setErrorMessage("Role is required");
+                e.getSource().setEnabled(true);
                 return;
             }
 
@@ -326,18 +332,21 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
             } catch (BusinessRuleException ex) {
                 if (isCreate) {
                     emailField.setInvalid(true);
-                    emailField.setErrorMessage(getTranslation(ex.getMessageKey(), ex.getParams()));
+                    emailField.setErrorMessage(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
                 } else {
                     nameField.setInvalid(true);
                     nameField.setErrorMessage("Failed to save user. Please try again.");
                 }
+                e.getSource().setEnabled(true);
             } catch (ConstraintViolationException ex) {
                 if (isCreate) {
                     emailField.setInvalid(true);
                     emailField.setErrorMessage("Please enter a valid email address");
                 }
+                e.getSource().setEnabled(true);
             } catch (Exception ex) {
                 Notification.show("Failed to save user. Please try again.");
+                e.getSource().setEnabled(true);
             }
         });
 
