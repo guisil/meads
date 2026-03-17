@@ -12,7 +12,7 @@
 
 	<groupId>app.meads</groupId>
 	<artifactId>meads</artifactId>
-	<version>0.2.3</version>
+	<version>0.2.4-SNAPSHOT</version>
 	<name>meads</name>
 	<description>MEADS (Mead Evaluation and Awards Data System)</description>
 
