@@ -14,6 +14,9 @@ public final class LanguageMapping {
             "pl", Set.of("PL")
     );
 
+    /** Languages currently active in the application (must match MeadsI18NProvider). */
+    private static final Set<String> SUPPORTED_LANGUAGES = Set.of("en", "pt");
+
     private LanguageMapping() {}
 
     public static Locale languageForCountry(String countryCode) {
@@ -21,7 +24,8 @@ public final class LanguageMapping {
             return Locale.ENGLISH;
         }
         for (var entry : LANGUAGE_COUNTRIES.entrySet()) {
-            if (entry.getValue().contains(countryCode)) {
+            if (entry.getValue().contains(countryCode)
+                    && SUPPORTED_LANGUAGES.contains(entry.getKey())) {
                 return Locale.of(entry.getKey());
             }
         }
@@ -29,7 +33,8 @@ public final class LanguageMapping {
     }
 
     public static Locale resolveLocale(String preferredLanguage, String countryCode) {
-        if (preferredLanguage != null) {
+        if (preferredLanguage != null
+                && SUPPORTED_LANGUAGES.contains(preferredLanguage)) {
             return Locale.of(preferredLanguage);
         }
         return languageForCountry(countryCode);
