@@ -16,6 +16,9 @@ public class MeadsI18NProvider implements I18NProvider {
 
     private static final List<Locale> PROVIDED_LOCALES = List.of(
             Locale.ENGLISH,
+            Locale.of("es"),
+            Locale.ITALIAN,
+            Locale.of("pl"),
             Locale.of("pt")
     );
 

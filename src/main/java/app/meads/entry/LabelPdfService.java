@@ -10,11 +10,11 @@ import com.google.zxing.qrcode.QRCodeWriter;
 import com.lowagie.text.Document;
 import com.lowagie.text.Element;
 import com.lowagie.text.Font;
-import com.lowagie.text.FontFactory;
 import com.lowagie.text.Image;
 import com.lowagie.text.PageSize;
 import com.lowagie.text.Paragraph;
 import com.lowagie.text.Phrase;
+import com.lowagie.text.pdf.BaseFont;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
@@ -35,17 +35,31 @@ import java.util.function.Function;
 @Slf4j
 public class LabelPdfService {
 
-    private static final Font FONT_NORMAL = FontFactory.getFont(FontFactory.HELVETICA, 8);
-    private static final Font FONT_BOLD = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8);
-    private static final Font FONT_HEADER = FontFactory.getFont(FontFactory.HELVETICA, 9);
-    private static final Font FONT_COMPETITION = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10);
-    private static final Font FONT_DIVISION = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14);
-    private static final Font FONT_FIELD_VALUE = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8);
-    private static final Font FONT_CHAR_LABEL = FontFactory.getFont(FontFactory.HELVETICA, 7);
-    private static final Font FONT_CHAR_VALUE = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 7);
-    private static final Font FONT_SMALL = FontFactory.getFont(FontFactory.HELVETICA, 7);
-    private static final Font FONT_SMALL_BOLD = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 7);
-    private static final Font FONT_DISCLAIMER = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8);
+    private static final BaseFont BASE_REGULAR;
+    private static final BaseFont BASE_BOLD;
+
+    static {
+        try {
+            BASE_REGULAR = BaseFont.createFont("fonts/LiberationSans-Regular.ttf",
+                    BaseFont.IDENTITY_H, BaseFont.EMBEDDED);
+            BASE_BOLD = BaseFont.createFont("fonts/LiberationSans-Bold.ttf",
+                    BaseFont.IDENTITY_H, BaseFont.EMBEDDED);
+        } catch (Exception e) {
+            throw new ExceptionInInitializerError("Failed to load Liberation Sans fonts: " + e.getMessage());
+        }
+    }
+
+    private static final Font FONT_NORMAL = new Font(BASE_REGULAR, 8);
+    private static final Font FONT_BOLD = new Font(BASE_BOLD, 8);
+    private static final Font FONT_HEADER = new Font(BASE_REGULAR, 9);
+    private static final Font FONT_COMPETITION = new Font(BASE_BOLD, 10);
+    private static final Font FONT_DIVISION = new Font(BASE_BOLD, 14);
+    private static final Font FONT_FIELD_VALUE = new Font(BASE_BOLD, 8);
+    private static final Font FONT_CHAR_LABEL = new Font(BASE_REGULAR, 7);
+    private static final Font FONT_CHAR_VALUE = new Font(BASE_BOLD, 7);
+    private static final Font FONT_SMALL = new Font(BASE_REGULAR, 7);
+    private static final Font FONT_SMALL_BOLD = new Font(BASE_BOLD, 7);
+    private static final Font FONT_DISCLAIMER = new Font(BASE_BOLD, 8);
     private static final int QR_CODE_SIZE = 130;
     private static final float TWO_LINE_HEIGHT = 21f; // 2 lines at 8pt font with 10pt leading
 

@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `main`
-**Tests:** 585 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-03-16
+**Tests:** 586 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-03-17
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -255,15 +255,7 @@ already in place. Biggest files: CompetitionDetailView (~82 strings), DivisionEn
 (~90 strings). Also include LoginView and SetPasswordView — entrants with passwords use
 these views too, not just admins.
 
-### Priority 4: Re-add stashed languages (ES/IT/PL)
-Draft translations for Spanish, Italian, and Polish are in `docs/i18n-drafts/`. All need
-native-speaker review before activating. Polish requires embedding a Unicode TTF font
-(e.g., Liberation Sans or Noto Sans) in LabelPdfService for PDF labels — Helvetica only
-supports Latin-1, and Polish characters (ł, ż, ą, ę, ś, ć, ń) are outside that range.
-Portuguese and Spanish/Italian work fine with Helvetica since their characters are within
-Latin-1.
-
-### Priority 5: Post-registration actions audit
+### Priority 4: Post-registration actions audit
 Review what actions should be allowed/blocked after a division moves past REGISTRATION_OPEN.
 Currently some actions remain available that may need restricting or scoping. Design pass
 needed to decide per-status rules:
@@ -273,28 +265,28 @@ needed to decide per-status rules:
 - **Entrant edit entries** — currently blocked after submit. Should view-only access persist?
 - **Add/remove participants** — should participant management be locked at some point?
 - **Product mappings** — should these be locked after registration?
-Do this audit after the i18n work (priorities 3–4) since translated views may surface
+Do this audit after the admin i18n work (priority 3) since translated views may surface
 additional UX considerations.
 
-### Priority 6: MFA for system admins
+### Priority 5: MFA for system admins
 Evaluate and implement multi-factor authentication for SYSTEM_ADMIN accounts.
 Password-only login for privileged accounts is a security risk post-deployment.
 
-### Priority 7: Auto-close + deadline reminders (deferred)
+### Priority 6: Auto-close + deadline reminders (deferred)
 - **Auto-close** — automatically advance division from REGISTRATION_OPEN → REGISTRATION_CLOSED
   when registration deadline passes (scheduled task)
 - **Entrant deadline reminder** — notify entrants who have DRAFT entries when the registration
   deadline is approaching (e.g., 7 days, 3 days, 1 day before deadline)
 - Other potential: entry received confirmation (when admin marks entry as RECEIVED), results published notification
 
-### Priority 8: Judging module
+### Priority 7: Judging module
 Design and implementation. Reference: `docs/reference/chip-competition-rules.md`.
 
-### Priority 9: Awards module
+### Priority 8: Awards module
 
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md`.
 
-### Priority 10: Full category constraint system (low priority — future competition)
+### Priority 9: Full category constraint system (low priority — future competition)
 Full field locking/validation based on category selection. Design doc: `docs/plans/2026-03-11-category-hints-design.md` (appendix).
 Includes: sweetness locking (M1A→Dry, M1B→Medium, M1C→Sweet), ingredient restrictions (M1/M4E),
 strength locking (M4S→Hydromel), ABV caps (M4S→7.5%), ABV→Strength derivation (universal),
@@ -302,7 +294,7 @@ carbonation locking (custom categories), and admin-configurable constraints for 
 Requires: DB migration, admin UI for constraint config, cross-module data flow, server-side validation.
 
 ### Completed priorities
-- **Internationalization (i18n)** — Implementation completed 2026-03-16, pending walkthrough before release. EN + PT active. ES/IT/PL draft translations saved in `docs/i18n-drafts/` (need review + Unicode font for Polish PDF labels before re-adding). Infrastructure: Vaadin I18NProvider + Spring MessageSource, BusinessRuleException across all services, entrant-facing view string extraction, email i18n with Locale, PDF label instructions i18n, MJP category translations, locale-aware date/timezone formatting, language switcher in navbar, User.preferredLanguage (V16 migration). 585 tests. Design: `docs/plans/2026-03-10-i18n-design.md`.
+- **Internationalization (i18n)** — Implementation completed 2026-03-16. 5 languages active: EN, ES, IT, PL, PT. Infrastructure: Vaadin I18NProvider + Spring MessageSource, BusinessRuleException across all services, entrant-facing view string extraction, email i18n with Locale, PDF label instructions i18n, MJP category translations, locale-aware date/timezone formatting, language switcher in navbar, User.preferredLanguage (V16 migration). PDF labels use embedded Liberation Sans font (metrically identical to Helvetica, full Unicode support including Polish diacritics). 586 tests. Design: `docs/plans/2026-03-10-i18n-design.md`.
 - **Post-deployment walkthrough** — Completed 2026-03-16. `docs/walkthrough/post-deployment-test.md` retained as reference for re-running after major changes.
 - **PR #4 code review & merge** — Merged `competition-module` into `main` (2026-03-14). Code review found 5 bugs (missing auth check, missing access code on role promotion, HMAC timing attack, hasCreditConflict inconsistency, entryPrefix DRAFT guard) and 4 convention fixes (ProfileView auth context, @Setter removal, setter→domain method renames, Category constructor). Deferred: test naming (313 methods) and cross-module test imports.
 - **Manual walkthrough (Sections 1–14)** — All sections completed. Security testing (Section 14) produced 7 fixes: SetPasswordView eager token validation, webhook missing HMAC header (401), webhook HTTP method tampering (405), webhook email length validation, field length limits on email/password fields, dev password logging cleanup, and UX improvements (contact email on My Entries, mead name tooltips, settings field widths).

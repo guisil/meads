@@ -15,7 +15,7 @@ public final class LanguageMapping {
     );
 
     /** Languages currently active in the application (must match MeadsI18NProvider). */
-    private static final Set<String> SUPPORTED_LANGUAGES = Set.of("en", "pt");
+    private static final Set<String> SUPPORTED_LANGUAGES = Set.of("en", "es", "it", "pl", "pt");
 
     private LanguageMapping() {}
 
