@@ -12,11 +12,10 @@ import app.meads.identity.Role;
 import app.meads.identity.User;
 import app.meads.identity.UserService;
 import app.meads.identity.UserStatus;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
@@ -41,7 +40,6 @@ import static org.mockito.Mockito.never;
 @ExtendWith(MockitoExtension.class)
 class CompetitionServiceTest {
 
-    @InjectMocks
     CompetitionService competitionService;
 
     @Mock
@@ -71,8 +69,19 @@ class CompetitionServiceTest {
     @Mock
     ApplicationEventPublisher eventPublisher;
 
-    @Spy
     List<DivisionRevertGuard> revertGuards = new ArrayList<>();
+
+    List<ParticipantRemovalCleanup> removalCleanups = new ArrayList<>();
+
+    @BeforeEach
+    void setUp() {
+        competitionService = new CompetitionService(
+                competitionRepository, divisionRepository,
+                participantRepository, participantRoleRepository,
+                divisionCategoryRepository, categoryRepository,
+                competitionDocumentRepository, userService,
+                eventPublisher, revertGuards, removalCleanups);
+    }
 
     private Competition createCompetition() {
         return new Competition("Test Competition", "test-competition",
@@ -1044,6 +1053,30 @@ class CompetitionServiceTest {
         competitionService.removeParticipant(
                 competition.getId(), participant.getId(), admin.getId());
 
+        then(participantRoleRepository).should().deleteAll(List.of(pr));
+        then(participantRepository).should().delete(participant);
+    }
+
+    @Test
+    void shouldCallRemovalCleanupsBeforeRemovingParticipant() {
+        var admin = createAdmin();
+        var competition = createCompetition();
+        var userId = UUID.randomUUID();
+        var participant = new Participant(competition.getId(), userId);
+        var pr = new ParticipantRole(participant.getId(), CompetitionRole.ENTRANT);
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(participantRepository.findById(participant.getId()))
+                .willReturn(Optional.of(participant));
+        given(participantRoleRepository.findByParticipantId(participant.getId()))
+                .willReturn(List.of(pr));
+
+        var cleanup = mock(ParticipantRemovalCleanup.class);
+        removalCleanups.add(cleanup);
+
+        competitionService.removeParticipant(
+                competition.getId(), participant.getId(), admin.getId());
+
+        then(cleanup).should().cleanupForParticipant(competition.getId(), userId);
         then(participantRoleRepository).should().deleteAll(List.of(pr));
         then(participantRepository).should().delete(participant);
     }

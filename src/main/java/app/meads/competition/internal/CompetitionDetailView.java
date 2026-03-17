@@ -22,6 +22,7 @@ import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.html.Nav;
+import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
@@ -372,6 +373,8 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         var dialog = new Dialog();
         dialog.setHeaderTitle("Remove Participant");
         dialog.add("Remove " + displayName + " (" + rolesDisplay + ") from this competition?");
+        dialog.add(new Paragraph("This will also remove all their entries and credits in this competition. "
+                + "This action cannot be undone."));
 
         var confirmButton = new Button("Remove", e -> {
             try {

@@ -33,4 +33,9 @@ public interface EntryRepository extends JpaRepository<Entry, UUID> {
 
     @Query("SELECT COALESCE(MAX(e.entryNumber), 0) FROM Entry e WHERE e.divisionId = :divisionId")
     int findMaxEntryNumberByDivisionId(@Param("divisionId") UUID divisionId);
+
+    @Query("SELECT e FROM Entry e WHERE e.userId = :userId AND e.divisionId IN "
+            + "(SELECT d.id FROM Division d WHERE d.competitionId = :competitionId)")
+    List<Entry> findByUserIdAndCompetitionId(@Param("userId") UUID userId,
+                                             @Param("competitionId") UUID competitionId);
 }

@@ -46,6 +46,7 @@ public class CompetitionService {
     private final ApplicationEventPublisher eventPublisher;
     private final CompetitionDocumentRepository competitionDocumentRepository;
     private final List<DivisionRevertGuard> revertGuards;
+    private final List<ParticipantRemovalCleanup> removalCleanups;
 
     CompetitionService(CompetitionRepository competitionRepository,
                        DivisionRepository divisionRepository,
@@ -56,7 +57,8 @@ public class CompetitionService {
                        CompetitionDocumentRepository competitionDocumentRepository,
                        UserService userService,
                        ApplicationEventPublisher eventPublisher,
-                       List<DivisionRevertGuard> revertGuards) {
+                       List<DivisionRevertGuard> revertGuards,
+                       List<ParticipantRemovalCleanup> removalCleanups) {
         this.competitionRepository = competitionRepository;
         this.divisionRepository = divisionRepository;
         this.participantRepository = participantRepository;
@@ -67,6 +69,7 @@ public class CompetitionService {
         this.userService = userService;
         this.eventPublisher = eventPublisher;
         this.revertGuards = revertGuards;
+        this.removalCleanups = removalCleanups;
     }
 
     // --- Competition methods (were MeadEvent methods) ---
@@ -566,6 +569,7 @@ public class CompetitionService {
         if (!participant.getCompetitionId().equals(competitionId)) {
             throw new BusinessRuleException("error.participant.wrong-competition");
         }
+        removalCleanups.forEach(c -> c.cleanupForParticipant(competitionId, participant.getUserId()));
         var roles = participantRoleRepository.findByParticipantId(participantId);
         participantRoleRepository.deleteAll(roles);
         participantRepository.delete(participant);
