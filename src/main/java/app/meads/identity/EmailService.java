@@ -10,7 +10,7 @@ public interface EmailService {
 
     void sendCredentialsReminder(String recipientEmail, Locale locale);
 
-    void sendPasswordSetup(String recipientEmail, String competitionName, String contactEmail);
+    void sendPasswordSetup(String recipientEmail, String competitionName, String contactEmail, Locale locale);
 
     void sendOrderReviewAlert(String recipientEmail, String competitionName,
                               String jumpsellerOrderId, String customerName,

@@ -1,6 +1,7 @@
 package app.meads.competition.internal;
 
 import app.meads.BusinessRuleException;
+import app.meads.LanguageMapping;
 import app.meads.MainLayout;
 import app.meads.competition.*;
 import app.meads.identity.EmailService;
@@ -974,7 +975,8 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
     }
 
     private void sendMagicLink(User user) {
-        emailService.sendMagicLink(user.getEmail(), java.util.Locale.ENGLISH);
+        var locale = LanguageMapping.resolveLocale(user.getPreferredLanguage(), user.getCountry());
+        emailService.sendMagicLink(user.getEmail(), locale);
         var notification = Notification.show("Login link sent to " + user.getEmail());
         notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
     }
@@ -984,8 +986,9 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
             try {
                 var user = userService.findByEmail(email);
                 if (!userService.hasPassword(user.getId())) {
+                    var locale = LanguageMapping.resolveLocale(user.getPreferredLanguage(), user.getCountry());
                     emailService.sendPasswordSetup(email, competition.getName(),
-                            competition.getContactEmail());
+                            competition.getContactEmail(), locale);
                     Notification.show("Password setup email sent to " + email);
                 }
             } catch (BusinessRuleException ignored) {

@@ -1,6 +1,7 @@
 package app.meads.identity;
 
 import app.meads.BusinessRuleException;
+import app.meads.LanguageMapping;
 import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.Shortcuts;
 import com.vaadin.flow.component.button.Button;
@@ -105,10 +106,11 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
         }
         try {
             var user = userService.findByEmail(emailValue);
+            var locale = LanguageMapping.resolveLocale(user.getPreferredLanguage(), user.getCountry());
             if (user.getPasswordHash() != null) {
-                emailService.sendCredentialsReminder(emailValue, java.util.Locale.ENGLISH);
+                emailService.sendCredentialsReminder(emailValue, locale);
             } else {
-                emailService.sendMagicLink(emailValue, java.util.Locale.ENGLISH);
+                emailService.sendMagicLink(emailValue, locale);
             }
         } catch (BusinessRuleException ex) {
             log.info("Magic link requested for non-existent email: {}", emailValue);
@@ -124,8 +126,9 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
             return;
         }
         try {
-            userService.findByEmail(emailValue);
-            emailService.sendPasswordReset(emailValue, java.util.Locale.ENGLISH);
+            var user = userService.findByEmail(emailValue);
+            var locale = LanguageMapping.resolveLocale(user.getPreferredLanguage(), user.getCountry());
+            emailService.sendPasswordReset(emailValue, locale);
         } catch (BusinessRuleException ex) {
             log.info("Password reset requested for non-existent email: {}", emailValue);
         }

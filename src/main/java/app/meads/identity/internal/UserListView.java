@@ -1,6 +1,7 @@
 package app.meads.identity.internal;
 
 import app.meads.BusinessRuleException;
+import app.meads.LanguageMapping;
 import app.meads.MainLayout;
 import app.meads.identity.EmailService;
 import app.meads.identity.Role;
@@ -198,13 +199,15 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
     }
 
     public void sendMagicLink(User user) {
-        emailService.sendMagicLink(user.getEmail(), java.util.Locale.ENGLISH);
+        var locale = LanguageMapping.resolveLocale(user.getPreferredLanguage(), user.getCountry());
+        emailService.sendMagicLink(user.getEmail(), locale);
         var notification = Notification.show("Login link sent successfully");
         notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
     }
 
     public void sendPasswordResetLink(User user) {
-        emailService.sendPasswordReset(user.getEmail(), java.util.Locale.ENGLISH);
+        var locale = LanguageMapping.resolveLocale(user.getPreferredLanguage(), user.getCountry());
+        emailService.sendPasswordReset(user.getEmail(), locale);
         var notification = Notification.show("Password reset link sent successfully");
         notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
     }
@@ -367,7 +370,8 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
 
     private void generatePasswordSetupLinkIfNeeded(User user) {
         if (user.getRole() == Role.SYSTEM_ADMIN && !userService.hasPassword(user.getId())) {
-            emailService.sendPasswordReset(user.getEmail(), java.util.Locale.ENGLISH);
+            var locale = LanguageMapping.resolveLocale(user.getPreferredLanguage(), user.getCountry());
+            emailService.sendPasswordReset(user.getEmail(), locale);
             Notification.show("Password setup link sent successfully");
         }
     }

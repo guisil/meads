@@ -99,14 +99,14 @@ class SmtpEmailServiceTest {
         given(jwtMagicLinkService.generatePasswordSetupLink(eq("admin@example.com"), any()))
                 .willReturn("http://localhost:8080/set-password?token=setup456");
 
-        emailService.sendPasswordSetup("admin@example.com", "CHIP 2026", "organizer@chip.com");
+        emailService.sendPasswordSetup("admin@example.com", "CHIP 2026", "organizer@chip.com", Locale.ENGLISH);
 
         verify(mailSender).send(any(MimeMessage.class));
         var contextCaptor = ArgumentCaptor.forClass(IContext.class);
         verify(templateEngine).process(eq("email/email-base"), contextCaptor.capture());
         var ctx = contextCaptor.getValue();
-        assertThat(ctx.getVariable("heading")).isEqualTo("Set your admin password");
-        assertThat((String) ctx.getVariable("bodyText")).contains("CHIP 2026");
+        assertThat(ctx.getVariable("heading")).isEqualTo("email.password-setup.heading");
+        assertThat((String) ctx.getVariable("bodyText")).isEqualTo("email.password-setup.body");
         assertThat(ctx.getVariable("contactEmail")).isEqualTo("organizer@chip.com");
     }
 
@@ -115,7 +115,7 @@ class SmtpEmailServiceTest {
         given(jwtMagicLinkService.generatePasswordSetupLink(eq("admin@example.com"), any()))
                 .willReturn("http://localhost:8080/set-password?token=setup456");
 
-        emailService.sendPasswordSetup("admin@example.com", "CHIP 2026", null);
+        emailService.sendPasswordSetup("admin@example.com", "CHIP 2026", null, Locale.ENGLISH);
 
         verify(mailSender).send(any(MimeMessage.class));
         var contextCaptor = ArgumentCaptor.forClass(IContext.class);

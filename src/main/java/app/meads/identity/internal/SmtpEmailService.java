@@ -115,17 +115,20 @@ class SmtpEmailService implements EmailService {
     }
 
     @Override
-    public void sendPasswordSetup(String recipientEmail, String competitionName, String contactEmail) {
+    public void sendPasswordSetup(String recipientEmail, String competitionName, String contactEmail, Locale locale) {
         var link = jwtMagicLinkService.generatePasswordSetupLink(recipientEmail, TOKEN_VALIDITY);
+        var subject = msg("email.password-setup.subject", locale);
         var ctx = new Context();
-        ctx.setVariable("subject", "Set up your MEADS admin password");
-        ctx.setVariable("heading", "Set your admin password");
-        ctx.setVariable("bodyText",
-                "You've been added as an admin for " + competitionName + ". Click below to set your password.");
-        ctx.setVariable("ctaLabel", "Set Password");
+        ctx.setVariable("subject", subject);
+        ctx.setVariable("heading", msg("email.password-setup.heading", locale));
+        ctx.setVariable("bodyText", msg("email.password-setup.body", locale, competitionName));
+        ctx.setVariable("ctaLabel", msg("email.password-setup.cta", locale));
         ctx.setVariable("ctaUrl", link);
+        ctx.setVariable("fallbackText", msg("email.fallback", locale));
+        ctx.setVariable("footerText", msg("email.footer", locale));
         ctx.setVariable("contactEmail", contactEmail);
-        sendEmail(recipientEmail, "Set up your MEADS admin password", ctx, link);
+        ctx.setVariable("competitionName", competitionName);
+        sendEmail(recipientEmail, subject, ctx, link);
     }
 
     @Override
