@@ -77,8 +77,8 @@ class MeadsI18NProviderTest {
     @Test
     void shouldResolvePortugueseParameterizedTranslation() {
         var pt = Locale.of("pt");
-        var translation = provider.getTranslation("entries.credits.remaining", pt, 3);
-        assertThat(translation).isEqualTo("3 disponíveis");
+        var translation = provider.getPlural("entries.credits.remaining", 3, pt);
+        assertThat(translation).isEqualTo("3 dispon\u00edveis");
     }
 
     @Test
@@ -159,6 +159,63 @@ class MeadsI18NProviderTest {
         // EN has no .few key — should fall back to .other
         var result = provider.getPlural("email.credit.unit", 3, Locale.ENGLISH);
         assertThat(result).isEqualTo("credits");
+    }
+
+    // --- Plural-aware view strings ---
+
+    @Test
+    void shouldResolvePluralRemainingForEnglish() {
+        assertThat(provider.getPlural("entries.credits.remaining", 1, Locale.ENGLISH))
+                .isEqualTo("1 remaining");
+        assertThat(provider.getPlural("entries.credits.remaining", 3, Locale.ENGLISH))
+                .isEqualTo("3 remaining");
+    }
+
+    @Test
+    void shouldResolvePluralRemainingForPolish() {
+        var pl = Locale.of("pl");
+        assertThat(provider.getPlural("entries.credits.remaining", 1, pl))
+                .isEqualTo("1 dost\u0119pne");
+        assertThat(provider.getPlural("entries.credits.remaining", 3, pl))
+                .isEqualTo("3 dost\u0119pne");
+        assertThat(provider.getPlural("entries.credits.remaining", 5, pl))
+                .isEqualTo("5 dost\u0119pnych");
+    }
+
+    @Test
+    void shouldResolvePluralSubmitAllConfirmForEnglish() {
+        assertThat(provider.getPlural("entries.submit-all.confirm", 1, Locale.ENGLISH))
+                .contains("1 draft entry");
+        assertThat(provider.getPlural("entries.submit-all.confirm", 3, Locale.ENGLISH))
+                .contains("3 draft entries");
+    }
+
+    @Test
+    void shouldResolvePluralSubmitAllConfirmForPolish() {
+        var pl = Locale.of("pl");
+        assertThat(provider.getPlural("entries.submit-all.confirm", 2, pl))
+                .contains("2 zg\u0142oszenia");
+        assertThat(provider.getPlural("entries.submit-all.confirm", 5, pl))
+                .contains("5 zg\u0142osze\u0144");
+    }
+
+    @Test
+    void shouldResolvePluralSubmitAllSuccessForEnglish() {
+        assertThat(provider.getPlural("entries.submit-all.success", 1, Locale.ENGLISH))
+                .isEqualTo("1 entry submitted");
+        assertThat(provider.getPlural("entries.submit-all.success", 3, Locale.ENGLISH))
+                .isEqualTo("3 entries submitted");
+    }
+
+    @Test
+    void shouldResolvePluralSubmitAllSuccessForPolish() {
+        var pl = Locale.of("pl");
+        assertThat(provider.getPlural("entries.submit-all.success", 1, pl))
+                .isEqualTo("1 zg\u0142oszenie wys\u0142ane");
+        assertThat(provider.getPlural("entries.submit-all.success", 3, pl))
+                .isEqualTo("3 zg\u0142oszenia wys\u0142ane");
+        assertThat(provider.getPlural("entries.submit-all.success", 5, pl))
+                .isEqualTo("5 zg\u0142osze\u0144 wys\u0142anych");
     }
 
     @Test

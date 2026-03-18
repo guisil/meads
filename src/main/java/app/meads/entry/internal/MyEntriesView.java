@@ -3,6 +3,7 @@ package app.meads.entry.internal;
 import app.meads.BusinessRuleException;
 import app.meads.LanguageMapping;
 import app.meads.MainLayout;
+import app.meads.PluralRules;
 import app.meads.competition.Competition;
 import app.meads.competition.CompetitionService;
 import app.meads.competition.Division;
@@ -279,7 +280,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         var creditsLabel = new Span(getTranslation("entries.credits.label"));
         creditsLabel.getStyle().set("font-weight", "600");
 
-        var remainingBadge = new Span(getTranslation("entries.credits.remaining", remaining));
+        var remainingBadge = new Span(getPlural("entries.credits.remaining", (int) remaining));
         remainingBadge.getElement().getThemeList().add("badge pill small");
         if (remaining > 0) {
             remainingBadge.getElement().getThemeList().add("success");
@@ -866,13 +867,13 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
 
         var dialog = new Dialog();
         dialog.setHeaderTitle(getTranslation("entries.submit-all.title"));
-        dialog.add(getTranslation("entries.submit-all.confirm", draftCount));
+        dialog.add(getPlural("entries.submit-all.confirm", (int) draftCount));
 
         var confirmButton = new Button(getTranslation("entries.submit-all.button"), e -> {
             try {
                 entryService.submitAllDrafts(divisionId, currentUserId);
                 refreshPage();
-                var notification = Notification.show(getTranslation("entries.submit-all.success", draftCount));
+                var notification = Notification.show(getPlural("entries.submit-all.success", (int) draftCount));
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
@@ -930,5 +931,15 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                 .map(UserDetails::getUsername)
                 .orElseThrow();
         return userService.findByEmail(email).getId();
+    }
+
+    private String getPlural(String keyPrefix, int count) {
+        var category = PluralRules.getCategory(count, getLocale());
+        var specificKey = keyPrefix + "." + category;
+        var result = getTranslation(specificKey, count);
+        if (result.equals(specificKey)) {
+            return getTranslation(keyPrefix + ".other", count);
+        }
+        return result;
     }
 }

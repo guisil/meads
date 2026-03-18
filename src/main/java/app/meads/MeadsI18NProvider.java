@@ -62,14 +62,22 @@ public class MeadsI18NProvider implements I18NProvider {
      * or {@code keyPrefix.other} depending on count and locale.
      * Falls back to {@code keyPrefix.other} when a specific category key is missing.
      */
-    public String getPlural(String keyPrefix, int count, Locale locale) {
+    public String getPlural(String keyPrefix, int count, Locale locale, Object... extraParams) {
         var category = PluralRules.getCategory(count, locale);
         var specificKey = keyPrefix + "." + category;
+        var params = mergeParams(count, extraParams);
         try {
-            return messageSource.getMessage(specificKey, null, locale);
+            return messageSource.getMessage(specificKey, params, locale);
         } catch (NoSuchMessageException e) {
             // Fall back to .other
-            return messageSource.getMessage(keyPrefix + ".other", null, locale);
+            return messageSource.getMessage(keyPrefix + ".other", params, locale);
         }
+    }
+
+    private Object[] mergeParams(int count, Object[] extraParams) {
+        var params = new Object[1 + extraParams.length];
+        params[0] = count;
+        System.arraycopy(extraParams, 0, params, 1, extraParams.length);
+        return params;
     }
 }
