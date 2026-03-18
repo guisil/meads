@@ -889,12 +889,11 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
     }
 
     private Span createDeadlineInfo() {
-        var formatter = java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm", userLocale);
-        var formatted = division.getRegistrationDeadline().format(formatter);
-        var zoneId = java.time.ZoneId.of(division.getRegistrationDeadlineTimezone());
-        var zoneName = zoneId.getDisplayName(java.time.format.TextStyle.FULL, userLocale);
-        var deadlineSpan = new Span(getTranslation("entries.deadline") + " " + formatted
-                + " " + zoneName);
+        var dateFmt = java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.SHORT).withLocale(userLocale);
+        var timeFmt = java.time.format.DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT).withLocale(userLocale);
+        var deadline = division.getRegistrationDeadline();
+        var formatted = deadline.format(dateFmt) + ", " + deadline.format(timeFmt);
+        var deadlineSpan = new Span(getTranslation("entries.deadline") + " " + formatted);
         deadlineSpan.getStyle()
                 .set("color", "var(--lumo-secondary-text-color)")
                 .set("font-size", "var(--lumo-font-size-s)");
