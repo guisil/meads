@@ -48,7 +48,7 @@ class MeadsI18NProviderTest {
     @Test
     void shouldResolveParameterizedTranslation() {
         var translation = provider.getTranslation("error.entry.limit-total", Locale.ENGLISH, 10);
-        assertThat(translation).isEqualTo("Entry limit reached for this division (max 10 total)");
+        assertThat(translation).isEqualTo("Entry limit reached (max 10 total)");
     }
 
     @Test
@@ -110,6 +110,55 @@ class MeadsI18NProviderTest {
         // A key that exists only in English should fall back
         var translation = provider.getTranslation("nonexistent.key", pt);
         assertThat(translation).isEqualTo("nonexistent.key");
+    }
+
+    // --- getPlural tests ---
+
+    @Test
+    void shouldResolvePluralForEnglishOneCredit() {
+        var result = provider.getPlural("email.credit.unit", 1, Locale.ENGLISH);
+        assertThat(result).isEqualTo("credit");
+    }
+
+    @Test
+    void shouldResolvePluralForEnglishMultipleCredits() {
+        var result = provider.getPlural("email.credit.unit", 3, Locale.ENGLISH);
+        assertThat(result).isEqualTo("credits");
+    }
+
+    @Test
+    void shouldResolvePluralForPolishOneCredit() {
+        var pl = Locale.of("pl");
+        var result = provider.getPlural("email.credit.unit", 1, pl);
+        assertThat(result).isEqualTo("op\u0142acone zg\u0142oszenie");
+    }
+
+    @Test
+    void shouldResolvePluralForPolishFewCredits() {
+        var pl = Locale.of("pl");
+        var result = provider.getPlural("email.credit.unit", 3, pl);
+        assertThat(result).isEqualTo("op\u0142acone zg\u0142oszenia");
+    }
+
+    @Test
+    void shouldResolvePluralForPolishManyCredits() {
+        var pl = Locale.of("pl");
+        var result = provider.getPlural("email.credit.unit", 5, pl);
+        assertThat(result).isEqualTo("op\u0142aconych zg\u0142osze\u0144");
+    }
+
+    @Test
+    void shouldResolvePluralForPortugueseCredits() {
+        var pt = Locale.of("pt");
+        assertThat(provider.getPlural("email.credit.unit", 1, pt)).isEqualTo("cr\u00e9dito");
+        assertThat(provider.getPlural("email.credit.unit", 5, pt)).isEqualTo("cr\u00e9ditos");
+    }
+
+    @Test
+    void shouldFallbackToOtherWhenFewKeyMissing() {
+        // EN has no .few key — should fall back to .other
+        var result = provider.getPlural("email.credit.unit", 3, Locale.ENGLISH);
+        assertThat(result).isEqualTo("credits");
     }
 
     @Test

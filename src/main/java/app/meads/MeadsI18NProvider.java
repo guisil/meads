@@ -55,4 +55,21 @@ public class MeadsI18NProvider implements I18NProvider {
             return key;
         }
     }
+
+    /**
+     * Resolves a plural-aware message key based on CLDR plural rules.
+     * Looks up {@code keyPrefix.one}, {@code keyPrefix.few}, {@code keyPrefix.many},
+     * or {@code keyPrefix.other} depending on count and locale.
+     * Falls back to {@code keyPrefix.other} when a specific category key is missing.
+     */
+    public String getPlural(String keyPrefix, int count, Locale locale) {
+        var category = PluralRules.getCategory(count, locale);
+        var specificKey = keyPrefix + "." + category;
+        try {
+            return messageSource.getMessage(specificKey, null, locale);
+        } catch (NoSuchMessageException e) {
+            // Fall back to .other
+            return messageSource.getMessage(keyPrefix + ".other", null, locale);
+        }
+    }
 }

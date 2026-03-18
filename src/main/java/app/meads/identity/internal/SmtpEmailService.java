@@ -1,5 +1,6 @@
 package app.meads.identity.internal;
 
+import app.meads.PluralRules;
 import app.meads.identity.EmailService;
 import app.meads.identity.JwtMagicLinkService;
 import jakarta.mail.MessagingException;
@@ -173,9 +174,7 @@ class SmtpEmailService implements EmailService {
                                         int credits, String divisionName,
                                         String competitionName, String myEntriesUrl,
                                         String contactEmail, Locale locale) {
-        var creditWord = credits == 1
-                ? msg("email.credit.singular", locale)
-                : msg("email.credit.plural", locale);
+        var creditWord = msgPlural("email.credit.unit", credits, locale);
         var subject = msg("email.credit.subject", locale, divisionName);
         var ctx = new Context();
         ctx.setVariable("subject", subject);
@@ -193,6 +192,16 @@ class SmtpEmailService implements EmailService {
 
     private String msg(String key, Locale locale, Object... args) {
         return messageSource.getMessage(key, args, key, locale);
+    }
+
+    private String msgPlural(String keyPrefix, int count, Locale locale) {
+        var category = PluralRules.getCategory(count, locale);
+        var specificKey = keyPrefix + "." + category;
+        var result = messageSource.getMessage(specificKey, null, null, locale);
+        if (result != null) {
+            return result;
+        }
+        return messageSource.getMessage(keyPrefix + ".other", null, keyPrefix, locale);
     }
 
     private boolean isRateLimited(String email, String type) {
