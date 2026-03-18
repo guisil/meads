@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `main`
-**Tests:** 586 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-03-17
+**Tests:** 679 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-03-18
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -221,16 +221,9 @@ Full manual walkthrough completed 2026-03-17. All 4 parts done.
   `getTranslation(key, Locale.ENGLISH, params)` to force English errors, avoiding the
   mixed-language issue where some errors were translated and others fell back to English.
 
-### Priority 2: i18n review + date display + Strength auto-calculation
-Three related refinements:
-- **Review i18n files** — especially PL, ES, IT translations for correctness and consistency.
-  Also explore a smarter approach to singular/plural forms with numbers (especially Polish,
-  which has complex pluralization rules — e.g., 1 zgłoszenie, 2 zgłoszenia, 5 zgłoszeń)
+### Priority 2: Date display review
 - **Date display** — review how dates are displayed across all supported locales, ensure
   locale-appropriate formatting
-- **Strength auto-calculation** — consider removing Strength from entrant-editable fields and
-  calculating it automatically from ABV. Keep Strength displayed on the PDF label (do NOT
-  replace it with ABV on the label)
 
 ### Priority 3: Deletion guards and cascade testing
 Comprehensive review and hardening of all deletion operations across the application.
@@ -305,6 +298,7 @@ carbonation locking (custom categories), and admin-configurable constraints for 
 Requires: DB migration, admin UI for constraint config, cross-module data flow, server-side validation.
 
 ### Completed priorities
+- **i18n review + plural resolution + Strength auto-calculation** — Completed 2026-03-18. Fixed PL grammar (locative case, honey validation, capitalization), IT formal "Lei" consistency, ES swapped limit texts, fruit examples alignment. Added CLDR-based `PluralRules` utility (EN/PT/ES/IT: one/other; PL: one/few/many) with `MeadsI18NProvider.getPlural()`. Converted email credit unit, credits remaining, submit-all confirm/success to plural-aware keys. Added `Strength.fromAbv()` (Hydromel <= 7.5, Standard <= 14, Sack > 14) — Strength auto-derived from ABV at domain level; removed from entrant dialog, read-only in admin edit dialog (updates live with ABV), PDF labels unchanged. 679 tests.
 - **Internationalization (i18n)** — Implementation completed 2026-03-16. 5 languages active: EN, ES, IT, PL, PT. Infrastructure: Vaadin I18NProvider + Spring MessageSource, BusinessRuleException across all services, entrant-facing view string extraction, email i18n with Locale, PDF label instructions i18n, MJP category translations, locale-aware date/timezone formatting, language switcher in navbar, User.preferredLanguage (V16 migration). PDF labels use embedded Liberation Sans font (metrically identical to Helvetica, full Unicode support including Polish diacritics). 586 tests. Design: `docs/plans/2026-03-10-i18n-design.md`.
 - **Post-deployment walkthrough** — Completed 2026-03-16. `docs/walkthrough/post-deployment-test.md` retained as reference for re-running after major changes.
 - **PR #4 code review & merge** — Merged `competition-module` into `main` (2026-03-14). Code review found 5 bugs (missing auth check, missing access code on role promotion, HMAC timing attack, hasCreditConflict inconsistency, entryPrefix DRAFT guard) and 4 convention fixes (ProfileView auth context, @Setter removal, setter→domain method renames, Category constructor). Deferred: test naming (313 methods) and cross-module test imports.

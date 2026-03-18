@@ -94,7 +94,8 @@ app.meads                                ← @SpringBootApplication (root module
 ├── MeadsApplication.java               ← Entry point
 ├── MainLayout.java                      ← AppLayout wrapper (public API — shared by all views, includes language switcher + "My Profile" nav + version display)
 ├── BusinessRuleException.java           ← Exception with message key + params (replaces IllegalArgumentException in services)
-├── MeadsI18NProvider.java               ← Vaadin I18NProvider backed by Spring MessageSource
+├── MeadsI18NProvider.java               ← Vaadin I18NProvider backed by Spring MessageSource + getPlural() for CLDR-aware pluralization
+├── PluralRules.java                     ← CLDR plural category resolution (one/few/many/other) per locale
 ├── LanguageMapping.java                 ← Country → language mapping + locale resolution
 ├── CompetitionAdminChecker.java         ← Interface (avoids circular dependency root ↔ competition)
 ├── UserLocaleResolver.java              ← Interface (avoids circular dependency root ↔ identity)
@@ -167,7 +168,7 @@ app.meads.entry                              ← Entry module public API
 ├── Entry.java                               ← JPA entity / aggregate root (mead entry)
 ├── EntryStatus.java                         ← Enum: DRAFT, SUBMITTED, RECEIVED, WITHDRAWN
 ├── Sweetness.java                           ← Enum: DRY, MEDIUM, SWEET
-├── Strength.java                            ← Enum: HYDROMEL, STANDARD, SACK
+├── Strength.java                            ← Enum: HYDROMEL, STANDARD, SACK + fromAbv() auto-derivation
 ├── Carbonation.java                         ← Enum: STILL, PETILLANT, SPARKLING
 ├── OrderStatus.java                         ← Enum: PROCESSED, PARTIALLY_PROCESSED, NEEDS_REVIEW, UNPROCESSED
 ├── LineItemStatus.java                      ← Enum: PROCESSED, NEEDS_REVIEW, IGNORED, UNPROCESSED

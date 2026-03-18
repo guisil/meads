@@ -899,7 +899,7 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] **Expected:** Delete button (trash) only enabled for DRAFT entries
 - [ ] **Expected:** Withdraw button (ban) disabled for WITHDRAWN entries
 - [ ] **Expected:** View button (eye) opens read-only dialog showing all entry fields, status, and entrant email
-- [ ] **Expected:** Edit button opens confirmation dialog ("Are you sure you want to edit this entry's data?"), then full edit dialog with all fields (mead name, category, sweetness, strength, ABV, carbonation, honey, other ingredients, wood aged, wood ageing details, additional info)
+- [ ] **Expected:** Edit button opens confirmation dialog ("Are you sure you want to edit this entry's data?"), then full edit dialog with all fields (mead name, category, sweetness, strength (read-only, auto-derived from ABV), ABV, carbonation, honey, other ingredients, wood aged, wood ageing details, additional info)
 - [ ] **Expected:** Edit works for entries in any status except WITHDRAWN
 - [ ] **Expected:** Delete button opens confirmation dialog
 - [ ] **Expected:** Withdraw button opens confirmation dialog
@@ -1187,12 +1187,12 @@ curl -s -o /dev/null -w "%{http_code}" \
 
 - [ ] **Expected:** "Add Entry" button is enabled (remaining credits > 0)
 - [ ] Click "Add Entry"
-- [ ] **Expected:** Dialog (600px wide) with full-width fields: Mead Name, Category (subcategories only, shows "code — name"), category hint (initially hidden), Sweetness, Strength, ABV (%), Carbonation, Honey Varieties, Other Ingredients, Wood Aged checkbox, Additional Information
+- [ ] **Expected:** Dialog (600px wide) with full-width fields: Mead Name, Category (subcategories only, shows "code — name"), category hint (initially hidden), Sweetness, ABV (%), Carbonation, Honey Varieties, Other Ingredients, Wood Aged checkbox, Additional Information. Note: Strength is NOT shown — it is auto-derived from ABV.
 - [ ] Select Category: M1B
 - [ ] **Expected:** Category hint appears below the dropdown: "Traditional mead: only honey (and optionally wood). Expected sweetness: Medium."
 - [ ] Change Category to M2A
 - [ ] **Expected:** Hint updates to: "Pome fruit melomel: apples, pears, quince."
-- [ ] Fill in: Mead Name: `Spring Blossom`, Category: M1B, Sweetness: Medium, Strength: Standard, ABV: 12.0, Carbonation: Still, Honey: `Orange blossom`
+- [ ] Fill in: Mead Name: `Spring Blossom`, Category: M1B, Sweetness: Medium, ABV: 12.0, Carbonation: Still, Honey: `Orange blossom`
 - [ ] Click "Save"
 - [ ] **Expected:** Notification "Entry created" (green)
 - [ ] **Expected:** New entry appears in grid with status DRAFT
@@ -1228,7 +1228,7 @@ curl -s -o /dev/null -w "%{http_code}" \
 
 - [ ] Find "Blueberry Bliss" (SUBMITTED) in the grid
 - [ ] Click the view (eye) icon in the Actions column
-- [ ] **Expected:** Read-only dialog with title "Entry AMA-N — Blueberry Bliss" showing all entry fields (Mead Name, Category (code — name format), Sweetness, Strength, ABV, Carbonation, Honey Varieties, Status, etc.). Entry code is NOT shown (only visible to admins).
+- [ ] **Expected:** Read-only dialog with title "Entry AMA-N — Blueberry Bliss" showing all entry fields (Mead Name, Category (code — name format), Sweetness, Strength (auto-derived from ABV), ABV, Carbonation, Honey Varieties, Status, etc.). Entry code is NOT shown (only visible to admins).
 - [ ] Click "Close"
 
 ### Edit draft entry
