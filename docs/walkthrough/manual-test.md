@@ -1166,8 +1166,8 @@ curl -s -o /dev/null -w "%{http_code}" \
 
 ### Registration deadline display
 
-- [ ] **Expected:** "Registration closes: [date] [timezone]" shown below credit info
-- [ ] **Expected:** Date format is like "30 Jun 2026, 23:59 Europe/Lisbon"
+- [ ] **Expected:** "Registration closes: [date]" shown below credit info (no timezone)
+- [ ] **Expected:** Date format is locale-aware short format (e.g. EN: "6/30/26, 11:59 PM", PT: "30/06/2026, 23:59", PL: "30.06.2026, 23:59")
 
 ### Entries grid
 

@@ -221,11 +221,7 @@ Full manual walkthrough completed 2026-03-17. All 4 parts done.
   `getTranslation(key, Locale.ENGLISH, params)` to force English errors, avoiding the
   mixed-language issue where some errors were translated and others fell back to English.
 
-### Priority 2: Date display review
-- **Date display** — review how dates are displayed across all supported locales, ensure
-  locale-appropriate formatting
-
-### Priority 3: Deletion guards and cascade testing
+### Priority 2: Deletion guards and cascade testing
 Comprehensive review and hardening of all deletion operations across the application.
 Two parts: (a) implement guards to block unsafe deletions, (b) test all existing
 deletion paths for correct behavior.
@@ -251,7 +247,7 @@ deletion paths for correct behavior.
 Then TDD each guard and deletion path. Needs thorough testing — multiple edge cases
 across modules.
 
-### Priority 4: Admin view i18n
+### Priority 3: Admin view i18n
 Translate all admin views to support the same language switching as entrant views.
 ~270 hardcoded English strings across 8 views to extract to message keys and translate
 to PT. Mechanical work — no new patterns or dependencies, `getTranslation()` infrastructure
@@ -259,7 +255,7 @@ already in place. Biggest files: CompetitionDetailView (~82 strings), DivisionEn
 (~90 strings). Also include LoginView and SetPasswordView — entrants with passwords use
 these views too, not just admins.
 
-### Priority 5: Post-registration actions audit
+### Priority 4: Post-registration actions audit
 Review what actions should be allowed/blocked after a division moves past REGISTRATION_OPEN.
 Currently some actions remain available that may need restricting or scoping. Design pass
 needed to decide per-status rules:
@@ -272,25 +268,25 @@ needed to decide per-status rules:
 Do this audit after the admin i18n work (priority 4) since translated views may surface
 additional UX considerations.
 
-### Priority 6: MFA for system admins
+### Priority 5: MFA for system admins
 Evaluate and implement multi-factor authentication for SYSTEM_ADMIN accounts.
 Password-only login for privileged accounts is a security risk post-deployment.
 
-### Priority 7: Auto-close + deadline reminders (deferred)
+### Priority 6: Auto-close + deadline reminders (deferred)
 - **Auto-close** — automatically advance division from REGISTRATION_OPEN → REGISTRATION_CLOSED
   when registration deadline passes (scheduled task)
 - **Entrant deadline reminder** — notify entrants who have DRAFT entries when the registration
   deadline is approaching (e.g., 7 days, 3 days, 1 day before deadline)
 - Other potential: entry received confirmation (when admin marks entry as RECEIVED), results published notification
 
-### Priority 8: Judging module
+### Priority 7: Judging module
 Design and implementation. Reference: `docs/reference/chip-competition-rules.md`.
 
-### Priority 9: Awards module
+### Priority 8: Awards module
 
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md`.
 
-### Priority 10: Full category constraint system (low priority — future competition)
+### Priority 9: Full category constraint system (low priority — future competition)
 Full field locking/validation based on category selection. Design doc: `docs/plans/2026-03-11-category-hints-design.md` (appendix).
 Includes: sweetness locking (M1A→Dry, M1B→Medium, M1C→Sweet), ingredient restrictions (M1/M4E),
 strength locking (M4S→Hydromel), ABV caps (M4S→7.5%), ABV→Strength derivation (universal),
@@ -298,6 +294,8 @@ carbonation locking (custom categories), and admin-configurable constraints for 
 Requires: DB migration, admin UI for constraint config, cross-module data flow, server-side validation.
 
 ### Completed priorities
+- **Date display** — Completed 2026-03-18. Registration deadline in entrant view now uses locale-aware `DateTimeFormatter.ofLocalizedDate(SHORT)` + `ofLocalizedTime(SHORT)` instead of hardcoded pattern. Timezone display removed.
+- **Logo update** — Completed 2026-03-18. Switched to new logo files: `meads-logo-white` for navbar and emails, `meads-logo-dark-grey` for README light mode.
 - **i18n review + plural resolution + Strength auto-calculation** — Completed 2026-03-18. Fixed PL grammar (locative case, honey validation, capitalization), IT formal "Lei" consistency, ES swapped limit texts, fruit examples alignment. Added CLDR-based `PluralRules` utility (EN/PT/ES/IT: one/other; PL: one/few/many) with `MeadsI18NProvider.getPlural()`. Converted email credit unit, credits remaining, submit-all confirm/success to plural-aware keys. Added `Strength.fromAbv()` (Hydromel <= 7.5, Standard <= 14, Sack > 14) — Strength auto-derived from ABV at domain level; removed from entrant dialog, read-only in admin edit dialog (updates live with ABV), PDF labels unchanged. 679 tests.
 - **Internationalization (i18n)** — Implementation completed 2026-03-16. 5 languages active: EN, ES, IT, PL, PT. Infrastructure: Vaadin I18NProvider + Spring MessageSource, BusinessRuleException across all services, entrant-facing view string extraction, email i18n with Locale, PDF label instructions i18n, MJP category translations, locale-aware date/timezone formatting, language switcher in navbar, User.preferredLanguage (V16 migration). PDF labels use embedded Liberation Sans font (metrically identical to Helvetica, full Unicode support including Polish diacritics). 586 tests. Design: `docs/plans/2026-03-10-i18n-design.md`.
 - **Post-deployment walkthrough** — Completed 2026-03-16. `docs/walkthrough/post-deployment-test.md` retained as reference for re-running after major changes.
@@ -329,7 +327,7 @@ Requires: DB migration, admin UI for constraint config, cross-module data flow, 
 - **Admin entries status filter** — DivisionEntryAdminView Entries tab now has a status dropdown filter alongside the text filter.
 - **Participant action icon reorder** — Edit (pencil) now appears before Send Login Link (envelope) in participants grid, consistent with Users grid.
 - **Full regression walkthrough (Sections 1–14)** — Completed 2026-03-14. All sections passed. No regressions found. Minor improvements made during walkthrough: competition logo/name in division views, participant icon reorder, credit removal guard, admin entries status filter.
-- **MEADS logo branding** — Replaced "MEADS" text with SVG logo in navbar (44px, left-aligned) and PNG logo as CID inline image in email header. Logo files at `META-INF/resources/images/meads-logo.{svg,png}`. SecurityConfig permits `/images/**`. Navbar height increased to 60px.
+- **MEADS logo branding** — Replaced "MEADS" text with SVG logo in navbar (44px, left-aligned) and PNG logo as CID inline image in email header. Logo files at `META-INF/resources/images/meads-logo-white.{svg,png}` (app + email) and `meads-logo-dark-grey.{svg,png}` (README light mode). SecurityConfig permits `/images/**`. Navbar height increased to 60px.
 - **Deployment (2026-03-14)** — Deployed to DigitalOcean App Platform (Amsterdam) + Managed PostgreSQL 18. Resend for email (free tier). Domain `meads.app` (Namecheap) with Let's Encrypt SSL. Full reference: `docs/plans/deployment-checklist.md`.
 - **Image-based deploys (2026-03-15)** — Switched from source-based (DO builds from `main`) to image-based (CI builds Docker image from tagged commit, pushes to GHCR, updates DO app spec). Fixes SNAPSHOT version deploy bug. JVM tuned (`-Xmx400m -XX:MaxMetaspaceSize=150m -XX:+UseSerialGC`) for 1GB instance. Version display moved from user dropdown to drawer bottom. New secret: `GHCR_REGISTRY_CREDENTIALS`.
 
