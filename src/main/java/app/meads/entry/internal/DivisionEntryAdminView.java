@@ -685,12 +685,10 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         sweetness.setItemLabelGenerator(Sweetness::getDisplayName);
         sweetness.setValue(entry.getSweetness());
 
-        var strength = new Select<Strength>();
-        strength.setLabel("Strength");
-        strength.setWidthFull();
-        strength.setItems(Strength.values());
-        strength.setItemLabelGenerator(Strength::getDisplayName);
-        strength.setValue(entry.getStrength());
+        var strengthField = new TextField("Strength");
+        strengthField.setWidthFull();
+        strengthField.setReadOnly(true);
+        strengthField.setValue(entry.getStrength().getDisplayName());
 
         var abv = new NumberField("ABV (%)");
         abv.setWidthFull();
@@ -698,6 +696,11 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         abv.setMin(0);
         abv.setMax(30);
         abv.setValue(entry.getAbv().doubleValue());
+        abv.addValueChangeListener(e -> {
+            if (e.getValue() != null) {
+                strengthField.setValue(Strength.fromAbv(BigDecimal.valueOf(e.getValue())).getDisplayName());
+            }
+        });
 
         var carbonation = new Select<Carbonation>();
         carbonation.setLabel("Carbonation");
@@ -736,7 +739,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             additionalInfo.setValue(entry.getAdditionalInformation());
         }
 
-        layout.add(meadNameField, categorySelect, sweetness, strength, abv, carbonation,
+        layout.add(meadNameField, categorySelect, sweetness, strengthField, abv, carbonation,
                 honeyVarieties, otherIngredients, woodAged, woodAgeingDetails, additionalInfo);
         dialog.add(layout);
 
@@ -756,11 +759,6 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             if (sweetness.getValue() == null) {
                 sweetness.setInvalid(true);
                 sweetness.setErrorMessage("Sweetness is required");
-                valid = false;
-            }
-            if (strength.getValue() == null) {
-                strength.setInvalid(true);
-                strength.setErrorMessage("Strength is required");
                 valid = false;
             }
             if (abv.getValue() == null) {
@@ -785,7 +783,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             try {
                 entryService.adminUpdateEntry(entry.getId(), meadNameField.getValue().trim(),
                         categorySelect.getValue().getId(),
-                        sweetness.getValue(), strength.getValue(),
+                        sweetness.getValue(),
                         BigDecimal.valueOf(abv.getValue()),
                         carbonation.getValue(),
                         honeyVarieties.getValue().trim(),

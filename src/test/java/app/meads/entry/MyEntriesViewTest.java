@@ -301,7 +301,7 @@ class MyEntriesViewTest {
         // Create and submit an entry
         var entry = entryService.createEntry(division.getId(), entrant.getId(),
                 "Test Mead", category.getId(),
-                Sweetness.DRY, Strength.STANDARD, new BigDecimal("12.0"),
+                Sweetness.DRY, new BigDecimal("12.0"),
                 Carbonation.STILL, "Honey", null, false, null, null);
         entryService.submitEntry(entry.getId(), entrant.getId());
 
@@ -425,7 +425,7 @@ class MyEntriesViewTest {
                 division.getId(), null, "M1A", "Dry Mead", "Dry mead", null, 1));
         entryService.createEntry(division.getId(), entrant.getId(),
                 "Test Mead", category.getId(),
-                Sweetness.DRY, Strength.STANDARD, new BigDecimal("12.0"),
+                Sweetness.DRY, new BigDecimal("12.0"),
                 Carbonation.STILL, "Honey", null, false, null, null);
 
         UI.getCurrent().navigate("competitions/" + competition.getShortName()

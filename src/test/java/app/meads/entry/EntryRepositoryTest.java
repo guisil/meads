@@ -70,8 +70,7 @@ class EntryRepositoryTest {
         var category = createAndSaveCategory(division);
 
         var entry = new Entry(division.getId(), user.getId(), 1, "ABC123",
-                "My Mead", category.getId(), Sweetness.DRY, Strength.STANDARD,
-                new BigDecimal("12.5"), Carbonation.STILL,
+                "My Mead", category.getId(), Sweetness.DRY,  new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null);
 
         entryRepository.save(entry);
@@ -93,12 +92,10 @@ class EntryRepositoryTest {
         var category = createAndSaveCategory(division);
 
         var entry1 = new Entry(division.getId(), user.getId(), 1, "ABC123",
-                "Mead One", category.getId(), Sweetness.DRY, Strength.STANDARD,
-                new BigDecimal("12.5"), Carbonation.STILL,
+                "Mead One", category.getId(), Sweetness.DRY,  new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null);
         var entry2 = new Entry(division.getId(), user.getId(), 2, "DEF456",
-                "Mead Two", category.getId(), Sweetness.SWEET, Strength.SACK,
-                new BigDecimal("18.0"), Carbonation.SPARKLING,
+                "Mead Two", category.getId(), Sweetness.SWEET,  new BigDecimal("18.0"), Carbonation.SPARKLING,
                 "Orange blossom", "Spices", true, "Oak barrel", null);
 
         entryRepository.save(entry1);
@@ -121,12 +118,10 @@ class EntryRepositoryTest {
         var category = createAndSaveCategory(division);
 
         entryRepository.save(new Entry(division.getId(), user1.getId(), 1, "ABC123",
-                "Mead One", category.getId(), Sweetness.DRY, Strength.STANDARD,
-                new BigDecimal("12.5"), Carbonation.STILL,
+                "Mead One", category.getId(), Sweetness.DRY,  new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null));
         entryRepository.save(new Entry(division.getId(), user2.getId(), 2, "DEF456",
-                "Mead Two", category.getId(), Sweetness.MEDIUM, Strength.HYDROMEL,
-                new BigDecimal("8.0"), Carbonation.PETILLANT,
+                "Mead Two", category.getId(), Sweetness.MEDIUM,  new BigDecimal("8.0"), Carbonation.PETILLANT,
                 "Clover honey", null, false, null, null));
 
         var found = entryRepository.findByDivisionId(division.getId());
@@ -141,8 +136,7 @@ class EntryRepositoryTest {
         var category = createAndSaveCategory(division);
 
         var entry = new Entry(division.getId(), user.getId(), 1, "XYZ789",
-                "Complex Mead", category.getId(), Sweetness.SWEET, Strength.SACK,
-                new BigDecimal("20.0"), Carbonation.SPARKLING,
+                "Complex Mead", category.getId(), Sweetness.SWEET,  new BigDecimal("20.0"), Carbonation.SPARKLING,
                 "Orange blossom, Acacia", "Cinnamon, Vanilla",
                 true, "French oak, 12 months", "Competition special");
 

@@ -80,7 +80,7 @@ public class Entry {
 
     public Entry(UUID divisionId, UUID userId, int entryNumber, String entryCode,
                  String meadName, UUID initialCategoryId, Sweetness sweetness,
-                 Strength strength, BigDecimal abv, Carbonation carbonation,
+                 BigDecimal abv, Carbonation carbonation,
                  String honeyVarieties, String otherIngredients,
                  boolean woodAged, String woodAgeingDetails,
                  String additionalInformation) {
@@ -93,7 +93,7 @@ public class Entry {
         this.meadName = meadName;
         this.initialCategoryId = initialCategoryId;
         this.sweetness = sweetness;
-        this.strength = strength;
+        this.strength = Strength.fromAbv(abv);
         this.abv = abv;
         this.carbonation = carbonation;
         this.honeyVarieties = honeyVarieties;
@@ -137,8 +137,8 @@ public class Entry {
     }
 
     public void updateDetails(String meadName, UUID initialCategoryId,
-                               Sweetness sweetness, Strength strength,
-                               BigDecimal abv, Carbonation carbonation,
+                               Sweetness sweetness, BigDecimal abv,
+                               Carbonation carbonation,
                                String honeyVarieties, String otherIngredients,
                                boolean woodAged, String woodAgeingDetails,
                                String additionalInformation) {
@@ -150,7 +150,7 @@ public class Entry {
         this.meadName = meadName;
         this.initialCategoryId = initialCategoryId;
         this.sweetness = sweetness;
-        this.strength = strength;
+        this.strength = Strength.fromAbv(abv);
         this.abv = abv;
         this.carbonation = carbonation;
         this.honeyVarieties = honeyVarieties;
@@ -161,8 +161,8 @@ public class Entry {
     }
 
     public void adminUpdateDetails(String meadName, UUID initialCategoryId,
-                                    Sweetness sweetness, Strength strength,
-                                    BigDecimal abv, Carbonation carbonation,
+                                    Sweetness sweetness, BigDecimal abv,
+                                    Carbonation carbonation,
                                     String honeyVarieties, String otherIngredients,
                                     boolean woodAged, String woodAgeingDetails,
                                     String additionalInformation) {
@@ -174,7 +174,7 @@ public class Entry {
         this.meadName = meadName;
         this.initialCategoryId = initialCategoryId;
         this.sweetness = sweetness;
-        this.strength = strength;
+        this.strength = Strength.fromAbv(abv);
         this.abv = abv;
         this.carbonation = carbonation;
         this.honeyVarieties = honeyVarieties;

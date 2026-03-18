@@ -431,7 +431,7 @@ class EntryServiceTest {
                 .willAnswer(inv -> inv.getArgument(0));
 
         var result = entryService.createEntry(divisionId, userId, "My Mead", categoryId,
-                Sweetness.DRY, Strength.STANDARD, new BigDecimal("12.5"), Carbonation.STILL,
+                Sweetness.DRY, new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null);
 
         assertThat(result).isNotNull();
@@ -454,8 +454,7 @@ class EntryServiceTest {
                 divisionId, userId, EntryStatus.WITHDRAWN)).willReturn(2L);
 
         assertThatThrownBy(() -> entryService.createEntry(divisionId, userId,
-                "My Mead", categoryId, Sweetness.DRY, Strength.STANDARD,
-                new BigDecimal("12.5"), Carbonation.STILL,
+                "My Mead", categoryId, Sweetness.DRY,  new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("error.entry.no-credits");
@@ -474,8 +473,7 @@ class EntryServiceTest {
         given(competitionService.findDivisionById(divisionId)).willReturn(division);
 
         assertThatThrownBy(() -> entryService.createEntry(divisionId, userId,
-                "My Mead", categoryId, Sweetness.DRY, Strength.STANDARD,
-                new BigDecimal("12.5"), Carbonation.STILL,
+                "My Mead", categoryId, Sweetness.DRY,  new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("error.entry.division-not-open");
@@ -502,7 +500,7 @@ class EntryServiceTest {
                 .willAnswer(inv -> inv.getArgument(0));
 
         var result = entryService.createEntry(divisionId, userId, "My Mead", categoryId,
-                Sweetness.DRY, Strength.STANDARD, new BigDecimal("12.5"), Carbonation.STILL,
+                Sweetness.DRY, new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null);
 
         assertThat(result.getEntryNumber()).isEqualTo(8);
@@ -529,7 +527,7 @@ class EntryServiceTest {
                 .willAnswer(inv -> inv.getArgument(0));
 
         var result = entryService.createEntry(divisionId, userId, "My Mead", categoryId,
-                Sweetness.DRY, Strength.STANDARD, new BigDecimal("12.5"), Carbonation.STILL,
+                Sweetness.DRY, new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null);
 
         assertThat(result.getEntryCode()).hasSize(6);
@@ -554,8 +552,7 @@ class EntryServiceTest {
                 divisionId, userId, categoryId, EntryStatus.WITHDRAWN)).willReturn(2L);
 
         assertThatThrownBy(() -> entryService.createEntry(divisionId, userId,
-                "My Mead", categoryId, Sweetness.DRY, Strength.STANDARD,
-                new BigDecimal("12.5"), Carbonation.STILL,
+                "My Mead", categoryId, Sweetness.DRY,  new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("error.entry.limit-subcategory");
@@ -590,8 +587,7 @@ class EntryServiceTest {
                 eq(EntryStatus.WITHDRAWN))).willReturn(3L);
 
         assertThatThrownBy(() -> entryService.createEntry(divisionId, userId,
-                "My Mead", subCategoryA.getId(), Sweetness.DRY, Strength.STANDARD,
-                new BigDecimal("12.5"), Carbonation.STILL,
+                "My Mead", subCategoryA.getId(), Sweetness.DRY,  new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("error.entry.limit-main-category");
@@ -611,8 +607,7 @@ class EntryServiceTest {
                 divisionId, userId, EntryStatus.WITHDRAWN)).willReturn(5L);
 
         assertThatThrownBy(() -> entryService.createEntry(divisionId, userId,
-                "My Mead", categoryId, Sweetness.DRY, Strength.STANDARD,
-                new BigDecimal("12.5"), Carbonation.STILL,
+                "My Mead", categoryId, Sweetness.DRY,  new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("error.entry.limit-total");
@@ -640,7 +635,7 @@ class EntryServiceTest {
                 .willAnswer(inv -> inv.getArgument(0));
 
         var result = entryService.createEntry(divisionId, userId, "My Mead", categoryId,
-                Sweetness.DRY, Strength.STANDARD, new BigDecimal("12.5"), Carbonation.STILL,
+                Sweetness.DRY, new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null);
 
         assertThat(result).isNotNull();
@@ -653,8 +648,7 @@ class EntryServiceTest {
     void shouldUpdateEntryWhenOwnerAndDraft() {
         var userId = UUID.randomUUID();
         var entry = new Entry(UUID.randomUUID(), userId, 1, "ABC123",
-                "Old Mead", UUID.randomUUID(), Sweetness.DRY, Strength.STANDARD,
-                new BigDecimal("12.5"), Carbonation.STILL,
+                "Old Mead", UUID.randomUUID(), Sweetness.DRY,  new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null);
         var newCategoryId = UUID.randomUUID();
 
@@ -663,7 +657,7 @@ class EntryServiceTest {
                 .willAnswer(inv -> inv.getArgument(0));
 
         var result = entryService.updateEntry(entry.getId(), userId, "New Mead",
-                newCategoryId, Sweetness.SWEET, Strength.SACK, new BigDecimal("18.0"),
+                newCategoryId, Sweetness.SWEET, new BigDecimal("18.0"),
                 Carbonation.SPARKLING, "Orange blossom", "Spices",
                 true, "Oak barrel", "Notes");
 
@@ -676,15 +670,13 @@ class EntryServiceTest {
         var userId = UUID.randomUUID();
         var otherUserId = UUID.randomUUID();
         var entry = new Entry(UUID.randomUUID(), userId, 1, "ABC123",
-                "Old Mead", UUID.randomUUID(), Sweetness.DRY, Strength.STANDARD,
-                new BigDecimal("12.5"), Carbonation.STILL,
+                "Old Mead", UUID.randomUUID(), Sweetness.DRY,  new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null);
 
         given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
 
         assertThatThrownBy(() -> entryService.updateEntry(entry.getId(), otherUserId,
-                "New Mead", UUID.randomUUID(), Sweetness.DRY, Strength.STANDARD,
-                new BigDecimal("12.5"), Carbonation.STILL,
+                "New Mead", UUID.randomUUID(), Sweetness.DRY,  new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("error.entry.not-owner");
@@ -696,8 +688,7 @@ class EntryServiceTest {
     void shouldDeleteDraftEntry() {
         var userId = UUID.randomUUID();
         var entry = new Entry(UUID.randomUUID(), userId, 1, "ABC123",
-                "My Mead", UUID.randomUUID(), Sweetness.DRY, Strength.STANDARD,
-                new BigDecimal("12.5"), Carbonation.STILL,
+                "My Mead", UUID.randomUUID(), Sweetness.DRY,  new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null);
 
         given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
@@ -711,8 +702,7 @@ class EntryServiceTest {
     void shouldRejectDeleteEntryWhenNotDraft() {
         var userId = UUID.randomUUID();
         var entry = new Entry(UUID.randomUUID(), userId, 1, "ABC123",
-                "My Mead", UUID.randomUUID(), Sweetness.DRY, Strength.STANDARD,
-                new BigDecimal("12.5"), Carbonation.STILL,
+                "My Mead", UUID.randomUUID(), Sweetness.DRY,  new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null);
         entry.submit(); // SUBMITTED
 
@@ -728,8 +718,7 @@ class EntryServiceTest {
         var userId = UUID.randomUUID();
         var otherUserId = UUID.randomUUID();
         var entry = new Entry(UUID.randomUUID(), userId, 1, "ABC123",
-                "My Mead", UUID.randomUUID(), Sweetness.DRY, Strength.STANDARD,
-                new BigDecimal("12.5"), Carbonation.STILL,
+                "My Mead", UUID.randomUUID(), Sweetness.DRY,  new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null);
 
         given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
@@ -747,12 +736,10 @@ class EntryServiceTest {
         var userId = UUID.randomUUID();
         var categoryId = UUID.randomUUID();
         var entry1 = new Entry(divisionId, userId, 1, "ABC123",
-                "Mead One", categoryId, Sweetness.DRY, Strength.STANDARD,
-                new BigDecimal("12.5"), Carbonation.STILL,
+                "Mead One", categoryId, Sweetness.DRY,  new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null);
         var entry2 = new Entry(divisionId, userId, 2, "DEF456",
-                "Mead Two", categoryId, Sweetness.SWEET, Strength.SACK,
-                new BigDecimal("18.0"), Carbonation.SPARKLING,
+                "Mead Two", categoryId, Sweetness.SWEET,  new BigDecimal("18.0"), Carbonation.SPARKLING,
                 "Orange blossom", null, false, null, null);
 
         // First call returns drafts for the loop, second call (from helper) returns empty
@@ -813,8 +800,7 @@ class EntryServiceTest {
         var divisionId = UUID.randomUUID();
         var userId = UUID.randomUUID();
         var entry = new Entry(divisionId, userId, 1, "ABC123",
-                "My Mead", UUID.randomUUID(), Sweetness.DRY, Strength.STANDARD,
-                new BigDecimal("12.5"), Carbonation.STILL,
+                "My Mead", UUID.randomUUID(), Sweetness.DRY,  new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null);
 
         given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
@@ -836,12 +822,10 @@ class EntryServiceTest {
         var divisionId = UUID.randomUUID();
         var userId = UUID.randomUUID();
         var entry = new Entry(divisionId, userId, 1, "ABC123",
-                "My Mead", UUID.randomUUID(), Sweetness.DRY, Strength.STANDARD,
-                new BigDecimal("12.5"), Carbonation.STILL,
+                "My Mead", UUID.randomUUID(), Sweetness.DRY,  new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null);
         var draftEntry = new Entry(divisionId, userId, 2, "DEF456",
-                "Other Mead", UUID.randomUUID(), Sweetness.SWEET, Strength.SACK,
-                new BigDecimal("14.0"), Carbonation.SPARKLING,
+                "Other Mead", UUID.randomUUID(), Sweetness.SWEET,  new BigDecimal("14.0"), Carbonation.SPARKLING,
                 "Orange blossom", null, false, null, null);
 
         given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
@@ -868,8 +852,7 @@ class EntryServiceTest {
         var userId = UUID.randomUUID();
         var categoryId = UUID.randomUUID();
         var entry = new Entry(divisionId, userId, 1, "ABC123",
-                "My Mead", categoryId, Sweetness.DRY, Strength.STANDARD,
-                new BigDecimal("12.5"), Carbonation.STILL,
+                "My Mead", categoryId, Sweetness.DRY,  new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null);
 
         given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
@@ -913,8 +896,7 @@ class EntryServiceTest {
         var divisionId = UUID.randomUUID();
         var userId = UUID.randomUUID();
         var entry = new Entry(divisionId, userId, 1, "ABC123",
-                "My Mead", UUID.randomUUID(), Sweetness.DRY, Strength.STANDARD,
-                new BigDecimal("12.5"), Carbonation.STILL,
+                "My Mead", UUID.randomUUID(), Sweetness.DRY,  new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null);
 
         given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
@@ -945,17 +927,14 @@ class EntryServiceTest {
         var categoryId = UUID.randomUUID();
         // This is the last DRAFT entry — 2 others already submitted
         var lastEntry = new Entry(divisionId, userId, 3, "GHI789",
-                "Third Mead", categoryId, Sweetness.SWEET, Strength.SACK,
-                new BigDecimal("16.0"), Carbonation.SPARKLING,
+                "Third Mead", categoryId, Sweetness.SWEET,  new BigDecimal("16.0"), Carbonation.SPARKLING,
                 "Manuka honey", null, false, null, null);
         var submitted1 = new Entry(divisionId, userId, 1, "ABC123",
-                "First Mead", categoryId, Sweetness.DRY, Strength.STANDARD,
-                new BigDecimal("12.5"), Carbonation.STILL,
+                "First Mead", categoryId, Sweetness.DRY,  new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null);
         submitted1.submit();
         var submitted2 = new Entry(divisionId, userId, 2, "DEF456",
-                "Second Mead", categoryId, Sweetness.MEDIUM, Strength.STANDARD,
-                new BigDecimal("13.0"), Carbonation.PETILLANT,
+                "Second Mead", categoryId, Sweetness.MEDIUM,  new BigDecimal("13.0"), Carbonation.PETILLANT,
                 "Clover honey", null, false, null, null);
         submitted2.submit();
 
@@ -997,8 +976,7 @@ class EntryServiceTest {
         var divisionId = UUID.randomUUID();
         var adminUser = createSystemAdmin();
         var entry = new Entry(divisionId, UUID.randomUUID(), 1, "ABC123",
-                "My Mead", UUID.randomUUID(), Sweetness.DRY, Strength.STANDARD,
-                new BigDecimal("12.5"), Carbonation.STILL,
+                "My Mead", UUID.randomUUID(), Sweetness.DRY,  new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null);
         entry.submit(); // SUBMITTED
 
@@ -1019,8 +997,7 @@ class EntryServiceTest {
         var divisionId = UUID.randomUUID();
         var adminUser = createSystemAdmin();
         var entry = new Entry(divisionId, UUID.randomUUID(), 1, "ABC123",
-                "My Mead", UUID.randomUUID(), Sweetness.DRY, Strength.STANDARD,
-                new BigDecimal("12.5"), Carbonation.STILL,
+                "My Mead", UUID.randomUUID(), Sweetness.DRY,  new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null);
         entry.submit(); // SUBMITTED
 
@@ -1042,8 +1019,7 @@ class EntryServiceTest {
         var adminUser = createSystemAdmin();
         var newCategoryId = UUID.randomUUID();
         var entry = new Entry(divisionId, UUID.randomUUID(), 1, "ABC123",
-                "Old Mead", UUID.randomUUID(), Sweetness.DRY, Strength.STANDARD,
-                new BigDecimal("12.5"), Carbonation.STILL,
+                "Old Mead", UUID.randomUUID(), Sweetness.DRY,  new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null);
         entry.submit(); // SUBMITTED
 
@@ -1053,7 +1029,7 @@ class EntryServiceTest {
                 .willAnswer(inv -> inv.getArgument(0));
 
         var result = entryService.adminUpdateEntry(entry.getId(), "Admin Mead",
-                newCategoryId, Sweetness.SWEET, Strength.SACK, new BigDecimal("18.0"),
+                newCategoryId, Sweetness.SWEET, new BigDecimal("18.0"),
                 Carbonation.SPARKLING, "Orange blossom", "Spices",
                 true, "Oak barrel", "Notes", adminUser.getId());
 
@@ -1068,8 +1044,7 @@ class EntryServiceTest {
         var divisionId = UUID.randomUUID();
         var userId = UUID.randomUUID();
         var entry = new Entry(divisionId, userId, 1, "ABC123",
-                "My Mead", UUID.randomUUID(), Sweetness.DRY, Strength.STANDARD,
-                new BigDecimal("12.5"), Carbonation.STILL,
+                "My Mead", UUID.randomUUID(), Sweetness.DRY,  new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null);
 
         given(entryRepository.findByDivisionIdAndUserId(divisionId, userId))
@@ -1108,8 +1083,7 @@ class EntryServiceTest {
 
         // Entry to delete
         var entry = new Entry(divisionId, userId, 1, "ABC123",
-                "My Mead", categoryId, Sweetness.DRY, Strength.STANDARD,
-                new BigDecimal("12.5"), Carbonation.STILL,
+                "My Mead", categoryId, Sweetness.DRY,  new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null);
 
         given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
@@ -1130,7 +1104,7 @@ class EntryServiceTest {
                 .willAnswer(inv -> inv.getArgument(0));
 
         var newEntry = entryService.createEntry(divisionId, userId, "New Mead", categoryId,
-                Sweetness.DRY, Strength.STANDARD, new BigDecimal("12.5"), Carbonation.STILL,
+                Sweetness.DRY, new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null);
 
         assertThat(newEntry).isNotNull();

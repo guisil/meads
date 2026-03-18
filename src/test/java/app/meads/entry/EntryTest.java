@@ -16,7 +16,7 @@ class EntryTest {
 
     private Entry createDefaultEntry() {
         return new Entry(DIVISION_ID, USER_ID, 1, "ABC123",
-                "My Mead", CATEGORY_ID, Sweetness.DRY, Strength.STANDARD,
+                "My Mead", CATEGORY_ID, Sweetness.DRY,
                 new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null);
     }
@@ -48,9 +48,39 @@ class EntryTest {
     }
 
     @Test
+    void shouldDeriveStrengthFromAbvOnCreate() {
+        var hydromel = new Entry(DIVISION_ID, USER_ID, 1, "ABC123",
+                "Low ABV Mead", CATEGORY_ID, Sweetness.DRY,
+                new BigDecimal("5.0"), Carbonation.STILL,
+                "Wildflower honey", null, false, null, null);
+        assertThat(hydromel.getStrength()).isEqualTo(Strength.HYDROMEL);
+
+        var standard = new Entry(DIVISION_ID, USER_ID, 2, "DEF456",
+                "Mid ABV Mead", CATEGORY_ID, Sweetness.MEDIUM,
+                new BigDecimal("12.5"), Carbonation.STILL,
+                "Wildflower honey", null, false, null, null);
+        assertThat(standard.getStrength()).isEqualTo(Strength.STANDARD);
+
+        var sack = new Entry(DIVISION_ID, USER_ID, 3, "GHI789",
+                "High ABV Mead", CATEGORY_ID, Sweetness.SWEET,
+                new BigDecimal("18.0"), Carbonation.STILL,
+                "Wildflower honey", null, false, null, null);
+        assertThat(sack.getStrength()).isEqualTo(Strength.SACK);
+    }
+
+    @Test
+    void shouldDeriveStrengthFromAbvOnUpdate() {
+        var entry = createDefaultEntry();
+        entry.updateDetails("Updated Mead", CATEGORY_ID, Sweetness.DRY,
+                new BigDecimal("5.0"), Carbonation.STILL,
+                "Wildflower honey", null, false, null, null);
+        assertThat(entry.getStrength()).isEqualTo(Strength.HYDROMEL);
+    }
+
+    @Test
     void shouldRejectWoodAgedWithoutDetails() {
         assertThatThrownBy(() -> new Entry(DIVISION_ID, USER_ID, 1, "ABC123",
-                "My Mead", CATEGORY_ID, Sweetness.DRY, Strength.STANDARD,
+                "My Mead", CATEGORY_ID, Sweetness.DRY,
                 new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, true, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -60,7 +90,7 @@ class EntryTest {
     @Test
     void shouldAllowWoodAgedWithDetails() {
         var entry = new Entry(DIVISION_ID, USER_ID, 1, "ABC123",
-                "My Mead", CATEGORY_ID, Sweetness.DRY, Strength.STANDARD,
+                "My Mead", CATEGORY_ID, Sweetness.DRY,
                 new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, true, "Oak barrel, 6 months", null);
 
@@ -162,7 +192,7 @@ class EntryTest {
         var newCategoryId = UUID.randomUUID();
 
         entry.updateDetails("Updated Mead", newCategoryId, Sweetness.SWEET,
-                Strength.SACK, new BigDecimal("18.0"), Carbonation.SPARKLING,
+                new BigDecimal("18.0"), Carbonation.SPARKLING,
                 "Orange blossom", "Spices", true, "Cherry wood, 3 months",
                 "Special batch");
 
@@ -185,7 +215,7 @@ class EntryTest {
         entry.submit();
 
         assertThatThrownBy(() -> entry.updateDetails("Updated Mead", CATEGORY_ID,
-                Sweetness.DRY, Strength.STANDARD, new BigDecimal("12.5"),
+                Sweetness.DRY, new BigDecimal("12.5"),
                 Carbonation.STILL, "Wildflower honey", null, false, null, null))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Cannot update details");
@@ -196,7 +226,7 @@ class EntryTest {
         var entry = createDefaultEntry();
 
         assertThatThrownBy(() -> entry.updateDetails("Updated Mead", CATEGORY_ID,
-                Sweetness.DRY, Strength.STANDARD, new BigDecimal("12.5"),
+                Sweetness.DRY, new BigDecimal("12.5"),
                 Carbonation.STILL, "Wildflower honey", null, true, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Wood ageing details");
@@ -211,7 +241,7 @@ class EntryTest {
         var newCategoryId = UUID.randomUUID();
 
         entry.adminUpdateDetails("Admin Updated", newCategoryId, Sweetness.SWEET,
-                Strength.SACK, new BigDecimal("18.0"), Carbonation.SPARKLING,
+                new BigDecimal("18.0"), Carbonation.SPARKLING,
                 "Orange blossom", "Spices", true, "Oak barrel, 6 months",
                 "Special batch");
 
@@ -225,7 +255,7 @@ class EntryTest {
         entry.withdraw();
 
         assertThatThrownBy(() -> entry.adminUpdateDetails("Updated", CATEGORY_ID,
-                Sweetness.DRY, Strength.STANDARD, new BigDecimal("12.5"),
+                Sweetness.DRY, new BigDecimal("12.5"),
                 Carbonation.STILL, "Wildflower honey", null, false, null, null))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("withdrawn");

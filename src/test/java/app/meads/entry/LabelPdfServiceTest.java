@@ -47,7 +47,7 @@ class LabelPdfServiceTest {
 
         var entry = new Entry(division.getId(), UUID.randomUUID(), 42, "ABC123",
                 "Linden Pyment 2024", category.getId(),
-                Sweetness.DRY, Strength.STANDARD, new BigDecimal("12.5"),
+                Sweetness.DRY, new BigDecimal("12.5"),
                 Carbonation.STILL, "Linden honey",
                 "Cabernet Sauvignon juice\nFrench oak chips",
                 true, "French oak barrel, 6 months", null);
@@ -118,7 +118,7 @@ class LabelPdfServiceTest {
         // No other ingredients, not wood aged
         var entry = new Entry(division.getId(), UUID.randomUUID(), 1, "ABC123",
                 "Simple Mead", category.getId(),
-                Sweetness.DRY, Strength.STANDARD, new BigDecimal("12.0"),
+                Sweetness.DRY, new BigDecimal("12.0"),
                 Carbonation.STILL, "Wildflower honey",
                 null, false, null, null);
         entry.submit();
@@ -137,7 +137,7 @@ class LabelPdfServiceTest {
         given(division.getEntryPrefix()).willReturn("HOME");
         var entry = new Entry(UUID.randomUUID(), UUID.randomUUID(), 42, "CODE42",
                 "Test", UUID.randomUUID(),
-                Sweetness.DRY, Strength.STANDARD, new BigDecimal("12.0"),
+                Sweetness.DRY, new BigDecimal("12.0"),
                 Carbonation.STILL, "Honey", null, false, null, null);
 
         var qrContent = labelPdfService.formatQrContent(entry, competition, division);
@@ -164,7 +164,7 @@ class LabelPdfServiceTest {
     private Entry createSubmittedEntry(UUID divisionId, UUID categoryId, int entryNumber, String name) {
         var entry = new Entry(divisionId, UUID.randomUUID(), entryNumber, "CODE" + entryNumber,
                 name, categoryId,
-                Sweetness.DRY, Strength.STANDARD, new BigDecimal("12.0"),
+                Sweetness.DRY, new BigDecimal("12.0"),
                 Carbonation.STILL, "Honey", null, false, null, null);
         entry.submit();
         return entry;

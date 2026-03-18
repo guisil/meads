@@ -707,12 +707,6 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         sweetness.setItems(Sweetness.values());
         sweetness.setItemLabelGenerator(s -> getTranslation("entry.sweetness." + s.name()));
 
-        var strength = new Select<Strength>();
-        strength.setLabel(getTranslation("entries.dialog.strength"));
-        strength.setWidthFull();
-        strength.setItems(Strength.values());
-        strength.setItemLabelGenerator(s -> getTranslation("entry.strength." + s.name()));
-
         var abv = new NumberField(getTranslation("entries.dialog.abv"));
         abv.setWidthFull();
         abv.setStep(0.1);
@@ -750,7 +744,6 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                     .findFirst()
                     .ifPresent(categorySelect::setValue);
             sweetness.setValue(existing.getSweetness());
-            strength.setValue(existing.getStrength());
             abv.setValue(existing.getAbv().doubleValue());
             carbonation.setValue(existing.getCarbonation());
             honeyVarieties.setValue(existing.getHoneyVarieties());
@@ -767,7 +760,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
             }
         }
 
-        layout.add(meadName, categorySelect, categoryHint, sweetness, strength, abv, carbonation,
+        layout.add(meadName, categorySelect, categoryHint, sweetness, abv, carbonation,
                 honeyVarieties, otherIngredients, woodAged, woodAgeingDetails, additionalInfo);
         dialog.add(layout);
 
@@ -787,11 +780,6 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
             if (sweetness.getValue() == null) {
                 sweetness.setInvalid(true);
                 sweetness.setErrorMessage(getTranslation("entries.validation.sweetness-required"));
-                valid = false;
-            }
-            if (strength.getValue() == null) {
-                strength.setInvalid(true);
-                strength.setErrorMessage(getTranslation("entries.validation.strength-required"));
                 valid = false;
             }
             if (abv.getValue() == null) {
@@ -818,7 +806,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                     entryService.createEntry(divisionId, currentUserId,
                             meadName.getValue().trim(),
                             categorySelect.getValue().getId(),
-                            sweetness.getValue(), strength.getValue(),
+                            sweetness.getValue(),
                             BigDecimal.valueOf(abv.getValue()),
                             carbonation.getValue(),
                             honeyVarieties.getValue().trim(),
@@ -832,7 +820,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                     entryService.updateEntry(existing.getId(), currentUserId,
                             meadName.getValue().trim(),
                             categorySelect.getValue().getId(),
-                            sweetness.getValue(), strength.getValue(),
+                            sweetness.getValue(),
                             BigDecimal.valueOf(abv.getValue()),
                             carbonation.getValue(),
                             honeyVarieties.getValue().trim(),

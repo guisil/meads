@@ -165,8 +165,7 @@ class DevDataInitializer {
                 amadora.getId(), devUser.getId(),
                 "Wildflower Traditional",
                 m1a.getId(),
-                Sweetness.DRY, Strength.STANDARD,
-                BigDecimal.valueOf(12.5), Carbonation.STILL,
+                Sweetness.DRY,  BigDecimal.valueOf(12.5), Carbonation.STILL,
                 "Wildflower honey",
                 null, false, null, null);
 
@@ -175,8 +174,7 @@ class DevDataInitializer {
                 amadora.getId(), devUser.getId(),
                 "Blueberry Bliss",
                 m2c.getId(),
-                Sweetness.MEDIUM, Strength.STANDARD,
-                BigDecimal.valueOf(13.0), Carbonation.STILL,
+                Sweetness.MEDIUM,  BigDecimal.valueOf(13.0), Carbonation.STILL,
                 "Acacia honey",
                 "Fresh blueberries", false, null, null);
         entryService.submitAllDrafts(amadora.getId(), devUser.getId());
@@ -186,8 +184,7 @@ class DevDataInitializer {
                 amadora.getId(), devUser.getId(),
                 "Oak-Aged Bochet",
                 m1a.getId(),
-                Sweetness.SWEET, Strength.SACK,
-                BigDecimal.valueOf(16.0), Carbonation.STILL,
+                Sweetness.SWEET,  BigDecimal.valueOf(16.0), Carbonation.STILL,
                 "Caramelized wildflower honey",
                 null, true, "French oak, 6 months", null);
 
@@ -196,8 +193,7 @@ class DevDataInitializer {
                 amadora.getId(), devEntrant.getId(),
                 "Lavender Metheglin",
                 m3b.getId(),
-                Sweetness.MEDIUM, Strength.STANDARD,
-                BigDecimal.valueOf(11.5), Carbonation.PETILLANT,
+                Sweetness.MEDIUM,  BigDecimal.valueOf(11.5), Carbonation.PETILLANT,
                 "Lavender honey",
                 "Lavender, chamomile", false, null, null);
 

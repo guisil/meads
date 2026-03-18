@@ -188,7 +188,6 @@ public class EntryService {
                               @NotBlank String meadName,
                               @NotNull UUID initialCategoryId,
                               @NotNull Sweetness sweetness,
-                              @NotNull Strength strength,
                               @NotNull BigDecimal abv,
                               @NotNull Carbonation carbonation,
                               @NotBlank String honeyVarieties,
@@ -219,7 +218,7 @@ public class EntryService {
         var entryCode = generateEntryCode(divisionId);
 
         var entry = new Entry(divisionId, userId, entryNumber, entryCode,
-                meadName, initialCategoryId, sweetness, strength, abv, carbonation,
+                meadName, initialCategoryId, sweetness, abv, carbonation,
                 honeyVarieties, otherIngredients, woodAged, woodAgeingDetails,
                 additionalInformation);
         var saved = entryRepository.save(entry);
@@ -233,7 +232,6 @@ public class EntryService {
                               @NotBlank String meadName,
                               @NotNull UUID initialCategoryId,
                               @NotNull Sweetness sweetness,
-                              @NotNull Strength strength,
                               @NotNull BigDecimal abv,
                               @NotNull Carbonation carbonation,
                               @NotBlank String honeyVarieties,
@@ -246,7 +244,7 @@ public class EntryService {
         if (!entry.getUserId().equals(userId)) {
             throw new BusinessRuleException("error.entry.not-owner");
         }
-        entry.updateDetails(meadName, initialCategoryId, sweetness, strength, abv,
+        entry.updateDetails(meadName, initialCategoryId, sweetness, abv,
                 carbonation, honeyVarieties, otherIngredients, woodAged,
                 woodAgeingDetails, additionalInformation);
         log.debug("Updated entry: {} (mead={})", entryId, meadName);
@@ -314,7 +312,6 @@ public class EntryService {
                                     @NotBlank String meadName,
                                     @NotNull UUID initialCategoryId,
                                     @NotNull Sweetness sweetness,
-                                    @NotNull Strength strength,
                                     @NotNull BigDecimal abv,
                                     @NotNull Carbonation carbonation,
                                     @NotBlank String honeyVarieties,
@@ -326,7 +323,7 @@ public class EntryService {
         var entry = entryRepository.findById(entryId)
                 .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
         requireAuthorizedForDivision(entry.getDivisionId(), requestingUserId);
-        entry.adminUpdateDetails(meadName, initialCategoryId, sweetness, strength, abv,
+        entry.adminUpdateDetails(meadName, initialCategoryId, sweetness, abv,
                 carbonation, honeyVarieties, otherIngredients, woodAged,
                 woodAgeingDetails, additionalInformation);
         log.debug("Admin updated entry: #{} ({})", entry.getEntryNumber(), entryId);

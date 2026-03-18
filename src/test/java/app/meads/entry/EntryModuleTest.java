@@ -80,8 +80,7 @@ class EntryModuleTest {
         // Create an entry
         var entry = entryService.createEntry(
                 division.getId(), entrant.getId(), "My Traditional Mead",
-                category.getId(), Sweetness.MEDIUM, Strength.STANDARD,
-                new BigDecimal("12.5"), Carbonation.STILL,
+                category.getId(), Sweetness.MEDIUM,  new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null);
 
         assertThat(entry.getId()).isNotNull();
