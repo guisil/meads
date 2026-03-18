@@ -111,7 +111,7 @@ class MainLayoutTest {
         UI.getCurrent().navigate("");
 
         var logo = _get(Image.class);
-        assertThat(logo.getSrc()).contains("meads-logo.svg");
+        assertThat(logo.getSrc()).contains("meads-logo-white.svg");
         assertThat(logo.getAlt().orElse("")).isEqualTo("MEADS");
     }
 

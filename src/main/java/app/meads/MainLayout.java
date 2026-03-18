@@ -48,7 +48,7 @@ public class MainLayout extends AppLayout {
         this.appVersion = buildProperties != null ? "v" + buildProperties.getVersion() : "";
 
         var toggle = new DrawerToggle();
-        var logo = new Image("images/meads-logo.svg", "MEADS");
+        var logo = new Image("images/meads-logo-white.svg", "MEADS");
         logo.setHeight("44px");
         logo.addClassName("app-logo");
 

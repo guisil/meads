@@ -1,8 +1,8 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="src/main/resources/META-INF/resources/images/meads-logo.svg" />
-    <source media="(prefers-color-scheme: light)" srcset="src/main/resources/META-INF/resources/images/meads-logo.svg" />
-    <img src="src/main/resources/META-INF/resources/images/meads-logo.svg" alt="MEADS" width="300" style="background-color: #1a1a2e; padding: 20px; border-radius: 8px;" />
+    <source media="(prefers-color-scheme: dark)" srcset="src/main/resources/META-INF/resources/images/meads-logo-white.svg" />
+    <source media="(prefers-color-scheme: light)" srcset="src/main/resources/META-INF/resources/images/meads-logo-dark-grey.svg" />
+    <img src="src/main/resources/META-INF/resources/images/meads-logo-dark-grey.svg" alt="MEADS" width="300" />
   </picture>
 </p>
 

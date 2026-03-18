@@ -238,7 +238,7 @@ class SmtpEmailService implements EmailService {
             helper.setSubject(subject);
             helper.setText(htmlBody, true);
             helper.addInline("meads-logo",
-                    new ClassPathResource("META-INF/resources/images/meads-logo.png"),
+                    new ClassPathResource("META-INF/resources/images/meads-logo-white.png"),
                     "image/png");
             mailSender.send(message);
             trackDailyCount();
