@@ -221,7 +221,18 @@ Full manual walkthrough completed 2026-03-17. All 4 parts done.
   `getTranslation(key, Locale.ENGLISH, params)` to force English errors, avoiding the
   mixed-language issue where some errors were translated and others fell back to English.
 
-### Priority 2: Deletion guards and cascade testing
+### Priority 2: i18n review + date display + Strength auto-calculation
+Three related refinements:
+- **Review i18n files** — especially PL, ES, IT translations for correctness and consistency.
+  Also explore a smarter approach to singular/plural forms with numbers (especially Polish,
+  which has complex pluralization rules — e.g., 1 zgłoszenie, 2 zgłoszenia, 5 zgłoszeń)
+- **Date display** — review how dates are displayed across all supported locales, ensure
+  locale-appropriate formatting
+- **Strength auto-calculation** — consider removing Strength from entrant-editable fields and
+  calculating it automatically from ABV. Keep Strength displayed on the PDF label (do NOT
+  replace it with ABV on the label)
+
+### Priority 3: Deletion guards and cascade testing
 Comprehensive review and hardening of all deletion operations across the application.
 Two parts: (a) implement guards to block unsafe deletions, (b) test all existing
 deletion paths for correct behavior.
@@ -247,7 +258,7 @@ deletion paths for correct behavior.
 Then TDD each guard and deletion path. Needs thorough testing — multiple edge cases
 across modules.
 
-### Priority 3: Admin view i18n
+### Priority 4: Admin view i18n
 Translate all admin views to support the same language switching as entrant views.
 ~270 hardcoded English strings across 8 views to extract to message keys and translate
 to PT. Mechanical work — no new patterns or dependencies, `getTranslation()` infrastructure
@@ -255,7 +266,7 @@ already in place. Biggest files: CompetitionDetailView (~82 strings), DivisionEn
 (~90 strings). Also include LoginView and SetPasswordView — entrants with passwords use
 these views too, not just admins.
 
-### Priority 4: Post-registration actions audit
+### Priority 5: Post-registration actions audit
 Review what actions should be allowed/blocked after a division moves past REGISTRATION_OPEN.
 Currently some actions remain available that may need restricting or scoping. Design pass
 needed to decide per-status rules:
@@ -265,28 +276,28 @@ needed to decide per-status rules:
 - **Entrant edit entries** — currently blocked after submit. Should view-only access persist?
 - **Add/remove participants** — should participant management be locked at some point?
 - **Product mappings** — should these be locked after registration?
-Do this audit after the admin i18n work (priority 3) since translated views may surface
+Do this audit after the admin i18n work (priority 4) since translated views may surface
 additional UX considerations.
 
-### Priority 5: MFA for system admins
+### Priority 6: MFA for system admins
 Evaluate and implement multi-factor authentication for SYSTEM_ADMIN accounts.
 Password-only login for privileged accounts is a security risk post-deployment.
 
-### Priority 6: Auto-close + deadline reminders (deferred)
+### Priority 7: Auto-close + deadline reminders (deferred)
 - **Auto-close** — automatically advance division from REGISTRATION_OPEN → REGISTRATION_CLOSED
   when registration deadline passes (scheduled task)
 - **Entrant deadline reminder** — notify entrants who have DRAFT entries when the registration
   deadline is approaching (e.g., 7 days, 3 days, 1 day before deadline)
 - Other potential: entry received confirmation (when admin marks entry as RECEIVED), results published notification
 
-### Priority 7: Judging module
+### Priority 8: Judging module
 Design and implementation. Reference: `docs/reference/chip-competition-rules.md`.
 
-### Priority 8: Awards module
+### Priority 9: Awards module
 
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md`.
 
-### Priority 9: Full category constraint system (low priority — future competition)
+### Priority 10: Full category constraint system (low priority — future competition)
 Full field locking/validation based on category selection. Design doc: `docs/plans/2026-03-11-category-hints-design.md` (appendix).
 Includes: sweetness locking (M1A→Dry, M1B→Medium, M1C→Sweet), ingredient restrictions (M1/M4E),
 strength locking (M4S→Hydromel), ABV caps (M4S→7.5%), ABV→Strength derivation (universal),
