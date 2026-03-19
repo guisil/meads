@@ -42,6 +42,10 @@ public class MeadsI18NProvider implements I18NProvider {
         return PROVIDED_LOCALES;
     }
 
+    public static List<String> getSupportedLanguageCodes() {
+        return PROVIDED_LOCALES.stream().map(Locale::getLanguage).toList();
+    }
+
     public static String getLanguageLabel(String languageCode) {
         return LANGUAGE_LABELS.getOrDefault(languageCode, languageCode);
     }

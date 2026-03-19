@@ -444,6 +444,7 @@ public class CompetitionService {
                                             byte[] data,
                                             String contentType,
                                             String url,
+                                            String language,
                                             @NotNull UUID requestingUserId) {
         competitionRepository.findById(competitionId)
                 .orElseThrow(() -> new BusinessRuleException("error.competition.not-found"));
@@ -453,8 +454,8 @@ public class CompetitionService {
         }
         int nextOrder = competitionDocumentRepository.countByCompetitionId(competitionId);
         var doc = switch (type) {
-            case PDF -> CompetitionDocument.createPdf(competitionId, name, data, contentType, nextOrder);
-            case LINK -> CompetitionDocument.createLink(competitionId, name, url, nextOrder);
+            case PDF -> CompetitionDocument.createPdf(competitionId, name, data, contentType, nextOrder, language);
+            case LINK -> CompetitionDocument.createLink(competitionId, name, url, nextOrder, language);
         };
         log.info("Added document '{}' (type={}) to competition {}", name, type, competitionId);
         return competitionDocumentRepository.save(doc);
@@ -504,6 +505,15 @@ public class CompetitionService {
 
     public List<CompetitionDocument> getDocuments(@NotNull UUID competitionId) {
         return competitionDocumentRepository.findByCompetitionIdOrderByDisplayOrder(competitionId);
+    }
+
+    public List<CompetitionDocument> getDocumentsForLocale(@NotNull UUID competitionId,
+                                                            @NotNull java.util.Locale locale) {
+        var allDocs = competitionDocumentRepository.findByCompetitionIdOrderByDisplayOrder(competitionId);
+        var lang = locale.getLanguage();
+        return allDocs.stream()
+                .filter(doc -> doc.getLanguage() == null || doc.getLanguage().equals(lang))
+                .toList();
     }
 
     public CompetitionDocument getDocument(@NotNull UUID documentId) {

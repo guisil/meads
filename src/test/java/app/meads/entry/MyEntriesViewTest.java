@@ -326,7 +326,7 @@ class MyEntriesViewTest {
     @WithMockUser(username = ENTRANT_EMAIL, roles = "USER")
     void shouldDisplayCompetitionDocuments() {
         competitionService.addDocument(competition.getId(), "Competition Rules",
-                DocumentType.LINK, null, null, "https://example.com/rules", admin.getId());
+                DocumentType.LINK, null, null, "https://example.com/rules", null, admin.getId());
 
         UI.getCurrent().navigate("competitions/" + competition.getShortName()
                 + "/divisions/" + division.getShortName() + "/my-entries");
@@ -336,6 +336,28 @@ class MyEntriesViewTest {
                 .filter(a -> "Competition Rules".equals(a.getText()))
                 .findFirst();
         assertThat(docAnchor).isPresent();
+    }
+
+    @Test
+    @WithMockUser(username = ENTRANT_EMAIL, roles = "USER")
+    void shouldFilterDocumentsByEntrantLocale() {
+        competitionService.addDocument(competition.getId(), "Rules EN",
+                DocumentType.LINK, null, null, "https://example.com/en", "en", admin.getId());
+        competitionService.addDocument(competition.getId(), "Rules PT",
+                DocumentType.LINK, null, null, "https://example.com/pt", "pt", admin.getId());
+        competitionService.addDocument(competition.getId(), "Map",
+                DocumentType.LINK, null, null, "https://example.com/map", null, admin.getId());
+
+        UI.getCurrent().setLocale(java.util.Locale.ENGLISH);
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/my-entries");
+
+        var anchors = _find(Anchor.class);
+        var docNames = anchors.stream()
+                .map(Anchor::getText)
+                .filter(text -> text.equals("Rules EN") || text.equals("Rules PT") || text.equals("Map"))
+                .toList();
+        assertThat(docNames).containsExactly("Rules EN", "Map");
     }
 
     @Test

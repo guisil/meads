@@ -3,6 +3,7 @@ package app.meads.competition.internal;
 import app.meads.BusinessRuleException;
 import app.meads.LanguageMapping;
 import app.meads.MainLayout;
+import app.meads.MeadsI18NProvider;
 import app.meads.competition.*;
 import app.meads.identity.EmailService;
 import app.meads.identity.Role;
@@ -1015,6 +1016,9 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
             badge.getElement().getThemeList().add("badge pill small");
             return badge;
         }).setHeader("Type").setAutoWidth(true);
+        documentsGrid.addColumn(doc -> doc.getLanguage() != null
+                ? MeadsI18NProvider.getLanguageLabel(doc.getLanguage())
+                : "All").setHeader("Language").setAutoWidth(true);
         documentsGrid.addComponentColumn(doc -> {
             var layout = new HorizontalLayout();
             layout.setSpacing(false);
@@ -1091,6 +1095,13 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         urlField.setMaxLength(2000);
         urlField.setVisible(false);
 
+        var languageCombo = new ComboBox<String>("Language");
+        languageCombo.setItems(MeadsI18NProvider.getSupportedLanguageCodes());
+        languageCombo.setItemLabelGenerator(MeadsI18NProvider::getLanguageLabel);
+        languageCombo.setClearButtonVisible(true);
+        languageCombo.setPlaceholder("All languages");
+        languageCombo.setWidthFull();
+
         var pdfData = new byte[1][];
         var pdfContentType = new String[1];
 
@@ -1134,7 +1145,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 competitionService.addDocument(competitionId, nameField.getValue().trim(),
                         type, pdfData[0], pdfContentType[0],
                         type == DocumentType.LINK ? urlField.getValue().trim() : null,
-                        getCurrentUserId());
+                        languageCombo.getValue(), getCurrentUserId());
                 documentsGrid.setItems(competitionService.getDocuments(competitionId));
                 var notification = Notification.show("Document added successfully");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
@@ -1148,7 +1159,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
         var cancelButton = new Button("Cancel", e -> dialog.close());
 
-        var form = new VerticalLayout(nameField, typeSelect, upload, urlField);
+        var form = new VerticalLayout(nameField, typeSelect, upload, urlField, languageCombo);
         form.setPadding(false);
         dialog.add(form);
         dialog.getFooter().add(cancelButton, saveButton);

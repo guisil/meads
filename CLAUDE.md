@@ -144,7 +144,7 @@ app.meads.competition                    ← Competition module public API
 ├── CompetitionService.java              ← Application service (public API)
 ├── DivisionRevertGuard.java             ← Guard interface for blocking unsafe status reverts
 ├── DivisionStatusAdvancedEvent.java     ← Spring application event
-├── CompetitionDocument.java             ← JPA entity (competition-scoped document, PDF or link)
+├── CompetitionDocument.java             ← JPA entity (competition-scoped document, PDF or link, optional language filter)
 ├── DocumentType.java                    ← Enum: PDF, LINK
 └── internal/                            ← Module-private
     ├── CompetitionRepository.java       ← JPA repository
@@ -384,7 +384,7 @@ void tearDown() {
 ## Database & Migrations
 
 - **Location:** `src/main/resources/db/migration/V{N}__{description}.sql`
-- **Current highest version:** V16 (`V16__add_preferred_language_to_users.sql`). V2 includes users + meadery_name. V3–V8 are competition module (V3 includes contact_email + shipping_address + phone_number, V4 includes entry limits + prefix). V9–V13 are entry module. V14 is competition documents. V15 adds website to competitions. V16 adds preferred_language to users (i18n).
+- **Current highest version:** V17 (`V17__add_language_to_competition_documents.sql`). V2 includes users + meadery_name. V3–V8 are competition module (V3 includes contact_email + shipping_address + phone_number, V4 includes entry limits + prefix). V9–V13 are entry module. V14 is competition documents. V15 adds website to competitions. V16 adds preferred_language to users (i18n).
 - **Naming:** `V{next}__{snake_case_description}.sql` (double underscore)
 - Migrations are created in **Step 2** (GREEN), when a repository test needs a table.
 - **Never edit existing migrations.** Always create new ones.

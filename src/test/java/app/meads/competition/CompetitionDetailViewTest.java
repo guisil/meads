@@ -21,6 +21,7 @@ import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.tabs.TabSheet;
 import com.vaadin.flow.component.textfield.TextArea;
@@ -281,7 +282,7 @@ class CompetitionDetailViewTest {
     void shouldDisplayDocumentsInGrid() {
         var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
         competitionService.addDocument(testCompetition.getId(), "Test Rules",
-                DocumentType.LINK, null, null, "https://example.com/rules", admin.getId());
+                DocumentType.LINK, null, null, "https://example.com/rules", null, admin.getId());
 
         UI.getCurrent().navigate("competitions/" + testCompetition.getShortName());
 
@@ -294,5 +295,20 @@ class CompetitionDetailViewTest {
                 .reduce((first, second) -> second)
                 .orElseThrow();
         assertThat(grid.getGenericDataView().getItems().count()).isEqualTo(1);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldShowLanguageFieldInAddDocumentDialog() {
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName());
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(3); // Documents tab
+
+        _click(_get(Button.class, spec -> spec.withText("Add Document")));
+
+        @SuppressWarnings("unchecked")
+        var languageCombo = _get(ComboBox.class, spec -> spec.withCaption("Language"));
+        assertThat(languageCombo).isNotNull();
     }
 }

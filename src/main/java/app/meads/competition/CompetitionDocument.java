@@ -36,6 +36,9 @@ public class CompetitionDocument {
 
     private String url;
 
+    @Column(length = 5)
+    private String language;
+
     @Column(name = "display_order", nullable = false)
     private int displayOrder;
 
@@ -47,7 +50,8 @@ public class CompetitionDocument {
     protected CompetitionDocument() {} // JPA
 
     private CompetitionDocument(UUID competitionId, String name, DocumentType type,
-                                byte[] data, String contentType, String url, int displayOrder) {
+                                byte[] data, String contentType, String url,
+                                int displayOrder, String language) {
         validateName(name);
         this.id = UUID.randomUUID();
         this.competitionId = competitionId;
@@ -57,10 +61,12 @@ public class CompetitionDocument {
         this.contentType = contentType;
         this.url = url;
         this.displayOrder = displayOrder;
+        this.language = language;
     }
 
     public static CompetitionDocument createPdf(UUID competitionId, String name,
-                                                byte[] data, String contentType, int displayOrder) {
+                                                byte[] data, String contentType,
+                                                int displayOrder, String language) {
         if (data == null || data.length == 0) {
             throw new IllegalArgumentException("PDF data must not be empty");
         }
@@ -71,16 +77,16 @@ public class CompetitionDocument {
             throw new IllegalArgumentException("Content type must be application/pdf");
         }
         return new CompetitionDocument(competitionId, name, DocumentType.PDF,
-                data, contentType, null, displayOrder);
+                data, contentType, null, displayOrder, language);
     }
 
     public static CompetitionDocument createLink(UUID competitionId, String name,
-                                                 String url, int displayOrder) {
+                                                 String url, int displayOrder, String language) {
         if (url == null || url.isBlank()) {
             throw new IllegalArgumentException("URL must not be blank");
         }
         return new CompetitionDocument(competitionId, name, DocumentType.LINK,
-                null, null, url, displayOrder);
+                null, null, url, displayOrder, language);
     }
 
     public void updateName(String name) {

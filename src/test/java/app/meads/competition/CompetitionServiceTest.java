@@ -1734,7 +1734,7 @@ class CompetitionServiceTest {
                 .willAnswer(inv -> inv.getArgument(0));
 
         var result = competitionService.addDocument(competition.getId(), "Rules",
-                DocumentType.PDF, new byte[]{1, 2, 3}, "application/pdf", null, admin.getId());
+                DocumentType.PDF, new byte[]{1, 2, 3}, "application/pdf", null, null, admin.getId());
 
         assertThat(result.getName()).isEqualTo("Rules");
         assertThat(result.getType()).isEqualTo(DocumentType.PDF);
@@ -1756,11 +1756,32 @@ class CompetitionServiceTest {
                 .willAnswer(inv -> inv.getArgument(0));
 
         var result = competitionService.addDocument(competition.getId(), "MJP Guide",
-                DocumentType.LINK, null, null, "https://example.com/mjp", admin.getId());
+                DocumentType.LINK, null, null, "https://example.com/mjp", null, admin.getId());
 
         assertThat(result.getType()).isEqualTo(DocumentType.LINK);
         assertThat(result.getUrl()).isEqualTo("https://example.com/mjp");
         assertThat(result.getDisplayOrder()).isEqualTo(2);
+    }
+
+    @Test
+    void shouldAddDocumentWithLanguage() {
+        var admin = createAdmin();
+        var competition = createCompetition();
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(competitionRepository.findById(competition.getId()))
+                .willReturn(Optional.of(competition));
+        given(competitionDocumentRepository.existsByCompetitionIdAndName(
+                competition.getId(), "Regras")).willReturn(false);
+        given(competitionDocumentRepository.countByCompetitionId(competition.getId()))
+                .willReturn(0);
+        given(competitionDocumentRepository.save(any(CompetitionDocument.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var result = competitionService.addDocument(competition.getId(), "Regras",
+                DocumentType.LINK, null, null, "https://example.com/rules-pt", "pt", admin.getId());
+
+        assertThat(result.getName()).isEqualTo("Regras");
+        assertThat(result.getLanguage()).isEqualTo("pt");
     }
 
     @Test
@@ -1774,7 +1795,7 @@ class CompetitionServiceTest {
                 competition.getId(), "Rules")).willReturn(true);
 
         assertThatThrownBy(() -> competitionService.addDocument(competition.getId(), "Rules",
-                DocumentType.LINK, null, null, "https://example.com", admin.getId()))
+                DocumentType.LINK, null, null, "https://example.com", null, admin.getId()))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("error.document.name-exists");
     }
@@ -1783,7 +1804,7 @@ class CompetitionServiceTest {
     void shouldRemoveDocumentWhenAuthorized() {
         var admin = createAdmin();
         var competition = createCompetition();
-        var doc = CompetitionDocument.createLink(competition.getId(), "Rules", "https://example.com", 0);
+        var doc = CompetitionDocument.createLink(competition.getId(), "Rules", "https://example.com", 0, null);
         given(competitionDocumentRepository.findById(doc.getId()))
                 .willReturn(Optional.of(doc));
         given(userService.findById(admin.getId())).willReturn(admin);
@@ -1797,7 +1818,7 @@ class CompetitionServiceTest {
     void shouldUpdateDocumentNameWhenAuthorized() {
         var admin = createAdmin();
         var competition = createCompetition();
-        var doc = CompetitionDocument.createLink(competition.getId(), "Old Name", "https://example.com", 0);
+        var doc = CompetitionDocument.createLink(competition.getId(), "Old Name", "https://example.com", 0, null);
         given(competitionDocumentRepository.findById(doc.getId()))
                 .willReturn(Optional.of(doc));
         given(userService.findById(admin.getId())).willReturn(admin);
@@ -1814,8 +1835,8 @@ class CompetitionServiceTest {
     @Test
     void shouldGetDocumentsOrderedByDisplayOrder() {
         var competition = createCompetition();
-        var doc1 = CompetitionDocument.createLink(competition.getId(), "A", "https://a.com", 0);
-        var doc2 = CompetitionDocument.createLink(competition.getId(), "B", "https://b.com", 1);
+        var doc1 = CompetitionDocument.createLink(competition.getId(), "A", "https://a.com", 0, null);
+        var doc2 = CompetitionDocument.createLink(competition.getId(), "B", "https://b.com", 1, null);
         given(competitionDocumentRepository.findByCompetitionIdOrderByDisplayOrder(competition.getId()))
                 .willReturn(List.of(doc1, doc2));
 
@@ -1827,7 +1848,7 @@ class CompetitionServiceTest {
 
     @Test
     void shouldGetDocumentById() {
-        var doc = CompetitionDocument.createLink(UUID.randomUUID(), "Rules", "https://example.com", 0);
+        var doc = CompetitionDocument.createLink(UUID.randomUUID(), "Rules", "https://example.com", 0, null);
         given(competitionDocumentRepository.findById(doc.getId()))
                 .willReturn(Optional.of(doc));
 
@@ -1853,8 +1874,8 @@ class CompetitionServiceTest {
         given(userService.findById(admin.getId())).willReturn(admin);
         given(competitionRepository.findById(competition.getId()))
                 .willReturn(Optional.of(competition));
-        var doc1 = CompetitionDocument.createLink(competition.getId(), "A", "https://a.com", 0);
-        var doc2 = CompetitionDocument.createLink(competition.getId(), "B", "https://b.com", 1);
+        var doc1 = CompetitionDocument.createLink(competition.getId(), "A", "https://a.com", 0, null);
+        var doc2 = CompetitionDocument.createLink(competition.getId(), "B", "https://b.com", 1, null);
         given(competitionDocumentRepository.findByCompetitionIdOrderByDisplayOrder(competition.getId()))
                 .willReturn(List.of(doc1, doc2));
 
@@ -1864,6 +1885,22 @@ class CompetitionServiceTest {
 
         assertThat(doc2.getDisplayOrder()).isZero();
         assertThat(doc1.getDisplayOrder()).isEqualTo(1);
+    }
+
+    @Test
+    void shouldReturnMatchingAndUniversalDocumentsForLocale() {
+        var competition = createCompetition();
+        var docEn = CompetitionDocument.createLink(competition.getId(), "Rules EN", "https://en.com", 0, "en");
+        var docPt = CompetitionDocument.createLink(competition.getId(), "Rules PT", "https://pt.com", 1, "pt");
+        var docAll = CompetitionDocument.createLink(competition.getId(), "Map", "https://map.com", 2, null);
+        given(competitionDocumentRepository.findByCompetitionIdOrderByDisplayOrder(competition.getId()))
+                .willReturn(List.of(docEn, docPt, docAll));
+
+        var result = competitionService.getDocumentsForLocale(competition.getId(), java.util.Locale.ENGLISH);
+
+        assertThat(result).hasSize(2);
+        assertThat(result).extracting(CompetitionDocument::getName)
+                .containsExactly("Rules EN", "Map");
     }
 
     // --- createDivision deadline ---

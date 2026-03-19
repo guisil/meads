@@ -204,7 +204,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
     }
 
     private VerticalLayout createDocumentsSection() {
-        var docs = competitionService.getDocuments(competition.getId());
+        var docs = competitionService.getDocumentsForLocale(competition.getId(), getLocale());
         if (docs.isEmpty()) {
             return new VerticalLayout();
         }

@@ -654,23 +654,23 @@ CTA button, fallback URL, and optional contact footer.
 #### Add link document
 
 - [ ] Click "Add Document"
-- [ ] **Expected:** Dialog with Name, Type (PDF/Link selector defaulting to PDF), Upload component
+- [ ] **Expected:** Dialog with Name, Type (PDF/Link selector defaulting to PDF), Upload component, Language dropdown (placeholder "All languages")
 - [ ] Change Type to "Link"
 - [ ] **Expected:** Upload component hides, URL field appears
-- [ ] Enter Name: `MJP Guidelines`, URL: `https://meadjudging.com/guidelines`
+- [ ] Enter Name: `MJP Guidelines`, URL: `https://meadjudging.com/guidelines`, leave Language as "All languages"
 - [ ] Click "Save"
 - [ ] **Expected:** Notification "Document added successfully" (green)
-- [ ] **Expected:** Document appears in grid with Name "MJP Guidelines", Type badge "LINK"
+- [ ] **Expected:** Document appears in grid with Name "MJP Guidelines", Type badge "LINK", Language "All"
 
 #### Add PDF document
 
 - [ ] Click "Add Document"
 - [ ] **Expected:** Type defaults to PDF, Upload component visible
-- [ ] Enter Name: `Competition Rules`
+- [ ] Enter Name: `Competition Rules`, select Language: `English`
 - [ ] Upload a small test PDF (any PDF under 10 MB)
 - [ ] Click "Save"
 - [ ] **Expected:** Notification "Document added successfully" (green)
-- [ ] **Expected:** Two documents in grid
+- [ ] **Expected:** Two documents in grid, "Competition Rules" shows Language "English"
 
 #### Reorder documents
 
@@ -1151,7 +1151,9 @@ curl -s -o /dev/null -w "%{http_code}" \
 ### Competition documents
 
 - [ ] **Expected:** "Competition Documents" section visible (if documents were added in section 6)
-- [ ] **Expected:** "MJP Category Guide" appears as a clickable link (opens in new tab)
+- [ ] **Expected:** Only documents matching the entrant's locale (or with no language set) appear
+- [ ] **Expected:** "MJP Category Guide" appears as a clickable link (opens in new tab) — it has no language set, so it shows for all locales
+- [ ] **Expected:** "Competition Rules" only appears if entrant's language matches the document's language
 - [ ] If no documents were added, this section should not appear
 
 ### Credit balance display

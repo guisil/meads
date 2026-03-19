@@ -14,7 +14,7 @@ class CompetitionDocumentTest {
     @Test
     void shouldCreatePdfDocument() {
         var doc = CompetitionDocument.createPdf(COMPETITION_ID, "Rules",
-                new byte[]{1, 2, 3}, "application/pdf", 0);
+                new byte[]{1, 2, 3}, "application/pdf", 0, null);
 
         assertThat(doc.getId()).isNotNull();
         assertThat(doc.getCompetitionId()).isEqualTo(COMPETITION_ID);
@@ -29,7 +29,7 @@ class CompetitionDocumentTest {
     @Test
     void shouldCreateLinkDocument() {
         var doc = CompetitionDocument.createLink(COMPETITION_ID, "MJP Guidelines",
-                "https://example.com/mjp.pdf", 1);
+                "https://example.com/mjp.pdf", 1, null);
 
         assertThat(doc.getId()).isNotNull();
         assertThat(doc.getType()).isEqualTo(DocumentType.LINK);
@@ -44,7 +44,7 @@ class CompetitionDocumentTest {
         var largeData = new byte[10 * 1024 * 1024 + 1];
 
         assertThatThrownBy(() -> CompetitionDocument.createPdf(
-                COMPETITION_ID, "Rules", largeData, "application/pdf", 0))
+                COMPETITION_ID, "Rules", largeData, "application/pdf", 0, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("10 MB");
     }
@@ -52,7 +52,7 @@ class CompetitionDocumentTest {
     @Test
     void shouldRejectNonPdfContentType() {
         assertThatThrownBy(() -> CompetitionDocument.createPdf(
-                COMPETITION_ID, "Rules", new byte[]{1}, "image/png", 0))
+                COMPETITION_ID, "Rules", new byte[]{1}, "image/png", 0, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("application/pdf");
     }
@@ -60,7 +60,7 @@ class CompetitionDocumentTest {
     @Test
     void shouldRejectBlankName() {
         assertThatThrownBy(() -> CompetitionDocument.createPdf(
-                COMPETITION_ID, "  ", new byte[]{1}, "application/pdf", 0))
+                COMPETITION_ID, "  ", new byte[]{1}, "application/pdf", 0, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("name");
     }
@@ -68,28 +68,28 @@ class CompetitionDocumentTest {
     @Test
     void shouldRejectBlankUrl() {
         assertThatThrownBy(() -> CompetitionDocument.createLink(
-                COMPETITION_ID, "Link", "  ", 0))
+                COMPETITION_ID, "Link", "  ", 0, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("URL");
     }
 
     @Test
     void shouldUpdateName() {
-        var doc = CompetitionDocument.createLink(COMPETITION_ID, "Old", "https://example.com", 0);
+        var doc = CompetitionDocument.createLink(COMPETITION_ID, "Old", "https://example.com", 0, null);
         doc.updateName("New");
         assertThat(doc.getName()).isEqualTo("New");
     }
 
     @Test
     void shouldRejectBlankNameOnUpdate() {
-        var doc = CompetitionDocument.createLink(COMPETITION_ID, "Name", "https://example.com", 0);
+        var doc = CompetitionDocument.createLink(COMPETITION_ID, "Name", "https://example.com", 0, null);
         assertThatThrownBy(() -> doc.updateName("  "))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void shouldUpdateDisplayOrder() {
-        var doc = CompetitionDocument.createLink(COMPETITION_ID, "Name", "https://example.com", 0);
+        var doc = CompetitionDocument.createLink(COMPETITION_ID, "Name", "https://example.com", 0, null);
         doc.updateDisplayOrder(3);
         assertThat(doc.getDisplayOrder()).isEqualTo(3);
     }

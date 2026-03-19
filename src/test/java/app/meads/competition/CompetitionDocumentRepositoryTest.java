@@ -38,8 +38,8 @@ class CompetitionDocumentRepositoryTest {
 
     @Test
     void shouldSaveAndFindByCompetitionIdOrderedByDisplayOrder() {
-        var doc2 = CompetitionDocument.createLink(competitionId, "Second", "https://example.com/2", 1);
-        var doc1 = CompetitionDocument.createLink(competitionId, "First", "https://example.com/1", 0);
+        var doc2 = CompetitionDocument.createLink(competitionId, "Second", "https://example.com/2", 1, null);
+        var doc1 = CompetitionDocument.createLink(competitionId, "First", "https://example.com/1", 0, null);
         competitionDocumentRepository.save(doc2);
         competitionDocumentRepository.save(doc1);
 
@@ -52,9 +52,9 @@ class CompetitionDocumentRepositoryTest {
     @Test
     void shouldCountByCompetitionId() {
         competitionDocumentRepository.save(
-                CompetitionDocument.createLink(competitionId, "A", "https://example.com", 0));
+                CompetitionDocument.createLink(competitionId, "A", "https://example.com", 0, null));
         competitionDocumentRepository.save(
-                CompetitionDocument.createLink(competitionId, "B", "https://example.com/b", 1));
+                CompetitionDocument.createLink(competitionId, "B", "https://example.com/b", 1, null));
 
         assertThat(competitionDocumentRepository.countByCompetitionId(competitionId)).isEqualTo(2);
     }
@@ -62,7 +62,7 @@ class CompetitionDocumentRepositoryTest {
     @Test
     void shouldCheckExistsByCompetitionIdAndName() {
         competitionDocumentRepository.save(
-                CompetitionDocument.createLink(competitionId, "Rules", "https://example.com", 0));
+                CompetitionDocument.createLink(competitionId, "Rules", "https://example.com", 0, null));
 
         assertThat(competitionDocumentRepository.existsByCompetitionIdAndName(competitionId, "Rules")).isTrue();
         assertThat(competitionDocumentRepository.existsByCompetitionIdAndName(competitionId, "Other")).isFalse();
@@ -71,12 +71,30 @@ class CompetitionDocumentRepositoryTest {
     @Test
     void shouldSavePdfDocument() {
         var doc = CompetitionDocument.createPdf(competitionId, "Rules PDF",
-                new byte[]{1, 2, 3}, "application/pdf", 0);
+                new byte[]{1, 2, 3}, "application/pdf", 0, null);
         var saved = competitionDocumentRepository.save(doc);
 
         var found = competitionDocumentRepository.findById(saved.getId()).orElseThrow();
         assertThat(found.getName()).isEqualTo("Rules PDF");
         assertThat(found.getType()).isEqualTo(DocumentType.PDF);
         assertThat(found.getData()).isEqualTo(new byte[]{1, 2, 3});
+    }
+
+    @Test
+    void shouldSaveAndRetrieveDocumentWithLanguage() {
+        var doc = CompetitionDocument.createLink(competitionId, "Regras", "https://example.com/pt", 0, "pt");
+        competitionDocumentRepository.save(doc);
+
+        var found = competitionDocumentRepository.findById(doc.getId()).orElseThrow();
+        assertThat(found.getLanguage()).isEqualTo("pt");
+    }
+
+    @Test
+    void shouldSaveDocumentWithNullLanguage() {
+        var doc = CompetitionDocument.createLink(competitionId, "Map", "https://example.com/map", 0, null);
+        competitionDocumentRepository.save(doc);
+
+        var found = competitionDocumentRepository.findById(doc.getId()).orElseThrow();
+        assertThat(found.getLanguage()).isNull();
     }
 }

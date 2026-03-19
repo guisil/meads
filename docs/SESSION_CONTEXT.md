@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `main`
-**Tests:** 679 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-03-18
+**Tests:** 685 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-03-19
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -49,7 +49,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 | `ParticipantRole` | `participant_roles` | Role per participant: JUDGE, STEWARD, ENTRANT, ADMIN |
 | `Category` | `categories` | Read-only catalog: code, name, scoringSystem |
 | `DivisionCategory` | `division_categories` | Per-division category with optional parent |
-| `CompetitionDocument` | `competition_documents` | Competition-scoped document (PDF upload or external link) |
+| `CompetitionDocument` | `competition_documents` | Competition-scoped document (PDF upload or external link), optional language filter |
 
 #### Key enums
 - `DivisionStatus`: DRAFT → REGISTRATION_OPEN → REGISTRATION_CLOSED → JUDGING → DELIBERATION → RESULTS_PUBLISHED
@@ -59,7 +59,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 #### Service — `CompetitionService` (public API)
 - Competition CRUD, Division CRUD, Participant management (add/remove participant, add/remove individual role, role combination validation), Category management
-- Document management: `addDocument`, `removeDocument`, `updateDocumentName`, `reorderDocuments`, `getDocuments`, `getDocument`
+- Document management: `addDocument` (with optional language), `removeDocument`, `updateDocumentName`, `reorderDocuments`, `getDocuments`, `getDocumentsForLocale`, `getDocument`
 - Authorization: `isAuthorizedForCompetition()`, `isAuthorizedForDivision()`
 - `findCompetitionsByAdmin(userId)` — finds competitions where user has ADMIN participant role
 - `findAdminEmailsByCompetitionId(competitionId)` — returns email addresses of all ADMIN participants
@@ -75,7 +75,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 - `DivisionDetailView` (`/competitions/:compShortName/divisions/:divShortName`) — header: competition logo + "Competition — Division", tabs: Categories, Settings + "Manage Entries" button + "Advance/Revert Status" buttons
 - `MyCompetitionsView` (`/my-competitions`) — `@PermitAll`, shows competitions where user is ADMIN
 
-#### Migrations: V3–V8, V14
+#### Migrations: V3–V8, V14, V17
 
 ### entry module (`app.meads.entry`) — COMPLETE
 
@@ -294,6 +294,7 @@ carbonation locking (custom categories), and admin-configurable constraints for 
 Requires: DB migration, admin UI for constraint config, cross-module data flow, server-side validation.
 
 ### Completed priorities
+- **Document language filtering** — Completed 2026-03-19. Added optional `language` field (VARCHAR(5)) to `CompetitionDocument` (V17 migration). `null` = visible to all languages, a language code (e.g. "pt") = visible only to that locale. Admin add-document dialog has Language dropdown (from `MeadsI18NProvider.getSupportedLanguageCodes()`). Admin grid shows Language column. Entrant view (`MyEntriesView`) filters via `getDocumentsForLocale()`. 685 tests.
 - **Date display** — Completed 2026-03-18. Registration deadline in entrant view now uses locale-aware `DateTimeFormatter.ofLocalizedDate(SHORT)` + `ofLocalizedTime(SHORT)` instead of hardcoded pattern. Timezone display removed.
 - **Logo update** — Completed 2026-03-18. Switched to new logo files: `meads-logo-white` for navbar and emails, `meads-logo-dark-grey` for README light mode.
 - **i18n review + plural resolution + Strength auto-calculation** — Completed 2026-03-18. Fixed PL grammar (locative case, honey validation, capitalization), IT formal "Lei" consistency, ES swapped limit texts, fruit examples alignment. Added CLDR-based `PluralRules` utility (EN/PT/ES/IT: one/other; PL: one/few/many) with `MeadsI18NProvider.getPlural()`. Converted email credit unit, credits remaining, submit-all confirm/success to plural-aware keys. Added `Strength.fromAbv()` (Hydromel <= 7.5, Standard <= 14, Sack > 14) — Strength auto-derived from ABV at domain level; removed from entrant dialog, read-only in admin edit dialog (updates live with ABV), PDF labels unchanged. 679 tests.
