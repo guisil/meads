@@ -46,6 +46,7 @@ public class CompetitionService {
     private final ApplicationEventPublisher eventPublisher;
     private final CompetitionDocumentRepository competitionDocumentRepository;
     private final List<DivisionRevertGuard> revertGuards;
+    private final List<DivisionDeletionGuard> deletionGuards;
     private final List<ParticipantRemovalCleanup> removalCleanups;
 
     CompetitionService(CompetitionRepository competitionRepository,
@@ -58,6 +59,7 @@ public class CompetitionService {
                        UserService userService,
                        ApplicationEventPublisher eventPublisher,
                        List<DivisionRevertGuard> revertGuards,
+                       List<DivisionDeletionGuard> deletionGuards,
                        List<ParticipantRemovalCleanup> removalCleanups) {
         this.competitionRepository = competitionRepository;
         this.divisionRepository = divisionRepository;
@@ -69,6 +71,7 @@ public class CompetitionService {
         this.userService = userService;
         this.eventPublisher = eventPublisher;
         this.revertGuards = revertGuards;
+        this.deletionGuards = deletionGuards;
         this.removalCleanups = removalCleanups;
     }
 
@@ -179,6 +182,12 @@ public class CompetitionService {
         }
         var documents = competitionDocumentRepository.findByCompetitionIdOrderByDisplayOrder(competitionId);
         competitionDocumentRepository.deleteAll(documents);
+        var participants = participantRepository.findByCompetitionId(competitionId);
+        for (var participant : participants) {
+            var roles = participantRoleRepository.findByParticipantId(participant.getId());
+            participantRoleRepository.deleteAll(roles);
+        }
+        participantRepository.deleteAll(participants);
         competitionRepository.delete(competition);
         log.info("Deleted competition: {} ({})", competitionId, competition.getShortName());
     }
@@ -275,6 +284,7 @@ public class CompetitionService {
         var division = divisionRepository.findById(divisionId)
                 .orElseThrow(() -> new BusinessRuleException("error.division.not-found"));
         requireAuthorized(division.getCompetitionId(), requestingUserId);
+        deletionGuards.forEach(guard -> guard.checkDeletionAllowed(divisionId));
         var categories = divisionCategoryRepository.findByDivisionIdOrderByCode(divisionId);
         var children = categories.stream().filter(c -> c.getParentId() != null).toList();
         var parents = categories.stream().filter(c -> c.getParentId() == null).toList();
@@ -603,6 +613,7 @@ public class CompetitionService {
                 .orElseThrow(() -> new BusinessRuleException("error.participant.role-not-found", role.name()));
         participantRoleRepository.delete(roleToRemove);
         if (roles.size() == 1) {
+            removalCleanups.forEach(c -> c.cleanupForParticipant(competitionId, participant.getUserId()));
             participantRepository.delete(participant);
             log.info("Removed participant (last role): participantId={}, role={}, competition={}",
                     participantId, role, competitionId);

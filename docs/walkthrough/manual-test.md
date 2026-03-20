@@ -381,7 +381,7 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] **Expected:** Notification "User deactivated successfully" (green)
 - [ ] **Expected:** User status changes to INACTIVE in the grid
 
-### Hard delete (confirmation dialog)
+### Hard delete -- success (no participant data)
 
 - [ ] Find `newuser@test.com` (now INACTIVE)
 - [ ] **Expected:** Trash icon button with tooltip "Delete"
@@ -390,6 +390,17 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] Click "Confirm"
 - [ ] **Expected:** Notification "User deleted successfully" (green)
 - [ ] **Expected:** User removed from grid
+
+### Hard delete -- blocked (has participant data)
+
+- [ ] Find `buyer1@example.com` (has participant record in CHIP 2026 as ENTRANT)
+- [ ] Click the ban icon (Deactivate)
+- [ ] **Expected:** "User deactivated successfully" — status changes to INACTIVE
+- [ ] Click the trash icon (Delete)
+- [ ] Click "Confirm" in the confirmation dialog
+- [ ] **Expected:** Error notification about associated data in competitions — NOT deleted
+- [ ] **Expected:** User remains in the grid as INACTIVE
+- [ ] Edit `buyer1@example.com`, change status back to ACTIVE, save to restore state
 
 ### Send magic link (no-password user)
 
@@ -494,6 +505,17 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] **Expected:** Notification "Competition deleted successfully" (green)
 - [ ] **Expected:** Competition removed from grid
 
+### Delete competition -- participant warning in dialog
+
+- [ ] Create another competition: `Part Test`, short name `part-test`, dates, location
+- [ ] Click into `Part Test`, go to Participants tab, add `judge@example.com` as JUDGE
+- [ ] Go back to `/competitions`
+- [ ] Click the trash icon on `Part Test`
+- [ ] **Expected:** Confirmation dialog: "Are you sure you want to delete \"Part Test\"? This will also remove all 1 participant(s) and their roles."
+- [ ] Click "Delete"
+- [ ] **Expected:** Notification "Competition deleted successfully" (green) — participant cleaned up
+- [ ] **Expected:** Competition removed from grid
+
 ### Delete competition -- blocked (has divisions)
 
 - [ ] Click the trash icon button on "CHIP 2026"
@@ -553,13 +575,20 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] **Expected:** Notification "Status advanced successfully" (green)
 - [ ] **Expected:** Status badge changes to "Registration Open"
 
-### Delete division
+### Delete division -- success (no entries/credits/products)
 
 - [ ] Click the trash icon button on `Test Division`
 - [ ] **Expected:** Confirmation dialog with warning about removing categories
 - [ ] Click "Delete"
 - [ ] **Expected:** Notification "Division deleted successfully" (green)
 - [ ] **Expected:** Division removed from grid
+
+### Delete division -- blocked (has entries/credits/products)
+
+- [ ] Click the trash icon button on `Amadora` (has entries, credits, product mappings)
+- [ ] Click "Delete" in the confirmation dialog
+- [ ] **Expected:** Error notification about associated data (entries, credits, or product mappings)
+- [ ] **Expected:** Division remains in the grid — NOT deleted
 
 ### View division detail
 

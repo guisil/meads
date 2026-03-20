@@ -253,7 +253,13 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
     private void openDeleteCompetitionDialog(Competition competition) {
         var dialog = new Dialog();
         dialog.setHeaderTitle("Delete Competition");
-        dialog.add("Are you sure you want to delete \"" + competition.getName() + "\"?");
+        var participants = competitionService.findParticipantsByCompetition(competition.getId());
+        if (participants.isEmpty()) {
+            dialog.add("Are you sure you want to delete \"" + competition.getName() + "\"?");
+        } else {
+            dialog.add("Are you sure you want to delete \"" + competition.getName() + "\"? "
+                    + "This will also remove all " + participants.size() + " participant(s) and their roles.");
+        }
 
         var confirmButton = new Button("Delete", e -> {
             try {

@@ -30,11 +30,14 @@ public class UserService {
     private final UserRepository userRepository;
     private final JwtMagicLinkService jwtMagicLinkService;
     private final PasswordEncoder passwordEncoder;
+    private final List<UserDeletionGuard> deletionGuards;
 
-    public UserService(UserRepository userRepository, JwtMagicLinkService jwtMagicLinkService, PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository userRepository, JwtMagicLinkService jwtMagicLinkService,
+                       PasswordEncoder passwordEncoder, List<UserDeletionGuard> deletionGuards) {
         this.userRepository = userRepository;
         this.jwtMagicLinkService = jwtMagicLinkService;
         this.passwordEncoder = passwordEncoder;
+        this.deletionGuards = deletionGuards;
     }
 
     public User createUser(@Email @NotBlank String email, @NotBlank String name, @NotNull UserStatus status, @NotNull Role role) {
@@ -160,6 +163,7 @@ public class UserService {
             throw new BusinessRuleException("error.user.cannot-remove-self");
         }
         if (user.getStatus() == UserStatus.INACTIVE) {
+            deletionGuards.forEach(guard -> guard.checkDeletionAllowed(userId));
             userRepository.delete(user);
             log.info("Deleted inactive user: {} ({})", userId, user.getEmail());
         } else {

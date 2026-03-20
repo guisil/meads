@@ -112,6 +112,7 @@ app.meads.identity                       ← Identity module public API
 ├── JwtMagicLinkService.java            ← JWT token generation + validation (public API)
 ├── EmailService.java                    ← Email sending interface (public API)
 ├── AccessCodeValidator.java             ← Interface for access code validation (public API)
+├── UserDeletionGuard.java               ← Guard interface for blocking unsafe user deletions (public API)
 ├── LoginView.java                       ← Vaadin login view (public — referenced by SecurityConfig)
 └── internal/                            ← Module-private
     ├── UserRepository.java              ← JPA repository
@@ -143,6 +144,7 @@ app.meads.competition                    ← Competition module public API
 ├── ScoringSystem.java                   ← Enum: MJP
 ├── CompetitionService.java              ← Application service (public API)
 ├── DivisionRevertGuard.java             ← Guard interface for blocking unsafe status reverts
+├── DivisionDeletionGuard.java           ← Guard interface for blocking unsafe division deletions
 ├── DivisionStatusAdvancedEvent.java     ← Spring application event
 ├── CompetitionDocument.java             ← JPA entity (competition-scoped document, PDF or link, optional language filter)
 ├── DocumentType.java                    ← Enum: PDF, LINK
@@ -155,6 +157,7 @@ app.meads.competition                    ← Competition module public API
     ├── DivisionCategoryRepository.java  ← JPA repository
     ├── CompetitionDocumentRepository.java ← JPA repository
     ├── CompetitionAccessCodeValidator.java  ← AccessCodeValidator implementation
+    ├── CompetitionUserDeletionGuard.java    ← UserDeletionGuard impl (blocks user delete with participants)
     ├── CompetitionListView.java         ← Competitions CRUD view (@RolesAllowed("SYSTEM_ADMIN"))
     ├── CompetitionDetailView.java       ← Competition detail with Divisions/Participants/Settings/Documents tabs (@PermitAll + beforeEnter auth)
     ├── DivisionDetailView.java          ← Division detail with Categories/Settings tabs, breadcrumb (@PermitAll + beforeEnter auth)
@@ -187,6 +190,7 @@ app.meads.entry                              ← Entry module public API
     ├── EntryRepository.java                 ← JPA repository
     ├── JumpsellerWebhookController.java     ← @RestController (webhook endpoint)
     ├── EntryDivisionRevertGuard.java        ← DivisionRevertGuard impl (blocks revert to DRAFT with entries)
+    ├── EntryDivisionDeletionGuard.java     ← DivisionDeletionGuard impl (blocks deletion with entries/credits/products)
     ├── RegistrationClosedListener.java      ← @ApplicationModuleListener (DivisionStatusAdvancedEvent)
     ├── OrderReviewNotificationListener.java ← @ApplicationModuleListener (OrderRequiresReviewEvent → admin emails)
     ├── SubmissionConfirmationListener.java  ← @ApplicationModuleListener (EntriesSubmittedEvent → entrant email)

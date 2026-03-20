@@ -11,6 +11,8 @@ import java.util.UUID;
 public interface EntryCreditRepository extends JpaRepository<EntryCredit, UUID> {
     List<EntryCredit> findByDivisionIdAndUserId(UUID divisionId, UUID userId);
 
+    boolean existsByDivisionId(UUID divisionId);
+
     @Query("SELECT COALESCE(SUM(c.amount), 0) FROM EntryCredit c WHERE c.divisionId = :divisionId AND c.userId = :userId")
     int sumAmountByDivisionIdAndUserId(UUID divisionId, UUID userId);
 

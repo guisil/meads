@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `main`
-**Tests:** 685 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-03-19
+**Tests:** 695 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-03-20
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -221,31 +221,31 @@ Full manual walkthrough completed 2026-03-17. All 4 parts done.
   `getTranslation(key, Locale.ENGLISH, params)` to force English errors, avoiding the
   mixed-language issue where some errors were translated and others fell back to English.
 
-### Priority 2: Deletion guards and cascade testing
+### Priority 2: Deletion guards and cascade testing — COMPLETE
 Comprehensive review and hardening of all deletion operations across the application.
-Two parts: (a) implement guards to block unsafe deletions, (b) test all existing
-deletion paths for correct behavior.
 
-**Guards to implement:**
-- Participant with entries → block removal
-- Participant with credits (no entries) → block removal
-- Associated orders → handle constraint violations (remove or reassign)
-- User deletion → check entries/credits across all competitions
-- Cross-module: use guard interface pattern (like `DivisionRevertGuard`)
-- UI: show error notification (not exception) when blocked
+**Guards implemented:**
+- **Division deletion guard** — `DivisionDeletionGuard` interface (competition module) + `EntryDivisionDeletionGuard` impl (entry module). Blocks deletion when entries, credits, or product mappings exist.
+- **User hard-delete guard** — `UserDeletionGuard` interface (identity module) + `CompetitionUserDeletionGuard` impl (competition module). Blocks hard delete when user has participant records.
+- **Last-role removal fix** — `removeParticipantRole()` now invokes `ParticipantRemovalCleanup` interface when removing the last role (was bypassing cleanup, causing orphaned entries/credits).
+- **Competition deletion cleanup** — `deleteCompetition()` now cleans up participants and their roles before deleting the competition.
 
-**Deletion paths to test (with and without dependent data):**
-- Delete competition → what happens to divisions, participants, entries, credits, orders, documents?
-- Delete division → what happens to entries, credits, product mappings, categories?
-- Delete participant → what happens to entries, credits, orders linked to that user?
-- Delete user → what happens to entries, credits, participant records?
-- Delete product mapping → what happens to existing orders/line items referencing it?
-- Delete category from division → what happens to entries using that category?
-- Remove ENTRANT role from participant → what happens to their entries/credits?
+**Assessed and deferred:**
+- Category removal — DB FK constraint already blocks deletion when entries reference the category. View catches `DataIntegrityViolationException` with a user-friendly message. No code change needed.
 
-**Approach:** Start with a design pass to map all FK constraints and cascade behavior.
-Then TDD each guard and deletion path. Needs thorough testing — multiple edge cases
-across modules.
+**Deletion path safety summary:**
+| Path | Guard | Status |
+|------|-------|--------|
+| Delete competition | Blocked if divisions exist; participants cleaned up | ✓ |
+| Delete division | `DivisionDeletionGuard` blocks if entries/credits/products exist | ✓ |
+| Delete participant | `ParticipantRemovalCleanup` cleans entries/credits | ✓ |
+| Remove last role | Now invokes cleanup (was missing) | ✓ Fixed |
+| Delete user (soft) | Deactivates, no cascade needed | ✓ |
+| Delete user (hard) | `UserDeletionGuard` blocks if participant records exist | ✓ |
+| Delete product mapping | No dependent data | ✓ |
+| Delete entry | Only DRAFT status allowed | ✓ |
+| Delete category | DB FK constraint blocks if entries reference it | ✓ |
+| Delete document | No dependent data | ✓ |
 
 ### Priority 3: Admin view i18n
 Translate all admin views to support the same language switching as entrant views.

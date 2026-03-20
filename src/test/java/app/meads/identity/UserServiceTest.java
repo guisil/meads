@@ -2,13 +2,14 @@ package app.meads.identity;
 
 import app.meads.BusinessRuleException;
 import app.meads.identity.internal.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -20,12 +21,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
 
-    @InjectMocks
     UserService userService;
 
     @Mock
@@ -36,6 +38,15 @@ class UserServiceTest {
 
     @Mock
     PasswordEncoder passwordEncoder;
+
+    List<UserDeletionGuard> deletionGuards = new ArrayList<>();
+
+    @BeforeEach
+    void setUp() {
+        deletionGuards.clear();
+        userService = new UserService(userRepository, jwtMagicLinkService,
+                passwordEncoder, deletionGuards);
+    }
 
     @Test
     void shouldDeactivateUserWhenStatusIsNotInactive() {
@@ -71,6 +82,26 @@ class UserServiceTest {
         // Assert
         then(userRepository).should().delete(user);
         then(userRepository).shouldHaveNoMoreInteractions();
+    }
+
+    @Test
+    void shouldRejectHardDeleteWhenDeletionGuardBlocks() {
+        User user = new User("user@example.com", "Test User", UserStatus.INACTIVE, Role.USER);
+        UUID userId = user.getId();
+        String currentUserEmail = "admin@example.com";
+
+        given(userRepository.findById(userId)).willReturn(Optional.of(user));
+
+        var guard = mock(UserDeletionGuard.class);
+        deletionGuards.add(guard);
+        willThrow(new BusinessRuleException("error.user.cannot-delete-has-data"))
+                .given(guard).checkDeletionAllowed(userId);
+
+        assertThatThrownBy(() -> userService.removeUser(userId, currentUserEmail))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.user.cannot-delete-has-data");
+
+        then(userRepository).should(never()).delete(any());
     }
 
     @Test

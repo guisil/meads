@@ -71,6 +71,8 @@ class CompetitionServiceTest {
 
     List<DivisionRevertGuard> revertGuards = new ArrayList<>();
 
+    List<DivisionDeletionGuard> deletionGuards = new ArrayList<>();
+
     List<ParticipantRemovalCleanup> removalCleanups = new ArrayList<>();
 
     @BeforeEach
@@ -80,7 +82,7 @@ class CompetitionServiceTest {
                 participantRepository, participantRoleRepository,
                 divisionCategoryRepository, categoryRepository,
                 competitionDocumentRepository, userService,
-                eventPublisher, revertGuards, removalCleanups);
+                eventPublisher, revertGuards, deletionGuards, removalCleanups);
     }
 
     private Competition createCompetition() {
@@ -298,6 +300,30 @@ class CompetitionServiceTest {
         competitionService.deleteCompetition(competition.getId(), admin.getId());
 
         then(competitionDocumentRepository).should().deleteAll(List.of());
+        then(competitionRepository).should().delete(competition);
+    }
+
+    @Test
+    void shouldDeleteCompetitionAndCleanUpParticipants() {
+        var admin = createAdmin();
+        var competition = createCompetition();
+        var userId = UUID.randomUUID();
+        var participant = new Participant(competition.getId(), userId);
+        var role = new ParticipantRole(participant.getId(), CompetitionRole.JUDGE);
+        given(competitionRepository.findById(competition.getId())).willReturn(Optional.of(competition));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(divisionRepository.findByCompetitionId(competition.getId())).willReturn(List.of());
+        given(competitionDocumentRepository.findByCompetitionIdOrderByDisplayOrder(competition.getId()))
+                .willReturn(List.of());
+        given(participantRepository.findByCompetitionId(competition.getId()))
+                .willReturn(List.of(participant));
+        given(participantRoleRepository.findByParticipantId(participant.getId()))
+                .willReturn(List.of(role));
+
+        competitionService.deleteCompetition(competition.getId(), admin.getId());
+
+        then(participantRoleRepository).should().deleteAll(List.of(role));
+        then(participantRepository).should().deleteAll(List.of(participant));
         then(competitionRepository).should().delete(competition);
     }
 
@@ -656,6 +682,29 @@ class CompetitionServiceTest {
 
         then(divisionCategoryRepository).should().deleteAll(List.of(category));
         then(divisionRepository).should().delete(division);
+    }
+
+    @Test
+    void shouldRejectDeleteDivisionWhenDeletionGuardBlocks() {
+        var admin = createAdmin();
+        var division = new Division(UUID.randomUUID(),
+                "Home", "home", ScoringSystem.MJP,
+                LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
+        given(divisionRepository.findById(division.getId()))
+                .willReturn(Optional.of(division));
+        given(userService.findById(admin.getId())).willReturn(admin);
+
+        var guard = mock(DivisionDeletionGuard.class);
+        deletionGuards.add(guard);
+        willThrow(new BusinessRuleException("error.division.cannot-delete-has-entries"))
+                .given(guard).checkDeletionAllowed(division.getId());
+
+        assertThatThrownBy(() -> competitionService.deleteDivision(
+                division.getId(), admin.getId()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.division.cannot-delete-has-entries");
+
+        then(divisionRepository).should(never()).delete(any());
     }
 
     // --- addParticipant ---
@@ -1118,6 +1167,30 @@ class CompetitionServiceTest {
         competitionService.removeParticipantRole(
                 competition.getId(), participant.getId(), CompetitionRole.JUDGE, admin.getId());
 
+        then(participantRoleRepository).should().delete(judgeRole);
+        then(participantRepository).should().delete(participant);
+    }
+
+    @Test
+    void shouldInvokeCleanupWhenLastRoleRemoved() {
+        var admin = createAdmin();
+        var competition = createCompetition();
+        var userId = UUID.randomUUID();
+        var participant = new Participant(competition.getId(), userId);
+        var judgeRole = new ParticipantRole(participant.getId(), CompetitionRole.JUDGE);
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(participantRepository.findById(participant.getId()))
+                .willReturn(Optional.of(participant));
+        given(participantRoleRepository.findByParticipantId(participant.getId()))
+                .willReturn(List.of(judgeRole));
+
+        var cleanup = mock(ParticipantRemovalCleanup.class);
+        removalCleanups.add(cleanup);
+
+        competitionService.removeParticipantRole(
+                competition.getId(), participant.getId(), CompetitionRole.JUDGE, admin.getId());
+
+        then(cleanup).should().cleanupForParticipant(competition.getId(), userId);
         then(participantRoleRepository).should().delete(judgeRole);
         then(participantRepository).should().delete(participant);
     }
