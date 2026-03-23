@@ -12,18 +12,21 @@
 
 	<groupId>app.meads</groupId>
 	<artifactId>meads</artifactId>
-	<version>0.2.6-SNAPSHOT</version>
+	<version>0.2.6</version>
 	<name>meads</name>
 	<description>MEADS (Mead Evaluation and Awards Data System)</description>
 
 	<properties>
 		<java.version>25</java.version>
-		<spring-modulith.version>2.0.2</spring-modulith.version>
-		<testcontainers.version>2.0.3</testcontainers.version>
-		<vaadin.version>25.0.5</vaadin.version>
-		<karibu-testing.version>2.6.2</karibu-testing.version>
-		<awaitility.version>4.3.0</awaitility.version>
+		<vaadin.version>25.0.7</vaadin.version>
+		<spring-modulith.version>2.0.4</spring-modulith.version>
 		<jjwt.version>0.13.0</jjwt.version>
+		<bcprov-jdk18on.version>1.83</bcprov-jdk18on.version>
+		<openpdf.version>3.0.3</openpdf.version>
+		<google.zxing.version>3.5.4</google.zxing.version>
+		<karibu-testing.version>2.7.0</karibu-testing.version>
+		<testcontainers.version>2.0.4</testcontainers.version>
+		<awaitility.version>4.3.0</awaitility.version>
 	</properties>
 
 	<dependencyManagement>
@@ -138,26 +141,26 @@
 		<dependency>
 			<groupId>org.bouncycastle</groupId>
 			<artifactId>bcprov-jdk18on</artifactId>
-			<version>1.80</version>
+			<version>${bcprov-jdk18on.version}</version>
 		</dependency>
 
 		<!-- PDF generation -->
 		<dependency>
 			<groupId>com.github.librepdf</groupId>
 			<artifactId>openpdf</artifactId>
-			<version>2.0.3</version>
+			<version>${openpdf.version}</version>
 		</dependency>
 
 		<!-- QR code generation -->
 		<dependency>
 			<groupId>com.google.zxing</groupId>
 			<artifactId>core</artifactId>
-			<version>3.5.3</version>
+			<version>${google.zxing.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>com.google.zxing</groupId>
 			<artifactId>javase</artifactId>
-			<version>3.5.3</version>
+			<version>${google.zxing.version}</version>
 		</dependency>
 
 		<!-- Compile-time only -->

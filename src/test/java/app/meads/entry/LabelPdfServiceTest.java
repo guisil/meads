@@ -8,8 +8,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.lowagie.text.pdf.PdfName;
-import com.lowagie.text.pdf.PdfReader;
+import org.openpdf.text.pdf.PdfName;
+import org.openpdf.text.pdf.PdfReader;
 
 import org.springframework.context.support.ResourceBundleMessageSource;
 

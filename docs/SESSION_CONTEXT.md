@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `main`
-**Tests:** 695 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-03-20
+**Tests:** 695 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-03-23
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -294,6 +294,7 @@ carbonation locking (custom categories), and admin-configurable constraints for 
 Requires: DB migration, admin UI for constraint config, cross-module data flow, server-side validation.
 
 ### Completed priorities
+- **Italian informal language + dependency upgrades** — Completed 2026-03-23. Switched all Italian UI text from formal "Lei" to informal "tu" (UI, emails, PDF instructions, error messages). Upgraded dependencies: Vaadin 25.0.5→25.0.7, Spring Modulith 2.0.2→2.0.4, OpenPDF 2.0.3→3.0.3 (package rename com.lowagie→org.openpdf), BouncyCastle 1.80→1.83, Karibu Testing 2.6.2→2.7.0, Testcontainers 2.0.3→2.0.4. Added Vaadin-generated frontend files to .gitignore. 695 tests.
 - **Document language filtering** — Completed 2026-03-19. Added optional `language` field (VARCHAR(5)) to `CompetitionDocument` (V17 migration). `null` = visible to all languages, a language code (e.g. "pt") = visible only to that locale. Admin add-document dialog has Language dropdown (from `MeadsI18NProvider.getSupportedLanguageCodes()`). Admin grid shows Language column. Entrant view (`MyEntriesView`) filters via `getDocumentsForLocale()`. 685 tests.
 - **Date display** — Completed 2026-03-18. Registration deadline in entrant view now uses locale-aware `DateTimeFormatter.ofLocalizedDate(SHORT)` + `ofLocalizedTime(SHORT)` instead of hardcoded pattern. Timezone display removed.
 - **Logo update** — Completed 2026-03-18. Switched to new logo files: `meads-logo-white` for navbar and emails, `meads-logo-dark-grey` for README light mode.

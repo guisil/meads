@@ -61,6 +61,10 @@ node_modules/
 vite.generated.ts
 vite.config.ts.timestamp*
 src/main/bundles/
+package.json
+package-lock.json
+tsconfig.json
+types.d.ts
 
 # Spring Boot
 *.pid

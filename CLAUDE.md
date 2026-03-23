@@ -12,10 +12,10 @@ reference implementations; future modules will follow the same patterns.
 
 ## Tech Stack
 
-- **Java 25**, Spring Boot 4.0.2, Spring Modulith 2.0.2, Jakarta Bean Validation (`spring-boot-starter-validation`)
-- **Vaadin 25.0.5** (Java Flow — server-side, NOT React/Hilla)
+- **Java 25**, Spring Boot 4.0.2, Spring Modulith 2.0.4, Jakarta Bean Validation (`spring-boot-starter-validation`)
+- **Vaadin 25.0.7** (Java Flow — server-side, NOT React/Hilla)
 - **PostgreSQL 18**, Flyway (managed by Boot)
-- **Testcontainers 2.0.3**, Karibu Testing 2.6.2, Mockito, Awaitility 4.3.0
+- **Testcontainers 2.0.4**, Karibu Testing 2.7.0, Mockito, Awaitility 4.3.0
 - **jjwt 0.13.0** (JWT magic link tokens)
 - **spring-boot-starter-mail** + **spring-boot-starter-thymeleaf** (SMTP email with HTML templates)
 - **JUnit 5**, AssertJ, Spring Security 7.0.2
