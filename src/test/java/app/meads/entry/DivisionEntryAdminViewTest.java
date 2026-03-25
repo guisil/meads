@@ -3,6 +3,7 @@ package app.meads.entry;
 import app.meads.TestcontainersConfiguration;
 import app.meads.competition.*;
 import app.meads.competition.internal.CompetitionRepository;
+import app.meads.competition.internal.DivisionCategoryRepository;
 import app.meads.competition.internal.DivisionRepository;
 import app.meads.competition.internal.ParticipantRepository;
 import app.meads.competition.internal.ParticipantRoleRepository;
@@ -16,6 +17,7 @@ import com.github.mvysny.kaributesting.v10.Routes;
 import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.tabs.TabSheet;
@@ -35,6 +37,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.annotation.DirtiesContext;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -67,6 +70,12 @@ class DivisionEntryAdminViewTest {
 
     @Autowired
     ParticipantRoleRepository participantRoleRepository;
+
+    @Autowired
+    DivisionCategoryRepository divisionCategoryRepository;
+
+    @Autowired
+    EntryService entryService;
 
     private Competition competition;
     private Division division;
@@ -189,5 +198,48 @@ class DivisionEntryAdminViewTest {
         // The "Download all labels" button should exist in the toolbar
         var downloadBtn = _get(Button.class, spec -> spec.withText("Download all labels"));
         assertThat(downloadBtn).isNotNull();
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldShowMarkAsReceivedButtonForSubmittedEntries() {
+        // Create a category and a submitted entry
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Dry mead category", null, 1));
+
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var entry = entryService.createEntry(division.getId(), admin.getId(),
+                "Test Mead", category.getId(),
+                Sweetness.DRY, new BigDecimal("12.0"),
+                Carbonation.STILL, "Honey", null, false, null, null);
+        entryService.submitEntry(entry.getId(), admin.getId());
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/entry-admin");
+
+        // Select the Entries tab
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(1);
+
+        // Find the "Mark as Received" icon button via aria-label
+        var markReceivedButtons = _find(Button.class).stream()
+                .filter(b -> "Mark as Received".equals(b.getAriaLabel().orElse(null)))
+                .toList();
+        assertThat(markReceivedButtons).hasSize(1);
+        assertThat(markReceivedButtons.getFirst().isVisible()).isTrue();
+
+        // Click it — should open confirmation dialog
+        _click(markReceivedButtons.getFirst());
+        var dialog = _get(Dialog.class);
+        assertThat(dialog).isNotNull();
+
+        // Confirm by clicking the "Mark as Received" text button in the dialog
+        var confirmBtn = _get(dialog, Button.class, spec -> spec.withText("Mark as Received"));
+        _click(confirmBtn);
+
+        // Verify entry is now RECEIVED
+        var updatedEntry = entryService.findEntryById(entry.getId());
+        assertThat(updatedEntry.getStatus()).isEqualTo(EntryStatus.RECEIVED);
     }
 }
