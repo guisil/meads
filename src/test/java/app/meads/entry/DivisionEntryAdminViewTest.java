@@ -3,7 +3,9 @@ package app.meads.entry;
 import app.meads.TestcontainersConfiguration;
 import app.meads.competition.*;
 import app.meads.competition.internal.CompetitionRepository;
+import app.meads.competition.internal.DivisionCategoryRepository;
 import app.meads.competition.internal.DivisionRepository;
+import app.meads.entry.internal.EntryCreditRepository;
 import app.meads.competition.internal.ParticipantRepository;
 import app.meads.competition.internal.ParticipantRoleRepository;
 import app.meads.identity.Role;
@@ -35,6 +37,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.annotation.DirtiesContext;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -67,6 +70,15 @@ class DivisionEntryAdminViewTest {
 
     @Autowired
     ParticipantRoleRepository participantRoleRepository;
+
+    @Autowired
+    DivisionCategoryRepository divisionCategoryRepository;
+
+    @Autowired
+    EntryService entryService;
+
+    @Autowired
+    EntryCreditRepository creditRepository;
 
     private Competition competition;
     private Division division;
@@ -189,5 +201,54 @@ class DivisionEntryAdminViewTest {
         // The "Download all labels" button should exist in the toolbar
         var downloadBtn = _get(Button.class, spec -> spec.withText("Download all labels"));
         assertThat(downloadBtn).isNotNull();
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldRenderEntriesGridWithCorrectColumnsForSubmittedEntry() {
+        // Advance division and add credits so entry can be created
+        division.advanceStatus(); // DRAFT → REGISTRATION_OPEN
+        division = divisionRepository.save(division);
+
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        creditRepository.save(new EntryCredit(division.getId(), admin.getId(), 1, "ADMIN", "test"));
+
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Dry mead category", null, 1));
+        var entry = entryService.createEntry(division.getId(), admin.getId(),
+                "Test Mead", category.getId(),
+                Sweetness.DRY, new BigDecimal("12.0"),
+                Carbonation.STILL, "Honey", null, false, null, null);
+        entryService.submitEntry(entry.getId(), admin.getId());
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/entry-admin");
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(1);
+
+        // Find the entries grid
+        var grids = _find(Grid.class);
+        var entriesGrid = grids.stream()
+                .filter(g -> "entries-grid".equals(g.getId().orElse(null)))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Entries grid not found"));
+
+        // Grid has 10 columns: Entry #, Code, Mead Name, Category, Final Category,
+        // Entrant, Meadery, Country, Status, Actions (view/edit/mark-received/delete/withdraw)
+        // Note: buttons inside addComponentColumn are not reachable via _find (Karibu limitation).
+        // The mark-received service behavior is tested in EntryServiceTest.
+        assertThat(entriesGrid.getColumns()).hasSize(10);
+
+        @SuppressWarnings("rawtypes")
+        var headers = entriesGrid.getColumns().stream()
+                .map(c -> ((Grid.Column) c).getHeaderText())
+                .filter(h -> h instanceof String s && !s.isBlank())
+                .map(Object::toString)
+                .toList();
+        assertThat(headers).containsExactlyInAnyOrder(
+                "Entry #", "Code", "Mead Name", "Category", "Final Category",
+                "Entrant", "Meadery", "Country", "Status", "Actions");
     }
 }

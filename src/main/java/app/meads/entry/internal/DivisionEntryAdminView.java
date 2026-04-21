@@ -470,6 +470,13 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             deleteButton.setEnabled(entry.getStatus() == EntryStatus.DRAFT);
             deleteButton.addClickListener(e -> openDeleteEntryDialog(entry));
 
+            var markReceivedButton = new Button(new Icon(VaadinIcon.CHECK));
+            markReceivedButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            markReceivedButton.setAriaLabel("Mark as Received");
+            markReceivedButton.setTooltipText("Mark as Received");
+            markReceivedButton.setEnabled(entry.getStatus() == EntryStatus.SUBMITTED);
+            markReceivedButton.addClickListener(e -> openMarkReceivedDialog(entry));
+
             var withdrawButton = new Button(new Icon(VaadinIcon.BAN));
             withdrawButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
             withdrawButton.setAriaLabel("Withdraw");
@@ -477,7 +484,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             withdrawButton.setEnabled(entry.getStatus() != EntryStatus.WITHDRAWN);
             withdrawButton.addClickListener(e -> openWithdrawEntryDialog(entry));
 
-            var actions = new HorizontalLayout(viewButton, editButton, deleteButton, withdrawButton);
+            var actions = new HorizontalLayout(viewButton, editButton, markReceivedButton, deleteButton, withdrawButton);
 
             if (entry.getStatus() == EntryStatus.SUBMITTED || entry.getStatus() == EntryStatus.RECEIVED) {
                 var category = getCategoryById(entry.getInitialCategoryId());
@@ -821,6 +828,32 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             try {
                 entryService.deleteEntry(entry.getId(), entry.getUserId());
                 var notification = Notification.show("Entry deleted");
+                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                dialog.close();
+                refreshEntriesGrid();
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                e.getSource().setEnabled(true);
+            }
+        });
+        confirmButton.setDisableOnClick(true);
+
+        var cancelButton = new Button("Cancel", e -> dialog.close());
+        dialog.getFooter().add(cancelButton, confirmButton);
+        dialog.open();
+    }
+
+    private void openMarkReceivedDialog(Entry entry) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle("Mark as Received");
+
+        dialog.add("Mark entry " + formatEntryNumber(entry.getEntryNumber())
+                + " \"" + entry.getMeadName() + "\" as received?");
+
+        var confirmButton = new Button("Mark as Received", e -> {
+            try {
+                entryService.markReceived(entry.getId(), currentUserId);
+                var notification = Notification.show("Entry marked as received");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
                 refreshEntriesGrid();
