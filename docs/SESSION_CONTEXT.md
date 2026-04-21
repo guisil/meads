@@ -247,7 +247,12 @@ Comprehensive review and hardening of all deletion operations across the applica
 | Delete category | DB FK constraint blocks if entries reference it | ✓ |
 | Delete document | No dependent data | ✓ |
 
-### Priority 3 (NEW — highest): Entry status management redesign
+### Priority 3 (NEW — highest): Update dependency versions
+Review and update all dependency versions in `pom.xml` to their latest stable releases.
+Key dependencies to check: Spring Boot, Vaadin, Spring Modulith, Testcontainers, Karibu Testing,
+OpenPDF, ZXing, jjwt, BouncyCastle. Run full test suite after upgrading.
+
+### Priority 4: Entry status management redesign
 
 Replace the current individual status action buttons in `DivisionEntryAdminView` with a more flexible arrow-based approach, consistent with the division status UI pattern.
 
@@ -272,7 +277,7 @@ Replace the current individual status action buttons in `DivisionEntryAdminView`
 - `DivisionEntryAdminViewTest.java` — update to reflect new column/button structure.
 - `docs/walkthrough/manual-test.md` — update entry admin action button section.
 
-### Priority 4: Admin view i18n
+### Priority 5: Admin view i18n
 Translate all admin views to support the same language switching as entrant views.
 ~270 hardcoded English strings across 8 views to extract to message keys and translate
 to PT. Mechanical work — no new patterns or dependencies, `getTranslation()` infrastructure
@@ -280,7 +285,7 @@ already in place. Biggest files: CompetitionDetailView (~82 strings), DivisionEn
 (~90 strings). Also include LoginView and SetPasswordView — entrants with passwords use
 these views too, not just admins.
 
-### Priority 5: Post-registration actions audit
+### Priority 6: Post-registration actions audit
 Review what actions should be allowed/blocked after a division moves past REGISTRATION_OPEN.
 Currently some actions remain available that may need restricting or scoping. Design pass
 needed to decide per-status rules:
@@ -293,25 +298,25 @@ needed to decide per-status rules:
 Do this audit after the admin i18n work (priority 4) since translated views may surface
 additional UX considerations.
 
-### Priority 6: MFA for system admins
+### Priority 7: MFA for system admins
 Evaluate and implement multi-factor authentication for SYSTEM_ADMIN accounts.
 Password-only login for privileged accounts is a security risk post-deployment.
 
-### Priority 7: Auto-close + deadline reminders (deferred)
+### Priority 8: Auto-close + deadline reminders (deferred)
 - **Auto-close** — automatically advance division from REGISTRATION_OPEN → REGISTRATION_CLOSED
   when registration deadline passes (scheduled task)
 - **Entrant deadline reminder** — notify entrants who have DRAFT entries when the registration
   deadline is approaching (e.g., 7 days, 3 days, 1 day before deadline)
 - Other potential: entry received confirmation (when admin marks entry as RECEIVED), results published notification
 
-### Priority 8: Judging module
+### Priority 9: Judging module
 Design and implementation. Reference: `docs/reference/chip-competition-rules.md`.
 
-### Priority 9: Awards module
+### Priority 10: Awards module
 
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md`.
 
-### Priority 10: Full category constraint system (low priority — future competition)
+### Priority 11: Full category constraint system (low priority — future competition)
 Full field locking/validation based on category selection. Design doc: `docs/plans/2026-03-11-category-hints-design.md` (appendix).
 Includes: sweetness locking (M1A→Dry, M1B→Medium, M1C→Sweet), ingredient restrictions (M1/M4E),
 strength locking (M4S→Hydromel), ABV caps (M4S→7.5%), ABV→Strength derivation (universal),
