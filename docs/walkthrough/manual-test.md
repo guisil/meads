@@ -930,8 +930,8 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] **Expected:** View button (eye) opens read-only dialog showing all entry fields, status, and entrant email
 - [ ] **Expected:** Edit button opens confirmation dialog ("Are you sure you want to edit this entry's data?"), then full edit dialog with all fields (mead name, category, sweetness, strength (read-only, auto-derived from ABV), ABV, carbonation, honey, other ingredients, wood aged, wood ageing details, additional info)
 - [ ] **Expected:** Edit works for entries in any status except WITHDRAWN
-- [ ] **Expected:** "Mark as Received" button (check icon) only visible for SUBMITTED entries
-- [ ] **Expected:** "Mark as Received" button NOT visible for DRAFT, RECEIVED, or WITHDRAWN entries
+- [ ] **Expected:** "Mark as Received" button (check icon) only enabled for SUBMITTED entries
+- [ ] **Expected:** "Mark as Received" button disabled (greyed out) for DRAFT, RECEIVED, or WITHDRAWN entries
 - [ ] **Expected:** Delete button opens confirmation dialog
 - [ ] **Expected:** Withdraw button opens confirmation dialog
 
@@ -945,7 +945,7 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] Click the "Mark as Received" button again, then click "Mark as Received" in the dialog
 - [ ] **Expected:** Notification "Entry marked as received" (green)
 - [ ] **Expected:** Entry status changes to RECEIVED in the grid
-- [ ] **Expected:** "Mark as Received" button is no longer visible for that entry (now RECEIVED)
+- [ ] **Expected:** "Mark as Received" button is disabled (greyed out) for that entry (now RECEIVED)
 - [ ] **Expected:** Entry can be reverted to SUBMITTED via Edit (admin edit allows status changes)
 
 ### Entry labels -- individual download (admin)

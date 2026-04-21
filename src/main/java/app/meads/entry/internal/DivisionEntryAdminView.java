@@ -474,7 +474,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             markReceivedButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
             markReceivedButton.setAriaLabel("Mark as Received");
             markReceivedButton.setTooltipText("Mark as Received");
-            markReceivedButton.setVisible(entry.getStatus() == EntryStatus.SUBMITTED);
+            markReceivedButton.setEnabled(entry.getStatus() == EntryStatus.SUBMITTED);
             markReceivedButton.addClickListener(e -> openMarkReceivedDialog(entry));
 
             var withdrawButton = new Button(new Icon(VaadinIcon.BAN));
