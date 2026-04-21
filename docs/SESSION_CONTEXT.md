@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `main`
-**Tests:** 695 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-03-23
+**Tests:** 696 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-04-21
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -117,7 +117,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 #### Views
 - `EntrantOverviewView` (`/my-entries`) — cross-competition entrant hub, shows all divisions with credits/entries, auto-redirects to single division
 - `MyEntriesView` (`/competitions/:compShortName/divisions/:divShortName/my-entries`) — header: competition logo + "Competition — Division — My Entries", entrant-facing, competition documents list, credits + limits display, process info box, registration deadline display, category guidance hints, entry grid with status badges/Final Category/Actions (view/edit/submit/download label)/filtering/sorting, add/edit dialog (full-width fields, per-field validation, prefixed entry IDs), "Submit All Drafts" button, "Download all labels" batch button (disabled until all entries submitted), meadery name required warning + submit blocking
-- `DivisionEntryAdminView` (`/competitions/:compShortName/divisions/:divShortName/entry-admin`) — header: competition logo + "Competition — Division — Entry Admin", admin tabs: Credits, Entries (with Meadery/Country/Final Category columns + view/edit/delete/withdraw actions + individual label download + batch "Download all labels" with confirmation dialog), Products, Orders. View dialog shows all entry fields read-only. Edit has confirmation gate then full edit dialog (all fields, per-field validation, works for any status except WITHDRAWN).
+- `DivisionEntryAdminView` (`/competitions/:compShortName/divisions/:divShortName/entry-admin`) — header: competition logo + "Competition — Division — Entry Admin", admin tabs: Credits, Entries (with Meadery/Country/Final Category columns + view/edit/mark-received/delete/withdraw actions + individual label download + batch "Download all labels" with confirmation dialog), Products, Orders. View dialog shows all entry fields read-only. Edit has confirmation gate then full edit dialog (all fields, per-field validation, works for any status except WITHDRAWN). Mark as Received button (check icon) is enabled only for SUBMITTED entries; disabled otherwise.
 
 #### REST
 - `JumpsellerWebhookController` — `POST /api/webhooks/jumpseller/order-paid` (HMAC-verified)
@@ -247,7 +247,32 @@ Comprehensive review and hardening of all deletion operations across the applica
 | Delete category | DB FK constraint blocks if entries reference it | ✓ |
 | Delete document | No dependent data | ✓ |
 
-### Priority 3: Admin view i18n
+### Priority 3 (NEW — highest): Entry status management redesign
+
+Replace the current individual status action buttons in `DivisionEntryAdminView` with a more flexible arrow-based approach, consistent with the division status UI pattern.
+
+**Agreed design:**
+- Remove the dedicated "Mark as Received" button (added in v0.2.7 as a stopgap).
+- Add `←` (revert) and `→` (advance) arrow buttons for the linear status flow: DRAFT → SUBMITTED → RECEIVED.
+  - `←` disabled for DRAFT; `→` disabled for RECEIVED.
+  - Tooltips show target state (e.g. "← Revert to Draft", "→ Mark as Received").
+- Keep "Withdraw" (ban icon) as a separate action — not part of the arrow flow.
+- Move "Delete" button to the right of "Withdraw" (most destructive action at the far end).
+- New button order: `[eye] [pencil] [←] [→] [ban/withdraw] [trash/delete]`
+- Allow reverting WITHDRAWN entries via the `←` button.
+
+**Open design question (must decide before implementing):**
+- What state does a WITHDRAWN entry revert to? Since the previous state is not tracked, a fixed target is needed. Options: DRAFT (safe, back to start) or SUBMITTED (assumes it was submitted before withdrawal). User needs to decide — consider tracking previous state if more flexibility is needed.
+
+**Scope of changes:**
+- `Entry.java` — new domain method(s) for advance/revert (replacing `markReceived()` or adding alongside). Must handle WITHDRAWN revert.
+- `EntryService.java` — new `advanceEntryStatus()` and `revertEntryStatus()` service methods.
+- `DivisionEntryAdminView.java` — replace action buttons with the new layout.
+- `EntryServiceTest.java` — new tests for advance/revert transitions including WITHDRAWN revert.
+- `DivisionEntryAdminViewTest.java` — update to reflect new column/button structure.
+- `docs/walkthrough/manual-test.md` — update entry admin action button section.
+
+### Priority 4: Admin view i18n
 Translate all admin views to support the same language switching as entrant views.
 ~270 hardcoded English strings across 8 views to extract to message keys and translate
 to PT. Mechanical work — no new patterns or dependencies, `getTranslation()` infrastructure
@@ -255,7 +280,7 @@ already in place. Biggest files: CompetitionDetailView (~82 strings), DivisionEn
 (~90 strings). Also include LoginView and SetPasswordView — entrants with passwords use
 these views too, not just admins.
 
-### Priority 4: Post-registration actions audit
+### Priority 5: Post-registration actions audit
 Review what actions should be allowed/blocked after a division moves past REGISTRATION_OPEN.
 Currently some actions remain available that may need restricting or scoping. Design pass
 needed to decide per-status rules:
@@ -268,25 +293,25 @@ needed to decide per-status rules:
 Do this audit after the admin i18n work (priority 4) since translated views may surface
 additional UX considerations.
 
-### Priority 5: MFA for system admins
+### Priority 6: MFA for system admins
 Evaluate and implement multi-factor authentication for SYSTEM_ADMIN accounts.
 Password-only login for privileged accounts is a security risk post-deployment.
 
-### Priority 6: Auto-close + deadline reminders (deferred)
+### Priority 7: Auto-close + deadline reminders (deferred)
 - **Auto-close** — automatically advance division from REGISTRATION_OPEN → REGISTRATION_CLOSED
   when registration deadline passes (scheduled task)
 - **Entrant deadline reminder** — notify entrants who have DRAFT entries when the registration
   deadline is approaching (e.g., 7 days, 3 days, 1 day before deadline)
 - Other potential: entry received confirmation (when admin marks entry as RECEIVED), results published notification
 
-### Priority 7: Judging module
+### Priority 8: Judging module
 Design and implementation. Reference: `docs/reference/chip-competition-rules.md`.
 
-### Priority 8: Awards module
+### Priority 9: Awards module
 
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md`.
 
-### Priority 9: Full category constraint system (low priority — future competition)
+### Priority 10: Full category constraint system (low priority — future competition)
 Full field locking/validation based on category selection. Design doc: `docs/plans/2026-03-11-category-hints-design.md` (appendix).
 Includes: sweetness locking (M1A→Dry, M1B→Medium, M1C→Sweet), ingredient restrictions (M1/M4E),
 strength locking (M4S→Hydromel), ABV caps (M4S→7.5%), ABV→Strength derivation (universal),
