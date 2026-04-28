@@ -236,9 +236,9 @@ class DivisionEntryAdminViewTest {
                 .orElseThrow(() -> new AssertionError("Entries grid not found"));
 
         // Grid has 10 columns: Entry #, Code, Mead Name, Category, Final Category,
-        // Entrant, Meadery, Country, Status, Actions (view/edit/mark-received/delete/withdraw)
+        // Entrant, Meadery, Country, Status, Actions (view/edit/←/→/withdraw/delete)
         // Note: buttons inside addComponentColumn are not reachable via _find (Karibu limitation).
-        // The mark-received service behavior is tested in EntryServiceTest.
+        // Advance/revert service behavior is tested in EntryServiceTest.
         assertThat(entriesGrid.getColumns()).hasSize(10);
 
         @SuppressWarnings("rawtypes")

@@ -290,6 +290,24 @@ public class EntryService {
         publishSubmissionEventIfComplete(divisionId, userId);
     }
 
+    public Entry advanceEntryStatus(@NotNull UUID entryId, @NotNull UUID requestingUserId) {
+        var entry = entryRepository.findById(entryId)
+                .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
+        requireAuthorizedForDivision(entry.getDivisionId(), requestingUserId);
+        entry.advanceStatus();
+        log.info("Advanced entry status to {}: #{} ({})", entry.getStatus(), entry.getEntryNumber(), entryId);
+        return entryRepository.save(entry);
+    }
+
+    public Entry revertEntryStatus(@NotNull UUID entryId, @NotNull UUID requestingUserId) {
+        var entry = entryRepository.findById(entryId)
+                .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
+        requireAuthorizedForDivision(entry.getDivisionId(), requestingUserId);
+        entry.revertStatus();
+        log.info("Reverted entry status to {}: #{} ({})", entry.getStatus(), entry.getEntryNumber(), entryId);
+        return entryRepository.save(entry);
+    }
+
     public Entry markReceived(@NotNull UUID entryId, @NotNull UUID requestingUserId) {
         var entry = entryRepository.findById(entryId)
                 .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));

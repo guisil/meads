@@ -476,19 +476,28 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             editButton.setEnabled(entry.getStatus() != EntryStatus.WITHDRAWN);
             editButton.addClickListener(e -> openEditEntryDialog(entry));
 
-            var deleteButton = new Button(new Icon(VaadinIcon.TRASH));
-            deleteButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            deleteButton.setAriaLabel("Delete");
-            deleteButton.setTooltipText("Delete");
-            deleteButton.setEnabled(entry.getStatus() == EntryStatus.DRAFT);
-            deleteButton.addClickListener(e -> openDeleteEntryDialog(entry));
+            var revertButton = new Button(new Icon(VaadinIcon.ARROW_LEFT));
+            revertButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            revertButton.setAriaLabel("Revert status");
+            revertButton.setEnabled(entry.getStatus() != EntryStatus.DRAFT);
+            revertButton.setTooltipText(switch (entry.getStatus()) {
+                case SUBMITTED, WITHDRAWN -> "← Revert to Draft";
+                case RECEIVED -> "← Revert to Submitted";
+                default -> "← Revert";
+            });
+            revertButton.addClickListener(e -> openRevertStatusDialog(entry));
 
-            var markReceivedButton = new Button(new Icon(VaadinIcon.CHECK));
-            markReceivedButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            markReceivedButton.setAriaLabel("Mark as Received");
-            markReceivedButton.setTooltipText("Mark as Received");
-            markReceivedButton.setEnabled(entry.getStatus() == EntryStatus.SUBMITTED);
-            markReceivedButton.addClickListener(e -> openMarkReceivedDialog(entry));
+            var advanceButton = new Button(new Icon(VaadinIcon.ARROW_RIGHT));
+            advanceButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            advanceButton.setAriaLabel("Advance status");
+            advanceButton.setEnabled(entry.getStatus() == EntryStatus.DRAFT
+                    || entry.getStatus() == EntryStatus.SUBMITTED);
+            advanceButton.setTooltipText(switch (entry.getStatus()) {
+                case DRAFT -> "→ Submit";
+                case SUBMITTED -> "→ Mark as Received";
+                default -> "→ Advance";
+            });
+            advanceButton.addClickListener(e -> openAdvanceStatusDialog(entry));
 
             var withdrawButton = new Button(new Icon(VaadinIcon.BAN));
             withdrawButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
@@ -497,7 +506,14 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             withdrawButton.setEnabled(entry.getStatus() != EntryStatus.WITHDRAWN);
             withdrawButton.addClickListener(e -> openWithdrawEntryDialog(entry));
 
-            var actions = new HorizontalLayout(viewButton, editButton, markReceivedButton, deleteButton, withdrawButton);
+            var deleteButton = new Button(new Icon(VaadinIcon.TRASH));
+            deleteButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            deleteButton.setAriaLabel("Delete");
+            deleteButton.setTooltipText("Delete");
+            deleteButton.setEnabled(entry.getStatus() == EntryStatus.DRAFT);
+            deleteButton.addClickListener(e -> openDeleteEntryDialog(entry));
+
+            var actions = new HorizontalLayout(viewButton, editButton, revertButton, advanceButton, withdrawButton, deleteButton);
 
             if (entry.getStatus() == EntryStatus.SUBMITTED || entry.getStatus() == EntryStatus.RECEIVED) {
                 var category = getCategoryById(entry.getInitialCategoryId());
@@ -870,17 +886,45 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         dialog.open();
     }
 
-    private void openMarkReceivedDialog(Entry entry) {
+    private void openAdvanceStatusDialog(Entry entry) {
         var dialog = new Dialog();
-        dialog.setHeaderTitle("Mark as Received");
+        var targetLabel = entry.getStatus() == EntryStatus.DRAFT ? "Submit" : "Mark as Received";
+        dialog.setHeaderTitle(targetLabel);
 
-        dialog.add("Mark entry " + formatEntryNumber(entry.getEntryNumber())
-                + " \"" + entry.getMeadName() + "\" as received?");
+        dialog.add(targetLabel + " entry " + formatEntryNumber(entry.getEntryNumber())
+                + " \"" + entry.getMeadName() + "\"?");
 
-        var confirmButton = new Button("Mark as Received", e -> {
+        var confirmButton = new Button(targetLabel, e -> {
             try {
-                entryService.markReceived(entry.getId(), currentUserId);
-                var notification = Notification.show("Entry marked as received");
+                entryService.advanceEntryStatus(entry.getId(), currentUserId);
+                var notification = Notification.show("Entry status updated");
+                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                dialog.close();
+                refreshEntriesGrid();
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                e.getSource().setEnabled(true);
+            }
+        });
+        confirmButton.setDisableOnClick(true);
+
+        var cancelButton = new Button("Cancel", e -> dialog.close());
+        dialog.getFooter().add(cancelButton, confirmButton);
+        dialog.open();
+    }
+
+    private void openRevertStatusDialog(Entry entry) {
+        var dialog = new Dialog();
+        var targetLabel = entry.getStatus() == EntryStatus.RECEIVED ? "Revert to Submitted" : "Revert to Draft";
+        dialog.setHeaderTitle(targetLabel);
+
+        dialog.add(targetLabel + " entry " + formatEntryNumber(entry.getEntryNumber())
+                + " \"" + entry.getMeadName() + "\"?");
+
+        var confirmButton = new Button(targetLabel, e -> {
+            try {
+                entryService.revertEntryStatus(entry.getId(), currentUserId);
+                var notification = Notification.show("Entry status updated");
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
                 refreshEntriesGrid();

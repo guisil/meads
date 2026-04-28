@@ -136,6 +136,23 @@ public class Entry {
         this.status = EntryStatus.WITHDRAWN;
     }
 
+    public void advanceStatus() {
+        this.status = switch (status) {
+            case DRAFT -> EntryStatus.SUBMITTED;
+            case SUBMITTED -> EntryStatus.RECEIVED;
+            default -> throw new IllegalStateException("Cannot advance entry in status " + status);
+        };
+    }
+
+    public void revertStatus() {
+        this.status = switch (status) {
+            case SUBMITTED -> EntryStatus.DRAFT;
+            case RECEIVED -> EntryStatus.SUBMITTED;
+            case WITHDRAWN -> EntryStatus.DRAFT;
+            default -> throw new IllegalStateException("Cannot revert entry in status " + status);
+        };
+    }
+
     public void updateDetails(String meadName, UUID initialCategoryId,
                                Sweetness sweetness, BigDecimal abv,
                                Carbonation carbonation,

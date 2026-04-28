@@ -1175,4 +1175,98 @@ class EntryServiceTest {
 
         assertThat(overviews).isEmpty();
     }
+
+    // Cycle 16: advanceEntryStatus — admin only
+
+    @Test
+    void shouldAdvanceEntryStatusFromDraftToSubmitted() {
+        var divisionId = UUID.randomUUID();
+        var adminUser = createSystemAdmin();
+        var entry = new Entry(divisionId, UUID.randomUUID(), 1, "ABC123",
+                "My Mead", UUID.randomUUID(), Sweetness.DRY, new BigDecimal("12.5"), Carbonation.STILL,
+                "Wildflower honey", null, false, null, null);
+
+        given(userService.findById(adminUser.getId())).willReturn(adminUser);
+        given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
+        given(entryRepository.save(any(Entry.class))).willAnswer(inv -> inv.getArgument(0));
+
+        var result = entryService.advanceEntryStatus(entry.getId(), adminUser.getId());
+
+        assertThat(result.getStatus()).isEqualTo(EntryStatus.SUBMITTED);
+    }
+
+    @Test
+    void shouldAdvanceEntryStatusFromSubmittedToReceived() {
+        var divisionId = UUID.randomUUID();
+        var adminUser = createSystemAdmin();
+        var entry = new Entry(divisionId, UUID.randomUUID(), 1, "ABC123",
+                "My Mead", UUID.randomUUID(), Sweetness.DRY, new BigDecimal("12.5"), Carbonation.STILL,
+                "Wildflower honey", null, false, null, null);
+        entry.submit(); // SUBMITTED
+
+        given(userService.findById(adminUser.getId())).willReturn(adminUser);
+        given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
+        given(entryRepository.save(any(Entry.class))).willAnswer(inv -> inv.getArgument(0));
+
+        var result = entryService.advanceEntryStatus(entry.getId(), adminUser.getId());
+
+        assertThat(result.getStatus()).isEqualTo(EntryStatus.RECEIVED);
+    }
+
+    // Cycle 17: revertEntryStatus — admin only
+
+    @Test
+    void shouldRevertEntryStatusFromSubmittedToDraft() {
+        var divisionId = UUID.randomUUID();
+        var adminUser = createSystemAdmin();
+        var entry = new Entry(divisionId, UUID.randomUUID(), 1, "ABC123",
+                "My Mead", UUID.randomUUID(), Sweetness.DRY, new BigDecimal("12.5"), Carbonation.STILL,
+                "Wildflower honey", null, false, null, null);
+        entry.submit(); // SUBMITTED
+
+        given(userService.findById(adminUser.getId())).willReturn(adminUser);
+        given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
+        given(entryRepository.save(any(Entry.class))).willAnswer(inv -> inv.getArgument(0));
+
+        var result = entryService.revertEntryStatus(entry.getId(), adminUser.getId());
+
+        assertThat(result.getStatus()).isEqualTo(EntryStatus.DRAFT);
+    }
+
+    @Test
+    void shouldRevertEntryStatusFromReceivedToSubmitted() {
+        var divisionId = UUID.randomUUID();
+        var adminUser = createSystemAdmin();
+        var entry = new Entry(divisionId, UUID.randomUUID(), 1, "ABC123",
+                "My Mead", UUID.randomUUID(), Sweetness.DRY, new BigDecimal("12.5"), Carbonation.STILL,
+                "Wildflower honey", null, false, null, null);
+        entry.submit();
+        entry.markReceived(); // RECEIVED
+
+        given(userService.findById(adminUser.getId())).willReturn(adminUser);
+        given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
+        given(entryRepository.save(any(Entry.class))).willAnswer(inv -> inv.getArgument(0));
+
+        var result = entryService.revertEntryStatus(entry.getId(), adminUser.getId());
+
+        assertThat(result.getStatus()).isEqualTo(EntryStatus.SUBMITTED);
+    }
+
+    @Test
+    void shouldRevertWithdrawnEntryToDraft() {
+        var divisionId = UUID.randomUUID();
+        var adminUser = createSystemAdmin();
+        var entry = new Entry(divisionId, UUID.randomUUID(), 1, "ABC123",
+                "My Mead", UUID.randomUUID(), Sweetness.DRY, new BigDecimal("12.5"), Carbonation.STILL,
+                "Wildflower honey", null, false, null, null);
+        entry.withdraw(); // WITHDRAWN
+
+        given(userService.findById(adminUser.getId())).willReturn(adminUser);
+        given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
+        given(entryRepository.save(any(Entry.class))).willAnswer(inv -> inv.getArgument(0));
+
+        var result = entryService.revertEntryStatus(entry.getId(), adminUser.getId());
+
+        assertThat(result.getStatus()).isEqualTo(EntryStatus.DRAFT);
+    }
 }

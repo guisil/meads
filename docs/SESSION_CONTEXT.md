@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `main`
-**Tests:** 696 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-04-21
+**Tests:** 709 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-04-28
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -117,7 +117,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 #### Views
 - `EntrantOverviewView` (`/my-entries`) — cross-competition entrant hub, shows all divisions with credits/entries, auto-redirects to single division
 - `MyEntriesView` (`/competitions/:compShortName/divisions/:divShortName/my-entries`) — header: competition logo + "Competition — Division — My Entries", entrant-facing, competition documents list, credits + limits display, process info box, registration deadline display, category guidance hints, entry grid with status badges/Final Category/Actions (view/edit/submit/download label)/filtering/sorting, add/edit dialog (full-width fields, per-field validation, prefixed entry IDs), "Submit All Drafts" button, "Download all labels" batch button (disabled until all entries submitted), meadery name required warning + submit blocking
-- `DivisionEntryAdminView` (`/competitions/:compShortName/divisions/:divShortName/entry-admin`) — header: competition logo + "Competition — Division — Entry Admin", admin tabs: Credits, Entries (with Meadery/Country/Final Category columns + view/edit/mark-received/delete/withdraw actions + individual label download + batch "Download all labels" with confirmation dialog), Products, Orders. View dialog shows all entry fields read-only. Edit has confirmation gate then full edit dialog (all fields, per-field validation, works for any status except WITHDRAWN). Mark as Received button (check icon) is enabled only for SUBMITTED entries; disabled otherwise.
+- `DivisionEntryAdminView` (`/competitions/:compShortName/divisions/:divShortName/entry-admin`) — header: competition logo + "Competition — Division — Entry Admin", admin tabs: Credits, Entries (with Meadery/Country/Final Category columns + view/edit/←/→/withdraw/delete actions + individual label download + batch "Download all labels" with confirmation dialog + summary line showing total credits and submitted entries count), Products, Orders. View dialog shows all entry fields read-only. Edit has confirmation gate then full edit dialog (all fields, per-field validation, works for any status except WITHDRAWN). `←`/`→` advance/revert entry status with confirmation dialog; `←` disabled for DRAFT, `→` disabled for RECEIVED/WITHDRAWN, WITHDRAWN reverts to DRAFT.
 
 #### REST
 - `JumpsellerWebhookController` — `POST /api/webhooks/jumpseller/order-paid` (HMAC-verified)
@@ -247,30 +247,15 @@ Comprehensive review and hardening of all deletion operations across the applica
 | Delete category | DB FK constraint blocks if entries reference it | ✓ |
 | Delete document | No dependent data | ✓ |
 
-### Priority 3 (NEW — highest): Entry status management redesign
+### Priority 3: Entry status management redesign — COMPLETE
 
-Replace the current individual status action buttons in `DivisionEntryAdminView` with a more flexible arrow-based approach, consistent with the division status UI pattern.
+Replaced the dedicated "Mark as Received" button with `←` / `→` arrow buttons covering the
+full DRAFT → SUBMITTED → RECEIVED flow. WITHDRAWN entries revert to DRAFT via `←`.
+Both buttons show a confirmation dialog before acting. Button order: `[eye] [pencil] [←] [→] [ban] [trash]`.
 
-**Agreed design:**
-- Remove the dedicated "Mark as Received" button (added in v0.2.7 as a stopgap).
-- Add `←` (revert) and `→` (advance) arrow buttons for the linear status flow: DRAFT → SUBMITTED → RECEIVED.
-  - `←` disabled for DRAFT; `→` disabled for RECEIVED.
-  - Tooltips show target state (e.g. "← Revert to Draft", "→ Mark as Received").
-- Keep "Withdraw" (ban icon) as a separate action — not part of the arrow flow.
-- Move "Delete" button to the right of "Withdraw" (most destructive action at the far end).
-- New button order: `[eye] [pencil] [←] [→] [ban/withdraw] [trash/delete]`
-- Allow reverting WITHDRAWN entries via the `←` button.
-
-**Open design question (must decide before implementing):**
-- What state does a WITHDRAWN entry revert to? Since the previous state is not tracked, a fixed target is needed. Options: DRAFT (safe, back to start) or SUBMITTED (assumes it was submitted before withdrawal). User needs to decide — consider tracking previous state if more flexibility is needed.
-
-**Scope of changes:**
-- `Entry.java` — new domain method(s) for advance/revert (replacing `markReceived()` or adding alongside). Must handle WITHDRAWN revert.
-- `EntryService.java` — new `advanceEntryStatus()` and `revertEntryStatus()` service methods.
-- `DivisionEntryAdminView.java` — replace action buttons with the new layout.
-- `EntryServiceTest.java` — new tests for advance/revert transitions including WITHDRAWN revert.
-- `DivisionEntryAdminViewTest.java` — update to reflect new column/button structure.
-- `docs/walkthrough/manual-test.md` — update entry admin action button section.
+New domain methods on `Entry`: `advanceStatus()` and `revertStatus()`.
+New service methods on `EntryService`: `advanceEntryStatus()` and `revertEntryStatus()`.
+`markReceived()` kept on entity/service for backwards compatibility.
 
 ### Priority 4: Admin view i18n
 Translate all admin views to support the same language switching as entrant views.
@@ -447,7 +432,7 @@ Requires: DB migration, admin UI for constraint config, cross-module data flow, 
 - `LabelPdfServiceTest.java` — single/batch PDF generation, missing fields, QR code format, entry prefix handling
 - `JumpsellerOrderTest.java` — entity domain methods
 - `JumpsellerOrderLineItemTest.java` — entity domain methods
-- `EntryTest.java` — entry entity domain methods (constructor, submit, markReceived, withdraw, updateDetails, assignFinalCategory, getEffectiveCategoryId)
+- `EntryTest.java` — entry entity domain methods (constructor, submit, markReceived, withdraw, updateDetails, assignFinalCategory, getEffectiveCategoryId, advanceStatus, revertStatus)
 - `RegistrationClosedListenerTest.java` — event listener unit tests
 - `OrderReviewNotificationListenerTest.java` — sends admin alert emails on order review event
 - `SubmissionConfirmationListenerTest.java` — sends entrant confirmation on submission event
