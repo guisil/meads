@@ -311,4 +311,16 @@ class EntryTest {
 
         assertThat(entry.getEffectiveCategoryId()).isEqualTo(finalCategoryId);
     }
+
+    // --- Cycle 9: revertStatus() ---
+
+    @Test
+    void shouldRevertSubmittedEntryToDraft() {
+        var entry = createDefaultEntry();
+        entry.submit();
+
+        entry.revertStatus();
+
+        assertThat(entry.getStatus()).isEqualTo(EntryStatus.DRAFT);
+    }
 }
