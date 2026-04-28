@@ -1269,4 +1269,16 @@ class EntryServiceTest {
 
         assertThat(result.getStatus()).isEqualTo(EntryStatus.DRAFT);
     }
+
+    // Cycle 18: getTotalCreditBalance — aggregate query
+
+    @Test
+    void shouldReturnTotalCreditBalanceForDivision() {
+        var divisionId = UUID.randomUUID();
+        given(creditRepository.sumAmountByDivisionId(divisionId)).willReturn(7);
+
+        var result = entryService.getTotalCreditBalance(divisionId);
+
+        assertThat(result).isEqualTo(7);
+    }
 }

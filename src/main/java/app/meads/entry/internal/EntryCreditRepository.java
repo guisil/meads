@@ -16,6 +16,9 @@ public interface EntryCreditRepository extends JpaRepository<EntryCredit, UUID> 
     @Query("SELECT COALESCE(SUM(c.amount), 0) FROM EntryCredit c WHERE c.divisionId = :divisionId AND c.userId = :userId")
     int sumAmountByDivisionIdAndUserId(UUID divisionId, UUID userId);
 
+    @Query("SELECT COALESCE(SUM(c.amount), 0) FROM EntryCredit c WHERE c.divisionId = :divisionId")
+    int sumAmountByDivisionId(UUID divisionId);
+
     @Query("SELECT DISTINCT c.divisionId FROM EntryCredit c WHERE c.userId = :userId")
     List<UUID> findDistinctDivisionIdsByUserId(UUID userId);
 

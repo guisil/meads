@@ -418,7 +418,9 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         tab.add(toolbar);
 
         totalCreditsLabel = new Span();
+        totalCreditsLabel.setId("credits-balance-label");
         submittedEntriesLabel = new Span();
+        submittedEntriesLabel.setId("submitted-entries-label");
         var separator = new Span(" | ");
         separator.getStyle().set("color", "var(--lumo-contrast-30pct)");
         var summary = new HorizontalLayout(totalCreditsLabel, separator, submittedEntriesLabel);
@@ -620,15 +622,11 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
     }
 
     private void updateEntriesSummary(List<Entry> entries) {
-        int totalCredits = competitionService.findParticipantsByCompetition(division.getCompetitionId())
-                .stream()
-                .mapToInt(p -> entryService.getCreditBalance(divisionId, p.getUserId()))
-                .filter(c -> c > 0)
-                .sum();
+        int creditsBalance = entryService.getTotalCreditBalance(divisionId);
         long submittedCount = entries.stream()
                 .filter(e -> e.getStatus() == EntryStatus.SUBMITTED)
                 .count();
-        totalCreditsLabel.setText("Total credits: " + totalCredits);
+        totalCreditsLabel.setText("Credits balance: " + creditsBalance);
         submittedEntriesLabel.setText("Submitted entries: " + submittedCount);
     }
 

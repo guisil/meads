@@ -175,6 +175,10 @@ public class EntryService {
         log.info("Removed {} credits: division={}, userId={}", amount, divisionId, userId);
     }
 
+    public int getTotalCreditBalance(@NotNull UUID divisionId) {
+        return creditRepository.sumAmountByDivisionId(divisionId);
+    }
+
     public boolean hasCreditsInOtherDivision(@NotNull UUID competitionId,
                                               @NotNull UUID divisionId,
                                               @NotNull UUID userId) {

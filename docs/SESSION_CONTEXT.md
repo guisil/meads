@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `main`
-**Tests:** 709 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-04-28
+**Tests:** 711 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-04-28
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -254,8 +254,11 @@ full DRAFT → SUBMITTED → RECEIVED flow. WITHDRAWN entries revert to DRAFT vi
 Both buttons show a confirmation dialog before acting. Button order: `[eye] [pencil] [←] [→] [ban] [trash]`.
 
 New domain methods on `Entry`: `advanceStatus()` and `revertStatus()`.
-New service methods on `EntryService`: `advanceEntryStatus()` and `revertEntryStatus()`.
+New service methods on `EntryService`: `advanceEntryStatus()`, `revertEntryStatus()`, and
+`getTotalCreditBalance(divisionId)` (single aggregate query, replaces N+1 participant loop).
+`EntryCreditRepository.sumAmountByDivisionId()` added for the aggregate.
 `markReceived()` kept on entity/service for backwards compatibility.
+Summary label renamed from "Total credits" to "Credits balance". Span IDs added for testability.
 
 ### Priority 4: Admin view i18n
 Translate all admin views to support the same language switching as entrant views.
