@@ -485,7 +485,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             revertButton.setTooltipText(switch (entry.getStatus()) {
                 case SUBMITTED, WITHDRAWN -> "← Revert to Draft";
                 case RECEIVED -> "← Revert to Submitted";
-                default -> "← Revert";
+                case DRAFT -> "← Revert";
             });
             revertButton.addClickListener(e -> openRevertStatusDialog(entry));
 
@@ -497,7 +497,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             advanceButton.setTooltipText(switch (entry.getStatus()) {
                 case DRAFT -> "→ Submit";
                 case SUBMITTED -> "→ Mark as Received";
-                default -> "→ Advance";
+                case RECEIVED, WITHDRAWN -> "→ Advance";
             });
             advanceButton.addClickListener(e -> openAdvanceStatusDialog(entry));
 
@@ -902,6 +902,10 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             } catch (BusinessRuleException ex) {
                 Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
                 e.getSource().setEnabled(true);
+            } catch (IllegalStateException ex) {
+                Notification.show("Entry status has changed — please try again");
+                dialog.close();
+                refreshEntriesGrid();
             }
         });
         confirmButton.setDisableOnClick(true);
@@ -929,6 +933,10 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             } catch (BusinessRuleException ex) {
                 Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
                 e.getSource().setEnabled(true);
+            } catch (IllegalStateException ex) {
+                Notification.show("Entry status has changed — please try again");
+                dialog.close();
+                refreshEntriesGrid();
             }
         });
         confirmButton.setDisableOnClick(true);

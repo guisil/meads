@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `main`
-**Tests:** 711 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-04-28
+**Tests:** 714 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-04-29
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -259,6 +259,10 @@ New service methods on `EntryService`: `advanceEntryStatus()`, `revertEntryStatu
 `EntryCreditRepository.sumAmountByDivisionId()` added for the aggregate.
 `markReceived()` kept on entity/service for backwards compatibility.
 Summary label renamed from "Total credits" to "Credits balance". Span IDs added for testability.
+`advanceStatus()` delegates to `submit()`/`markReceived()` to avoid logic duplication.
+Authorization rejection tests added for both advance/revert; advance-from-RECEIVED rejection test added.
+Dialog handlers catch `IllegalStateException` for stale-state concurrent-edit edge case.
+Tooltip switch arms made exhaustive (no `default` fallthrough).
 
 ### Priority 4: Admin view i18n
 Translate all admin views to support the same language switching as entrant views.

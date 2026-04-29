@@ -1270,6 +1270,61 @@ class EntryServiceTest {
         assertThat(result.getStatus()).isEqualTo(EntryStatus.DRAFT);
     }
 
+    @Test
+    void shouldRejectAdvanceEntryStatusWhenNotAuthorized() {
+        var divisionId = UUID.randomUUID();
+        var regularUser = new User("user@test.com", "User", UserStatus.ACTIVE, Role.USER);
+        var entry = new Entry(divisionId, UUID.randomUUID(), 1, "ABC123",
+                "My Mead", UUID.randomUUID(), Sweetness.DRY, new BigDecimal("12.5"), Carbonation.STILL,
+                "Wildflower honey", null, false, null, null);
+
+        given(userService.findById(regularUser.getId())).willReturn(regularUser);
+        given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
+        given(competitionService.isAuthorizedForDivision(divisionId, regularUser.getId()))
+                .willReturn(false);
+
+        assertThatThrownBy(() -> entryService.advanceEntryStatus(entry.getId(), regularUser.getId()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.auth.unauthorized");
+    }
+
+    @Test
+    void shouldRejectRevertEntryStatusWhenNotAuthorized() {
+        var divisionId = UUID.randomUUID();
+        var regularUser = new User("user@test.com", "User", UserStatus.ACTIVE, Role.USER);
+        var entry = new Entry(divisionId, UUID.randomUUID(), 1, "ABC123",
+                "My Mead", UUID.randomUUID(), Sweetness.DRY, new BigDecimal("12.5"), Carbonation.STILL,
+                "Wildflower honey", null, false, null, null);
+        entry.submit(); // SUBMITTED
+
+        given(userService.findById(regularUser.getId())).willReturn(regularUser);
+        given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
+        given(competitionService.isAuthorizedForDivision(divisionId, regularUser.getId()))
+                .willReturn(false);
+
+        assertThatThrownBy(() -> entryService.revertEntryStatus(entry.getId(), regularUser.getId()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.auth.unauthorized");
+    }
+
+    @Test
+    void shouldRejectAdvanceEntryStatusWhenAlreadyReceived() {
+        var divisionId = UUID.randomUUID();
+        var adminUser = createSystemAdmin();
+        var entry = new Entry(divisionId, UUID.randomUUID(), 1, "ABC123",
+                "My Mead", UUID.randomUUID(), Sweetness.DRY, new BigDecimal("12.5"), Carbonation.STILL,
+                "Wildflower honey", null, false, null, null);
+        entry.submit();
+        entry.markReceived(); // RECEIVED
+
+        given(userService.findById(adminUser.getId())).willReturn(adminUser);
+        given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
+
+        assertThatThrownBy(() -> entryService.advanceEntryStatus(entry.getId(), adminUser.getId()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Cannot advance");
+    }
+
     // Cycle 18: getTotalCreditBalance — aggregate query
 
     @Test

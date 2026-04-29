@@ -137,11 +137,11 @@ public class Entry {
     }
 
     public void advanceStatus() {
-        this.status = switch (status) {
-            case DRAFT -> EntryStatus.SUBMITTED;
-            case SUBMITTED -> EntryStatus.RECEIVED;
+        switch (status) {
+            case DRAFT -> submit();
+            case SUBMITTED -> markReceived();
             default -> throw new IllegalStateException("Cannot advance entry in status " + status);
-        };
+        }
     }
 
     public void revertStatus() {
