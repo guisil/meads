@@ -138,7 +138,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                         .anyMatch(a -> a.getAuthority().equals("ROLE_SYSTEM_ADMIN")))
                 .orElse(false);
         var listLink = new Anchor(isSystemAdmin ? "competitions" : "my-competitions",
-                isSystemAdmin ? "Competitions" : "My Competitions");
+                isSystemAdmin ? getTranslation("nav.competitions") : getTranslation("nav.my-competitions"));
         nav.add(listLink);
         nav.add(new Span(" / "));
         nav.add(new Span(competition.getName()));
@@ -199,10 +199,10 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         var tabSheet = new TabSheet();
         tabSheet.setWidthFull();
 
-        tabSheet.add("Divisions", createDivisionsTab());
-        tabSheet.add("Participants", createParticipantsTab());
-        tabSheet.add("Settings", createSettingsTab());
-        tabSheet.add("Documents", createDocumentsTab());
+        tabSheet.add(getTranslation("competition-detail.tab.divisions"), createDivisionsTab());
+        tabSheet.add(getTranslation("competition-detail.tab.participants"), createParticipantsTab());
+        tabSheet.add(getTranslation("competition-detail.tab.settings"), createSettingsTab());
+        tabSheet.add(getTranslation("competition-detail.tab.documents"), createDocumentsTab());
 
         return tabSheet;
     }
@@ -214,46 +214,46 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         var actions = new HorizontalLayout();
         actions.setWidthFull();
         actions.setJustifyContentMode(JustifyContentMode.END);
-        actions.add(new Button("Create Division", e -> openCreateDivisionDialog()));
+        actions.add(new Button(getTranslation("competition-detail.divisions.create"), e -> openCreateDivisionDialog()));
         tab.add(actions);
 
         divisionsGrid = new Grid<>(Division.class, false);
         divisionsGrid.setAllRowsVisible(true);
-        divisionsGrid.addColumn(Division::getName).setHeader("Name").setSortable(true).setFlexGrow(2);
+        divisionsGrid.addColumn(Division::getName).setHeader(getTranslation("competition-detail.divisions.column.name")).setSortable(true).setFlexGrow(2);
         divisionsGrid.addComponentColumn(div -> createStatusBadge(div.getStatus()))
-                .setHeader("Status").setAutoWidth(true);
+                .setHeader(getTranslation("competition-detail.divisions.column.status")).setAutoWidth(true);
         divisionsGrid.addColumn(div -> div.getScoringSystem().name())
-                .setHeader("Scoring").setAutoWidth(true);
+                .setHeader(getTranslation("competition-detail.divisions.column.scoring")).setAutoWidth(true);
         divisionsGrid.addColumn(div -> {
             if (div.getRegistrationDeadline() == null) return "";
             var deadline = div.getRegistrationDeadline()
                     .atZone(ZoneId.of(div.getRegistrationDeadlineTimezone()))
                     .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
             return deadline + " " + div.getRegistrationDeadlineTimezone();
-        }).setHeader("Registration Deadline").setSortable(true).setAutoWidth(true);
+        }).setHeader(getTranslation("competition-detail.divisions.column.deadline")).setSortable(true).setAutoWidth(true);
         divisionsGrid.addComponentColumn(div -> {
             var revertButton = new Button(new Icon(VaadinIcon.BACKWARDS));
             revertButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            revertButton.setAriaLabel("Revert");
-            revertButton.setTooltipText("Revert Status");
+            revertButton.setAriaLabel(getTranslation("competition-detail.divisions.action.revert"));
+            revertButton.setTooltipText(getTranslation("competition-detail.divisions.action.revert.tooltip"));
             revertButton.setEnabled(div.getStatus() != DivisionStatus.DRAFT);
             revertButton.addClickListener(e -> revertDivisionStatus(div));
 
             var advanceButton = new Button(new Icon(VaadinIcon.FORWARD));
             advanceButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            advanceButton.setAriaLabel("Advance");
-            advanceButton.setTooltipText("Advance Status");
+            advanceButton.setAriaLabel(getTranslation("competition-detail.divisions.action.advance"));
+            advanceButton.setTooltipText(getTranslation("competition-detail.divisions.action.advance.tooltip"));
             advanceButton.setEnabled(div.getStatus() != DivisionStatus.RESULTS_PUBLISHED);
             advanceButton.addClickListener(e -> advanceDivisionStatus(div));
 
             var deleteButton = new Button(new Icon(VaadinIcon.TRASH));
             deleteButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            deleteButton.setAriaLabel("Delete");
-            deleteButton.setTooltipText("Delete");
+            deleteButton.setAriaLabel(getTranslation("competition-detail.divisions.action.delete"));
+            deleteButton.setTooltipText(getTranslation("competition-detail.divisions.action.delete"));
             deleteButton.addClickListener(e -> openDeleteDivisionDialog(div));
 
             return new HorizontalLayout(revertButton, advanceButton, deleteButton);
-        }).setHeader("Actions").setAutoWidth(true);
+        }).setHeader(getTranslation("competition-detail.divisions.column.actions")).setAutoWidth(true);
 
         divisionsGrid.addItemClickListener(e ->
                 e.getSource().getUI().ifPresent(ui ->
@@ -270,12 +270,12 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         tab.setPadding(false);
 
         var filterField = new TextField();
-        filterField.setPlaceholder("Filter by name or email...");
+        filterField.setPlaceholder(getTranslation("competition-detail.participants.filter.placeholder"));
         filterField.setValueChangeMode(com.vaadin.flow.data.value.ValueChangeMode.EAGER);
         filterField.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
         filterField.setClearButtonVisible(true);
 
-        var addButton = new Button("Add Participant", e -> openAddParticipantDialog());
+        var addButton = new Button(getTranslation("competition-detail.participants.add"), e -> openAddParticipantDialog());
 
         var toolbar = new HorizontalLayout(filterField, addButton);
         toolbar.setWidthFull();
@@ -286,31 +286,31 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         participantsGrid.setAllRowsVisible(true);
         participantsGrid.addColumn(p -> {
             var user = userMap.get(p.getUserId());
-            return user != null ? user.getName() : "Unknown";
-        }).setHeader("Name").setSortable(true).setFlexGrow(2);
+            return user != null ? user.getName() : getTranslation("competition-detail.participants.unknown");
+        }).setHeader(getTranslation("competition-detail.participants.column.name")).setSortable(true).setFlexGrow(2);
         participantsGrid.addColumn(p -> {
             var user = userMap.get(p.getUserId());
             return user != null ? user.getEmail() : "—";
-        }).setHeader("Email").setSortable(true).setFlexGrow(3);
+        }).setHeader(getTranslation("competition-detail.participants.column.email")).setSortable(true).setFlexGrow(3);
         participantsGrid.addColumn(p -> {
             var user = userMap.get(p.getUserId());
             return user != null && user.getMeaderyName() != null ? user.getMeaderyName() : "—";
-        }).setHeader("Meadery").setSortable(true).setFlexGrow(2);
+        }).setHeader(getTranslation("competition-detail.participants.column.meadery")).setSortable(true).setFlexGrow(2);
         participantsGrid.addColumn(p -> {
             var user = userMap.get(p.getUserId());
             if (user == null || user.getCountry() == null) return "—";
             return new Locale("", user.getCountry()).getDisplayCountry(Locale.ENGLISH);
-        }).setHeader("Country").setSortable(true).setAutoWidth(true);
+        }).setHeader(getTranslation("competition-detail.participants.column.country")).setSortable(true).setAutoWidth(true);
         participantsGrid.addColumn(p -> {
             var roles = rolesMap.getOrDefault(p.getId(), List.of());
             return roles.stream()
                     .map(r -> r.getRole().getDisplayName())
                     .sorted()
                     .collect(Collectors.joining(", "));
-        }).setHeader("Roles").setSortable(true).setAutoWidth(true);
+        }).setHeader(getTranslation("competition-detail.participants.column.roles")).setSortable(true).setAutoWidth(true);
         participantsGrid.addColumn(p ->
             p.getAccessCode() != null ? p.getAccessCode() : "—"
-        ).setHeader("Access Code").setAutoWidth(true);
+        ).setHeader(getTranslation("competition-detail.participants.column.access-code")).setAutoWidth(true);
         participantsGrid.addComponentColumn(p -> {
             var actions = new HorizontalLayout();
             actions.setSpacing(false);
@@ -320,26 +320,26 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
             var editButton = new Button(new Icon(VaadinIcon.EDIT));
             editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            editButton.setTooltipText("Edit roles");
+            editButton.setTooltipText(getTranslation("competition-detail.participants.action.edit.tooltip"));
             editButton.addClickListener(e -> openEditRolesDialog(p));
             actions.add(editButton);
 
             if (user != null && user.getPasswordHash() == null) {
                 var sendLinkButton = new Button(new Icon(VaadinIcon.ENVELOPE));
                 sendLinkButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-                sendLinkButton.setTooltipText("Send login link");
+                sendLinkButton.setTooltipText(getTranslation("competition-detail.participants.action.login-link.tooltip"));
                 sendLinkButton.addClickListener(e -> sendMagicLink(user));
                 actions.add(sendLinkButton);
             }
 
             var removeButton = new Button(new Icon(VaadinIcon.CLOSE));
             removeButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            removeButton.setTooltipText("Remove");
+            removeButton.setTooltipText(getTranslation("competition-detail.participants.action.remove.tooltip"));
             removeButton.addClickListener(e -> openRemoveParticipantDialog(p));
             actions.add(removeButton);
 
             return actions;
-        }).setHeader("Actions").setAutoWidth(true);
+        }).setHeader(getTranslation("competition-detail.participants.column.actions")).setAutoWidth(true);
 
         participantsGrid.getColumns().forEach(col -> col.setResizable(true));
 
@@ -365,7 +365,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
     private void openRemoveParticipantDialog(Participant participant) {
         var user = userMap.get(participant.getUserId());
-        var displayName = user != null ? user.getEmail() : "this participant";
+        var displayName = user != null ? user.getEmail() : getTranslation("competition-detail.participants.unknown");
         var roles = rolesMap.getOrDefault(participant.getId(), List.of());
         var rolesDisplay = roles.stream()
                 .map(r -> r.getRole().getDisplayName())
@@ -373,17 +373,16 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 .collect(Collectors.joining(", "));
 
         var dialog = new Dialog();
-        dialog.setHeaderTitle("Remove Participant");
-        dialog.add("Remove " + displayName + " (" + rolesDisplay + ") from this competition?");
-        dialog.add(new Paragraph("This will also remove all their entries and credits in this competition. "
-                + "This action cannot be undone."));
+        dialog.setHeaderTitle(getTranslation("competition-detail.participants.remove.title"));
+        dialog.add(getTranslation("competition-detail.participants.remove.confirm", displayName, rolesDisplay));
+        dialog.add(new Paragraph(getTranslation("competition-detail.participants.remove.warning")));
 
-        var confirmButton = new Button("Remove", e -> {
+        var confirmButton = new Button(getTranslation("competition-detail.participants.remove.button"), e -> {
             try {
                 competitionService.removeParticipant(
                         competitionId, participant.getId(), getCurrentUserId());
                 refreshParticipantsGrid();
-                var notification = Notification.show("Participant removed");
+                var notification = Notification.show(getTranslation("competition-detail.participants.removed"));
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
@@ -401,16 +400,16 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
     private void openEditRolesDialog(Participant participant) {
         var user = userMap.get(participant.getUserId());
-        var displayName = user != null ? user.getEmail() : "Unknown";
+        var displayName = user != null ? user.getEmail() : getTranslation("competition-detail.participants.unknown");
         var currentRoles = rolesMap.getOrDefault(participant.getId(), List.of());
         var currentRoleSet = currentRoles.stream()
                 .map(ParticipantRole::getRole)
                 .collect(Collectors.toSet());
 
         var dialog = new Dialog();
-        dialog.setHeaderTitle("Edit Participant — " + displayName);
+        dialog.setHeaderTitle(getTranslation("competition-detail.participants.edit.title", displayName));
 
-        var nameField = new TextField("Name");
+        var nameField = new TextField(getTranslation("competition-detail.participants.edit.name"));
         nameField.setMaxLength(255);
         nameField.setWidthFull();
         if (user != null && StringUtils.hasText(user.getName()) && !user.getName().equals(user.getEmail())) {
@@ -418,7 +417,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
             nameField.setReadOnly(true);
         }
 
-        var meaderyField = new TextField("Meadery");
+        var meaderyField = new TextField(getTranslation("competition-detail.participants.edit.meadery"));
         meaderyField.setMaxLength(255);
         meaderyField.setWidthFull();
         if (user != null && StringUtils.hasText(user.getMeaderyName())) {
@@ -454,14 +453,14 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                     .collect(Collectors.toSet());
 
             if (selectedRoles.isEmpty()) {
-                Notification.show("At least one role must be selected");
+                Notification.show(getTranslation("competition-detail.participants.edit.role-error"));
                 e.getSource().setEnabled(true);
                 return;
             }
 
             var allowedCombination = Set.of(CompetitionRole.JUDGE, CompetitionRole.ENTRANT);
             if (selectedRoles.size() > 1 && !allowedCombination.containsAll(selectedRoles)) {
-                Notification.show("Only Judge and Entrant roles can be combined");
+                Notification.show(getTranslation("competition-detail.participants.edit.role-conflict"));
                 e.getSource().setEnabled(true);
                 return;
             }
@@ -491,7 +490,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                     }
                 }
                 refreshParticipantsGrid();
-                var notification = Notification.show("Participant updated");
+                var notification = Notification.show(getTranslation("competition-detail.participants.updated"));
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
@@ -508,31 +507,31 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
     private void openAddParticipantDialog() {
         var dialog = new Dialog();
-        dialog.setHeaderTitle("Add Participant");
+        dialog.setHeaderTitle(getTranslation("competition-detail.participants.add.title"));
 
-        var emailField = new TextField("Email");
+        var emailField = new TextField(getTranslation("competition-detail.participants.add.email"));
         emailField.setMaxLength(255);
         emailField.setWidthFull();
 
-        var nameField = new TextField("Name");
+        var nameField = new TextField(getTranslation("competition-detail.participants.add.name"));
         nameField.setMaxLength(255);
         nameField.setWidthFull();
 
-        var meaderyField = new TextField("Meadery");
+        var meaderyField = new TextField(getTranslation("competition-detail.participants.add.meadery"));
         meaderyField.setMaxLength(255);
         meaderyField.setWidthFull();
 
         var countryCombo = createCountryComboBox();
 
         var roleSelect = new Select<CompetitionRole>();
-        roleSelect.setLabel("Role");
+        roleSelect.setLabel(getTranslation("competition-detail.participants.add.role"));
         roleSelect.setItems(CompetitionRole.values());
         roleSelect.setValue(CompetitionRole.JUDGE);
 
-        var addButton = new Button("Add", e -> {
+        var addButton = new Button(getTranslation("competition-detail.participants.add.button"), e -> {
             if (!StringUtils.hasText(emailField.getValue())) {
                 emailField.setInvalid(true);
-                emailField.setErrorMessage("Email is required");
+                emailField.setErrorMessage(getTranslation("competition-detail.participants.add.email.error"));
                 e.getSource().setEnabled(true);
                 return;
             }
@@ -547,7 +546,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                         competitionId, email, role, getCurrentUserId());
                 fillInBlankUserFields(email, name, meadery, country);
                 refreshParticipantsGrid();
-                var notification = Notification.show("Participant added successfully");
+                var notification = Notification.show(getTranslation("competition-detail.participants.added"));
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 generatePasswordSetupLinkIfNeeded(email, role);
                 dialog.close();
@@ -586,7 +585,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
     }
 
     private ComboBox<String> createCountryComboBox() {
-        var countryCombo = new ComboBox<String>("Country");
+        var countryCombo = new ComboBox<String>(getTranslation("competition-detail.settings.country"));
         var countries = Arrays.stream(Locale.getISOCountries())
                 .sorted((a, b) -> new Locale("", a).getDisplayCountry(Locale.ENGLISH)
                         .compareTo(new Locale("", b).getDisplayCountry(Locale.ENGLISH)))
@@ -620,50 +619,50 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         var tab = new VerticalLayout();
         tab.setPadding(false);
 
-        var nameField = new TextField("Name");
+        var nameField = new TextField(getTranslation("competition-detail.settings.name"));
         nameField.setValue(competition.getName());
         nameField.setMaxLength(255);
         nameField.setWidth("400px");
 
-        var shortNameField = new TextField("Short Name");
+        var shortNameField = new TextField(getTranslation("competition-detail.settings.short-name"));
         shortNameField.setValue(competition.getShortName());
         shortNameField.setMaxLength(100);
-        shortNameField.setHelperText("URL-friendly identifier (e.g. chip-2026)");
+        shortNameField.setHelperText(getTranslation("competition-detail.settings.short-name.helper"));
 
-        var startDatePicker = new DatePicker("Start Date");
+        var startDatePicker = new DatePicker(getTranslation("competition-detail.settings.start-date"));
         startDatePicker.setValue(competition.getStartDate());
 
-        var endDatePicker = new DatePicker("End Date");
+        var endDatePicker = new DatePicker(getTranslation("competition-detail.settings.end-date"));
         endDatePicker.setValue(competition.getEndDate());
 
-        var locationField = new TextField("Location");
+        var locationField = new TextField(getTranslation("competition-detail.settings.location"));
         locationField.setValue(competition.getLocation() != null ? competition.getLocation() : "");
         locationField.setMaxLength(500);
         locationField.setWidth("400px");
 
-        var contactEmailField = new EmailField("Contact Email");
+        var contactEmailField = new EmailField(getTranslation("competition-detail.settings.contact-email"));
         contactEmailField.setValue(competition.getContactEmail() != null ? competition.getContactEmail() : "");
-        contactEmailField.setHelperText("Shown in emails sent to competition participants");
+        contactEmailField.setHelperText(getTranslation("competition-detail.settings.contact-email.helper"));
         contactEmailField.setClearButtonVisible(true);
         contactEmailField.setMaxLength(255);
         contactEmailField.setWidth("400px");
 
-        var shippingAddressField = new TextArea("Shipping Address");
+        var shippingAddressField = new TextArea(getTranslation("competition-detail.settings.shipping-address"));
         shippingAddressField.setValue(competition.getShippingAddress() != null ? competition.getShippingAddress() : "");
-        shippingAddressField.setHelperText("Shown on entry labels — where entrants should ship their bottles");
+        shippingAddressField.setHelperText(getTranslation("competition-detail.settings.shipping-address.helper"));
         shippingAddressField.setWidthFull();
         shippingAddressField.setMaxLength(1000);
 
-        var phoneNumberField = new TextField("Phone Number");
+        var phoneNumberField = new TextField(getTranslation("competition-detail.settings.phone"));
         phoneNumberField.setValue(competition.getPhoneNumber() != null ? competition.getPhoneNumber() : "");
         phoneNumberField.setMaxLength(50);
-        phoneNumberField.setHelperText("Contact phone number shown on entry labels");
+        phoneNumberField.setHelperText(getTranslation("competition-detail.settings.phone.helper"));
         phoneNumberField.setClearButtonVisible(true);
 
-        var websiteField = new TextField("Website");
+        var websiteField = new TextField(getTranslation("competition-detail.settings.website"));
         websiteField.setValue(competition.getWebsite() != null ? competition.getWebsite() : "");
         websiteField.setMaxLength(500);
-        websiteField.setHelperText("Shown on entry labels");
+        websiteField.setHelperText(getTranslation("competition-detail.settings.website.helper"));
         websiteField.setClearButtonVisible(true);
 
         var logoData = new byte[1][];
@@ -681,7 +680,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 Notification.show(e.getErrorMessage())
                         .addThemeVariants(NotificationVariant.LUMO_ERROR));
 
-        var logoLabel = new Span("Logo (PNG or JPEG, max 2.5 MB)");
+        var logoLabel = new Span(getTranslation("competition-detail.settings.logo.label"));
         logoLabel.addClassName("field-label");
 
         var logoSection = new HorizontalLayout();
@@ -689,13 +688,13 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         logoSection.add(upload);
 
         if (competition.hasLogo()) {
-            var removeLogoButton = new Button("Remove Logo", e -> {
+            var removeLogoButton = new Button(getTranslation("competition-detail.settings.logo.remove"), e -> {
                 try {
                     competitionService.updateCompetitionLogo(
                             competitionId, null, null, getCurrentUserId());
                     competition = competitionService.findCompetitionById(competitionId);
                     logoSection.remove(e.getSource());
-                    var notification = Notification.show("Logo removed");
+                    var notification = Notification.show(getTranslation("competition-detail.settings.logo.removed"));
                     notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 } catch (BusinessRuleException ex) {
                     Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
@@ -709,30 +708,30 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         var saveButton = new Button("Save", e -> {
             if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
-                nameField.setErrorMessage("Name is required");
+                nameField.setErrorMessage(getTranslation("competition-detail.settings.name.error"));
                 e.getSource().setEnabled(true);
                 return;
             }
             if (!StringUtils.hasText(shortNameField.getValue())) {
                 shortNameField.setInvalid(true);
-                shortNameField.setErrorMessage("Short name is required");
+                shortNameField.setErrorMessage(getTranslation("competition-detail.settings.short-name.error"));
                 e.getSource().setEnabled(true);
                 return;
             }
             if (startDatePicker.getValue() == null) {
                 startDatePicker.setInvalid(true);
-                startDatePicker.setErrorMessage("Start date is required");
+                startDatePicker.setErrorMessage(getTranslation("competition-detail.settings.start-date.error"));
                 e.getSource().setEnabled(true);
                 return;
             }
             if (endDatePicker.getValue() == null) {
                 endDatePicker.setInvalid(true);
-                endDatePicker.setErrorMessage("End date is required");
+                endDatePicker.setErrorMessage(getTranslation("competition-detail.settings.end-date.error"));
                 e.getSource().setEnabled(true);
                 return;
             }
             if (StringUtils.hasText(contactEmailField.getValue()) && contactEmailField.isInvalid()) {
-                contactEmailField.setErrorMessage("Please enter a valid email address");
+                contactEmailField.setErrorMessage(getTranslation("competition-detail.settings.contact-email.error"));
                 e.getSource().setEnabled(true);
                 return;
             }
@@ -762,7 +761,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 }
                 competition = competitionService.findCompetitionById(competitionId);
                 refreshHeader();
-                var notification = Notification.show("Competition updated successfully");
+                var notification = Notification.show(getTranslation("competition-detail.settings.updated"));
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 e.getSource().setEnabled(true);
             } catch (BusinessRuleException ex) {
@@ -778,66 +777,66 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
     private void openCreateDivisionDialog() {
         var dialog = new Dialog();
-        dialog.setHeaderTitle("Create Division");
+        dialog.setHeaderTitle(getTranslation("competition-detail.division.create.title"));
 
-        var nameField = new TextField("Name");
+        var nameField = new TextField(getTranslation("competition-detail.division.create.name"));
         nameField.setRequired(true);
         nameField.setMaxLength(255);
 
-        var shortNameField = new TextField("Short Name");
+        var shortNameField = new TextField(getTranslation("competition-detail.division.create.short-name"));
         shortNameField.setRequired(true);
         shortNameField.setMaxLength(100);
-        shortNameField.setHelperText("URL-friendly identifier (e.g. amadora)");
+        shortNameField.setHelperText(getTranslation("competition-detail.division.create.short-name.helper"));
         shortNameField.setPattern("[a-z0-9][a-z0-9-]*[a-z0-9]");
 
         var scoringSelect = new Select<ScoringSystem>();
-        scoringSelect.setLabel("Scoring System");
+        scoringSelect.setLabel(getTranslation("competition-detail.division.create.scoring"));
         scoringSelect.setItems(ScoringSystem.values());
         scoringSelect.setValue(ScoringSystem.MJP);
 
-        var deadlinePicker = new DateTimePicker("Registration Deadline");
+        var deadlinePicker = new DateTimePicker(getTranslation("competition-detail.division.create.deadline"));
         deadlinePicker.setRequiredIndicatorVisible(true);
 
-        var timezoneCombo = new ComboBox<String>("Timezone");
+        var timezoneCombo = new ComboBox<String>(getTranslation("competition-detail.division.create.timezone"));
         timezoneCombo.setItems(ZoneId.getAvailableZoneIds().stream().sorted().toList());
         timezoneCombo.setValue("UTC");
         timezoneCombo.setRequired(true);
         timezoneCombo.setAllowCustomValue(false);
 
-        var maxPerSubcategoryField = new IntegerField("Max Entries per Subcategory");
+        var maxPerSubcategoryField = new IntegerField(getTranslation("competition-detail.division.create.max-per-subcategory"));
         maxPerSubcategoryField.setMin(1);
         maxPerSubcategoryField.setStepButtonsVisible(true);
         maxPerSubcategoryField.setClearButtonVisible(true);
-        maxPerSubcategoryField.setHelperText("Per entrant per subcategory (empty = unlimited)");
+        maxPerSubcategoryField.setHelperText(getTranslation("competition-detail.division.create.max-per-subcategory.helper"));
 
-        var maxPerMainCategoryField = new IntegerField("Max Entries per Main Category");
+        var maxPerMainCategoryField = new IntegerField(getTranslation("competition-detail.division.create.max-per-main-category"));
         maxPerMainCategoryField.setMin(1);
         maxPerMainCategoryField.setStepButtonsVisible(true);
         maxPerMainCategoryField.setClearButtonVisible(true);
-        maxPerMainCategoryField.setHelperText("Per entrant per main category (empty = unlimited)");
+        maxPerMainCategoryField.setHelperText(getTranslation("competition-detail.division.create.max-per-main-category.helper"));
 
-        var maxTotalField = new IntegerField("Max Total Entries");
+        var maxTotalField = new IntegerField(getTranslation("competition-detail.division.create.max-total"));
         maxTotalField.setMin(1);
         maxTotalField.setStepButtonsVisible(true);
         maxTotalField.setClearButtonVisible(true);
-        maxTotalField.setHelperText("Per entrant total in this division (empty = unlimited)");
+        maxTotalField.setHelperText(getTranslation("competition-detail.division.create.max-total.helper"));
 
         var saveButton = new Button("Save", e -> {
             if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
-                nameField.setErrorMessage("Name is required");
+                nameField.setErrorMessage(getTranslation("competition-detail.division.create.name.error"));
                 e.getSource().setEnabled(true);
                 return;
             }
             if (!StringUtils.hasText(shortNameField.getValue())) {
                 shortNameField.setInvalid(true);
-                shortNameField.setErrorMessage("Short name is required");
+                shortNameField.setErrorMessage(getTranslation("competition-detail.division.create.short-name.error"));
                 e.getSource().setEnabled(true);
                 return;
             }
             if (deadlinePicker.getValue() == null) {
                 deadlinePicker.setInvalid(true);
-                deadlinePicker.setErrorMessage("Registration deadline is required");
+                deadlinePicker.setErrorMessage(getTranslation("competition-detail.division.create.deadline.error"));
                 e.getSource().setEnabled(true);
                 return;
             }
@@ -861,7 +860,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                             getCurrentUserId());
                 }
                 refreshDivisionsGrid();
-                var notification = Notification.show("Division created successfully");
+                var notification = Notification.show(getTranslation("competition-detail.division.created"));
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
@@ -884,17 +883,16 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
     private void revertDivisionStatus(Division division) {
         var dialog = new Dialog();
-        dialog.setHeaderTitle("Revert Status");
+        dialog.setHeaderTitle(getTranslation("competition-detail.division.revert.title"));
         var prevStatus = division.getStatus().previous()
                 .map(DivisionStatus::getDisplayName).orElse("—");
-        dialog.add("Revert division '" + division.getName() + "' from "
-                + division.getStatus().getDisplayName() + " to " + prevStatus + "?");
+        dialog.add(getTranslation("competition-detail.division.revert.confirm", division.getName(), division.getStatus().getDisplayName(), prevStatus));
 
-        var confirmButton = new Button("Revert", e -> {
+        var confirmButton = new Button(getTranslation("competition-detail.division.revert.button"), e -> {
             try {
                 competitionService.revertDivisionStatus(division.getId(), getCurrentUserId());
                 refreshDivisionsGrid();
-                var notification = Notification.show("Status reverted successfully");
+                var notification = Notification.show(getTranslation("competition-detail.division.reverted"));
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
@@ -912,17 +910,16 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
     private void advanceDivisionStatus(Division division) {
         var dialog = new Dialog();
-        dialog.setHeaderTitle("Advance Status");
+        dialog.setHeaderTitle(getTranslation("competition-detail.division.advance.title"));
         var nextStatus = division.getStatus().next()
                 .map(DivisionStatus::getDisplayName).orElse("—");
-        dialog.add("Advance division '" + division.getName() + "' from "
-                + division.getStatus().getDisplayName() + " to " + nextStatus + "?");
+        dialog.add(getTranslation("competition-detail.division.advance.confirm", division.getName(), division.getStatus().getDisplayName(), nextStatus));
 
-        var confirmButton = new Button("Advance", e -> {
+        var confirmButton = new Button(getTranslation("competition-detail.division.advance.button"), e -> {
             try {
                 competitionService.advanceDivisionStatus(division.getId(), getCurrentUserId());
                 refreshDivisionsGrid();
-                var notification = Notification.show("Status advanced successfully");
+                var notification = Notification.show(getTranslation("competition-detail.division.advanced"));
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
@@ -940,15 +937,14 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
     private void openDeleteDivisionDialog(Division division) {
         var dialog = new Dialog();
-        dialog.setHeaderTitle("Delete Division");
-        dialog.add("Are you sure you want to delete \"" + division.getName() + "\"? "
-                + "This will also remove all categories.");
+        dialog.setHeaderTitle(getTranslation("competition-detail.division.delete.title"));
+        dialog.add(getTranslation("competition-detail.division.delete.confirm", division.getName()));
 
         var confirmButton = new Button("Delete", e -> {
             try {
                 competitionService.deleteDivision(division.getId(), getCurrentUserId());
                 refreshDivisionsGrid();
-                var notification = Notification.show("Division deleted successfully");
+                var notification = Notification.show(getTranslation("competition-detail.division.deleted"));
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
@@ -978,7 +974,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
     private void sendMagicLink(User user) {
         var locale = LanguageMapping.resolveLocale(user.getPreferredLanguage(), user.getCountry());
         emailService.sendMagicLink(user.getEmail(), locale);
-        var notification = Notification.show("Login link sent to " + user.getEmail());
+        var notification = Notification.show(getTranslation("competition-detail.participants.login-link.sent", user.getEmail()));
         notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
     }
 
@@ -990,7 +986,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                     var locale = LanguageMapping.resolveLocale(user.getPreferredLanguage(), user.getCountry());
                     emailService.sendPasswordSetup(email, competition.getName(),
                             competition.getContactEmail(), locale);
-                    Notification.show("Password setup email sent to " + email);
+                    Notification.show(getTranslation("competition-detail.participants.password-setup.sent", email));
                 }
             } catch (BusinessRuleException ignored) {
                 // User not found — shouldn't happen since we just added them
@@ -1005,20 +1001,20 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         var actions = new HorizontalLayout();
         actions.setWidthFull();
         actions.setJustifyContentMode(JustifyContentMode.END);
-        actions.add(new Button("Add Document", e -> openAddDocumentDialog()));
+        actions.add(new Button(getTranslation("competition-detail.documents.add"), e -> openAddDocumentDialog()));
         tab.add(actions);
 
         documentsGrid = new Grid<>(CompetitionDocument.class, false);
         documentsGrid.setAllRowsVisible(true);
-        documentsGrid.addColumn(CompetitionDocument::getName).setHeader("Name").setFlexGrow(3);
+        documentsGrid.addColumn(CompetitionDocument::getName).setHeader(getTranslation("competition-detail.documents.column.name")).setFlexGrow(3);
         documentsGrid.addComponentColumn(doc -> {
             var badge = new Span(doc.getType().name());
             badge.getElement().getThemeList().add("badge pill small");
             return badge;
-        }).setHeader("Type").setAutoWidth(true);
+        }).setHeader(getTranslation("competition-detail.documents.column.type")).setAutoWidth(true);
         documentsGrid.addColumn(doc -> doc.getLanguage() != null
                 ? MeadsI18NProvider.getLanguageLabel(doc.getLanguage())
-                : "All").setHeader("Language").setAutoWidth(true);
+                : getTranslation("competition-detail.documents.language.all")).setHeader(getTranslation("competition-detail.documents.column.language")).setAutoWidth(true);
         documentsGrid.addComponentColumn(doc -> {
             var layout = new HorizontalLayout();
             layout.setSpacing(false);
@@ -1033,7 +1029,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 downloadAnchor.getElement().setAttribute("download", true);
                 var downloadButton = new Button(new Icon(VaadinIcon.DOWNLOAD));
                 downloadButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-                downloadButton.setTooltipText("Download");
+                downloadButton.setTooltipText(getTranslation("competition-detail.documents.action.download.tooltip"));
                 downloadAnchor.add(downloadButton);
                 layout.add(downloadAnchor);
             } else {
@@ -1041,34 +1037,34 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 openAnchor.setTarget("_blank");
                 var openButton = new Button(new Icon(VaadinIcon.EXTERNAL_LINK));
                 openButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-                openButton.setTooltipText("Open link");
+                openButton.setTooltipText(getTranslation("competition-detail.documents.action.open.tooltip"));
                 openAnchor.add(openButton);
                 layout.add(openAnchor);
             }
 
             var upButton = new Button(new Icon(VaadinIcon.ARROW_UP));
             upButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            upButton.setTooltipText("Move up");
+            upButton.setTooltipText(getTranslation("competition-detail.documents.action.up.tooltip"));
             upButton.addClickListener(e -> moveDocument(documentsGrid, doc, -1));
 
             var downButton = new Button(new Icon(VaadinIcon.ARROW_DOWN));
             downButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            downButton.setTooltipText("Move down");
+            downButton.setTooltipText(getTranslation("competition-detail.documents.action.down.tooltip"));
             downButton.addClickListener(e -> moveDocument(documentsGrid, doc, 1));
 
             var editButton = new Button(new Icon(VaadinIcon.EDIT));
             editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            editButton.setTooltipText("Edit name");
+            editButton.setTooltipText(getTranslation("competition-detail.documents.action.edit.tooltip"));
             editButton.addClickListener(e -> openEditDocumentNameDialog(documentsGrid, doc));
 
             var deleteButton = new Button(new Icon(VaadinIcon.TRASH));
             deleteButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            deleteButton.setTooltipText("Delete");
+            deleteButton.setTooltipText(getTranslation("competition-detail.documents.action.delete.tooltip"));
             deleteButton.addClickListener(e -> openDeleteDocumentDialog(documentsGrid, doc));
 
             layout.add(upButton, downButton, editButton, deleteButton);
             return layout;
-        }).setHeader("Actions").setAutoWidth(true);
+        }).setHeader(getTranslation("competition-detail.documents.column.actions")).setAutoWidth(true);
 
         documentsGrid.setItems(competitionService.getDocuments(competitionId));
         tab.add(documentsGrid);
@@ -1077,29 +1073,29 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
     private void openAddDocumentDialog() {
         var dialog = new Dialog();
-        dialog.setHeaderTitle("Add Document");
+        dialog.setHeaderTitle(getTranslation("competition-detail.documents.add.title"));
 
-        var nameField = new TextField("Name");
+        var nameField = new TextField(getTranslation("competition-detail.documents.add.name"));
         nameField.setRequired(true);
         nameField.setWidthFull();
         nameField.setMaxLength(255);
 
         var typeSelect = new Select<DocumentType>();
-        typeSelect.setLabel("Type");
+        typeSelect.setLabel(getTranslation("competition-detail.documents.add.type"));
         typeSelect.setItems(DocumentType.values());
         typeSelect.setValue(DocumentType.PDF);
         typeSelect.setWidthFull();
 
-        var urlField = new TextField("URL");
+        var urlField = new TextField(getTranslation("competition-detail.documents.add.url"));
         urlField.setWidthFull();
         urlField.setMaxLength(2000);
         urlField.setVisible(false);
 
-        var languageCombo = new ComboBox<String>("Language");
+        var languageCombo = new ComboBox<String>(getTranslation("competition-detail.documents.add.language"));
         languageCombo.setItems(MeadsI18NProvider.getSupportedLanguageCodes());
         languageCombo.setItemLabelGenerator(MeadsI18NProvider::getLanguageLabel);
         languageCombo.setClearButtonVisible(true);
-        languageCombo.setPlaceholder("All languages");
+        languageCombo.setPlaceholder(getTranslation("competition-detail.documents.add.language.placeholder"));
         languageCombo.setWidthFull();
 
         var pdfData = new byte[1][];
@@ -1125,20 +1121,20 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         var saveButton = new Button("Save", e -> {
             if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
-                nameField.setErrorMessage("Name is required");
+                nameField.setErrorMessage(getTranslation("competition-detail.documents.add.name.error"));
                 e.getSource().setEnabled(true);
                 return;
             }
             try {
                 var type = typeSelect.getValue();
                 if (type == DocumentType.PDF && pdfData[0] == null) {
-                    Notification.show("Please upload a PDF file");
+                    Notification.show(getTranslation("competition-detail.documents.add.pdf.error"));
                     e.getSource().setEnabled(true);
                     return;
                 }
                 if (type == DocumentType.LINK && !StringUtils.hasText(urlField.getValue())) {
                     urlField.setInvalid(true);
-                    urlField.setErrorMessage("URL is required");
+                    urlField.setErrorMessage(getTranslation("competition-detail.documents.add.url.error"));
                     e.getSource().setEnabled(true);
                     return;
                 }
@@ -1147,7 +1143,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                         type == DocumentType.LINK ? urlField.getValue().trim() : null,
                         languageCombo.getValue(), getCurrentUserId());
                 documentsGrid.setItems(competitionService.getDocuments(competitionId));
-                var notification = Notification.show("Document added successfully");
+                var notification = Notification.show(getTranslation("competition-detail.documents.added"));
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
@@ -1184,9 +1180,9 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
     private void openEditDocumentNameDialog(Grid<CompetitionDocument> grid, CompetitionDocument doc) {
         var dialog = new Dialog();
-        dialog.setHeaderTitle("Edit Document Name");
+        dialog.setHeaderTitle(getTranslation("competition-detail.documents.edit.title"));
 
-        var nameField = new TextField("Name");
+        var nameField = new TextField(getTranslation("competition-detail.documents.edit.name"));
         nameField.setMaxLength(255);
         nameField.setValue(doc.getName());
         nameField.setWidthFull();
@@ -1194,7 +1190,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         var saveButton = new Button("Save", e -> {
             if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
-                nameField.setErrorMessage("Name is required");
+                nameField.setErrorMessage(getTranslation("competition-detail.documents.edit.name.error"));
                 e.getSource().setEnabled(true);
                 return;
             }
@@ -1202,7 +1198,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 competitionService.updateDocumentName(doc.getId(),
                         nameField.getValue().trim(), getCurrentUserId());
                 grid.setItems(competitionService.getDocuments(competitionId));
-                var notification = Notification.show("Document name updated");
+                var notification = Notification.show(getTranslation("competition-detail.documents.edit.updated"));
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
@@ -1220,14 +1216,14 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
     private void openDeleteDocumentDialog(Grid<CompetitionDocument> grid, CompetitionDocument doc) {
         var dialog = new Dialog();
-        dialog.setHeaderTitle("Delete Document");
-        dialog.add("Are you sure you want to delete \"" + doc.getName() + "\"?");
+        dialog.setHeaderTitle(getTranslation("competition-detail.documents.delete.title"));
+        dialog.add(getTranslation("competition-detail.documents.delete.confirm", doc.getName()));
 
         var confirmButton = new Button("Delete", e -> {
             try {
                 competitionService.removeDocument(doc.getId(), getCurrentUserId());
                 grid.setItems(competitionService.getDocuments(competitionId));
-                var notification = Notification.show("Document deleted");
+                var notification = Notification.show(getTranslation("competition-detail.documents.deleted"));
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {

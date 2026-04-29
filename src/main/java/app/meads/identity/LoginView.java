@@ -45,11 +45,11 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
         getStyle().set("margin", "0 auto");
 
         // --- Email + Get Login Link ---
-        emailField = new EmailField("Email");
+        emailField = new EmailField(getTranslation("login.email.label"));
         emailField.setWidthFull();
         emailField.setMaxLength(255);
         emailField.setValueChangeMode(ValueChangeMode.EAGER);
-        var magicLinkButton = new Button("Get Login Link");
+        var magicLinkButton = new Button(getTranslation("login.magic-link.button"));
         magicLinkButton.addClickListener(e -> sendMagicLink());
         var emailRow = new HorizontalLayout(emailField, magicLinkButton);
         emailRow.setWidthFull();
@@ -57,11 +57,11 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
         emailRow.expand(emailField);
 
         // --- Password + Login (collapsible) ---
-        passwordField = new PasswordField("Code / Password");
+        passwordField = new PasswordField(getTranslation("login.password.label"));
         passwordField.setWidthFull();
         passwordField.setMaxLength(128);
         passwordField.setValueChangeMode(ValueChangeMode.EAGER);
-        loginButton = new Button("Login");
+        loginButton = new Button(getTranslation("login.login.button"));
         loginButton.setDisableOnClick(true);
         loginButton.addClickListener(e -> loginWithCredentials());
         var passwordRow = new HorizontalLayout(passwordField, loginButton);
@@ -78,12 +78,12 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
         credentialsForm.getStyle().set("display", "none");
         credentialsForm.appendChild(usernameInput, passwordInput);
 
-        var forgotPasswordButton = new Button("Forgot password?");
+        var forgotPasswordButton = new Button(getTranslation("login.forgot-password"));
         forgotPasswordButton.addClickListener(e -> sendPasswordResetLink());
 
         var credentialsContent = new VerticalLayout(passwordRow, forgotPasswordButton);
         credentialsContent.getElement().appendChild(credentialsForm);
-        var credentialsDetails = new Details("Login with credentials", credentialsContent);
+        var credentialsDetails = new Details(getTranslation("login.credentials.section"), credentialsContent);
 
         // Enter key: credential login if password is filled, otherwise magic link
         Shortcuts.addShortcutListener(this, () -> {
@@ -101,7 +101,7 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
         String emailValue = emailField.getValue();
         if (!StringUtils.hasText(emailValue) || emailField.isInvalid()) {
             emailField.setInvalid(true);
-            emailField.setErrorMessage("Please enter a valid email address");
+            emailField.setErrorMessage(getTranslation("login.email.error"));
             return;
         }
         try {
@@ -115,14 +115,14 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
         } catch (BusinessRuleException ex) {
             log.info("Magic link requested for non-existent email: {}", emailValue);
         }
-        Notification.show("If this email is registered, a login link has been sent.");
+        Notification.show(getTranslation("login.magic-link.sent"));
     }
 
     private void sendPasswordResetLink() {
         String emailValue = emailField.getValue();
         if (!StringUtils.hasText(emailValue) || emailField.isInvalid()) {
             emailField.setInvalid(true);
-            emailField.setErrorMessage("Please enter a valid email address");
+            emailField.setErrorMessage(getTranslation("login.email.error"));
             return;
         }
         try {
@@ -132,7 +132,7 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
         } catch (BusinessRuleException ex) {
             log.info("Password reset requested for non-existent email: {}", emailValue);
         }
-        Notification.show("If this email is registered, a password reset link has been sent.");
+        Notification.show(getTranslation("login.password-reset.sent"));
     }
 
     private void loginWithCredentials() {
@@ -140,13 +140,13 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
         String password = passwordField.getValue();
         if (!StringUtils.hasText(email) || emailField.isInvalid()) {
             emailField.setInvalid(true);
-            emailField.setErrorMessage("Please enter a valid email address");
+            emailField.setErrorMessage(getTranslation("login.email.error"));
             loginButton.setEnabled(true);
             return;
         }
         if (!StringUtils.hasText(password)) {
             passwordField.setInvalid(true);
-            passwordField.setErrorMessage("Code or password is required");
+            passwordField.setErrorMessage(getTranslation("login.password.error"));
             loginButton.setEnabled(true);
             return;
         }
@@ -168,7 +168,7 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
                 .getQueryParameters()
                 .getParameters()
                 .containsKey("error")) {
-            Notification.show("Invalid email or password. Please try again.")
+            Notification.show(getTranslation("login.invalid-credentials"))
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
     }

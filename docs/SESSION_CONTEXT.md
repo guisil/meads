@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `main`
-**Tests:** 714 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-04-29
+**Tests:** 714 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-04-29 (admin i18n branch)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -264,13 +264,14 @@ Authorization rejection tests added for both advance/revert; advance-from-RECEIV
 Dialog handlers catch `IllegalStateException` for stale-state concurrent-edit edge case.
 Tooltip switch arms made exhaustive (no `default` fallthrough).
 
-### Priority 4: Admin view i18n
-Translate all admin views to support the same language switching as entrant views.
-~270 hardcoded English strings across 8 views to extract to message keys and translate
-to PT. Mechanical work — no new patterns or dependencies, `getTranslation()` infrastructure
-already in place. Biggest files: CompetitionDetailView (~82 strings), DivisionEntryAdminView
-(~90 strings). Also include LoginView and SetPasswordView — entrants with passwords use
-these views too, not just admins.
+### Priority 4: Admin view i18n — COMPLETE
+
+Extracted ~270 hardcoded English strings from 8 admin views into `getTranslation()` calls,
+added all keys to `messages.properties`, and translated to Portuguese in `messages_pt.properties`.
+Views updated: LoginView, SetPasswordView, UserListView, CompetitionListView, MyCompetitionsView,
+CompetitionDetailView, DivisionDetailView, DivisionEntryAdminView. ES/IT/PL fall back to EN.
+Fixed `ComboBox<>` type inference compilation errors introduced by Java 21 stricter inference
+(needed explicit `new ComboBox<String>(...)` where label arg comes from `getTranslation()`).
 
 ### Priority 5: Post-registration actions audit
 Review what actions should be allowed/blocked after a division moves past REGISTRATION_OPEN.
@@ -311,6 +312,7 @@ carbonation locking (custom categories), and admin-configurable constraints for 
 Requires: DB migration, admin UI for constraint config, cross-module data flow, server-side validation.
 
 ### Completed priorities
+- **Admin view i18n** — Completed 2026-04-29. Extracted ~270 hardcoded strings from 8 admin views (LoginView, SetPasswordView, UserListView, CompetitionListView, MyCompetitionsView, CompetitionDetailView, DivisionDetailView, DivisionEntryAdminView). Added keys to `messages.properties`, Portuguese translations to `messages_pt.properties`. ES/IT/PL fall back to EN. Fixed `ComboBox<>` type inference issue under Java 21 (explicit `new ComboBox<String>(...)`).
 - **Italian informal language + dependency upgrades** — Completed 2026-03-23. Switched all Italian UI text from formal "Lei" to informal "tu" (UI, emails, PDF instructions, error messages). Upgraded dependencies: Vaadin 25.0.5→25.0.7, Spring Modulith 2.0.2→2.0.4, OpenPDF 2.0.3→3.0.3 (package rename com.lowagie→org.openpdf), BouncyCastle 1.80→1.83, Karibu Testing 2.6.2→2.7.0, Testcontainers 2.0.3→2.0.4. Added Vaadin-generated frontend files to .gitignore. 695 tests.
 - **Document language filtering** — Completed 2026-03-19. Added optional `language` field (VARCHAR(5)) to `CompetitionDocument` (V17 migration). `null` = visible to all languages, a language code (e.g. "pt") = visible only to that locale. Admin add-document dialog has Language dropdown (from `MeadsI18NProvider.getSupportedLanguageCodes()`). Admin grid shows Language column. Entrant view (`MyEntriesView`) filters via `getDocumentsForLocale()`. 685 tests.
 - **Date display** — Completed 2026-03-18. Registration deadline in entrant view now uses locale-aware `DateTimeFormatter.ofLocalizedDate(SHORT)` + `ofLocalizedTime(SHORT)` instead of hardcoded pattern. Timezone display removed.
