@@ -45,6 +45,7 @@ import java.util.UUID;
 
 import static com.github.mvysny.kaributesting.v10.LocatorJ.*;
 import static org.assertj.core.api.Assertions.assertThat;
+import com.vaadin.flow.component.html.Span;
 
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
@@ -188,6 +189,37 @@ class DivisionEntryAdminViewTest {
         assertThat(headers).contains("Meadery", "Country");
     }
 
+    @SuppressWarnings("unchecked")
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldShowEntriesSummaryWithCorrectTotals() {
+        division.advanceStatus(); // DRAFT → REGISTRATION_OPEN
+        division = divisionRepository.save(division);
+
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        creditRepository.save(new EntryCredit(division.getId(), admin.getId(), 3, "ADMIN", "test"));
+
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Dry mead category", null, 1));
+        var entry = entryService.createEntry(division.getId(), admin.getId(),
+                "Test Mead", category.getId(),
+                Sweetness.DRY, new BigDecimal("12.0"),
+                Carbonation.STILL, "Honey", null, false, null, null);
+        entryService.submitEntry(entry.getId(), admin.getId());
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/entry-admin");
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(1); // Entries tab
+
+        var creditsLabel = _get(Span.class, spec -> spec.withId("credits-balance-label"));
+        var submittedLabel = _get(Span.class, spec -> spec.withId("submitted-entries-label"));
+
+        assertThat(creditsLabel.getText()).isEqualTo("Credits balance: 3");
+        assertThat(submittedLabel.getText()).isEqualTo("Submitted entries: 1");
+    }
+
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldShowDownloadAllLabelsButtonInEntriesTab() {
@@ -236,9 +268,9 @@ class DivisionEntryAdminViewTest {
                 .orElseThrow(() -> new AssertionError("Entries grid not found"));
 
         // Grid has 10 columns: Entry #, Code, Mead Name, Category, Final Category,
-        // Entrant, Meadery, Country, Status, Actions (view/edit/mark-received/delete/withdraw)
+        // Entrant, Meadery, Country, Status, Actions (view/edit/←/→/withdraw/delete)
         // Note: buttons inside addComponentColumn are not reachable via _find (Karibu limitation).
-        // The mark-received service behavior is tested in EntryServiceTest.
+        // Advance/revert service behavior is tested in EntryServiceTest.
         assertThat(entriesGrid.getColumns()).hasSize(10);
 
         @SuppressWarnings("rawtypes")

@@ -57,7 +57,7 @@ public class SetPasswordView extends VerticalLayout implements BeforeEnterObserv
             jwtMagicLinkService.extractEmail(this.token);
         } catch (JwtException ex) {
             log.warn("Invalid or expired set-password token");
-            Notification.show("Invalid or expired token. Please request a new link.")
+            Notification.show(getTranslation("set-password.token-invalid"))
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
             return;
         }
@@ -67,19 +67,18 @@ public class SetPasswordView extends VerticalLayout implements BeforeEnterObserv
     private void buildForm() {
         removeAll();
 
-        add(new H2("Set Password"));
-        add(new Paragraph("Once you set a password, you'll need to use your credentials to log in "
-                + "— login links will no longer work for your account."));
+        add(new H2(getTranslation("set-password.heading")));
+        add(new Paragraph(getTranslation("set-password.body")));
 
-        passwordField = new PasswordField("Password");
+        passwordField = new PasswordField(getTranslation("set-password.password.label"));
         passwordField.setMaxLength(128);
         passwordField.setValueChangeMode(ValueChangeMode.EAGER);
 
-        confirmField = new PasswordField("Confirm Password");
+        confirmField = new PasswordField(getTranslation("set-password.confirm.label"));
         confirmField.setMaxLength(128);
         confirmField.setValueChangeMode(ValueChangeMode.EAGER);
 
-        submitButton = new Button("Set Password");
+        submitButton = new Button(getTranslation("set-password.submit"));
         submitButton.setDisableOnClick(true);
         submitButton.addClickListener(e -> handleSubmit());
 
@@ -94,21 +93,21 @@ public class SetPasswordView extends VerticalLayout implements BeforeEnterObserv
 
         if (!StringUtils.hasText(password)) {
             passwordField.setInvalid(true);
-            passwordField.setErrorMessage("Password is required");
+            passwordField.setErrorMessage(getTranslation("set-password.password.error"));
             submitButton.setEnabled(true);
             return;
         }
 
         if (!password.equals(confirm)) {
             confirmField.setInvalid(true);
-            confirmField.setErrorMessage("Passwords do not match");
+            confirmField.setErrorMessage(getTranslation("set-password.confirm.error"));
             submitButton.setEnabled(true);
             return;
         }
 
         try {
             userService.setPasswordByToken(token, password);
-            Notification.show("Password set successfully")
+            Notification.show(getTranslation("set-password.success"))
                     .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
             getUI().ifPresent(ui -> ui.navigate("login"));
         } catch (BusinessRuleException ex) {
@@ -116,7 +115,7 @@ public class SetPasswordView extends VerticalLayout implements BeforeEnterObserv
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
             submitButton.setEnabled(true);
         } catch (JwtException ex) {
-            Notification.show("Invalid or expired token. Please request a new link.")
+            Notification.show(getTranslation("set-password.token-invalid"))
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
             submitButton.setEnabled(true);
         }

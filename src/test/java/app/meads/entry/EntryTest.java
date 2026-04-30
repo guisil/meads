@@ -311,4 +311,89 @@ class EntryTest {
 
         assertThat(entry.getEffectiveCategoryId()).isEqualTo(finalCategoryId);
     }
+
+    // --- Cycle 9: advanceStatus() ---
+
+    @Test
+    void shouldAdvanceDraftEntryToSubmitted() {
+        var entry = createDefaultEntry();
+
+        entry.advanceStatus();
+
+        assertThat(entry.getStatus()).isEqualTo(EntryStatus.SUBMITTED);
+    }
+
+    @Test
+    void shouldAdvanceSubmittedEntryToReceived() {
+        var entry = createDefaultEntry();
+        entry.advanceStatus();
+
+        entry.advanceStatus();
+
+        assertThat(entry.getStatus()).isEqualTo(EntryStatus.RECEIVED);
+    }
+
+    @Test
+    void shouldRejectAdvanceWhenReceived() {
+        var entry = createDefaultEntry();
+        entry.advanceStatus();
+        entry.advanceStatus();
+
+        assertThatThrownBy(entry::advanceStatus)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Cannot advance");
+    }
+
+    @Test
+    void shouldRejectAdvanceWhenWithdrawn() {
+        var entry = createDefaultEntry();
+        entry.withdraw();
+
+        assertThatThrownBy(entry::advanceStatus)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Cannot advance");
+    }
+
+    // --- Cycle 10: revertStatus() ---
+
+    @Test
+    void shouldRevertSubmittedEntryToDraft() {
+        var entry = createDefaultEntry();
+        entry.submit();
+
+        entry.revertStatus();
+
+        assertThat(entry.getStatus()).isEqualTo(EntryStatus.DRAFT);
+    }
+
+    @Test
+    void shouldRevertReceivedEntryToSubmitted() {
+        var entry = createDefaultEntry();
+        entry.submit();
+        entry.markReceived();
+
+        entry.revertStatus();
+
+        assertThat(entry.getStatus()).isEqualTo(EntryStatus.SUBMITTED);
+    }
+
+    @Test
+    void shouldRevertWithdrawnEntryToDraft() {
+        var entry = createDefaultEntry();
+        entry.submit();
+        entry.withdraw();
+
+        entry.revertStatus();
+
+        assertThat(entry.getStatus()).isEqualTo(EntryStatus.DRAFT);
+    }
+
+    @Test
+    void shouldRejectRevertWhenDraft() {
+        var entry = createDefaultEntry();
+
+        assertThatThrownBy(entry::revertStatus)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Cannot revert");
+    }
 }

@@ -47,16 +47,16 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
         this.userService = userService;
         this.authenticationContext = authenticationContext;
 
-        add(new H2("Competitions"));
+        add(new H2(getTranslation("competition-list.heading")));
 
         var filterField = new TextField();
-        filterField.setPlaceholder("Filter by name...");
+        filterField.setPlaceholder(getTranslation("competition-list.filter.placeholder"));
         filterField.setValueChangeMode(ValueChangeMode.EAGER);
         filterField.setWidthFull();
         filterField.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
         filterField.setClearButtonVisible(true);
 
-        var createButton = new Button("Create Competition", e -> openCompetitionDialog(null));
+        var createButton = new Button(getTranslation("competition-list.create"), e -> openCompetitionDialog(null));
 
         var toolbar = new HorizontalLayout(filterField, createButton);
         toolbar.setWidthFull();
@@ -65,26 +65,26 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
 
         grid = new Grid<>(Competition.class, false);
         grid.setAllRowsVisible(true);
-        grid.addColumn(Competition::getName).setHeader("Name").setSortable(true).setFlexGrow(2);
-        grid.addColumn(Competition::getStartDate).setHeader("Start Date").setSortable(true).setAutoWidth(true);
-        grid.addColumn(Competition::getEndDate).setHeader("End Date").setSortable(true).setAutoWidth(true);
+        grid.addColumn(Competition::getName).setHeader(getTranslation("competition-list.column.name")).setSortable(true).setFlexGrow(2);
+        grid.addColumn(Competition::getStartDate).setHeader(getTranslation("competition-list.column.start-date")).setSortable(true).setAutoWidth(true);
+        grid.addColumn(Competition::getEndDate).setHeader(getTranslation("competition-list.column.end-date")).setSortable(true).setAutoWidth(true);
         grid.addColumn(comp -> comp.getLocation() != null ? comp.getLocation() : "—")
-                .setHeader("Location").setSortable(true).setFlexGrow(1);
+                .setHeader(getTranslation("competition-list.column.location")).setSortable(true).setFlexGrow(1);
         grid.addComponentColumn(comp -> {
             var editButton = new Button(new Icon(VaadinIcon.EDIT));
             editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            editButton.setAriaLabel("Edit");
-            editButton.setTooltipText("Edit");
+            editButton.setAriaLabel(getTranslation("competition-list.action.edit"));
+            editButton.setTooltipText(getTranslation("competition-list.action.edit"));
             editButton.addClickListener(e -> openCompetitionDialog(comp));
 
             var deleteButton = new Button(new Icon(VaadinIcon.TRASH));
             deleteButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            deleteButton.setAriaLabel("Delete");
-            deleteButton.setTooltipText("Delete");
+            deleteButton.setAriaLabel(getTranslation("competition-list.action.delete"));
+            deleteButton.setTooltipText(getTranslation("competition-list.action.delete"));
             deleteButton.addClickListener(e -> openDeleteCompetitionDialog(comp));
 
             return new HorizontalLayout(editButton, deleteButton);
-        }).setHeader("Actions").setAutoWidth(true);
+        }).setHeader(getTranslation("competition-list.column.actions")).setAutoWidth(true);
 
         grid.addItemClickListener(e ->
                 e.getSource().getUI().ifPresent(ui ->
@@ -118,25 +118,25 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
     private void openCompetitionDialog(Competition existing) {
         boolean isEdit = existing != null;
         var dialog = new Dialog();
-        dialog.setHeaderTitle(isEdit ? "Edit Competition" : "Create Competition");
+        dialog.setHeaderTitle(isEdit ? getTranslation("competition-list.dialog.edit.title") : getTranslation("competition-list.dialog.create.title"));
 
-        var nameField = new TextField("Name");
+        var nameField = new TextField(getTranslation("competition-list.dialog.name"));
         nameField.setRequired(true);
         nameField.setMaxLength(255);
 
-        var shortNameField = new TextField("Short Name");
+        var shortNameField = new TextField(getTranslation("competition-list.dialog.short-name"));
         shortNameField.setRequired(true);
         shortNameField.setMaxLength(100);
-        shortNameField.setHelperText("URL-friendly identifier (e.g. chip-2026)");
+        shortNameField.setHelperText(getTranslation("competition-list.dialog.short-name.helper"));
         shortNameField.setPattern("[a-z0-9][a-z0-9-]*[a-z0-9]");
 
-        var startDatePicker = new DatePicker("Start Date");
+        var startDatePicker = new DatePicker(getTranslation("competition-list.dialog.start-date"));
         startDatePicker.setRequired(true);
 
-        var endDatePicker = new DatePicker("End Date");
+        var endDatePicker = new DatePicker(getTranslation("competition-list.dialog.end-date"));
         endDatePicker.setRequired(true);
 
-        var locationField = new TextField("Location");
+        var locationField = new TextField(getTranslation("competition-list.dialog.location"));
         locationField.setMaxLength(500);
 
         var logoData = new byte[1][];
@@ -166,12 +166,12 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
             locationField.setValue(existing.getLocation() != null ? existing.getLocation() : "");
 
             if (existing.hasLogo()) {
-                var removeLogoButton = new Button("Remove Logo", e -> {
+                var removeLogoButton = new Button(getTranslation("competition-list.dialog.logo.remove"), e -> {
                     try {
                         competitionService.updateCompetitionLogo(
                                 existing.getId(), null, null, getCurrentUserId());
                         logoSection.remove(e.getSource());
-                        var notification = Notification.show("Logo removed");
+                        var notification = Notification.show(getTranslation("competition-list.dialog.logo.removed"));
                         notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                     } catch (BusinessRuleException ex) {
                         e.getSource().setEnabled(true);
@@ -186,25 +186,25 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
         var submitButton = new Button("Save", e -> {
             if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
-                nameField.setErrorMessage("Name is required");
+                nameField.setErrorMessage(getTranslation("competition-list.dialog.name.error"));
                 e.getSource().setEnabled(true);
                 return;
             }
             if (!StringUtils.hasText(shortNameField.getValue())) {
                 shortNameField.setInvalid(true);
-                shortNameField.setErrorMessage("Short name is required");
+                shortNameField.setErrorMessage(getTranslation("competition-list.dialog.short-name.error"));
                 e.getSource().setEnabled(true);
                 return;
             }
             if (startDatePicker.getValue() == null) {
                 startDatePicker.setInvalid(true);
-                startDatePicker.setErrorMessage("Start date is required");
+                startDatePicker.setErrorMessage(getTranslation("competition-list.dialog.start-date.error"));
                 e.getSource().setEnabled(true);
                 return;
             }
             if (endDatePicker.getValue() == null) {
                 endDatePicker.setInvalid(true);
-                endDatePicker.setErrorMessage("End date is required");
+                endDatePicker.setErrorMessage(getTranslation("competition-list.dialog.end-date.error"));
                 e.getSource().setEnabled(true);
                 return;
             }
@@ -231,7 +231,7 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
                 }
                 refreshGrid();
                 var notification = Notification.show(
-                        isEdit ? "Competition updated successfully" : "Competition created successfully");
+                        isEdit ? getTranslation("competition-list.updated") : getTranslation("competition-list.created"));
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
@@ -252,20 +252,19 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
 
     private void openDeleteCompetitionDialog(Competition competition) {
         var dialog = new Dialog();
-        dialog.setHeaderTitle("Delete Competition");
+        dialog.setHeaderTitle(getTranslation("competition-list.delete.title"));
         var participants = competitionService.findParticipantsByCompetition(competition.getId());
         if (participants.isEmpty()) {
-            dialog.add("Are you sure you want to delete \"" + competition.getName() + "\"?");
+            dialog.add(getTranslation("competition-list.delete.confirm", competition.getName()));
         } else {
-            dialog.add("Are you sure you want to delete \"" + competition.getName() + "\"? "
-                    + "This will also remove all " + participants.size() + " participant(s) and their roles.");
+            dialog.add(getTranslation("competition-list.delete.confirm.with-participants", competition.getName(), participants.size()));
         }
 
         var confirmButton = new Button("Delete", e -> {
             try {
                 competitionService.deleteCompetition(competition.getId(), getCurrentUserId());
                 refreshGrid();
-                var notification = Notification.show("Competition deleted successfully");
+                var notification = Notification.show(getTranslation("competition-list.deleted"));
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {

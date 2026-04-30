@@ -41,22 +41,21 @@ public class MyCompetitionsView extends VerticalLayout implements BeforeEnterObs
         var isCompAdmin = !competitionService.findCompetitionsByAdmin(currentUserId).isEmpty();
         if (currentUser.getRole() != Role.SYSTEM_ADMIN && isCompAdmin
                 && !userService.hasPassword(currentUserId)) {
-            Notification.show("Please set a password to access competition management. "
-                    + "Check your email for the password setup link.");
+            Notification.show(getTranslation("my-competitions.password-required"));
             beforeEnterEvent.forwardTo("");
             return;
         }
 
         removeAll();
-        add(new H2("My Competitions"));
+        add(new H2(getTranslation("my-competitions.heading")));
 
         var grid = new Grid<>(Competition.class, false);
         grid.setAllRowsVisible(true);
-        grid.addColumn(Competition::getName).setHeader("Name").setSortable(true);
-        grid.addColumn(Competition::getStartDate).setHeader("Start Date").setSortable(true);
-        grid.addColumn(Competition::getEndDate).setHeader("End Date").setSortable(true);
+        grid.addColumn(Competition::getName).setHeader(getTranslation("my-competitions.column.name")).setSortable(true);
+        grid.addColumn(Competition::getStartDate).setHeader(getTranslation("my-competitions.column.start-date")).setSortable(true);
+        grid.addColumn(Competition::getEndDate).setHeader(getTranslation("my-competitions.column.end-date")).setSortable(true);
         grid.addColumn(comp -> comp.getLocation() != null ? comp.getLocation() : "—")
-                .setHeader("Location");
+                .setHeader(getTranslation("my-competitions.column.location"));
 
         grid.addItemClickListener(e ->
                 e.getSource().getUI().ifPresent(ui ->

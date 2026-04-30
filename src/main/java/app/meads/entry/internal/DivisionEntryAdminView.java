@@ -149,7 +149,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         var user = userService.findById(currentUserId);
         boolean isSystemAdmin = user.getRole() == Role.SYSTEM_ADMIN;
         var listLink = new Anchor(isSystemAdmin ? "competitions" : "my-competitions",
-                isSystemAdmin ? "Competitions" : "My Competitions");
+                isSystemAdmin ? getTranslation("nav.competitions") : getTranslation("nav.my-competitions"));
         nav.add(listLink);
         nav.add(new Span(" / "));
         var competitionLink = new Anchor(
@@ -161,7 +161,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 division.getName());
         nav.add(divisionLink);
         nav.add(new Span(" / "));
-        nav.add(new Span("Entry Admin"));
+        nav.add(new Span(getTranslation("entry-admin.nav.entry-admin")));
         return nav;
     }
 
@@ -177,7 +177,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             header.add(logo);
         }
 
-        header.add(new H2(competition.getName() + " — " + division.getName() + " — Entry Admin"));
+        header.add(new H2(competition.getName() + " — " + division.getName() + " — " + getTranslation("entry-admin.nav.entry-admin")));
         return header;
     }
 
@@ -185,10 +185,10 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         var tabSheet = new TabSheet();
         tabSheet.setWidthFull();
 
-        tabSheet.add("Credits", createCreditsTab());
-        tabSheet.add("Entries", createEntriesTab());
-        tabSheet.add("Products", createProductsTab());
-        tabSheet.add("Orders", createOrdersTab());
+        tabSheet.add(getTranslation("entry-admin.tab.credits"), createCreditsTab());
+        tabSheet.add(getTranslation("entry-admin.tab.entries"), createEntriesTab());
+        tabSheet.add(getTranslation("entry-admin.tab.products"), createProductsTab());
+        tabSheet.add(getTranslation("entry-admin.tab.orders"), createOrdersTab());
 
         return tabSheet;
     }
@@ -200,12 +200,12 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         tab.setPadding(false);
 
         var filterField = new TextField();
-        filterField.setPlaceholder("Filter by name or email...");
+        filterField.setPlaceholder(getTranslation("entry-admin.credits.filter.placeholder"));
         filterField.setValueChangeMode(ValueChangeMode.EAGER);
         filterField.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
         filterField.setClearButtonVisible(true);
 
-        var addCreditsButton = new Button("Add Credits", e -> openAddCreditsDialog());
+        var addCreditsButton = new Button(getTranslation("entry-admin.credits.add"), e -> openAddCreditsDialog());
 
         var toolbar = new HorizontalLayout(filterField, addCreditsButton);
         toolbar.setWidthFull();
@@ -215,18 +215,18 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         creditsGrid = new Grid<>(EntrantCreditSummary.class, false);
         creditsGrid.setAllRowsVisible(true);
         creditsGrid.setId("credits-grid");
-        creditsGrid.addColumn(EntrantCreditSummary::name).setHeader("Name").setSortable(true).setFlexGrow(2);
-        creditsGrid.addColumn(EntrantCreditSummary::email).setHeader("Email").setSortable(true).setFlexGrow(3);
-        creditsGrid.addColumn(EntrantCreditSummary::creditBalance).setHeader("Credits").setSortable(true).setAutoWidth(true);
-        creditsGrid.addColumn(EntrantCreditSummary::entryCount).setHeader("Entries").setSortable(true).setAutoWidth(true);
+        creditsGrid.addColumn(EntrantCreditSummary::name).setHeader(getTranslation("entry-admin.credits.column.name")).setSortable(true).setFlexGrow(2);
+        creditsGrid.addColumn(EntrantCreditSummary::email).setHeader(getTranslation("entry-admin.credits.column.email")).setSortable(true).setFlexGrow(3);
+        creditsGrid.addColumn(EntrantCreditSummary::creditBalance).setHeader(getTranslation("entry-admin.credits.column.credits")).setSortable(true).setAutoWidth(true);
+        creditsGrid.addColumn(EntrantCreditSummary::entryCount).setHeader(getTranslation("entry-admin.credits.column.entries")).setSortable(true).setAutoWidth(true);
         creditsGrid.addComponentColumn(summary -> {
             var editButton = new Button(new Icon(VaadinIcon.EDIT));
             editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            editButton.setAriaLabel("Adjust Credits");
-            editButton.setTooltipText("Adjust Credits");
+            editButton.setAriaLabel(getTranslation("entry-admin.credits.action.adjust.tooltip"));
+            editButton.setTooltipText(getTranslation("entry-admin.credits.action.adjust.tooltip"));
             editButton.addClickListener(e -> openEditCreditsDialog(summary));
             return editButton;
-        }).setHeader("Actions").setAutoWidth(true);
+        }).setHeader(getTranslation("entry-admin.credits.column.actions")).setAutoWidth(true);
 
         creditsGrid.getColumns().forEach(col -> col.setResizable(true));
 
@@ -265,26 +265,26 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
 
     private void openAddCreditsDialog() {
         var dialog = new Dialog();
-        dialog.setHeaderTitle("Add Credits");
+        dialog.setHeaderTitle(getTranslation("entry-admin.credits.add.title"));
 
-        var emailField = new TextField("Entrant Email");
+        var emailField = new TextField(getTranslation("entry-admin.credits.add.email"));
         emailField.setMaxLength(255);
-        var amountField = new IntegerField("Amount");
+        var amountField = new IntegerField(getTranslation("entry-admin.credits.add.amount"));
         amountField.setMin(1);
         amountField.setValue(1);
 
         dialog.add(new VerticalLayout(emailField, amountField));
 
-        var addButton = new Button("Add", e -> {
+        var addButton = new Button(getTranslation("entry-admin.credits.add.button"), e -> {
             var valid = true;
             if (!StringUtils.hasText(emailField.getValue())) {
                 emailField.setInvalid(true);
-                emailField.setErrorMessage("Email is required");
+                emailField.setErrorMessage(getTranslation("entry-admin.credits.add.email.error"));
                 valid = false;
             }
             if (amountField.getValue() == null) {
                 amountField.setInvalid(true);
-                amountField.setErrorMessage("Amount is required");
+                amountField.setErrorMessage(getTranslation("entry-admin.credits.add.amount.error"));
                 valid = false;
             }
             if (!valid) {
@@ -294,7 +294,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             try {
                 entryService.addCredits(divisionId, emailField.getValue().trim(),
                         amountField.getValue(), currentUserId);
-                var notification = Notification.show("Credits added");
+                var notification = Notification.show(getTranslation("entry-admin.credits.added"));
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
                 refreshCreditsGrid();
@@ -303,7 +303,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 e.getSource().setEnabled(true);
             } catch (jakarta.validation.ConstraintViolationException ex) {
                 emailField.setInvalid(true);
-                emailField.setErrorMessage("Please enter a valid email address");
+                emailField.setErrorMessage(getTranslation("entry-admin.credits.add.email.invalid"));
                 e.getSource().setEnabled(true);
             }
         });
@@ -316,12 +316,11 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
 
     private void openEditCreditsDialog(EntrantCreditSummary summary) {
         var dialog = new Dialog();
-        dialog.setHeaderTitle("Adjust Credits — " + summary.name());
+        dialog.setHeaderTitle(getTranslation("entry-admin.credits.adjust.title", summary.name()));
 
-        var amountField = new IntegerField("Adjustment");
+        var amountField = new IntegerField(getTranslation("entry-admin.credits.adjust.amount"));
         amountField.setValue(1);
-        amountField.setHelperText("Current balance: " + summary.creditBalance()
-                + ". Use positive to add, negative to remove.");
+        amountField.setHelperText(getTranslation("entry-admin.credits.adjust.helper", summary.creditBalance()));
 
         dialog.add(new VerticalLayout(amountField));
 
@@ -339,7 +338,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                     entryService.removeCredits(divisionId, summary.userId(),
                             -amount, currentUserId);
                 }
-                var notification = Notification.show("Credits updated");
+                var notification = Notification.show(getTranslation("entry-admin.credits.adjusted"));
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
                 refreshCreditsGrid();
@@ -362,12 +361,12 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         tab.setPadding(false);
 
         var filterField = new TextField();
-        filterField.setPlaceholder("Filter by mead name, entrant, or entry code...");
+        filterField.setPlaceholder(getTranslation("entry-admin.entries.filter.placeholder"));
         filterField.setValueChangeMode(ValueChangeMode.EAGER);
         filterField.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
         filterField.setClearButtonVisible(true);
 
-        var downloadAllBtn = new Button("Download all labels", new Icon(VaadinIcon.DOWNLOAD_ALT));
+        var downloadAllBtn = new Button(getTranslation("entry-admin.entries.download-all"), new Icon(VaadinIcon.DOWNLOAD_ALT));
         downloadAllBtn.addClickListener(e -> {
             var allEntries = entryService.findEntriesByDivision(divisionId);
             var qualifyingEntries = allEntries.stream()
@@ -375,13 +374,12 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                             || entry.getStatus() == EntryStatus.RECEIVED)
                     .toList();
             if (qualifyingEntries.isEmpty()) {
-                Notification.show("No submitted or received entries to generate labels for");
+                Notification.show(getTranslation("entry-admin.entries.download-all.empty"));
                 return;
             }
             var dialog = new Dialog();
-            dialog.setHeaderTitle("Download all labels");
-            dialog.add(new Span("This will generate labels for "
-                    + qualifyingEntries.size() + " entries. Continue?"));
+            dialog.setHeaderTitle(getTranslation("entry-admin.entries.download-all.confirm.title"));
+            dialog.add(new Span(getTranslation("entry-admin.entries.download-all.confirm.body", qualifyingEntries.size())));
 
             var resource = new StreamResource("all-labels.pdf", () -> {
                 java.util.function.Function<UUID, DivisionCategory> resolver = id ->
@@ -392,7 +390,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                                 division, resolver));
             });
             resource.setContentType("application/pdf");
-            var downloadAnchor = new Anchor(resource, "Download");
+            var downloadAnchor = new Anchor(resource, getTranslation("entry-admin.entries.download-all.anchor"));
             downloadAnchor.getElement().setAttribute("download", true);
             downloadAnchor.getElement().addEventListener("click", ev -> dialog.close());
 
@@ -402,9 +400,9 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         });
 
         var statusSelect = new Select<EntryStatus>();
-        statusSelect.setPlaceholder("All statuses");
+        statusSelect.setPlaceholder(getTranslation("entry-admin.entries.status.all"));
         statusSelect.setItems(EntryStatus.values());
-        statusSelect.setItemLabelGenerator(s -> s != null ? s.getDisplayName() : "All statuses");
+        statusSelect.setItemLabelGenerator(s -> s != null ? s.getDisplayName() : getTranslation("entry-admin.entries.status.all"));
         statusSelect.setEmptySelectionAllowed(true);
         statusSelect.addValueChangeListener(e -> {
             entriesStatusFilter = e.getValue();
@@ -418,7 +416,9 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         tab.add(toolbar);
 
         totalCreditsLabel = new Span();
+        totalCreditsLabel.setId("credits-balance-label");
         submittedEntriesLabel = new Span();
+        submittedEntriesLabel.setId("submitted-entries-label");
         var separator = new Span(" | ");
         separator.getStyle().set("color", "var(--lumo-contrast-30pct)");
         var summary = new HorizontalLayout(totalCreditsLabel, separator, submittedEntriesLabel);
@@ -430,16 +430,16 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         entriesGrid.setAllRowsVisible(true);
         entriesGrid.setId("entries-grid");
         entriesGrid.addColumn(entry -> formatEntryNumber(entry.getEntryNumber()))
-                .setHeader("Entry #").setSortable(true).setAutoWidth(true);
-        entriesGrid.addColumn(Entry::getEntryCode).setHeader("Code").setSortable(true).setAutoWidth(true);
+                .setHeader(getTranslation("entry-admin.entries.column.number")).setSortable(true).setAutoWidth(true);
+        entriesGrid.addColumn(Entry::getEntryCode).setHeader(getTranslation("entry-admin.entries.column.code")).setSortable(true).setAutoWidth(true);
         entriesGrid.addComponentColumn(entry -> {
             var span = new Span(entry.getMeadName());
             span.setTitle(entry.getMeadName());
             return span;
-        }).setHeader("Mead Name").setSortable(true).setFlexGrow(2)
+        }).setHeader(getTranslation("entry-admin.entries.column.mead-name")).setSortable(true).setFlexGrow(2)
                 .setComparator((a, b) -> a.getMeadName().compareToIgnoreCase(b.getMeadName()));
         entriesGrid.addComponentColumn(entry -> createCategorySpan(entry.getInitialCategoryId()))
-                .setHeader("Category").setSortable(true)
+                .setHeader(getTranslation("entry-admin.entries.column.category")).setSortable(true)
                 .setComparator((a, b) -> resolveCategoryCode(a.getInitialCategoryId())
                         .compareTo(resolveCategoryCode(b.getInitialCategoryId())));
         entriesGrid.addComponentColumn(entry -> {
@@ -447,57 +447,73 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 return new Span("—");
             }
             return createCategorySpan(entry.getFinalCategoryId());
-        }).setHeader("Final Category").setSortable(true);
+        }).setHeader(getTranslation("entry-admin.entries.column.final-category")).setSortable(true);
         entriesGrid.addColumn(entry -> userService.findById(entry.getUserId()).getEmail())
-                .setHeader("Entrant").setSortable(true).setFlexGrow(2);
+                .setHeader(getTranslation("entry-admin.entries.column.entrant")).setSortable(true).setFlexGrow(2);
         entriesGrid.addColumn(entry -> {
             var user = userService.findById(entry.getUserId());
             return user.getMeaderyName() != null ? user.getMeaderyName() : "";
-        }).setHeader("Meadery").setSortable(true).setAutoWidth(true);
+        }).setHeader(getTranslation("entry-admin.entries.column.meadery")).setSortable(true).setAutoWidth(true);
         entriesGrid.addColumn(entry -> {
             var user = userService.findById(entry.getUserId());
             return user.getCountry() != null
                     ? new Locale("", user.getCountry()).getDisplayCountry(Locale.ENGLISH)
                     : "";
-        }).setHeader("Country").setSortable(true).setAutoWidth(true);
+        }).setHeader(getTranslation("entry-admin.entries.column.country")).setSortable(true).setAutoWidth(true);
         entriesGrid.addColumn(entry -> entry.getStatus().name())
-                .setHeader("Status").setSortable(true).setAutoWidth(true);
+                .setHeader(getTranslation("entry-admin.entries.column.status")).setSortable(true).setAutoWidth(true);
         entriesGrid.addComponentColumn(entry -> {
             var viewButton = new Button(new Icon(VaadinIcon.EYE));
             viewButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            viewButton.setAriaLabel("View");
-            viewButton.setTooltipText("View");
+            viewButton.setAriaLabel(getTranslation("entry-admin.entries.action.view.tooltip"));
+            viewButton.setTooltipText(getTranslation("entry-admin.entries.action.view.tooltip"));
             viewButton.addClickListener(e -> openViewEntryDialog(entry));
 
             var editButton = new Button(new Icon(VaadinIcon.EDIT));
             editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            editButton.setAriaLabel("Edit");
-            editButton.setTooltipText("Edit");
+            editButton.setAriaLabel(getTranslation("entry-admin.entries.action.edit.tooltip"));
+            editButton.setTooltipText(getTranslation("entry-admin.entries.action.edit.tooltip"));
             editButton.setEnabled(entry.getStatus() != EntryStatus.WITHDRAWN);
             editButton.addClickListener(e -> openEditEntryDialog(entry));
 
-            var deleteButton = new Button(new Icon(VaadinIcon.TRASH));
-            deleteButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            deleteButton.setAriaLabel("Delete");
-            deleteButton.setTooltipText("Delete");
-            deleteButton.setEnabled(entry.getStatus() == EntryStatus.DRAFT);
-            deleteButton.addClickListener(e -> openDeleteEntryDialog(entry));
+            var revertButton = new Button(new Icon(VaadinIcon.ARROW_LEFT));
+            revertButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            revertButton.setAriaLabel(getTranslation("entry-admin.entries.action.revert.tooltip"));
+            revertButton.setEnabled(entry.getStatus() != EntryStatus.DRAFT);
+            revertButton.setTooltipText(switch (entry.getStatus()) {
+                case SUBMITTED, WITHDRAWN -> getTranslation("entry-admin.entries.revert.tooltip.to-draft");
+                case RECEIVED -> getTranslation("entry-admin.entries.revert.tooltip.to-submitted");
+                case DRAFT -> getTranslation("entry-admin.entries.revert.tooltip.default");
+            });
+            revertButton.addClickListener(e -> openRevertStatusDialog(entry));
 
-            var markReceivedButton = new Button(new Icon(VaadinIcon.CHECK));
-            markReceivedButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            markReceivedButton.setAriaLabel("Mark as Received");
-            markReceivedButton.setTooltipText("Mark as Received");
-            markReceivedButton.setEnabled(entry.getStatus() == EntryStatus.SUBMITTED);
-            markReceivedButton.addClickListener(e -> openMarkReceivedDialog(entry));
+            var advanceButton = new Button(new Icon(VaadinIcon.ARROW_RIGHT));
+            advanceButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            advanceButton.setAriaLabel(getTranslation("entry-admin.entries.action.advance.tooltip"));
+            advanceButton.setEnabled(entry.getStatus() == EntryStatus.DRAFT
+                    || entry.getStatus() == EntryStatus.SUBMITTED);
+            advanceButton.setTooltipText(switch (entry.getStatus()) {
+                case DRAFT -> getTranslation("entry-admin.entries.advance.tooltip.submit");
+                case SUBMITTED -> getTranslation("entry-admin.entries.advance.tooltip.received");
+                case RECEIVED, WITHDRAWN -> getTranslation("entry-admin.entries.advance.tooltip.default");
+            });
+            advanceButton.addClickListener(e -> openAdvanceStatusDialog(entry));
 
             var withdrawButton = new Button(new Icon(VaadinIcon.BAN));
             withdrawButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            withdrawButton.setAriaLabel("Withdraw");
-            withdrawButton.setTooltipText("Withdraw");
+            withdrawButton.setAriaLabel(getTranslation("entry-admin.entries.action.withdraw.tooltip"));
+            withdrawButton.setTooltipText(getTranslation("entry-admin.entries.action.withdraw.tooltip"));
             withdrawButton.setEnabled(entry.getStatus() != EntryStatus.WITHDRAWN);
             withdrawButton.addClickListener(e -> openWithdrawEntryDialog(entry));
 
-            var actions = new HorizontalLayout(viewButton, editButton, markReceivedButton, deleteButton, withdrawButton);
+            var deleteButton = new Button(new Icon(VaadinIcon.TRASH));
+            deleteButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            deleteButton.setAriaLabel(getTranslation("entry-admin.entries.action.delete.tooltip"));
+            deleteButton.setTooltipText(getTranslation("entry-admin.entries.action.delete.tooltip"));
+            deleteButton.setEnabled(entry.getStatus() == EntryStatus.DRAFT);
+            deleteButton.addClickListener(e -> openDeleteEntryDialog(entry));
+
+            var actions = new HorizontalLayout(viewButton, editButton, revertButton, advanceButton, withdrawButton, deleteButton);
 
             if (entry.getStatus() == EntryStatus.SUBMITTED || entry.getStatus() == EntryStatus.RECEIVED) {
                 var category = getCategoryById(entry.getInitialCategoryId());
@@ -510,14 +526,14 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 downloadAnchor.getElement().setAttribute("download", true);
                 var downloadBtn = new Button(new Icon(VaadinIcon.DOWNLOAD_ALT));
                 downloadBtn.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-                downloadBtn.setAriaLabel("Download label");
-                downloadBtn.setTooltipText("Download label");
+                downloadBtn.setAriaLabel(getTranslation("entry-admin.entries.action.download.tooltip"));
+                downloadBtn.setTooltipText(getTranslation("entry-admin.entries.action.download.tooltip"));
                 downloadAnchor.add(downloadBtn);
                 actions.add(downloadAnchor);
             }
 
             return actions;
-        }).setHeader("Actions").setAutoWidth(true);
+        }).setHeader(getTranslation("entry-admin.entries.column.actions")).setAutoWidth(true);
 
         entriesGrid.getColumns().forEach(col -> col.setResizable(true));
 
@@ -604,52 +620,50 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
     }
 
     private void updateEntriesSummary(List<Entry> entries) {
-        int totalCredits = competitionService.findParticipantsByCompetition(division.getCompetitionId())
-                .stream()
-                .mapToInt(p -> entryService.getCreditBalance(divisionId, p.getUserId()))
-                .filter(c -> c > 0)
-                .sum();
+        int creditsBalance = entryService.getTotalCreditBalance(divisionId);
         long submittedCount = entries.stream()
                 .filter(e -> e.getStatus() == EntryStatus.SUBMITTED)
                 .count();
-        totalCreditsLabel.setText("Total credits: " + totalCredits);
-        submittedEntriesLabel.setText("Submitted entries: " + submittedCount);
+        totalCreditsLabel.setText(getTranslation("entry-admin.entries.summary.credits", creditsBalance));
+        submittedEntriesLabel.setText(getTranslation("entry-admin.entries.summary.submitted", submittedCount));
     }
 
     private void openViewEntryDialog(Entry entry) {
         var dialog = new Dialog();
-        dialog.setHeaderTitle("Entry " + formatEntryNumber(entry.getEntryNumber())
-                + " — " + entry.getMeadName());
+        dialog.setHeaderTitle(getTranslation("entry-admin.entries.view.title",
+                formatEntryNumber(entry.getEntryNumber()), entry.getMeadName()));
         dialog.setWidth("600px");
 
         var layout = new VerticalLayout();
         layout.setPadding(false);
 
-        layout.add(readOnlyField("Mead Name", entry.getMeadName()));
-        layout.add(readOnlyField("Category",
+        layout.add(readOnlyField(getTranslation("entry-admin.entries.view.mead-name"), entry.getMeadName()));
+        layout.add(readOnlyField(getTranslation("entry-admin.entries.view.category"),
                 resolveCategoryCodeAndName(entry.getInitialCategoryId())));
         if (entry.getFinalCategoryId() != null) {
-            layout.add(readOnlyField("Final Category",
+            layout.add(readOnlyField(getTranslation("entry-admin.entries.view.final-category"),
                     resolveCategoryCodeAndName(entry.getFinalCategoryId())));
         }
-        layout.add(readOnlyField("Sweetness", entry.getSweetness().getDisplayName()));
-        layout.add(readOnlyField("Strength", entry.getStrength().getDisplayName()));
-        layout.add(readOnlyField("ABV", entry.getAbv() + "%"));
-        layout.add(readOnlyField("Carbonation", entry.getCarbonation().getDisplayName()));
-        layout.add(readOnlyField("Honey Varieties", entry.getHoneyVarieties()));
+        layout.add(readOnlyField(getTranslation("entry-admin.entries.view.sweetness"), entry.getSweetness().getDisplayName()));
+        layout.add(readOnlyField(getTranslation("entry-admin.entries.view.strength"), entry.getStrength().getDisplayName()));
+        layout.add(readOnlyField(getTranslation("entry-admin.entries.view.abv"), entry.getAbv() + "%"));
+        layout.add(readOnlyField(getTranslation("entry-admin.entries.view.carbonation"), entry.getCarbonation().getDisplayName()));
+        layout.add(readOnlyField(getTranslation("entry-admin.entries.view.honey"), entry.getHoneyVarieties()));
         if (StringUtils.hasText(entry.getOtherIngredients())) {
-            layout.add(readOnlyField("Other Ingredients", entry.getOtherIngredients()));
+            layout.add(readOnlyField(getTranslation("entry-admin.entries.view.other-ingredients"), entry.getOtherIngredients()));
         }
-        layout.add(readOnlyField("Wood Aged", entry.isWoodAged() ? "Yes" : "No"));
+        layout.add(readOnlyField(getTranslation("entry-admin.entries.view.wood-aged"),
+                entry.isWoodAged() ? getTranslation("entry-admin.entries.view.wood-aged.yes")
+                        : getTranslation("entry-admin.entries.view.wood-aged.no")));
         if (entry.isWoodAged() && StringUtils.hasText(entry.getWoodAgeingDetails())) {
-            layout.add(readOnlyField("Wood Ageing Details", entry.getWoodAgeingDetails()));
+            layout.add(readOnlyField(getTranslation("entry-admin.entries.view.wood-details"), entry.getWoodAgeingDetails()));
         }
         if (StringUtils.hasText(entry.getAdditionalInformation())) {
-            layout.add(readOnlyField("Additional Information",
+            layout.add(readOnlyField(getTranslation("entry-admin.entries.view.additional-info"),
                     entry.getAdditionalInformation()));
         }
-        layout.add(readOnlyField("Status", entry.getStatus().name()));
-        layout.add(readOnlyField("Entrant", userService.findById(entry.getUserId()).getEmail()));
+        layout.add(readOnlyField(getTranslation("entry-admin.entries.view.status"), entry.getStatus().name()));
+        layout.add(readOnlyField(getTranslation("entry-admin.entries.view.entrant"), userService.findById(entry.getUserId()).getEmail()));
 
         dialog.add(layout);
         dialog.getFooter().add(new Button("Close", e -> dialog.close()));
@@ -674,10 +688,10 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
 
     private void openEditEntryDialog(Entry entry) {
         var confirmDialog = new Dialog();
-        confirmDialog.setHeaderTitle("Edit Entry — " + formatEntryNumber(entry.getEntryNumber()));
-        confirmDialog.add("Are you sure you want to edit this entry's data? "
-                + "This should only be done to correct mistakes.");
-        var proceedButton = new Button("Proceed", e -> {
+        confirmDialog.setHeaderTitle(getTranslation("entry-admin.entries.edit.confirm.title",
+                formatEntryNumber(entry.getEntryNumber())));
+        confirmDialog.add(getTranslation("entry-admin.entries.edit.confirm.body"));
+        var proceedButton = new Button(getTranslation("entry-admin.entries.edit.confirm.proceed"), e -> {
             confirmDialog.close();
             openEditEntryForm(entry);
         });
@@ -688,19 +702,20 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
 
     private void openEditEntryForm(Entry entry) {
         var dialog = new Dialog();
-        dialog.setHeaderTitle("Edit Entry — " + formatEntryNumber(entry.getEntryNumber()));
+        dialog.setHeaderTitle(getTranslation("entry-admin.entries.edit.title",
+                formatEntryNumber(entry.getEntryNumber())));
         dialog.setWidth("600px");
 
         var layout = new VerticalLayout();
         layout.setPadding(false);
 
-        var meadNameField = new TextField("Mead Name");
+        var meadNameField = new TextField(getTranslation("entry-admin.entries.edit.mead-name"));
         meadNameField.setWidthFull();
         meadNameField.setMaxLength(255);
         meadNameField.setValue(entry.getMeadName());
 
         var categorySelect = new Select<DivisionCategory>();
-        categorySelect.setLabel("Category");
+        categorySelect.setLabel(getTranslation("entry-admin.entries.edit.category"));
         categorySelect.setWidthFull();
         categorySelect.setItemLabelGenerator(dc ->
                 dc.getCode() + " — " + dc.getName());
@@ -713,18 +728,18 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 .ifPresent(categorySelect::setValue);
 
         var sweetness = new Select<Sweetness>();
-        sweetness.setLabel("Sweetness");
+        sweetness.setLabel(getTranslation("entry-admin.entries.edit.sweetness"));
         sweetness.setWidthFull();
         sweetness.setItems(Sweetness.values());
         sweetness.setItemLabelGenerator(Sweetness::getDisplayName);
         sweetness.setValue(entry.getSweetness());
 
-        var strengthField = new TextField("Strength");
+        var strengthField = new TextField(getTranslation("entry-admin.entries.edit.strength"));
         strengthField.setWidthFull();
         strengthField.setReadOnly(true);
         strengthField.setValue(entry.getStrength().getDisplayName());
 
-        var abv = new NumberField("ABV (%)");
+        var abv = new NumberField(getTranslation("entry-admin.entries.edit.abv"));
         abv.setWidthFull();
         abv.setStep(0.1);
         abv.setMin(0);
@@ -737,27 +752,27 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         });
 
         var carbonation = new Select<Carbonation>();
-        carbonation.setLabel("Carbonation");
+        carbonation.setLabel(getTranslation("entry-admin.entries.edit.carbonation"));
         carbonation.setWidthFull();
         carbonation.setItems(Carbonation.values());
         carbonation.setItemLabelGenerator(Carbonation::getDisplayName);
         carbonation.setValue(entry.getCarbonation());
 
-        var honeyVarieties = new TextArea("Honey Varieties");
+        var honeyVarieties = new TextArea(getTranslation("entry-admin.entries.edit.honey"));
         honeyVarieties.setWidthFull();
         honeyVarieties.setMaxLength(500);
         honeyVarieties.setValue(entry.getHoneyVarieties());
 
-        var otherIngredients = new TextArea("Other Ingredients");
+        var otherIngredients = new TextArea(getTranslation("entry-admin.entries.edit.other-ingredients"));
         otherIngredients.setWidthFull();
         otherIngredients.setMaxLength(500);
         if (entry.getOtherIngredients() != null) {
             otherIngredients.setValue(entry.getOtherIngredients());
         }
 
-        var woodAged = new Checkbox("Wood Aged");
+        var woodAged = new Checkbox(getTranslation("entry-admin.entries.edit.wood-aged"));
         woodAged.setValue(entry.isWoodAged());
-        var woodAgeingDetails = new TextArea("Wood Ageing Details");
+        var woodAgeingDetails = new TextArea(getTranslation("entry-admin.entries.edit.wood-details"));
         woodAgeingDetails.setWidthFull();
         woodAgeingDetails.setMaxLength(500);
         woodAgeingDetails.setVisible(entry.isWoodAged());
@@ -766,7 +781,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         }
         woodAged.addValueChangeListener(e -> woodAgeingDetails.setVisible(e.getValue()));
 
-        var additionalInfo = new TextArea("Additional Information");
+        var additionalInfo = new TextArea(getTranslation("entry-admin.entries.edit.additional-info"));
         additionalInfo.setWidthFull();
         additionalInfo.setMaxLength(1000);
         if (entry.getAdditionalInformation() != null) {
@@ -780,34 +795,34 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         var saveButton = new Button("Save", e -> {
             if (!StringUtils.hasText(meadNameField.getValue())) {
                 meadNameField.setInvalid(true);
-                meadNameField.setErrorMessage("Mead name is required");
+                meadNameField.setErrorMessage(getTranslation("entry-admin.entries.edit.mead-name.error"));
                 e.getSource().setEnabled(true);
                 return;
             }
             var valid = true;
             if (categorySelect.getValue() == null) {
                 categorySelect.setInvalid(true);
-                categorySelect.setErrorMessage("Category is required");
+                categorySelect.setErrorMessage(getTranslation("entry-admin.entries.edit.category.error"));
                 valid = false;
             }
             if (sweetness.getValue() == null) {
                 sweetness.setInvalid(true);
-                sweetness.setErrorMessage("Sweetness is required");
+                sweetness.setErrorMessage(getTranslation("entry-admin.entries.edit.sweetness.error"));
                 valid = false;
             }
             if (abv.getValue() == null) {
                 abv.setInvalid(true);
-                abv.setErrorMessage("ABV is required");
+                abv.setErrorMessage(getTranslation("entry-admin.entries.edit.abv.error"));
                 valid = false;
             }
             if (carbonation.getValue() == null) {
                 carbonation.setInvalid(true);
-                carbonation.setErrorMessage("Carbonation is required");
+                carbonation.setErrorMessage(getTranslation("entry-admin.entries.edit.carbonation.error"));
                 valid = false;
             }
             if (!StringUtils.hasText(honeyVarieties.getValue())) {
                 honeyVarieties.setInvalid(true);
-                honeyVarieties.setErrorMessage("Honey varieties is required");
+                honeyVarieties.setErrorMessage(getTranslation("entry-admin.entries.edit.honey.error"));
                 valid = false;
             }
             if (!valid) {
@@ -828,7 +843,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                         StringUtils.hasText(additionalInfo.getValue())
                                 ? additionalInfo.getValue().trim() : null,
                         currentUserId);
-                var notification = Notification.show("Entry updated");
+                var notification = Notification.show(getTranslation("entry-admin.entries.updated"));
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
                 refreshEntriesGrid();
@@ -846,15 +861,15 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
 
     private void openDeleteEntryDialog(Entry entry) {
         var dialog = new Dialog();
-        dialog.setHeaderTitle("Delete Entry");
+        dialog.setHeaderTitle(getTranslation("entry-admin.entries.delete.title"));
 
-        dialog.add("Delete entry " + formatEntryNumber(entry.getEntryNumber())
-                + " \"" + entry.getMeadName() + "\"? This action cannot be undone.");
+        dialog.add(getTranslation("entry-admin.entries.delete.confirm",
+                formatEntryNumber(entry.getEntryNumber()), entry.getMeadName()));
 
-        var confirmButton = new Button("Delete", e -> {
+        var confirmButton = new Button(getTranslation("button.delete"), e -> {
             try {
                 entryService.deleteEntry(entry.getId(), entry.getUserId());
-                var notification = Notification.show("Entry deleted");
+                var notification = Notification.show(getTranslation("entry-admin.entries.deleted"));
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
                 refreshEntriesGrid();
@@ -865,48 +880,88 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         });
         confirmButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
         dialog.open();
     }
 
-    private void openMarkReceivedDialog(Entry entry) {
+    private void openAdvanceStatusDialog(Entry entry) {
         var dialog = new Dialog();
-        dialog.setHeaderTitle("Mark as Received");
+        var targetLabel = entry.getStatus() == EntryStatus.DRAFT
+                ? getTranslation("entry-admin.entries.advance.submit.title")
+                : getTranslation("entry-admin.entries.advance.received.title");
+        dialog.setHeaderTitle(targetLabel);
 
-        dialog.add("Mark entry " + formatEntryNumber(entry.getEntryNumber())
-                + " \"" + entry.getMeadName() + "\" as received?");
+        dialog.add(getTranslation("entry-admin.entries.advance.confirm",
+                targetLabel, formatEntryNumber(entry.getEntryNumber()), entry.getMeadName()));
 
-        var confirmButton = new Button("Mark as Received", e -> {
+        var confirmButton = new Button(targetLabel, e -> {
             try {
-                entryService.markReceived(entry.getId(), currentUserId);
-                var notification = Notification.show("Entry marked as received");
+                entryService.advanceEntryStatus(entry.getId(), currentUserId);
+                var notification = Notification.show(getTranslation("entry-admin.entries.status-updated"));
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
                 refreshEntriesGrid();
             } catch (BusinessRuleException ex) {
                 Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
                 e.getSource().setEnabled(true);
+            } catch (IllegalStateException ex) {
+                Notification.show(getTranslation("entry-admin.entries.status-changed"));
+                dialog.close();
+                refreshEntriesGrid();
             }
         });
         confirmButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
+        dialog.getFooter().add(cancelButton, confirmButton);
+        dialog.open();
+    }
+
+    private void openRevertStatusDialog(Entry entry) {
+        var dialog = new Dialog();
+        var targetLabel = entry.getStatus() == EntryStatus.RECEIVED
+                ? getTranslation("entry-admin.entries.revert.submitted.title")
+                : getTranslation("entry-admin.entries.revert.draft.title");
+        dialog.setHeaderTitle(targetLabel);
+
+        dialog.add(getTranslation("entry-admin.entries.revert.confirm",
+                targetLabel, formatEntryNumber(entry.getEntryNumber()), entry.getMeadName()));
+
+        var confirmButton = new Button(targetLabel, e -> {
+            try {
+                entryService.revertEntryStatus(entry.getId(), currentUserId);
+                var notification = Notification.show(getTranslation("entry-admin.entries.status-updated"));
+                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                dialog.close();
+                refreshEntriesGrid();
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                e.getSource().setEnabled(true);
+            } catch (IllegalStateException ex) {
+                Notification.show(getTranslation("entry-admin.entries.status-changed"));
+                dialog.close();
+                refreshEntriesGrid();
+            }
+        });
+        confirmButton.setDisableOnClick(true);
+
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
         dialog.open();
     }
 
     private void openWithdrawEntryDialog(Entry entry) {
         var dialog = new Dialog();
-        dialog.setHeaderTitle("Withdraw Entry");
+        dialog.setHeaderTitle(getTranslation("entry-admin.entries.withdraw.title"));
 
-        dialog.add("Withdraw entry " + formatEntryNumber(entry.getEntryNumber())
-                + " \"" + entry.getMeadName() + "\"?");
+        dialog.add(getTranslation("entry-admin.entries.withdraw.confirm",
+                formatEntryNumber(entry.getEntryNumber()), entry.getMeadName()));
 
-        var confirmButton = new Button("Withdraw", e -> {
+        var confirmButton = new Button(getTranslation("entry-admin.entries.withdraw.button"), e -> {
             try {
                 entryService.withdrawEntry(entry.getId(), currentUserId);
-                var notification = Notification.show("Entry withdrawn");
+                var notification = Notification.show(getTranslation("entry-admin.entries.withdrawn"));
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
                 refreshEntriesGrid();
@@ -928,35 +983,35 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         var tab = new VerticalLayout();
         tab.setPadding(false);
 
-        var addButton = new Button("Add Mapping", e -> openAddProductDialog());
+        var addButton = new Button(getTranslation("entry-admin.products.add"), e -> openAddProductDialog());
         tab.add(addButton);
 
         productsGrid = new Grid<>(ProductMapping.class, false);
         productsGrid.setAllRowsVisible(true);
         productsGrid.setId("products-grid");
         productsGrid.addColumn(ProductMapping::getJumpsellerProductId)
-                .setHeader("Product ID").setSortable(true);
+                .setHeader(getTranslation("entry-admin.products.column.product-id")).setSortable(true);
         productsGrid.addColumn(ProductMapping::getJumpsellerSku)
-                .setHeader("SKU").setSortable(true).setAutoWidth(true);
+                .setHeader(getTranslation("entry-admin.products.column.sku")).setSortable(true).setAutoWidth(true);
         productsGrid.addColumn(ProductMapping::getProductName)
-                .setHeader("Product Name").setSortable(true).setFlexGrow(2);
+                .setHeader(getTranslation("entry-admin.products.column.name")).setSortable(true).setFlexGrow(2);
         productsGrid.addColumn(ProductMapping::getCreditsPerUnit)
-                .setHeader("Credits/Unit").setSortable(true).setAutoWidth(true);
+                .setHeader(getTranslation("entry-admin.products.column.credits")).setSortable(true).setAutoWidth(true);
         productsGrid.addComponentColumn(mapping -> {
             var editButton = new Button(new Icon(VaadinIcon.EDIT));
             editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            editButton.setAriaLabel("Edit");
-            editButton.setTooltipText("Edit");
+            editButton.setAriaLabel(getTranslation("entry-admin.entries.action.edit.tooltip"));
+            editButton.setTooltipText(getTranslation("entry-admin.entries.action.edit.tooltip"));
             editButton.addClickListener(e -> openEditProductDialog(mapping));
 
             var deleteButton = new Button(new Icon(VaadinIcon.TRASH));
             deleteButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            deleteButton.setAriaLabel("Delete");
-            deleteButton.setTooltipText("Delete");
+            deleteButton.setAriaLabel(getTranslation("entry-admin.entries.action.delete.tooltip"));
+            deleteButton.setTooltipText(getTranslation("entry-admin.entries.action.delete.tooltip"));
             deleteButton.addClickListener(e -> openDeleteProductDialog(mapping));
 
             return new HorizontalLayout(editButton, deleteButton);
-        }).setHeader("Actions").setAutoWidth(true);
+        }).setHeader(getTranslation("entry-admin.products.column.actions")).setAutoWidth(true);
 
         productsGrid.getColumns().forEach(col -> col.setResizable(true));
 
@@ -971,35 +1026,35 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
 
     private void openAddProductDialog() {
         var dialog = new Dialog();
-        dialog.setHeaderTitle("Add Product Mapping");
+        dialog.setHeaderTitle(getTranslation("entry-admin.products.add.title"));
 
-        var productIdField = new TextField("Jumpseller Product ID");
+        var productIdField = new TextField(getTranslation("entry-admin.products.add.product-id"));
         productIdField.setMaxLength(255);
-        var skuField = new TextField("SKU (optional)");
+        var skuField = new TextField(getTranslation("entry-admin.products.add.sku"));
         skuField.setMaxLength(255);
-        var nameField = new TextField("Product Name");
+        var nameField = new TextField(getTranslation("entry-admin.products.add.name"));
         nameField.setMaxLength(255);
-        var creditsField = new IntegerField("Credits Per Unit");
+        var creditsField = new IntegerField(getTranslation("entry-admin.products.add.credits"));
         creditsField.setMin(1);
         creditsField.setValue(1);
 
         dialog.add(new VerticalLayout(productIdField, skuField, nameField, creditsField));
 
-        var addButton = new Button("Add", e -> {
+        var addButton = new Button(getTranslation("entry-admin.products.add.button"), e -> {
             var valid = true;
             if (!StringUtils.hasText(productIdField.getValue())) {
                 productIdField.setInvalid(true);
-                productIdField.setErrorMessage("Product ID is required");
+                productIdField.setErrorMessage(getTranslation("entry-admin.products.add.product-id.error"));
                 valid = false;
             }
             if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
-                nameField.setErrorMessage("Product name is required");
+                nameField.setErrorMessage(getTranslation("entry-admin.products.add.name.error"));
                 valid = false;
             }
             if (creditsField.getValue() == null) {
                 creditsField.setInvalid(true);
-                creditsField.setErrorMessage("Credits per unit is required");
+                creditsField.setErrorMessage(getTranslation("entry-admin.products.add.credits.error"));
                 valid = false;
             }
             if (!valid) {
@@ -1014,7 +1069,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                         nameField.getValue().trim(),
                         creditsField.getValue(),
                         currentUserId);
-                var notification = Notification.show("Product mapping added");
+                var notification = Notification.show(getTranslation("entry-admin.products.added"));
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
                 refreshProductsGrid();
@@ -1032,12 +1087,12 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
 
     private void openEditProductDialog(ProductMapping mapping) {
         var dialog = new Dialog();
-        dialog.setHeaderTitle("Edit Product Mapping");
+        dialog.setHeaderTitle(getTranslation("entry-admin.products.edit.title"));
 
-        var nameField = new TextField("Product Name");
+        var nameField = new TextField(getTranslation("entry-admin.products.edit.name"));
         nameField.setMaxLength(255);
         nameField.setValue(mapping.getProductName());
-        var creditsField = new IntegerField("Credits Per Unit");
+        var creditsField = new IntegerField(getTranslation("entry-admin.products.edit.credits"));
         creditsField.setMin(1);
         creditsField.setValue(mapping.getCreditsPerUnit());
 
@@ -1051,7 +1106,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             try {
                 entryService.updateProductMapping(mapping.getId(),
                         nameField.getValue().trim(), creditsField.getValue(), currentUserId);
-                var notification = Notification.show("Product mapping updated");
+                var notification = Notification.show(getTranslation("entry-admin.products.updated"));
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
                 refreshProductsGrid();
@@ -1069,14 +1124,14 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
 
     private void openDeleteProductDialog(ProductMapping mapping) {
         var dialog = new Dialog();
-        dialog.setHeaderTitle("Delete Product Mapping");
+        dialog.setHeaderTitle(getTranslation("entry-admin.products.delete.title"));
 
-        dialog.add("Delete mapping for \"" + mapping.getProductName() + "\"?");
+        dialog.add(getTranslation("entry-admin.products.delete.confirm", mapping.getProductName()));
 
-        var confirmButton = new Button("Delete", e -> {
+        var confirmButton = new Button(getTranslation("button.delete"), e -> {
             try {
                 entryService.removeProductMapping(mapping.getId(), currentUserId);
-                var notification = Notification.show("Product mapping deleted");
+                var notification = Notification.show(getTranslation("entry-admin.products.deleted"));
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
                 refreshProductsGrid();
@@ -1087,7 +1142,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         });
         confirmButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
         dialog.open();
     }
@@ -1099,7 +1154,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         tab.setPadding(false);
 
         var filterField = new TextField();
-        filterField.setPlaceholder("Filter by order ID or customer email...");
+        filterField.setPlaceholder(getTranslation("entry-admin.orders.filter.placeholder"));
         filterField.setValueChangeMode(ValueChangeMode.EAGER);
         filterField.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
         filterField.setClearButtonVisible(true);
@@ -1114,26 +1169,26 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         ordersGrid.setId("orders-grid");
         ordersGrid.setColumnReorderingAllowed(true);
         ordersGrid.addColumn(JumpsellerOrder::getJumpsellerOrderId)
-                .setHeader("Order ID").setSortable(true);
+                .setHeader(getTranslation("entry-admin.orders.column.order-id")).setSortable(true);
         ordersGrid.addColumn(JumpsellerOrder::getCustomerEmail)
-                .setHeader("Customer").setSortable(true).setFlexGrow(2)
+                .setHeader(getTranslation("entry-admin.orders.column.customer")).setSortable(true).setFlexGrow(2)
                 .setTooltipGenerator(JumpsellerOrder::getCustomerEmail);
         ordersGrid.addColumn(order -> order.getStatus().name())
-                .setHeader("Status").setSortable(true).setAutoWidth(true);
+                .setHeader(getTranslation("entry-admin.orders.column.status")).setSortable(true).setAutoWidth(true);
         ordersGrid.addColumn(order -> {
             var items = lineItemsByOrderId.getOrDefault(order.getId(), List.of());
             return items.stream()
                     .filter(i -> i.getStatus() == LineItemStatus.PROCESSED)
                     .mapToInt(JumpsellerOrderLineItem::getCreditsAwarded)
                     .sum();
-        }).setHeader("Awarded Credits").setSortable(true).setAutoWidth(true);
+        }).setHeader(getTranslation("entry-admin.orders.column.awarded")).setSortable(true).setAutoWidth(true);
         ordersGrid.addColumn(order -> {
             var items = lineItemsByOrderId.getOrDefault(order.getId(), List.of());
             return items.stream()
                     .filter(i -> i.getStatus() == LineItemStatus.NEEDS_REVIEW)
                     .mapToInt(JumpsellerOrderLineItem::getCreditsAwarded)
                     .sum();
-        }).setHeader("Pending Credits").setSortable(true).setAutoWidth(true);
+        }).setHeader(getTranslation("entry-admin.orders.column.pending")).setSortable(true).setAutoWidth(true);
         ordersGrid.addColumn(order -> {
             var items = lineItemsByOrderId.getOrDefault(order.getId(), List.of());
             return items.stream()
@@ -1141,7 +1196,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                     .map(JumpsellerOrderLineItem::getReviewReason)
                     .distinct()
                     .collect(Collectors.joining("; "));
-        }).setHeader("Review Reason").setSortable(true).setFlexGrow(2)
+        }).setHeader(getTranslation("entry-admin.orders.column.review")).setSortable(true).setFlexGrow(2)
                 .setTooltipGenerator(order -> {
                     var items = lineItemsByOrderId.getOrDefault(order.getId(), List.of());
                     var reason = items.stream()
@@ -1152,18 +1207,18 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                     return reason.isEmpty() ? null : reason;
                 });
         ordersGrid.addColumn(order -> formatInstant(order.getCreatedAt()))
-                .setHeader("Date").setSortable(true).setAutoWidth(true);
+                .setHeader(getTranslation("entry-admin.orders.column.date")).setSortable(true).setAutoWidth(true);
         ordersGrid.addColumn(JumpsellerOrder::getAdminNote)
-                .setHeader("Note").setSortable(true).setFlexGrow(2)
+                .setHeader(getTranslation("entry-admin.orders.column.note")).setSortable(true).setFlexGrow(2)
                 .setTooltipGenerator(order -> order.getAdminNote());
         ordersGrid.addComponentColumn(order -> {
             var editButton = new Button(new Icon(VaadinIcon.EDIT));
             editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            editButton.setAriaLabel("Edit");
-            editButton.setTooltipText("Edit");
+            editButton.setAriaLabel(getTranslation("entry-admin.entries.action.edit.tooltip"));
+            editButton.setTooltipText(getTranslation("entry-admin.entries.action.edit.tooltip"));
             editButton.addClickListener(e -> openEditOrderDialog(order));
             return editButton;
-        }).setHeader("Actions").setAutoWidth(true);
+        }).setHeader(getTranslation("entry-admin.orders.column.actions")).setAutoWidth(true);
 
         ordersGrid.getColumns().forEach(col -> col.setResizable(true));
 
@@ -1192,15 +1247,15 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
 
     private void openEditOrderDialog(JumpsellerOrder order) {
         var dialog = new Dialog();
-        dialog.setHeaderTitle("Edit Order — " + order.getJumpsellerOrderId());
+        dialog.setHeaderTitle(getTranslation("entry-admin.orders.edit.title", order.getJumpsellerOrderId()));
 
         var statusSelect = new Select<OrderStatus>();
-        statusSelect.setLabel("Status");
+        statusSelect.setLabel(getTranslation("entry-admin.orders.edit.status"));
         statusSelect.setItems(OrderStatus.values());
         statusSelect.setItemLabelGenerator(OrderStatus::name);
         statusSelect.setValue(order.getStatus());
 
-        var noteField = new TextField("Admin Note");
+        var noteField = new TextField(getTranslation("entry-admin.orders.edit.note"));
         noteField.setWidthFull();
         noteField.setValue(order.getAdminNote() != null ? order.getAdminNote() : "");
 
@@ -1213,7 +1268,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                         StringUtils.hasText(noteField.getValue())
                                 ? noteField.getValue().trim() : null,
                         currentUserId);
-                var notification = Notification.show("Order updated");
+                var notification = Notification.show(getTranslation("entry-admin.orders.updated"));
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
                 refreshOrdersGrid();

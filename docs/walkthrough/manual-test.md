@@ -918,35 +918,50 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] Navigate back to Amadora entry-admin
 - [ ] Click the "Entries" tab
 - [ ] **Expected:** Filter field: "Filter by mead name, entrant, or entry code..." + status dropdown ("All statuses")
-- [ ] **Expected:** Grid with columns: Entry # (with AMA prefix, e.g. "AMA-1"), Code, Mead Name, Category (code with tooltip for full name), Final Category (code with tooltip, or "—" if not set), Entrant, Meadery, Country, Status, Actions (view/edit/mark-received/delete/withdraw icons)
+- [ ] **Expected:** Grid with columns: Entry # (with AMA prefix, e.g. "AMA-1"), Code, Mead Name, Category (code with tooltip for full name), Final Category (code with tooltip, or "—" if not set), Entrant, Meadery, Country, Status, Actions (view/edit/←/→/withdraw/delete icons)
 - [ ] **Expected:** Meadery column shows user's meadery name (or empty if not set)
 - [ ] **Expected:** Country column shows display name (e.g. "Portugal") based on user's ISO country code
 - [ ] **Expected:** 4 entries total (3 from user@example.com, 1 from entrant@example.com), sorted by entry number
 - [ ] **Expected:** Wildflower Traditional and Blueberry Bliss -- Status: SUBMITTED
 - [ ] **Expected:** Oak-Aged Bochet and Lavender Metheglin -- Status: DRAFT
 - [ ] **Expected:** Columns are sortable
-- [ ] **Expected:** Delete button (trash) only enabled for DRAFT entries
+- [ ] **Expected:** Delete button (trash, rightmost) only enabled for DRAFT entries
 - [ ] **Expected:** Withdraw button (ban) disabled for WITHDRAWN entries
+- [ ] **Expected:** `←` (revert) button disabled for DRAFT entries; `→` (advance) button disabled for RECEIVED and WITHDRAWN entries
+- [ ] **Expected:** `←` tooltip: "← Revert to Draft" for SUBMITTED/WITHDRAWN, "← Revert to Submitted" for RECEIVED
+- [ ] **Expected:** `→` tooltip: "→ Submit" for DRAFT, "→ Mark as Received" for SUBMITTED
 - [ ] **Expected:** View button (eye) opens read-only dialog showing all entry fields, status, and entrant email
 - [ ] **Expected:** Edit button opens confirmation dialog ("Are you sure you want to edit this entry's data?"), then full edit dialog with all fields (mead name, category, sweetness, strength (read-only, auto-derived from ABV), ABV, carbonation, honey, other ingredients, wood aged, wood ageing details, additional info)
 - [ ] **Expected:** Edit works for entries in any status except WITHDRAWN
-- [ ] **Expected:** "Mark as Received" button (check icon) only enabled for SUBMITTED entries
-- [ ] **Expected:** "Mark as Received" button disabled (greyed out) for DRAFT, RECEIVED, or WITHDRAWN entries
 - [ ] **Expected:** Delete button opens confirmation dialog
 - [ ] **Expected:** Withdraw button opens confirmation dialog
 
-### Mark entry as received (admin)
+### Advance entry status (admin)
 
-- [ ] Find a SUBMITTED entry in the grid (e.g., "Wildflower Traditional")
-- [ ] Click the "Mark as Received" button (check icon) on that entry
-- [ ] **Expected:** Confirmation dialog: "Mark as Received" with message 'Mark entry AMA-{N} "Wildflower Traditional" as received?'
-- [ ] **Expected:** Dialog footer has "Cancel" button and "Mark as Received" button
+- [ ] Find a DRAFT entry in the grid (e.g., "Oak-Aged Bochet")
+- [ ] Click the `→` button on that entry
+- [ ] **Expected:** Confirmation dialog titled "Submit" with message 'Submit entry AMA-{N} "Oak-Aged Bochet"?'
 - [ ] Click "Cancel" to dismiss
-- [ ] Click the "Mark as Received" button again, then click "Mark as Received" in the dialog
-- [ ] **Expected:** Notification "Entry marked as received" (green)
-- [ ] **Expected:** Entry status changes to RECEIVED in the grid
-- [ ] **Expected:** "Mark as Received" button is disabled (greyed out) for that entry (now RECEIVED)
-- [ ] **Expected:** Entry can be reverted to SUBMITTED via Edit (admin edit allows status changes)
+- [ ] Click `→` again then confirm
+- [ ] **Expected:** Notification "Entry status updated" (green)
+- [ ] **Expected:** Entry status changes to SUBMITTED in the grid
+- [ ] Click `→` on the now-SUBMITTED entry
+- [ ] **Expected:** Confirmation dialog titled "Mark as Received"
+- [ ] Confirm — **Expected:** Entry status changes to RECEIVED; `→` is now disabled for that entry
+
+### Revert entry status (admin)
+
+- [ ] Find a RECEIVED entry in the grid
+- [ ] Click the `←` button on that entry
+- [ ] **Expected:** Confirmation dialog: "Revert to Submitted" with the entry name
+- [ ] Click "Cancel" to dismiss
+- [ ] Click `←` again then confirm
+- [ ] **Expected:** Notification "Entry status updated" (green)
+- [ ] **Expected:** Entry status changes to SUBMITTED; `←` tooltip now says "← Revert to Draft"
+- [ ] Find a WITHDRAWN entry (withdraw one first if needed)
+- [ ] Click `←` on the WITHDRAWN entry
+- [ ] **Expected:** Confirmation dialog: "Revert to Draft"
+- [ ] Confirm — **Expected:** Entry status changes to DRAFT
 
 ### Entry labels -- individual download (admin)
 

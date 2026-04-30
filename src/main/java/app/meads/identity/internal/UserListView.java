@@ -50,16 +50,16 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
         this.userService = userService;
         this.emailService = emailService;
         this.authenticationContext = authenticationContext;
-        add(new H1("Users"));
+        add(new H1(getTranslation("user-list.heading")));
 
         TextField filterField = new TextField();
-        filterField.setPlaceholder("Filter by email or name...");
+        filterField.setPlaceholder(getTranslation("user-list.filter.placeholder"));
         filterField.setValueChangeMode(ValueChangeMode.EAGER);
         filterField.setWidthFull();
         filterField.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
         filterField.setClearButtonVisible(true);
 
-        Button createUserButton = new Button("Create User");
+        Button createUserButton = new Button(getTranslation("user-list.create"));
         createUserButton.addClickListener(e -> openCreateUserDialog());
 
         var toolbar = new HorizontalLayout(filterField, createUserButton);
@@ -69,28 +69,28 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
 
         grid = new Grid<>(User.class, false);
         grid.setAllRowsVisible(true);
-        grid.addColumn(User::getName).setHeader("Name").setSortable(true).setFlexGrow(2);
-        grid.addColumn(User::getEmail).setHeader("Email").setSortable(true).setFlexGrow(3);
+        grid.addColumn(User::getName).setHeader(getTranslation("user-list.column.name")).setSortable(true).setFlexGrow(2);
+        grid.addColumn(User::getEmail).setHeader(getTranslation("user-list.column.email")).setSortable(true).setFlexGrow(3);
         grid.addColumn(user -> user.getMeaderyName() != null ? user.getMeaderyName() : "—")
-                .setHeader("Meadery").setSortable(true).setFlexGrow(2);
+                .setHeader(getTranslation("user-list.column.meadery")).setSortable(true).setFlexGrow(2);
         grid.addColumn(user -> {
             if (user.getCountry() == null) return "—";
             return new Locale("", user.getCountry()).getDisplayCountry(Locale.ENGLISH);
-        }).setHeader("Country").setSortable(true).setAutoWidth(true);
-        grid.addColumn(User::getRole).setHeader("Role").setSortable(true).setAutoWidth(true);
-        grid.addColumn(User::getStatus).setHeader("Status").setSortable(true).setAutoWidth(true);
+        }).setHeader(getTranslation("user-list.column.country")).setSortable(true).setAutoWidth(true);
+        grid.addColumn(User::getRole).setHeader(getTranslation("user-list.column.role")).setSortable(true).setAutoWidth(true);
+        grid.addColumn(User::getStatus).setHeader(getTranslation("user-list.column.status")).setSortable(true).setAutoWidth(true);
         grid.addComponentColumn(user -> {
             Button editButton = new Button(new Icon(VaadinIcon.EDIT));
             editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            editButton.setAriaLabel("Edit");
-            editButton.setTooltipText("Edit");
+            editButton.setAriaLabel(getTranslation("user-list.action.edit"));
+            editButton.setTooltipText(getTranslation("user-list.action.edit"));
             editButton.addClickListener(e -> openEditDialog(user));
 
             boolean isInactive = user.getStatus() == UserStatus.INACTIVE;
             Button deleteButton = new Button(new Icon(isInactive ? VaadinIcon.TRASH : VaadinIcon.BAN));
             deleteButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            deleteButton.setAriaLabel(isInactive ? "Delete" : "Deactivate");
-            deleteButton.setTooltipText(isInactive ? "Delete" : "Deactivate");
+            deleteButton.setAriaLabel(isInactive ? getTranslation("user-list.action.delete") : getTranslation("user-list.action.deactivate"));
+            deleteButton.setTooltipText(isInactive ? getTranslation("user-list.action.delete") : getTranslation("user-list.action.deactivate"));
             deleteButton.addClickListener(e -> handleDeleteClick(user));
 
             HorizontalLayout actions = new HorizontalLayout(editButton, deleteButton);
@@ -98,20 +98,20 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
             if (user.getPasswordHash() == null) {
                 Button loginLinkButton = new Button(new Icon(VaadinIcon.ENVELOPE));
                 loginLinkButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-                loginLinkButton.setAriaLabel("Send Login Link");
-                loginLinkButton.setTooltipText("Send Login Link");
+                loginLinkButton.setAriaLabel(getTranslation("user-list.action.login-link"));
+                loginLinkButton.setTooltipText(getTranslation("user-list.action.login-link"));
                 loginLinkButton.addClickListener(e -> sendMagicLink(user));
                 actions.add(loginLinkButton);
             }
 
             Button passwordResetButton = new Button(new Icon(VaadinIcon.KEY));
             passwordResetButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            passwordResetButton.setAriaLabel("Password Reset");
-            passwordResetButton.setTooltipText("Password Reset");
+            passwordResetButton.setAriaLabel(getTranslation("user-list.action.password-reset"));
+            passwordResetButton.setTooltipText(getTranslation("user-list.action.password-reset"));
             passwordResetButton.addClickListener(e -> sendPasswordResetLink(user));
             actions.add(passwordResetButton);
             return actions;
-        }).setHeader("Actions").setAutoWidth(true);
+        }).setHeader(getTranslation("user-list.column.actions")).setAutoWidth(true);
 
         grid.getColumns().forEach(col -> col.setResizable(true));
 
@@ -161,13 +161,13 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
 
     private void showDeleteConfirmationDialog(User user) {
         Dialog dialog = new Dialog();
-        dialog.setHeaderTitle("Confirm Deletion");
+        dialog.setHeaderTitle(getTranslation("user-list.delete.title"));
 
         VerticalLayout content = new VerticalLayout();
-        content.add("Are you sure you want to permanently delete user " + user.getEmail() + "?");
-        content.add("This action cannot be undone.");
+        content.add(getTranslation("user-list.delete.confirm", user.getEmail()));
+        content.add(getTranslation("user-list.delete.warning"));
 
-        Button confirmButton = new Button("Confirm");
+        Button confirmButton = new Button(getTranslation("user-list.delete.button"));
         confirmButton.setDisableOnClick(true);
         confirmButton.addClickListener(e -> {
             try {
@@ -194,21 +194,21 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
         boolean isSoftDelete = user.getStatus() != UserStatus.INACTIVE;
         userService.removeUser(user.getId(), currentUserEmail);
         grid.setItems(userService.findAll());
-        var notification = Notification.show(isSoftDelete ? "User deactivated successfully" : "User deleted successfully");
+        var notification = Notification.show(isSoftDelete ? getTranslation("user-list.deactivated") : getTranslation("user-list.deleted"));
         notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
     }
 
     public void sendMagicLink(User user) {
         var locale = LanguageMapping.resolveLocale(user.getPreferredLanguage(), user.getCountry());
         emailService.sendMagicLink(user.getEmail(), locale);
-        var notification = Notification.show("Login link sent successfully");
+        var notification = Notification.show(getTranslation("user-list.login-link.sent"));
         notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
     }
 
     public void sendPasswordResetLink(User user) {
         var locale = LanguageMapping.resolveLocale(user.getPreferredLanguage(), user.getCountry());
         emailService.sendPasswordReset(user.getEmail(), locale);
-        var notification = Notification.show("Password reset link sent successfully");
+        var notification = Notification.show(getTranslation("user-list.password-reset.sent"));
         notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
     }
 
@@ -220,7 +220,7 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
         Dialog dialog = new Dialog();
         boolean isCreate = existingUser == null;
 
-        EmailField emailField = new EmailField("Email");
+        EmailField emailField = new EmailField(getTranslation("user-list.dialog.email.label"));
         emailField.setMaxLength(255);
         if (isCreate) {
             emailField.setRequired(true);
@@ -229,22 +229,22 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
             emailField.setReadOnly(true);
         }
 
-        TextField nameField = new TextField("Name");
+        TextField nameField = new TextField(getTranslation("user-list.dialog.name.label"));
         nameField.setRequired(true);
         nameField.setMaxLength(255);
 
         Select<Role> roleSelect = new Select<>();
-        roleSelect.setLabel("Role");
+        roleSelect.setLabel(getTranslation("user-list.dialog.role.label"));
         roleSelect.setItems(Role.values());
 
-        var meaderyField = new TextField("Meadery Name");
+        var meaderyField = new TextField(getTranslation("user-list.dialog.meadery.label"));
         meaderyField.setWidthFull();
         meaderyField.setMaxLength(255);
         if (!isCreate && existingUser.getMeaderyName() != null) {
             meaderyField.setValue(existingUser.getMeaderyName());
         }
 
-        var countryCombo = new ComboBox<String>("Country");
+        var countryCombo = new ComboBox<String>(getTranslation("user-list.dialog.country.label"));
         var countries = Arrays.stream(Locale.getISOCountries())
                 .sorted((a, b) -> new Locale("", a).getDisplayCountry(Locale.ENGLISH)
                         .compareTo(new Locale("", b).getDisplayCountry(Locale.ENGLISH)))
@@ -264,7 +264,7 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
             roleSelect.setValue(Role.USER);
         } else {
             statusSelect = new Select<>();
-            statusSelect.setLabel("Status");
+            statusSelect.setLabel(getTranslation("user-list.dialog.status.label"));
             statusSelect.setItems(UserStatus.values());
 
             nameField.setValue(existingUser.getName());
@@ -284,19 +284,19 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
         saveButton.addClickListener(e -> {
             if (isCreate && !StringUtils.hasText(emailField.getValue())) {
                 emailField.setInvalid(true);
-                emailField.setErrorMessage("Email is required");
+                emailField.setErrorMessage(getTranslation("user-list.dialog.email.error"));
                 e.getSource().setEnabled(true);
                 return;
             }
             if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
-                nameField.setErrorMessage("Name is required");
+                nameField.setErrorMessage(getTranslation("user-list.dialog.name.error"));
                 e.getSource().setEnabled(true);
                 return;
             }
             if (isCreate && roleSelect.isEmpty()) {
                 roleSelect.setInvalid(true);
-                roleSelect.setErrorMessage("Role is required");
+                roleSelect.setErrorMessage(getTranslation("user-list.dialog.role.error"));
                 e.getSource().setEnabled(true);
                 return;
             }
@@ -328,7 +328,7 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
                             countryCombo.getValue(), null);
                 }
                 grid.setItems(userService.findAll());
-                var notification = Notification.show(isCreate ? "User created successfully" : "User saved successfully");
+                var notification = Notification.show(isCreate ? getTranslation("user-list.dialog.created") : getTranslation("user-list.dialog.saved"));
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 generatePasswordSetupLinkIfNeeded(savedUser);
                 dialog.close();
@@ -338,17 +338,17 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
                     emailField.setErrorMessage(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
                 } else {
                     nameField.setInvalid(true);
-                    nameField.setErrorMessage("Failed to save user. Please try again.");
+                    nameField.setErrorMessage(getTranslation("user-list.dialog.save-failed"));
                 }
                 e.getSource().setEnabled(true);
             } catch (ConstraintViolationException ex) {
                 if (isCreate) {
                     emailField.setInvalid(true);
-                    emailField.setErrorMessage("Please enter a valid email address");
+                    emailField.setErrorMessage(getTranslation("user-list.dialog.email.invalid"));
                 }
                 e.getSource().setEnabled(true);
             } catch (Exception ex) {
-                Notification.show("Failed to save user. Please try again.");
+                Notification.show(getTranslation("user-list.dialog.save-failed"));
                 e.getSource().setEnabled(true);
             }
         });
@@ -372,7 +372,7 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
         if (user.getRole() == Role.SYSTEM_ADMIN && !userService.hasPassword(user.getId())) {
             var locale = LanguageMapping.resolveLocale(user.getPreferredLanguage(), user.getCountry());
             emailService.sendPasswordReset(user.getEmail(), locale);
-            Notification.show("Password setup link sent successfully");
+            Notification.show(getTranslation("user-list.password-setup.sent"));
         }
     }
 

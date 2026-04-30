@@ -175,6 +175,10 @@ public class EntryService {
         log.info("Removed {} credits: division={}, userId={}", amount, divisionId, userId);
     }
 
+    public int getTotalCreditBalance(@NotNull UUID divisionId) {
+        return creditRepository.sumAmountByDivisionId(divisionId);
+    }
+
     public boolean hasCreditsInOtherDivision(@NotNull UUID competitionId,
                                               @NotNull UUID divisionId,
                                               @NotNull UUID userId) {
@@ -288,6 +292,28 @@ public class EntryService {
         }
         log.info("Submitted {} draft entries: division={}, userId={}", drafts.size(), divisionId, userId);
         publishSubmissionEventIfComplete(divisionId, userId);
+    }
+
+    public Entry advanceEntryStatus(@NotNull UUID entryId, @NotNull UUID requestingUserId) {
+        var entry = entryRepository.findById(entryId)
+                .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
+        requireAuthorizedForDivision(entry.getDivisionId(), requestingUserId);
+        entry.advanceStatus();
+        var saved = entryRepository.save(entry);
+        log.info("Advanced entry status to {}: #{} ({})", saved.getStatus(), saved.getEntryNumber(), entryId);
+        if (saved.getStatus() == EntryStatus.SUBMITTED) {
+            publishSubmissionEventIfComplete(saved.getDivisionId(), saved.getUserId());
+        }
+        return saved;
+    }
+
+    public Entry revertEntryStatus(@NotNull UUID entryId, @NotNull UUID requestingUserId) {
+        var entry = entryRepository.findById(entryId)
+                .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
+        requireAuthorizedForDivision(entry.getDivisionId(), requestingUserId);
+        entry.revertStatus();
+        log.info("Reverted entry status to {}: #{} ({})", entry.getStatus(), entry.getEntryNumber(), entryId);
+        return entryRepository.save(entry);
     }
 
     public Entry markReceived(@NotNull UUID entryId, @NotNull UUID requestingUserId) {

@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `main`
-**Tests:** 696 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-04-21
+**Tests:** 715 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-04-30 (admin i18n + entry status redesign)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -101,7 +101,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 - `LineItemStatus`: PROCESSED, NEEDS_REVIEW, IGNORED, UNPROCESSED
 
 #### Services
-- **EntryService** — Product mapping CRUD, credit management, entry CRUD, submission, limits enforcement (total, subcategory, main category)
+- **EntryService** — Product mapping CRUD, credit management, entry CRUD, submission, limits enforcement (total, subcategory, main category). `advanceEntryStatus()` calls `publishSubmissionEventIfComplete()` when the transition is DRAFT→SUBMITTED, keeping admin-triggered submissions consistent with entrant-triggered ones.
 - **WebhookService** — HMAC signature verification, `processOrderPaid` (JSON parsing, idempotency, mutual exclusivity, credit creation, country enrichment from shipping/billing address, publishes `OrderRequiresReviewEvent` for NEEDS_REVIEW/PARTIALLY_PROCESSED orders)
 - **LabelPdfService** — PDF label generation (OpenPDF + ZXing QR codes). Single entry or batch. A4 landscape, 2-line instruction header (line 1: print/attach instructions, line 2: shipping address if set), 3 identical labels per page. Labels include: competition/division name, entry ID, mead name (2-line fixed height), category code, characteristics with field names (Sweetness/Strength/Carbonation), ingredients (Honey/Other/Wood, 2-line fixed height each — text wraps then clips), QR code (left) + notes area (right), "FREE SAMPLES. NOT FOR RESALE." disclaimer. Public API for cross-module access.
 
@@ -117,7 +117,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 #### Views
 - `EntrantOverviewView` (`/my-entries`) — cross-competition entrant hub, shows all divisions with credits/entries, auto-redirects to single division
 - `MyEntriesView` (`/competitions/:compShortName/divisions/:divShortName/my-entries`) — header: competition logo + "Competition — Division — My Entries", entrant-facing, competition documents list, credits + limits display, process info box, registration deadline display, category guidance hints, entry grid with status badges/Final Category/Actions (view/edit/submit/download label)/filtering/sorting, add/edit dialog (full-width fields, per-field validation, prefixed entry IDs), "Submit All Drafts" button, "Download all labels" batch button (disabled until all entries submitted), meadery name required warning + submit blocking
-- `DivisionEntryAdminView` (`/competitions/:compShortName/divisions/:divShortName/entry-admin`) — header: competition logo + "Competition — Division — Entry Admin", admin tabs: Credits, Entries (with Meadery/Country/Final Category columns + view/edit/mark-received/delete/withdraw actions + individual label download + batch "Download all labels" with confirmation dialog), Products, Orders. View dialog shows all entry fields read-only. Edit has confirmation gate then full edit dialog (all fields, per-field validation, works for any status except WITHDRAWN). Mark as Received button (check icon) is enabled only for SUBMITTED entries; disabled otherwise.
+- `DivisionEntryAdminView` (`/competitions/:compShortName/divisions/:divShortName/entry-admin`) — header: competition logo + "Competition — Division — Entry Admin", admin tabs: Credits, Entries (with Meadery/Country/Final Category columns + view/edit/←/→/withdraw/delete actions + individual label download + batch "Download all labels" with confirmation dialog + summary line showing total credits and submitted entries count), Products, Orders. View dialog shows all entry fields read-only. Edit has confirmation gate then full edit dialog (all fields, per-field validation, works for any status except WITHDRAWN). `←`/`→` advance/revert entry status with confirmation dialog; `←` disabled for DRAFT, `→` disabled for RECEIVED/WITHDRAWN, WITHDRAWN reverts to DRAFT.
 
 #### REST
 - `JumpsellerWebhookController` — `POST /api/webhooks/jumpseller/order-paid` (HMAC-verified)
@@ -247,45 +247,33 @@ Comprehensive review and hardening of all deletion operations across the applica
 | Delete category | DB FK constraint blocks if entries reference it | ✓ |
 | Delete document | No dependent data | ✓ |
 
-### Priority 3 (NEW — highest): Update dependency versions
-Review and update all dependency versions in `pom.xml` to their latest stable releases.
-Key dependencies to check: Spring Boot, Vaadin, Spring Modulith, Testcontainers, Karibu Testing,
-OpenPDF, ZXing, jjwt, BouncyCastle. Run full test suite after upgrading.
+### Priority 3: Entry status management redesign — COMPLETE
 
-### Priority 4: Entry status management redesign
+Replaced the dedicated "Mark as Received" button with `←` / `→` arrow buttons covering the
+full DRAFT → SUBMITTED → RECEIVED flow. WITHDRAWN entries revert to DRAFT via `←`.
+Both buttons show a confirmation dialog before acting. Button order: `[eye] [pencil] [←] [→] [ban] [trash]`.
 
-Replace the current individual status action buttons in `DivisionEntryAdminView` with a more flexible arrow-based approach, consistent with the division status UI pattern.
+New domain methods on `Entry`: `advanceStatus()` and `revertStatus()`.
+New service methods on `EntryService`: `advanceEntryStatus()`, `revertEntryStatus()`, and
+`getTotalCreditBalance(divisionId)` (single aggregate query, replaces N+1 participant loop).
+`EntryCreditRepository.sumAmountByDivisionId()` added for the aggregate.
+`markReceived()` kept on entity/service for backwards compatibility.
+Summary label renamed from "Total credits" to "Credits balance". Span IDs added for testability.
+`advanceStatus()` delegates to `submit()`/`markReceived()` to avoid logic duplication.
+Authorization rejection tests added for both advance/revert; advance-from-RECEIVED rejection test added.
+Dialog handlers catch `IllegalStateException` for stale-state concurrent-edit edge case.
+Tooltip switch arms made exhaustive (no `default` fallthrough).
 
-**Agreed design:**
-- Remove the dedicated "Mark as Received" button (added in v0.2.7 as a stopgap).
-- Add `←` (revert) and `→` (advance) arrow buttons for the linear status flow: DRAFT → SUBMITTED → RECEIVED.
-  - `←` disabled for DRAFT; `→` disabled for RECEIVED.
-  - Tooltips show target state (e.g. "← Revert to Draft", "→ Mark as Received").
-- Keep "Withdraw" (ban icon) as a separate action — not part of the arrow flow.
-- Move "Delete" button to the right of "Withdraw" (most destructive action at the far end).
-- New button order: `[eye] [pencil] [←] [→] [ban/withdraw] [trash/delete]`
-- Allow reverting WITHDRAWN entries via the `←` button.
+### Priority 4: Admin view i18n — COMPLETE
 
-**Open design question (must decide before implementing):**
-- What state does a WITHDRAWN entry revert to? Since the previous state is not tracked, a fixed target is needed. Options: DRAFT (safe, back to start) or SUBMITTED (assumes it was submitted before withdrawal). User needs to decide — consider tracking previous state if more flexibility is needed.
+Extracted ~270 hardcoded English strings from 8 admin views into `getTranslation()` calls,
+added all keys to `messages.properties`, and translated to Portuguese in `messages_pt.properties`.
+Views updated: LoginView, SetPasswordView, UserListView, CompetitionListView, MyCompetitionsView,
+CompetitionDetailView, DivisionDetailView, DivisionEntryAdminView. ES/IT/PL fall back to EN.
+Fixed `ComboBox<>` type inference compilation errors introduced by Java 21 stricter inference
+(needed explicit `new ComboBox<String>(...)` where label arg comes from `getTranslation()`).
 
-**Scope of changes:**
-- `Entry.java` — new domain method(s) for advance/revert (replacing `markReceived()` or adding alongside). Must handle WITHDRAWN revert.
-- `EntryService.java` — new `advanceEntryStatus()` and `revertEntryStatus()` service methods.
-- `DivisionEntryAdminView.java` — replace action buttons with the new layout.
-- `EntryServiceTest.java` — new tests for advance/revert transitions including WITHDRAWN revert.
-- `DivisionEntryAdminViewTest.java` — update to reflect new column/button structure.
-- `docs/walkthrough/manual-test.md` — update entry admin action button section.
-
-### Priority 5: Admin view i18n
-Translate all admin views to support the same language switching as entrant views.
-~270 hardcoded English strings across 8 views to extract to message keys and translate
-to PT. Mechanical work — no new patterns or dependencies, `getTranslation()` infrastructure
-already in place. Biggest files: CompetitionDetailView (~82 strings), DivisionEntryAdminView
-(~90 strings). Also include LoginView and SetPasswordView — entrants with passwords use
-these views too, not just admins.
-
-### Priority 6: Post-registration actions audit
+### Priority 5: Post-registration actions audit
 Review what actions should be allowed/blocked after a division moves past REGISTRATION_OPEN.
 Currently some actions remain available that may need restricting or scoping. Design pass
 needed to decide per-status rules:
@@ -298,25 +286,25 @@ needed to decide per-status rules:
 Do this audit after the admin i18n work (priority 4) since translated views may surface
 additional UX considerations.
 
-### Priority 7: MFA for system admins
+### Priority 6: MFA for system admins
 Evaluate and implement multi-factor authentication for SYSTEM_ADMIN accounts.
 Password-only login for privileged accounts is a security risk post-deployment.
 
-### Priority 8: Auto-close + deadline reminders (deferred)
+### Priority 7: Auto-close + deadline reminders (deferred)
 - **Auto-close** — automatically advance division from REGISTRATION_OPEN → REGISTRATION_CLOSED
   when registration deadline passes (scheduled task)
 - **Entrant deadline reminder** — notify entrants who have DRAFT entries when the registration
   deadline is approaching (e.g., 7 days, 3 days, 1 day before deadline)
 - Other potential: entry received confirmation (when admin marks entry as RECEIVED), results published notification
 
-### Priority 9: Judging module
+### Priority 8: Judging module
 Design and implementation. Reference: `docs/reference/chip-competition-rules.md`.
 
-### Priority 10: Awards module
+### Priority 9: Awards module
 
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md`.
 
-### Priority 11: Full category constraint system (low priority — future competition)
+### Priority 10: Full category constraint system (low priority — future competition)
 Full field locking/validation based on category selection. Design doc: `docs/plans/2026-03-11-category-hints-design.md` (appendix).
 Includes: sweetness locking (M1A→Dry, M1B→Medium, M1C→Sweet), ingredient restrictions (M1/M4E),
 strength locking (M4S→Hydromel), ABV caps (M4S→7.5%), ABV→Strength derivation (universal),
@@ -324,6 +312,7 @@ carbonation locking (custom categories), and admin-configurable constraints for 
 Requires: DB migration, admin UI for constraint config, cross-module data flow, server-side validation.
 
 ### Completed priorities
+- **Admin view i18n** — Completed 2026-04-29. Extracted ~270 hardcoded strings from 8 admin views (LoginView, SetPasswordView, UserListView, CompetitionListView, MyCompetitionsView, CompetitionDetailView, DivisionDetailView, DivisionEntryAdminView). Added keys to `messages.properties`, Portuguese translations to `messages_pt.properties`. ES/IT/PL fall back to EN. Fixed `ComboBox<>` type inference issue under Java 21 (explicit `new ComboBox<String>(...)`).
 - **Italian informal language + dependency upgrades** — Completed 2026-03-23. Switched all Italian UI text from formal "Lei" to informal "tu" (UI, emails, PDF instructions, error messages). Upgraded dependencies: Vaadin 25.0.5→25.0.7, Spring Modulith 2.0.2→2.0.4, OpenPDF 2.0.3→3.0.3 (package rename com.lowagie→org.openpdf), BouncyCastle 1.80→1.83, Karibu Testing 2.6.2→2.7.0, Testcontainers 2.0.3→2.0.4. Added Vaadin-generated frontend files to .gitignore. 695 tests.
 - **Document language filtering** — Completed 2026-03-19. Added optional `language` field (VARCHAR(5)) to `CompetitionDocument` (V17 migration). `null` = visible to all languages, a language code (e.g. "pt") = visible only to that locale. Admin add-document dialog has Language dropdown (from `MeadsI18NProvider.getSupportedLanguageCodes()`). Admin grid shows Language column. Entrant view (`MyEntriesView`) filters via `getDocumentsForLocale()`. 685 tests.
 - **Date display** — Completed 2026-03-18. Registration deadline in entrant view now uses locale-aware `DateTimeFormatter.ofLocalizedDate(SHORT)` + `ofLocalizedTime(SHORT)` instead of hardcoded pattern. Timezone display removed.
@@ -452,7 +441,7 @@ Requires: DB migration, admin UI for constraint config, cross-module data flow, 
 - `LabelPdfServiceTest.java` — single/batch PDF generation, missing fields, QR code format, entry prefix handling
 - `JumpsellerOrderTest.java` — entity domain methods
 - `JumpsellerOrderLineItemTest.java` — entity domain methods
-- `EntryTest.java` — entry entity domain methods (constructor, submit, markReceived, withdraw, updateDetails, assignFinalCategory, getEffectiveCategoryId)
+- `EntryTest.java` — entry entity domain methods (constructor, submit, markReceived, withdraw, updateDetails, assignFinalCategory, getEffectiveCategoryId, advanceStatus, revertStatus)
 - `RegistrationClosedListenerTest.java` — event listener unit tests
 - `OrderReviewNotificationListenerTest.java` — sends admin alert emails on order review event
 - `SubmissionConfirmationListenerTest.java` — sends entrant confirmation on submission event
