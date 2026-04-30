@@ -82,6 +82,10 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
     private String entriesNameFilter = "";
     private EntryStatus entriesStatusFilter;
 
+    // Entries tab summary
+    private Span totalCreditsLabel;
+    private Span submittedEntriesLabel;
+
     public DivisionEntryAdminView(EntryService entryService,
                                    CompetitionService competitionService,
                                    UserService userService,
@@ -413,6 +417,15 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         toolbar.setDefaultVerticalComponentAlignment(Alignment.BASELINE);
         tab.add(toolbar);
 
+        totalCreditsLabel = new Span();
+        submittedEntriesLabel = new Span();
+        var separator = new Span(" | ");
+        separator.getStyle().set("color", "var(--lumo-contrast-30pct)");
+        var summary = new HorizontalLayout(totalCreditsLabel, separator, submittedEntriesLabel);
+        summary.setSpacing(false);
+        summary.getStyle().set("color", "var(--lumo-secondary-text-color)").set("font-size", "var(--lumo-font-size-s)");
+        tab.add(summary);
+
         entriesGrid = new Grid<>(Entry.class, false);
         entriesGrid.setAllRowsVisible(true);
         entriesGrid.setId("entries-grid");
@@ -587,6 +600,20 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 .sorted(Comparator.comparingInt(Entry::getEntryNumber))
                 .toList();
         entriesGrid.setItems(entries);
+        updateEntriesSummary(entries);
+    }
+
+    private void updateEntriesSummary(List<Entry> entries) {
+        int totalCredits = competitionService.findParticipantsByCompetition(division.getCompetitionId())
+                .stream()
+                .mapToInt(p -> entryService.getCreditBalance(divisionId, p.getUserId()))
+                .filter(c -> c > 0)
+                .sum();
+        long submittedCount = entries.stream()
+                .filter(e -> e.getStatus() == EntryStatus.SUBMITTED)
+                .count();
+        totalCreditsLabel.setText("Total credits: " + totalCredits);
+        submittedEntriesLabel.setText("Submitted entries: " + submittedCount);
     }
 
     private void openViewEntryDialog(Entry entry) {
