@@ -273,7 +273,26 @@ CompetitionDetailView, DivisionDetailView, DivisionEntryAdminView. ES/IT/PL fall
 Fixed `ComboBox<>` type inference compilation errors introduced by Java 21 stricter inference
 (needed explicit `new ComboBox<String>(...)` where label arg comes from `getTranslation()`).
 
-### Priority 5: Post-registration actions audit
+### Priority 5 (NEXT): Manual walkthrough of recently merged features
+
+Before any further release, manually test the three feature areas merged since v0.2.7:
+
+1. **Dependency upgrades** — verify the app starts cleanly, no obvious regressions in any view.
+2. **Entry status redesign** — in the admin Entries tab, exercise the `←`/`→` buttons:
+   - Advance a DRAFT entry → SUBMITTED → RECEIVED.
+   - Revert RECEIVED → SUBMITTED → DRAFT.
+   - Withdraw an entry; confirm `←` reverts it back to DRAFT.
+   - Confirm confirmation dialogs appear for each action.
+   - Confirm `←` is disabled on DRAFT entries and `→` is disabled on RECEIVED entries.
+   - Confirm the summary row updates counts correctly.
+3. **Admin view i18n** — switch user language to Portuguese and walk through all 8 admin views
+   (LoginView, SetPasswordView, UserListView, CompetitionListView, MyCompetitionsView,
+   CompetitionDetailView, DivisionDetailView, DivisionEntryAdminView). Verify strings are translated
+   and no English fallback leaks appear where a PT translation should exist.
+
+Reference: `docs/walkthrough/manual-test.md` for the full walkthrough guide.
+
+### Priority 6: Post-registration actions audit
 Review what actions should be allowed/blocked after a division moves past REGISTRATION_OPEN.
 Currently some actions remain available that may need restricting or scoping. Design pass
 needed to decide per-status rules:
@@ -286,25 +305,25 @@ needed to decide per-status rules:
 Do this audit after the admin i18n work (priority 4) since translated views may surface
 additional UX considerations.
 
-### Priority 6: MFA for system admins
+### Priority 7: MFA for system admins
 Evaluate and implement multi-factor authentication for SYSTEM_ADMIN accounts.
 Password-only login for privileged accounts is a security risk post-deployment.
 
-### Priority 7: Auto-close + deadline reminders (deferred)
+### Priority 8: Auto-close + deadline reminders (deferred)
 - **Auto-close** — automatically advance division from REGISTRATION_OPEN → REGISTRATION_CLOSED
   when registration deadline passes (scheduled task)
 - **Entrant deadline reminder** — notify entrants who have DRAFT entries when the registration
   deadline is approaching (e.g., 7 days, 3 days, 1 day before deadline)
 - Other potential: entry received confirmation (when admin marks entry as RECEIVED), results published notification
 
-### Priority 8: Judging module
+### Priority 9: Judging module
 Design and implementation. Reference: `docs/reference/chip-competition-rules.md`.
 
-### Priority 9: Awards module
+### Priority 10: Awards module
 
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md`.
 
-### Priority 10: Full category constraint system (low priority — future competition)
+### Priority 11: Full category constraint system (low priority — future competition)
 Full field locking/validation based on category selection. Design doc: `docs/plans/2026-03-11-category-hints-design.md` (appendix).
 Includes: sweetness locking (M1A→Dry, M1B→Medium, M1C→Sweet), ingredient restrictions (M1/M4E),
 strength locking (M4S→Hydromel), ABV caps (M4S→7.5%), ABV→Strength derivation (universal),
