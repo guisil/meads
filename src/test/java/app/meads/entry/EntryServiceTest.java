@@ -1196,6 +1196,40 @@ class EntryServiceTest {
     }
 
     @Test
+    void shouldPublishSubmissionEventWhenAdvancingFromDraftToSubmittedAndAllComplete() {
+        var divisionId = UUID.randomUUID();
+        var entrantId = UUID.randomUUID();
+        var categoryId = UUID.randomUUID();
+        var adminUser = createSystemAdmin();
+        var entry = new Entry(divisionId, entrantId, 1, "ABC123",
+                "My Mead", categoryId, Sweetness.DRY, new BigDecimal("12.5"), Carbonation.STILL,
+                "Wildflower honey", null, false, null, null);
+
+        given(userService.findById(adminUser.getId())).willReturn(adminUser);
+        given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
+        given(entryRepository.save(any(Entry.class))).willAnswer(inv -> inv.getArgument(0));
+        given(creditRepository.sumAmountByDivisionIdAndUserId(divisionId, entrantId)).willReturn(1);
+        given(entryRepository.countByDivisionIdAndUserIdAndStatusNot(
+                divisionId, entrantId, EntryStatus.WITHDRAWN)).willReturn(1L);
+        given(entryRepository.findByDivisionIdAndUserIdAndStatus(
+                divisionId, entrantId, EntryStatus.DRAFT)).willReturn(List.of());
+        given(entryRepository.findByDivisionIdAndUserIdAndStatus(
+                divisionId, entrantId, EntryStatus.SUBMITTED)).willReturn(List.of(entry));
+        var category = mock(DivisionCategory.class);
+        given(category.getId()).willReturn(categoryId);
+        given(category.getCode()).willReturn("M1A");
+        given(category.getName()).willReturn("Traditional Mead (Dry)");
+        given(competitionService.findDivisionCategories(divisionId)).willReturn(List.of(category));
+
+        entryService.advanceEntryStatus(entry.getId(), adminUser.getId());
+
+        var eventCaptor = ArgumentCaptor.forClass(EntriesSubmittedEvent.class);
+        then(eventPublisher).should().publishEvent(eventCaptor.capture());
+        assertThat(eventCaptor.getValue().divisionId()).isEqualTo(divisionId);
+        assertThat(eventCaptor.getValue().userId()).isEqualTo(entrantId);
+    }
+
+    @Test
     void shouldAdvanceEntryStatusFromSubmittedToReceived() {
         var divisionId = UUID.randomUUID();
         var adminUser = createSystemAdmin();

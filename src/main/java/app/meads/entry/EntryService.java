@@ -299,8 +299,12 @@ public class EntryService {
                 .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
         requireAuthorizedForDivision(entry.getDivisionId(), requestingUserId);
         entry.advanceStatus();
-        log.info("Advanced entry status to {}: #{} ({})", entry.getStatus(), entry.getEntryNumber(), entryId);
-        return entryRepository.save(entry);
+        var saved = entryRepository.save(entry);
+        log.info("Advanced entry status to {}: #{} ({})", saved.getStatus(), saved.getEntryNumber(), entryId);
+        if (saved.getStatus() == EntryStatus.SUBMITTED) {
+            publishSubmissionEventIfComplete(saved.getDivisionId(), saved.getUserId());
+        }
+        return saved;
     }
 
     public Entry revertEntryStatus(@NotNull UUID entryId, @NotNull UUID requestingUserId) {
