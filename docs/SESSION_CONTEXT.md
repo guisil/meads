@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `main`
-**Tests:** 715 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-04-30
+**Tests:** 715 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-04-30 (admin i18n + entry status redesign)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---

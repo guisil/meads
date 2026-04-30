@@ -940,7 +940,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         dialog.setHeaderTitle(getTranslation("competition-detail.division.delete.title"));
         dialog.add(getTranslation("competition-detail.division.delete.confirm", division.getName()));
 
-        var confirmButton = new Button("Delete", e -> {
+        var confirmButton = new Button(getTranslation("button.delete"), e -> {
             try {
                 competitionService.deleteDivision(division.getId(), getCurrentUserId());
                 refreshDivisionsGrid();
@@ -955,7 +955,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         });
         confirmButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
         dialog.open();
     }
@@ -1219,7 +1219,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         dialog.setHeaderTitle(getTranslation("competition-detail.documents.delete.title"));
         dialog.add(getTranslation("competition-detail.documents.delete.confirm", doc.getName()));
 
-        var confirmButton = new Button("Delete", e -> {
+        var confirmButton = new Button(getTranslation("button.delete"), e -> {
             try {
                 competitionService.removeDocument(doc.getId(), getCurrentUserId());
                 grid.setItems(competitionService.getDocuments(competitionId));
@@ -1234,7 +1234,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         });
         confirmButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
         dialog.open();
     }

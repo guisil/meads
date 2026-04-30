@@ -866,7 +866,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         dialog.add(getTranslation("entry-admin.entries.delete.confirm",
                 formatEntryNumber(entry.getEntryNumber()), entry.getMeadName()));
 
-        var confirmButton = new Button("Delete", e -> {
+        var confirmButton = new Button(getTranslation("button.delete"), e -> {
             try {
                 entryService.deleteEntry(entry.getId(), entry.getUserId());
                 var notification = Notification.show(getTranslation("entry-admin.entries.deleted"));
@@ -880,7 +880,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         });
         confirmButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
         dialog.open();
     }
@@ -913,7 +913,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         });
         confirmButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
         dialog.open();
     }
@@ -946,7 +946,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         });
         confirmButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
         dialog.open();
     }
@@ -1128,7 +1128,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
 
         dialog.add(getTranslation("entry-admin.products.delete.confirm", mapping.getProductName()));
 
-        var confirmButton = new Button("Delete", e -> {
+        var confirmButton = new Button(getTranslation("button.delete"), e -> {
             try {
                 entryService.removeProductMapping(mapping.getId(), currentUserId);
                 var notification = Notification.show(getTranslation("entry-admin.products.deleted"));
@@ -1142,7 +1142,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         });
         confirmButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
         dialog.open();
     }
