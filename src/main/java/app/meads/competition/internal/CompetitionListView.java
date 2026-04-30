@@ -73,18 +73,18 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
         grid.addComponentColumn(comp -> {
             var editButton = new Button(new Icon(VaadinIcon.EDIT));
             editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            editButton.setAriaLabel("Edit");
-            editButton.setTooltipText("Edit");
+            editButton.setAriaLabel(getTranslation("competition-list.action.edit"));
+            editButton.setTooltipText(getTranslation("competition-list.action.edit"));
             editButton.addClickListener(e -> openCompetitionDialog(comp));
 
             var deleteButton = new Button(new Icon(VaadinIcon.TRASH));
             deleteButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            deleteButton.setAriaLabel("Delete");
-            deleteButton.setTooltipText("Delete");
+            deleteButton.setAriaLabel(getTranslation("competition-list.action.delete"));
+            deleteButton.setTooltipText(getTranslation("competition-list.action.delete"));
             deleteButton.addClickListener(e -> openDeleteCompetitionDialog(comp));
 
             return new HorizontalLayout(editButton, deleteButton);
-        }).setHeader("Actions").setAutoWidth(true);
+        }).setHeader(getTranslation("competition-list.column.actions")).setAutoWidth(true);
 
         grid.addItemClickListener(e ->
                 e.getSource().getUI().ifPresent(ui ->
