@@ -284,6 +284,61 @@ Fixed `ComboBox<>` type inference compilation errors introduced by Java 21 stric
 - **`DivisionStatus.allowsRegistrationActions()`** — new helper on enum (DRAFT || REGISTRATION_OPEN) used by credits and product mapping guards.
 - **6 new tests** in `EntryServiceTest`: `shouldRejectCreateProductMappingWhenRegistrationClosed`, `shouldRejectUpdateProductMappingWhenRegistrationClosed`, `shouldRejectRemoveProductMappingWhenRegistrationClosed`, `shouldRejectAddCreditsWhenRegistrationClosed`, `shouldRejectRemoveCreditsWhenRegistrationClosed`, `shouldRejectUpdateEntryWhenDivisionNotOpen`.
 
+### Priority 1 (NEXT): Judging category management
+
+**Problem:** After REGISTRATION_CLOSED, the admin needs to reorganize categories for judging
+(e.g. combine thin categories, create new groupings, rename). Currently, `allowsCategoryModification()`
+blocks all category changes after REGISTRATION_OPEN, and even if that were lifted, deleting a
+category referenced by `entry.initialCategoryId` would violate the FK constraint.
+
+**Design: `scope` field on `DivisionCategory`**
+
+Add a `scope` enum (`REGISTRATION` / `JUDGING`) to `DivisionCategory`:
+
+| Scope | Created during | Deletable? | Referenced by |
+|-------|----------------|-----------|---------------|
+| `REGISTRATION` | DRAFT / REGISTRATION_OPEN only | Blocked if any `initialCategoryId` references it | `entry.initialCategoryId` |
+| `JUDGING` | REGISTRATION_CLOSED or later | Blocked if any `finalCategoryId` references it | `entry.finalCategoryId` |
+
+**Key rules:**
+- REGISTRATION categories: fully managed via existing flow; once REGISTRATION_CLOSED, they become
+  read-only in the UI (visible but no add/edit/delete — they are historic record)
+- JUDGING categories: only appear after REGISTRATION_CLOSED; admin can freely add/edit/delete them
+  (guarded against deletion when referenced by `finalCategoryId`)
+- "Initialize judging categories" button clones all REGISTRATION categories into JUDGING ones
+  (same codes, names, hierarchy) as a starting point — admin can then diverge freely
+- When setting `finalCategoryId` on an entry (in DivisionEntryAdminView), the category picker shows
+  only JUDGING categories (if any exist) or falls back to all categories
+- `finalCategoryId` must only reference JUDGING categories (service-level validation)
+
+**Migration:** V18 — add `scope VARCHAR(20) NOT NULL DEFAULT 'REGISTRATION'` to `division_categories`
+
+**New service methods (CompetitionService):**
+- `initializeJudgingCategories(divisionId, adminUserId)` — clones REGISTRATION → JUDGING
+- `addJudgingCategory(divisionId, code, name, parentJudgingCategoryId, adminUserId)`
+- `updateJudgingCategory(categoryId, code, name, adminUserId)`
+- `removeJudgingCategory(categoryId, adminUserId)` — guarded by `finalCategoryId` references
+- `reorderJudgingCategories(divisionId, orderedIds, adminUserId)`
+- `findJudgingCategories(divisionId)` — returns only JUDGING scope
+
+**New guard:**
+- `CategoryDeletionGuard` interface or inline check: block `removeJudgingCategory` when
+  `entryRepository.existsByFinalCategoryId(categoryId)`
+
+**UI changes:**
+- `DivisionDetailView` Categories tab: split into "Registration Categories" (read-only after
+  REGISTRATION_CLOSED) and "Judging Categories" (only visible after REGISTRATION_CLOSED)
+- "Initialize from Registration Categories" button (only shown when no judging categories exist yet)
+- Entry edit dialog in `DivisionEntryAdminView`: final category dropdown shows only JUDGING
+  categories
+
+**Sequencing (TDD cycles):**
+1. Unit test: `CompetitionServiceTest` — `initializeJudgingCategories`, `addJudgingCategory`,
+   `removeJudgingCategory` (blocked when referenced)
+2. Repository test: V18 migration + `DivisionCategoryRepository.findByDivisionIdAndScope()`
+3. Module integration test: `CompetitionModuleTest` — category lifecycle with scope
+4. UI test: `DivisionDetailViewTest` — judging categories tab sections
+
 ### Priority 2: MFA for system admins
 Evaluate and implement multi-factor authentication for SYSTEM_ADMIN accounts.
 Password-only login for privileged accounts is a security risk post-deployment.
