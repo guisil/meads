@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `main`
-**Tests:** 747 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-02 (CompetitionModuleTest judging category lifecycle integration tests)
+**Tests:** 752 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-02 (DivisionDetailView judging categories section UI tests)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -358,7 +358,7 @@ Add a `scope` enum (`REGISTRATION` / `JUDGING`) to `DivisionCategory`:
 2. ✅ Repository test: `DivisionCategoryRepositoryTest` — scope-based queries; `EntryRepository.existsByFinalCategoryId()` (3 new tests). Note: must use returned entity from `save()` when re-saving in `@Transactional` tests — `@PrePersist` fires on managed copy, not original Java object.
 3. ✅ Unit test: `EntryServiceTest` — `assignFinalCategory` (6 tests: sets, clears, fallback when no judging categories, validates JUDGING scope, entry not found, unauthorized)
 4. ✅ Module integration test: `CompetitionModuleTest` — 4 new tests: initialize judging categories, full lifecycle (add/update/find/remove), status rejection (DRAFT/REGISTRATION_OPEN), duplicate initialization rejection
-5. UI test: `DivisionDetailViewTest` — registration section read-only + judging section after REGISTRATION_CLOSED
+5. ✅ UI test: `DivisionDetailViewTest` — 5 new tests: Add Category disabled after REGISTRATION_CLOSED, Initialize Judging Categories button appears, absent before REGISTRATION_CLOSED, judging grid shown when categories exist, Add Judging Category button shown when categories exist. `DivisionDetailView` updated: judging categories section below registration grid (Initialize button when empty, grid + Add button when populated)
 6. UI test: `DivisionEntryAdminViewTest` — final category assignment in edit dialog
 
 ### Priority 2: MFA for system admins

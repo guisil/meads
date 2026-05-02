@@ -51,6 +51,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
     private Nav breadcrumb;
     private HorizontalLayout header;
     private TreeGrid<DivisionCategory> categoriesGrid;
+    private TreeGrid<DivisionCategory> judgingCategoriesGrid;
 
     public DivisionDetailView(CompetitionService competitionService,
                                UserService userService,
@@ -220,7 +221,142 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
 
         refreshCategoriesGrid();
         tab.add(categoriesGrid);
+
+        if (division.getStatus().allowsJudgingCategoryManagement()) {
+            tab.add(createJudgingCategoriesSection());
+        }
+
         return tab;
+    }
+
+    private VerticalLayout createJudgingCategoriesSection() {
+        var section = new VerticalLayout();
+        section.setPadding(false);
+
+        var judgingCategories = competitionService.findJudgingCategories(divisionId);
+
+        if (judgingCategories.isEmpty()) {
+            var initButton = new Button("Initialize Judging Categories", e -> {
+                try {
+                    competitionService.initializeJudgingCategories(divisionId, getCurrentUserId());
+                    getUI().ifPresent(ui -> ui.navigate(
+                            "competitions/" + competition.getShortName()
+                                    + "/divisions/" + division.getShortName()));
+                } catch (BusinessRuleException ex) {
+                    Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                    e.getSource().setEnabled(true);
+                }
+            });
+            initButton.setDisableOnClick(true);
+            section.add(initButton);
+        } else {
+            var judgingActions = new HorizontalLayout();
+            var addJudgingButton = new Button("Add Judging Category",
+                    e -> openAddJudgingCategoryDialog());
+            addJudgingButton.setDisableOnClick(false);
+            judgingActions.add(addJudgingButton);
+            section.add(judgingActions);
+
+            judgingCategoriesGrid = new TreeGrid<>(DivisionCategory.class, false);
+            judgingCategoriesGrid.setAllRowsVisible(true);
+            judgingCategoriesGrid.setId("judging-categories-grid");
+            judgingCategoriesGrid.addHierarchyColumn(DivisionCategory::getCode).setHeader("Code")
+                    .setWidth("150px").setFlexGrow(0).setSortable(true);
+            judgingCategoriesGrid.addColumn(DivisionCategory::getName).setHeader("Name");
+            judgingCategoriesGrid.addColumn(DivisionCategory::getDescription).setHeader("Description")
+                    .setFlexGrow(2);
+
+            judgingCategoriesGrid.addComponentColumn(dc -> {
+                var removeButton = new Button(new Icon(VaadinIcon.CLOSE));
+                removeButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+                removeButton.addClickListener(ev -> openRemoveJudgingCategoryDialog(dc));
+                return removeButton;
+            }).setHeader("Actions").setAutoWidth(true);
+
+            refreshJudgingCategoriesGrid();
+            section.add(judgingCategoriesGrid);
+        }
+
+        return section;
+    }
+
+    private void refreshJudgingCategoriesGrid() {
+        if (judgingCategoriesGrid == null) return;
+        var allJudging = competitionService.findJudgingCategories(divisionId);
+        var rootJudging = allJudging.stream()
+                .filter(dc -> dc.getParentId() == null)
+                .toList();
+        judgingCategoriesGrid.setItems(rootJudging,
+                parent -> allJudging.stream()
+                        .filter(dc -> parent.getId().equals(dc.getParentId()))
+                        .toList());
+        rootJudging.forEach(root -> judgingCategoriesGrid.expand(root));
+    }
+
+    private void openAddJudgingCategoryDialog() {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle("Add Judging Category");
+
+        var codeField = new TextField("Code");
+        codeField.setMaxLength(50);
+        var nameField = new TextField("Name");
+        nameField.setMaxLength(255);
+        var descriptionField = new TextField("Description");
+        descriptionField.setMaxLength(255);
+
+        var addButton = new Button("Add", e -> {
+            if (!StringUtils.hasText(codeField.getValue())
+                    || !StringUtils.hasText(nameField.getValue())
+                    || !StringUtils.hasText(descriptionField.getValue())) {
+                e.getSource().setEnabled(true);
+                return;
+            }
+            try {
+                competitionService.addJudgingCategory(divisionId,
+                        codeField.getValue().trim(),
+                        nameField.getValue().trim(),
+                        descriptionField.getValue().trim(),
+                        null, getCurrentUserId());
+                refreshJudgingCategoriesGrid();
+                var notification = Notification.show("Judging category added.");
+                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                dialog.close();
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                e.getSource().setEnabled(true);
+            }
+        });
+        addButton.setDisableOnClick(true);
+
+        var cancelButton = new Button("Cancel", e -> dialog.close());
+        dialog.add(codeField, nameField, descriptionField);
+        dialog.getFooter().add(cancelButton, addButton);
+        dialog.open();
+    }
+
+    private void openRemoveJudgingCategoryDialog(DivisionCategory category) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle("Remove Judging Category");
+        dialog.add("Remove \"" + category.getCode() + " — " + category.getName() + "\"?");
+
+        var confirmButton = new Button("Remove", e -> {
+            try {
+                competitionService.removeJudgingCategory(divisionId, category.getId(), getCurrentUserId());
+                refreshJudgingCategoriesGrid();
+                var notification = Notification.show("Judging category removed.");
+                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                dialog.close();
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                e.getSource().setEnabled(true);
+                dialog.close();
+            }
+        });
+        confirmButton.setDisableOnClick(true);
+
+        var cancelButton = new Button("Cancel", e -> dialog.close());
+        dialog.getFooter().add(cancelButton, confirmButton);
+        dialog.open();
     }
 
     private void refreshCategoriesGrid() {

@@ -429,4 +429,88 @@ class DivisionDetailViewTest {
                 .findFirst();
         assertThat(revertButton).isEmpty();
     }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldDisableAddCategoryButtonWhenRegistrationClosed() {
+        testDivision.advanceStatus(); // DRAFT → REGISTRATION_OPEN
+        testDivision.advanceStatus(); // → REGISTRATION_CLOSED
+        divisionRepository.save(testDivision);
+
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName()
+                + "/divisions/" + testDivision.getShortName());
+
+        var addButton = _get(Button.class, spec -> spec.withText("Add Category"));
+        assertThat(addButton.isEnabled()).isFalse();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldShowInitializeJudgingCategoriesButtonWhenRegistrationClosed() {
+        testDivision.advanceStatus(); // DRAFT → REGISTRATION_OPEN
+        testDivision.advanceStatus(); // → REGISTRATION_CLOSED
+        divisionRepository.save(testDivision);
+
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName()
+                + "/divisions/" + testDivision.getShortName());
+
+        var buttons = _find(Button.class);
+        assertThat(buttons).anyMatch(b -> b.getText().equals("Initialize Judging Categories"));
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldNotShowInitializeJudgingCategoriesButtonWhenDraft() {
+        // testDivision starts in DRAFT
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName()
+                + "/divisions/" + testDivision.getShortName());
+
+        var buttons = _find(Button.class);
+        assertThat(buttons).noneMatch(b -> b.getText().equals("Initialize Judging Categories"));
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldShowJudgingCategoriesGridAfterInitialization() {
+        testDivision.advanceStatus(); // DRAFT → REGISTRATION_OPEN
+        testDivision.advanceStatus(); // → REGISTRATION_CLOSED
+        divisionRepository.save(testDivision);
+
+        // Pre-seed a judging category
+        divisionCategoryRepository.save(new DivisionCategory(
+                testDivision.getId(), null, "CX1", "Combined Category", "desc", null, 0,
+                CategoryScope.JUDGING));
+
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName()
+                + "/divisions/" + testDivision.getShortName());
+
+        @SuppressWarnings("unchecked")
+        var judgingGrid = (TreeGrid<DivisionCategory>) _get(TreeGrid.class,
+                spec -> spec.withId("judging-categories-grid"));
+        assertThat(judgingGrid).isNotNull();
+
+        var rootItems = judgingGrid.getDataProvider().fetchChildren(
+                new com.vaadin.flow.data.provider.hierarchy.HierarchicalQuery<>(null, null))
+                .toList();
+        assertThat(rootItems).hasSize(1);
+        assertThat(rootItems.getFirst().getCode()).isEqualTo("CX1");
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldShowAddJudgingCategoryButtonAfterInitialization() {
+        testDivision.advanceStatus(); // DRAFT → REGISTRATION_OPEN
+        testDivision.advanceStatus(); // → REGISTRATION_CLOSED
+        divisionRepository.save(testDivision);
+
+        divisionCategoryRepository.save(new DivisionCategory(
+                testDivision.getId(), null, "CX1", "Combined Category", "desc", null, 0,
+                CategoryScope.JUDGING));
+
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName()
+                + "/divisions/" + testDivision.getShortName());
+
+        var buttons = _find(Button.class);
+        assertThat(buttons).anyMatch(b -> b.getText().equals("Add Judging Category"));
+    }
 }
