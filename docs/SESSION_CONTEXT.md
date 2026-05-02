@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `main`
-**Tests:** 737 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-02 (repository tests for scope queries + existsByFinalCategoryId)
+**Tests:** 743 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-02 (assignFinalCategory service method + 6 unit tests)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -101,7 +101,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 - `LineItemStatus`: PROCESSED, NEEDS_REVIEW, IGNORED, UNPROCESSED
 
 #### Services
-- **EntryService** — Product mapping CRUD, credit management, entry CRUD, submission, limits enforcement (total, subcategory, main category). `advanceEntryStatus()` calls `publishSubmissionEventIfComplete()` when the transition is DRAFT→SUBMITTED, keeping admin-triggered submissions consistent with entrant-triggered ones.
+- **EntryService** — Product mapping CRUD, credit management, entry CRUD, submission, limits enforcement (total, subcategory, main category). `advanceEntryStatus()` calls `publishSubmissionEventIfComplete()` when the transition is DRAFT→SUBMITTED, keeping admin-triggered submissions consistent with entrant-triggered ones. `assignFinalCategory(entryId, finalCategoryId, userId)` — standalone method to set/clear final category; validates `finalCategoryId` is a JUDGING-scoped category when judging categories exist (falls back to any category when none exist yet).
 - **WebhookService** — HMAC signature verification, `processOrderPaid` (JSON parsing, idempotency, mutual exclusivity, credit creation, country enrichment from shipping/billing address, publishes `OrderRequiresReviewEvent` for NEEDS_REVIEW/PARTIALLY_PROCESSED orders)
 - **LabelPdfService** — PDF label generation (OpenPDF + ZXing QR codes). Single entry or batch. A4 landscape, 2-line instruction header (line 1: print/attach instructions, line 2: shipping address if set), 3 identical labels per page. Labels include: competition/division name, entry ID, mead name (2-line fixed height), category code, characteristics with field names (Sweetness/Strength/Carbonation), ingredients (Honey/Other/Wood, 2-line fixed height each — text wraps then clips), QR code (left) + notes area (right), "FREE SAMPLES. NOT FOR RESALE." disclaimer. Public API for cross-module access.
 
@@ -356,7 +356,7 @@ Add a `scope` enum (`REGISTRATION` / `JUDGING`) to `DivisionCategory`:
 **Sequencing (TDD cycles):**
 1. ✅ Unit test: `CompetitionServiceJudgingCategoryTest` — `initializeJudgingCategories`, `addJudgingCategory`, `updateJudgingCategory`, `removeJudgingCategory` (11 tests). Also: `CategoryScope` enum, `JudgingCategoryDeletionGuard` interface, `DivisionStatus.allowsJudgingCategoryManagement()`, V18 migration, backward-compat 7-arg `DivisionCategory` constructor.
 2. ✅ Repository test: `DivisionCategoryRepositoryTest` — scope-based queries; `EntryRepository.existsByFinalCategoryId()` (3 new tests). Note: must use returned entity from `save()` when re-saving in `@Transactional` tests — `@PrePersist` fires on managed copy, not original Java object.
-3. Unit test: `EntryServiceTest` — `assignFinalCategory` (sets, clears, validates JUDGING scope)
+3. ✅ Unit test: `EntryServiceTest` — `assignFinalCategory` (6 tests: sets, clears, fallback when no judging categories, validates JUDGING scope, entry not found, unauthorized)
 4. Module integration test: `CompetitionModuleTest` — category lifecycle with scope
 5. UI test: `DivisionDetailViewTest` — registration section read-only + judging section after REGISTRATION_CLOSED
 6. UI test: `DivisionEntryAdminViewTest` — final category assignment in edit dialog

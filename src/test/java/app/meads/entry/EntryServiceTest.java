@@ -2,6 +2,7 @@ package app.meads.entry;
 
 import app.meads.BusinessRuleException;
 import app.meads.competition.Competition;
+import app.meads.competition.CategoryScope;
 import app.meads.competition.CompetitionRole;
 import app.meads.competition.CompetitionService;
 import app.meads.competition.Division;
@@ -1542,5 +1543,123 @@ class EntryServiceTest {
         var result = entryService.getTotalCreditBalance(divisionId);
 
         assertThat(result).isEqualTo(7);
+    }
+
+    // Cycle 19: assignFinalCategory
+
+    @Test
+    void shouldAssignFinalCategoryWhenJudgingCategoriesExistAndCategoryBelongsToJudging() {
+        var competitionId = UUID.randomUUID();
+        var division = createRegistrationClosedDivision(competitionId);
+        var adminUser = createSystemAdmin();
+        var entry = new Entry(division.getId(), UUID.randomUUID(), 1, "ABC123",
+                "My Mead", UUID.randomUUID(), Sweetness.DRY, new BigDecimal("12.0"),
+                Carbonation.STILL, "Wildflower honey", null, false, null, null);
+        var judgingCategory = new DivisionCategory(division.getId(), null,
+                "M1A", "Traditional Mead", "desc", null, 1, CategoryScope.JUDGING);
+
+        given(userService.findById(adminUser.getId())).willReturn(adminUser);
+        given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
+        given(competitionService.findJudgingCategories(division.getId()))
+                .willReturn(List.of(judgingCategory));
+        given(entryRepository.save(any(Entry.class))).willAnswer(inv -> inv.getArgument(0));
+
+        var result = entryService.assignFinalCategory(entry.getId(), judgingCategory.getId(), adminUser.getId());
+
+        assertThat(result.getFinalCategoryId()).isEqualTo(judgingCategory.getId());
+    }
+
+    @Test
+    void shouldClearFinalCategoryWhenNullPassed() {
+        var competitionId = UUID.randomUUID();
+        var division = createRegistrationClosedDivision(competitionId);
+        var adminUser = createSystemAdmin();
+        var entry = new Entry(division.getId(), UUID.randomUUID(), 1, "ABC123",
+                "My Mead", UUID.randomUUID(), Sweetness.DRY, new BigDecimal("12.0"),
+                Carbonation.STILL, "Wildflower honey", null, false, null, null);
+
+        given(userService.findById(adminUser.getId())).willReturn(adminUser);
+        given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
+        given(entryRepository.save(any(Entry.class))).willAnswer(inv -> inv.getArgument(0));
+
+        var result = entryService.assignFinalCategory(entry.getId(), null, adminUser.getId());
+
+        assertThat(result.getFinalCategoryId()).isNull();
+    }
+
+    @Test
+    void shouldAssignFinalCategoryFromRegistrationCategoriesWhenNoJudgingCategoriesExist() {
+        var competitionId = UUID.randomUUID();
+        var division = createRegistrationClosedDivision(competitionId);
+        var adminUser = createSystemAdmin();
+        var anyCategoryId = UUID.randomUUID();
+        var entry = new Entry(division.getId(), UUID.randomUUID(), 1, "ABC123",
+                "My Mead", UUID.randomUUID(), Sweetness.DRY, new BigDecimal("12.0"),
+                Carbonation.STILL, "Wildflower honey", null, false, null, null);
+
+        given(userService.findById(adminUser.getId())).willReturn(adminUser);
+        given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
+        given(competitionService.findJudgingCategories(division.getId())).willReturn(List.of());
+        given(entryRepository.save(any(Entry.class))).willAnswer(inv -> inv.getArgument(0));
+
+        var result = entryService.assignFinalCategory(entry.getId(), anyCategoryId, adminUser.getId());
+
+        assertThat(result.getFinalCategoryId()).isEqualTo(anyCategoryId);
+    }
+
+    @Test
+    void shouldRejectAssignFinalCategoryWhenCategoryNotInJudgingScope() {
+        var competitionId = UUID.randomUUID();
+        var division = createRegistrationClosedDivision(competitionId);
+        var adminUser = createSystemAdmin();
+        var entry = new Entry(division.getId(), UUID.randomUUID(), 1, "ABC123",
+                "My Mead", UUID.randomUUID(), Sweetness.DRY, new BigDecimal("12.0"),
+                Carbonation.STILL, "Wildflower honey", null, false, null, null);
+        var judgingCategory = new DivisionCategory(division.getId(), null,
+                "M1A", "Traditional Mead", "desc", null, 1, CategoryScope.JUDGING);
+        var unrelatedCategoryId = UUID.randomUUID();
+
+        given(userService.findById(adminUser.getId())).willReturn(adminUser);
+        given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
+        given(competitionService.findJudgingCategories(division.getId()))
+                .willReturn(List.of(judgingCategory));
+
+        assertThatThrownBy(() -> entryService.assignFinalCategory(
+                entry.getId(), unrelatedCategoryId, adminUser.getId()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.entry.final-category-not-judging");
+    }
+
+    @Test
+    void shouldRejectAssignFinalCategoryWhenEntryNotFound() {
+        var adminUser = createSystemAdmin();
+        var entryId = UUID.randomUUID();
+
+        given(entryRepository.findById(entryId)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> entryService.assignFinalCategory(
+                entryId, UUID.randomUUID(), adminUser.getId()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.entry.not-found");
+    }
+
+    @Test
+    void shouldRejectAssignFinalCategoryWhenUnauthorized() {
+        var competitionId = UUID.randomUUID();
+        var division = createRegistrationClosedDivision(competitionId);
+        var regularUser = new User("user@test.com", "User", UserStatus.ACTIVE, Role.USER);
+        var entry = new Entry(division.getId(), UUID.randomUUID(), 1, "ABC123",
+                "My Mead", UUID.randomUUID(), Sweetness.DRY, new BigDecimal("12.0"),
+                Carbonation.STILL, "Wildflower honey", null, false, null, null);
+
+        given(userService.findById(regularUser.getId())).willReturn(regularUser);
+        given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
+        given(competitionService.isAuthorizedForDivision(division.getId(), regularUser.getId()))
+                .willReturn(false);
+
+        assertThatThrownBy(() -> entryService.assignFinalCategory(
+                entry.getId(), UUID.randomUUID(), regularUser.getId()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.auth.unauthorized");
     }
 }

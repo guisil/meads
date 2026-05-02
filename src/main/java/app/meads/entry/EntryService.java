@@ -1,6 +1,7 @@
 package app.meads.entry;
 
 import app.meads.BusinessRuleException;
+import app.meads.competition.CategoryScope;
 import app.meads.competition.CompetitionRole;
 import app.meads.competition.CompetitionService;
 import app.meads.competition.Division;
@@ -391,6 +392,26 @@ public class EntryService {
     public Entry findEntryById(@NotNull UUID entryId) {
         return entryRepository.findById(entryId)
                 .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
+    }
+
+    public Entry assignFinalCategory(@NotNull UUID entryId, UUID finalCategoryId,
+                                      @NotNull UUID requestingUserId) {
+        var entry = entryRepository.findById(entryId)
+                .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
+        requireAuthorizedForDivision(entry.getDivisionId(), requestingUserId);
+        if (finalCategoryId != null) {
+            var judgingCategories = competitionService.findJudgingCategories(entry.getDivisionId());
+            if (!judgingCategories.isEmpty()) {
+                var isValid = judgingCategories.stream()
+                        .anyMatch(c -> c.getId().equals(finalCategoryId));
+                if (!isValid) {
+                    throw new BusinessRuleException("error.entry.final-category-not-judging");
+                }
+            }
+        }
+        entry.assignFinalCategory(finalCategoryId);
+        log.debug("Assigned final category {} to entry {}", finalCategoryId, entryId);
+        return entryRepository.save(entry);
     }
 
     public long countActiveEntries(@NotNull UUID divisionId, @NotNull UUID userId) {
