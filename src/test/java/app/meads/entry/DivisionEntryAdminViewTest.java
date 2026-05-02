@@ -214,10 +214,10 @@ class DivisionEntryAdminViewTest {
         tabSheet.setSelectedIndex(1); // Entries tab
 
         var creditsLabel = _get(Span.class, spec -> spec.withId("credits-balance-label"));
-        var submittedLabel = _get(Span.class, spec -> spec.withId("submitted-entries-label"));
+        var entriesLabel = _get(Span.class, spec -> spec.withId("entries-summary-label"));
 
         assertThat(creditsLabel.getText()).isEqualTo("Credits balance: 3");
-        assertThat(submittedLabel.getText()).isEqualTo("Submitted entries: 1");
+        assertThat(entriesLabel.getText()).isEqualTo("Total entries: 1 (Draft: 0, Submitted: 1, Received: 0, Withdrawn: 0)");
     }
 
     @Test

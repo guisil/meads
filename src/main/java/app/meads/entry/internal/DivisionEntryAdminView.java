@@ -84,7 +84,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
 
     // Entries tab summary
     private Span totalCreditsLabel;
-    private Span submittedEntriesLabel;
+    private Span entriesSummaryLabel;
 
     public DivisionEntryAdminView(EntryService entryService,
                                    CompetitionService competitionService,
@@ -417,11 +417,11 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
 
         totalCreditsLabel = new Span();
         totalCreditsLabel.setId("credits-balance-label");
-        submittedEntriesLabel = new Span();
-        submittedEntriesLabel.setId("submitted-entries-label");
-        var separator = new Span(" | ");
-        separator.getStyle().set("color", "var(--lumo-contrast-30pct)");
-        var summary = new HorizontalLayout(totalCreditsLabel, separator, submittedEntriesLabel);
+        entriesSummaryLabel = new Span();
+        entriesSummaryLabel.setId("entries-summary-label");
+        var separator = new Span("|");
+        separator.getStyle().set("color", "var(--lumo-contrast-30pct)").set("padding", "0 var(--lumo-space-m)");
+        var summary = new HorizontalLayout(totalCreditsLabel, separator, entriesSummaryLabel);
         summary.setSpacing(false);
         summary.getStyle().set("color", "var(--lumo-secondary-text-color)").set("font-size", "var(--lumo-font-size-s)");
         tab.add(summary);
@@ -621,11 +621,14 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
 
     private void updateEntriesSummary(List<Entry> entries) {
         int creditsBalance = entryService.getTotalCreditBalance(divisionId);
-        long submittedCount = entries.stream()
-                .filter(e -> e.getStatus() == EntryStatus.SUBMITTED)
-                .count();
+        var countByStatus = entries.stream().collect(Collectors.groupingBy(Entry::getStatus, Collectors.counting()));
+        long draft = countByStatus.getOrDefault(EntryStatus.DRAFT, 0L);
+        long submitted = countByStatus.getOrDefault(EntryStatus.SUBMITTED, 0L);
+        long received = countByStatus.getOrDefault(EntryStatus.RECEIVED, 0L);
+        long withdrawn = countByStatus.getOrDefault(EntryStatus.WITHDRAWN, 0L);
+        long total = entries.size();
         totalCreditsLabel.setText(getTranslation("entry-admin.entries.summary.credits", creditsBalance));
-        submittedEntriesLabel.setText(getTranslation("entry-admin.entries.summary.submitted", submittedCount));
+        entriesSummaryLabel.setText(getTranslation("entry-admin.entries.summary.entries", total, draft, submitted, received, withdrawn));
     }
 
     private void openViewEntryDialog(Entry entry) {

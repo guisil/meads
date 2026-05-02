@@ -930,6 +930,7 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] **Expected:** `←` (revert) button disabled for DRAFT entries; `→` (advance) button disabled for RECEIVED and WITHDRAWN entries
 - [ ] **Expected:** `←` tooltip: "← Revert to Draft" for SUBMITTED/WITHDRAWN, "← Revert to Submitted" for RECEIVED
 - [ ] **Expected:** `→` tooltip: "→ Submit" for DRAFT, "→ Mark as Received" for SUBMITTED
+- [ ] **Expected:** Summary row below the grid shows "Credits balance: N  |  Total entries: 4 (Draft: 2, Submitted: 2, Received: 0, Withdrawn: 0)"
 - [ ] **Expected:** View button (eye) opens read-only dialog showing all entry fields, status, and entrant email
 - [ ] **Expected:** Edit button opens confirmation dialog ("Are you sure you want to edit this entry's data?"), then full edit dialog with all fields (mead name, category, sweetness, strength (read-only, auto-derived from ABV), ABV, carbonation, honey, other ingredients, wood aged, wood ageing details, additional info)
 - [ ] **Expected:** Edit works for entries in any status except WITHDRAWN
@@ -948,6 +949,7 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] Click `→` on the now-SUBMITTED entry
 - [ ] **Expected:** Confirmation dialog titled "Mark as Received"
 - [ ] Confirm — **Expected:** Entry status changes to RECEIVED; `→` is now disabled for that entry
+- [ ] **Expected:** Summary row reflects the new counts after each status change (e.g. Draft count decreases, Submitted/Received count increases)
 
 ### Revert entry status (admin)
 
