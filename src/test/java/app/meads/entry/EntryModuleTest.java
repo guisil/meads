@@ -1,6 +1,8 @@
 package app.meads.entry;
 
+import app.meads.BusinessRuleException;
 import app.meads.TestcontainersConfiguration;
+import app.meads.competition.CategoryScope;
 import app.meads.competition.CompetitionService;
 import app.meads.competition.ScoringSystem;
 import app.meads.identity.Role;
@@ -107,5 +109,48 @@ class EntryModuleTest {
         // Verify entry is now SUBMITTED
         var updated = entryService.findEntryById(entry.getId());
         assertThat(updated.getStatus()).isEqualTo(EntryStatus.SUBMITTED);
+    }
+
+    @Test
+    void shouldPreventDeletionOfJudgingCategoryReferencedByFinalCategoryId() {
+        var admin = userService.createUser("admin-guard@test.com", "Admin",
+                UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
+        var competition = competitionService.createCompetition("Guard Test", "guard-test",
+                LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30), null, admin.getId());
+        var division = competitionService.createDivision(
+                competition.getId(), "Home", "home-guard", ScoringSystem.MJP,
+                LocalDateTime.of(2026, 12, 31, 23, 59), "UTC", admin.getId());
+
+        // Add credits and create entry while REGISTRATION_OPEN
+        competitionService.advanceDivisionStatus(division.getId(), admin.getId()); // → REGISTRATION_OPEN
+        var entrant = userService.createUser("entrant-guard@test.com", "Entrant",
+                UserStatus.ACTIVE, Role.USER);
+        entryService.addCredits(division.getId(), entrant.getEmail(), 1, admin.getId());
+
+        var registrationCategories = competitionService.findDivisionCategories(division.getId())
+                .stream().filter(c -> c.getScope() == CategoryScope.REGISTRATION
+                        && c.getParentId() != null).toList();
+        var regCategory = registrationCategories.getFirst();
+
+        var entry = entryService.createEntry(division.getId(), entrant.getId(),
+                "My Mead", regCategory.getId(), Sweetness.DRY, new BigDecimal("12.0"),
+                Carbonation.STILL, "Honey", null, false, null, null);
+
+        // Advance to REGISTRATION_CLOSED then initialize judging categories
+        competitionService.advanceDivisionStatus(division.getId(), admin.getId()); // → REGISTRATION_CLOSED
+
+        var judgingCategories = competitionService.initializeJudgingCategories(
+                division.getId(), admin.getId());
+        var judgingCategory = judgingCategories.getFirst();
+
+        // Assign final category
+        entryService.assignFinalCategory(entry.getId(), judgingCategory.getId(), admin.getId());
+
+        // Deletion should be blocked by the guard
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                competitionService.removeJudgingCategory(
+                        division.getId(), judgingCategory.getId(), admin.getId()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.category.judging-has-entries");
     }
 }

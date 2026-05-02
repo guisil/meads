@@ -4,6 +4,7 @@ import app.meads.TestcontainersConfiguration;
 import app.meads.competition.*;
 import app.meads.competition.internal.CompetitionRepository;
 import app.meads.competition.internal.DivisionCategoryRepository;
+import app.meads.entry.internal.EntryRepository;
 import app.meads.competition.internal.DivisionRepository;
 import app.meads.entry.internal.EntryCreditRepository;
 import app.meads.competition.internal.ParticipantRepository;
@@ -80,6 +81,9 @@ class DivisionEntryAdminViewTest {
 
     @Autowired
     EntryCreditRepository creditRepository;
+
+    @Autowired
+    EntryRepository entryRepository;
 
     private Competition competition;
     private Division division;
@@ -282,5 +286,50 @@ class DivisionEntryAdminViewTest {
         assertThat(headers).containsExactlyInAnyOrder(
                 "Entry #", "Code", "Mead Name", "Category", "Final Category",
                 "Entrant", "Meadery", "Country", "Status", "Actions");
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldRenderEntriesGridWhenEntryHasFinalCategoryAssigned() {
+        division.advanceStatus(); // DRAFT → REGISTRATION_OPEN
+        division.advanceStatus(); // → REGISTRATION_CLOSED
+        division = divisionRepository.save(division);
+
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+
+        var registrationCategory = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Dry mead", null, 1));
+        var judgingCategory = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "CX1", "Combined", "Combined judging", null, 1,
+                CategoryScope.JUDGING));
+
+        // Create entry directly via repository (bypasses credit check — admin scenario)
+        var entry = new Entry(division.getId(), admin.getId(), 1, "ABCDEF",
+                "Test Mead", registrationCategory.getId(), Sweetness.DRY,
+                new BigDecimal("12.0"), Carbonation.STILL, "Honey", null, false, null, null);
+        entry = entryRepository.save(entry);
+        entry.assignFinalCategory(judgingCategory.getId());
+        entryRepository.save(entry);
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/entry-admin");
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(1);
+
+        var grids = _find(Grid.class);
+        var entriesGrid = grids.stream()
+                .filter(g -> "entries-grid".equals(g.getId().orElse(null)))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Entries grid not found"));
+
+        // Grid renders without error and has the correct column count
+        assertThat(entriesGrid.getColumns()).hasSize(10);
+
+        // Entry with final category is present in the grid
+        @SuppressWarnings("unchecked")
+        var items = entriesGrid.getGenericDataView().getItems().toList();
+        assertThat(items).hasSize(1);
+        assertThat(((Entry) items.getFirst()).getFinalCategoryId()).isEqualTo(judgingCategory.getId());
     }
 }

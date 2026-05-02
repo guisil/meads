@@ -991,8 +991,24 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             additionalInfo.setValue(entry.getAdditionalInformation());
         }
 
+        var judgingCategories = competitionService.findJudgingCategories(divisionId);
+        var finalCategoryOptions = judgingCategories.isEmpty() ? divisionCategories : judgingCategories;
+        var finalCategorySelect = new Select<DivisionCategory>();
+        finalCategorySelect.setLabel("Final Category");
+        finalCategorySelect.setWidthFull();
+        finalCategorySelect.setEmptySelectionAllowed(true);
+        finalCategorySelect.setEmptySelectionCaption("— Not assigned —");
+        finalCategorySelect.setItemLabelGenerator(dc ->
+                dc != null ? dc.getCode() + " — " + dc.getName() : "");
+        finalCategorySelect.setItems(finalCategoryOptions);
+        finalCategoryOptions.stream()
+                .filter(c -> c.getId().equals(entry.getFinalCategoryId()))
+                .findFirst()
+                .ifPresent(finalCategorySelect::setValue);
+
         layout.add(meadNameField, categorySelect, sweetness, strengthField, abv, carbonation,
-                honeyVarieties, otherIngredients, woodAged, woodAgeingDetails, additionalInfo);
+                honeyVarieties, otherIngredients, woodAged, woodAgeingDetails, additionalInfo,
+                finalCategorySelect);
         dialog.add(layout);
 
         var saveButton = new Button("Save", e -> {
@@ -1046,6 +1062,9 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                         StringUtils.hasText(additionalInfo.getValue())
                                 ? additionalInfo.getValue().trim() : null,
                         currentUserId);
+                var finalCategoryId = finalCategorySelect.getValue() != null
+                        ? finalCategorySelect.getValue().getId() : null;
+                entryService.assignFinalCategory(entry.getId(), finalCategoryId, currentUserId);
                 var notification = Notification.show(getTranslation("entry-admin.entries.updated"));
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();

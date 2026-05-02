@@ -191,6 +191,7 @@ app.meads.entry                              ← Entry module public API
     ├── JumpsellerWebhookController.java     ← @RestController (webhook endpoint)
     ├── EntryDivisionRevertGuard.java        ← DivisionRevertGuard impl (blocks revert to DRAFT with entries)
     ├── EntryDivisionDeletionGuard.java     ← DivisionDeletionGuard impl (blocks deletion with entries/credits/products)
+    ├── EntryJudgingCategoryDeletionGuard.java ← JudgingCategoryDeletionGuard impl (blocks deletion when finalCategoryId references it)
     ├── RegistrationClosedListener.java      ← @ApplicationModuleListener (DivisionStatusAdvancedEvent)
     ├── OrderReviewNotificationListener.java ← @ApplicationModuleListener (OrderRequiresReviewEvent → admin emails)
     ├── SubmissionConfirmationListener.java  ← @ApplicationModuleListener (EntriesSubmittedEvent → entrant email)
