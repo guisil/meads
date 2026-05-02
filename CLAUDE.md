@@ -388,7 +388,7 @@ void tearDown() {
 ## Database & Migrations
 
 - **Location:** `src/main/resources/db/migration/V{N}__{description}.sql`
-- **Current highest version:** V17 (`V17__add_language_to_competition_documents.sql`). V2 includes users + meadery_name. V3–V8 are competition module (V3 includes contact_email + shipping_address + phone_number, V4 includes entry limits + prefix). V9–V13 are entry module. V14 is competition documents. V15 adds website to competitions. V16 adds preferred_language to users (i18n).
+- **Current highest version:** V18 (`V18__add_scope_to_division_categories.sql`). V2 includes users + meadery_name. V3–V8 are competition module (V3 includes contact_email + shipping_address + phone_number, V4 includes entry limits + prefix). V9–V13 are entry module. V14 is competition documents. V15 adds website to competitions. V16 adds preferred_language to users (i18n). V17 is document language filtering. V18 adds `scope` column to `division_categories` and updates unique constraint to `(division_id, code, scope)`.
 - **Naming:** `V{next}__{snake_case_description}.sql` (double underscore)
 - Migrations are created in **Step 2** (GREEN), when a repository test needs a table.
 - **Never edit existing migrations.** Always create new ones.

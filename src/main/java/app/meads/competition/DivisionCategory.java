@@ -37,6 +37,10 @@ public class DivisionCategory {
     @Column(name = "sort_order", nullable = false)
     private int sortOrder;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private CategoryScope scope;
+
     @Column(nullable = false)
     private Instant createdAt;
 
@@ -45,6 +49,13 @@ public class DivisionCategory {
     public DivisionCategory(UUID divisionId, UUID catalogCategoryId,
                              String code, String name, String description,
                              UUID parentId, int sortOrder) {
+        this(divisionId, catalogCategoryId, code, name, description, parentId, sortOrder,
+                CategoryScope.REGISTRATION);
+    }
+
+    public DivisionCategory(UUID divisionId, UUID catalogCategoryId,
+                             String code, String name, String description,
+                             UUID parentId, int sortOrder, CategoryScope scope) {
         this.id = UUID.randomUUID();
         this.divisionId = divisionId;
         this.catalogCategoryId = catalogCategoryId;
@@ -53,6 +64,7 @@ public class DivisionCategory {
         this.description = description;
         this.parentId = parentId;
         this.sortOrder = sortOrder;
+        this.scope = scope;
     }
 
     public void updateDetails(String code, String name, String description) {

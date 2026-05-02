@@ -48,6 +48,7 @@ public class CompetitionService {
     private final List<DivisionRevertGuard> revertGuards;
     private final List<DivisionDeletionGuard> deletionGuards;
     private final List<ParticipantRemovalCleanup> removalCleanups;
+    private final List<JudgingCategoryDeletionGuard> judgingCategoryDeletionGuards;
 
     CompetitionService(CompetitionRepository competitionRepository,
                        DivisionRepository divisionRepository,
@@ -60,7 +61,8 @@ public class CompetitionService {
                        ApplicationEventPublisher eventPublisher,
                        List<DivisionRevertGuard> revertGuards,
                        List<DivisionDeletionGuard> deletionGuards,
-                       List<ParticipantRemovalCleanup> removalCleanups) {
+                       List<ParticipantRemovalCleanup> removalCleanups,
+                       List<JudgingCategoryDeletionGuard> judgingCategoryDeletionGuards) {
         this.competitionRepository = competitionRepository;
         this.divisionRepository = divisionRepository;
         this.participantRepository = participantRepository;
@@ -73,6 +75,7 @@ public class CompetitionService {
         this.revertGuards = revertGuards;
         this.deletionGuards = deletionGuards;
         this.removalCleanups = removalCleanups;
+        this.judgingCategoryDeletionGuards = judgingCategoryDeletionGuards;
     }
 
     // --- Competition methods (were MeadEvent methods) ---
@@ -434,6 +437,123 @@ public class CompetitionService {
         }
         divisionCategoryRepository.delete(category);
         log.debug("Removed category {} from division {}", category.getCode(), divisionId);
+    }
+
+    public List<DivisionCategory> findJudgingCategories(@NotNull UUID divisionId) {
+        return divisionCategoryRepository.findByDivisionIdAndScopeOrderByCode(divisionId, CategoryScope.JUDGING);
+    }
+
+    public List<DivisionCategory> initializeJudgingCategories(@NotNull UUID divisionId,
+                                                                @NotNull UUID requestingUserId) {
+        var division = divisionRepository.findById(divisionId)
+                .orElseThrow(() -> new BusinessRuleException("error.division.not-found"));
+        requireAuthorized(division.getCompetitionId(), requestingUserId);
+        if (!division.getStatus().allowsJudgingCategoryManagement()) {
+            throw new BusinessRuleException("error.category.judging-not-allowed-status",
+                    division.getStatus().getDisplayName());
+        }
+        var existingJudging = divisionCategoryRepository.findByDivisionIdAndScopeOrderByCode(
+                divisionId, CategoryScope.JUDGING);
+        if (!existingJudging.isEmpty()) {
+            throw new BusinessRuleException("error.category.judging-already-initialized");
+        }
+        var registrationCats = divisionCategoryRepository.findByDivisionIdAndScopeOrderByCode(
+                divisionId, CategoryScope.REGISTRATION);
+
+        // First pass: clone main categories (no parent), build old-id → new-id map
+        var idMap = new java.util.HashMap<UUID, UUID>();
+        var result = new java.util.ArrayList<DivisionCategory>();
+        int sortOrder = 0;
+        for (var cat : registrationCats) {
+            if (cat.getParentId() == null) {
+                var clone = new DivisionCategory(divisionId, null,
+                        cat.getCode(), cat.getName(), cat.getDescription(),
+                        null, sortOrder++, CategoryScope.JUDGING);
+                var saved = divisionCategoryRepository.save(clone);
+                idMap.put(cat.getId(), saved.getId());
+                result.add(saved);
+            }
+        }
+
+        // Second pass: clone subcategories with mapped parent IDs
+        for (var cat : registrationCats) {
+            if (cat.getParentId() != null) {
+                UUID mappedParentId = idMap.get(cat.getParentId());
+                var clone = new DivisionCategory(divisionId, null,
+                        cat.getCode(), cat.getName(), cat.getDescription(),
+                        mappedParentId, sortOrder++, CategoryScope.JUDGING);
+                result.add(divisionCategoryRepository.save(clone));
+            }
+        }
+        log.info("Initialized {} judging categories for division {}", result.size(), divisionId);
+        return result;
+    }
+
+    public DivisionCategory addJudgingCategory(@NotNull UUID divisionId,
+                                                @NotBlank String code,
+                                                @NotBlank String name,
+                                                @NotBlank String description,
+                                                UUID parentId,
+                                                @NotNull UUID requestingUserId) {
+        var division = divisionRepository.findById(divisionId)
+                .orElseThrow(() -> new BusinessRuleException("error.division.not-found"));
+        requireAuthorized(division.getCompetitionId(), requestingUserId);
+        if (!division.getStatus().allowsJudgingCategoryManagement()) {
+            throw new BusinessRuleException("error.category.judging-not-allowed-status",
+                    division.getStatus().getDisplayName());
+        }
+        if (divisionCategoryRepository.existsByDivisionIdAndCodeAndScope(divisionId, code, CategoryScope.JUDGING)) {
+            throw new BusinessRuleException("error.category.code-exists", code);
+        }
+        if (parentId != null) {
+            divisionCategoryRepository.findById(parentId)
+                    .orElseThrow(() -> new BusinessRuleException("error.category.parent-not-found"));
+        }
+        var dc = new DivisionCategory(divisionId, null, code, name, description, parentId, 0,
+                CategoryScope.JUDGING);
+        log.debug("Added judging category {} to division {}", code, divisionId);
+        return divisionCategoryRepository.save(dc);
+    }
+
+    public DivisionCategory updateJudgingCategory(@NotNull UUID divisionId,
+                                                    @NotNull UUID categoryId,
+                                                    @NotBlank String code,
+                                                    @NotBlank String name,
+                                                    @NotBlank String description,
+                                                    @NotNull UUID requestingUserId) {
+        var division = divisionRepository.findById(divisionId)
+                .orElseThrow(() -> new BusinessRuleException("error.division.not-found"));
+        requireAuthorized(division.getCompetitionId(), requestingUserId);
+        if (!division.getStatus().allowsJudgingCategoryManagement()) {
+            throw new BusinessRuleException("error.category.judging-not-allowed-status",
+                    division.getStatus().getDisplayName());
+        }
+        var category = divisionCategoryRepository.findById(categoryId)
+                .orElseThrow(() -> new BusinessRuleException("error.category.not-found"));
+        category.updateDetails(code, name, description);
+        log.debug("Updated judging category {} in division {}", code, divisionId);
+        return divisionCategoryRepository.save(category);
+    }
+
+    public void removeJudgingCategory(@NotNull UUID divisionId,
+                                       @NotNull UUID categoryId,
+                                       @NotNull UUID requestingUserId) {
+        var division = divisionRepository.findById(divisionId)
+                .orElseThrow(() -> new BusinessRuleException("error.division.not-found"));
+        requireAuthorized(division.getCompetitionId(), requestingUserId);
+        if (!division.getStatus().allowsJudgingCategoryManagement()) {
+            throw new BusinessRuleException("error.category.judging-not-allowed-status",
+                    division.getStatus().getDisplayName());
+        }
+        var category = divisionCategoryRepository.findById(categoryId)
+                .orElseThrow(() -> new BusinessRuleException("error.category.not-found"));
+        judgingCategoryDeletionGuards.forEach(guard -> guard.checkDeletionAllowed(categoryId));
+        var children = divisionCategoryRepository.findByParentId(categoryId);
+        if (!children.isEmpty()) {
+            divisionCategoryRepository.deleteAll(children);
+        }
+        divisionCategoryRepository.delete(category);
+        log.debug("Removed judging category {} from division {}", category.getCode(), divisionId);
     }
 
     public List<Category> findAvailableCatalogCategories(@NotNull UUID divisionId) {

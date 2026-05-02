@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `main`
-**Tests:** 723 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-02 (version bump to 0.3.0-SNAPSHOT)
+**Tests:** 734 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-02 (judging category service methods + V18 migration)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -75,7 +75,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 - `DivisionDetailView` (`/competitions/:compShortName/divisions/:divShortName`) — header: competition logo + "Competition — Division", tabs: Categories, Settings + "Manage Entries" button + "Advance/Revert Status" buttons
 - `MyCompetitionsView` (`/my-competitions`) — `@PermitAll`, shows competitions where user is ADMIN
 
-#### Migrations: V3–V8, V14, V17
+#### Migrations: V3–V8, V14, V17, V18
 
 ### entry module (`app.meads.entry`) — COMPLETE
 
@@ -354,8 +354,8 @@ Add a `scope` enum (`REGISTRATION` / `JUDGING`) to `DivisionCategory`:
 - `DivisionEntryAdminView` admin edit dialog: add Final Category Select field (clearable); shows JUDGING categories or falls back to all categories
 
 **Sequencing (TDD cycles):**
-1. Unit test: `CompetitionServiceTest` — `initializeJudgingCategories`, `addJudgingCategory`, `removeJudgingCategory` (blocked when referenced by guard), status guard enforcement
-2. Repository test: V18 migration + `findByDivisionIdAndScopeOrderByCode`, `existsByDivisionIdAndCodeAndScope`; `existsByFinalCategoryId`
+1. ✅ Unit test: `CompetitionServiceJudgingCategoryTest` — `initializeJudgingCategories`, `addJudgingCategory`, `updateJudgingCategory`, `removeJudgingCategory` (11 tests). Also: `CategoryScope` enum, `JudgingCategoryDeletionGuard` interface, `DivisionStatus.allowsJudgingCategoryManagement()`, V18 migration, backward-compat 7-arg `DivisionCategory` constructor.
+2. Repository test: `DivisionCategoryRepositoryTest` — scope-based queries; `EntryRepository.existsByFinalCategoryId()`
 3. Unit test: `EntryServiceTest` — `assignFinalCategory` (sets, clears, validates JUDGING scope)
 4. Module integration test: `CompetitionModuleTest` — category lifecycle with scope
 5. UI test: `DivisionDetailViewTest` — registration section read-only + judging section after REGISTRATION_CLOSED

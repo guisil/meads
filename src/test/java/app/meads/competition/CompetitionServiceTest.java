@@ -75,6 +75,8 @@ class CompetitionServiceTest {
 
     List<ParticipantRemovalCleanup> removalCleanups = new ArrayList<>();
 
+    List<JudgingCategoryDeletionGuard> judgingCategoryDeletionGuards = new ArrayList<>();
+
     @BeforeEach
     void setUp() {
         competitionService = new CompetitionService(
@@ -82,7 +84,8 @@ class CompetitionServiceTest {
                 participantRepository, participantRoleRepository,
                 divisionCategoryRepository, categoryRepository,
                 competitionDocumentRepository, userService,
-                eventPublisher, revertGuards, deletionGuards, removalCleanups);
+                eventPublisher, revertGuards, deletionGuards, removalCleanups,
+                judgingCategoryDeletionGuards);
     }
 
     private Competition createCompetition() {
