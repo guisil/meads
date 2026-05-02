@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `main`
-**Tests:** 723 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-02 (post-registration guards + admin add entry)
+**Tests:** 723 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-02 (version bump to 0.3.0-SNAPSHOT)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -300,44 +300,66 @@ Add a `scope` enum (`REGISTRATION` / `JUDGING`) to `DivisionCategory`:
 | `REGISTRATION` | DRAFT / REGISTRATION_OPEN only | Blocked if any `initialCategoryId` references it | `entry.initialCategoryId` |
 | `JUDGING` | REGISTRATION_CLOSED or later | Blocked if any `finalCategoryId` references it | `entry.finalCategoryId` |
 
+**Confirmed design decisions:**
+- JUDGING categories require a description (same as REGISTRATION — no nullable change)
+- `finalCategoryId` is clearable (nullable) from admin UI — Select includes empty option
+- Standalone `EntryService.assignFinalCategory(entryId, finalCategoryId, userId)` method (not bundled into `adminUpdateEntry`)
+- Final category picker falls back to ALL categories if no JUDGING categories exist yet
+- Judging category management allowed for any status >= REGISTRATION_CLOSED (through JUDGING, DELIBERATION, RESULTS_PUBLISHED)
+- "Initialize judging categories" is part of this feature; full judging module workflows come later
+- Unique constraint changes to `UNIQUE(division_id, code, scope)` — same code can exist in both scopes
+
 **Key rules:**
 - REGISTRATION categories: fully managed via existing flow; once REGISTRATION_CLOSED, they become
   read-only in the UI (visible but no add/edit/delete — they are historic record)
 - JUDGING categories: only appear after REGISTRATION_CLOSED; admin can freely add/edit/delete them
   (guarded against deletion when referenced by `finalCategoryId`)
 - "Initialize judging categories" button clones all REGISTRATION categories into JUDGING ones
-  (same codes, names, hierarchy) as a starting point — admin can then diverge freely
+  (same codes, names, descriptions, hierarchy; `catalogCategoryId = null` on clones) — admin can then diverge freely
 - When setting `finalCategoryId` on an entry (in DivisionEntryAdminView), the category picker shows
-  only JUDGING categories (if any exist) or falls back to all categories
-- `finalCategoryId` must only reference JUDGING categories (service-level validation)
+  only JUDGING categories (if any exist) or falls back to all division categories
+- Service validates `finalCategoryId` references a JUDGING category when JUDGING categories exist
 
-**Migration:** V18 — add `scope VARCHAR(20) NOT NULL DEFAULT 'REGISTRATION'` to `division_categories`
+**New files:**
+- `app.meads.competition.CategoryScope.java` — public enum (`REGISTRATION`, `JUDGING`)
+- `app.meads.competition.JudgingCategoryDeletionGuard.java` — public guard interface
+- `app.meads.entry.internal.EntryJudgingCategoryDeletionGuard.java` — guard impl
+
+**Migration:** V18
+- Add `scope VARCHAR(20) NOT NULL DEFAULT 'REGISTRATION'` to `division_categories`
+- Drop `UNIQUE(division_id, code)` constraint
+- Add `UNIQUE(division_id, code, scope)` constraint
 
 **New service methods (CompetitionService):**
-- `initializeJudgingCategories(divisionId, adminUserId)` — clones REGISTRATION → JUDGING
-- `addJudgingCategory(divisionId, code, name, parentJudgingCategoryId, adminUserId)`
-- `updateJudgingCategory(categoryId, code, name, adminUserId)`
-- `removeJudgingCategory(categoryId, adminUserId)` — guarded by `finalCategoryId` references
-- `reorderJudgingCategories(divisionId, orderedIds, adminUserId)`
+- `initializeJudgingCategories(divisionId, adminUserId)` — clones REGISTRATION → JUDGING; throws if JUDGING categories already exist
+- `addJudgingCategory(divisionId, code, name, description, parentJudgingCategoryId, adminUserId)`
+- `updateJudgingCategory(divisionId, categoryId, code, name, description, adminUserId)`
+- `removeJudgingCategory(divisionId, categoryId, adminUserId)` — guarded by `JudgingCategoryDeletionGuard`
 - `findJudgingCategories(divisionId)` — returns only JUDGING scope
 
-**New guard:**
-- `CategoryDeletionGuard` interface or inline check: block `removeJudgingCategory` when
-  `entryRepository.existsByFinalCategoryId(categoryId)`
+**New service method (EntryService):**
+- `assignFinalCategory(entryId, finalCategoryId, requestingUserId)` — nullable `finalCategoryId` to clear; validates category is JUDGING scope (when JUDGING categories exist)
+
+**New repository methods:**
+- `DivisionCategoryRepository.findByDivisionIdAndScopeOrderByCode(divisionId, scope)`
+- `DivisionCategoryRepository.existsByDivisionIdAndCodeAndScope(divisionId, code, scope)`
+- `EntryRepository.existsByFinalCategoryId(categoryId)`
+
+**New status helper on `DivisionStatus`:**
+- `allowsJudgingCategoryManagement()` → `ordinal() >= REGISTRATION_CLOSED.ordinal()`
 
 **UI changes:**
-- `DivisionDetailView` Categories tab: split into "Registration Categories" (read-only after
-  REGISTRATION_CLOSED) and "Judging Categories" (only visible after REGISTRATION_CLOSED)
+- `DivisionDetailView` Categories tab: split into "Registration Categories" (read-only after REGISTRATION_CLOSED) and "Judging Categories" section (only visible when `allowsJudgingCategoryManagement()`)
 - "Initialize from Registration Categories" button (only shown when no judging categories exist yet)
-- Entry edit dialog in `DivisionEntryAdminView`: final category dropdown shows only JUDGING
-  categories
+- `DivisionEntryAdminView` admin edit dialog: add Final Category Select field (clearable); shows JUDGING categories or falls back to all categories
 
 **Sequencing (TDD cycles):**
-1. Unit test: `CompetitionServiceTest` — `initializeJudgingCategories`, `addJudgingCategory`,
-   `removeJudgingCategory` (blocked when referenced)
-2. Repository test: V18 migration + `DivisionCategoryRepository.findByDivisionIdAndScope()`
-3. Module integration test: `CompetitionModuleTest` — category lifecycle with scope
-4. UI test: `DivisionDetailViewTest` — judging categories tab sections
+1. Unit test: `CompetitionServiceTest` — `initializeJudgingCategories`, `addJudgingCategory`, `removeJudgingCategory` (blocked when referenced by guard), status guard enforcement
+2. Repository test: V18 migration + `findByDivisionIdAndScopeOrderByCode`, `existsByDivisionIdAndCodeAndScope`; `existsByFinalCategoryId`
+3. Unit test: `EntryServiceTest` — `assignFinalCategory` (sets, clears, validates JUDGING scope)
+4. Module integration test: `CompetitionModuleTest` — category lifecycle with scope
+5. UI test: `DivisionDetailViewTest` — registration section read-only + judging section after REGISTRATION_CLOSED
+6. UI test: `DivisionEntryAdminViewTest` — final category assignment in edit dialog
 
 ### Priority 2: MFA for system admins
 Evaluate and implement multi-factor authentication for SYSTEM_ADMIN accounts.
@@ -368,6 +390,7 @@ carbonation locking (custom categories), and admin-configurable constraints for 
 Requires: DB migration, admin UI for constraint config, cross-module data flow, server-side validation.
 
 ### Completed priorities
+- **Version bump to 0.3.0-SNAPSHOT** — 2026-05-02. Bumped from 0.2.9-SNAPSHOT to 0.3.0-SNAPSHOT ahead of judging category management and the judging module. 723 tests.
 - **Post-registration guards + admin add entry** — Completed 2026-05-02. Credits (add/adjust), product mappings (add/edit/delete), and entrant entry edits all blocked after REGISTRATION_OPEN. `DivisionStatus.allowsRegistrationActions()`. Disabled-button tooltips via Span wrapper. Credits balance auto-refreshes after credit operations. Submit All Drafts disabled when not REGISTRATION_OPEN. MyEntriesView shows "Registration is closed" in red when past REGISTRATION_OPEN. Admin "Add Entry" in Entries tab (two-step: warning confirmation → entry form with entrant email). `EntryService.adminCreateEntry()` skips credit check and status check. 8 new unit tests. 723 tests.
 - **v0.2.8 release** — Released 2026-05-02. Includes entry status redesign, expanded entries summary row (per-status breakdown), admin view i18n (PT translations), dependency upgrades, and PT translation fixes (pre-AO orthography, wood-aged terminology).
 - **Entry status management redesign** — Completed 2026-04-30. Replaced "Mark as Received" button with `←`/`→` arrow buttons for the full DRAFT → SUBMITTED → RECEIVED flow. WITHDRAWN entries revert to DRAFT. New domain methods `advanceStatus()`/`revertStatus()` on `Entry`; new service methods `advanceEntryStatus()`/`revertEntryStatus()` on `EntryService`. `advanceEntryStatus()` calls `publishSubmissionEventIfComplete()` (consistent with entrant-triggered path). `getTotalCreditBalance(divisionId)` replaces N+1 participant loop. Summary row: "Credits balance: N | Total entries: N (Draft: X, Submitted: Y, Received: Z, Withdrawn: W)". 715 tests.
