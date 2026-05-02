@@ -1486,6 +1486,52 @@ class EntryServiceTest {
                 .hasMessageContaining("Cannot advance");
     }
 
+    // Cycle 19: adminCreateEntry — bypasses credit check and division status
+
+    @Test
+    void shouldAdminCreateEntryForAnyUserAtAnyDivisionStatus() {
+        var competitionId = UUID.randomUUID();
+        var division = createRegistrationClosedDivision(competitionId);
+        var categoryId = UUID.randomUUID();
+        var adminUser = createSystemAdmin();
+        var targetUser = new User("entrant@test.com", "Entrant", UserStatus.ACTIVE, Role.USER);
+
+        given(competitionService.findDivisionById(division.getId())).willReturn(division);
+        given(userService.findByEmail("entrant@test.com")).willReturn(targetUser);
+        given(entryRepository.findMaxEntryNumberByDivisionId(division.getId())).willReturn(3);
+        given(entryRepository.existsByDivisionIdAndEntryCode(eq(division.getId()), anyString())).willReturn(false);
+        given(entryRepository.save(any(Entry.class))).willAnswer(inv -> inv.getArgument(0));
+
+        var result = entryService.adminCreateEntry(division.getId(), "entrant@test.com",
+                "Special Mead", categoryId, Sweetness.SWEET, new BigDecimal("14.0"),
+                Carbonation.SPARKLING, "Wildflower honey", null, false, null, null,
+                adminUser.getId());
+
+        assertThat(result).isNotNull();
+        assertThat(result.getUserId()).isEqualTo(targetUser.getId());
+        assertThat(result.getMeadName()).isEqualTo("Special Mead");
+        assertThat(result.getEntryNumber()).isEqualTo(4);
+    }
+
+    @Test
+    void shouldRejectAdminCreateEntryWhenUserEmailNotFound() {
+        var competitionId = UUID.randomUUID();
+        var division = createRegistrationOpenDivision(competitionId);
+        var categoryId = UUID.randomUUID();
+        var adminUser = createSystemAdmin();
+
+        given(competitionService.findDivisionById(division.getId())).willReturn(division);
+        given(userService.findByEmail("unknown@test.com"))
+                .willThrow(new BusinessRuleException("error.user.not-found"));
+
+        assertThatThrownBy(() -> entryService.adminCreateEntry(division.getId(), "unknown@test.com",
+                "My Mead", categoryId, Sweetness.DRY, new BigDecimal("12.0"),
+                Carbonation.STILL, "Wildflower honey", null, false, null, null,
+                adminUser.getId()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.user.not-found");
+    }
+
     // Cycle 18: getTotalCreditBalance — aggregate query
 
     @Test

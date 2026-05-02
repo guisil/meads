@@ -154,13 +154,17 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         add(createDocumentsSection());
         add(createCreditInfo());
         add(createProcessInfo());
+        var isClosed = division.getStatus() != DivisionStatus.REGISTRATION_OPEN
+                && division.getStatus() != DivisionStatus.DRAFT;
         var hasDeadline = division.getRegistrationDeadline() != null;
         var hasContact = StringUtils.hasText(competition.getContactEmail());
-        if (hasDeadline || hasContact) {
+        if (isClosed || hasDeadline || hasContact) {
             var infoRow = new HorizontalLayout();
             infoRow.setWidthFull();
             infoRow.setDefaultVerticalComponentAlignment(Alignment.CENTER);
-            if (hasDeadline) {
+            if (isClosed) {
+                infoRow.add(createRegistrationClosedInfo());
+            } else if (hasDeadline) {
                 infoRow.add(createDeadlineInfo());
             }
             var spacer = new Div();
@@ -365,7 +369,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         var hasDrafts = entries.stream().anyMatch(en -> en.getStatus() == EntryStatus.DRAFT);
 
         var submitButton = new Button(getTranslation("entries.submit-all"), e -> submitAll());
-        submitButton.setEnabled(hasDrafts && !meaderyNameMissing);
+        submitButton.setEnabled(isOpen && hasDrafts && !meaderyNameMissing);
         if (meaderyNameMissing) {
             submitButton.setTooltipText(getTranslation("entries.meadery-required.tooltip"));
         }
@@ -886,6 +890,15 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                 .set("color", "var(--lumo-secondary-text-color)")
                 .set("font-size", "var(--lumo-font-size-s)");
         return contactSpan;
+    }
+
+    private Span createRegistrationClosedInfo() {
+        var span = new Span(getTranslation("entries.registration-closed"));
+        span.getStyle()
+                .set("color", "var(--lumo-error-color)")
+                .set("font-size", "var(--lumo-font-size-s)")
+                .set("font-weight", "bold");
+        return span;
     }
 
     private Span createDeadlineInfo() {

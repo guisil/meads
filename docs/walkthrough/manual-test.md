@@ -1015,10 +1015,25 @@ CTA button, fallback URL, and optional contact footer.
 
 - [ ] Navigate to DivisionDetailView for Amadora and advance status to REGISTRATION_CLOSED
 - [ ] Navigate to Amadora Entry Admin
-- [ ] **Expected:** Credits tab: "Add Credits" button is disabled with tooltip "Registration is closed"
-- [ ] **Expected:** Credits tab: Edit (adjust) icon is disabled for all rows with tooltip "Registration is closed"
-- [ ] **Expected:** Products tab: "Add Mapping" button is disabled with tooltip "Registration is closed"
-- [ ] **Expected:** Products tab: Edit and Delete icons are disabled for all rows with tooltip "Registration is closed"
+- [ ] **Expected:** Credits tab: "Add Credits" button is disabled; hover shows tooltip "Registration is closed"
+- [ ] **Expected:** Credits tab: Edit (adjust) icon is disabled for all rows; hover shows tooltip "Registration is closed"
+- [ ] **Expected:** Products tab: "Add Mapping" button is disabled; hover shows tooltip "Registration is closed"
+- [ ] **Expected:** Products tab: Edit and Delete icons are disabled for all rows; hover shows tooltip "Registration is closed"
+
+### Admin Add Entry (Entries tab)
+
+- [ ] Click the "Entries" tab
+- [ ] **Expected:** "Add Entry" button visible in the toolbar (always enabled regardless of division status)
+- [ ] Click "Add Entry"
+- [ ] **Expected:** Confirmation dialog: "Add entry without consuming a credit?" with a warning message and "Add Entry"/"Cancel" buttons
+- [ ] Click "Add Entry" to proceed
+- [ ] **Expected:** Full entry form dialog opens with: Entrant Email, Category (subcategories only), Mead Name, Sweetness, ABV, Strength (read-only, auto-updates with ABV), Carbonation, Honey Varieties, Other Ingredients, Wood Aged checkbox, Wood Ageing Details, Additional Information
+- [ ] Enter email `entrant@example.com`, fill all required fields, click "Add Entry"
+- [ ] **Expected:** Notification "Entry added" (green), entry appears in grid, summary row updates
+- [ ] Try entering an unknown email (e.g. `unknown@example.com`) and submitting
+- [ ] **Expected:** Error notification "User not found" (or similar)
+- [ ] Leave required fields empty and click "Add Entry"
+- [ ] **Expected:** Field-level error messages for missing required fields
 - [ ] Revert Amadora status back to REGISTRATION_OPEN after testing
 
 ### Orders tab
@@ -1239,10 +1254,11 @@ curl -s -o /dev/null -w "%{http_code}" \
 
 - [ ] **Expected:** Blue info box below credits: "Use your entry credits to add meads, then submit them when ready. Submitted entries cannot be edited. Once all credits are used and all entries are submitted, you'll receive a confirmation email with a summary of your entries."
 
-### Registration deadline display
+### Registration deadline / closed notice display
 
-- [ ] **Expected:** "Registration closes: [date]" shown below credit info (no timezone)
+- [ ] **Expected:** When division is REGISTRATION_OPEN: "Registration closes: [date]" shown below credit info (no timezone)
 - [ ] **Expected:** Date format is locale-aware short format (e.g. EN: "6/30/26, 11:59 PM", PT: "30/06/2026, 23:59", PL: "30.06.2026, 23:59")
+- [ ] When division is REGISTRATION_CLOSED or beyond: **Expected:** "Registration is closed" shown in red (replaces deadline text); Submit All Drafts button is disabled
 
 ### Entries grid
 

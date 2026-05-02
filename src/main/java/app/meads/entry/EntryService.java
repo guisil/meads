@@ -570,6 +570,35 @@ public class EntryService {
                 divisionId, userId, entryDetails.size());
     }
 
+    public Entry adminCreateEntry(@NotNull UUID divisionId,
+                                  @NotBlank @Email String userEmail,
+                                  @NotBlank String meadName,
+                                  @NotNull UUID initialCategoryId,
+                                  @NotNull Sweetness sweetness,
+                                  @NotNull BigDecimal abv,
+                                  @NotNull Carbonation carbonation,
+                                  @NotBlank String honeyVarieties,
+                                  String otherIngredients,
+                                  boolean woodAged,
+                                  String woodAgeingDetails,
+                                  String additionalInformation,
+                                  @NotNull UUID adminUserId) {
+        var division = competitionService.findDivisionById(divisionId);
+        var targetUser = userService.findByEmail(userEmail);
+
+        var entryNumber = entryRepository.findMaxEntryNumberByDivisionId(divisionId) + 1;
+        var entryCode = generateEntryCode(divisionId);
+
+        var entry = new Entry(divisionId, targetUser.getId(), entryNumber, entryCode,
+                meadName, initialCategoryId, sweetness, abv, carbonation,
+                honeyVarieties, otherIngredients, woodAged, woodAgeingDetails,
+                additionalInformation);
+        var saved = entryRepository.save(entry);
+        log.info("Admin created entry: #{} (code={}, mead={}, division={}, userId={}, adminId={})",
+                entryNumber, entryCode, meadName, divisionId, targetUser.getId(), adminUserId);
+        return saved;
+    }
+
     private String generateEntryCode(UUID divisionId) {
         for (int attempt = 0; attempt < 10; attempt++) {
             var sb = new StringBuilder(ENTRY_CODE_LENGTH);
