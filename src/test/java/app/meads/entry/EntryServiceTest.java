@@ -81,6 +81,13 @@ class EntryServiceTest {
         return division;
     }
 
+    private Division createRegistrationClosedDivision(UUID competitionId) {
+        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
+        division.advanceStatus(); // DRAFT → REGISTRATION_OPEN
+        division.advanceStatus(); // REGISTRATION_OPEN → REGISTRATION_CLOSED
+        return division;
+    }
+
     private Division createRegistrationOpenDivisionWithLimits(UUID competitionId,
                                                                Integer maxPerSubcategory,
                                                                Integer maxPerMainCategory,
@@ -95,9 +102,12 @@ class EntryServiceTest {
 
     @Test
     void shouldCreateProductMapping() {
+        var competitionId = UUID.randomUUID();
         var divisionId = UUID.randomUUID();
+        var division = createRegistrationOpenDivision(competitionId);
         var adminUser = createSystemAdmin();
         given(userService.findById(adminUser.getId())).willReturn(adminUser);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
         given(productMappingRepository.existsByDivisionIdAndJumpsellerProductId(
                 divisionId, "PROD-001")).willReturn(false);
         given(productMappingRepository.save(any(ProductMapping.class)))
@@ -116,9 +126,12 @@ class EntryServiceTest {
 
     @Test
     void shouldRejectDuplicateProductMapping() {
+        var competitionId = UUID.randomUUID();
         var divisionId = UUID.randomUUID();
+        var division = createRegistrationOpenDivision(competitionId);
         var adminUser = createSystemAdmin();
         given(userService.findById(adminUser.getId())).willReturn(adminUser);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
         given(productMappingRepository.existsByDivisionIdAndJumpsellerProductId(
                 divisionId, "PROD-001")).willReturn(true);
 
@@ -126,6 +139,52 @@ class EntryServiceTest {
                 divisionId, "PROD-001", "SKU-001", "Mead Entry Pack", 1, adminUser.getId()))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("error.product.already-mapped");
+    }
+
+    @Test
+    void shouldRejectCreateProductMappingWhenRegistrationClosed() {
+        var competitionId = UUID.randomUUID();
+        var divisionId = UUID.randomUUID();
+        var division = createRegistrationClosedDivision(competitionId);
+        var adminUser = createSystemAdmin();
+        given(userService.findById(adminUser.getId())).willReturn(adminUser);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+
+        assertThatThrownBy(() -> entryService.createProductMapping(
+                divisionId, "PROD-001", "SKU-001", "Mead Entry Pack", 1, adminUser.getId()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.product.registration-closed");
+    }
+
+    @Test
+    void shouldRejectUpdateProductMappingWhenRegistrationClosed() {
+        var competitionId = UUID.randomUUID();
+        var division = createRegistrationClosedDivision(competitionId);
+        var mapping = new ProductMapping(division.getId(), "PROD-001", "SKU-001", "Mead Entry Pack", 1);
+        var adminUser = createSystemAdmin();
+        given(userService.findById(adminUser.getId())).willReturn(adminUser);
+        given(productMappingRepository.findById(mapping.getId())).willReturn(Optional.of(mapping));
+        given(competitionService.findDivisionById(mapping.getDivisionId())).willReturn(division);
+
+        assertThatThrownBy(() -> entryService.updateProductMapping(
+                mapping.getId(), "New Name", 2, adminUser.getId()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.product.registration-closed");
+    }
+
+    @Test
+    void shouldRejectRemoveProductMappingWhenRegistrationClosed() {
+        var competitionId = UUID.randomUUID();
+        var division = createRegistrationClosedDivision(competitionId);
+        var mapping = new ProductMapping(division.getId(), "PROD-001", "SKU-001", "Mead Entry Pack", 1);
+        var adminUser = createSystemAdmin();
+        given(userService.findById(adminUser.getId())).willReturn(adminUser);
+        given(productMappingRepository.findById(mapping.getId())).willReturn(Optional.of(mapping));
+        given(competitionService.findDivisionById(mapping.getDivisionId())).willReturn(division);
+
+        assertThatThrownBy(() -> entryService.removeProductMapping(mapping.getId(), adminUser.getId()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.product.registration-closed");
     }
 
     @Test
@@ -144,12 +203,15 @@ class EntryServiceTest {
 
     @Test
     void shouldUpdateProductMapping() {
-        var mapping = new ProductMapping(UUID.randomUUID(), "PROD-001", "SKU-001",
+        var competitionId = UUID.randomUUID();
+        var division = createRegistrationOpenDivision(competitionId);
+        var mapping = new ProductMapping(division.getId(), "PROD-001", "SKU-001",
                 "Old Name", 1);
         var adminUser = createSystemAdmin();
         given(userService.findById(adminUser.getId())).willReturn(adminUser);
         given(productMappingRepository.findById(mapping.getId()))
                 .willReturn(Optional.of(mapping));
+        given(competitionService.findDivisionById(mapping.getDivisionId())).willReturn(division);
         given(productMappingRepository.save(any(ProductMapping.class)))
                 .willAnswer(invocation -> invocation.getArgument(0));
 
@@ -173,12 +235,15 @@ class EntryServiceTest {
 
     @Test
     void shouldRemoveProductMapping() {
-        var mapping = new ProductMapping(UUID.randomUUID(), "PROD-001", "SKU-001",
+        var competitionId = UUID.randomUUID();
+        var division = createRegistrationOpenDivision(competitionId);
+        var mapping = new ProductMapping(division.getId(), "PROD-001", "SKU-001",
                 "Mead Entry Pack", 1);
         var adminUser = createSystemAdmin();
         given(userService.findById(adminUser.getId())).willReturn(adminUser);
         given(productMappingRepository.findById(mapping.getId()))
                 .willReturn(Optional.of(mapping));
+        given(competitionService.findDivisionById(mapping.getDivisionId())).willReturn(division);
 
         entryService.removeProductMapping(mapping.getId(), adminUser.getId());
 
@@ -307,11 +372,14 @@ class EntryServiceTest {
 
     @Test
     void shouldRemoveCreditsWhenBalanceSufficient() {
+        var competitionId = UUID.randomUUID();
         var divisionId = UUID.randomUUID();
+        var division = createRegistrationOpenDivision(competitionId);
         var userId = UUID.randomUUID();
         var adminUser = createSystemAdmin();
 
         given(userService.findById(adminUser.getId())).willReturn(adminUser);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
         given(creditRepository.sumAmountByDivisionIdAndUserId(divisionId, userId))
                 .willReturn(5);
         given(creditRepository.save(any(EntryCredit.class)))
@@ -327,11 +395,14 @@ class EntryServiceTest {
 
     @Test
     void shouldRejectRemoveCreditsWhenInsufficientBalance() {
+        var competitionId = UUID.randomUUID();
         var divisionId = UUID.randomUUID();
+        var division = createRegistrationOpenDivision(competitionId);
         var userId = UUID.randomUUID();
         var adminUser = createSystemAdmin();
 
         given(userService.findById(adminUser.getId())).willReturn(adminUser);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
         given(creditRepository.sumAmountByDivisionIdAndUserId(divisionId, userId))
                 .willReturn(2);
 
@@ -343,11 +414,14 @@ class EntryServiceTest {
 
     @Test
     void shouldRejectRemoveCreditsWhenResultingBalanceBelowEntryCount() {
+        var competitionId = UUID.randomUUID();
         var divisionId = UUID.randomUUID();
+        var division = createRegistrationOpenDivision(competitionId);
         var userId = UUID.randomUUID();
         var adminUser = createSystemAdmin();
 
         given(userService.findById(adminUser.getId())).willReturn(adminUser);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
         given(creditRepository.sumAmountByDivisionIdAndUserId(divisionId, userId))
                 .willReturn(5);
         given(entryRepository.countByDivisionIdAndUserIdAndStatusNot(
@@ -358,6 +432,37 @@ class EntryServiceTest {
                 divisionId, userId, 3, adminUser.getId()))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("error.credits.balance-below-entries");
+    }
+
+    @Test
+    void shouldRejectAddCreditsWhenRegistrationClosed() {
+        var competitionId = UUID.randomUUID();
+        var divisionId = UUID.randomUUID();
+        var division = createRegistrationClosedDivision(competitionId);
+        var adminUser = createSystemAdmin();
+        given(userService.findById(adminUser.getId())).willReturn(adminUser);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+
+        assertThatThrownBy(() -> entryService.addCredits(
+                divisionId, "entrant@test.com", 3, adminUser.getId()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.credits.registration-closed");
+    }
+
+    @Test
+    void shouldRejectRemoveCreditsWhenRegistrationClosed() {
+        var competitionId = UUID.randomUUID();
+        var divisionId = UUID.randomUUID();
+        var division = createRegistrationClosedDivision(competitionId);
+        var userId = UUID.randomUUID();
+        var adminUser = createSystemAdmin();
+        given(userService.findById(adminUser.getId())).willReturn(adminUser);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+
+        assertThatThrownBy(() -> entryService.removeCredits(
+                divisionId, userId, 3, adminUser.getId()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.credits.registration-closed");
     }
 
     @Test
@@ -646,13 +751,16 @@ class EntryServiceTest {
 
     @Test
     void shouldUpdateEntryWhenOwnerAndDraft() {
+        var competitionId = UUID.randomUUID();
+        var division = createRegistrationOpenDivision(competitionId);
         var userId = UUID.randomUUID();
-        var entry = new Entry(UUID.randomUUID(), userId, 1, "ABC123",
+        var entry = new Entry(division.getId(), userId, 1, "ABC123",
                 "Old Mead", UUID.randomUUID(), Sweetness.DRY,  new BigDecimal("12.5"), Carbonation.STILL,
                 "Wildflower honey", null, false, null, null);
         var newCategoryId = UUID.randomUUID();
 
         given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
+        given(competitionService.findDivisionById(entry.getDivisionId())).willReturn(division);
         given(entryRepository.save(any(Entry.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 
@@ -680,6 +788,25 @@ class EntryServiceTest {
                 "Wildflower honey", null, false, null, null))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("error.entry.not-owner");
+    }
+
+    @Test
+    void shouldRejectUpdateEntryWhenDivisionNotOpen() {
+        var competitionId = UUID.randomUUID();
+        var division = createRegistrationClosedDivision(competitionId);
+        var userId = UUID.randomUUID();
+        var entry = new Entry(division.getId(), userId, 1, "ABC123",
+                "Old Mead", UUID.randomUUID(), Sweetness.DRY, new BigDecimal("12.5"), Carbonation.STILL,
+                "Wildflower honey", null, false, null, null);
+
+        given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
+        given(competitionService.findDivisionById(entry.getDivisionId())).willReturn(division);
+
+        assertThatThrownBy(() -> entryService.updateEntry(entry.getId(), userId,
+                "New Mead", UUID.randomUUID(), Sweetness.DRY, new BigDecimal("12.5"), Carbonation.STILL,
+                "Wildflower honey", null, false, null, null))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.entry.division-not-open");
     }
 
     // Cycle 9: deleteEntry — only DRAFT

@@ -1009,6 +1009,18 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] **Expected:** Notification "Product mapping added" (green)
 - [ ] **Expected:** New mapping appears in grid
 
+### Registration-closed guards (Credits + Products tabs)
+
+*To test these guards, advance Amadora's status past REGISTRATION_OPEN (to REGISTRATION_CLOSED or beyond) via DivisionDetailView > Advance Status, then navigate back to Entry Admin.*
+
+- [ ] Navigate to DivisionDetailView for Amadora and advance status to REGISTRATION_CLOSED
+- [ ] Navigate to Amadora Entry Admin
+- [ ] **Expected:** Credits tab: "Add Credits" button is disabled with tooltip "Registration is closed"
+- [ ] **Expected:** Credits tab: Edit (adjust) icon is disabled for all rows with tooltip "Registration is closed"
+- [ ] **Expected:** Products tab: "Add Mapping" button is disabled with tooltip "Registration is closed"
+- [ ] **Expected:** Products tab: Edit and Delete icons are disabled for all rows with tooltip "Registration is closed"
+- [ ] Revert Amadora status back to REGISTRATION_OPEN after testing
+
 ### Orders tab
 
 - [ ] Click the "Orders" tab

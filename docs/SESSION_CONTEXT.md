@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `main`
-**Tests:** 715 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-04-30 (admin i18n + entry status redesign)
+**Tests:** 721 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-02 (post-registration guards)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -117,7 +117,7 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 #### Views
 - `EntrantOverviewView` (`/my-entries`) — cross-competition entrant hub, shows all divisions with credits/entries, auto-redirects to single division
 - `MyEntriesView` (`/competitions/:compShortName/divisions/:divShortName/my-entries`) — header: competition logo + "Competition — Division — My Entries", entrant-facing, competition documents list, credits + limits display, process info box, registration deadline display, category guidance hints, entry grid with status badges/Final Category/Actions (view/edit/submit/download label)/filtering/sorting, add/edit dialog (full-width fields, per-field validation, prefixed entry IDs), "Submit All Drafts" button, "Download all labels" batch button (disabled until all entries submitted), meadery name required warning + submit blocking
-- `DivisionEntryAdminView` (`/competitions/:compShortName/divisions/:divShortName/entry-admin`) — header: competition logo + "Competition — Division — Entry Admin", admin tabs: Credits, Entries (with Meadery/Country/Final Category columns + view/edit/←/→/withdraw/delete actions + individual label download + batch "Download all labels" with confirmation dialog + summary line showing credits balance and full per-status entry count: "Total entries: N (Draft: X, Submitted: Y, Received: Z, Withdrawn: W)"), Products, Orders. View dialog shows all entry fields read-only. Edit has confirmation gate then full edit dialog (all fields, per-field validation, works for any status except WITHDRAWN). `←`/`→` advance/revert entry status with confirmation dialog; `←` disabled for DRAFT, `→` disabled for RECEIVED/WITHDRAWN, WITHDRAWN reverts to DRAFT.
+- `DivisionEntryAdminView` (`/competitions/:compShortName/divisions/:divShortName/entry-admin`) — header: competition logo + "Competition — Division — Entry Admin", admin tabs: Credits, Entries (with Meadery/Country/Final Category columns + view/edit/←/→/withdraw/delete actions + individual label download + batch "Download all labels" with confirmation dialog + summary line showing credits balance and full per-status entry count: "Total entries: N (Draft: X, Submitted: Y, Received: Z, Withdrawn: W)"), Products, Orders. View dialog shows all entry fields read-only. Edit has confirmation gate then full edit dialog (all fields, per-field validation, works for any status except WITHDRAWN). `←`/`→` advance/revert entry status with confirmation dialog; `←` disabled for DRAFT, `→` disabled for RECEIVED/WITHDRAWN, WITHDRAWN reverts to DRAFT. **Credits tab** and **Products tab** buttons are disabled with "Registration is closed" tooltip when division is past REGISTRATION_OPEN.
 
 #### REST
 - `JumpsellerWebhookController` — `POST /api/webhooks/jumpseller/order-paid` (HMAC-verified)
@@ -273,16 +273,16 @@ CompetitionDetailView, DivisionDetailView, DivisionEntryAdminView. ES/IT/PL fall
 Fixed `ComboBox<>` type inference compilation errors introduced by Java 21 stricter inference
 (needed explicit `new ComboBox<String>(...)` where label arg comes from `getTranslation()`).
 
-### Priority 1 (NEXT): Post-registration actions audit
-Review what actions should be allowed/blocked after a division moves past REGISTRATION_OPEN.
-Currently some actions remain available that may need restricting or scoping. Design pass
-needed to decide per-status rules:
-- **Add credits** — currently allowed in any status. Should it be blocked after registration closes?
-- **Admin edit entries** — should remain possible to some extent (e.g., setting final category,
-  correcting admin fields), but perhaps not full edits (mead name, category change)
-- **Entrant edit entries** — currently blocked after submit. Should view-only access persist?
-- **Add/remove participants** — should participant management be locked at some point?
-- **Product mappings** — should these be locked after registration?
+### Priority 1: Post-registration actions audit — COMPLETE
+
+**Rules implemented:**
+- **Add credits / adjust credits** — blocked after REGISTRATION_OPEN. Allowed in DRAFT + REGISTRATION_OPEN. `EntryService.addCredits()` and `removeCredits()` throw `BusinessRuleException("error.credits.registration-closed")`. DivisionEntryAdminView Credits tab: "Add Credits" button and adjust icon both disabled with "Registration is closed" tooltip.
+- **Product mappings** — blocked after REGISTRATION_OPEN. `createProductMapping()`, `updateProductMapping()`, `removeProductMapping()` all throw `BusinessRuleException("error.product.registration-closed")`. DivisionEntryAdminView Products tab: "Add Mapping", edit, and delete buttons all disabled with "Registration is closed" tooltip.
+- **Entrant edit entries** — blocked after REGISTRATION_OPEN. `updateEntry()` throws `BusinessRuleException("error.entry.division-not-open")` if division status is not REGISTRATION_OPEN.
+- **Add/remove participants** — deferred. No change.
+- **Admin edit entries** — no change. Admins can still edit entries (set final category, correct fields) in any status via the admin view.
+- **`DivisionStatus.allowsRegistrationActions()`** — new helper on enum (DRAFT || REGISTRATION_OPEN) used by credits and product mapping guards.
+- **6 new tests** in `EntryServiceTest`: `shouldRejectCreateProductMappingWhenRegistrationClosed`, `shouldRejectUpdateProductMappingWhenRegistrationClosed`, `shouldRejectRemoveProductMappingWhenRegistrationClosed`, `shouldRejectAddCreditsWhenRegistrationClosed`, `shouldRejectRemoveCreditsWhenRegistrationClosed`, `shouldRejectUpdateEntryWhenDivisionNotOpen`.
 
 ### Priority 2: MFA for system admins
 Evaluate and implement multi-factor authentication for SYSTEM_ADMIN accounts.
@@ -313,6 +313,7 @@ carbonation locking (custom categories), and admin-configurable constraints for 
 Requires: DB migration, admin UI for constraint config, cross-module data flow, server-side validation.
 
 ### Completed priorities
+- **Post-registration actions audit** — Completed 2026-05-02. Credits (add/adjust), product mappings (add/edit/delete), and entrant entry edits all blocked after REGISTRATION_OPEN. New `allowsRegistrationActions()` on `DivisionStatus`. 6 new unit tests. View guards in DivisionEntryAdminView (Credits tab: Add Credits + adjust icon; Products tab: Add Mapping + edit + delete). 721 tests.
 - **v0.2.8 release** — Released 2026-05-02. Includes entry status redesign, expanded entries summary row (per-status breakdown), admin view i18n (PT translations), dependency upgrades, and PT translation fixes (pre-AO orthography, wood-aged terminology).
 - **Entry status management redesign** — Completed 2026-04-30. Replaced "Mark as Received" button with `←`/`→` arrow buttons for the full DRAFT → SUBMITTED → RECEIVED flow. WITHDRAWN entries revert to DRAFT. New domain methods `advanceStatus()`/`revertStatus()` on `Entry`; new service methods `advanceEntryStatus()`/`revertEntryStatus()` on `EntryService`. `advanceEntryStatus()` calls `publishSubmissionEventIfComplete()` (consistent with entrant-triggered path). `getTotalCreditBalance(divisionId)` replaces N+1 participant loop. Summary row: "Credits balance: N | Total entries: N (Draft: X, Submitted: Y, Received: Z, Withdrawn: W)". 715 tests.
 - **Dependency upgrades + entry admin summary row** — Completed 2026-04-29. Bumped Spring Boot 4.0.2→4.0.6, Vaadin 25.0.7→25.1.3, Spring Modulith 2.0.4→2.0.6, Testcontainers 2.0.4→2.0.5. Added summary row to DivisionEntryAdminView Entries tab (credits balance + full per-status entry breakdown). 696 tests.

@@ -76,6 +76,10 @@ public class EntryService {
                                                 int creditsPerUnit,
                                                 @NotNull UUID requestingUserId) {
         requireAuthorizedForDivision(divisionId, requestingUserId);
+        var division = competitionService.findDivisionById(divisionId);
+        if (!division.getStatus().allowsRegistrationActions()) {
+            throw new BusinessRuleException("error.product.registration-closed");
+        }
         if (productMappingRepository.existsByDivisionIdAndJumpsellerProductId(
                 divisionId, jumpsellerProductId)) {
             throw new BusinessRuleException("error.product.already-mapped");
@@ -94,6 +98,10 @@ public class EntryService {
         var mapping = productMappingRepository.findById(mappingId)
                 .orElseThrow(() -> new BusinessRuleException("error.product.not-found"));
         requireAuthorizedForDivision(mapping.getDivisionId(), requestingUserId);
+        var division = competitionService.findDivisionById(mapping.getDivisionId());
+        if (!division.getStatus().allowsRegistrationActions()) {
+            throw new BusinessRuleException("error.product.registration-closed");
+        }
         mapping.updateDetails(productName, creditsPerUnit);
         log.debug("Updated product mapping: {}", mappingId);
         return productMappingRepository.save(mapping);
@@ -104,6 +112,10 @@ public class EntryService {
         var mapping = productMappingRepository.findById(mappingId)
                 .orElseThrow(() -> new BusinessRuleException("error.product.not-found"));
         requireAuthorizedForDivision(mapping.getDivisionId(), requestingUserId);
+        var division = competitionService.findDivisionById(mapping.getDivisionId());
+        if (!division.getStatus().allowsRegistrationActions()) {
+            throw new BusinessRuleException("error.product.registration-closed");
+        }
         productMappingRepository.delete(mapping);
         log.info("Removed product mapping: {}", mappingId);
     }
@@ -129,6 +141,9 @@ public class EntryService {
                             @NotNull UUID requestingUserId) {
         requireAuthorizedForDivision(divisionId, requestingUserId);
         var division = competitionService.findDivisionById(divisionId);
+        if (!division.getStatus().allowsRegistrationActions()) {
+            throw new BusinessRuleException("error.credits.registration-closed");
+        }
         var user = userService.findOrCreateByEmail(userEmail);
 
         // Mutual exclusivity check
@@ -160,6 +175,10 @@ public class EntryService {
                                int amount,
                                @NotNull UUID requestingUserId) {
         requireAuthorizedForDivision(divisionId, requestingUserId);
+        var division = competitionService.findDivisionById(divisionId);
+        if (!division.getStatus().allowsRegistrationActions()) {
+            throw new BusinessRuleException("error.credits.registration-closed");
+        }
         var balance = creditRepository.sumAmountByDivisionIdAndUserId(divisionId, userId);
         if (balance < amount) {
             throw new BusinessRuleException("error.credits.insufficient-balance", balance, amount);
@@ -247,6 +266,10 @@ public class EntryService {
                 .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
         if (!entry.getUserId().equals(userId)) {
             throw new BusinessRuleException("error.entry.not-owner");
+        }
+        var division = competitionService.findDivisionById(entry.getDivisionId());
+        if (division.getStatus() != DivisionStatus.REGISTRATION_OPEN) {
+            throw new BusinessRuleException("error.entry.division-not-open");
         }
         entry.updateDetails(meadName, initialCategoryId, sweetness, abv,
                 carbonation, honeyVarieties, otherIngredients, woodAged,

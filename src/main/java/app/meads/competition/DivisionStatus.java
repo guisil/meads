@@ -22,6 +22,10 @@ public enum DivisionStatus {
         return this == DRAFT || this == REGISTRATION_OPEN;
     }
 
+    public boolean allowsRegistrationActions() {
+        return this == DRAFT || this == REGISTRATION_OPEN;
+    }
+
     public Optional<DivisionStatus> next() {
         var values = values();
         int nextOrdinal = ordinal() + 1;

@@ -205,7 +205,12 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         filterField.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
         filterField.setClearButtonVisible(true);
 
+        boolean registrationOpen = division.getStatus().allowsRegistrationActions();
         var addCreditsButton = new Button(getTranslation("entry-admin.credits.add"), e -> openAddCreditsDialog());
+        addCreditsButton.setEnabled(registrationOpen);
+        if (!registrationOpen) {
+            addCreditsButton.setTooltipText(getTranslation("entry-admin.registration-closed.tooltip"));
+        }
 
         var toolbar = new HorizontalLayout(filterField, addCreditsButton);
         toolbar.setWidthFull();
@@ -222,9 +227,15 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         creditsGrid.addComponentColumn(summary -> {
             var editButton = new Button(new Icon(VaadinIcon.EDIT));
             editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            editButton.setAriaLabel(getTranslation("entry-admin.credits.action.adjust.tooltip"));
-            editButton.setTooltipText(getTranslation("entry-admin.credits.action.adjust.tooltip"));
-            editButton.addClickListener(e -> openEditCreditsDialog(summary));
+            editButton.setEnabled(registrationOpen);
+            if (registrationOpen) {
+                editButton.setAriaLabel(getTranslation("entry-admin.credits.action.adjust.tooltip"));
+                editButton.setTooltipText(getTranslation("entry-admin.credits.action.adjust.tooltip"));
+                editButton.addClickListener(e -> openEditCreditsDialog(summary));
+            } else {
+                editButton.setAriaLabel(getTranslation("entry-admin.registration-closed.tooltip"));
+                editButton.setTooltipText(getTranslation("entry-admin.registration-closed.tooltip"));
+            }
             return editButton;
         }).setHeader(getTranslation("entry-admin.credits.column.actions")).setAutoWidth(true);
 
@@ -986,7 +997,12 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         var tab = new VerticalLayout();
         tab.setPadding(false);
 
+        boolean registrationOpen = division.getStatus().allowsRegistrationActions();
         var addButton = new Button(getTranslation("entry-admin.products.add"), e -> openAddProductDialog());
+        addButton.setEnabled(registrationOpen);
+        if (!registrationOpen) {
+            addButton.setTooltipText(getTranslation("entry-admin.registration-closed.tooltip"));
+        }
         tab.add(addButton);
 
         productsGrid = new Grid<>(ProductMapping.class, false);
@@ -1003,15 +1019,27 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         productsGrid.addComponentColumn(mapping -> {
             var editButton = new Button(new Icon(VaadinIcon.EDIT));
             editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            editButton.setAriaLabel(getTranslation("entry-admin.entries.action.edit.tooltip"));
-            editButton.setTooltipText(getTranslation("entry-admin.entries.action.edit.tooltip"));
-            editButton.addClickListener(e -> openEditProductDialog(mapping));
+            editButton.setEnabled(registrationOpen);
+            if (registrationOpen) {
+                editButton.setAriaLabel(getTranslation("entry-admin.entries.action.edit.tooltip"));
+                editButton.setTooltipText(getTranslation("entry-admin.entries.action.edit.tooltip"));
+                editButton.addClickListener(e -> openEditProductDialog(mapping));
+            } else {
+                editButton.setAriaLabel(getTranslation("entry-admin.registration-closed.tooltip"));
+                editButton.setTooltipText(getTranslation("entry-admin.registration-closed.tooltip"));
+            }
 
             var deleteButton = new Button(new Icon(VaadinIcon.TRASH));
             deleteButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            deleteButton.setAriaLabel(getTranslation("entry-admin.entries.action.delete.tooltip"));
-            deleteButton.setTooltipText(getTranslation("entry-admin.entries.action.delete.tooltip"));
-            deleteButton.addClickListener(e -> openDeleteProductDialog(mapping));
+            deleteButton.setEnabled(registrationOpen);
+            if (registrationOpen) {
+                deleteButton.setAriaLabel(getTranslation("entry-admin.entries.action.delete.tooltip"));
+                deleteButton.setTooltipText(getTranslation("entry-admin.entries.action.delete.tooltip"));
+                deleteButton.addClickListener(e -> openDeleteProductDialog(mapping));
+            } else {
+                deleteButton.setAriaLabel(getTranslation("entry-admin.registration-closed.tooltip"));
+                deleteButton.setTooltipText(getTranslation("entry-admin.registration-closed.tooltip"));
+            }
 
             return new HorizontalLayout(editButton, deleteButton);
         }).setHeader(getTranslation("entry-admin.products.column.actions")).setAutoWidth(true);
