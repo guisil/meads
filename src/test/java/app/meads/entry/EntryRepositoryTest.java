@@ -130,6 +130,25 @@ class EntryRepositoryTest {
     }
 
     @Test
+    void shouldCheckExistsByFinalCategoryId() {
+        var division = createAndSaveDivision();
+        var user = createAndSaveUser();
+        var category = createAndSaveCategory(division);
+
+        var entry = entryRepository.save(new Entry(division.getId(), user.getId(), 1, "ABC123",
+                "My Mead", category.getId(), Sweetness.DRY, new BigDecimal("12.5"), Carbonation.STILL,
+                "Wildflower honey", null, false, null, null));
+
+        assertThat(entryRepository.existsByFinalCategoryId(category.getId())).isFalse();
+
+        entry.assignFinalCategory(category.getId());
+        entryRepository.save(entry);
+
+        assertThat(entryRepository.existsByFinalCategoryId(category.getId())).isTrue();
+        assertThat(entryRepository.existsByFinalCategoryId(java.util.UUID.randomUUID())).isFalse();
+    }
+
+    @Test
     void shouldPersistAllFields() {
         var division = createAndSaveDivision();
         var user = createAndSaveUser();

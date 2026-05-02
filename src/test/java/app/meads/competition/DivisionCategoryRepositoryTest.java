@@ -5,6 +5,7 @@ import app.meads.competition.internal.CategoryRepository;
 import app.meads.competition.internal.CompetitionRepository;
 import app.meads.competition.internal.DivisionCategoryRepository;
 import app.meads.competition.internal.DivisionRepository;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -102,6 +103,52 @@ class DivisionCategoryRepositoryTest {
                 division.getId(), catalogCat.getId())).isTrue();
         assertThat(divisionCategoryRepository.existsByDivisionIdAndCatalogCategoryId(
                 division.getId(), UUID.randomUUID())).isFalse();
+    }
+
+    @Test
+    void shouldFindByDivisionIdAndScope() {
+        var competition = createAndSaveCompetition();
+        var division = createAndSaveDivision(competition.getId());
+
+        divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1", "Traditional Mead", "desc", null, 1));
+        divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Traditional", "desc", null, 2));
+        divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "CX", "Combined", "desc", null, 3,
+                CategoryScope.JUDGING));
+
+        var registration = divisionCategoryRepository
+                .findByDivisionIdAndScopeOrderByCode(division.getId(), CategoryScope.REGISTRATION);
+        var judging = divisionCategoryRepository
+                .findByDivisionIdAndScopeOrderByCode(division.getId(), CategoryScope.JUDGING);
+
+        assertThat(registration).hasSize(2);
+        assertThat(registration).allMatch(dc -> dc.getScope() == CategoryScope.REGISTRATION);
+        assertThat(judging).hasSize(1);
+        assertThat(judging.getFirst().getCode()).isEqualTo("CX");
+        assertThat(judging.getFirst().getScope()).isEqualTo(CategoryScope.JUDGING);
+    }
+
+    @Test
+    void shouldCheckExistsByDivisionIdAndCodeAndScope() {
+        var competition = createAndSaveCompetition();
+        var division = createAndSaveDivision(competition.getId());
+
+        divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Traditional Mead", "desc", null, 1));
+        divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Traditional Mead (Judging)", "desc", null, 1,
+                CategoryScope.JUDGING));
+
+        assertThat(divisionCategoryRepository.existsByDivisionIdAndCodeAndScope(
+                division.getId(), "M1A", CategoryScope.REGISTRATION)).isTrue();
+        assertThat(divisionCategoryRepository.existsByDivisionIdAndCodeAndScope(
+                division.getId(), "M1A", CategoryScope.JUDGING)).isTrue();
+        assertThat(divisionCategoryRepository.existsByDivisionIdAndCodeAndScope(
+                division.getId(), "M1B", CategoryScope.REGISTRATION)).isFalse();
+        assertThat(divisionCategoryRepository.existsByDivisionIdAndCodeAndScope(
+                UUID.randomUUID(), "M1A", CategoryScope.REGISTRATION)).isFalse();
     }
 
     @Test

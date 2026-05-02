@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `main`
-**Tests:** 734 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-02 (judging category service methods + V18 migration)
+**Tests:** 737 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-02 (repository tests for scope queries + existsByFinalCategoryId)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -355,7 +355,7 @@ Add a `scope` enum (`REGISTRATION` / `JUDGING`) to `DivisionCategory`:
 
 **Sequencing (TDD cycles):**
 1. ✅ Unit test: `CompetitionServiceJudgingCategoryTest` — `initializeJudgingCategories`, `addJudgingCategory`, `updateJudgingCategory`, `removeJudgingCategory` (11 tests). Also: `CategoryScope` enum, `JudgingCategoryDeletionGuard` interface, `DivisionStatus.allowsJudgingCategoryManagement()`, V18 migration, backward-compat 7-arg `DivisionCategory` constructor.
-2. Repository test: `DivisionCategoryRepositoryTest` — scope-based queries; `EntryRepository.existsByFinalCategoryId()`
+2. ✅ Repository test: `DivisionCategoryRepositoryTest` — scope-based queries; `EntryRepository.existsByFinalCategoryId()` (3 new tests). Note: must use returned entity from `save()` when re-saving in `@Transactional` tests — `@PrePersist` fires on managed copy, not original Java object.
 3. Unit test: `EntryServiceTest` — `assignFinalCategory` (sets, clears, validates JUDGING scope)
 4. Module integration test: `CompetitionModuleTest` — category lifecycle with scope
 5. UI test: `DivisionDetailViewTest` — registration section read-only + judging section after REGISTRATION_CLOSED
