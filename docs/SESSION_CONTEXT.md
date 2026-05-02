@@ -362,13 +362,24 @@ Add a `scope` enum (`REGISTRATION` / `JUDGING`) to `DivisionCategory`:
 5. ✅ UI test: `DivisionDetailViewTest` — 5 new tests: Add Category disabled after REGISTRATION_CLOSED, Initialize Judging Categories button appears, absent before REGISTRATION_CLOSED, judging grid shown when categories exist, Add Judging Category button shown when categories exist. `DivisionDetailView` updated: judging categories section below registration grid (Initialize button when empty, grid + Add button when populated)
 6. ✅ UI test + guard: `DivisionEntryAdminViewTest` — `shouldRenderEntriesGridWhenEntryHasFinalCategoryAssigned` (grid renders without NPE when entry has finalCategoryId). `EntryModuleTest` — `shouldPreventDeletionOfJudgingCategoryReferencedByFinalCategoryId`. Created `EntryJudgingCategoryDeletionGuard`. Wired `assignFinalCategory` in admin edit Save handler with clearable JUDGING category Select.
 
+### Priority 1 (NEXT): Manual test of judging category management
+Run through the judging category management flow manually:
+- Advance a division to REGISTRATION_CLOSED
+- Verify registration categories become read-only in DivisionDetailView Categories tab
+- Use "Initialize Judging Categories" button and verify cloned JUDGING categories appear
+- Add, edit, and remove a judging category
+- Attempt to delete a category referenced by an entry's finalCategoryId — should be blocked
+- In DivisionEntryAdminView edit dialog, assign and clear a final category on an entry
+- Verify the Final Category column reflects the assignment
+Reference: `docs/walkthrough/manual-test.md`
+
 ### Priority 2: MFA for system admins
 Evaluate and implement multi-factor authentication for SYSTEM_ADMIN accounts.
 Password-only login for privileged accounts is a security risk post-deployment.
 
 ### Priority 3: Full manual walkthrough
-Run the full `docs/walkthrough/manual-test.md` end-to-end to catch any regressions before
-the next major feature cycle (judging module). All 14 sections.
+Run the full `docs/walkthrough/manual-test.md` end-to-end (all 14 sections) before
+starting the judging module implementation.
 
 ### Priority 4: Judging module
 Design and implementation. Reference: `docs/reference/chip-competition-rules.md` and `docs/specs/judging.md`.
