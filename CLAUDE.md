@@ -471,11 +471,14 @@ Stay within the current module's package.
 
 ## Commands
 
+**Always pipe mvn test through `2>&1 | tail -50` (or more) when running in the terminal.**
+Short tails cut off error details and force a second run just to find the failure.
+
 ```bash
 # TDD workflow
-mvn test -Dtest=Class#method -Dsurefire.useFile=false   # one test (Step 1/2)
-mvn test -Dtest=Class -Dsurefire.useFile=false           # one class
-mvn test -Dsurefire.useFile=false                         # full suite (Step 3)
+mvn test -Dtest=Class#method -Dsurefire.useFile=false 2>&1 | tail -50   # one test (Step 1/2)
+mvn test -Dtest=Class -Dsurefire.useFile=false 2>&1 | tail -50           # one class
+mvn test -Dsurefire.useFile=false 2>&1 | tail -50                         # full suite (Step 3)
 
 # Module-scoped
 mvn test -Dtest="app.meads.identity.**" -Dsurefire.useFile=false  # identity module
