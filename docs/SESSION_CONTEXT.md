@@ -273,26 +273,7 @@ CompetitionDetailView, DivisionDetailView, DivisionEntryAdminView. ES/IT/PL fall
 Fixed `ComboBox<>` type inference compilation errors introduced by Java 21 stricter inference
 (needed explicit `new ComboBox<String>(...)` where label arg comes from `getTranslation()`).
 
-### Priority 5 (NEXT): Manual walkthrough of recently merged features
-
-Before any further release, manually test the three feature areas merged since v0.2.7:
-
-1. **Dependency upgrades** — verify the app starts cleanly, no obvious regressions in any view.
-2. **Entry status redesign** — in the admin Entries tab, exercise the `←`/`→` buttons:
-   - Advance a DRAFT entry → SUBMITTED → RECEIVED.
-   - Revert RECEIVED → SUBMITTED → DRAFT.
-   - Withdraw an entry; confirm `←` reverts it back to DRAFT.
-   - Confirm confirmation dialogs appear for each action.
-   - Confirm `←` is disabled on DRAFT entries and `→` is disabled on RECEIVED entries.
-   - Confirm the summary row updates: credits balance and per-status counts (Draft/Submitted/Received/Withdrawn) all reflect the current state after each action.
-3. **Admin view i18n** — switch user language to Portuguese and walk through all 8 admin views
-   (LoginView, SetPasswordView, UserListView, CompetitionListView, MyCompetitionsView,
-   CompetitionDetailView, DivisionDetailView, DivisionEntryAdminView). Verify strings are translated
-   and no English fallback leaks appear where a PT translation should exist.
-
-Reference: `docs/walkthrough/manual-test.md` for the full walkthrough guide.
-
-### Priority 6: Post-registration actions audit
+### Priority 1 (NEXT): Post-registration actions audit
 Review what actions should be allowed/blocked after a division moves past REGISTRATION_OPEN.
 Currently some actions remain available that may need restricting or scoping. Design pass
 needed to decide per-status rules:
@@ -302,28 +283,29 @@ needed to decide per-status rules:
 - **Entrant edit entries** — currently blocked after submit. Should view-only access persist?
 - **Add/remove participants** — should participant management be locked at some point?
 - **Product mappings** — should these be locked after registration?
-Do this audit after the admin i18n work (priority 4) since translated views may surface
-additional UX considerations.
 
-### Priority 7: MFA for system admins
+### Priority 2: MFA for system admins
 Evaluate and implement multi-factor authentication for SYSTEM_ADMIN accounts.
 Password-only login for privileged accounts is a security risk post-deployment.
 
-### Priority 8: Auto-close + deadline reminders (deferred)
+### Priority 3: Full manual walkthrough
+Run the full `docs/walkthrough/manual-test.md` end-to-end to catch any regressions before
+the next major feature cycle (judging module). All 14 sections.
+
+### Priority 4: Judging module
+Design and implementation. Reference: `docs/reference/chip-competition-rules.md` and `docs/specs/judging.md`.
+
+### Priority 5: Awards module
+Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md` and `docs/specs/awards.md`.
+
+### Priority 6: Auto-close + deadline reminders (deferred)
 - **Auto-close** — automatically advance division from REGISTRATION_OPEN → REGISTRATION_CLOSED
   when registration deadline passes (scheduled task)
 - **Entrant deadline reminder** — notify entrants who have DRAFT entries when the registration
   deadline is approaching (e.g., 7 days, 3 days, 1 day before deadline)
 - Other potential: entry received confirmation (when admin marks entry as RECEIVED), results published notification
 
-### Priority 9: Judging module
-Design and implementation. Reference: `docs/reference/chip-competition-rules.md`.
-
-### Priority 10: Awards module
-
-Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md`.
-
-### Priority 11: Full category constraint system (low priority — future competition)
+### Priority 7: Full category constraint system (low priority — future competition)
 Full field locking/validation based on category selection. Design doc: `docs/plans/2026-03-11-category-hints-design.md` (appendix).
 Includes: sweetness locking (M1A→Dry, M1B→Medium, M1C→Sweet), ingredient restrictions (M1/M4E),
 strength locking (M4S→Hydromel), ABV caps (M4S→7.5%), ABV→Strength derivation (universal),
@@ -331,6 +313,7 @@ carbonation locking (custom categories), and admin-configurable constraints for 
 Requires: DB migration, admin UI for constraint config, cross-module data flow, server-side validation.
 
 ### Completed priorities
+- **v0.2.8 release** — Released 2026-05-02. Includes entry status redesign, expanded entries summary row (per-status breakdown), admin view i18n (PT translations), dependency upgrades, and PT translation fixes (pre-AO orthography, wood-aged terminology).
 - **Entry status management redesign** — Completed 2026-04-30. Replaced "Mark as Received" button with `←`/`→` arrow buttons for the full DRAFT → SUBMITTED → RECEIVED flow. WITHDRAWN entries revert to DRAFT. New domain methods `advanceStatus()`/`revertStatus()` on `Entry`; new service methods `advanceEntryStatus()`/`revertEntryStatus()` on `EntryService`. `advanceEntryStatus()` calls `publishSubmissionEventIfComplete()` (consistent with entrant-triggered path). `getTotalCreditBalance(divisionId)` replaces N+1 participant loop. Summary row: "Credits balance: N | Total entries: N (Draft: X, Submitted: Y, Received: Z, Withdrawn: W)". 715 tests.
 - **Dependency upgrades + entry admin summary row** — Completed 2026-04-29. Bumped Spring Boot 4.0.2→4.0.6, Vaadin 25.0.7→25.1.3, Spring Modulith 2.0.4→2.0.6, Testcontainers 2.0.4→2.0.5. Added summary row to DivisionEntryAdminView Entries tab (credits balance + full per-status entry breakdown). 696 tests.
 - **Admin view i18n** — Completed 2026-04-29. Extracted ~270 hardcoded strings from 8 admin views (LoginView, SetPasswordView, UserListView, CompetitionListView, MyCompetitionsView, CompetitionDetailView, DivisionDetailView, DivisionEntryAdminView). Added keys to `messages.properties`, Portuguese translations to `messages_pt.properties`. ES/IT/PL fall back to EN. Fixed `ComboBox<>` type inference issue under Java 21 (explicit `new ComboBox<String>(...)`).
