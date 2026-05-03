@@ -175,7 +175,7 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
                         notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                     } catch (BusinessRuleException ex) {
                         e.getSource().setEnabled(true);
-                        Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                        Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                     }
                 });
                 removeLogoButton.setDisableOnClick(true);
@@ -236,7 +236,7 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
                 dialog.close();
             } catch (BusinessRuleException ex) {
                 e.getSource().setEnabled(true);
-                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
             }
         });
         submitButton.setDisableOnClick(true);
@@ -269,7 +269,7 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
                 dialog.close();
             } catch (BusinessRuleException ex) {
                 e.getSource().setEnabled(true);
-                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 dialog.close();
             }
         });

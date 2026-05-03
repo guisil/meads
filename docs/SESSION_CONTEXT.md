@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `main`
-**Tests:** 754 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-02 (EntryJudgingCategoryDeletionGuard + final category Select in edit dialog)
+**Tests:** 754 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-03 (judging categories tab, i18n, locale-aware admin errors)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -362,39 +362,64 @@ Add a `scope` enum (`REGISTRATION` / `JUDGING`) to `DivisionCategory`:
 5. ✅ UI test: `DivisionDetailViewTest` — 5 new tests: Add Category disabled after REGISTRATION_CLOSED, Initialize Judging Categories button appears, absent before REGISTRATION_CLOSED, judging grid shown when categories exist, Add Judging Category button shown when categories exist. `DivisionDetailView` updated: judging categories section below registration grid (Initialize button when empty, grid + Add button when populated)
 6. ✅ UI test + guard: `DivisionEntryAdminViewTest` — `shouldRenderEntriesGridWhenEntryHasFinalCategoryAssigned` (grid renders without NPE when entry has finalCategoryId). `EntryModuleTest` — `shouldPreventDeletionOfJudgingCategoryReferencedByFinalCategoryId`. Created `EntryJudgingCategoryDeletionGuard`. Wired `assignFinalCategory` in admin edit Save handler with clearable JUDGING category Select.
 
-### Priority 1 (NEXT): Manual test of judging category management
-Run through the judging category management flow manually:
-- Advance a division to REGISTRATION_CLOSED
-- Verify registration categories become read-only in DivisionDetailView Categories tab
-- Use "Initialize Judging Categories" button and verify cloned JUDGING categories appear
-- Add, edit, and remove a judging category
-- Attempt to delete a category referenced by an entry's finalCategoryId — should be blocked
-- In DivisionEntryAdminView edit dialog, assign and clear a final category on an entry
-- Verify the Final Category column reflects the assignment
-Reference: `docs/walkthrough/manual-test.md`
+### Priority 1: Manual test of judging category management — COMPLETE
+Manual testing completed 2026-05-03. Issues found and fixed during walkthrough:
+- **Judging Categories moved to own tab** — previously embedded in the Categories tab; now a
+  separate "Judging Categories" tab (only visible when `allowsJudgingCategoryManagement()`).
+  Default tab is Judging Categories when status ≥ REGISTRATION_CLOSED.
+- **i18n for judging section** — all hardcoded English strings (button labels, dialog titles,
+  column headers, field labels, notifications) now use `getTranslation()`. Keys added under
+  `division-detail.judging.*` in both `messages.properties` and `messages_pt.properties`.
+- **Missing error keys added** — `error.category.judging-has-entries`,
+  `error.category.judging-not-allowed-status`, `error.category.judging-already-initialized`
+  added to both EN and PT. Previously showed raw key string instead of message.
+- **Admin error messages now locale-aware** — removed forced `Locale.ENGLISH` from all 40
+  `BusinessRuleException` catch blocks across 5 admin views (UserListView, CompetitionListView,
+  CompetitionDetailView, DivisionDetailView, DivisionEntryAdminView). Errors now render in the
+  user's preferred language, consistent with all other translated strings.
+- **Add Judging Category dialog** — fields now laid out vertically (Code → Name → Description
+  → Parent Category), matching the custom category dialog style. Parent select added.
 
-### Priority 2: MFA for system admins
+### Priority 2: Investigate Bitwarden / password manager compatibility on login page
+Bitwarden shows "This page is interfering with the Bitwarden experience. The Bitwarden inline
+menu has been temporarily disabled as a safety measure." on the MEADS login page. This is a
+side-effect of Vaadin's architecture, not intentional interference. Three contributing factors:
+1. **Shadow DOM** — `EmailField`/`PasswordField` are web components; the real `<input>` lives
+   inside Shadow DOM. Bitwarden uses `document.elementFromPoint()` to verify its overlay is
+   visible; Shadow DOM boundaries cause this check to return the host element instead of the
+   inner input, which Bitwarden interprets as something blocking its overlay.
+2. **Hidden form pattern** — visible fields are Vaadin web components; actual Spring Security
+   POST uses a hidden `<form>` with `<input type="hidden">` fields submitted via `executeJs`.
+   Bitwarden sees no autofillable native password field in the form and may flag the mismatch.
+3. **Global Enter shortcut** — `Shortcuts.addShortcutListener(..., Key.ENTER)` may consume
+   Enter before Bitwarden's inline menu can handle it, looking like keyboard interception.
+Potential fix: replace the custom form with Vaadin's built-in `LoginForm` component, which
+renders a proper native form with a visible password input that password managers handle better.
+Only affects admins (password login path); magic link path used by entrants is unaffected.
+Assess impact and decide whether to fix before or alongside MFA.
+
+### Priority 3: MFA for system admins
 Evaluate and implement multi-factor authentication for SYSTEM_ADMIN accounts.
 Password-only login for privileged accounts is a security risk post-deployment.
 
-### Priority 3: Full manual walkthrough
+### Priority 4: Full manual walkthrough
 Run the full `docs/walkthrough/manual-test.md` end-to-end (all 14 sections) before
 starting the judging module implementation.
 
-### Priority 4: Judging module
+### Priority 5: Judging module
 Design and implementation. Reference: `docs/reference/chip-competition-rules.md` and `docs/specs/judging.md`.
 
-### Priority 5: Awards module
+### Priority 6: Awards module
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md` and `docs/specs/awards.md`.
 
-### Priority 6: Auto-close + deadline reminders (deferred)
+### Priority 7: Auto-close + deadline reminders (deferred)
 - **Auto-close** — automatically advance division from REGISTRATION_OPEN → REGISTRATION_CLOSED
   when registration deadline passes (scheduled task)
 - **Entrant deadline reminder** — notify entrants who have DRAFT entries when the registration
   deadline is approaching (e.g., 7 days, 3 days, 1 day before deadline)
 - Other potential: entry received confirmation (when admin marks entry as RECEIVED), results published notification
 
-### Priority 7: Full category constraint system (low priority — future competition)
+### Priority 8: Full category constraint system (low priority — future competition)
 Full field locking/validation based on category selection. Design doc: `docs/plans/2026-03-11-category-hints-design.md` (appendix).
 Includes: sweetness locking (M1A→Dry, M1B→Medium, M1C→Sweet), ingredient restrictions (M1/M4E),
 strength locking (M4S→Hydromel), ABV caps (M4S→7.5%), ABV→Strength derivation (universal),

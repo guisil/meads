@@ -321,7 +321,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 refreshCreditsGrid();
                 refreshCreditsBalance();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 e.getSource().setEnabled(true);
             } catch (jakarta.validation.ConstraintViolationException ex) {
                 emailField.setInvalid(true);
@@ -366,7 +366,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 refreshCreditsGrid();
                 refreshCreditsBalance();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 e.getSource().setEnabled(true);
             }
         });
@@ -815,7 +815,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 dialog.close();
                 refreshEntriesGrid();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 e.getSource().setEnabled(true);
             } catch (jakarta.validation.ConstraintViolationException ex) {
                 emailField.setInvalid(true);
@@ -1070,7 +1070,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 dialog.close();
                 refreshEntriesGrid();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 e.getSource().setEnabled(true);
             }
         });
@@ -1096,7 +1096,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 dialog.close();
                 refreshEntriesGrid();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 e.getSource().setEnabled(true);
             }
         });
@@ -1125,7 +1125,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 dialog.close();
                 refreshEntriesGrid();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 e.getSource().setEnabled(true);
             } catch (IllegalStateException ex) {
                 Notification.show(getTranslation("entry-admin.entries.status-changed"));
@@ -1158,7 +1158,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 dialog.close();
                 refreshEntriesGrid();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 e.getSource().setEnabled(true);
             } catch (IllegalStateException ex) {
                 Notification.show(getTranslation("entry-admin.entries.status-changed"));
@@ -1188,7 +1188,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 dialog.close();
                 refreshEntriesGrid();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 e.getSource().setEnabled(true);
             }
         });
@@ -1320,7 +1320,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 dialog.close();
                 refreshProductsGrid();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 e.getSource().setEnabled(true);
             }
         });
@@ -1357,7 +1357,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 dialog.close();
                 refreshProductsGrid();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 e.getSource().setEnabled(true);
             }
         });
@@ -1382,7 +1382,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 dialog.close();
                 refreshProductsGrid();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 e.getSource().setEnabled(true);
             }
         });
@@ -1519,7 +1519,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 dialog.close();
                 refreshOrdersGrid();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 e.getSource().setEnabled(true);
             }
         });

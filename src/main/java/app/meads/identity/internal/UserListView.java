@@ -154,7 +154,7 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
             try {
                 removeUser(user);
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
             }
         }
     }
@@ -174,7 +174,7 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
                 removeUser(user);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 e.getSource().setEnabled(true);
                 dialog.close();
             }
@@ -335,7 +335,7 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
             } catch (BusinessRuleException ex) {
                 if (isCreate) {
                     emailField.setInvalid(true);
-                    emailField.setErrorMessage(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                    emailField.setErrorMessage(getTranslation(ex.getMessageKey(), ex.getParams()));
                 } else {
                     nameField.setInvalid(true);
                     nameField.setErrorMessage(getTranslation("user-list.dialog.save-failed"));

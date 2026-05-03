@@ -181,6 +181,10 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         tabSheet.setWidthFull();
 
         tabSheet.add(getTranslation("division-detail.tab.categories"), createCategoriesTab());
+        if (division.getStatus().allowsJudgingCategoryManagement()) {
+            tabSheet.add(getTranslation("division-detail.tab.judging-categories"), createJudgingCategoriesSection());
+            tabSheet.setSelectedIndex(1);
+        }
         tabSheet.add(getTranslation("division-detail.tab.settings"), createSettingsTab());
 
         return tabSheet;
@@ -222,10 +226,6 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         refreshCategoriesGrid();
         tab.add(categoriesGrid);
 
-        if (division.getStatus().allowsJudgingCategoryManagement()) {
-            tab.add(createJudgingCategoriesSection());
-        }
-
         return tab;
     }
 
@@ -236,14 +236,14 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         var judgingCategories = competitionService.findJudgingCategories(divisionId);
 
         if (judgingCategories.isEmpty()) {
-            var initButton = new Button("Initialize Judging Categories", e -> {
+            var initButton = new Button(getTranslation("division-detail.judging.initialize"), e -> {
                 try {
                     competitionService.initializeJudgingCategories(divisionId, getCurrentUserId());
                     getUI().ifPresent(ui -> ui.navigate(
                             "competitions/" + competition.getShortName()
                                     + "/divisions/" + division.getShortName()));
                 } catch (BusinessRuleException ex) {
-                    Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                    Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                     e.getSource().setEnabled(true);
                 }
             });
@@ -251,19 +251,21 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
             section.add(initButton);
         } else {
             var judgingActions = new HorizontalLayout();
-            var addJudgingButton = new Button("Add Judging Category",
+            var addJudgingButton = new Button(getTranslation("division-detail.judging.add-button"),
                     e -> openAddJudgingCategoryDialog());
-            addJudgingButton.setDisableOnClick(false);
             judgingActions.add(addJudgingButton);
             section.add(judgingActions);
 
             judgingCategoriesGrid = new TreeGrid<>(DivisionCategory.class, false);
             judgingCategoriesGrid.setAllRowsVisible(true);
             judgingCategoriesGrid.setId("judging-categories-grid");
-            judgingCategoriesGrid.addHierarchyColumn(DivisionCategory::getCode).setHeader("Code")
+            judgingCategoriesGrid.addHierarchyColumn(DivisionCategory::getCode)
+                    .setHeader(getTranslation("division-detail.judging.column.code"))
                     .setWidth("150px").setFlexGrow(0).setSortable(true);
-            judgingCategoriesGrid.addColumn(DivisionCategory::getName).setHeader("Name");
-            judgingCategoriesGrid.addColumn(DivisionCategory::getDescription).setHeader("Description")
+            judgingCategoriesGrid.addColumn(DivisionCategory::getName)
+                    .setHeader(getTranslation("division-detail.judging.column.name"));
+            judgingCategoriesGrid.addColumn(DivisionCategory::getDescription)
+                    .setHeader(getTranslation("division-detail.judging.column.description"))
                     .setFlexGrow(2);
 
             judgingCategoriesGrid.addComponentColumn(dc -> {
@@ -271,7 +273,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                 removeButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
                 removeButton.addClickListener(ev -> openRemoveJudgingCategoryDialog(dc));
                 return removeButton;
-            }).setHeader("Actions").setAutoWidth(true);
+            }).setHeader(getTranslation("division-detail.judging.column.actions")).setAutoWidth(true);
 
             refreshJudgingCategoriesGrid();
             section.add(judgingCategoriesGrid);
@@ -295,59 +297,87 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
 
     private void openAddJudgingCategoryDialog() {
         var dialog = new Dialog();
-        dialog.setHeaderTitle("Add Judging Category");
+        dialog.setHeaderTitle(getTranslation("division-detail.judging.add.title"));
 
-        var codeField = new TextField("Code");
+        var codeField = new TextField(getTranslation("division-detail.judging.add.code"));
         codeField.setMaxLength(50);
-        var nameField = new TextField("Name");
+        var nameField = new TextField(getTranslation("division-detail.judging.add.name"));
         nameField.setMaxLength(255);
-        var descriptionField = new TextField("Description");
+        var descriptionField = new TextField(getTranslation("division-detail.judging.add.description"));
         descriptionField.setMaxLength(255);
 
-        var addButton = new Button("Add", e -> {
+        var parentSelect = new Select<DivisionCategory>();
+        parentSelect.setLabel(getTranslation("division-detail.judging.add.parent"));
+        parentSelect.setEmptySelectionAllowed(true);
+        parentSelect.setEmptySelectionCaption(getTranslation("division-detail.judging.add.parent.none"));
+        parentSelect.setItemLabelGenerator(dc -> dc != null ? dc.getCode() + " — " + dc.getName() : "");
+        var topLevelJudging = competitionService.findJudgingCategories(divisionId).stream()
+                .filter(dc -> dc.getParentId() == null)
+                .toList();
+        parentSelect.setItems(topLevelJudging);
+
+        var content = new VerticalLayout(codeField, nameField, descriptionField, parentSelect);
+        content.setPadding(false);
+
+        var addButton = new Button(getTranslation("division-detail.judging.add.button"), e -> {
             if (!StringUtils.hasText(codeField.getValue())
                     || !StringUtils.hasText(nameField.getValue())
                     || !StringUtils.hasText(descriptionField.getValue())) {
+                if (!StringUtils.hasText(codeField.getValue())) {
+                    codeField.setInvalid(true);
+                    codeField.setErrorMessage(getTranslation("division-detail.judging.add.code.error"));
+                }
+                if (!StringUtils.hasText(nameField.getValue())) {
+                    nameField.setInvalid(true);
+                    nameField.setErrorMessage(getTranslation("division-detail.judging.add.name.error"));
+                }
+                if (!StringUtils.hasText(descriptionField.getValue())) {
+                    descriptionField.setInvalid(true);
+                    descriptionField.setErrorMessage(getTranslation("division-detail.judging.add.description.error"));
+                }
                 e.getSource().setEnabled(true);
                 return;
             }
             try {
+                UUID parentId = parentSelect.getValue() != null
+                        ? parentSelect.getValue().getId() : null;
                 competitionService.addJudgingCategory(divisionId,
                         codeField.getValue().trim(),
                         nameField.getValue().trim(),
                         descriptionField.getValue().trim(),
-                        null, getCurrentUserId());
+                        parentId, getCurrentUserId());
                 refreshJudgingCategoriesGrid();
-                var notification = Notification.show("Judging category added.");
+                var notification = Notification.show(getTranslation("division-detail.judging.added"));
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 e.getSource().setEnabled(true);
             }
         });
         addButton.setDisableOnClick(true);
 
         var cancelButton = new Button("Cancel", e -> dialog.close());
-        dialog.add(codeField, nameField, descriptionField);
+        dialog.add(content);
         dialog.getFooter().add(cancelButton, addButton);
         dialog.open();
     }
 
     private void openRemoveJudgingCategoryDialog(DivisionCategory category) {
         var dialog = new Dialog();
-        dialog.setHeaderTitle("Remove Judging Category");
-        dialog.add("Remove \"" + category.getCode() + " — " + category.getName() + "\"?");
+        dialog.setHeaderTitle(getTranslation("division-detail.judging.remove.title"));
+        dialog.add(getTranslation("division-detail.judging.remove.confirm",
+                category.getCode(), category.getName()));
 
-        var confirmButton = new Button("Remove", e -> {
+        var confirmButton = new Button(getTranslation("division-detail.judging.remove.button"), e -> {
             try {
                 competitionService.removeJudgingCategory(divisionId, category.getId(), getCurrentUserId());
                 refreshJudgingCategoriesGrid();
-                var notification = Notification.show("Judging category removed.");
+                var notification = Notification.show(getTranslation("division-detail.judging.removed"));
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 e.getSource().setEnabled(true);
                 dialog.close();
             }
@@ -385,7 +415,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 e.getSource().setEnabled(true);
                 dialog.close();
             } catch (DataIntegrityViolationException ex) {
@@ -432,7 +462,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 e.getSource().setEnabled(true);
             }
         });
@@ -496,7 +526,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 e.getSource().setEnabled(true);
             }
         });
@@ -641,7 +671,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 e.getSource().setEnabled(true);
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 e.getSource().setEnabled(true);
             } catch (IllegalStateException ex) {
                 Notification.show(getTranslation("division-detail.settings.status-error"));
@@ -674,7 +704,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                                 + "/divisions/" + division.getShortName()));
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 e.getSource().setEnabled(true);
                 dialog.close();
             }
@@ -703,7 +733,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                                 + "/divisions/" + division.getShortName()));
                 dialog.close();
             } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), java.util.Locale.ENGLISH, ex.getParams()));
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 e.getSource().setEnabled(true);
                 dialog.close();
             }
