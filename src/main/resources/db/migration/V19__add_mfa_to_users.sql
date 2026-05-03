@@ -1,0 +1,3 @@
+ALTER TABLE users
+    ADD COLUMN totp_secret VARCHAR(64),
+    ADD COLUMN mfa_enabled BOOLEAN NOT NULL DEFAULT FALSE;

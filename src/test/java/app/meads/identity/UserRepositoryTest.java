@@ -103,4 +103,43 @@ class UserRepositoryTest {
         assertThat(found).isPresent();
         assertThat(found.get().getMeaderyName()).isNull();
     }
+
+    @Test
+    void shouldPersistMfaDisabledByDefault() {
+        var user = new User("nomfa@repository.com", "No MFA", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
+
+        userRepository.save(user);
+        var found = userRepository.findByEmail("nomfa@repository.com");
+
+        assertThat(found).isPresent();
+        assertThat(found.get().isMfaEnabled()).isFalse();
+        assertThat(found.get().getTotpSecret()).isNull();
+    }
+
+    @Test
+    void shouldPersistMfaEnabledWithSecret() {
+        var user = new User("withmfa@repository.com", "With MFA", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
+        user.enableMfa("JBSWY3DPEHPK3PXP");
+
+        userRepository.save(user);
+        var found = userRepository.findByEmail("withmfa@repository.com");
+
+        assertThat(found).isPresent();
+        assertThat(found.get().isMfaEnabled()).isTrue();
+        assertThat(found.get().getTotpSecret()).isEqualTo("JBSWY3DPEHPK3PXP");
+    }
+
+    @Test
+    void shouldPersistMfaDisabledAfterBeingEnabled() {
+        var user = new User("disablemfa@repository.com", "Disable MFA", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
+        user.enableMfa("JBSWY3DPEHPK3PXP");
+        user.disableMfa();
+
+        userRepository.save(user);
+        var found = userRepository.findByEmail("disablemfa@repository.com");
+
+        assertThat(found).isPresent();
+        assertThat(found.get().isMfaEnabled()).isFalse();
+        assertThat(found.get().getTotpSecret()).isNull();
+    }
 }

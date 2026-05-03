@@ -126,7 +126,10 @@ app.meads.identity                       ← Identity module public API
     ├── AdminInitializer.java            ← Seeds initial admin with password on startup
     ├── DevUserInitializer.java          ← Seeds dev users (dev profile only)
     ├── SetPasswordView.java              ← Set password via token (@AnonymousAllowed)
-    ├── ProfileView.java                  ← User profile self-edit + language dropdown (@PermitAll)
+    ├── ProfileView.java                  ← User profile self-edit + language dropdown + MFA section for SYSTEM_ADMIN (@PermitAll)
+    ├── MfaVerifyView.java               ← TOTP code entry after password login for MFA-enabled admins (@AnonymousAllowed, /mfa)
+    ├── MfaAuthenticationSuccessHandler.java ← After form login, redirects MFA-enabled users to /mfa (sets MFA_PENDING_EMAIL session attr)
+    ├── TotpService.java                 ← TOTP implementation: generateSecret, verifyCode (±1 window), generateQrUri, Base32 encode/decode
     ├── UserLocaleResolverImpl.java      ← UserLocaleResolver implementation
     ├── UserLanguageUpdaterImpl.java     ← UserLanguageUpdater implementation
     └── UserActivationListener.java      ← PENDING → ACTIVE on first login
@@ -389,7 +392,7 @@ void tearDown() {
 ## Database & Migrations
 
 - **Location:** `src/main/resources/db/migration/V{N}__{description}.sql`
-- **Current highest version:** V18 (`V18__add_scope_to_division_categories.sql`). V2 includes users + meadery_name. V3–V8 are competition module (V3 includes contact_email + shipping_address + phone_number, V4 includes entry limits + prefix). V9–V13 are entry module. V14 is competition documents. V15 adds website to competitions. V16 adds preferred_language to users (i18n). V17 is document language filtering. V18 adds `scope` column to `division_categories` and updates unique constraint to `(division_id, code, scope)`.
+- **Current highest version:** V19 (`V19__add_mfa_to_users.sql`). V2 includes users + meadery_name. V3–V8 are competition module (V3 includes contact_email + shipping_address + phone_number, V4 includes entry limits + prefix). V9–V13 are entry module. V14 is competition documents. V15 adds website to competitions. V16 adds preferred_language to users (i18n). V17 is document language filtering. V18 adds `scope` column to `division_categories` and updates unique constraint to `(division_id, code, scope)`. V19 adds `totp_secret` and `mfa_enabled` columns to `users`.
 - **Naming:** `V{next}__{snake_case_description}.sql` (double underscore)
 - Migrations are created in **Step 2** (GREEN), when a repository test needs a table.
 - **Never edit existing migrations.** Always create new ones.

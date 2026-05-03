@@ -5,10 +5,12 @@ import static com.vaadin.flow.spring.security.VaadinSecurityConfigurer.vaadin;
 import app.meads.identity.AccessCodeValidator;
 import app.meads.identity.JwtMagicLinkService;
 import app.meads.identity.LoginView;
+import app.meads.identity.UserService;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.security.config.ObjectPostProcessor;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -36,15 +38,17 @@ public class SecurityConfig {
                                                    JwtMagicLinkService jwtMagicLinkService,
                                                    UserDetailsService userDetailsService,
                                                    ApplicationEventPublisher eventPublisher,
-                                                   AccessCodeValidator accessCodeValidator) throws Exception {
+                                                   AccessCodeValidator accessCodeValidator,
+                                                   UserService userService) throws Exception {
         var magicLinkFilter = new MagicLinkAuthenticationFilter(
                 jwtMagicLinkService, userDetailsService, eventPublisher);
-
+        var mfaSuccessHandler = new MfaAuthenticationSuccessHandler(userService);
         var accessCodeProvider = new AccessCodeAwareAuthenticationProvider(accessCodeValidator, userDetailsService);
 
         http
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/login/magic").permitAll()
+                .requestMatchers("/mfa").permitAll()
                 .requestMatchers("/images/**").permitAll()
             )
             .with(vaadin(), vaadin -> vaadin
@@ -52,7 +56,15 @@ public class SecurityConfig {
             )
             .formLogin(form -> form
                 .loginProcessingUrl("/login")
-                .defaultSuccessUrl("/", true)
+                // withObjectPostProcessor guarantees our handler is applied last,
+                // after Vaadin's VaadinSecurityConfigurer has had its turn
+                .withObjectPostProcessor(new ObjectPostProcessor<UsernamePasswordAuthenticationFilter>() {
+                    @Override
+                    public <O extends UsernamePasswordAuthenticationFilter> O postProcess(O filter) {
+                        filter.setAuthenticationSuccessHandler(mfaSuccessHandler);
+                        return filter;
+                    }
+                })
             )
             .addFilterBefore(magicLinkFilter, UsernamePasswordAuthenticationFilter.class)
             .authenticationProvider(accessCodeProvider);

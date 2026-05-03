@@ -237,6 +237,55 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] Log in with the user's email and the new password
 - [ ] **Expected:** Successful login
 
+### MFA setup (SYSTEM_ADMIN)
+
+- [ ] Log in as `admin@example.com` (password: `admin`)
+- [ ] Navigate to `/profile`
+- [ ] **Expected:** "Two-Factor Authentication" section visible below profile fields
+- [ ] **Expected:** Status "2FA is not enabled", "Set Up 2FA" button visible
+- [ ] Click "Set Up 2FA"
+- [ ] **Expected:** Dialog opens with "Set Up Two-Factor Authentication" heading
+- [ ] **Expected:** "Secret Key" field (read-only) with a Base32 secret (e.g. `JBSWY3DPEHPK3PXP...`)
+- [ ] **Expected:** "Verification Code" field and "Enable 2FA" button
+- [ ] Open your authenticator app (Google Authenticator, Authy, etc.), add account manually with the secret key
+- [ ] Enter the 6-digit code from the app → click "Enable 2FA"
+- [ ] **Expected:** Dialog closes, notification "Two-factor authentication enabled", page reloads
+- [ ] **Expected:** Profile page now shows "2FA is enabled" and "Disable 2FA" button
+
+### MFA login flow
+
+- [ ] Log out
+- [ ] Navigate to `/login`, enter `admin@example.com` + password `admin` → click "Login"
+- [ ] **Expected:** Redirected to `/mfa` (not to `/competitions`)
+- [ ] **Expected:** Page shows "Two-Factor Authentication" heading + "Verification Code" field + "Verify" button
+- [ ] Enter the 6-digit code from your authenticator app
+- [ ] Click "Verify"
+- [ ] **Expected:** Redirected to `/competitions` (successfully authenticated)
+
+### MFA rejection for wrong code
+
+- [ ] Log out
+- [ ] Navigate to `/login`, enter `admin@example.com` + password → click "Login"
+- [ ] At `/mfa`, enter `000000` (invalid code) → click "Verify"
+- [ ] **Expected:** Error notification "Invalid verification code. Please try again."
+- [ ] **Expected:** Still on `/mfa` page (not redirected)
+
+### MFA disable
+
+- [ ] Log in as `admin@example.com` (via MFA flow)
+- [ ] Navigate to `/profile`
+- [ ] Click "Disable 2FA"
+- [ ] **Expected:** Notification "Two-factor authentication disabled", page reloads
+- [ ] **Expected:** Profile page shows "2FA is not enabled" and "Set Up 2FA" button
+- [ ] Log out and log in again
+- [ ] **Expected:** Redirected directly to `/competitions` (no MFA prompt)
+
+### MFA not shown for regular users
+
+- [ ] Log in as `user@example.com` (magic link)
+- [ ] Navigate to `/profile`
+- [ ] **Expected:** No "Two-Factor Authentication" section (only visible for SYSTEM_ADMIN)
+
 ---
 
 ## 3. Navigation & Layout

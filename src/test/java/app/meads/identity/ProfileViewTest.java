@@ -138,4 +138,51 @@ class ProfileViewTest {
         assertThat(updated.getName()).isEqualTo("Updated Name");
         assertThat(updated.getMeaderyName()).isEqualTo("My Meadery");
     }
+
+    @Test
+    @WithMockUser(username = "admin-mfa@test.com", roles = "SYSTEM_ADMIN")
+    void shouldShowMfaSetupSectionForSystemAdmin() {
+        userRepository.findByEmail("admin-mfa@test.com")
+                .orElseGet(() -> userRepository.save(
+                        new User("admin-mfa@test.com", "Admin MFA", UserStatus.ACTIVE, Role.SYSTEM_ADMIN)));
+
+        UI.getCurrent().navigate("profile");
+
+        var setupButton = _get(Button.class, spec -> spec.withText("Set Up 2FA"));
+        assertThat(setupButton).isNotNull();
+    }
+
+    @Test
+    @WithMockUser(username = "user-no-mfa@test.com", roles = "USER")
+    void shouldNotShowMfaSectionForRegularUser() {
+        userRepository.findByEmail("user-no-mfa@test.com")
+                .orElseGet(() -> userRepository.save(
+                        new User("user-no-mfa@test.com", "Regular User", UserStatus.ACTIVE, Role.USER)));
+
+        UI.getCurrent().navigate("profile");
+
+        var setupButtons = _find(Button.class, spec -> spec.withText("Set Up 2FA"));
+        assertThat(setupButtons).isEmpty();
+    }
+
+    @Test
+    @WithMockUser(username = "admin-mfa-enabled@test.com", roles = "SYSTEM_ADMIN")
+    void shouldShowDisableMfaButtonWhenMfaIsEnabled() {
+        var user = userRepository.findByEmail("admin-mfa-enabled@test.com")
+                .orElseGet(() -> {
+                    var u = new User("admin-mfa-enabled@test.com", "Admin MFA", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
+                    u.enableMfa("TESTSECRET");
+                    return userRepository.save(u);
+                });
+
+        if (!user.isMfaEnabled()) {
+            user.enableMfa("TESTSECRET");
+            userRepository.save(user);
+        }
+
+        UI.getCurrent().navigate("profile");
+
+        var disableButton = _get(Button.class, spec -> spec.withText("Disable 2FA"));
+        assertThat(disableButton).isNotNull();
+    }
 }

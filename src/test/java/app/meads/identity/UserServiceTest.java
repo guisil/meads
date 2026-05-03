@@ -1,6 +1,7 @@
 package app.meads.identity;
 
 import app.meads.BusinessRuleException;
+import app.meads.identity.internal.TotpService;
 import app.meads.identity.internal.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,13 +40,16 @@ class UserServiceTest {
     @Mock
     PasswordEncoder passwordEncoder;
 
+    @Mock
+    TotpService totpService;
+
     List<UserDeletionGuard> deletionGuards = new ArrayList<>();
 
     @BeforeEach
     void setUp() {
         deletionGuards.clear();
         userService = new UserService(userRepository, jwtMagicLinkService,
-                passwordEncoder, deletionGuards);
+                passwordEncoder, deletionGuards, totpService);
     }
 
     @Test
@@ -453,5 +457,77 @@ class UserServiceTest {
         given(userRepository.findById(user.getId())).willReturn(Optional.of(user));
 
         assertThat(userService.hasPassword(user.getId())).isFalse();
+    }
+
+    // --- MFA tests ---
+
+    @Test
+    void shouldSetupMfaAndReturnQrUri() {
+        var user = new User("admin@example.com", "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
+        given(userRepository.findById(user.getId())).willReturn(Optional.of(user));
+        given(totpService.generateSecret()).willReturn("TESTSECRET");
+        given(totpService.generateQrUri("TESTSECRET", "admin@example.com")).willReturn("otpauth://totp/MEADS:admin%40example.com?secret=TESTSECRET&issuer=MEADS");
+        given(userRepository.save(any(User.class))).willAnswer(inv -> inv.getArgument(0));
+
+        var qrUri = userService.setupMfa(user.getId());
+
+        assertThat(qrUri).startsWith("otpauth://totp/");
+        assertThat(user.getTotpSecret()).isEqualTo("TESTSECRET");
+        assertThat(user.isMfaEnabled()).isFalse();
+        then(userRepository).should().save(user);
+    }
+
+    @Test
+    void shouldConfirmMfaWhenCodeIsValid() {
+        var user = new User("admin@example.com", "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
+        user.storePendingMfaSecret("TESTSECRET");
+        given(userRepository.findById(user.getId())).willReturn(Optional.of(user));
+        given(totpService.verifyCode("TESTSECRET", "123456")).willReturn(true);
+        given(userRepository.save(any(User.class))).willAnswer(inv -> inv.getArgument(0));
+
+        userService.confirmMfa(user.getId(), "123456");
+
+        assertThat(user.isMfaEnabled()).isTrue();
+        assertThat(user.getTotpSecret()).isEqualTo("TESTSECRET");
+        then(userRepository).should().save(user);
+    }
+
+    @Test
+    void shouldRejectConfirmMfaWhenCodeIsInvalid() {
+        var user = new User("admin@example.com", "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
+        user.storePendingMfaSecret("TESTSECRET");
+        given(userRepository.findById(user.getId())).willReturn(Optional.of(user));
+        given(totpService.verifyCode("TESTSECRET", "000000")).willReturn(false);
+
+        assertThatThrownBy(() -> userService.confirmMfa(user.getId(), "000000"))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.mfa.invalid-code");
+
+        assertThat(user.isMfaEnabled()).isFalse();
+        then(userRepository).should(never()).save(any());
+    }
+
+    @Test
+    void shouldVerifyMfaCode() {
+        var user = new User("admin@example.com", "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
+        user.enableMfa("TESTSECRET");
+        given(userRepository.findById(user.getId())).willReturn(Optional.of(user));
+        given(totpService.verifyCode("TESTSECRET", "123456")).willReturn(true);
+
+        assertThat(userService.verifyMfaCode(user.getId(), "123456")).isTrue();
+    }
+
+    @Test
+    void shouldDisableMfa() {
+        var user = new User("admin@example.com", "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
+        user.enableMfa("TESTSECRET");
+        given(userRepository.findById(user.getId())).willReturn(Optional.of(user));
+        given(userRepository.save(any(User.class))).willAnswer(inv -> inv.getArgument(0));
+
+        userService.disableMfa(user.getId());
+
+        assertThat(user.isMfaEnabled()).isFalse();
+        assertThat(user.getTotpSecret()).isNull();
+        then(userRepository).should().save(user);
     }
 }

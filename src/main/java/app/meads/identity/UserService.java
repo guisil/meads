@@ -1,6 +1,7 @@
 package app.meads.identity;
 
 import app.meads.BusinessRuleException;
+import app.meads.identity.internal.TotpService;
 import app.meads.identity.internal.UserRepository;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -31,13 +32,16 @@ public class UserService {
     private final JwtMagicLinkService jwtMagicLinkService;
     private final PasswordEncoder passwordEncoder;
     private final List<UserDeletionGuard> deletionGuards;
+    private final TotpService totpService;
 
     public UserService(UserRepository userRepository, JwtMagicLinkService jwtMagicLinkService,
-                       PasswordEncoder passwordEncoder, List<UserDeletionGuard> deletionGuards) {
+                       PasswordEncoder passwordEncoder, List<UserDeletionGuard> deletionGuards,
+                       TotpService totpService) {
         this.userRepository = userRepository;
         this.jwtMagicLinkService = jwtMagicLinkService;
         this.passwordEncoder = passwordEncoder;
         this.deletionGuards = deletionGuards;
+        this.totpService = totpService;
     }
 
     public User createUser(@Email @NotBlank String email, @NotBlank String name, @NotNull UserStatus status, @NotNull Role role) {
@@ -148,6 +152,41 @@ public class UserService {
         user.assignPasswordHash(passwordEncoder.encode(rawPassword));
         userRepository.save(user);
         log.info("Password set via token for user: {}", email);
+    }
+
+    public String setupMfa(@NotNull UUID userId) {
+        var user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessRuleException("error.user.not-found"));
+        var secret = totpService.generateSecret();
+        user.storePendingMfaSecret(secret);
+        userRepository.save(user);
+        log.info("MFA setup initiated for user: {}", userId);
+        return totpService.generateQrUri(secret, user.getEmail());
+    }
+
+    public void confirmMfa(@NotNull UUID userId, @NotBlank String code) {
+        var user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessRuleException("error.user.not-found"));
+        if (!totpService.verifyCode(user.getTotpSecret(), code)) {
+            throw new BusinessRuleException("error.mfa.invalid-code");
+        }
+        user.enableMfa(user.getTotpSecret());
+        userRepository.save(user);
+        log.info("MFA confirmed for user: {}", userId);
+    }
+
+    public boolean verifyMfaCode(@NotNull UUID userId, String code) {
+        var user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessRuleException("error.user.not-found"));
+        return totpService.verifyCode(user.getTotpSecret(), code);
+    }
+
+    public void disableMfa(@NotNull UUID userId) {
+        var user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessRuleException("error.user.not-found"));
+        user.disableMfa();
+        userRepository.save(user);
+        log.info("MFA disabled for user: {}", userId);
     }
 
     private void validatePassword(String rawPassword) {

@@ -43,6 +43,12 @@ public class User {
     @Column(name = "preferred_language", length = 5)
     private String preferredLanguage;
 
+    @Column(name = "totp_secret", length = 64)
+    private String totpSecret;
+
+    @Column(name = "mfa_enabled", nullable = false)
+    private boolean mfaEnabled = false;
+
     private Instant updatedAt;
 
     protected User() {} // JPA
@@ -93,5 +99,20 @@ public class User {
         this.name = name;
         this.role = role;
         this.status = status;
+    }
+
+    public void storePendingMfaSecret(String totpSecret) {
+        this.totpSecret = totpSecret;
+        this.mfaEnabled = false;
+    }
+
+    public void enableMfa(String totpSecret) {
+        this.totpSecret = totpSecret;
+        this.mfaEnabled = true;
+    }
+
+    public void disableMfa() {
+        this.totpSecret = null;
+        this.mfaEnabled = false;
     }
 }

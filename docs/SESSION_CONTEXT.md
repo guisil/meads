@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `main`
-**Tests:** 754 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-03 (judging categories tab, i18n, locale-aware admin errors)
+**Tests:** 777 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-03 (MFA for system admins: TotpService, UserService MFA methods, UserRepository persistence, MFA integration, MfaVerifyView, ProfileView MFA section)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -23,11 +23,12 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 ## Modules Implemented
 
 ### identity module (`app.meads.identity`)
-- User entity (UUID, email, name, status, role, optional password, optional meaderyName, optional country)
+- User entity (UUID, email, name, status, role, optional password, optional meaderyName, optional country, optional totpSecret, mfaEnabled)
 - JWT magic link authentication + admin password login + access code login
+- **TOTP-based MFA for SYSTEM_ADMIN**: `TotpService` (HMAC-SHA1, Base32, ±1 window); `UserService` MFA methods (`setupMfa`, `confirmMfa`, `verifyMfaCode`, `disableMfa`); `MfaAuthenticationSuccessHandler` redirects MFA-enabled admins to `/mfa` after login; `MfaVerifyView` (`/mfa`, `@AnonymousAllowed`); MFA setup/disable section in `ProfileView` (SYSTEM_ADMIN only). V19 migration adds `totp_secret` and `mfa_enabled` columns.
 - UserService (public API) — includes `updateProfile()` with ISO 3166-1 alpha-2 country validation
 - SecurityConfig, UserListView (admin CRUD with meadery name + country fields)
-- ProfileView (`/profile`) — self-edit for name, meadery name, country
+- ProfileView (`/profile`) — self-edit for name, meadery name, country + MFA section (SYSTEM_ADMIN only)
 - Password setup & reset: `SetPasswordView`, `setPasswordByToken()`, `generatePasswordSetupLink()`,
   `hasPassword()`, triggers on admin role assignment, "Forgot password?" on login, admin "Password Reset"
 - EmailService (public API) — `SmtpEmailService` (internal) with `JavaMailSender` + Thymeleaf HTML templates.
@@ -390,9 +391,17 @@ visibility check — not fixable from the page side without structural changes.
   would change the login page appearance. User chose not to pursue this.
 - Deferred: only affects admins using password login; functionality is unaffected by the warning.
 
-### Priority 3: MFA for system admins
-Evaluate and implement multi-factor authentication for SYSTEM_ADMIN accounts.
-Password-only login for privileged accounts is a security risk post-deployment.
+### Priority 3: MFA for system admins — COMPLETE (2026-05-03)
+TOTP-based 2FA for SYSTEM_ADMIN accounts. No external library — HMAC-SHA1 + Base32 implemented
+from scratch using standard Java APIs. Full implementation:
+- `TotpService` (internal): `generateSecret()`, `generateQrUri()`, `verifyCode()` (±1 timestep window)
+- `User` entity: `totp_secret` + `mfa_enabled` fields (V19 migration); `storePendingMfaSecret()`, `enableMfa()`, `disableMfa()`
+- `UserService`: `setupMfa()`, `confirmMfa()`, `verifyMfaCode()`, `disableMfa()` — full setup/confirm/verify/disable flow
+- `MfaAuthenticationSuccessHandler`: after form login, redirects MFA-enabled users to `/mfa` (clears SecurityContext, sets `MFA_PENDING_EMAIL` session attribute)
+- `MfaVerifyView` (`/mfa`, `@AnonymousAllowed`): TOTP code entry; on success re-authenticates via `UserDetailsService`, saves to HTTP session, redirects to `/`
+- `ProfileView` MFA section (SYSTEM_ADMIN only): "Set Up 2FA" (dialog with secret key + code field) or "Disable 2FA" button
+- i18n: `mfa.verify.*` + `profile.mfa.*` keys in EN and PT. `error.mfa.invalid-code` error key.
+23 new tests (7 TotpService + 3 UserRepository + 5 UserService unit + 5 MFA integration + 3 ProfileView UI). 777 total.
 
 ### Priority 4: Full manual walkthrough
 Run the full `docs/walkthrough/manual-test.md` end-to-end (all 14 sections) before
