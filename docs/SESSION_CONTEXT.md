@@ -380,23 +380,15 @@ Manual testing completed 2026-05-03. Issues found and fixed during walkthrough:
 - **Add Judging Category dialog** — fields now laid out vertically (Code → Name → Description
   → Parent Category), matching the custom category dialog style. Parent select added.
 
-### Priority 2: Investigate Bitwarden / password manager compatibility on login page
-Bitwarden shows "This page is interfering with the Bitwarden experience. The Bitwarden inline
-menu has been temporarily disabled as a safety measure." on the MEADS login page. This is a
-side-effect of Vaadin's architecture, not intentional interference. Three contributing factors:
-1. **Shadow DOM** — `EmailField`/`PasswordField` are web components; the real `<input>` lives
-   inside Shadow DOM. Bitwarden uses `document.elementFromPoint()` to verify its overlay is
-   visible; Shadow DOM boundaries cause this check to return the host element instead of the
-   inner input, which Bitwarden interprets as something blocking its overlay.
-2. **Hidden form pattern** — visible fields are Vaadin web components; actual Spring Security
-   POST uses a hidden `<form>` with `<input type="hidden">` fields submitted via `executeJs`.
-   Bitwarden sees no autofillable native password field in the form and may flag the mismatch.
-3. **Global Enter shortcut** — `Shortcuts.addShortcutListener(..., Key.ENTER)` may consume
-   Enter before Bitwarden's inline menu can handle it, looking like keyboard interception.
-Potential fix: replace the custom form with Vaadin's built-in `LoginForm` component, which
-renders a proper native form with a visible password input that password managers handle better.
-Only affects admins (password login path); magic link path used by entrants is unaffected.
-Assess impact and decide whether to fix before or alongside MFA.
+### Priority 2: Bitwarden compatibility on login page — INVESTIGATED, DEFERRED
+Bitwarden shows "This page is interfering with the Bitwarden experience." on the login page.
+Root cause confirmed (2026-05-03): Shadow DOM's effect on Bitwarden's `document.elementFromPoint()`
+visibility check — not fixable from the page side without structural changes.
+- Added `autocomplete="email"` and `autocomplete="current-password"` to the fields (kept for
+  general autofill correctness, but did not affect the Bitwarden warning).
+- The only structural fix would be replacing the custom form with Vaadin's `LoginForm`, which
+  would change the login page appearance. User chose not to pursue this.
+- Deferred: only affects admins using password login; functionality is unaffected by the warning.
 
 ### Priority 3: MFA for system admins
 Evaluate and implement multi-factor authentication for SYSTEM_ADMIN accounts.

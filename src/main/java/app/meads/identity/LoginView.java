@@ -11,6 +11,7 @@ import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.textfield.Autocomplete;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.data.value.ValueChangeMode;
@@ -49,6 +50,7 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
         emailField.setWidthFull();
         emailField.setMaxLength(255);
         emailField.setValueChangeMode(ValueChangeMode.EAGER);
+        emailField.setAutocomplete(Autocomplete.EMAIL);
         var magicLinkButton = new Button(getTranslation("login.magic-link.button"));
         magicLinkButton.addClickListener(e -> sendMagicLink());
         var emailRow = new HorizontalLayout(emailField, magicLinkButton);
@@ -61,6 +63,7 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
         passwordField.setWidthFull();
         passwordField.setMaxLength(128);
         passwordField.setValueChangeMode(ValueChangeMode.EAGER);
+        passwordField.setAutocomplete(Autocomplete.CURRENT_PASSWORD);
         loginButton = new Button(getTranslation("login.login.button"));
         loginButton.setDisableOnClick(true);
         loginButton.addClickListener(e -> loginWithCredentials());
