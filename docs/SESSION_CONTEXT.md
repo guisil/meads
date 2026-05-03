@@ -427,6 +427,50 @@ strength locking (M4S→Hydromel), ABV caps (M4S→7.5%), ABV→Strength derivat
 carbonation locking (custom categories), and admin-configurable constraints for custom categories.
 Requires: DB migration, admin UI for constraint config, cross-module data flow, server-side validation.
 
+### Priority 9: Bitwarden compatibility on login page (deferred, low priority)
+Bitwarden shows "This page is interfering with the Bitwarden experience. The Bitwarden inline
+menu has been temporarily disabled as a safety measure."
+
+**Real root cause (re-investigated 2026-05-03):** the previous Shadow-DOM/`elementFromPoint`
+theory was wrong. Trigger is `bitwarden/clients` PR #17400 (merged Nov 2025), shipped in
+Bitwarden browser extension late-2025/early-2026. The check fires when:
+- **Top-layer hijack**: page has other top-layer items (popovers/dialogs) and Bitwarden's own
+  inline-menu popover gets bumped, forcing it to call `hidePopover()` + `showPopover()` to
+  reclaim position. **5 refreshes in 5 s → warning** (only `window.alert()` in entire browser source).
+- **Popover attribute mutation**: page modifies `popover` attribute on Bitwarden's own button/list
+  away from `"manual"`. **10 mutations in 5 s → warning.**
+- **Page opacity check**: `<html>` or `<body>` computed opacity ≤ 0.6 → inline menu closes.
+
+**Why our login page hits the top-layer threshold:** Vaadin's overlay/notification/tooltip system
+moved to the native `popover` API in 24.5+ — well before our 25.1.3 upgrade. Any Vaadin field
+with eager validation (we have `ValueChangeMode.EAGER` on email + password) and any tooltip/notification
+churn produces a stream of popover open/close events. With Bitwarden's autofill button popover
+also competing for the top layer, the 5-in-5s threshold is easy to hit.
+
+**Why now:** not a Vaadin regression. The detection was added on the **Bitwarden side** in
+Nov 2025; users started seeing it as their Bitwarden extension auto-updated. Any Vaadin 24.5+ app
+shows this on form pages.
+
+**autocomplete attributes** (`email`, `current-password`) already added to fields — kept for
+correctness but they have no effect on this warning.
+
+**Mitigations** (none done yet, all deferred):
+1. Replace custom `LoginView` with Vaadin's `LoginForm` / `LoginOverlay`. Officially designed for
+   password-manager compatibility (light-DOM inputs, attaches to body). Would change the page's
+   visual layout though — user previously chose not to pursue.
+2. Switch email/password fields to `ValueChangeMode.ON_BLUR` to cut validation-tooltip churn.
+   Cheapest experiment; may or may not help depending on whether tooltips are the real source.
+3. Drop the `Details` collapsible — render password row directly. Reduces DOM churn on first paint.
+4. User-side workaround: add `meads.app` to Bitwarden Settings → Autofill → Blocked Domains.
+
+**Status:** Functionality unaffected (autofill via Bitwarden popup/keyboard shortcut still works;
+only the inline button is suppressed). Only affects admins using password login. Revisit if we
+move to `LoginForm` for other reasons or if Bitwarden softens the threshold.
+
+**References:**
+- bitwarden/clients PR #17400 — `apps/browser/src/autofill/overlay/inline-menu/content/autofill-inline-menu-content.service.ts`
+- community.bitwarden.com thread 92519 ("This page is interfering with the Bitwarden experience")
+
 ### Completed priorities
 - **Version bump to 0.3.0-SNAPSHOT** — 2026-05-02. Bumped from 0.2.9-SNAPSHOT to 0.3.0-SNAPSHOT ahead of judging category management and the judging module. 723 tests.
 - **Post-registration guards + admin add entry** — Completed 2026-05-02. Credits (add/adjust), product mappings (add/edit/delete), and entrant entry edits all blocked after REGISTRATION_OPEN. `DivisionStatus.allowsRegistrationActions()`. Disabled-button tooltips via Span wrapper. Credits balance auto-refreshes after credit operations. Submit All Drafts disabled when not REGISTRATION_OPEN. MyEntriesView shows "Registration is closed" in red when past REGISTRATION_OPEN. Admin "Add Entry" in Entries tab (two-step: warning confirmation → entry form with entrant email). `EntryService.adminCreateEntry()` skips credit check and status check. 8 new unit tests. 723 tests.
