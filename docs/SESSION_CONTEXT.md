@@ -161,9 +161,12 @@ docs/
 │   ├── 2026-03-10-email-sending-design.md  ← Email sending design (implemented)
 │   ├── 2026-03-10-i18n-design.md          ← i18n design (implementation deferred)
 │   ├── 2026-03-10-deployment-design.md    ← Deployment options evaluation (decision: DO App Platform)
+│   ├── 2026-05-05-judging-module-design.md ← Judging module design (in progress, multi-session)
 │   └── deployment-checklist.md           ← Deployment reference: setup, release process, redeployment, rollback
 ├── reference/
-│   └── chip-competition-rules.md          ← CHIP competition rules (active reference)
+│   ├── chip-competition-rules.md          ← CHIP competition rules (active reference)
+│   ├── Short-version-of-MJP-scoring-sheet-V3.0.pdf ← Official MJP scoresheet (5 fields, max 100)
+│   └── MEAD-GUIDELINES-2023.pdf           ← Full MJP mead guidelines (categories, styles)
 ├── specs/
 │   ├── _template.md                       ← Template for new module specs
 │   ├── judging.md                         ← Preliminary spec (post-rework naming)
@@ -408,7 +411,10 @@ Run the full `docs/walkthrough/manual-test.md` end-to-end (all 14 sections) befo
 starting the judging module implementation.
 
 ### Priority 5: Judging module
-Design and implementation. Reference: `docs/reference/chip-competition-rules.md` and `docs/specs/judging.md`.
+Design and implementation. **Design in progress (multi-session):** see
+`docs/plans/2026-05-05-judging-module-design.md` for current state, decisions made,
+open questions, and the "Next Session: Start Here" marker. Reference:
+`docs/reference/chip-competition-rules.md` and `docs/specs/judging.md`.
 
 ### Priority 6: Awards module
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md` and `docs/specs/awards.md`.
