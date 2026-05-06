@@ -416,6 +416,12 @@ Design and implementation. **Design in progress (multi-session):** see
 open questions, and the "Next Session: Start Here" marker. Reference:
 `docs/reference/chip-competition-rules.md` and `docs/specs/judging.md`.
 
+**Phase 2 in progress.** §Q8 (eager scoresheet creation + recategorization sync rule)
+resolved 2026-05-06. While working on §Q11, surfaced that §1.5's division-level
+`JudgingPhase` enum is wrong — tables/categories progress independently, division
+only has 2–3 distinct gates (active + BOS). Next session must redesign §1.5
+before continuing. See "Next Session: Start Here" in the design doc.
+
 ### Priority 6: Awards module
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md` and `docs/specs/awards.md`.
 

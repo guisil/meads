@@ -1,7 +1,7 @@
 # Judging Module — Design Document
 
 **Started:** 2026-05-05
-**Status:** Phase 1 ✅ complete (2026-05-05). Phase 2 not yet started.
+**Status:** Phase 1 ✅ complete (2026-05-05). Phase 2 in progress (started 2026-05-06).
 **Module dependencies:** competition, entry, identity
 **References:**
 - `docs/specs/judging.md` — preliminary spec (post-rework naming)
@@ -31,7 +31,7 @@ Once a phase is complete, its open questions should all have decisions or be exp
 |---|---|---|
 | 0 | Frame & set up tracking doc | ✅ Complete |
 | 1 | Scope & module boundary decisions | ✅ Complete |
-| 2 | Domain model — entity definitions, eager/lazy creation, COI heuristic, MJP qualifications storage, scoresheet locking | ⏳ Pending |
+| 2 | Domain model — entity definitions, eager/lazy creation, COI heuristic, MJP qualifications storage, scoresheet locking | 🔄 In progress |
 | 3 | Service + event contracts, authorization, COI mechanism, judging start trigger | ⏳ Pending |
 | 4 | View design (admin table mgmt, judge scoresheet UX, results-before-publication) | ⏳ Pending |
 | 5 | Implementation sequencing — TDD cycle order, migration plan, MVP slice | ⏳ Pending |
@@ -40,25 +40,72 @@ Once a phase is complete, its open questions should all have decisions or be exp
 
 ## Next Session: Start Here
 
-**Phase 1 is complete.** Start Phase 2 — domain model.
+**Phase 2 in progress.** §Q8 resolved (2026-05-06). **§1.5 needs redesign** —
+discovered 2026-05-06 while working on §Q11.
 
-**Phase 2 scope:**
-- Pin down field-by-field types, nullability, column lengths, @PrePersist for every
-  entity in the working sketch (Discussions §)
-- Define invariants and domain methods (state machine guards, FK rules)
-- Resolve the Phase-2 deferred questions:
-  - **§Q7** COI similarity heuristic
-  - **§Q8** eager vs lazy scoresheet creation
-  - **§Q10** judge MJP qualifications storage
-  - **§Q11** `JudgingPhase` retreat allowed?
-  - **§Q13** SUBMITTED scoresheet revertibility
-- Produce a finalized entity definition section in this doc, ready for Phase 3
-  (services, events) to consume.
+### The trigger: §Q11 surfaced a granularity mismatch
 
-**Suggested start prompt for next session:**
+User confirmed (2026-05-06) that real CHIP flow has tables progressing
+independently — some are in Round 1 while others are in Medal Round, some
+categories skip Medal Round entirely, and a single category may be split
+across two tables that move at different speed. The current §1.5 model
+(division-level `JudgingPhase: NOT_STARTED → ROUND_1 → MEDAL_ROUND → BOS →
+COMPLETE`) doesn't capture this.
+
+**User's mental model:** the division has only **two** distinct phases that
+matter at the division level — an active phase (Round 1 + Medal Round work
+happening per-table/per-category), and a BOS phase that gates on everything
+else completing. Progression is otherwise tracked at the table or category
+level, not the division.
+
+### What next session must address (in order)
+
+**Phase 2.A — Redesign workflow state machine (revises §1.5)**
+- Define division-level state (likely 2–3 phases: e.g.,
+  `NOT_STARTED → ACTIVE → BOS → COMPLETE`).
+- Define per-table or per-category state — including how categories split
+  across multiple tables aggregate up.
+- Decide whether Medal Round lives at the table level, the category level,
+  or as a separate session-like construct.
+- Add third Medal Round mode if needed (`NONE`) for categories that skip it,
+  or fold "no medal round" into the existing modes.
+- Re-confirm or revise the working-sketch hierarchy in §Discussions.
+
+**Phase 2.B — Re-resolve §Q11 (retreat) under new model**
+- Retreat at table level (and division level for BOS gate).
+- Guards still mirror the `revertDivisionStatus` pattern.
+
+**Phase 2.C — Re-frame §2.1 trigger**
+- Eager scoresheet creation now triggered by "start this table" action,
+  not division-level phase advance. Sync rule itself unchanged.
+
+**Phase 2.D — Re-resolve §Q12 (start trigger) under new model**
+- "Start this table" (per-table) + "Start BOS" (division-wide, gated).
+
+### Decisions affected (must revisit)
+- §1.5 — workflow state machine + per-category Medal Round mode (mode survives, phase enum changes).
+- §1.8 — aggregate hierarchy (`Judging` thinner; state moves down).
+- §2.1 — eager creation trigger (sync rule itself unchanged).
+- §Q11 — retreat (re-ask against new model).
+- §Q12 — start trigger (re-ask against new model).
+
+### Decisions unaffected (no review needed)
+- §1.1–§1.4, §1.6, §1.7, §1.9, §1.10
+- §Q7, §Q10, §Q13
+
+### Remaining Phase 2 work after the redesign
+- Resolve §Q13 (SUBMITTED scoresheet revertibility) — partially decided by §Q8 sync rule.
+- Resolve §Q7 (COI similarity heuristic).
+- Resolve §Q10 (judge MJP qualifications storage).
+- Pin down field-by-field types, nullability, column lengths, @PrePersist.
+- Define invariants and domain methods.
+- Produce a finalized entity definition section ready for Phase 3.
+
+### Suggested start prompt for next session
 > "Read `docs/plans/2026-05-05-judging-module-design.md` and `docs/SESSION_CONTEXT.md`,
-> then start Phase 2 — domain model — beginning with §Q8 (eager vs lazy scoresheet
-> creation) since it shapes the JudgingTable invariants."
+> then continue Phase 2 by redesigning the workflow state machine (Phase 2.A in
+> the Next Session section) — start by sketching the new division-level vs
+> per-table/per-category split."
 
 ---
 
@@ -247,6 +294,44 @@ sweetness, strength, carbonation, additional info.
 scoresheets stay valid if the scoring system definition changes. This matches
 the preliminary spec's design.
 
+### 2026-05-06 — Phase 2.1: Eager scoresheet creation + recategorization sync rule
+
+**Decision (§Q8):** Eager scoresheet creation. When admin advances `JudgingPhase`
+to `ROUND_1`, the system creates one empty `Scoresheet` per entry that has
+`finalCategoryId` set, attached to the `JudgingTable` for that category.
+
+- Entries without `finalCategoryId` at ROUND_1 start get no scoresheet — admin
+  must categorize them first.
+- New entries created (or assigned `finalCategoryId`) **after** ROUND_1 starts
+  auto-create their scoresheet at the appropriate table.
+
+**Decision (recategorization sync rule):** `entry.finalCategoryId` remains
+mutable after ROUND_1 starts. When admin reassigns it, sync rule applies based
+on the existing scoresheet state:
+
+| Scoresheet state | Behavior on recategorization |
+|---|---|
+| **No scoresheet** (new entry, or just categorized) | Auto-create empty scoresheet at the new category's table (only if `JudgingPhase >= ROUND_1`). |
+| **DRAFT, no fields filled** | Update `tableId` to the new category's table. |
+| **DRAFT, partially filled** | Confirmation prompt to admin. On confirm: update `tableId`, preserve scores. UI marks scoresheet "moved from T1" for transparency. |
+| **SUBMITTED** | **Block** — admin must explicitly revert scoresheet to DRAFT first (see §Q13). |
+
+**Invariants on `Scoresheet`:**
+- `tableId` is mutable (admin-only via service).
+- For DRAFT scoresheets: `scoresheet.tableId.divisionCategoryId == entry.finalCategoryId` (service-enforced).
+- SUBMITTED scoresheet's `tableId` is effectively immutable — captured at submission.
+
+**Rationale:** Recategorization of single entries is common enough (initial
+miscategorization, re-evaluation by judges) that requiring full phase retreat
+would be too heavy. The sync rule keeps scoresheet/table coherent without
+hidden state.
+
+**Implications recorded for Phase 2 follow-ups:**
+- §Q11 phase retreat is now decoupled from per-entry recategorization (retreat
+  becomes purely an escape hatch for bigger mistakes).
+- §Q13 SUBMITTED revertibility is now load-bearing — the recategorization
+  workflow assumes admin can revert SUBMITTED → DRAFT.
+
 ---
 
 ## Open Questions
@@ -285,12 +370,8 @@ from official MJP V3.0 PDF).
 **Status:** Deferred to Phase 2 (entity/service design).
 
 ### Q8 — Eager vs lazy scoresheet creation
-
-**From preliminary spec.** Are scoresheets created when the table is set up
-(eager — pre-populated empty scoresheets for every entry in the table's
-category), or when a judge opens an entry for the first time (lazy)?
-
-**Status:** Deferred to Phase 2.
+**Status:** ✅ Resolved by Decision §2.1 (eager creation when ROUND_1 starts;
+recategorization sync rule covers post-start changes).
 
 ### Q9 — Awards module rescope
 
@@ -314,21 +395,26 @@ per-scoresheet.
 
 ### Q11 — `JudgingPhase` retreat allowed?
 
-`JudgingPhase` (NOT_STARTED → ROUND_1 → MEDAL_ROUND → BOS → COMPLETE) — is reverting
-allowed (e.g. MEDAL_ROUND → ROUND_1 to fix a scoresheet)? Likely yes for admins
-but with guards. Mirrors the `revertDivisionStatus` pattern.
+Was about a per-division `JudgingPhase`. Surfaced a deeper issue: the
+per-division phase enum is wrong (see Next Session §Phase 2.A). Re-ask under
+the redesigned model.
 
-**Status:** Deferred to Phase 2/3.
+**Likely answer (still applies):** yes for admins, with guards mirroring
+`revertDivisionStatus`. But the unit of retreat (table, category, or division)
+depends on the redesign.
+
+**Status:** Blocked on §1.5 redesign. Re-ask in Phase 2.B.
 
 ### Q12 — Judging start trigger
 
-**Question:** What action moves `JudgingPhase` from NOT_STARTED → ROUND_1?
+**Question (original):** What action moves `JudgingPhase` from NOT_STARTED → ROUND_1?
 
-**Likely:** explicit admin action ("Start Round 1" button) once the division is
-in `DivisionStatus.JUDGING`. Tables and judge assignments must be set up first.
-Need to define preconditions.
+**Updated framing (after §1.5 redesign needed):** Two triggers are likely needed —
+"Start this table" (per-table) and "Start BOS" (division-wide, gated until all
+tables complete). Preconditions and which action belongs where depend on the
+§1.5 redesign.
 
-**Status:** Deferred to Phase 3 (service contracts).
+**Status:** Blocked on §1.5 redesign. Re-ask in Phase 2.D.
 
 ### Q13 — Are scoresheets locked once finalized?
 
@@ -347,6 +433,12 @@ admins can revert to DRAFT.
 unresolved as Open Questions, delete obsolete content.)
 
 ### Working sketch — entity hierarchy after Phase 1
+
+> **⚠️ 2026-05-06 update:** the `JudgingPhase` enum on `Judging` is **wrong**
+> per the discussion at end of session. Real flow has tables/categories
+> progressing independently; division-level phase only has 2–3 distinct gates
+> (active phase + BOS). See "Next Session: Start Here" §Phase 2.A. This sketch
+> kept as historical reference; redesign comes next.
 
 This is **not yet a finalized model** — Phase 2 will pin down field types,
 nullability, invariants, and add the entities still missing. Use as a mental
