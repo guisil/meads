@@ -2,6 +2,7 @@
 
 **Started:** 2026-05-05
 **Status:** Phase 1 ✅ complete (2026-05-05). Phase 2 in progress (started 2026-05-06).
+Phase 2.A ✅ complete (2026-05-07) — state machine redesign decided.
 **Module dependencies:** competition, entry, identity
 **References:**
 - `docs/specs/judging.md` — preliminary spec (post-rework naming)
@@ -31,7 +32,7 @@ Once a phase is complete, its open questions should all have decisions or be exp
 |---|---|---|
 | 0 | Frame & set up tracking doc | ✅ Complete |
 | 1 | Scope & module boundary decisions | ✅ Complete |
-| 2 | Domain model — entity definitions, eager/lazy creation, COI heuristic, MJP qualifications storage, scoresheet locking | 🔄 In progress |
+| 2 | Domain model — entity definitions, eager/lazy creation, COI heuristic, MJP qualifications storage, scoresheet locking | 🔄 In progress (2.A ✅; 2.B–2.D pending) |
 | 3 | Service + event contracts, authorization, COI mechanism, judging start trigger | ⏳ Pending |
 | 4 | View design (admin table mgmt, judge scoresheet UX, results-before-publication) | ⏳ Pending |
 | 5 | Implementation sequencing — TDD cycle order, migration plan, MVP slice | ⏳ Pending |
@@ -40,72 +41,57 @@ Once a phase is complete, its open questions should all have decisions or be exp
 
 ## Next Session: Start Here
 
-**Phase 2 in progress.** §Q8 resolved (2026-05-06). **§1.5 needs redesign** —
-discovered 2026-05-06 while working on §Q11.
-
-### The trigger: §Q11 surfaced a granularity mismatch
-
-User confirmed (2026-05-06) that real CHIP flow has tables progressing
-independently — some are in Round 1 while others are in Medal Round, some
-categories skip Medal Round entirely, and a single category may be split
-across two tables that move at different speed. The current §1.5 model
-(division-level `JudgingPhase: NOT_STARTED → ROUND_1 → MEDAL_ROUND → BOS →
-COMPLETE`) doesn't capture this.
-
-**User's mental model:** the division has only **two** distinct phases that
-matter at the division level — an active phase (Round 1 + Medal Round work
-happening per-table/per-category), and a BOS phase that gates on everything
-else completing. Progression is otherwise tracked at the table or category
-level, not the division.
+**Phase 2.A complete (2026-05-07).** Three-tier state model decided
+(division / table / per-category medal round), three separate aggregates,
+auto vs explicit transitions resolved, ties handled by judge intervention
+inside Medal Round ACTIVE state. See §1.5-A for the redesigned decision.
 
 ### What next session must address (in order)
 
-**Phase 2.A — Redesign workflow state machine (revises §1.5)**
-- Define division-level state (likely 2–3 phases: e.g.,
-  `NOT_STARTED → ACTIVE → BOS → COMPLETE`).
-- Define per-table or per-category state — including how categories split
-  across multiple tables aggregate up.
-- Decide whether Medal Round lives at the table level, the category level,
-  or as a separate session-like construct.
-- Add third Medal Round mode if needed (`NONE`) for categories that skip it,
-  or fold "no medal round" into the existing modes.
-- Re-confirm or revise the working-sketch hierarchy in §Discussions.
-
 **Phase 2.B — Re-resolve §Q11 (retreat) under new model**
-- Retreat at table level (and division level for BOS gate).
-- Guards still mirror the `revertDivisionStatus` pattern.
+- Per-table retreat: `COMPLETE → ROUND_1` (guard: medal round for that table's
+  category is not yet ACTIVE/COMPLETE).
+- Per-category Medal Round retreat: `COMPLETE → ACTIVE`, `ACTIVE → READY`
+  (guard: division is not yet in BOS).
+- Division retreat: `BOS → ACTIVE` (guard: no `BosPlacement` rows yet —
+  or wipe them, TBD), `COMPLETE → BOS` (admin-only escape hatch).
+- Pattern mirrors `revertDivisionStatus` guard interface.
+- **Open**: should retreat unwind events (e.g. published `ScoresheetSubmittedEvent`
+  consumers in awards module)? Probably yes via compensating event — flag for design.
 
-**Phase 2.C — Re-frame §2.1 trigger**
-- Eager scoresheet creation now triggered by "start this table" action,
-  not division-level phase advance. Sync rule itself unchanged.
+**Phase 2.C — Confirm §2.1 trigger re-frame** (mostly mechanical)
+- Eager scoresheet creation fires on per-table `NOT_STARTED → ROUND_1`
+  ("Start this table"), not on a division-level phase advance.
+- Recategorization sync rule from §2.1 is unchanged.
+- Just needs the doc text updated — call this confirmed unless something surfaces.
 
 **Phase 2.D — Re-resolve §Q12 (start trigger) under new model**
-- "Start this table" (per-table) + "Start BOS" (division-wide, gated).
+- Per-table: "Start this table" (`JudgingTable.NOT_STARTED → ROUND_1`).
+  Preconditions: assigned category, ≥1 judge assigned, ≥2-judge minimum
+  per CHIP rule §7 (configurable? hard rule?).
+- Per-category: "Start Medal Round" (`CategoryJudgingConfig.READY → ACTIVE`).
+  Preconditions: all tables for that category COMPLETE.
+- Division: "Start BOS" (`Judging.ACTIVE → BOS`). Preconditions: every
+  `CategoryJudgingConfig` for the division is COMPLETE.
+- Division `NOT_STARTED → ACTIVE` is auto on first table start (no button).
 
-### Decisions affected (must revisit)
-- §1.5 — workflow state machine + per-category Medal Round mode (mode survives, phase enum changes).
-- §1.8 — aggregate hierarchy (`Judging` thinner; state moves down).
-- §2.1 — eager creation trigger (sync rule itself unchanged).
-- §Q11 — retreat (re-ask against new model).
-- §Q12 — start trigger (re-ask against new model).
+### Decisions unaffected by 2.A (no review needed)
+- §1.1–§1.4, §1.6, §1.7, §1.9, §1.10, §2.1
+- §Q7 (COI similarity), §Q10 (MJP qualifications), §Q13 (SUBMITTED revert)
 
-### Decisions unaffected (no review needed)
-- §1.1–§1.4, §1.6, §1.7, §1.9, §1.10
-- §Q7, §Q10, §Q13
-
-### Remaining Phase 2 work after the redesign
+### Remaining Phase 2 work after 2.B–2.D
 - Resolve §Q13 (SUBMITTED scoresheet revertibility) — partially decided by §Q8 sync rule.
 - Resolve §Q7 (COI similarity heuristic).
 - Resolve §Q10 (judge MJP qualifications storage).
-- Pin down field-by-field types, nullability, column lengths, @PrePersist.
-- Define invariants and domain methods.
+- Pin down field-by-field types, nullability, column lengths, @PrePersist for the
+  six aggregates (Judging, JudgingTable, CategoryJudgingConfig, Scoresheet,
+  MedalAward, BosPlacement) plus child entities (JudgeAssignment, ScoreField).
+- Define invariants and domain methods per aggregate.
 - Produce a finalized entity definition section ready for Phase 3.
 
 ### Suggested start prompt for next session
 > "Read `docs/plans/2026-05-05-judging-module-design.md` and `docs/SESSION_CONTEXT.md`,
-> then continue Phase 2 by redesigning the workflow state machine (Phase 2.A in
-> the Next Session section) — start by sketching the new division-level vs
-> per-table/per-category split."
+> then continue Phase 2.B (retreat under the new three-tier state model — see §1.5-A)."
 
 ---
 
@@ -157,8 +143,14 @@ the competition scales.
 
 ### 2026-05-05 — Phase 1.5: Workflow state machine + per-category Medal Round mode
 
-**Decision (state machine):** Option C. Keep `DivisionStatus` linear (DRAFT →
-REGISTRATION_OPEN → REGISTRATION_CLOSED → JUDGING → DELIBERATION →
+> **⚠️ State machine portion superseded by Phase 2.A (2026-05-07) — see §1.5-A
+> below.** The per-category Medal Round mode (COMPARATIVE / SCORE_BASED) survives,
+> with a tie-handling rule added in 2.A. The original linear `JudgingPhase` enum
+> is replaced by a three-tier model (division / table / per-category). This entry
+> is retained for historical context.
+
+**Decision (state machine — superseded):** Option C. Keep `DivisionStatus` linear
+(DRAFT → REGISTRATION_OPEN → REGISTRATION_CLOSED → JUDGING → DELIBERATION →
 RESULTS_PUBLISHED) unchanged. Introduce a fine-grained `JudgingPhase` enum on a
 new `Judging` aggregate (one per division):
 
@@ -296,14 +288,19 @@ the preliminary spec's design.
 
 ### 2026-05-06 — Phase 2.1: Eager scoresheet creation + recategorization sync rule
 
-**Decision (§Q8):** Eager scoresheet creation. When admin advances `JudgingPhase`
-to `ROUND_1`, the system creates one empty `Scoresheet` per entry that has
-`finalCategoryId` set, attached to the `JudgingTable` for that category.
+**Decision (§Q8):** Eager scoresheet creation. When admin starts a table
+(`JudgingTable.NOT_STARTED → ROUND_1`, per §1.5-A 2026-05-07), the system creates
+one empty `Scoresheet` per entry that has `finalCategoryId` set to that table's
+category, attached to that `JudgingTable`.
 
-- Entries without `finalCategoryId` at ROUND_1 start get no scoresheet — admin
-  must categorize them first.
-- New entries created (or assigned `finalCategoryId`) **after** ROUND_1 starts
-  auto-create their scoresheet at the appropriate table.
+- Entries without `finalCategoryId` when the table starts get no scoresheet —
+  admin must categorize them first.
+- New entries created (or assigned `finalCategoryId`) **after** the relevant
+  table is in ROUND_1 auto-create their scoresheet at that table.
+
+> **Note (2026-05-07):** Original wording said "When admin advances `JudgingPhase`
+> to `ROUND_1`" — re-framed to per-table after Phase 2.A redesigned the state
+> machine. The sync rule itself is unchanged.
 
 **Decision (recategorization sync rule):** `entry.finalCategoryId` remains
 mutable after ROUND_1 starts. When admin reassigns it, sync rule applies based
@@ -332,12 +329,141 @@ hidden state.
 - §Q13 SUBMITTED revertibility is now load-bearing — the recategorization
   workflow assumes admin can revert SUBMITTED → DRAFT.
 
+### 2026-05-07 — Phase 2.A: Three-tier state machine (supersedes §1.5 state machine)
+
+**Decision (D1+D2+D3 from 2026-05-07 conversation).** The per-division
+`JudgingPhase` enum from §1.5 doesn't capture how CHIP judging actually flows:
+tables progress independently, Medal Round happens at the category level, and a
+single category can be split across multiple tables that move at different
+speeds. Replace with a three-tier model — division, table, and per-category
+medal-round state — backed by three independent aggregates.
+
+#### Tier 1: Division-level — `Judging.phase : JudgingPhase`
+
+```
+NOT_STARTED → ACTIVE → BOS → COMPLETE
+```
+
+- **NOT_STARTED**: tables can be configured (categories assigned, judges
+  added) but no scoresheets exist. Auto-leaves on first table start.
+- **ACTIVE**: Round 1 + Medal Round work happens per-table/per-category.
+  This is where most of judging life lives.
+- **BOS**: division-wide head-judge round. Gated — only entered when every
+  judging-scope category has its medal round COMPLETE.
+- **COMPLETE**: BOS finalized. Admin can advance `DivisionStatus` to DELIBERATION.
+
+`DivisionStatus.JUDGING` covers `ACTIVE → BOS`; `DELIBERATION` is reached
+once `Judging.phase = COMPLETE`.
+
+#### Tier 2: Per-table — `JudgingTable.status : JudgingTableStatus`
+
+```
+NOT_STARTED → ROUND_1 → COMPLETE
+```
+
+- **NOT_STARTED**: judge assignments mutable, scoresheets not yet created.
+- **ROUND_1**: scoresheets eager-created (per §2.1) on entry into this state.
+  Judges fill them in.
+- **COMPLETE**: all scoresheets at this table are SUBMITTED.
+
+A table covers one (judging-scope `divisionCategoryId`, physical group)
+pairing. Two tables judging the same category are independent until both
+COMPLETE — then the category becomes READY for medal round.
+
+#### Tier 3: Per-category medal round — `CategoryJudgingConfig.medalRoundStatus : MedalRoundStatus`
+
+```
+PENDING → READY → ACTIVE → COMPLETE
+```
+
+- **PENDING**: at least one table covering this category is not yet COMPLETE.
+- **READY**: every table covering this category is COMPLETE. Auto-derived;
+  visible to admin.
+- **ACTIVE**: medal-round work in progress. Behavior depends on `medalRoundMode`:
+  - **COMPARATIVE**: judges convene for direct comparative tasting; no scoresheets;
+    medals decided by discussion.
+  - **SCORE_BASED**: system computes provisional medals from Round 1 totals; judges
+    review, **resolve ties manually**, and may withhold individual medals.
+- **COMPLETE**: `MedalAward` rows finalized for this category.
+
+#### Medal round modes (refines §1.5)
+
+| Mode | Behavior in ACTIVE |
+|---|---|
+| **COMPARATIVE** (default) | Separate comparative tasting. Judges decide medals via direct comparison. No additional scoresheets. |
+| **SCORE_BASED** | System ranks Round 1 totals and proposes Gold/Silver/Bronze. **Ties at any boundary block finalization** — judges must manually resolve (elevate, demote, or withhold). Judges may also withhold any medal regardless of score. |
+
+The original §1.5 explicit "skip Medal Round entirely" intuition is folded
+into SCORE_BASED — the act of "skipping the gathering" is just SCORE_BASED's
+auto-population, while the ACTIVE state still exists as the brief review
+window. **No third `NONE` mode** is introduced.
+
+`CategoryJudgingConfig` is created lazily when admin first configures a
+judging-scope category for medal round (default mode: COMPARATIVE).
+
+#### State transitions: auto vs explicit
+
+| Transition | Trigger | Notes |
+|---|---|---|
+| Division `NOT_STARTED → ACTIVE` | **Auto** on first table start | No "Start Judging" button needed |
+| Table `NOT_STARTED → ROUND_1` | **Explicit** ("Start this table") | Triggers eager scoresheet creation per §2.1 |
+| Table `ROUND_1 → COMPLETE` | **Auto** when all scoresheets SUBMITTED | Mechanical |
+| Category `PENDING → READY` | **Auto-derived** from table completion | Read-side projection; not a stored transition action |
+| Category `READY → ACTIVE` | **Explicit** ("Start Medal Round") | Both modes; UI populates suggested medals for SCORE_BASED |
+| Category `ACTIVE → COMPLETE` | **Explicit** ("Finalize medals") | All `MedalAward` decisions recorded; ties resolved if SCORE_BASED |
+| Division `ACTIVE → BOS` | **Explicit** ("Start BOS"), gated | Gate: every category COMPLETE |
+| Division `BOS → COMPLETE` | **Explicit** ("Finalize BOS") | All `BosPlacement` rows recorded |
+
+Retreat (un-do) transitions are §Q11 territory — to be resolved in Phase 2.B.
+
+#### Aggregate scope (D3 — three independent aggregates)
+
+```
+Judging                  (one per division — phase only)
+JudgingTable             (one per (judging-category, physical group) — owns JudgeAssignment[])
+CategoryJudgingConfig    (one per judging-scope DivisionCategory — mode + medalRoundStatus)
+Scoresheet               (one per entry — owns ScoreField[])
+MedalAward               (per §1.7 — unchanged)
+BosPlacement             (per §1.7 — unchanged)
+```
+
+All cross-aggregate references are **UUID FKs only** (no `@OneToMany` between
+aggregates) — same convention as `Division`/`Participant`, `Entry`/`EntryCredit`
+in the existing modules. `JudgeAssignment` and `ScoreField` are children
+within their parent aggregate (small, bounded, no cross-cutting query needs).
+
+**Why three aggregates instead of one fat `Judging`:**
+- Independent lifecycles — a table progresses without locking the division
+  aggregate or sibling tables.
+- Smaller transactional units — submitting a scoresheet doesn't load every
+  table in the division.
+- Modulith-clean — all six aggregates live in the `app.meads.judging` package;
+  modulith verification doesn't see them as boundaries.
+- Matches existing codebase convention (Entry/EntryCredit are separate aggregates
+  with separate repositories, no parent-owns-children JPA relationship).
+
+`Judging.divisionId` carries a UNIQUE constraint (one Judging per division).
+`CategoryJudgingConfig.divisionCategoryId` carries a UNIQUE constraint (one
+config per judging-scope category).
+
+#### Implications
+
+- **§Q1** (workflow state machine) — fully resolved by §1.5-A.
+- **§Q11** (retreat) — re-asked under three-tier model; queued for Phase 2.B.
+- **§Q12** (start trigger) — re-framed as three triggers (per-table,
+  per-category, division BOS); queued for Phase 2.D.
+- **§2.1** trigger now reads as per-table, not division-level — sync rule
+  itself unchanged.
+- **§1.8** working sketch superseded by aggregate diagram in §Discussions
+  (updated below).
+
 ---
 
 ## Open Questions
 
 ### Q1 — Workflow state machine
-**Status:** ✅ Resolved by Decision §1.5.
+**Status:** ✅ Resolved by Decision §1.5-A (2026-05-07, three-tier model;
+supersedes original §1.5).
 
 ### Q2 — Round 1 → Medal Round advancement rule
 **Status:** ✅ Resolved by Decision §1.9 (judges mark advancement on the spot;
@@ -393,28 +519,47 @@ per-scoresheet.
 
 **Status:** Deferred to Phase 2.
 
-### Q11 — `JudgingPhase` retreat allowed?
+### Q11 — Retreat allowed?
 
-Was about a per-division `JudgingPhase`. Surfaced a deeper issue: the
-per-division phase enum is wrong (see Next Session §Phase 2.A). Re-ask under
-the redesigned model.
+Originally about per-division `JudgingPhase` retreat. Under the three-tier
+model (§1.5-A), retreat exists at all three tiers:
 
-**Likely answer (still applies):** yes for admins, with guards mirroring
-`revertDivisionStatus`. But the unit of retreat (table, category, or division)
-depends on the redesign.
+- **Per-table:** `COMPLETE → ROUND_1` (re-open table for fixes).
+- **Per-category Medal Round:** `COMPLETE → ACTIVE`, `ACTIVE → READY`.
+- **Division:** `BOS → ACTIVE`, `COMPLETE → BOS`.
 
-**Status:** Blocked on §1.5 redesign. Re-ask in Phase 2.B.
+Likely yes for admins, with guards mirroring `revertDivisionStatus` —
+e.g. can't retreat a table whose category's medal round is already ACTIVE/COMPLETE;
+can't retreat division `BOS → ACTIVE` without wiping `BosPlacement` rows.
+
+**Open sub-questions:**
+- Should retreat publish compensating events so consuming modules (awards)
+  can react?
+- Wipe-vs-preserve policy for downstream rows on retreat (`MedalAward`,
+  `BosPlacement`)?
+
+**Status:** Queued for Phase 2.B (next session).
 
 ### Q12 — Judging start trigger
 
-**Question (original):** What action moves `JudgingPhase` from NOT_STARTED → ROUND_1?
+Under the three-tier model (§1.5-A), three explicit triggers replace one:
+- **"Start this table"** — per-table, `NOT_STARTED → ROUND_1`. Triggers eager
+  scoresheet creation per §2.1.
+- **"Start Medal Round"** — per-category, `READY → ACTIVE`. Gated on all
+  tables for the category being COMPLETE.
+- **"Start BOS"** — division-wide, `ACTIVE → BOS`. Gated on every category's
+  medal round being COMPLETE.
 
-**Updated framing (after §1.5 redesign needed):** Two triggers are likely needed —
-"Start this table" (per-table) and "Start BOS" (division-wide, gated until all
-tables complete). Preconditions and which action belongs where depend on the
-§1.5 redesign.
+Division `NOT_STARTED → ACTIVE` is implicit (auto on first table start) — no
+button needed.
 
-**Status:** Blocked on §1.5 redesign. Re-ask in Phase 2.D.
+**Open sub-questions:**
+- Per-table preconditions: ≥1 judge? ≥2 judges (CHIP §7 minimum)? Hard rule
+  or warning? Configurable per division?
+- What if a category has no entries with `finalCategoryId` set? Block table
+  start, or allow empty?
+
+**Status:** Queued for Phase 2.D (next session).
 
 ### Q13 — Are scoresheets locked once finalized?
 
@@ -432,66 +577,93 @@ admins can revert to DRAFT.
 (Working space for in-progress topics. Move resolved items to Decisions, leave
 unresolved as Open Questions, delete obsolete content.)
 
-### Working sketch — entity hierarchy after Phase 1
+### Working sketch — aggregate model after Phase 2.A
 
-> **⚠️ 2026-05-06 update:** the `JudgingPhase` enum on `Judging` is **wrong**
-> per the discussion at end of session. Real flow has tables/categories
-> progressing independently; division-level phase only has 2–3 distinct gates
-> (active phase + BOS). See "Next Session: Start Here" §Phase 2.A. This sketch
-> kept as historical reference; redesign comes next.
+This is **not yet a finalized model** — remaining Phase 2 work pins down field
+types, nullability, invariants, @PrePersist, and domain methods. Use as a mental
+scaffold for Phase 2.B–2.D and Phase 3.
 
-This is **not yet a finalized model** — Phase 2 will pin down field types,
-nullability, invariants, and add the entities still missing. Use as a mental
-scaffold for Phase 2.
+Cross-aggregate references are **UUID FKs only** (no JPA relationships between
+aggregates), matching the codebase convention. JPA `@OneToMany` is used only for
+within-aggregate children (JudgeAssignment, ScoreField).
 
 ```
 Division (competition module)
   ├─ bosPlaces : int (NOT NULL DEFAULT 1)               [§1.6]
-  └─ DivisionCategory (scope = JUDGING)                 [existing]
+  └─ DivisionCategory (scope = JUDGING)                 [existing — competition module]
 
-Judging (judging module — aggregate root, one per division)         [§1.5]
-  ├─ divisionId : UUID
-  ├─ phase : JudgingPhase (NOT_STARTED → ROUND_1 → MEDAL_ROUND → BOS → COMPLETE)
-  └─ JudgingTable
-       ├─ name : String
-       ├─ divisionCategoryId : UUID (must be JUDGING-scope)
-       ├─ scheduledDate : LocalDate (nullable, for grouping/display)  [§1.8]
-       ├─ JudgeAssignment
-       │    ├─ judgeUserId : UUID
-       │    └─ assignedAt : Instant
-       └─ Scoresheet (one per Entry, NOT one per judge)               [§1.3]
-            ├─ entryId : UUID
-            ├─ filledByJudgeUserId : UUID (which judge entered it)    [§1.3]
-            ├─ status : ScoresheetStatus (DRAFT, SUBMITTED)
-            ├─ totalScore : Integer (computed on submit)
-            ├─ overallComments : String
-            ├─ advancedToMedalRound : boolean (default false)         [§1.9]
-            ├─ submittedAt : Instant
-            └─ ScoreField (5 of these per Scoresheet, denormalized)   [§1.10]
-                 ├─ fieldName : String (Appearance / Aroma/Bouquet / ...)
-                 ├─ maxValue : int (12 / 30 / 32 / 14 / 12)
-                 ├─ value : Integer (nullable until filled)
-                 └─ comment : String
+─── Aggregate roots (judging module) ──────────────────────────────────
 
-CategoryJudgingConfig (judging module, optional)                      [§1.5]
-  ├─ divisionCategoryId : UUID (must be JUDGING-scope)
-  └─ medalRoundMode : MedalRoundMode (COMPARATIVE / SCORE_BASED)
+Judging                                                  [§1.5-A]
+  ├─ id : UUID
+  ├─ divisionId : UUID (UNIQUE — one Judging per division)
+  ├─ phase : JudgingPhase (NOT_STARTED → ACTIVE → BOS → COMPLETE)
+  └─ createdAt / updatedAt : Instant
 
-MedalAward (judging module)                                            [§1.7]
+JudgingTable                                             [§1.5-A]
+  ├─ id : UUID
+  ├─ judgingId : UUID (FK → Judging)
+  ├─ name : String
+  ├─ divisionCategoryId : UUID (must be JUDGING-scope; same category may appear on multiple tables)
+  ├─ scheduledDate : LocalDate (nullable, for grouping/display)  [§1.8]
+  ├─ status : JudgingTableStatus (NOT_STARTED → ROUND_1 → COMPLETE)
+  ├─ JudgeAssignment[] (within-aggregate child)         [§1.3, §1.4]
+  │    ├─ judgeUserId : UUID
+  │    └─ assignedAt : Instant
+  └─ createdAt / updatedAt : Instant
+
+CategoryJudgingConfig                                    [§1.5-A]
+  ├─ id : UUID
+  ├─ divisionCategoryId : UUID (UNIQUE; must be JUDGING-scope)
+  ├─ medalRoundMode : MedalRoundMode (COMPARATIVE / SCORE_BASED)
+  ├─ medalRoundStatus : MedalRoundStatus (PENDING → READY → ACTIVE → COMPLETE)
+  └─ createdAt / updatedAt : Instant
+
+Scoresheet (one per Entry, NOT one per judge)            [§1.3, §1.10]
+  ├─ id : UUID
+  ├─ tableId : UUID (FK → JudgingTable; mutable for DRAFT, captured on SUBMIT, see §2.1)
+  ├─ entryId : UUID (UNIQUE per division)
+  ├─ filledByJudgeUserId : UUID (informational — which judge entered it)  [§1.3]
+  ├─ status : ScoresheetStatus (DRAFT, SUBMITTED)
+  ├─ totalScore : Integer (computed on submit)
+  ├─ overallComments : String
+  ├─ advancedToMedalRound : boolean (default false)     [§1.9]
+  ├─ submittedAt : Instant (nullable)
+  ├─ ScoreField[] (within-aggregate child, 5 per scoresheet)  [§1.10]
+  │    ├─ fieldName : String (Appearance / Aroma/Bouquet / Flavour and Body / Finish / Overall Impression)
+  │    ├─ maxValue : int (12 / 30 / 32 / 14 / 12)
+  │    ├─ value : Integer (nullable until filled)
+  │    └─ comment : String
+  └─ createdAt : Instant
+
+MedalAward (one per medalled entry)                      [§1.7]
+  ├─ id : UUID
   ├─ entryId : UUID (UNIQUE)
   ├─ divisionId : UUID
   ├─ finalCategoryId : UUID
   ├─ medal : Medal (GOLD / SILVER / BRONZE; nullable = withheld)
   ├─ awardedAt : Instant
-  └─ awardedBy : UUID
+  └─ awardedBy : UUID (judge user)
 
-BosPlacement (judging module)                                          [§1.7]
+BosPlacement (one per (division, place))                 [§1.7]
+  ├─ id : UUID
   ├─ divisionId : UUID
   ├─ entryId : UUID
   ├─ place : int (1..bosPlaces)
   ├─ awardedAt : Instant
-  └─ awardedBy : UUID
+  └─ awardedBy : UUID (head judge user)
   UNIQUE(divisionId, place), UNIQUE(divisionId, entryId)
+
+─── Cross-aggregate relationships (UUID FKs only) ─────────────────────
+
+JudgingTable.judgingId       → Judging
+JudgingTable.divisionCategoryId → DivisionCategory (competition module, JUDGING scope)
+CategoryJudgingConfig.divisionCategoryId → DivisionCategory (competition module, JUDGING scope)
+Scoresheet.tableId           → JudgingTable
+Scoresheet.entryId           → Entry (entry module)
+JudgeAssignment.judgeUserId  → User (identity module)
+MedalAward.entryId/divisionId/finalCategoryId → entry / competition modules
+BosPlacement.entryId/divisionId → entry / competition modules
 ```
 
 ### Phase 2 prep checklist

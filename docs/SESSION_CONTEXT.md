@@ -417,10 +417,16 @@ open questions, and the "Next Session: Start Here" marker. Reference:
 `docs/reference/chip-competition-rules.md` and `docs/specs/judging.md`.
 
 **Phase 2 in progress.** §Q8 (eager scoresheet creation + recategorization sync rule)
-resolved 2026-05-06. While working on §Q11, surfaced that §1.5's division-level
-`JudgingPhase` enum is wrong — tables/categories progress independently, division
-only has 2–3 distinct gates (active + BOS). Next session must redesign §1.5
-before continuing. See "Next Session: Start Here" in the design doc.
+resolved 2026-05-06. **Phase 2.A complete (2026-05-07):** three-tier state model
+adopted — division (`Judging.phase: NOT_STARTED → ACTIVE → BOS → COMPLETE`),
+per-table (`JudgingTable.status: NOT_STARTED → ROUND_1 → COMPLETE`), per-category
+medal round (`CategoryJudgingConfig.medalRoundStatus: PENDING → READY → ACTIVE
+→ COMPLETE`). Six independent aggregates (Judging, JudgingTable,
+CategoryJudgingConfig, Scoresheet, MedalAward, BosPlacement) with UUID FKs only,
+matching codebase convention. SCORE_BASED mode requires manual judge intervention
+on tied scores. Next sub-phases: 2.B (retreat under three-tier model — §Q11),
+2.C (confirm §2.1 trigger re-frame), 2.D (start triggers — §Q12). See
+"Next Session: Start Here" in the design doc.
 
 ### Priority 6: Awards module
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md` and `docs/specs/awards.md`.
