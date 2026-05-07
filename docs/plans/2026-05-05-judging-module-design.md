@@ -2,7 +2,8 @@
 
 **Started:** 2026-05-05
 **Status:** Phase 1 ✅ complete (2026-05-05). Phase 2 in progress (started 2026-05-06).
-Phase 2.A ✅ complete (2026-05-07) — state machine redesign decided.
+Phase 2.A ✅ + 2.B ✅ + 2.C ✅ complete (2026-05-07) — state machine, retreat
+semantics, and §2.1 trigger re-frame all decided. Phase 2.D pending.
 **Module dependencies:** competition, entry, identity
 **References:**
 - `docs/specs/judging.md` — preliminary spec (post-rework naming)
@@ -32,7 +33,7 @@ Once a phase is complete, its open questions should all have decisions or be exp
 |---|---|---|
 | 0 | Frame & set up tracking doc | ✅ Complete |
 | 1 | Scope & module boundary decisions | ✅ Complete |
-| 2 | Domain model — entity definitions, eager/lazy creation, COI heuristic, MJP qualifications storage, scoresheet locking | 🔄 In progress (2.A ✅; 2.B–2.D pending) |
+| 2 | Domain model — entity definitions, eager/lazy creation, COI heuristic, MJP qualifications storage, scoresheet locking | 🔄 In progress (2.A ✅ 2.B ✅ 2.C ✅; 2.D pending) |
 | 3 | Service + event contracts, authorization, COI mechanism, judging start trigger | ⏳ Pending |
 | 4 | View design (admin table mgmt, judge scoresheet UX, results-before-publication) | ⏳ Pending |
 | 5 | Implementation sequencing — TDD cycle order, migration plan, MVP slice | ⏳ Pending |
@@ -41,46 +42,41 @@ Once a phase is complete, its open questions should all have decisions or be exp
 
 ## Next Session: Start Here
 
-**Phase 2.A complete (2026-05-07).** Three-tier state model decided
-(division / table / per-category medal round), three separate aggregates,
-auto vs explicit transitions resolved, ties handled by judge intervention
-inside Medal Round ACTIVE state. See §1.5-A for the redesigned decision.
+**Phase 2.A + 2.B + 2.C all complete (2026-05-07).**
+- 2.A: three-tier state model with three independent aggregates (§1.5-A).
+- 2.B: retreat semantics — Tier 0 per-scoresheet, implicit Tier 1, explicit
+  Tier 2/3 with preserve/wipe asymmetry, compensating events, judging-side
+  `DivisionStatusRevertGuard` (§2.B).
+- 2.C: §2.1 trigger re-frame confirmed (per-table, sync rule unchanged).
 
-### What next session must address (in order)
+§Q11 and §Q13 fully resolved as side effects of 2.B.
 
-**Phase 2.B — Re-resolve §Q11 (retreat) under new model**
-- Per-table retreat: `COMPLETE → ROUND_1` (guard: medal round for that table's
-  category is not yet ACTIVE/COMPLETE).
-- Per-category Medal Round retreat: `COMPLETE → ACTIVE`, `ACTIVE → READY`
-  (guard: division is not yet in BOS).
-- Division retreat: `BOS → ACTIVE` (guard: no `BosPlacement` rows yet —
-  or wipe them, TBD), `COMPLETE → BOS` (admin-only escape hatch).
-- Pattern mirrors `revertDivisionStatus` guard interface.
-- **Open**: should retreat unwind events (e.g. published `ScoresheetSubmittedEvent`
-  consumers in awards module)? Probably yes via compensating event — flag for design.
+### What next session must address
 
-**Phase 2.C — Confirm §2.1 trigger re-frame** (mostly mechanical)
-- Eager scoresheet creation fires on per-table `NOT_STARTED → ROUND_1`
-  ("Start this table"), not on a division-level phase advance.
-- Recategorization sync rule from §2.1 is unchanged.
-- Just needs the doc text updated — call this confirmed unless something surfaces.
+**Phase 2.D — Resolve §Q12 (start trigger)**
 
-**Phase 2.D — Re-resolve §Q12 (start trigger) under new model**
+Three explicit triggers (§1.5-A confirmed); preconditions need pinning:
+
 - Per-table: "Start this table" (`JudgingTable.NOT_STARTED → ROUND_1`).
-  Preconditions: assigned category, ≥1 judge assigned, ≥2-judge minimum
-  per CHIP rule §7 (configurable? hard rule?).
+  Open sub-questions:
+  - Minimum judges per table — ≥1, ≥2 (CHIP §7 minimum), or admin
+    override-able? Hard rule or warning?
+  - What if no entries with `finalCategoryId` set match the table's
+    category? Block start, or allow empty (admin can categorize entries
+    after, scoresheets auto-create per §2.1)?
 - Per-category: "Start Medal Round" (`CategoryJudgingConfig.READY → ACTIVE`).
-  Preconditions: all tables for that category COMPLETE.
-- Division: "Start BOS" (`Judging.ACTIVE → BOS`). Preconditions: every
-  `CategoryJudgingConfig` for the division is COMPLETE.
-- Division `NOT_STARTED → ACTIVE` is auto on first table start (no button).
+  Sub-questions:
+  - Auto-population behavior for SCORE_BASED on entry to ACTIVE — what's
+    the algorithm for ranking ties? (e.g. all entries tied at gold cutoff
+    flagged as ambiguous, none assigned).
+  - Withhold mechanism for COMPARATIVE — explicit per-medal "withhold" toggle?
+- Division: "Start BOS" (`Judging.ACTIVE → BOS`). Sub-questions:
+  - What if zero categories have any GOLD MedalAward (nothing to BOS)?
+    Block start, allow empty BOS, or skip directly to COMPLETE?
+- Division `NOT_STARTED → ACTIVE` is auto on first table start (settled
+  by 2.A; no further work).
 
-### Decisions unaffected by 2.A (no review needed)
-- §1.1–§1.4, §1.6, §1.7, §1.9, §1.10, §2.1
-- §Q7 (COI similarity), §Q10 (MJP qualifications), §Q13 (SUBMITTED revert)
-
-### Remaining Phase 2 work after 2.B–2.D
-- Resolve §Q13 (SUBMITTED scoresheet revertibility) — partially decided by §Q8 sync rule.
+### Remaining Phase 2 work after 2.D
 - Resolve §Q7 (COI similarity heuristic).
 - Resolve §Q10 (judge MJP qualifications storage).
 - Pin down field-by-field types, nullability, column lengths, @PrePersist for the
@@ -91,7 +87,7 @@ inside Medal Round ACTIVE state. See §1.5-A for the redesigned decision.
 
 ### Suggested start prompt for next session
 > "Read `docs/plans/2026-05-05-judging-module-design.md` and `docs/SESSION_CONTEXT.md`,
-> then continue Phase 2.B (retreat under the new three-tier state model — see §1.5-A)."
+> then continue Phase 2.D (start trigger preconditions — §Q12)."
 
 ---
 
@@ -457,6 +453,135 @@ config per judging-scope category).
 - **§1.8** working sketch superseded by aggregate diagram in §Discussions
   (updated below).
 
+### 2026-05-07 — Phase 2.B: Retreat semantics across the three tiers (resolves §Q11)
+
+**Decision (D4+D5+D6+D7 from 2026-05-07 conversation).** Retreat is layered:
+small steps back preserve data; larger steps require explicit wipe. Every
+advance has a compensating retreat event so downstream modules can reverse
+durable effects.
+
+#### Tier 0: Per-scoresheet revert — the foundation
+
+`Scoresheet.status: SUBMITTED → DRAFT` (admin-only action). **Score values
+preserved**; admin can edit the existing draft.
+
+**Guard:** the scoresheet's table's category must have
+`medalRoundStatus ∈ {PENDING, READY}`. If `ACTIVE` or `COMPLETE`, block —
+admin must retreat the medal round first (Tier 2).
+
+This also resolves §Q13: SUBMITTED scoresheets are revertible by admin only.
+
+#### Tier 1: Per-table retreat — *implicit only*
+
+`JudgingTable.status: COMPLETE → ROUND_1` is **derived**, not a separate
+admin action:
+- Auto when any scoresheet at the table flips back to DRAFT.
+- Auto when a new DRAFT scoresheet appears at the table (via §2.1
+  recategorization sync, or new entry assigned the table's category).
+- Mirror of the existing auto `ROUND_1 → COMPLETE` rule.
+
+**Rationale (D4):** there's no scenario where admin needs to "reopen a
+table" without touching any scoresheet. If a real need surfaces later,
+"reopen table" can become syntactic sugar for "revert all SUBMITTED
+scoresheets at this table" — deferred.
+
+#### Tier 2: Per-category Medal Round retreat — explicit
+
+| Transition | Action | Effect on `MedalAward` rows |
+|---|---|---|
+| `COMPLETE → ACTIVE` | "Reopen medals" | **Preserve** — rows unlock for edit |
+| `ACTIVE → READY` | "Reset medals" (confirmation) | **Wipe** all rows for this category |
+
+**Guard:** `Judging.phase = ACTIVE`. Block if division is in `BOS` or
+`COMPLETE` — admin must retreat division first (Tier 3).
+
+**Wipe-on-`ACTIVE → READY` rationale:** READY semantically means "ready
+to decide, no decisions made yet." Preserving stale rows would create a
+zombie state. Confirmation prompt protects against accidental clicks.
+
+#### Tier 3: Division-level retreat — explicit, asymmetric
+
+| Transition | Action | Effect |
+|---|---|---|
+| `COMPLETE → BOS` | "Reopen BOS" | **Preserve** `BosPlacement` rows; unlock for edit |
+| `BOS → ACTIVE` | "Reset BOS" | **Block** unless all `BosPlacement` rows already deleted |
+
+**No-auto-wipe rationale (`BOS → ACTIVE`):** BOS placements are high-stakes
+(CHIP Amadora has €100/€50/€25 prizes). Auto-wiping as a side effect of
+retreat is too dangerous. Admin must explicitly delete each `BosPlacement`
+via a separate UI action — that becomes the visible "I really mean it"
+gate before retreat is allowed.
+
+**Mental model summary:** small step back preserves; bigger step back
+requires explicit wipe.
+
+#### Compensating events (D6)
+
+Every state-advance event has a paired retreat event, published
+**synchronously inside the same transaction** as the state change. Empty
+record types defined up front so downstream modules (awards, future)
+subscribe to both directions from day 1.
+
+| Advance event | Retreat event | Trigger |
+|---|---|---|
+| `ScoresheetSubmittedEvent` | `ScoresheetRevertedEvent` | Tier 0 revert |
+| `TableCompletedEvent` | `TableReopenedEvent` | Tier 1 implicit retreat |
+| `MedalRoundActivatedEvent` | `MedalRoundResetEvent` | Tier 2 ACTIVE → READY |
+| `MedalRoundCompletedEvent` | `MedalRoundReopenedEvent` | Tier 2 COMPLETE → ACTIVE |
+| `BosStartedEvent` | `BosResetEvent` | Tier 3 BOS → ACTIVE |
+| `BosCompletedEvent` | `BosReopenedEvent` | Tier 3 COMPLETE → BOS |
+
+Awards (when implemented) subscribes to both directions and reverses
+durable effects (e.g. un-publish ranking, send "results revised" email).
+
+#### DivisionStatusRevertGuard (D7)
+
+Judging module registers a `DivisionStatusRevertGuard` impl on top of the
+existing competition-module guard interface pattern (mirrors
+`EntryDivisionRevertGuard`):
+
+- Blocks `DivisionStatus: JUDGING → REGISTRATION_CLOSED` when any judging
+  data exists for the division (any `JudgingTable` exists, or
+  `Judging.phase != NOT_STARTED`).
+- Blocks `DivisionStatus: DELIBERATION → JUDGING` if `Judging.phase =
+  COMPLETE` and any awards-side state has been published (deferred until
+  awards module exists; for now, no-op).
+
+This keeps the competition module unaware of judging internals — it just
+asks registered guards "is retreat allowed?" before acting.
+
+#### Service API sketch (for Phase 3)
+
+```
+ScoresheetService.revertScoresheet(scoresheetId, adminUserId)
+  // SUBMITTED → DRAFT; guard medalRoundStatus ∈ {PENDING, READY}; publishes ScoresheetRevertedEvent
+  // Implicit side-effect: table COMPLETE → ROUND_1 if applicable, publishes TableReopenedEvent
+
+JudgingService.reopenMedalRound(divisionCategoryId, adminUserId)
+  // COMPLETE → ACTIVE; guard Judging.phase = ACTIVE; preserves MedalAward; publishes MedalRoundReopenedEvent
+
+JudgingService.resetMedalRound(divisionCategoryId, adminUserId)
+  // ACTIVE → READY; guard Judging.phase = ACTIVE; deletes MedalAward rows for category; publishes MedalRoundResetEvent
+
+JudgingService.reopenBos(divisionId, adminUserId)
+  // COMPLETE → BOS; preserves BosPlacement; publishes BosReopenedEvent
+
+JudgingService.resetBos(divisionId, adminUserId)
+  // BOS → ACTIVE; guard: zero BosPlacement rows exist; publishes BosResetEvent
+
+JudgingService.deleteBosPlacement(placementId, adminUserId)
+  // standalone — must be called repeatedly until none remain before resetBos() is allowed
+```
+
+#### Implications
+
+- **§Q11** (retreat) — fully resolved.
+- **§Q13** (SUBMITTED scoresheet revertibility) — fully resolved as a
+  side effect: admin-only revert at Tier 0.
+- **§2.1** sync rule's "block on SUBMITTED" wording stays — admin must
+  call `revertScoresheet` first before recategorization moves a SUBMITTED
+  scoresheet's table.
+
 ---
 
 ## Open Questions
@@ -520,25 +645,13 @@ per-scoresheet.
 **Status:** Deferred to Phase 2.
 
 ### Q11 — Retreat allowed?
-
-Originally about per-division `JudgingPhase` retreat. Under the three-tier
-model (§1.5-A), retreat exists at all three tiers:
-
-- **Per-table:** `COMPLETE → ROUND_1` (re-open table for fixes).
-- **Per-category Medal Round:** `COMPLETE → ACTIVE`, `ACTIVE → READY`.
-- **Division:** `BOS → ACTIVE`, `COMPLETE → BOS`.
-
-Likely yes for admins, with guards mirroring `revertDivisionStatus` —
-e.g. can't retreat a table whose category's medal round is already ACTIVE/COMPLETE;
-can't retreat division `BOS → ACTIVE` without wiping `BosPlacement` rows.
-
-**Open sub-questions:**
-- Should retreat publish compensating events so consuming modules (awards)
-  can react?
-- Wipe-vs-preserve policy for downstream rows on retreat (`MedalAward`,
-  `BosPlacement`)?
-
-**Status:** Queued for Phase 2.B (next session).
+**Status:** ✅ Resolved by Decision §2.B (2026-05-07).
+Per-scoresheet revert (Tier 0) admin-only with cascade guards;
+per-table retreat implicit (Tier 1); medal round retreat explicit with
+preserve/wipe asymmetry (Tier 2); division retreat asymmetric — preserve
+on `COMPLETE → BOS`, require empty BosPlacements on `BOS → ACTIVE` (Tier 3).
+Compensating events paired with every advance event. Judging module
+registers a `DivisionStatusRevertGuard`.
 
 ### Q12 — Judging start trigger
 
@@ -562,13 +675,10 @@ button needed.
 **Status:** Queued for Phase 2.D (next session).
 
 ### Q13 — Are scoresheets locked once finalized?
-
-The preliminary spec has DRAFT → SUBMITTED on Scoresheet. CHIP rules talk about
-"one official scoresheet" per entry, suggesting it's locked after submission. But
-admins may need to fix typos. **Likely:** SUBMITTED is read-only to judges, but
-admins can revert to DRAFT.
-
-**Status:** Deferred to Phase 2/3.
+**Status:** ✅ Resolved by Decision §2.B (2026-05-07, Tier 0).
+SUBMITTED scoresheets are read-only to judges. Admin-only `revertScoresheet`
+moves SUBMITTED → DRAFT, guarded by `medalRoundStatus ∈ {PENDING, READY}` for
+the scoresheet's category. Score values preserved on revert.
 
 ---
 
