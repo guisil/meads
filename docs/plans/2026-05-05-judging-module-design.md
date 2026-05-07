@@ -2,8 +2,10 @@
 
 **Started:** 2026-05-05
 **Status:** Phase 1 ✅ complete (2026-05-05). Phase 2 in progress (started 2026-05-06).
-Phase 2.A ✅ + 2.B ✅ + 2.C ✅ complete (2026-05-07) — state machine, retreat
-semantics, and §2.1 trigger re-frame all decided. Phase 2.D pending.
+Phase 2.A–2.D ✅ complete (2026-05-07) — state machine, retreat semantics,
+§2.1 trigger re-frame, and start trigger preconditions all decided.
+Remaining Phase 2: §Q7 (COI similarity), §Q10 (MJP qualifications),
+field-level entity finalization.
 **Module dependencies:** competition, entry, identity
 **References:**
 - `docs/specs/judging.md` — preliminary spec (post-rework naming)
@@ -33,7 +35,7 @@ Once a phase is complete, its open questions should all have decisions or be exp
 |---|---|---|
 | 0 | Frame & set up tracking doc | ✅ Complete |
 | 1 | Scope & module boundary decisions | ✅ Complete |
-| 2 | Domain model — entity definitions, eager/lazy creation, COI heuristic, MJP qualifications storage, scoresheet locking | 🔄 In progress (2.A ✅ 2.B ✅ 2.C ✅; 2.D pending) |
+| 2 | Domain model — entity definitions, eager/lazy creation, COI heuristic, MJP qualifications storage, scoresheet locking | 🔄 In progress (2.A–2.D ✅; §Q7, §Q10, field finalization pending) |
 | 3 | Service + event contracts, authorization, COI mechanism, judging start trigger | ⏳ Pending |
 | 4 | View design (admin table mgmt, judge scoresheet UX, results-before-publication) | ⏳ Pending |
 | 5 | Implementation sequencing — TDD cycle order, migration plan, MVP slice | ⏳ Pending |
@@ -42,52 +44,54 @@ Once a phase is complete, its open questions should all have decisions or be exp
 
 ## Next Session: Start Here
 
-**Phase 2.A + 2.B + 2.C all complete (2026-05-07).**
+**Phase 2.A–2.D all complete (2026-05-07).**
 - 2.A: three-tier state model with three independent aggregates (§1.5-A).
 - 2.B: retreat semantics — Tier 0 per-scoresheet, implicit Tier 1, explicit
   Tier 2/3 with preserve/wipe asymmetry, compensating events, judging-side
   `DivisionStatusRevertGuard` (§2.B).
 - 2.C: §2.1 trigger re-frame confirmed (per-table, sync rule unchanged).
+- 2.D: start trigger preconditions and behaviors — `Division.minJudgesPerTable`
+  (default 2), SCORE_BASED auto-population with cascade-stop on first tie,
+  empty-BOS allowed via UX info message (§2.D).
 
-§Q11 and §Q13 fully resolved as side effects of 2.B.
+§Q1, §Q8, §Q11, §Q12, §Q13 fully resolved.
 
 ### What next session must address
 
-**Phase 2.D — Resolve §Q12 (start trigger)**
+Remaining Phase 2 items, in order:
 
-Three explicit triggers (§1.5-A confirmed); preconditions need pinning:
+**§Q7 — COI similarity heuristic for meadery names.**
+Decided high-level approach (§1.4): hard block on own entries (judge.userId
+== entry.userId), soft warning on similar meadery name. Open: which similarity
+function?
+- Exact match (case-insensitive, normalized whitespace)
+- Levenshtein distance with threshold (e.g. ≤ 2)
+- Jaccard similarity on tokens
+- Substring match
+Need to pick one for v1. Likely Levenshtein with conservative threshold to
+catch typos/punctuation variations without flooding warnings.
 
-- Per-table: "Start this table" (`JudgingTable.NOT_STARTED → ROUND_1`).
-  Open sub-questions:
-  - Minimum judges per table — ≥1, ≥2 (CHIP §7 minimum), or admin
-    override-able? Hard rule or warning?
-  - What if no entries with `finalCategoryId` set match the table's
-    category? Block start, or allow empty (admin can categorize entries
-    after, scoresheets auto-create per §2.1)?
-- Per-category: "Start Medal Round" (`CategoryJudgingConfig.READY → ACTIVE`).
-  Sub-questions:
-  - Auto-population behavior for SCORE_BASED on entry to ACTIVE — what's
-    the algorithm for ranking ties? (e.g. all entries tied at gold cutoff
-    flagged as ambiguous, none assigned).
-  - Withhold mechanism for COMPARATIVE — explicit per-medal "withhold" toggle?
-- Division: "Start BOS" (`Judging.ACTIVE → BOS`). Sub-questions:
-  - What if zero categories have any GOLD MedalAward (nothing to BOS)?
-    Block start, allow empty BOS, or skip directly to COMPLETE?
-- Division `NOT_STARTED → ACTIVE` is auto on first table start (settled
-  by 2.A; no further work).
+**§Q10 — Judge MJP qualifications storage.**
+The MJP scoresheet PDF has a "Judge MJP Qualifications" header (level + EMMA
+/ AMMA / BJCP / Other certifications). Per-judge profile data, not per-scoresheet.
+Options:
+- Add fields directly to `User` (`mjpLevel`, `certifications: Set<enum>`)
+- New `JudgeProfile` entity in identity or judging module, optional 1:1 with User
+- Free-text on `Scoresheet` (denormalized, printed-only)
+Pick one.
 
-### Remaining Phase 2 work after 2.D
-- Resolve §Q7 (COI similarity heuristic).
-- Resolve §Q10 (judge MJP qualifications storage).
-- Pin down field-by-field types, nullability, column lengths, @PrePersist for the
-  six aggregates (Judging, JudgingTable, CategoryJudgingConfig, Scoresheet,
+**Field-level entity finalization for Phase 3:**
+- Field-by-field types, nullability, column lengths, @PrePersist for all six
+  aggregates (Judging, JudgingTable, CategoryJudgingConfig, Scoresheet,
   MedalAward, BosPlacement) plus child entities (JudgeAssignment, ScoreField).
-- Define invariants and domain methods per aggregate.
-- Produce a finalized entity definition section ready for Phase 3.
+- Invariants and domain methods per aggregate.
+- Produce a finalized entity definition section ready for Phase 3 (services,
+  events, authorization).
 
 ### Suggested start prompt for next session
 > "Read `docs/plans/2026-05-05-judging-module-design.md` and `docs/SESSION_CONTEXT.md`,
-> then continue Phase 2.D (start trigger preconditions — §Q12)."
+> then continue Phase 2 by resolving §Q7 (COI similarity heuristic) and §Q10 (judge
+> MJP qualifications storage)."
 
 ---
 
@@ -582,6 +586,152 @@ JudgingService.deleteBosPlacement(placementId, adminUserId)
   call `revertScoresheet` first before recategorization moves a SUBMITTED
   scoresheet's table.
 
+### 2026-05-07 — Phase 2.D: Start trigger preconditions and behaviors (resolves §Q12)
+
+**Decision (D8–D12 from 2026-05-07 conversation).** Three explicit start
+actions (already settled by §1.5-A) — preconditions and entry behaviors
+specified below. Division `NOT_STARTED → ACTIVE` remains auto on first
+table start (no separate trigger).
+
+#### "Start this table" — `JudgingTable.NOT_STARTED → ROUND_1`
+
+**Preconditions (hard blocks):**
+- Table has `divisionCategoryId` set.
+- `JudgeAssignment count >= Division.minJudgesPerTable`.
+
+**Soft confirmation prompt:**
+- If no entry has `finalCategoryId` matching the table's category, the
+  start dialog asks "This table has no entries yet. Start anyway?" Admin
+  may proceed — the table sits in ROUND_1 with zero scoresheets, and §2.1
+  auto-creates them as entries get categorized.
+
+**Entry behavior:**
+- Per §2.1: create one DRAFT `Scoresheet` per entry whose `finalCategoryId`
+  matches the table's category, attached to this table.
+- Publish `TableStartedEvent` (advance counterpart of `TableReopenedEvent`).
+
+**New field on Division (D8):**
+- `minJudgesPerTable: Integer` (NOT NULL, DEFAULT 2).
+- Editable from DRAFT through REGISTRATION_CLOSED; locked once any
+  `JudgingTable` in the division has `status != NOT_STARTED`.
+- Hard-block at "Start this table" (no admin override). If a competition
+  needs a lower minimum, set the field ahead of time.
+- Default 2 matches CHIP §7 / general MJP practice.
+
+#### "Start Medal Round" — `CategoryJudgingConfig.medalRoundStatus: READY → ACTIVE`
+
+**Precondition (hard block):**
+- Every `JudgingTable` for this `divisionCategoryId` has `status = COMPLETE`.
+  (`PENDING → READY` is auto-derived per §1.5-A; admin can only act once
+  the status is READY.)
+
+**Entry behavior depends on `medalRoundMode`:**
+
+**COMPARATIVE:**
+- No `MedalAward` rows auto-created.
+- Judges manually create `MedalAward` rows during ACTIVE for entries they
+  award (gold/silver/bronze).
+- Withholding a medal = simply not creating a row for that medal slot
+  (e.g. judges award only bronze → no gold or silver rows created → gold
+  and silver implicitly withheld).
+
+**SCORE_BASED auto-population algorithm (D10):**
+
+On READY → ACTIVE, the system attempts to auto-assign medals:
+
+1. Sort entries in the category by `Scoresheet.totalScore DESC`.
+2. Walk medal slots in order (Gold → Silver → Bronze):
+   - If exactly one entry has the highest remaining score → auto-create
+     `MedalAward(medal=GOLD/SILVER/BRONZE)`. Continue to next slot.
+   - If multiple entries tie at the highest remaining score → no row
+     created. **Stop the auto-assignment cascade** — all subsequent slots
+     are also unresolved (their candidates depend on judges' resolution
+     above).
+3. Stop when no entries remain (e.g. category has only 2 entries: only
+   Gold + Silver candidates exist).
+
+**Worked example (from 2026-05-07 conversation):**
+
+Scores: 80, 80, 75, 75, 65, 64.
+- Gold slot: tied at 80 → no row, cascade stops.
+- Silver, Bronze: no rows.
+- Judges resolve everything manually from gold down. If they withhold
+  gold, silver candidates become the two 80s (still tied, manual choice
+  required). And so on.
+
+**During ACTIVE (both modes):**
+- Judges may create, edit, or delete `MedalAward` rows.
+- A row's `medal` field can be set to `null` to **explicitly record withhold**
+  on an auto-populated entry that judges decide doesn't deserve the medal
+  (rare — most withholds happen by leaving rows uncreated).
+- UNIQUE(entryId) on `MedalAward` (per §1.7) prevents double-medalling.
+
+**Withhold semantics (D11, narrow interpretation):**
+
+| Situation | Row state |
+|---|---|
+| Entry awarded a medal | Row exists, `medal = GOLD/SILVER/BRONZE` |
+| Auto-populated entry that judges decide to withhold | Row exists, `medal = null` |
+| Entry never a candidate (below cutoff or tie-cascade-stopped) | **No row** |
+| COMPARATIVE entry not awarded | **No row** |
+
+`medal = null` is reserved for "considered as a candidate, explicitly
+withheld" — not for non-candidates. Categories with 50 entries don't
+generate 47 noise rows.
+
+**Events:** `MedalRoundActivatedEvent` on READY → ACTIVE;
+`MedalRoundCompletedEvent` on ACTIVE → COMPLETE.
+
+#### "Start BOS" — `Judging.phase: ACTIVE → BOS`
+
+**Precondition (hard block):**
+- Every `CategoryJudgingConfig` for the division has `medalRoundStatus = COMPLETE`.
+
+**No precondition on GOLD count (D12):** start is allowed even if zero
+GOLD `MedalAward` rows exist across the division (degenerate "no entries
+deserved gold" case). UI surfaces this via info message
+("No GOLD medals were awarded; BOS round has no candidates"). Admin
+clicks "Finalize BOS" with zero `BosPlacement` rows → `BOS → COMPLETE`.
+
+**Why no GOLD-count precondition:** CHIP §7 mandates "Only Gold medal
+winners advance" — this is the input filter, not a start gate. Empty
+input is a valid (if vanishingly rare) state. Keeping the gate clean
+on category-completion alone avoids hidden state paths.
+
+**Entry behavior:**
+- BOS UI lists all entries with `MedalAward.medal = GOLD` in the division.
+- Judges assign `BosPlacement(place: 1..bosPlaces)` to entries.
+- Per §1.7: `UNIQUE(divisionId, place)` and `UNIQUE(divisionId, entryId)`.
+
+**Events:** `BosStartedEvent` on ACTIVE → BOS;
+`BosCompletedEvent` on BOS → COMPLETE.
+
+#### Service API addition (for Phase 3)
+
+```
+JudgingService.startTable(tableId, adminUserId)
+  // NOT_STARTED → ROUND_1; guards: category set, judges >= minJudgesPerTable
+  // optional confirmation flag for empty-category case
+  // creates DRAFT scoresheets per §2.1; publishes TableStartedEvent
+
+JudgingService.startMedalRound(divisionCategoryId, adminUserId)
+  // READY → ACTIVE; guard: all tables for category COMPLETE
+  // SCORE_BASED: runs auto-population algorithm; publishes MedalRoundActivatedEvent
+
+JudgingService.startBos(divisionId, adminUserId)
+  // ACTIVE → BOS; guard: all CategoryJudgingConfig.medalRoundStatus = COMPLETE
+  // publishes BosStartedEvent
+```
+
+#### Implications
+
+- **§Q12** (start trigger) — fully resolved.
+- **Division entity** gains `minJudgesPerTable: Integer NOT NULL DEFAULT 2`.
+  Migration when judging module is implemented (in the judging-module's
+  initial migration or a competition-module migration paired with it).
+- **Aggregate sketch (§1.8)** unchanged — `minJudgesPerTable` is a
+  Division field, not a judging-module entity.
+
 ---
 
 ## Open Questions
@@ -654,25 +804,13 @@ Compensating events paired with every advance event. Judging module
 registers a `DivisionStatusRevertGuard`.
 
 ### Q12 — Judging start trigger
-
-Under the three-tier model (§1.5-A), three explicit triggers replace one:
-- **"Start this table"** — per-table, `NOT_STARTED → ROUND_1`. Triggers eager
-  scoresheet creation per §2.1.
-- **"Start Medal Round"** — per-category, `READY → ACTIVE`. Gated on all
-  tables for the category being COMPLETE.
-- **"Start BOS"** — division-wide, `ACTIVE → BOS`. Gated on every category's
-  medal round being COMPLETE.
-
-Division `NOT_STARTED → ACTIVE` is implicit (auto on first table start) — no
-button needed.
-
-**Open sub-questions:**
-- Per-table preconditions: ≥1 judge? ≥2 judges (CHIP §7 minimum)? Hard rule
-  or warning? Configurable per division?
-- What if a category has no entries with `finalCategoryId` set? Block table
-  start, or allow empty?
-
-**Status:** Queued for Phase 2.D (next session).
+**Status:** ✅ Resolved by Decision §2.D (2026-05-07).
+Per-table: hard-block on judges < `Division.minJudgesPerTable` (default 2);
+soft confirmation on empty category. Per-category: hard-block on tables-not-COMPLETE;
+SCORE_BASED auto-populates with cascade-stop on first tie. Per-division:
+hard-block on categories-not-COMPLETE; empty BOS allowed (UX info message).
+New field: `Division.minJudgesPerTable`, NOT NULL DEFAULT 2, locked once any
+table starts.
 
 ### Q13 — Are scoresheets locked once finalized?
 **Status:** ✅ Resolved by Decision §2.B (2026-05-07, Tier 0).

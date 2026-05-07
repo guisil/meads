@@ -417,7 +417,7 @@ open questions, and the "Next Session: Start Here" marker. Reference:
 `docs/reference/chip-competition-rules.md` and `docs/specs/judging.md`.
 
 **Phase 2 in progress.** §Q8 (eager scoresheet creation + recategorization sync rule)
-resolved 2026-05-06. **Phase 2.A + 2.B + 2.C complete (2026-05-07):**
+resolved 2026-05-06. **Phase 2.A–2.D complete (2026-05-07):**
 - 2.A: three-tier state model — division (`Judging.phase: NOT_STARTED → ACTIVE
   → BOS → COMPLETE`), per-table (`JudgingTable.status: NOT_STARTED → ROUND_1
   → COMPLETE`), per-category medal round (`CategoryJudgingConfig.medalRoundStatus:
@@ -432,9 +432,16 @@ resolved 2026-05-06. **Phase 2.A + 2.B + 2.C complete (2026-05-07):**
   Compensating retreat events paired with every advance event. Judging
   module registers a `DivisionStatusRevertGuard`. §Q11 + §Q13 resolved.
 - 2.C: §2.1 trigger re-framed to per-table; sync rule unchanged.
+- 2.D: start triggers — per-table hard-blocks on judges < `Division.minJudgesPerTable`
+  (new field, NOT NULL DEFAULT 2, locked once any table starts) and soft-confirms
+  on empty category. SCORE_BASED auto-population: walk gold→silver→bronze, stop
+  cascade on first tie, judges resolve manually. COMPARATIVE: no auto-rows;
+  withhold = no row. SCORE_BASED withhold of auto-populated entry = `medal=null`
+  on existing row; entries below cutoff = no row. Empty BOS (zero golds) allowed;
+  UX info message handles. §Q12 resolved.
 
-Next: Phase 2.D (start trigger preconditions — §Q12), then §Q7 (COI similarity),
-§Q10 (MJP qualifications), then field-level entity finalization for Phase 3.
+Next: §Q7 (COI similarity heuristic), §Q10 (judge MJP qualifications storage),
+then field-level entity finalization for Phase 3 (services, events, authorization).
 See "Next Session: Start Here" in the design doc.
 
 ### Priority 6: Awards module
