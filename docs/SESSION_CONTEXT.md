@@ -416,33 +416,42 @@ Design and implementation. **Design in progress (multi-session):** see
 open questions, and the "Next Session: Start Here" marker. Reference:
 `docs/reference/chip-competition-rules.md` and `docs/specs/judging.md`.
 
-**Phase 2 in progress.** §Q8 (eager scoresheet creation + recategorization sync rule)
-resolved 2026-05-06. **Phase 2.A–2.D complete (2026-05-07):**
+**Phase 2 in progress — all design questions resolved 2026-05-07.**
+§Q8 (eager scoresheet creation + recategorization sync rule) resolved 2026-05-06.
+**Phase 2.A–2.F complete:**
 - 2.A: three-tier state model — division (`Judging.phase: NOT_STARTED → ACTIVE
   → BOS → COMPLETE`), per-table (`JudgingTable.status: NOT_STARTED → ROUND_1
   → COMPLETE`), per-category medal round (`CategoryJudgingConfig.medalRoundStatus:
-  PENDING → READY → ACTIVE → COMPLETE`). Six independent aggregates
+  PENDING → READY → ACTIVE → COMPLETE`). Seven independent aggregates
   (Judging, JudgingTable, CategoryJudgingConfig, Scoresheet, MedalAward,
-  BosPlacement) with UUID FKs only. SCORE_BASED mode requires manual judge
-  intervention on tied scores.
-- 2.B: retreat semantics. Tier 0 per-scoresheet revert (admin-only) is
-  the foundation; Tier 1 per-table retreat is implicit. Tier 2 medal round:
+  BosPlacement, JudgeProfile) with UUID FKs only. SCORE_BASED mode requires
+  manual judge intervention on tied scores.
+- 2.B: retreat semantics. Tier 0 per-scoresheet revert (admin-only) is the
+  foundation; Tier 1 per-table retreat is implicit. Tier 2 medal round:
   preserve on COMPLETE → ACTIVE, wipe on ACTIVE → READY. Tier 3 division:
   preserve on COMPLETE → BOS, require empty BosPlacements on BOS → ACTIVE.
   Compensating retreat events paired with every advance event. Judging
   module registers a `DivisionStatusRevertGuard`. §Q11 + §Q13 resolved.
 - 2.C: §2.1 trigger re-framed to per-table; sync rule unchanged.
 - 2.D: start triggers — per-table hard-blocks on judges < `Division.minJudgesPerTable`
-  (new field, NOT NULL DEFAULT 2, locked once any table starts) and soft-confirms
-  on empty category. SCORE_BASED auto-population: walk gold→silver→bronze, stop
-  cascade on first tie, judges resolve manually. COMPARATIVE: no auto-rows;
-  withhold = no row. SCORE_BASED withhold of auto-populated entry = `medal=null`
-  on existing row; entries below cutoff = no row. Empty BOS (zero golds) allowed;
-  UX info message handles. §Q12 resolved.
+  (new field, NOT NULL DEFAULT 2). SCORE_BASED auto-population walks
+  gold→silver→bronze, stops cascade on first tie. Empty BOS allowed via UX
+  info message. §Q12 resolved.
+- 2.E: COI similarity — cross-country gate (skip if both countries set and
+  differ) + country-aware suffix-stripping normalization + Levenshtein
+  distance ≤ 2 + exact-match-on-normalized. Soft warning only. Initial
+  suffix lists cover EN/PT/ES/IT/PL/FR/DE/NL/global. §Q7 resolved.
+- 2.F: `JudgeProfile` aggregate (judging module) — `userId` UNIQUE,
+  `certifications: Set<Certification>` (enum: MJP, BJCP, OTHER),
+  `qualificationDetails: String` (free-text; also specifies what `OTHER`
+  is, e.g. WSET). v1 scoresheet PDF stays anonymized (privacy-safe;
+  per-jurisdiction template config deferred). §Q10 resolved.
 
-Next: §Q7 (COI similarity heuristic), §Q10 (judge MJP qualifications storage),
-then field-level entity finalization for Phase 3 (services, events, authorization).
-See "Next Session: Start Here" in the design doc.
+§Q1, §Q7, §Q8, §Q10, §Q11, §Q12, §Q13 all resolved.
+
+Next: field-level entity finalization for the 7 aggregates + child entities
+(JudgeAssignment, ScoreField) — last Phase 2 step. Then Phase 3 (services,
+events, authorization). See "Next Session: Start Here" in the design doc.
 
 ### Priority 6: Awards module
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md` and `docs/specs/awards.md`.

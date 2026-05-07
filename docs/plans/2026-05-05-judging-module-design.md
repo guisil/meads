@@ -2,10 +2,10 @@
 
 **Started:** 2026-05-05
 **Status:** Phase 1 ✅ complete (2026-05-05). Phase 2 in progress (started 2026-05-06).
-Phase 2.A–2.D ✅ complete (2026-05-07) — state machine, retreat semantics,
-§2.1 trigger re-frame, and start trigger preconditions all decided.
-Remaining Phase 2: §Q7 (COI similarity), §Q10 (MJP qualifications),
-field-level entity finalization.
+Phase 2.A–2.F ✅ complete (2026-05-07) — state machine, retreat semantics,
+§2.1 trigger re-frame, start trigger preconditions, COI similarity heuristic,
+and judge MJP qualifications storage all decided. Remaining Phase 2:
+field-level entity finalization for Phase 3.
 **Module dependencies:** competition, entry, identity
 **References:**
 - `docs/specs/judging.md` — preliminary spec (post-rework naming)
@@ -35,7 +35,7 @@ Once a phase is complete, its open questions should all have decisions or be exp
 |---|---|---|
 | 0 | Frame & set up tracking doc | ✅ Complete |
 | 1 | Scope & module boundary decisions | ✅ Complete |
-| 2 | Domain model — entity definitions, eager/lazy creation, COI heuristic, MJP qualifications storage, scoresheet locking | 🔄 In progress (2.A–2.D ✅; §Q7, §Q10, field finalization pending) |
+| 2 | Domain model — entity definitions, eager/lazy creation, COI heuristic, MJP qualifications storage, scoresheet locking | 🔄 In progress (2.A–2.F ✅; field finalization pending) |
 | 3 | Service + event contracts, authorization, COI mechanism, judging start trigger | ⏳ Pending |
 | 4 | View design (admin table mgmt, judge scoresheet UX, results-before-publication) | ⏳ Pending |
 | 5 | Implementation sequencing — TDD cycle order, migration plan, MVP slice | ⏳ Pending |
@@ -44,54 +44,55 @@ Once a phase is complete, its open questions should all have decisions or be exp
 
 ## Next Session: Start Here
 
-**Phase 2.A–2.D all complete (2026-05-07).**
+**Phase 2.A–2.F all complete (2026-05-07).**
 - 2.A: three-tier state model with three independent aggregates (§1.5-A).
-- 2.B: retreat semantics — Tier 0 per-scoresheet, implicit Tier 1, explicit
-  Tier 2/3 with preserve/wipe asymmetry, compensating events, judging-side
+- 2.B: retreat semantics across three tiers + compensating events +
   `DivisionStatusRevertGuard` (§2.B).
-- 2.C: §2.1 trigger re-frame confirmed (per-table, sync rule unchanged).
-- 2.D: start trigger preconditions and behaviors — `Division.minJudgesPerTable`
-  (default 2), SCORE_BASED auto-population with cascade-stop on first tie,
-  empty-BOS allowed via UX info message (§2.D).
+- 2.C: §2.1 trigger re-frame confirmed.
+- 2.D: start trigger preconditions and behaviors; `Division.minJudgesPerTable`
+  added (§2.D).
+- 2.E: COI similarity heuristic — country-aware suffix-stripping +
+  Levenshtein ≤ 2 (§2.E).
+- 2.F: `JudgeProfile` aggregate added; v1 scoresheet PDF stays anonymized
+  (§2.F).
 
-§Q1, §Q8, §Q11, §Q12, §Q13 fully resolved.
+§Q1, §Q7, §Q8, §Q10, §Q11, §Q12, §Q13 fully resolved. **All Phase 2 design
+questions closed.**
 
-### What next session must address
+### What next session must address: field-level entity finalization
 
-Remaining Phase 2 items, in order:
+Last Phase 2 step. Mechanical pass over all 7 aggregates and child entities
+to produce the Phase 3-ready entity definition section. For each aggregate:
 
-**§Q7 — COI similarity heuristic for meadery names.**
-Decided high-level approach (§1.4): hard block on own entries (judge.userId
-== entry.userId), soft warning on similar meadery name. Open: which similarity
-function?
-- Exact match (case-insensitive, normalized whitespace)
-- Levenshtein distance with threshold (e.g. ≤ 2)
-- Jaccard similarity on tokens
-- Substring match
-Need to pick one for v1. Likely Levenshtein with conservative threshold to
-catch typos/punctuation variations without flooding warnings.
+- Field-by-field types, JPA annotations, nullability, column lengths.
+- `@PrePersist` / `@PreUpdate` for timestamps where applicable.
+- Invariants (state machine guards, FK rules, UNIQUE constraints).
+- Domain methods on the aggregate root (e.g. `Judging.advancePhase()`,
+  `JudgingTable.startRound1()`, `Scoresheet.submit()`,
+  `CategoryJudgingConfig.startMedalRound()`).
+- No-arg protected constructor for JPA + public constructor with required
+  business fields.
 
-**§Q10 — Judge MJP qualifications storage.**
-The MJP scoresheet PDF has a "Judge MJP Qualifications" header (level + EMMA
-/ AMMA / BJCP / Other certifications). Per-judge profile data, not per-scoresheet.
-Options:
-- Add fields directly to `User` (`mjpLevel`, `certifications: Set<enum>`)
-- New `JudgeProfile` entity in identity or judging module, optional 1:1 with User
-- Free-text on `Scoresheet` (denormalized, printed-only)
-Pick one.
+**Aggregates to finalize:**
+1. `Judging` (§1.5-A)
+2. `JudgingTable` + child `JudgeAssignment` (§1.5-A, §1.3, §1.4)
+3. `CategoryJudgingConfig` (§1.5-A)
+4. `Scoresheet` + child `ScoreField` (§1.3, §1.10)
+5. `MedalAward` (§1.7)
+6. `BosPlacement` (§1.7)
+7. `JudgeProfile` (§2.F)
 
-**Field-level entity finalization for Phase 3:**
-- Field-by-field types, nullability, column lengths, @PrePersist for all six
-  aggregates (Judging, JudgingTable, CategoryJudgingConfig, Scoresheet,
-  MedalAward, BosPlacement) plus child entities (JudgeAssignment, ScoreField).
-- Invariants and domain methods per aggregate.
-- Produce a finalized entity definition section ready for Phase 3 (services,
-  events, authorization).
+**Plus competition-module change:**
+- `Division.minJudgesPerTable` (§2.D) — Integer NOT NULL DEFAULT 2.
+
+After field finalization, Phase 2 is closed and Phase 3 (service + event
+contracts, authorization, COI mechanism, judging start trigger
+implementation contracts) can begin.
 
 ### Suggested start prompt for next session
 > "Read `docs/plans/2026-05-05-judging-module-design.md` and `docs/SESSION_CONTEXT.md`,
-> then continue Phase 2 by resolving §Q7 (COI similarity heuristic) and §Q10 (judge
-> MJP qualifications storage)."
+> then begin the field-level entity finalization (last Phase 2 step) — start with
+> `Judging` and `JudgingTable`."
 
 ---
 
@@ -732,6 +733,171 @@ JudgingService.startBos(divisionId, adminUserId)
 - **Aggregate sketch (§1.8)** unchanged — `minJudgesPerTable` is a
   Division field, not a judging-module entity.
 
+### 2026-05-07 — Phase 2.E: COI similarity heuristic (resolves §Q7)
+
+**Decision (D13 from 2026-05-07 conversation).** Country-aware normalization
+followed by a strict Levenshtein-distance match on normalized strings. Soft
+warning surface only — never blocks an admin/judge action.
+
+#### Algorithm
+
+1. **Cross-country skip gate.** If both `judge.country` and `entrant.country`
+   are non-null and different, return no warning immediately. Different
+   jurisdictions almost always mean different businesses, and the hard-block
+   on `judge.userId == entry.userId` already catches the rare multinational
+   case where a single person acts in both countries.
+2. Otherwise, determine combined suffix list:
+   `global ∪ suffixes(judge.country) ∪ suffixes(entrant.country)`
+   (one country may be null — fall back to the global list for that side;
+   if both are null, just the global list applies).
+3. Normalize each meadery name:
+   - lowercase
+   - replace non-alphanumeric with space
+   - strip every entry in the combined suffix list (whole-word match)
+   - collapse whitespace, trim
+4. Compare normalized strings:
+   - exact match → warn
+   - Levenshtein distance ≤ 2 → warn
+   - otherwise → no warning
+
+If both meadery names are null/blank, no comparison is performed (no warning).
+
+#### Initial suffix lists (v1)
+
+| Country code(s) | Business suffixes | Mead suffixes |
+|---|---|---|
+| **Global / EN / US / GB / IE** | llc, inc, ltd, co, corp, plc | meadery, mead, meads, meadworks, cellars, farm, brewery |
+| PT / BR | lda, sa, ldª | hidromelaria, hidromelina |
+| ES / MX / AR | sl, sa, srl | hidromielería, hidromelería, hidromiel |
+| IT | srl, spa, sas, sapa | idromeleria, idromele |
+| PL | sp z o o, sa, sk | miodosytnia, pasieka, miód |
+| FR | sarl, sas, eurl, sa | hydromellerie, hydromel |
+| DE / AT / CH | gmbh, ag, ohg, kg | metherei, metmacherei, metbrauerei |
+| NL / BE | bv, nv | meddrijf, mede |
+
+Unsupported countries fall back to the global list only. Lists curated by
+the developer; expand as new entrant countries appear.
+
+#### Where it lives
+
+- Helper: `app.meads.judging.internal.MeaderyNameNormalizer` (or a
+  service-level component). Static normalization + similarity check.
+- Suffix lists: constant `Map<String, Set<String>>` keyed by ISO 3166-1
+  alpha-2 country code, plus a `GLOBAL` key for the fallback. Compile-time
+  constant, not externalized in v1.
+
+#### Where it's called
+
+- Admin assigning a judge to a table — UI shows a warning per entry at
+  the table that has a similar meadery to the judge's.
+- Judge UI when opening a scoresheet — banner if the entry's meadery is
+  similar to the judge's own.
+- Both call paths produce a warning surface only; no data-layer block.
+
+#### Coverage and trade-offs
+
+**Catches:**
+- Suffix variations within a country: "Acme Meadery" vs "Acme Meads Co."
+  (both → "acme").
+- Country-internal typos: "Honey Hill" vs "Honey Hil" (distance 1).
+- Diacritic variations: "Casa do Mel" vs "Casa do Mél" (distance 1).
+- One-side-null country comparisons (e.g. judge unconfigured, entrant in PT).
+
+**Skips (by design, per cross-country gate):**
+- "Acme Meads LLC" (US) vs "Acme Hidromelaria, Lda." (PT) — different
+  jurisdictions, no warning. The hard `userId == userId` block catches
+  the multinational-same-owner case if it actually occurs.
+
+**Misses (acceptable for v1; can extend later if surfaced):**
+- Word reorders within a country: "Honey Hill" vs "Hill Honey" — Levenshtein
+  doesn't catch these. Could add token-Jaccard if needed.
+- Conceptual translations: "Bear Mountain Mead" vs "Hidromel da Montanha
+  do Urso" — out of scope.
+
+### 2026-05-07 — Phase 2.F: Judge MJP qualifications storage (resolves §Q10)
+
+**Decision (D14 from 2026-05-07 conversation).** New `JudgeProfile`
+aggregate in the judging module. No identity-module changes. Privacy-safe
+v1: store qualifications but don't render them on scoresheet PDFs.
+
+#### Schema
+
+```
+JudgeProfile (judging module — aggregate root)
+  ├─ id : UUID
+  ├─ userId : UUID (UNIQUE — optional 1:1 with User)
+  ├─ certifications : Set<Certification> (@ElementCollection, may be empty)
+  ├─ qualificationDetails : String (nullable, length 200 — free text: level, year, notes)
+  └─ createdAt / updatedAt : Instant
+
+Certification (enum, judging module)
+  MJP, BJCP, OTHER
+```
+
+Storage of `certifications` via JPA `@ElementCollection` →
+`judge_profile_certifications` join table:
+```
+judge_profile_id : UUID FK
+certification    : VARCHAR(20)
+PRIMARY KEY (judge_profile_id, certification)
+```
+
+#### Revisions from §1.10
+
+§1.10's PDF transcription listed "level + certifications: EMMA, AMMA, BJCP,
+Other" as separate items. This decision overrides:
+- **No separate `mjpLevel` field.** Level is part of `qualificationDetails`
+  free-text (e.g. "MJP Master, certified 2018"). MJP levels evolve;
+  free-text avoids migration churn.
+- **Certifications kept tight: `MJP, BJCP, OTHER`.** EMMA and AMMA dropped —
+  member organizations, not certifications they grant; membership goes in
+  `qualificationDetails`. `OTHER` retained for non-mead-specific but
+  judging-relevant credentials (e.g. WSET Diploma from the wine world);
+  the specific credential name lives in `qualificationDetails` when
+  `OTHER` is checked.
+
+#### Privacy / printing
+
+- **v1: scoresheet PDF stays anonymized.** No judge details rendered.
+- The "Judge MJP Qualifications" header item from §1.10 is **removed from
+  the print scope** for v1. Deferred to a future "scoresheet template
+  config" feature when per-jurisdiction privacy policies need to be
+  honoured.
+
+#### Why a separate aggregate (not on User)
+
+- `Certification` is a judging-domain enum. Identity must not depend on
+  judging (module direction: `entry → competition → identity → root`).
+- Putting certifications on `User` would force the enum into the root
+  module or downgrade to `Set<String>` (loss of type safety).
+- `JudgeProfile` keeps identity module clean and provides natural
+  extension points for future judge-specific data (availability,
+  assignment history, performance metrics).
+
+#### Lifecycle
+
+- Profile created lazily — admin populates it via user-management UI, or
+  the judge self-edits via an extension to `ProfileView`.
+- Absence of a `JudgeProfile` row = no qualifications recorded; user is
+  treated as an unqualified judge candidate (still allowed to judge if
+  assigned by admin).
+- Aggregate root pattern: `JudgeProfileService.createOrUpdate(userId, ...)`,
+  `findByUserId(userId)`, `delete(userId)`.
+
+#### Use cases retained for v1
+
+- Admin filtering when assigning judges to tables ("show only MJP-certified").
+- Internal organizational record (panel composition).
+- Future audit trail.
+
+#### Implications
+
+- **§Q7** (COI similarity) — fully resolved by §2.E.
+- **§Q10** (MJP qualifications storage) — fully resolved by §2.F.
+- **§1.10** PDF header item "Judge MJP Qualifications" — descoped from v1
+  scoresheet printing.
+- **Aggregate sketch (§1.8)** gains a 7th aggregate: `JudgeProfile`.
+
 ---
 
 ## Open Questions
@@ -759,16 +925,11 @@ division → `JudgingTable` directly under it).
 from official MJP V3.0 PDF).
 
 ### Q7 — COI similarity heuristic
-
-**Decided high-level approach:** soft warning on similar meadery name (Phase 1.4).
-
-**Open implementation question:** what similarity function?
-- Exact match (case-insensitive, normalized whitespace)
-- Levenshtein distance with threshold (e.g., distance ≤ 2)
-- Jaccard similarity on tokens
-- Just substring match
-
-**Status:** Deferred to Phase 2 (entity/service design).
+**Status:** ✅ Resolved by Decision §2.E (2026-05-07).
+Cross-country gate (skip comparison if both countries are set and differ);
+otherwise country-aware suffix-stripping normalization + Levenshtein distance
+≤ 2 + exact-match-on-normalized. Soft warning only, never blocks. Initial
+suffix lists cover EN/PT/ES/IT/PL/FR/DE/NL plus a global EN fallback.
 
 ### Q8 — Eager vs lazy scoresheet creation
 **Status:** ✅ Resolved by Decision §2.1 (eager creation when ROUND_1 starts;
@@ -781,18 +942,15 @@ recategorization sync rule covers post-start changes).
 
 **Status:** Deferred — handle when awards module is being designed.
 
-### Q10 — Judge MJP qualifications storage (new — surfaced in §1.10)
-
-The MJP scoresheet PDF has a "Judge MJP Qualifications" header (level + EMMA /
-AMMA / BJCP / Other certifications). This is per-judge profile data, not
-per-scoresheet.
-
-**Options:**
-- Add fields directly to `User` entity (e.g. `mjpLevel`, `certifications` Set<enum>)
-- New `JudgeProfile` entity in identity or judging module, optional 1:1 with User
-- Store as a free-text field on `Scoresheet` (denormalized — printed-only)
-
-**Status:** Deferred to Phase 2.
+### Q10 — Judge MJP qualifications storage
+**Status:** ✅ Resolved by Decision §2.F (2026-05-07).
+New `JudgeProfile` aggregate in judging module. Fields: `userId` (UNIQUE),
+`certifications: Set<Certification>` (enum: MJP, BJCP, OTHER),
+`qualificationDetails: String` (nullable, free-text for level/year/notes; also
+specifies what `OTHER` is, e.g. WSET). v1 does NOT print judge details on
+scoresheet PDFs (privacy-safe default; per-jurisdiction template config deferred).
+§1.10 transcription overridden — no separate `mjpLevel` field; EMMA/AMMA dropped
+(member organizations, not certifications).
 
 ### Q11 — Retreat allowed?
 **Status:** ✅ Resolved by Decision §2.B (2026-05-07).
@@ -902,6 +1060,14 @@ BosPlacement (one per (division, place))                 [§1.7]
   └─ awardedBy : UUID (head judge user)
   UNIQUE(divisionId, place), UNIQUE(divisionId, entryId)
 
+JudgeProfile (one per qualified judge user)              [§2.F]
+  ├─ id : UUID
+  ├─ userId : UUID (UNIQUE — optional 1:1 with User)
+  ├─ certifications : Set<Certification> (@ElementCollection, may be empty)
+  │     enum values: MJP, BJCP, OTHER
+  ├─ qualificationDetails : String (nullable, length 200)
+  └─ createdAt / updatedAt : Instant
+
 ─── Cross-aggregate relationships (UUID FKs only) ─────────────────────
 
 JudgingTable.judgingId       → Judging
@@ -910,6 +1076,7 @@ CategoryJudgingConfig.divisionCategoryId → DivisionCategory (competition modul
 Scoresheet.tableId           → JudgingTable
 Scoresheet.entryId           → Entry (entry module)
 JudgeAssignment.judgeUserId  → User (identity module)
+JudgeProfile.userId          → User (identity module)
 MedalAward.entryId/divisionId/finalCategoryId → entry / competition modules
 BosPlacement.entryId/divisionId → entry / competition modules
 ```
