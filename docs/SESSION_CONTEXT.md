@@ -416,9 +416,10 @@ Design and implementation. **Design in progress (multi-session):** see
 open questions, and the "Next Session: Start Here" marker. Reference:
 `docs/reference/chip-competition-rules.md` and `docs/specs/judging.md`.
 
-**Phase 2 in progress — all design questions resolved 2026-05-07.**
-§Q8 (eager scoresheet creation + recategorization sync rule) resolved 2026-05-06.
-**Phase 2.A–2.F complete:**
+**Phase 2 ✅ COMPLETE (2026-05-08).** All design questions resolved
+(§Q1, §Q7, §Q8, §Q10, §Q11, §Q12, §Q13).
+
+**Phase 2.A–2.F (2026-05-07) — design decisions:**
 - 2.A: three-tier state model — division (`Judging.phase: NOT_STARTED → ACTIVE
   → BOS → COMPLETE`), per-table (`JudgingTable.status: NOT_STARTED → ROUND_1
   → COMPLETE`), per-category medal round (`CategoryJudgingConfig.medalRoundStatus:
@@ -447,11 +448,58 @@ open questions, and the "Next Session: Start Here" marker. Reference:
   is, e.g. WSET). v1 scoresheet PDF stays anonymized (privacy-safe;
   per-jurisdiction template config deferred). §Q10 resolved.
 
-§Q1, §Q7, §Q8, §Q10, §Q11, §Q12, §Q13 all resolved.
+**Phase 2.G (2026-05-08) — field-level entity finalization:**
+- Field-by-field types, JPA annotations, nullability, column lengths, and
+  invariants for all 7 aggregates and the 2 within-aggregate children
+  (`JudgeAssignment`, `ScoreField`). Domain methods enumerated for each
+  aggregate root (state-machine transitions, mutation gates).
+- New competition-module fields: `Division.bosPlaces` (int NOT NULL
+  DEFAULT 1, locked past REGISTRATION_OPEN — §1.6) and
+  `Division.minJudgesPerTable` (int NOT NULL DEFAULT 2, locked once any
+  table starts via cross-module `MinJudgesPerTableLockGuard` — §2.D).
+- V20 schema produced: `judgings`, `judging_tables`, `judge_assignments`,
+  `category_judging_configs`, `scoresheets`, `score_fields`,
+  `medal_awards`, `bos_placements`, `judge_profiles`,
+  `judge_profile_certifications` + the two `divisions` columns.
+- ScoreField names stored as canonical English (i18n keys); tier
+  descriptions UI-only via `MeadsI18NProvider`. MJP field constants
+  (`Appearance` 12, `Aroma/Bouquet` 30, `Flavour and Body` 32, `Finish`
+  14, `Overall Impression` 12) live in a `MjpScoringFieldDefinition`
+  in-code constant in v1.
 
-Next: field-level entity finalization for the 7 aggregates + child entities
-(JudgeAssignment, ScoreField) — last Phase 2 step. Then Phase 3 (services,
-events, authorization). See "Next Session: Start Here" in the design doc.
+**Phase 2.H (2026-05-08) — scoresheet PDF locale + comment-language tagging
+(closes Phase 2; resolves §Q14):**
+- Scoresheet PDF renders in printer's UI locale (locale-aware), same
+  mechanism as entry-side label PDFs.
+- New `Scoresheet.commentLanguage` (`VARCHAR(5)`, NOT NULL at SUBMIT;
+  ISO 639-1 / BCP 47) records the language of judge prose. Frozen at
+  SUBMIT. Default-resolution chain: `JudgeProfile.preferredCommentLanguage`
+  → `User.preferredLanguage` (UI locale).
+- New `JudgeProfile.preferredCommentLanguage` (`VARCHAR(5)`, nullable)
+  holds the sticky preference. Updated whenever the judge changes the
+  language on any scoresheet. Lifecycle adjusted: `JudgeProfile` row
+  auto-created on first `JudgeAssignment`.
+- New `Competition.commentLanguages` (Set<String>, `@ElementCollection`
+  → `competition_comment_languages` join table) is the admin-curated
+  per-competition dropdown source. Seeded with the 5 UI codes (`en`,
+  `es`, `it`, `pl`, `pt`) at competition creation; admin edits in
+  `CompetitionDetailView` Settings tab. Dropdown shown to judges =
+  union of `competition.commentLanguages` and the judge's current
+  `preferredCommentLanguage` (so a sticky value outside the list still
+  shows).
+- PDF: each comment block carries a "Comments — written in &lt;Language&gt;"
+  subheader (display name in printer's locale).
+- V20 SQL extended with `competition_comment_languages` table, plus
+  `comment_language` and `preferred_comment_language` columns on
+  `scoresheets` and `judge_profiles`.
+
+**Next: Phase 3 — services, events, authorization, COI implementation
+contracts.** See "Next Session: Start Here" in the design doc for the
+suggested order (module skeleton → service interfaces → event records →
+authorization → COI mechanism → guard registrations → V20 migration).
+Phase 3 service additions from §2.H: `ScoresheetService.setCommentLanguage`,
+`JudgeProfileService.ensureProfileForJudge` /
+`updatePreferredCommentLanguage`, `CompetitionService.updateCommentLanguages`.
 
 ### Priority 6: Awards module
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md` and `docs/specs/awards.md`.

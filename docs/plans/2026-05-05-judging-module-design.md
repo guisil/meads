@@ -1,11 +1,15 @@
 # Judging Module — Design Document
 
 **Started:** 2026-05-05
-**Status:** Phase 1 ✅ complete (2026-05-05). Phase 2 in progress (started 2026-05-06).
-Phase 2.A–2.F ✅ complete (2026-05-07) — state machine, retreat semantics,
-§2.1 trigger re-frame, start trigger preconditions, COI similarity heuristic,
-and judge MJP qualifications storage all decided. Remaining Phase 2:
-field-level entity finalization for Phase 3.
+**Status:** Phase 1 ✅ complete (2026-05-05). Phase 2 ✅ complete (2026-05-08).
+Phase 2.A–2.F (2026-05-07) decided state machine, retreat semantics, §2.1
+trigger re-frame, start trigger preconditions, COI similarity heuristic, and
+judge MJP qualifications storage. Phase 2.G (2026-05-08) finalized field-level
+entity definitions for the 7 aggregates + the two `Division` field additions
+(`bosPlaces`, `minJudgesPerTable`) and produced the V20 schema. Phase 2.H
+(2026-05-08) added scoresheet PDF locale + comment-language tagging
+(`Scoresheet.commentLanguage`, `JudgeProfile.preferredCommentLanguage`,
+`Competition.commentLanguages`; resolves §Q14). Phase 3 next.
 **Module dependencies:** competition, entry, identity
 **References:**
 - `docs/specs/judging.md` — preliminary spec (post-rework naming)
@@ -35,8 +39,8 @@ Once a phase is complete, its open questions should all have decisions or be exp
 |---|---|---|
 | 0 | Frame & set up tracking doc | ✅ Complete |
 | 1 | Scope & module boundary decisions | ✅ Complete |
-| 2 | Domain model — entity definitions, eager/lazy creation, COI heuristic, MJP qualifications storage, scoresheet locking | 🔄 In progress (2.A–2.F ✅; field finalization pending) |
-| 3 | Service + event contracts, authorization, COI mechanism, judging start trigger | ⏳ Pending |
+| 2 | Domain model — entity definitions, eager/lazy creation, COI heuristic, MJP qualifications storage, scoresheet locking | ✅ Complete (2.A–2.F 2026-05-07; 2.G 2026-05-08) |
+| 3 | Service + event contracts, authorization, COI mechanism, judging start trigger | ⏳ Pending — Next |
 | 4 | View design (admin table mgmt, judge scoresheet UX, results-before-publication) | ⏳ Pending |
 | 5 | Implementation sequencing — TDD cycle order, migration plan, MVP slice | ⏳ Pending |
 
@@ -44,55 +48,73 @@ Once a phase is complete, its open questions should all have decisions or be exp
 
 ## Next Session: Start Here
 
-**Phase 2.A–2.F all complete (2026-05-07).**
-- 2.A: three-tier state model with three independent aggregates (§1.5-A).
-- 2.B: retreat semantics across three tiers + compensating events +
-  `DivisionStatusRevertGuard` (§2.B).
-- 2.C: §2.1 trigger re-frame confirmed.
-- 2.D: start trigger preconditions and behaviors; `Division.minJudgesPerTable`
-  added (§2.D).
-- 2.E: COI similarity heuristic — country-aware suffix-stripping +
-  Levenshtein ≤ 2 (§2.E).
-- 2.F: `JudgeProfile` aggregate added; v1 scoresheet PDF stays anonymized
-  (§2.F).
+**Phase 2 complete (2026-05-08).**
+- 2.A–2.F (2026-05-07): three-tier state model, retreat semantics, start
+  triggers, COI similarity, `JudgeProfile`. See §2.A–§2.F in Decisions.
+- 2.G (2026-05-08): field-level finalization for all 7 aggregates +
+  `Division.bosPlaces` + `Division.minJudgesPerTable` + V20 schema.
+  See §2.G in Decisions.
+- 2.H (2026-05-08): scoresheet PDF locale (locale-aware) +
+  comment-language tagging on Scoresheet + sticky preference on
+  JudgeProfile + admin-curated language list on Competition. JudgeProfile
+  lifecycle adjusted: auto-create on first JudgeAssignment. See §2.H.
 
-§Q1, §Q7, §Q8, §Q10, §Q11, §Q12, §Q13 fully resolved. **All Phase 2 design
-questions closed.**
+§Q1, §Q7, §Q8, §Q10, §Q11, §Q12, §Q13, §Q14 fully resolved. **All Phase 2
+design questions closed.**
 
-### What next session must address: field-level entity finalization
+### What next session must address: Phase 3 — services, events, authorization
 
-Last Phase 2 step. Mechanical pass over all 7 aggregates and child entities
-to produce the Phase 3-ready entity definition section. For each aggregate:
+Phase 3 produces the service + event contracts, authorization rules, COI
+mechanism implementation contract, and the V20 migration. Order suggested:
 
-- Field-by-field types, JPA annotations, nullability, column lengths.
-- `@PrePersist` / `@PreUpdate` for timestamps where applicable.
-- Invariants (state machine guards, FK rules, UNIQUE constraints).
-- Domain methods on the aggregate root (e.g. `Judging.advancePhase()`,
-  `JudgingTable.startRound1()`, `Scoresheet.submit()`,
-  `CategoryJudgingConfig.startMedalRound()`).
-- No-arg protected constructor for JPA + public constructor with required
-  business fields.
-
-**Aggregates to finalize:**
-1. `Judging` (§1.5-A)
-2. `JudgingTable` + child `JudgeAssignment` (§1.5-A, §1.3, §1.4)
-3. `CategoryJudgingConfig` (§1.5-A)
-4. `Scoresheet` + child `ScoreField` (§1.3, §1.10)
-5. `MedalAward` (§1.7)
-6. `BosPlacement` (§1.7)
-7. `JudgeProfile` (§2.F)
-
-**Plus competition-module change:**
-- `Division.minJudgesPerTable` (§2.D) — Integer NOT NULL DEFAULT 2.
-
-After field finalization, Phase 2 is closed and Phase 3 (service + event
-contracts, authorization, COI mechanism, judging start trigger
-implementation contracts) can begin.
+1. **Module skeleton** — `app.meads.judging` package + `package-info.java`
+   (`@ApplicationModule(allowedDependencies = {"competition", "entry", "identity"})`).
+   Ensure `ModulithStructureTest` passes with the empty module.
+2. **Service contracts** (interfaces + method signatures only — no impl):
+   - `JudgingService` — `markActive`, `startTable`, `startMedalRound`,
+     `startBos`, `completeBos`, `reopenBos`, `resetBos`, `reopenMedalRound`,
+     `resetMedalRound`, `deleteBosPlacement`, `deleteMedalAward`.
+   - `ScoresheetService` — `createScoresheetsForTable` (eager creation per
+     §2.1), `updateScore`, `submit`, `revertScoresheet`, `moveToTable`,
+     `setAdvancedToMedalRound`, `setCommentLanguage` (per §2.H).
+   - `JudgeAssignmentService` (or merged into `JudgingService`) —
+     `assignJudge` (with `JudgeProfileService.ensureProfileForJudge`
+     lifecycle hook per §2.H), `removeJudge`.
+   - `JudgeProfileService` — `createOrUpdate`, `findByUserId`, `delete`,
+     `ensureProfileForJudge`, `updatePreferredCommentLanguage` (per §2.H).
+   - `CompetitionService` extension — `updateCommentLanguages` (per §2.H).
+3. **Event records** (judging module public API): all advance/retreat
+   pairs from §2.B (`ScoresheetSubmittedEvent` / `ScoresheetRevertedEvent`,
+   `TableStartedEvent` / `TableCompletedEvent` / `TableReopenedEvent`,
+   `MedalRoundActivatedEvent` / `MedalRoundCompletedEvent` /
+   `MedalRoundReopenedEvent` / `MedalRoundResetEvent`,
+   `BosStartedEvent` / `BosCompletedEvent` / `BosReopenedEvent` /
+   `BosResetEvent`).
+4. **Authorization rules** — who can do what. Initial sketch:
+   - System admin: all judging actions.
+   - Competition admin (per-competition `ADMIN` role): all judging actions
+     scoped to their competition.
+   - Judges (per-competition `JUDGE` role): edit DRAFT scoresheets at
+     tables they're assigned to; cannot revert SUBMITTED.
+   - COI block: judge cannot edit a scoresheet for an entry where
+     `entry.userId == judge.userId` (hard block per §1.4).
+5. **COI implementation contract** — `MeaderyNameNormalizer` (§2.E) and
+   `CoiCheckService` interfaces; where suffix lists live (compile-time
+   constant map).
+6. **Cross-module guards to register:**
+   - `DivisionStatusRevertGuard` (judging impl) — blocks
+     `JUDGING → REGISTRATION_CLOSED` retreat when judging data exists.
+   - `MinJudgesPerTableLockGuard` (judging impl) — blocks `Division.updateMinJudgesPerTable`
+     once any table has started.
+   - Register both via the existing competition-module guard interfaces.
+7. **V20 migration** — exact SQL is in §2.G; schedule for Phase 5
+   (impl sequencing) but the SQL is ready.
 
 ### Suggested start prompt for next session
-> "Read `docs/plans/2026-05-05-judging-module-design.md` and `docs/SESSION_CONTEXT.md`,
-> then begin the field-level entity finalization (last Phase 2 step) — start with
-> `Judging` and `JudgingTable`."
+> "Read `docs/plans/2026-05-05-judging-module-design.md` and
+> `docs/SESSION_CONTEXT.md`, then begin Phase 3 — start with the module
+> skeleton (package + `package-info.java` + `ModulithStructureTest`) and
+> then sketch service interfaces and event record types."
 
 ---
 
@@ -898,6 +920,786 @@ Other" as separate items. This decision overrides:
   scoresheet printing.
 - **Aggregate sketch (§1.8)** gains a 7th aggregate: `JudgeProfile`.
 
+### 2026-05-08 — Phase 2.G: Field-level entity finalization (closes Phase 2)
+
+**Scope.** Pin down field types, JPA annotations, nullability, column lengths,
+`@PrePersist`/`@PreUpdate`, invariants, and domain methods for the 7 judging
+aggregates and the two competition-module `Division` field additions (§1.6,
+§2.D). After this section Phase 2 is closed; Phase 3 (service contracts,
+events, authorization, COI implementation contracts) can begin.
+
+#### Conventions adopted (mirroring `identity` / `competition` / `entry`)
+
+- `@Entity` + `@Table(name = "...")` + `@Getter` (Lombok). No setters.
+- `@Id private UUID id;` — no `@GeneratedValue`; self-generated in the public
+  constructor via `UUID.randomUUID()`.
+- Enums: `@Enumerated(EnumType.STRING)`, stored as `VARCHAR(20)` unless
+  noted otherwise.
+- `Instant createdAt` (NOT NULL, `TIMESTAMP WITH TIME ZONE`) populated by
+  `@PrePersist`. `Instant updatedAt` (nullable, `TIMESTAMPTZ`) populated by
+  `@PreUpdate`. Aggregates without admin-mutable state may omit `updatedAt`.
+- Protected no-arg constructor for JPA; public constructor accepts the
+  required business fields (never `id`).
+- State changes happen via domain methods on the aggregate root. Methods
+  enforce state-machine transitions and throw `IllegalStateException` on
+  invalid transitions; service-level rule violations (i18n) bubble through
+  `BusinessRuleException`.
+- Cross-aggregate references are **UUID FKs only** — no JPA `@ManyToOne` /
+  `@OneToMany` between aggregates.
+- Within-aggregate children (`JudgeAssignment`, `ScoreField`) use
+  `@OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)` with
+  `@JoinColumn` mapping back to the aggregate root's `id`. The child is a
+  `@Entity` in `internal/` (no public API) and has no separate repository.
+- Module location: aggregate roots live in `app.meads.judging`; child
+  entities, repositories, and service implementations live in
+  `app.meads.judging.internal`.
+
+---
+
+#### Aggregate 1: `Judging` — `judgings`
+
+**Class:** `app.meads.judging.Judging` (public API — aggregate root).
+
+**Enum:** `app.meads.judging.JudgingPhase` — `NOT_STARTED, ACTIVE, BOS, COMPLETE`.
+
+| Field | Java type | Column | Nullable | Notes |
+|---|---|---|---|---|
+| `id` | `UUID` | `id` (PK) | NO | self-gen in ctor |
+| `divisionId` | `UUID` | `division_id` | NO | **UNIQUE**; FK → `divisions.id` |
+| `phase` | `JudgingPhase` | `phase` `VARCHAR(20)` | NO | starts `NOT_STARTED` |
+| `createdAt` | `Instant` | `created_at` `TIMESTAMPTZ` | NO | `@PrePersist` |
+| `updatedAt` | `Instant` | `updated_at` `TIMESTAMPTZ` | YES | `@PreUpdate` |
+
+**Constructors:**
+- `protected Judging()` — JPA.
+- `public Judging(UUID divisionId)` — `id = randomUUID()`, `phase = NOT_STARTED`.
+
+**Domain methods (state transitions):**
+
+| Method | Transition | Notes |
+|---|---|---|
+| `markActive()` | `NOT_STARTED → ACTIVE` | Auto, called on first `JudgingTable.startRound1()` |
+| `startBos()` | `ACTIVE → BOS` | Service guard: every `CategoryJudgingConfig.medalRoundStatus = COMPLETE` |
+| `completeBos()` | `BOS → COMPLETE` | All `BosPlacement` rows finalized by service before call |
+| `reopenBos()` | `COMPLETE → BOS` | Tier 3 retreat; `BosPlacement` rows preserved |
+| `resetBos()` | `BOS → ACTIVE` | Tier 3 retreat; service must verify zero `BosPlacement` rows |
+
+All transitions throw `IllegalStateException` if called from a non-allowed
+phase. No `revertStatus()` — retreats are explicit and asymmetric per §2.B.
+
+**Invariants:**
+- `UNIQUE(division_id)`.
+- Phase progresses strictly per the table above; retreats only via the
+  named domain methods.
+- The `Judging` row is created (service-level) when admin advances
+  `DivisionStatus: REGISTRATION_CLOSED → JUDGING`; before that it does not exist.
+
+**Events emitted (Phase 3):** `BosStartedEvent`, `BosCompletedEvent`,
+`BosReopenedEvent`, `BosResetEvent` (per §2.B).
+
+---
+
+#### Aggregate 2: `JudgingTable` (+ child `JudgeAssignment`) — `judging_tables`, `judge_assignments`
+
+**Class:** `app.meads.judging.JudgingTable` (public API — aggregate root).
+
+**Enum:** `app.meads.judging.JudgingTableStatus` —
+`NOT_STARTED, ROUND_1, COMPLETE`.
+
+##### `JudgingTable` fields
+
+| Field | Java type | Column | Nullable | Notes |
+|---|---|---|---|---|
+| `id` | `UUID` | `id` (PK) | NO | self-gen in ctor |
+| `judgingId` | `UUID` | `judging_id` | NO | FK → `judgings.id` |
+| `name` | `String` | `name` `VARCHAR(120)` | NO | admin-supplied label, e.g. "Table A" |
+| `divisionCategoryId` | `UUID` | `division_category_id` | NO | FK → `division_categories.id`; **service guard**: must be `JUDGING` scope |
+| `scheduledDate` | `LocalDate` | `scheduled_date` `DATE` | YES | display/grouping (§1.8) |
+| `status` | `JudgingTableStatus` | `status` `VARCHAR(20)` | NO | starts `NOT_STARTED` |
+| `assignments` | `List<JudgeAssignment>` | (via FK on child) | — | `@OneToMany`, cascade ALL, orphanRemoval; ordered by `assignedAt` |
+| `createdAt` | `Instant` | `created_at` `TIMESTAMPTZ` | NO | `@PrePersist` |
+| `updatedAt` | `Instant` | `updated_at` `TIMESTAMPTZ` | YES | `@PreUpdate` |
+
+**Constructors:**
+- `protected JudgingTable()` — JPA.
+- `public JudgingTable(UUID judgingId, String name, UUID divisionCategoryId, LocalDate scheduledDate)` — `id = randomUUID()`, `status = NOT_STARTED`, `assignments = new ArrayList<>()`.
+
+**Domain methods:**
+
+| Method | Effect | Status guard |
+|---|---|---|
+| `updateName(String name)` | renames table | any status |
+| `updateScheduledDate(LocalDate date)` | reschedule | any status |
+| `assignJudge(UUID judgeUserId)` | adds `JudgeAssignment` (idempotent — no-op if already assigned) | any status |
+| `removeJudge(UUID judgeUserId)` | removes the assignment | any status (service may forbid dropping below `Division.minJudgesPerTable` while `ROUND_1`) |
+| `startRound1()` | `NOT_STARTED → ROUND_1` | service guards: `divisionCategoryId` set, `assignments.size() >= Division.minJudgesPerTable`; eager-creates scoresheets externally |
+| `markComplete()` | `ROUND_1 → COMPLETE` | auto when last scoresheet at this table SUBMITs (driven by `ScoresheetService`) |
+| `reopenToRound1()` | `COMPLETE → ROUND_1` | Tier 1 implicit retreat — driven by scoresheet revert or new DRAFT scoresheet appearing at the table |
+
+**Invariants:**
+- `divisionCategoryId` references a `JUDGING`-scope `DivisionCategory` —
+  service-enforced (entity does not see other modules' enums).
+- The same category may appear on multiple tables (no UNIQUE on
+  `division_category_id` alone).
+- `JudgeAssignment` cardinality has no hard upper bound; lower bound at
+  `startRound1()` is `Division.minJudgesPerTable`.
+- Status retreats Tier 1 only — no admin "reopen table" action; reopening
+  is a side-effect of scoresheet/recategorization changes (§2.B).
+
+**Events:** `TableStartedEvent`, `TableCompletedEvent`, `TableReopenedEvent`.
+
+##### `JudgeAssignment` fields (within-aggregate child)
+
+**Class:** `app.meads.judging.internal.JudgeAssignment` (`@Entity`,
+package-private, no separate repository — accessed through the parent).
+
+| Field | Java type | Column | Nullable | Notes |
+|---|---|---|---|---|
+| `id` | `UUID` | `id` (PK) | NO | self-gen in ctor |
+| `judgingTableId` | `UUID` | `judging_table_id` | NO | FK → `judging_tables.id`; mapped via parent's `@JoinColumn` |
+| `judgeUserId` | `UUID` | `judge_user_id` | NO | FK → `users.id` (identity module) |
+| `assignedAt` | `Instant` | `assigned_at` `TIMESTAMPTZ` | NO | `@PrePersist` |
+
+**Constructors:**
+- `protected JudgeAssignment()` — JPA.
+- `JudgeAssignment(UUID judgingTableId, UUID judgeUserId)` — package-private; constructed by `JudgingTable.assignJudge`.
+
+**Domain methods:** none — assignment is a value-style child; mutation
+is via removal+re-add on the parent.
+
+**Invariants:**
+- `UNIQUE(judging_table_id, judge_user_id)` — a judge cannot be assigned
+  twice to the same table.
+
+---
+
+#### Aggregate 3: `CategoryJudgingConfig` — `category_judging_configs`
+
+**Class:** `app.meads.judging.CategoryJudgingConfig` (public API — aggregate root).
+
+**Enums:**
+- `app.meads.judging.MedalRoundMode` — `COMPARATIVE, SCORE_BASED`.
+- `app.meads.judging.MedalRoundStatus` — `PENDING, READY, ACTIVE, COMPLETE`.
+
+| Field | Java type | Column | Nullable | Notes |
+|---|---|---|---|---|
+| `id` | `UUID` | `id` (PK) | NO | self-gen in ctor |
+| `divisionCategoryId` | `UUID` | `division_category_id` | NO | **UNIQUE**; FK → `division_categories.id`; service guard: `JUDGING` scope |
+| `medalRoundMode` | `MedalRoundMode` | `medal_round_mode` `VARCHAR(20)` | NO | DEFAULT `COMPARATIVE` |
+| `medalRoundStatus` | `MedalRoundStatus` | `medal_round_status` `VARCHAR(20)` | NO | starts `PENDING` |
+| `createdAt` | `Instant` | `created_at` `TIMESTAMPTZ` | NO | `@PrePersist` |
+| `updatedAt` | `Instant` | `updated_at` `TIMESTAMPTZ` | YES | `@PreUpdate` |
+
+**Constructors:**
+- `protected CategoryJudgingConfig()` — JPA.
+- `public CategoryJudgingConfig(UUID divisionCategoryId)` — `medalRoundMode = COMPARATIVE`, `medalRoundStatus = PENDING`.
+- `public CategoryJudgingConfig(UUID divisionCategoryId, MedalRoundMode mode)` — explicit mode at create.
+
+**Lifecycle (service):** A row is created lazily — first time admin
+explicitly configures medal-round mode for the category, *or* on
+`JudgingTable.startRound1()` for any table covering that category
+(whichever comes first; guarantees the row exists by the time tables
+start completing). Default mode is `COMPARATIVE`.
+
+**Domain methods:**
+
+| Method | Transition / effect | Notes |
+|---|---|---|
+| `updateMode(MedalRoundMode mode)` | mode change | allowed only while `medalRoundStatus ∈ {PENDING, READY}` |
+| `markReady()` | `PENDING → READY` | auto-derived; service calls when last covering table marks COMPLETE |
+| `markPending()` | `READY → PENDING` | auto-derived; service calls when a covering table reopens |
+| `startMedalRound()` | `READY → ACTIVE` | explicit; service runs SCORE_BASED auto-population per §2.D |
+| `completeMedalRound()` | `ACTIVE → COMPLETE` | explicit |
+| `reopenMedalRound()` | `COMPLETE → ACTIVE` | Tier 2 retreat — `MedalAward` rows preserved |
+| `resetMedalRound()` | `ACTIVE → READY` | Tier 2 retreat — service deletes `MedalAward` rows for the category |
+
+**Invariants:**
+- `UNIQUE(division_category_id)`.
+- Status transitions strictly per state machine; mode only mutable
+  while `PENDING` or `READY`.
+- `Judging.phase = ACTIVE` is enforced at the service layer for all
+  Tier-2 transitions (per §2.B Tier 2 guard).
+
+**Events:** `MedalRoundActivatedEvent`, `MedalRoundCompletedEvent`,
+`MedalRoundReopenedEvent`, `MedalRoundResetEvent`.
+
+---
+
+#### Aggregate 4: `Scoresheet` (+ child `ScoreField`) — `scoresheets`, `score_fields`
+
+**Class:** `app.meads.judging.Scoresheet` (public API — aggregate root).
+
+**Enum:** `app.meads.judging.ScoresheetStatus` — `DRAFT, SUBMITTED`.
+
+##### `Scoresheet` fields
+
+| Field | Java type | Column | Nullable | Notes |
+|---|---|---|---|---|
+| `id` | `UUID` | `id` (PK) | NO | self-gen in ctor |
+| `tableId` | `UUID` | `table_id` | NO | FK → `judging_tables.id`; mutable while DRAFT (per §2.1) |
+| `entryId` | `UUID` | `entry_id` | NO | **UNIQUE**; FK → `entries.id` |
+| `filledByJudgeUserId` | `UUID` | `filled_by_judge_user_id` | YES | informational (§1.3); set when judge first edits |
+| `status` | `ScoresheetStatus` | `status` `VARCHAR(20)` | NO | starts `DRAFT` |
+| `totalScore` | `Integer` | `total_score` | YES | computed on submit (sum of 5 fields); cleared on revert |
+| `overallComments` | `String` | `overall_comments` `VARCHAR(2000)` | YES | free-text |
+| `advancedToMedalRound` | `boolean` | `advanced_to_medal_round` | NO | DEFAULT `false` (§1.9) |
+| `submittedAt` | `Instant` | `submitted_at` `TIMESTAMPTZ` | YES | non-null iff `status = SUBMITTED` |
+| `commentLanguage` | `String` | `comment_language` `VARCHAR(5)` | YES (DRAFT) / NO (SUBMITTED) | language tag for prose; sticky default per §2.H |
+| `fields` | `List<ScoreField>` | (via FK on child) | — | `@OneToMany`, cascade ALL, orphanRemoval; size = 5 |
+| `createdAt` | `Instant` | `created_at` `TIMESTAMPTZ` | NO | `@PrePersist` |
+| `updatedAt` | `Instant` | `updated_at` `TIMESTAMPTZ` | YES | `@PreUpdate` |
+
+**Constructors:**
+- `protected Scoresheet()` — JPA.
+- `public Scoresheet(UUID tableId, UUID entryId)` — generates id; status `DRAFT`; populates the 5 `ScoreField` children from `MjpScoringFieldDefinition` constants (see below).
+
+**`MjpScoringFieldDefinition` (constants, judging module).** A static
+list of the 5 MJP fields with their canonical English names and `maxValue`s
+(per §1.10):
+- `Appearance` (12), `Aroma/Bouquet` (30), `Flavour and Body` (32),
+  `Finish` (14), `Overall Impression` (12). Total max = 100.
+
+Stored as compile-time constants in v1; deferred work (`ScoringSystemFieldDefinition`
+table for MJP variants) noted in §1.10 stays deferred. UI localization
+of field names happens via `MeadsI18NProvider` keyed off the canonical
+English name; tier descriptions ("Unacceptable", "Below Average", …) are
+UI-only i18n hints, not stored on `ScoreField`.
+
+**Domain methods:**
+
+| Method | Effect | Status guard |
+|---|---|---|
+| `updateScore(String fieldName, Integer value, String comment)` | mutates the matching `ScoreField`; throws if `fieldName` unknown | DRAFT |
+| `updateOverallComments(String text)` | mutates field | DRAFT |
+| `setFilledBy(UUID judgeUserId)` | sets/replaces informational judge | DRAFT |
+| `setAdvancedToMedalRound(boolean advanced)` | toggles flag | DRAFT or SUBMITTED, but service rejects after `medalRoundStatus = ACTIVE` |
+| `submit()` | `DRAFT → SUBMITTED`; computes `totalScore = sum(values)`; sets `submittedAt = now()` | DRAFT; throws if any `ScoreField.value` is null |
+| `revertToDraft()` | `SUBMITTED → DRAFT`; clears `totalScore` and `submittedAt`; **preserves all 5 `ScoreField.value` and `comment`** | SUBMITTED; service guard: `medalRoundStatus ∈ {PENDING, READY}` (per §2.B Tier 0) |
+| `moveToTable(UUID newTableId)` | reassigns `tableId` | DRAFT only; service ensures the new table's `divisionCategoryId == entry.finalCategoryId` (per §2.1) |
+| `setCommentLanguage(String code, UUID judgeUserId)` | sets `commentLanguage` | DRAFT only (per §2.H) |
+
+**Invariants:**
+- `UNIQUE(entry_id)` — one scoresheet per entry per division (an entry
+  belongs to exactly one division).
+- For DRAFT scoresheets: `tableId.divisionCategoryId == entry.finalCategoryId`
+  (service-enforced; cross-module invariant).
+- For SUBMITTED scoresheets: `tableId` is effectively immutable —
+  `moveToTable` rejects.
+- Always exactly 5 `ScoreField` children (created at construction).
+- `totalScore` non-null ⇔ `status = SUBMITTED`.
+- `submittedAt` non-null ⇔ `status = SUBMITTED`.
+- `commentLanguage` non-null ⇔ `status = SUBMITTED` (populated on submit
+  from default-resolution chain if still null; per §2.H).
+
+**Events:** `ScoresheetSubmittedEvent`, `ScoresheetRevertedEvent`.
+
+##### `ScoreField` fields (within-aggregate child)
+
+**Class:** `app.meads.judging.internal.ScoreField` (`@Entity`,
+package-private, no repository).
+
+| Field | Java type | Column | Nullable | Notes |
+|---|---|---|---|---|
+| `id` | `UUID` | `id` (PK) | NO | self-gen in ctor |
+| `scoresheetId` | `UUID` | `scoresheet_id` | NO | FK → `scoresheets.id`; via parent's `@JoinColumn` |
+| `fieldName` | `String` | `field_name` `VARCHAR(50)` | NO | canonical English name (i18n key) |
+| `maxValue` | `int` | `max_value` | NO | denormalized at creation per §1.10 |
+| `value` | `Integer` | `value` | YES | null while unfilled; required to be non-null at submit |
+| `comment` | `String` | `comment` `VARCHAR(2000)` | YES | free-text |
+
+**Domain methods:** mutation only via parent (`Scoresheet.updateScore`).
+
+**Invariants:**
+- `UNIQUE(scoresheet_id, field_name)`.
+- `0 <= value <= maxValue` when non-null (entity-level validation).
+
+---
+
+#### Aggregate 5: `MedalAward` — `medal_awards`
+
+**Class:** `app.meads.judging.MedalAward` (public API — aggregate root).
+
+**Enum:** `app.meads.judging.Medal` — `GOLD, SILVER, BRONZE`.
+
+| Field | Java type | Column | Nullable | Notes |
+|---|---|---|---|---|
+| `id` | `UUID` | `id` (PK) | NO | self-gen in ctor |
+| `entryId` | `UUID` | `entry_id` | NO | **UNIQUE**; FK → `entries.id` |
+| `divisionId` | `UUID` | `division_id` | NO | denormalized for query/index |
+| `finalCategoryId` | `UUID` | `final_category_id` | NO | FK → `division_categories.id`; service guard: `JUDGING` scope |
+| `medal` | `Medal` | `medal` `VARCHAR(10)` | YES | `null` = explicit withhold (D11) |
+| `awardedAt` | `Instant` | `awarded_at` `TIMESTAMPTZ` | NO | `@PrePersist` |
+| `awardedBy` | `UUID` | `awarded_by` | NO | judge `userId` |
+| `updatedAt` | `Instant` | `updated_at` `TIMESTAMPTZ` | YES | `@PreUpdate` (edits during ACTIVE) |
+
+**Constructors:**
+- `protected MedalAward()` — JPA.
+- `public MedalAward(UUID entryId, UUID divisionId, UUID finalCategoryId, Medal medal, UUID awardedBy)` — `medal` may be null at creation (explicit withhold of an auto-populated candidate).
+
+**Domain methods:**
+
+| Method | Effect | Notes |
+|---|---|---|
+| `updateMedal(Medal newValue, UUID awardedBy)` | re-set medal (incl. null = withhold) | service guard: `medalRoundStatus = ACTIVE` |
+
+Deletion is a service-level operation (e.g. `JudgingService.deleteMedalAward`)
+under the same `medalRoundStatus = ACTIVE` guard (and unconditional during
+`resetMedalRound`'s wipe).
+
+**Invariants:**
+- `UNIQUE(entry_id)` — one medal record per entry (per §1.7).
+- `finalCategoryId` matches the entry's `finalCategoryId` at the time of
+  awarding (service-enforced).
+- Absence of a row = entry was not a candidate (per D11). `medal = null`
+  ≠ no row.
+
+---
+
+#### Aggregate 6: `BosPlacement` — `bos_placements`
+
+**Class:** `app.meads.judging.BosPlacement` (public API — aggregate root).
+
+| Field | Java type | Column | Nullable | Notes |
+|---|---|---|---|---|
+| `id` | `UUID` | `id` (PK) | NO | self-gen in ctor |
+| `divisionId` | `UUID` | `division_id` | NO | **UNIQUE** with `place` and with `entry_id` |
+| `entryId` | `UUID` | `entry_id` | NO | FK → `entries.id` |
+| `place` | `int` | `place` | NO | `1..Division.bosPlaces` |
+| `awardedAt` | `Instant` | `awarded_at` `TIMESTAMPTZ` | NO | `@PrePersist` |
+| `awardedBy` | `UUID` | `awarded_by` | NO | head-judge `userId` |
+| `updatedAt` | `Instant` | `updated_at` `TIMESTAMPTZ` | YES | `@PreUpdate` |
+
+**Constructors:**
+- `protected BosPlacement()` — JPA.
+- `public BosPlacement(UUID divisionId, UUID entryId, int place, UUID awardedBy)` — entity-level guard: `place >= 1`.
+
+**Domain methods:**
+
+| Method | Effect | Notes |
+|---|---|---|
+| `updatePlace(int newPlace, UUID awardedBy)` | reassigns place | service guard: `Judging.phase = BOS`; uniqueness guard at DB |
+
+Deletion is a service-level operation; explicit per-row deletion is
+load-bearing for `Judging.resetBos()` per §2.B Tier 3.
+
+**Invariants:**
+- `UNIQUE(division_id, place)`, `UNIQUE(division_id, entry_id)` (per §1.7).
+- `place ∈ [1, Division.bosPlaces]` — service-enforced (entity sees only
+  the lower bound).
+- Entry must have `MedalAward.medal = GOLD` in the same division —
+  service-enforced (CHIP §7).
+
+---
+
+#### Aggregate 7: `JudgeProfile` — `judge_profiles` (+ join table `judge_profile_certifications`)
+
+**Class:** `app.meads.judging.JudgeProfile` (public API — aggregate root).
+
+**Enum:** `app.meads.judging.Certification` — `MJP, BJCP, OTHER`.
+
+| Field | Java type | Column | Nullable | Notes |
+|---|---|---|---|---|
+| `id` | `UUID` | `id` (PK) | NO | self-gen in ctor |
+| `userId` | `UUID` | `user_id` | NO | **UNIQUE**; FK → `users.id` |
+| `certifications` | `Set<Certification>` | (`@ElementCollection` join table) | — | may be empty |
+| `qualificationDetails` | `String` | `qualification_details` `VARCHAR(200)` | YES | free-text: level, year, "OTHER" specifics (e.g. WSET) |
+| `preferredCommentLanguage` | `String` | `preferred_comment_language` `VARCHAR(5)` | YES | sticky comment-language preference; updated whenever judge changes scoresheet language (§2.H) |
+| `createdAt` | `Instant` | `created_at` `TIMESTAMPTZ` | NO | `@PrePersist` |
+| `updatedAt` | `Instant` | `updated_at` `TIMESTAMPTZ` | YES | `@PreUpdate` |
+
+**Join table `judge_profile_certifications`** (`@ElementCollection` +
+`@CollectionTable`):
+
+| Column | Type | Notes |
+|---|---|---|
+| `judge_profile_id` | `UUID` | FK → `judge_profiles.id` |
+| `certification` | `VARCHAR(20)` | enum name |
+
+Primary key: `(judge_profile_id, certification)`.
+
+**Constructors:**
+- `protected JudgeProfile()` — JPA.
+- `public JudgeProfile(UUID userId)` — empty `certifications`, null `qualificationDetails`.
+
+**Domain methods:**
+
+| Method | Effect | Notes |
+|---|---|---|
+| `updateCertifications(Set<Certification> certifications)` | replaces the set | empty set is allowed |
+| `updateQualificationDetails(String details)` | sets/clears free text | trims; null/blank stored as null |
+| `updatePreferredCommentLanguage(String code)` | sets/clears sticky language | null clears the sticky preference (per §2.H) |
+
+**Invariants:**
+- `UNIQUE(user_id)` — one profile per user.
+- Lifecycle (refines §2.F per §2.H): row auto-created on first
+  `JudgeAssignment` (judge added to a table). Empty `certifications` and
+  null `qualificationDetails` are valid initial state. Admin/self-edit
+  populates qualifications; service mutations populate
+  `preferredCommentLanguage`.
+
+---
+
+#### Competition-module changes
+
+Two new fields on `app.meads.competition.Division`:
+
+| Field | Java type | Column | Nullable | Default | Notes |
+|---|---|---|---|---|---|
+| `bosPlaces` | `int` | `bos_places` | NO | `1` | §1.6; locked once division advances past `REGISTRATION_OPEN` |
+| `minJudgesPerTable` | `int` | `min_judges_per_table` | NO | `2` | §2.D; locked once any `JudgingTable` for the division has `status != NOT_STARTED` |
+
+One new field on `app.meads.competition.Competition` (per §2.H):
+
+| Field | Java type | Storage | Default | Notes |
+|---|---|---|---|---|
+| `commentLanguages` | `Set<String>` | `@ElementCollection` → `competition_comment_languages` join table; `language_code VARCHAR(5)` | seeded with the 5 UI codes (`en`, `es`, `it`, `pl`, `pt`) at competition creation by `CompetitionService.createCompetition` | admin-curated list of languages judges may pick in the scoresheet comment-language dropdown (§2.H); editable any time |
+
+**New domain method on `Competition`:**
+
+| Method | Effect |
+|---|---|
+| `updateCommentLanguages(Set<String> codes)` | replaces the set; entity-level validation: each code matches `[a-z]{2}(-[A-Za-z0-9]+)?` |
+
+**New domain methods on `Division`:**
+
+| Method | Effect | Status guard |
+|---|---|---|
+| `updateBosPlaces(int)` | sets `bosPlaces`; entity-level guard `>= 1` | DRAFT or REGISTRATION_OPEN — beyond that, the field is locked |
+| `updateMinJudgesPerTable(int)` | sets `minJudgesPerTable`; entity-level guard `>= 1` | DRAFT through REGISTRATION_CLOSED; **service-level guard**: reject if any `JudgingTable` for this division has `status != NOT_STARTED` (cross-module check via a guard interface — same pattern as `DivisionRevertGuard`) |
+
+**Cross-module guard interface (in `app.meads.competition`):**
+
+```java
+public interface MinJudgesPerTableLockGuard {
+    boolean isLocked(UUID divisionId); // true if any JudgingTable.status != NOT_STARTED
+}
+```
+
+Implementation in `app.meads.judging.internal.JudgingMinJudgesLockGuard`.
+The competition module calls registered guards from
+`updateMinJudgesPerTable` paths; if any returns true, the update is
+rejected with a translated `BusinessRuleException`.
+
+(`bosPlaces` does not need a cross-module guard — its lock is purely on
+`DivisionStatus`, which `Division` already owns.)
+
+---
+
+#### Initial migration (V20) — full schema
+
+`V20__add_judging_module_and_division_judging_fields.sql` (single migration
+for atomicity; pairs the judging-module schema with the two competition
+fields).
+
+```sql
+-- Competition-module additions
+ALTER TABLE divisions
+    ADD COLUMN bos_places            INTEGER NOT NULL DEFAULT 1,
+    ADD COLUMN min_judges_per_table  INTEGER NOT NULL DEFAULT 2;
+
+-- Per-competition comment language list (§2.H)
+CREATE TABLE competition_comment_languages (
+    competition_id  UUID NOT NULL REFERENCES competitions(id) ON DELETE CASCADE,
+    language_code   VARCHAR(5) NOT NULL,
+    PRIMARY KEY (competition_id, language_code)
+);
+
+-- Judging module
+CREATE TABLE judgings (
+    id           UUID PRIMARY KEY,
+    division_id  UUID NOT NULL UNIQUE REFERENCES divisions(id),
+    phase        VARCHAR(20) NOT NULL,
+    created_at   TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at   TIMESTAMP WITH TIME ZONE
+);
+
+CREATE TABLE judging_tables (
+    id                    UUID PRIMARY KEY,
+    judging_id            UUID NOT NULL REFERENCES judgings(id),
+    name                  VARCHAR(120) NOT NULL,
+    division_category_id  UUID NOT NULL REFERENCES division_categories(id),
+    scheduled_date        DATE,
+    status                VARCHAR(20) NOT NULL,
+    created_at            TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at            TIMESTAMP WITH TIME ZONE
+);
+CREATE INDEX idx_judging_tables_judging_id            ON judging_tables(judging_id);
+CREATE INDEX idx_judging_tables_division_category_id  ON judging_tables(division_category_id);
+
+CREATE TABLE judge_assignments (
+    id                UUID PRIMARY KEY,
+    judging_table_id  UUID NOT NULL REFERENCES judging_tables(id) ON DELETE CASCADE,
+    judge_user_id     UUID NOT NULL REFERENCES users(id),
+    assigned_at       TIMESTAMP WITH TIME ZONE NOT NULL,
+    UNIQUE (judging_table_id, judge_user_id)
+);
+CREATE INDEX idx_judge_assignments_judge_user_id ON judge_assignments(judge_user_id);
+
+CREATE TABLE category_judging_configs (
+    id                    UUID PRIMARY KEY,
+    division_category_id  UUID NOT NULL UNIQUE REFERENCES division_categories(id),
+    medal_round_mode      VARCHAR(20) NOT NULL,
+    medal_round_status    VARCHAR(20) NOT NULL,
+    created_at            TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at            TIMESTAMP WITH TIME ZONE
+);
+
+CREATE TABLE scoresheets (
+    id                          UUID PRIMARY KEY,
+    table_id                    UUID NOT NULL REFERENCES judging_tables(id),
+    entry_id                    UUID NOT NULL UNIQUE REFERENCES entries(id),
+    filled_by_judge_user_id     UUID REFERENCES users(id),
+    status                      VARCHAR(20) NOT NULL,
+    total_score                 INTEGER,
+    overall_comments            VARCHAR(2000),
+    advanced_to_medal_round     BOOLEAN NOT NULL DEFAULT FALSE,
+    submitted_at                TIMESTAMP WITH TIME ZONE,
+    comment_language            VARCHAR(5),  -- §2.H; NOT NULL enforced at SUBMIT in service layer
+    created_at                  TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at                  TIMESTAMP WITH TIME ZONE
+);
+CREATE INDEX idx_scoresheets_table_id ON scoresheets(table_id);
+
+CREATE TABLE score_fields (
+    id              UUID PRIMARY KEY,
+    scoresheet_id   UUID NOT NULL REFERENCES scoresheets(id) ON DELETE CASCADE,
+    field_name      VARCHAR(50) NOT NULL,
+    max_value       INTEGER NOT NULL,
+    value           INTEGER,
+    comment         VARCHAR(2000),
+    UNIQUE (scoresheet_id, field_name)
+);
+
+CREATE TABLE medal_awards (
+    id                  UUID PRIMARY KEY,
+    entry_id            UUID NOT NULL UNIQUE REFERENCES entries(id),
+    division_id         UUID NOT NULL REFERENCES divisions(id),
+    final_category_id   UUID NOT NULL REFERENCES division_categories(id),
+    medal               VARCHAR(10),
+    awarded_at          TIMESTAMP WITH TIME ZONE NOT NULL,
+    awarded_by          UUID NOT NULL REFERENCES users(id),
+    updated_at          TIMESTAMP WITH TIME ZONE
+);
+CREATE INDEX idx_medal_awards_division_id        ON medal_awards(division_id);
+CREATE INDEX idx_medal_awards_final_category_id  ON medal_awards(final_category_id);
+
+CREATE TABLE bos_placements (
+    id           UUID PRIMARY KEY,
+    division_id  UUID NOT NULL REFERENCES divisions(id),
+    entry_id     UUID NOT NULL REFERENCES entries(id),
+    place        INTEGER NOT NULL,
+    awarded_at   TIMESTAMP WITH TIME ZONE NOT NULL,
+    awarded_by   UUID NOT NULL REFERENCES users(id),
+    updated_at   TIMESTAMP WITH TIME ZONE,
+    UNIQUE (division_id, place),
+    UNIQUE (division_id, entry_id)
+);
+
+CREATE TABLE judge_profiles (
+    id                            UUID PRIMARY KEY,
+    user_id                       UUID NOT NULL UNIQUE REFERENCES users(id),
+    qualification_details         VARCHAR(200),
+    preferred_comment_language    VARCHAR(5),  -- §2.H sticky preference
+    created_at                    TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at                    TIMESTAMP WITH TIME ZONE
+);
+
+CREATE TABLE judge_profile_certifications (
+    judge_profile_id  UUID NOT NULL REFERENCES judge_profiles(id) ON DELETE CASCADE,
+    certification     VARCHAR(20) NOT NULL,
+    PRIMARY KEY (judge_profile_id, certification)
+);
+```
+
+Foreign keys cross modules in the schema (`scoresheets.entry_id →
+entries.id`, `scoresheets.filled_by_judge_user_id → users.id`, etc.).
+That's consistent with how `entries.user_id → users.id` already works
+across the entry/identity boundary. The Modulith boundary is enforced
+at the Java level (no cross-module Java references except through public
+API), not at the schema level.
+
+---
+
+#### Resolved Phase 2 prep checklist items
+
+| Item | Status |
+|---|---|
+| Field-by-field type / nullability / column lengths / `@PrePersist` for every entity | ✅ §2.G above |
+| Invariants for each entity (state machine guards, FK rules, domain methods) | ✅ §2.G above |
+| Scoresheet creation strategy: eager vs lazy (§Q8) | ✅ §2.1 (eager on `JudgingTable.startRound1()`) |
+| COI similarity heuristic for meadery names (§Q7) | ✅ §2.E |
+| Judge MJP qualifications storage (§Q10) | ✅ §2.F |
+| SUBMITTED scoresheet revertibility (§Q13) | ✅ §2.B Tier 0 |
+| Locale-sensitivity of score field labels | ✅ canonical English `fieldName` stored as i18n key; tier descriptions UI-only |
+
+---
+
+#### Implications
+
+- All Phase 2 design questions closed (§Q1, §Q7, §Q8, §Q10, §Q11, §Q12, §Q13).
+- The Working sketch (line ~986) is now superseded by §2.G — banner added below.
+- Phase 3 begins: service contracts, event publication, authorization
+  (admin/judge), COI mechanism implementation, `DivisionStatusRevertGuard`
+  + `MinJudgesPerTableLockGuard` registrations, and the V20 migration.
+- New module `app.meads.judging` will declare `allowedDependencies =
+  {"competition", "identity", "entry"}` on its `package-info.java`. (Awards
+  is not yet a module; the entry dependency is necessary for `entryId`
+  cross-references and the eager scoresheet creation flow — same pattern
+  as `entry`'s dependency on `competition` and `identity`.)
+
+### 2026-05-08 — Phase 2.H: Scoresheet PDF locale + comment-language tagging (resolves §Q14)
+
+**Decision (D15 from 2026-05-08 conversation).** Two related questions
+resolved together.
+
+#### D15a: Scoresheet PDF render language
+
+**Decision:** locale-aware. The scoresheet PDF mirrors the UI locale of the
+user who clicks download (admin or judge). Field names (`Appearance`,
+`Aroma/Bouquet`, …) and tier labels (`Unacceptable`, `Below Average`, …)
+render through `MeadsI18NProvider`, same mechanism as the entry-side label
+PDF (`LabelPdfService`).
+
+**Rationale:** consistency with the rest of the app; better UX for non-English-
+speaking judges who print the sheet. Trade-off: a printed PDF in Portuguese
+is no longer a verbatim reproduction of the official MJP English scoresheet.
+For v1 this is acceptable — the on-screen MJP scoring system remains
+canonical (`Scoresheet.totalScore`, field maxima); only label rendering
+changes per locale.
+
+#### D15b: Per-scoresheet comment language tag
+
+**Problem:** judges in a multilingual panel may write comments in different
+languages, and the language they choose may differ from the system UI
+locale (e.g. an Italian judge writing in English so non-Italian readers can
+follow). Without a marker, downstream readers (other judges in subsequent
+rounds, the entrant receiving their PDF) don't know what language the prose
+is in.
+
+**Decision:** track the comment language per scoresheet and surface it in the
+PDF. A judge selects the language for their comments via a dropdown on the
+scoresheet form. Selection defaults to a sticky per-judge preference,
+falling back to UI locale.
+
+##### New field: `Scoresheet.commentLanguage`
+
+- Type: `String` (ISO 639-1 / BCP 47 short form; up to 5 chars to allow
+  regional codes like `pt-BR` or `zh-Hant`).
+- Column: `comment_language VARCHAR(5)`. Nullable on creation; NOT NULL
+  at SUBMIT.
+- Mutable while DRAFT via `Scoresheet.setCommentLanguage(String code, UUID judgeUserId)`.
+- Captured-and-frozen at SUBMIT — `submit()` populates it from the
+  default-resolution chain if still null, otherwise leaves the existing
+  value untouched.
+- Already-submitted scoresheets are not touched on subsequent language
+  changes — the value was frozen at SUBMIT.
+
+##### Default-resolution chain (when judge first opens a DRAFT scoresheet)
+
+1. `JudgeProfile.preferredCommentLanguage` (judge's sticky preference) if set.
+2. Else `User.preferredLanguage` (the UI locale).
+
+When the judge changes the language via the dropdown, the service updates
+**both**:
+- `Scoresheet.commentLanguage` (current sheet)
+- `JudgeProfile.preferredCommentLanguage` (sticky — applies to the next
+  scoresheets the judge opens, but never retroactively to already-edited ones).
+
+##### Adjustments to JudgeProfile (refines §2.F)
+
+- New nullable field `preferredCommentLanguage : String` (`VARCHAR(5)`).
+- **Lifecycle change:** `JudgeProfile` row auto-created on first
+  `JudgeAssignment` (no longer only via admin/self-edit of qualifications).
+  Keeps the sticky-preference lookup O(1) without scanning prior scoresheets.
+  Empty `certifications` and null `qualificationDetails` are valid and
+  unchanged from §2.F semantics.
+
+##### New competition-module field: `Competition.commentLanguages`
+
+Admin-curated, per-competition list of languages judges may select in the
+dropdown.
+
+- Type: `Set<String>` via JPA `@ElementCollection` →
+  `competition_comment_languages` join table (mirrors
+  `judge_profile_certifications`).
+- Seeded at competition creation with the 5 UI codes (`en`, `es`, `it`,
+  `pl`, `pt`) by `CompetitionService.createCompetition`, sourced from
+  `MeadsI18NProvider.getSupportedLanguageCodes()`.
+- Editable from `CompetitionDetailView` Settings tab (multi-select / chip
+  input). Mutable in any `DivisionStatus` — judging-time additions are
+  allowed.
+- `CompetitionService.updateCommentLanguages(competitionId, Set<String>, adminUserId)`.
+
+**Dropdown contents in the scoresheet form** (Phase 4 UX):
+- Union of `competition.commentLanguages` and the judge's current
+  `preferredCommentLanguage`. The union ensures a previously-selected
+  sticky value always remains visible even if admin later removes it from
+  the canonical list — the admin's intent is "these are supported for new
+  selections", not "wipe past or in-flight selections".
+- Sorted alphabetically by language display name in the user's locale.
+
+##### PDF render
+
+`ScoresheetPdfService` (Phase 4):
+- All field names + tier labels render in the printer's UI locale (D15a).
+- Each comment block carries a subheader naming the language of the prose,
+  e.g. "Comments — written in Português" / "Aroma/Bouquet — in English".
+  Subheader is itself rendered in the printer's UI locale; the value
+  inside (`Português`) is the localized display name of the comment
+  language.
+- Uses Liberation Sans (already embedded for label PDFs) for Unicode
+  coverage of all supported scripts.
+
+##### Service API additions (for Phase 3)
+
+```
+ScoresheetService.setCommentLanguage(scoresheetId, languageCode, judgeUserId)
+  // DRAFT only; updates Scoresheet.commentLanguage AND
+  // JudgeProfile.preferredCommentLanguage atomically (same transaction).
+  // No event needed — internal state.
+
+JudgeProfileService.ensureProfileForJudge(userId)
+  // Idempotent; called from JudgingService.assignJudge as part of the
+  // first-assignment lifecycle hook.
+
+CompetitionService.updateCommentLanguages(competitionId, Set<String>, adminUserId)
+  // Admin-only; validates language codes against a known list (e.g. Locale.getISOLanguages()).
+```
+
+##### V20 migration additions
+
+(Folded into the V20 migration block in §2.G, repeated here for clarity.)
+
+```sql
+ALTER TABLE scoresheets
+    ADD COLUMN comment_language VARCHAR(5);
+
+ALTER TABLE judge_profiles
+    ADD COLUMN preferred_comment_language VARCHAR(5);
+
+CREATE TABLE competition_comment_languages (
+    competition_id  UUID NOT NULL REFERENCES competitions(id) ON DELETE CASCADE,
+    language_code   VARCHAR(5) NOT NULL,
+    PRIMARY KEY (competition_id, language_code)
+);
+```
+
+For existing prod competitions (none yet at v1), a one-shot backfill could
+seed the 5 UI codes; not needed pre-deployment.
+
+#### Implications
+
+- §Q14 (new) — fully resolved by §2.H.
+- §2.F lifecycle clarification: `JudgeProfile` is auto-created on first
+  `JudgeAssignment`, not strictly lazy on admin/self-edit.
+- New Phase 3 work: `ScoresheetService.setCommentLanguage`,
+  `JudgeProfileService.ensureProfileForJudge`,
+  `CompetitionService.updateCommentLanguages`.
+- New Phase 4 work: dropdown on scoresheet form; multi-select on Settings
+  tab; PDF subheader rendering in `ScoresheetPdfService`.
+- §2.G entity tables and V20 SQL amended in place to incorporate the new
+  fields.
+
 ---
 
 ## Open Questions
@@ -976,6 +1778,15 @@ SUBMITTED scoresheets are read-only to judges. Admin-only `revertScoresheet`
 moves SUBMITTED → DRAFT, guarded by `medalRoundStatus ∈ {PENDING, READY}` for
 the scoresheet's category. Score values preserved on revert.
 
+### Q14 — Scoresheet PDF locale + comment-language tagging
+**Status:** ✅ Resolved by Decision §2.H (2026-05-08).
+PDF renders in printer's UI locale (locale-aware). `Scoresheet.commentLanguage`
+records the language of judge prose; defaults to
+`JudgeProfile.preferredCommentLanguage` (sticky) → `User.preferredLanguage`
+(UI locale). Frozen at SUBMIT. Dropdown source:
+`Competition.commentLanguages` (admin-curated, seeded with the 5 UI codes).
+`JudgeProfile` lifecycle adjusted to auto-create on first `JudgeAssignment`.
+
 ---
 
 ## Discussions
@@ -985,9 +1796,11 @@ unresolved as Open Questions, delete obsolete content.)
 
 ### Working sketch — aggregate model after Phase 2.A
 
-This is **not yet a finalized model** — remaining Phase 2 work pins down field
-types, nullability, invariants, @PrePersist, and domain methods. Use as a mental
-scaffold for Phase 2.B–2.D and Phase 3.
+> **⚠️ Field-level details superseded by §2.G (2026-05-08).** This sketch
+> remains as a one-page conceptual diagram of the aggregate graph and its
+> cross-aggregate UUID FKs. For canonical field types, nullability, column
+> lengths, invariants, domain methods, and the V20 schema, see §2.G in
+> Decisions.
 
 Cross-aggregate references are **UUID FKs only** (no JPA relationships between
 aggregates), matching the codebase convention. JPA `@OneToMany` is used only for
@@ -1083,17 +1896,17 @@ BosPlacement.entryId/divisionId → entry / competition modules
 
 ### Phase 2 prep checklist
 
-Items Phase 2 must address before moving on:
+> **All items resolved (2026-05-08).** See the resolution table at the end of
+> §2.G in Decisions.
 
-- Field-by-field type / nullability / column lengths / @PrePersist for every entity
-- Invariants for each entity (state machine guards, FK rules, domain methods)
-- Scoresheet creation strategy: eager (when JudgingTable is configured) vs lazy
-  (when judge opens entry) — §Q8
-- COI similarity heuristic for meadery names — §Q7
-- Judge MJP qualifications storage — §Q10
-- Whether SUBMITTED scoresheets are revertible by admin — §Q13
-- Locale-sensitivity of score field labels (i18n already in place; field names
-  are denormalized but tier descriptions live where?)
+- ✅ Field-by-field type / nullability / column lengths / @PrePersist (§2.G)
+- ✅ Invariants for each entity (§2.G)
+- ✅ Scoresheet creation strategy — §Q8 (§2.1, eager on `startRound1()`)
+- ✅ COI similarity heuristic — §Q7 (§2.E)
+- ✅ Judge MJP qualifications storage — §Q10 (§2.F)
+- ✅ SUBMITTED scoresheet revertibility — §Q13 (§2.B Tier 0)
+- ✅ Locale-sensitivity of score field labels (canonical English `fieldName`
+  stored as i18n key; tier descriptions UI-only) (§2.G)
 
 ---
 
