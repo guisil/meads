@@ -1,15 +1,15 @@
 # Judging Module — Design Document
 
 **Started:** 2026-05-05
-**Status:** Phase 1 ✅ complete (2026-05-05). Phase 2 ✅ complete (2026-05-08).
-Phase 2.A–2.F (2026-05-07) decided state machine, retreat semantics, §2.1
-trigger re-frame, start trigger preconditions, COI similarity heuristic, and
-judge MJP qualifications storage. Phase 2.G (2026-05-08) finalized field-level
-entity definitions for the 7 aggregates + the two `Division` field additions
-(`bosPlaces`, `minJudgesPerTable`) and produced the V20 schema. Phase 2.H
-(2026-05-08) added scoresheet PDF locale + comment-language tagging
-(`Scoresheet.commentLanguage`, `JudgeProfile.preferredCommentLanguage`,
-`Competition.commentLanguages`; resolves §Q14). Phase 3 next.
+**Status:** Phases 1–3 ✅ complete (docs-only through Phase 3). Phase 1
+(2026-05-05) scoped the module boundary. Phase 2 (2026-05-07/2026-05-08)
+decided state machine, retreat semantics, start triggers, COI similarity,
+JudgeProfile, field-level entity definitions, V20 schema, and PDF/comment-
+language tagging (resolves §Q1, §Q7, §Q8, §Q10, §Q11, §Q12, §Q13, §Q14).
+Phase 3 (2026-05-08) sketched service contracts, event records,
+authorization rules, COI mechanism, and cross-module guards as docs only —
+Java skeleton deferred to Phase 5. One open item: §Q15 (head-judge
+designation for BOS authorization). Phase 4 next: view design.
 **Module dependencies:** competition, entry, identity
 **References:**
 - `docs/specs/judging.md` — preliminary spec (post-rework naming)
@@ -39,9 +39,9 @@ Once a phase is complete, its open questions should all have decisions or be exp
 |---|---|---|
 | 0 | Frame & set up tracking doc | ✅ Complete |
 | 1 | Scope & module boundary decisions | ✅ Complete |
-| 2 | Domain model — entity definitions, eager/lazy creation, COI heuristic, MJP qualifications storage, scoresheet locking | ✅ Complete (2.A–2.F 2026-05-07; 2.G 2026-05-08) |
-| 3 | Service + event contracts, authorization, COI mechanism, judging start trigger | ⏳ Pending — Next |
-| 4 | View design (admin table mgmt, judge scoresheet UX, results-before-publication) | ⏳ Pending |
+| 2 | Domain model — entity definitions, eager/lazy creation, COI heuristic, MJP qualifications storage, scoresheet locking | ✅ Complete (2.A–2.F 2026-05-07; 2.G + 2.H 2026-05-08) |
+| 3 | Service + event contracts, authorization, COI mechanism, judging start trigger | ✅ Complete (2026-05-08, docs-only sketch; Java skeleton deferred to Phase 5) |
+| 4 | View design (admin table mgmt, judge scoresheet UX, results-before-publication) | ⏳ Pending — Next |
 | 5 | Implementation sequencing — TDD cycle order, migration plan, MVP slice | ⏳ Pending |
 
 ---
@@ -62,59 +62,91 @@ Once a phase is complete, its open questions should all have decisions or be exp
 §Q1, §Q7, §Q8, §Q10, §Q11, §Q12, §Q13, §Q14 fully resolved. **All Phase 2
 design questions closed.**
 
-### What next session must address: Phase 3 — services, events, authorization
+### What next session must address: Phase 4 — view design
 
-Phase 3 produces the service + event contracts, authorization rules, COI
-mechanism implementation contract, and the V20 migration. Order suggested:
+Phase 4 designs the UI surfaces (admin and judge) and pins the user
+flows so Phase 5 implementation is mechanical. Targets:
 
-1. **Module skeleton** — `app.meads.judging` package + `package-info.java`
-   (`@ApplicationModule(allowedDependencies = {"competition", "entry", "identity"})`).
-   Ensure `ModulithStructureTest` passes with the empty module.
-2. **Service contracts** (interfaces + method signatures only — no impl):
-   - `JudgingService` — `markActive`, `startTable`, `startMedalRound`,
-     `startBos`, `completeBos`, `reopenBos`, `resetBos`, `reopenMedalRound`,
-     `resetMedalRound`, `deleteBosPlacement`, `deleteMedalAward`.
-   - `ScoresheetService` — `createScoresheetsForTable` (eager creation per
-     §2.1), `updateScore`, `submit`, `revertScoresheet`, `moveToTable`,
-     `setAdvancedToMedalRound`, `setCommentLanguage` (per §2.H).
-   - `JudgeAssignmentService` (or merged into `JudgingService`) —
-     `assignJudge` (with `JudgeProfileService.ensureProfileForJudge`
-     lifecycle hook per §2.H), `removeJudge`.
-   - `JudgeProfileService` — `createOrUpdate`, `findByUserId`, `delete`,
-     `ensureProfileForJudge`, `updatePreferredCommentLanguage` (per §2.H).
-   - `CompetitionService` extension — `updateCommentLanguages` (per §2.H).
-3. **Event records** (judging module public API): all advance/retreat
-   pairs from §2.B (`ScoresheetSubmittedEvent` / `ScoresheetRevertedEvent`,
-   `TableStartedEvent` / `TableCompletedEvent` / `TableReopenedEvent`,
-   `MedalRoundActivatedEvent` / `MedalRoundCompletedEvent` /
-   `MedalRoundReopenedEvent` / `MedalRoundResetEvent`,
-   `BosStartedEvent` / `BosCompletedEvent` / `BosReopenedEvent` /
-   `BosResetEvent`).
-4. **Authorization rules** — who can do what. Initial sketch:
-   - System admin: all judging actions.
-   - Competition admin (per-competition `ADMIN` role): all judging actions
-     scoped to their competition.
-   - Judges (per-competition `JUDGE` role): edit DRAFT scoresheets at
-     tables they're assigned to; cannot revert SUBMITTED.
-   - COI block: judge cannot edit a scoresheet for an entry where
-     `entry.userId == judge.userId` (hard block per §1.4).
-5. **COI implementation contract** — `MeaderyNameNormalizer` (§2.E) and
-   `CoiCheckService` interfaces; where suffix lists live (compile-time
-   constant map).
-6. **Cross-module guards to register:**
-   - `DivisionStatusRevertGuard` (judging impl) — blocks
-     `JUDGING → REGISTRATION_CLOSED` retreat when judging data exists.
-   - `MinJudgesPerTableLockGuard` (judging impl) — blocks `Division.updateMinJudgesPerTable`
-     once any table has started.
-   - Register both via the existing competition-module guard interfaces.
-7. **V20 migration** — exact SQL is in §2.G; schedule for Phase 5
-   (impl sequencing) but the SQL is ready.
+1. **Admin: Division-level judging dashboard.** New tab on
+   `DivisionDetailView` (or new view) shown once `DivisionStatus = JUDGING`.
+   - Tables list (one row per JudgingTable: name, category, status, judge
+     count, scheduled date, per-status scoresheet counts).
+   - "Add table" / edit / delete actions.
+   - Per-table actions: assign judges (with COI soft-warning surface from
+     §2.E + §3.8), start table (with empty-category soft confirmation),
+     view scoresheets.
+   - Category medal-round panel: per JUDGING-scope category, show mode
+     (COMPARATIVE / SCORE_BASED), medalRoundStatus, "Start medal round" /
+     "Finalize medals" / Tier 2 retreat actions.
+   - BOS panel: shown when `Judging.phase ∈ {ACTIVE, BOS, COMPLETE}`;
+     "Start BOS" / "Finalize BOS" / Tier 3 retreat; placements grid.
+
+2. **Admin: Per-table scoresheet management.** Drill-in view from a
+   table row showing all scoresheets at the table — DRAFT/SUBMITTED
+   counts, individual rows with eye/pencil/revert/move actions, plus
+   "Reopen table" UX (which is just "revert any SUBMITTED" — driven by
+   Tier 1 implicit retreat).
+
+3. **Judge: Judging hub.** New top-level route (e.g. `/my-judging`)
+   parallel to `/my-entries`. Lists tables the user is assigned to,
+   grouped by competition, with progress per table. Click → judge
+   scoresheet view.
+
+4. **Judge: Scoresheet form.**
+   - Header: entry blind code (per §Q `entry.entryCode`), category code,
+     sweetness/strength/carbonation, additional info from Entry.
+   - 5 score-field rows: localized field name, tier-label hints with
+     numeric ranges, score input (0..maxValue), comment box.
+   - Overall comments field.
+   - Comment-language dropdown (§2.H) — populated from
+     `competition.commentLanguages ∪ judge.preferredCommentLanguage`,
+     sorted alphabetically by display name in user's locale.
+   - Advance-to-medal-round checkbox (§1.9).
+   - Save Draft / Submit buttons (Submit only enabled when all 5 fields
+     non-null).
+   - Hard COI: page rejects with notification if `entry.userId == judge.userId`.
+   - Soft COI: warning banner if `MeaderyNameNormalizer.areSimilar`
+     returns true.
+
+5. **Judge: Medal round form.** During `medalRoundStatus = ACTIVE`:
+   - COMPARATIVE: blank panel, "Award medal" buttons per entry in the
+     category, withhold via "no row".
+   - SCORE_BASED: pre-populated table from the auto-population
+     algorithm; tied slots flagged for manual resolution.
+
+6. **Judge: BOS form.** During `Judging.phase = BOS`: candidates list
+   (entries with `MedalAward.medal = GOLD`), assign / reassign / delete
+   placements 1..bosPlaces. (Pending §Q15 resolution on who can do this.)
+
+7. **Admin: Settings extensions.**
+   - `Competition` Settings tab: comment-languages multi-select (§2.H);
+     seeded with the 5 UI codes.
+   - `Division` Settings tab: `bosPlaces` editor (DRAFT/REGISTRATION_OPEN);
+     `minJudgesPerTable` editor (until first table starts).
+
+8. **Admin: User → JudgeProfile editor.** From `UserListView`, button to
+   set `certifications` (multi-select MJP/BJCP/OTHER) and
+   `qualificationDetails` (free text). Lazy-show only for users with at
+   least one judging-relevant context (or always — TBD).
+
+9. **Scoresheet PDF.** `ScoresheetPdfService` interface + layout sketch
+   (locale-aware per §2.H D15a; comment-language subheader per §2.H D15b).
+   Single + batch downloads.
+
+10. **i18n key inventory.** New i18n keys grouped by surface (judging
+    hub, scoresheet form, medal round, BOS, admin tabs, COI warnings,
+    error messages). Phase 4 produces the key list; PT translations
+    happen alongside Phase 5 implementation per existing convention.
+
+11. **Open question to close:** §Q15 — who records BosPlacements?
+    Resolve once the BOS form UX is concrete enough to weigh the options.
 
 ### Suggested start prompt for next session
-> "Read `docs/plans/2026-05-05-judging-module-design.md` and
-> `docs/SESSION_CONTEXT.md`, then begin Phase 3 — start with the module
-> skeleton (package + `package-info.java` + `ModulithStructureTest`) and
-> then sketch service interfaces and event record types."
+> "Read `docs/plans/2026-05-05-judging-module-design.md` (especially
+> Phase 3, §3.7 authorization, and §Q15) and `docs/SESSION_CONTEXT.md`,
+> then begin Phase 4 — start with the admin division-level judging
+> dashboard layout (Item 1) and the judge scoresheet form (Item 4), and
+> resolve §Q15 along the way."
 
 ---
 
@@ -1700,6 +1732,446 @@ seed the 5 UI codes; not needed pre-deployment.
 - §2.G entity tables and V20 SQL amended in place to incorporate the new
   fields.
 
+### 2026-05-08 — Phase 3: Service contracts, events, authorization, COI mechanism, cross-module guards (docs-only sketch)
+
+Following the order from the "Next Session: Start Here" plan. All Java
+skeleton (interfaces, records, `package-info.java`, guard impls) is
+**deferred to Phase 5 implementation**; this section pins the public API
+shape so Phase 5 is a mechanical translation.
+
+Java fragments below are **specification, not source files** — they live in
+this design doc only until Phase 5.
+
+#### 3.1 Module skeleton (Phase 5 code)
+
+`app.meads.judging` package + `package-info.java`:
+
+```java
+@org.springframework.modulith.ApplicationModule(
+    allowedDependencies = {"competition", "entry", "identity"})
+package app.meads.judging;
+```
+
+`ModulithStructureTest` is expected to pass once the annotation is in
+place and no internal-class cross-references exist. Follows the same
+pattern as `app.meads.entry`.
+
+#### 3.2 Service contract — `JudgingService`
+
+Owns table CRUD, judge assignment, table/medal-round/BOS state
+transitions, medal awards, and BOS placements. `@Service`,
+`@Transactional`, `@Validated`; constructor injection only.
+
+```java
+public interface JudgingService {
+
+    // === Lazy bootstrap ===
+    Judging ensureJudgingExists(UUID divisionId);
+    // Idempotent. Called when admin advances DivisionStatus to JUDGING.
+    // Creates a Judging row with phase = NOT_STARTED if absent.
+
+    // === Table CRUD ===
+    JudgingTable createTable(UUID judgingId, String name,
+                             UUID divisionCategoryId,
+                             LocalDate scheduledDate,
+                             UUID adminUserId);
+    void updateTableName(UUID tableId, String name, UUID adminUserId);
+    void updateTableScheduledDate(UUID tableId, LocalDate date, UUID adminUserId);
+    void deleteTable(UUID tableId, UUID adminUserId);
+    // Allowed only when status = NOT_STARTED and no JudgeAssignment rows.
+
+    // === Judge assignment ===
+    void assignJudge(UUID tableId, UUID judgeUserId, UUID adminUserId);
+    // Idempotent. Calls JudgeProfileService.ensureProfileForJudge per §2.H.
+
+    void removeJudge(UUID tableId, UUID judgeUserId, UUID adminUserId);
+    // Reject if status = ROUND_1 and removal would drop assignments
+    // below Division.minJudgesPerTable.
+
+    // === Table state transitions (§2.B Tier 1 + §2.D start triggers) ===
+    void startTable(UUID tableId, UUID adminUserId, boolean allowEmptyCategory);
+    // Hard guards: divisionCategoryId set, JudgeAssignment count >= minJudgesPerTable.
+    // Soft confirm: empty-category requires allowEmptyCategory = true.
+    // Side effects: ensureJudgingExists; Judging.markActive() if first table;
+    //   delegates eager scoresheet creation to ScoresheetService.createScoresheetsForTable;
+    //   ensures CategoryJudgingConfig exists for the table's category (mode = COMPARATIVE).
+    // Publishes TableStartedEvent.
+
+    // (Table.markComplete / reopenToRound1 are internal — driven by ScoresheetService.)
+
+    // === Category medal-round configuration ===
+    CategoryJudgingConfig configureCategoryMedalRound(
+            UUID divisionCategoryId, MedalRoundMode mode, UUID adminUserId);
+    // Idempotent create-or-update. Mode change allowed only while
+    // medalRoundStatus ∈ {PENDING, READY}.
+
+    // === Medal round transitions (§2.B Tier 2 + §2.D start) ===
+    void startMedalRound(UUID divisionCategoryId, UUID adminUserId);
+    // READY → ACTIVE. SCORE_BASED runs auto-population per §2.D D10.
+    // Publishes MedalRoundActivatedEvent.
+
+    void completeMedalRound(UUID divisionCategoryId, UUID adminUserId);
+    // ACTIVE → COMPLETE. Publishes MedalRoundCompletedEvent.
+
+    void reopenMedalRound(UUID divisionCategoryId, UUID adminUserId);
+    // COMPLETE → ACTIVE; preserves MedalAward rows.
+    // Guard: Judging.phase = ACTIVE. Publishes MedalRoundReopenedEvent.
+
+    void resetMedalRound(UUID divisionCategoryId, UUID adminUserId);
+    // ACTIVE → READY; deletes all MedalAward rows for this category in tx.
+    // Guard: Judging.phase = ACTIVE. Publishes MedalRoundResetEvent.
+
+    // === Medal awards (during ACTIVE) ===
+    MedalAward recordMedal(UUID entryId, Medal medal, UUID judgeUserId);
+    // Resolves divisionId + finalCategoryId from entry.
+    // Guard: medalRoundStatus = ACTIVE for the entry's category.
+    // COI hard block: rejects if entry.userId == judgeUserId.
+
+    void updateMedal(UUID medalAwardId, Medal newValue, UUID judgeUserId);
+    void deleteMedalAward(UUID medalAwardId, UUID judgeUserId);
+    // Same ACTIVE guard. delete is also the building block for resetMedalRound.
+
+    // === BOS lifecycle (§2.B Tier 3 + §2.D start) ===
+    void startBos(UUID divisionId, UUID adminUserId);
+    // ACTIVE → BOS. Guard: every CategoryJudgingConfig.medalRoundStatus = COMPLETE.
+    // Empty BOS allowed (degenerate case). Publishes BosStartedEvent.
+
+    void completeBos(UUID divisionId, UUID adminUserId);
+    void reopenBos(UUID divisionId, UUID adminUserId);
+    // COMPLETE → BOS; preserves BosPlacement rows.
+
+    void resetBos(UUID divisionId, UUID adminUserId);
+    // BOS → ACTIVE; guard: zero BosPlacement rows exist (per §2.B Tier 3).
+
+    // === BOS placements (during BOS) ===
+    BosPlacement recordBosPlacement(UUID divisionId, UUID entryId,
+                                    int place, UUID judgeUserId);
+    // Guards: Judging.phase = BOS; place ∈ [1, Division.bosPlaces];
+    //         entry has MedalAward.medal = GOLD in this division.
+    // Authorization: see §3.7 — head-judge designation is open (§Q15).
+
+    void updateBosPlacement(UUID placementId, int place, UUID judgeUserId);
+    void deleteBosPlacement(UUID placementId, UUID adminUserId);
+    // Standalone — required for resetBos() per §2.B Tier 3.
+}
+```
+
+#### 3.3 Service contract — `ScoresheetService`
+
+Owns scoresheet eager creation, edits, status transitions, and the §2.1
+recategorization sync rule.
+
+```java
+public interface ScoresheetService {
+
+    // === Eager creation (§2.1) ===
+    void createScoresheetsForTable(UUID tableId);
+    // Called by JudgingService.startTable. Creates one DRAFT Scoresheet
+    // per Entry whose finalCategoryId matches the table's category.
+    // Idempotent — skips entries that already have a scoresheet at any table.
+
+    void ensureScoresheetForEntry(UUID entryId);
+    // Called from §2.1 sync rule when an entry gets finalCategoryId set
+    // post-table-start. Creates DRAFT scoresheet at the matching ROUND_1 table.
+
+    // === Edits (DRAFT) ===
+    void updateScore(UUID scoresheetId, String fieldName,
+                     Integer value, String comment, UUID judgeUserId);
+    // Validates 0 <= value <= maxValue. Sets filledByJudgeUserId if not yet set.
+
+    void updateOverallComments(UUID scoresheetId, String comments, UUID judgeUserId);
+    void setAdvancedToMedalRound(UUID scoresheetId, boolean advanced, UUID judgeUserId);
+    // §1.9 — DRAFT or SUBMITTED, but rejected once medalRoundStatus = ACTIVE.
+
+    void setCommentLanguage(UUID scoresheetId, String languageCode, UUID judgeUserId);
+    // §2.H — DRAFT only. Validates code is in
+    // (competition.commentLanguages ∪ judge's current preferredCommentLanguage).
+    // Updates Scoresheet.commentLanguage AND
+    // JudgeProfile.preferredCommentLanguage atomically (same tx).
+
+    // === Status transitions ===
+    void submit(UUID scoresheetId, UUID judgeUserId);
+    // DRAFT → SUBMITTED. Validates all 5 ScoreField.value non-null.
+    // Computes totalScore = sum(values). Sets submittedAt = now().
+    // Resolves commentLanguage if still null per §2.H default chain.
+    // Triggers JudgingTable.markComplete() if last DRAFT at the table
+    //   (publishes TableCompletedEvent + CategoryJudgingConfig.markReady() if applicable).
+    // Publishes ScoresheetSubmittedEvent.
+
+    void revertToDraft(UUID scoresheetId, UUID adminUserId);
+    // §2.B Tier 0. SUBMITTED → DRAFT. Admin-only.
+    // Guard: medalRoundStatus ∈ {PENDING, READY} for the scoresheet's category.
+    // Side effects: clears totalScore + submittedAt; preserves ScoreField values.
+    // If table.status = COMPLETE, triggers Table.reopenToRound1() + TableReopenedEvent
+    //   + CategoryJudgingConfig.markPending() if applicable.
+    // Publishes ScoresheetRevertedEvent.
+
+    void moveToTable(UUID scoresheetId, UUID newTableId, UUID adminUserId);
+    // §2.1 sync rule. DRAFT only. Validates newTable.divisionCategoryId ==
+    // entry.finalCategoryId. No event (internal reshuffle).
+}
+```
+
+#### 3.4 Service contract — `JudgeProfileService`
+
+```java
+public interface JudgeProfileService {
+
+    JudgeProfile ensureProfileForJudge(UUID userId);
+    // Idempotent. Called from JudgingService.assignJudge per §2.H lifecycle.
+
+    JudgeProfile createOrUpdate(UUID userId, Set<Certification> certifications,
+                                String qualificationDetails, UUID requestingUserId);
+    // Authorization: SYSTEM_ADMIN or self.
+
+    Optional<JudgeProfile> findByUserId(UUID userId);
+    // Read-only. Used by COI checks and admin filtering.
+
+    void updatePreferredCommentLanguage(UUID userId, String languageCode);
+    // §2.H — internal helper called from ScoresheetService.setCommentLanguage
+    // and ScoresheetService.submit (default-resolution). Bypasses authorization
+    // because it's gated upstream.
+
+    void delete(UUID userId, UUID adminUserId);
+    // SYSTEM_ADMIN only. Rejected if any JudgeAssignment references the user.
+}
+```
+
+#### 3.5 `CompetitionService` extension (per §2.H)
+
+New method on the existing competition-module service:
+
+```java
+void updateCommentLanguages(UUID competitionId, Set<String> languageCodes,
+                            UUID adminUserId);
+// Authorization: SYSTEM_ADMIN or competition ADMIN of competitionId.
+// Validates each code matches `[a-z]{2}(-[A-Za-z0-9]+)?`.
+// Replaces the entire set.
+```
+
+#### 3.6 Event records (judging module public API)
+
+13 events, all in `app.meads.judging`. Java records, published
+synchronously inside the producing transaction (matches §2.B and the
+existing module convention). Listeners use `@ApplicationModuleListener`
+for async cross-module reactions.
+
+```java
+// Tier 0 — scoresheet
+record ScoresheetSubmittedEvent(UUID scoresheetId, UUID entryId,
+                                UUID tableId, int totalScore,
+                                Instant submittedAt) {}
+record ScoresheetRevertedEvent(UUID scoresheetId, UUID entryId,
+                               UUID tableId, Instant revertedAt) {}
+
+// Tier 1 — table (TableReopenedEvent is published implicitly)
+record TableStartedEvent(UUID tableId, UUID divisionCategoryId,
+                         UUID divisionId, Instant startedAt) {}
+record TableCompletedEvent(UUID tableId, UUID divisionCategoryId,
+                           UUID divisionId, Instant completedAt) {}
+record TableReopenedEvent(UUID tableId, UUID divisionCategoryId,
+                          UUID divisionId, Instant reopenedAt) {}
+
+// Tier 2 — medal round
+record MedalRoundActivatedEvent(UUID divisionCategoryId, UUID divisionId,
+                                MedalRoundMode mode, Instant activatedAt) {}
+record MedalRoundCompletedEvent(UUID divisionCategoryId, UUID divisionId,
+                                Instant completedAt) {}
+record MedalRoundReopenedEvent(UUID divisionCategoryId, UUID divisionId,
+                               Instant reopenedAt) {}
+record MedalRoundResetEvent(UUID divisionCategoryId, UUID divisionId,
+                            int wipedAwardCount, Instant resetAt) {}
+
+// Tier 3 — division BOS
+record BosStartedEvent(UUID divisionId, Instant startedAt) {}
+record BosCompletedEvent(UUID divisionId, int placementsCount,
+                         Instant completedAt) {}
+record BosReopenedEvent(UUID divisionId, Instant reopenedAt) {}
+record BosResetEvent(UUID divisionId, Instant resetAt) {}
+```
+
+**Denormalization rationale:** events carry `divisionId` and
+`divisionCategoryId` so downstream listeners (notifications, awards
+module-to-be) don't need to load entities to route. `totalScore` on
+`ScoresheetSubmittedEvent` and `placementsCount` on `BosCompletedEvent`
+are similarly denormalized — same principle as `EntriesSubmittedEvent`
+in the entry module.
+
+#### 3.7 Authorization rules
+
+Roles in play:
+- **SYSTEM_ADMIN** — site-wide (`Role.SYSTEM_ADMIN` in identity module).
+- **Competition ADMIN** — per-competition role (`ParticipantRole` =
+  `ADMIN` in competition module).
+- **Judge** — per-competition role (`ParticipantRole` = `JUDGE`).
+  Effective scope is per-table via `JudgeAssignment`.
+- **Entrant** — per-competition role (`ParticipantRole` = `ENTRANT`); never
+  authorised for judging actions in v1.
+
+| Action group | SYSTEM_ADMIN | Competition ADMIN | Judge (assigned to table) | Judge (other) | Entrant |
+|---|---|---|---|---|---|
+| Table CRUD, judge assignment | ✓ | ✓ (own competition) | — | — | — |
+| Configure category medal-round mode | ✓ | ✓ | — | — | — |
+| Start table / start medal round / start BOS | ✓ | ✓ | — | — | — |
+| Reopen / reset (Tier 2/3 retreat) | ✓ | ✓ | — | — | — |
+| Revert SUBMITTED scoresheet to DRAFT (Tier 0) | ✓ | ✓ | — | — | — |
+| `moveToTable` (recategorization sync) | ✓ | ✓ | — | — | — |
+| Edit/submit DRAFT scoresheet (own table) | ✓ | ✓ | ✓ | — | — |
+| Set `commentLanguage` (own DRAFT scoresheet) | ✓ | ✓ | ✓ | — | — |
+| Record/edit medal awards | ✓ | ✓ | ✓ (during ACTIVE for assigned tables' categories) | — | — |
+| Record/edit BOS placements | ✓ | ✓ | **see §Q15 (head-judge designation, open)** | — | — |
+| View own JudgeProfile | ✓ | ✓ | ✓ | ✓ (own only) | — |
+| Edit JudgeProfile | ✓ (any user) | ✓ (any user in own competition's judge pool) | ✓ (own only) | ✓ (own only) | — |
+| Update `Competition.commentLanguages` | ✓ | ✓ (own competition) | — | — | — |
+
+**Hard COI block (§1.4):** any judge action on a scoresheet for an entry
+where `entry.userId == judge.userId` — rejected with `BusinessRuleException`
+regardless of role. Applies to admins too (an admin who is also an entrant
+can't judge their own entry). Service-layer enforcement via
+`CoiCheckService.check`.
+
+**Soft COI warning (§2.E):** UI-only surface; no service-layer enforcement.
+
+#### 3.8 COI implementation contract
+
+```java
+// app.meads.judging.internal.MeaderyNameNormalizer (utility class)
+final class MeaderyNameNormalizer {
+
+    private static final Map<String, Set<String>> SUFFIXES_BY_COUNTRY = Map.of(
+            "GLOBAL", Set.of("llc", "inc", "ltd", "co", "corp", "plc",
+                             "meadery", "mead", "meads", "meadworks",
+                             "cellars", "farm", "brewery"),
+            "PT",     Set.of("lda", "sa", "ldª", "hidromelaria", "hidromelina"),
+            "ES",     Set.of("sl", "sa", "srl", "hidromielería",
+                             "hidromelería", "hidromiel"),
+            "IT",     Set.of("srl", "spa", "sas", "sapa", "idromeleria", "idromele"),
+            "PL",     Set.of("sp z o o", "sa", "sk", "miodosytnia",
+                             "pasieka", "miód"),
+            "FR",     Set.of("sarl", "sas", "eurl", "sa", "hydromellerie", "hydromel"),
+            "DE",     Set.of("gmbh", "ag", "ohg", "kg", "metherei",
+                             "metmacherei", "metbrauerei"),
+            "NL",     Set.of("bv", "nv", "meddrijf", "mede"));
+    // BR shares PT entries; MX/AR share ES; AT/CH share DE; BE shares NL;
+    // GB/IE/US share GLOBAL via fallback. Compile-time constant; not externalised.
+
+    static String normalize(String meaderyName, String countryCode);
+    // §2.E: lowercase → non-alphanumeric → space → strip combined suffixes
+    //   (whole-word) → collapse whitespace → trim.
+
+    static boolean areSimilar(String name1, String country1,
+                              String name2, String country2);
+    // §2.E: cross-country gate (skip if both countries set and differ),
+    //   then exact match on normalized OR Levenshtein distance ≤ 2.
+    //   Returns false if either name is null/blank.
+}
+```
+
+```java
+// app.meads.judging.CoiCheckService (public API)
+public interface CoiCheckService {
+    record CoiResult(boolean hardBlock, Optional<String> softWarningKey) {}
+
+    CoiResult check(UUID judgeUserId, UUID entryId);
+    // Hard block when entry.userId == judgeUserId. Soft warning via
+    // MeaderyNameNormalizer.areSimilar over judge & entrant
+    // (User.meaderyName, User.country).
+    // softWarningKey is an i18n key (e.g. "coi.warning.similar-meadery").
+}
+```
+
+**Call sites:**
+- `ScoresheetService` (any DRAFT mutation, submit, revert): hard block enforced.
+- `JudgingService.recordMedal` / `updateMedal`: hard block enforced.
+- Admin "Assign judge to table" UI: warnings rendered per entry at the table
+  whose meadery is similar to the judge's.
+- Judge UI when opening a scoresheet: warning banner if applicable.
+
+#### 3.9 Cross-module guard registrations
+
+Two guard interfaces; competition module owns both, judging module
+provides implementations. Same pattern as the existing
+`DivisionRevertGuard` pair (`EntryDivisionRevertGuard` in entry module).
+
+**Existing competition-module interface (already used by entry module):**
+
+```java
+// app.meads.competition.DivisionStatusRevertGuard (public API)
+public interface DivisionStatusRevertGuard {
+    boolean blocksRevert(UUID divisionId, DivisionStatus from, DivisionStatus to);
+}
+```
+
+**New judging impl:**
+
+```java
+// app.meads.judging.internal
+@Component
+class JudgingDivisionStatusRevertGuard implements DivisionStatusRevertGuard {
+    public boolean blocksRevert(UUID divisionId,
+                                DivisionStatus from, DivisionStatus to) {
+        // Block JUDGING → REGISTRATION_CLOSED if any judging data exists.
+        if (from == DivisionStatus.JUDGING && to == DivisionStatus.REGISTRATION_CLOSED) {
+            return judgingRepo.findByDivisionId(divisionId)
+                    .map(j -> j.getPhase() != JudgingPhase.NOT_STARTED
+                              || tableRepo.existsByJudgingId(j.getId()))
+                    .orElse(false);
+        }
+        return false;
+    }
+}
+```
+
+**New competition-module interface (per §2.D / §2.G):**
+
+```java
+// app.meads.competition.MinJudgesPerTableLockGuard (public API)
+public interface MinJudgesPerTableLockGuard {
+    boolean isLocked(UUID divisionId);
+    // True if any JudgingTable for this division has status != NOT_STARTED.
+}
+```
+
+**Judging impl:**
+
+```java
+// app.meads.judging.internal
+@Component
+class JudgingMinJudgesLockGuard implements MinJudgesPerTableLockGuard {
+    public boolean isLocked(UUID divisionId) {
+        return tableRepo.existsByJudgingDivisionIdAndStatusNot(
+                divisionId, JudgingTableStatus.NOT_STARTED);
+    }
+}
+```
+
+**Call sites in competition module:**
+
+- `CompetitionService.revertDivisionStatus()` — already iterates
+  `Stream<DivisionStatusRevertGuard>` for entry-module guard; judging
+  guard plugs in alongside.
+- `CompetitionService.updateDivisionMinJudgesPerTable()` (new in V20
+  scope) — checks every registered `MinJudgesPerTableLockGuard.isLocked`
+  before delegating to `Division.updateMinJudgesPerTable`.
+
+**Note:** `Division.bosPlaces` does **not** need a cross-module guard —
+its lock is purely on `DivisionStatus`, which the entity already enforces
+in `Division.updateBosPlaces`.
+
+#### Implications + Phase 3 closure
+
+- Phase 3 design closed. Java skeleton (interfaces, records,
+  `package-info.java`, guard impls) deferred to Phase 5 — translating
+  the above is mechanical.
+- One open item promoted to **§Q15** (head-judge designation for BOS
+  authorization).
+- Phase 4 next: view design (admin table-management UX, judge scoresheet
+  UX, results-before-publication views, comment-language dropdown,
+  per-competition language settings UI).
+- Phase 5 implementation order (preview, to be detailed in Phase 5):
+  module skeleton → migrations → entities → services (TDD, repository
+  tests first) → events + listeners → views → integration tests.
+
 ---
 
 ## Open Questions
@@ -1786,6 +2258,28 @@ records the language of judge prose; defaults to
 (UI locale). Frozen at SUBMIT. Dropdown source:
 `Competition.commentLanguages` (admin-curated, seeded with the 5 UI codes).
 `JudgeProfile` lifecycle adjusted to auto-create on first `JudgeAssignment`.
+
+### Q15 — Head-judge designation for BOS authorization
+**Status:** Open (raised 2026-05-08 during Phase 3 §3.7 authorization).
+CHIP §7 implies a "head judge" role for BOS decisions, but the data model
+has only the flat `ParticipantRole.JUDGE`. Options:
+
+- **(a) Any assigned judge in the division** — matches our flat role
+  model; relies on social process. Simplest; consistent with how Round 1
+  authorization works (assignment-scoped).
+- **(b) Add `ParticipantRole.HEAD_JUDGE`** (or a per-judging boolean
+  `JudgeAssignment.isHeadJudge` at the table level, or per-division
+  designation) — explicit; small data-model addition; requires admin
+  designation step.
+- **(c) Admin-only for v1** — competition ADMIN authority replaces head-
+  judge authority entirely; defer head-judge concept until competitions
+  are large enough to need it.
+
+Decision deferred to **Phase 4** (view design), specifically when the
+BOS form UX (Item 6 in the Phase 4 Next Session list) is concrete enough
+to weigh the options. Default leaning if undecided: **(c)**, since
+admins can always proxy on behalf of head judges and this avoids
+data-model expansion in v1.
 
 ---
 

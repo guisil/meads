@@ -493,13 +493,48 @@ open questions, and the "Next Session: Start Here" marker. Reference:
   `comment_language` and `preferred_comment_language` columns on
   `scoresheets` and `judge_profiles`.
 
-**Next: Phase 3 — services, events, authorization, COI implementation
-contracts.** See "Next Session: Start Here" in the design doc for the
-suggested order (module skeleton → service interfaces → event records →
-authorization → COI mechanism → guard registrations → V20 migration).
-Phase 3 service additions from §2.H: `ScoresheetService.setCommentLanguage`,
-`JudgeProfileService.ensureProfileForJudge` /
-`updatePreferredCommentLanguage`, `CompetitionService.updateCommentLanguages`.
+**Phase 3 (2026-05-08) — service contracts, events, authorization, COI
+mechanism, cross-module guards (docs-only sketch; Java skeleton deferred
+to Phase 5):**
+- Module skeleton plan: `app.meads.judging` + `package-info.java` with
+  `@ApplicationModule(allowedDependencies = {"competition", "entry", "identity"})`.
+- Three judging-module services with full method signatures:
+  `JudgingService` (table CRUD, judge assignment, table/medal-round/BOS
+  state transitions, medal awards, BOS placements), `ScoresheetService`
+  (eager creation, edits, status transitions, comment language),
+  `JudgeProfileService` (ensure-on-assignment, CRUD, sticky language helper).
+- One competition-module extension: `CompetitionService.updateCommentLanguages`.
+- 13 event records (advance/retreat pairs across all 3 retreat tiers
+  from §2.B), denormalized to carry routing fields (`divisionId`,
+  `divisionCategoryId`, `totalScore`, etc.) so listeners don't reload.
+- Authorization rules table covering SYSTEM_ADMIN, competition ADMIN,
+  assigned judge, other judge, entrant. Hard COI block enforced
+  service-side; soft COI warning UI-only.
+- COI implementation contract: `MeaderyNameNormalizer` utility (with
+  full per-country suffix maps as compile-time constants per §2.E) +
+  `CoiCheckService` interface returning `CoiResult(hardBlock, softWarningKey)`.
+- Cross-module guards: `JudgingDivisionStatusRevertGuard` (judging
+  impl of existing competition interface) blocks JUDGING →
+  REGISTRATION_CLOSED retreat once data exists; new
+  `MinJudgesPerTableLockGuard` interface in competition module +
+  `JudgingMinJudgesLockGuard` impl.
+- Open: §Q15 (head-judge designation for BOS authorization) — deferred
+  to Phase 4 view design; default leaning is admin-only for v1.
+
+**Next: Phase 4 — view design.** Targets in priority order:
+admin division-level judging dashboard (tables, category medal-round
+panel, BOS panel); admin per-table scoresheet management; judge judging
+hub (`/my-judging`); judge scoresheet form (with comment-language
+dropdown + soft COI banner); medal-round forms (COMPARATIVE +
+SCORE_BASED); BOS form (resolves §Q15); admin Settings extensions
+(`Competition.commentLanguages`, `Division.bosPlaces`,
+`Division.minJudgesPerTable`); admin user → JudgeProfile editor;
+scoresheet PDF layout sketch; i18n key inventory.
+
+**Phase 5 (impl, deferred):** module skeleton → V20 migration →
+entities → services (TDD, repository tests first) → events + listeners
+→ views → integration tests. Java skeleton from Phase 3 translates
+mechanically.
 
 ### Priority 6: Awards module
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md` and `docs/specs/awards.md`.
