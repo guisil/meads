@@ -1,21 +1,23 @@
 # Judging Module — Design Document
 
 **Started:** 2026-05-05
-**Status:** Phases 1–3 ✅ complete; Phase 4 in progress (4.A–4.C done
+**Status:** Phases 1–3 ✅ complete; Phase 4 in progress (4.A–4.E done
 2026-05-09, covering §Q15 + admin division-level judging dashboard +
-judge scoresheet form). Phase 1 (2026-05-05) scoped the module boundary.
-Phase 2 (2026-05-07/2026-05-08) decided state machine, retreat semantics,
+judge scoresheet form + judge hub/table drill-in + medal round
+forms). Phase 1 (2026-05-05) scoped the module boundary. Phase 2
+(2026-05-07/2026-05-08) decided state machine, retreat semantics,
 start triggers, COI similarity, JudgeProfile, field-level entity
 definitions, V20 schema, and PDF/comment-language tagging (resolves
 §Q1, §Q7, §Q8, §Q10, §Q11, §Q12, §Q13, §Q14). Phase 3 (2026-05-08)
 sketched service contracts, event records, authorization rules, COI
 mechanism, and cross-module guards as docs only — Java skeleton
 deferred to Phase 5. Phase 4 (2026-05-09 ongoing) resolves §Q15
-(admin-only BOS for v1) and pins the admin judging dashboard + judge
-scoresheet form. All Phase 2/3 questions closed. Phase 4 follow-ups:
-admin per-table drill-in, judge hub, medal-round forms, BOS form
-detail, admin Settings extensions, JudgeProfile editor,
-ScoresheetPdfService, full i18n key inventory.
+(admin-only BOS for v1) and pins the admin judging dashboard, judge
+scoresheet form, judge hub + table drill-in, and medal round forms.
+New §Q16 opened (per-entry tasting-label PDF variant — deferred).
+All Phase 2/3 questions closed. Phase 4 follow-ups: admin per-table
+drill-in, BOS form detail, admin Settings extensions, JudgeProfile
+editor, ScoresheetPdfService, full i18n key inventory.
 **Module dependencies:** competition, entry, identity
 **References:**
 - `docs/specs/judging.md` — preliminary spec (post-rework naming)
@@ -47,7 +49,7 @@ Once a phase is complete, its open questions should all have decisions or be exp
 | 1 | Scope & module boundary decisions | ✅ Complete |
 | 2 | Domain model — entity definitions, eager/lazy creation, COI heuristic, MJP qualifications storage, scoresheet locking | ✅ Complete (2.A–2.F 2026-05-07; 2.G + 2.H 2026-05-08) |
 | 3 | Service + event contracts, authorization, COI mechanism, judging start trigger | ✅ Complete (2026-05-08, docs-only sketch; Java skeleton deferred to Phase 5) |
-| 4 | View design (admin table mgmt, judge scoresheet UX, results-before-publication) | 🟡 In progress — 4.A (§Q15) + 4.B (admin dashboard) + 4.C (judge scoresheet form) done 2026-05-09 |
+| 4 | View design (admin table mgmt, judge scoresheet UX, results-before-publication) | 🟡 In progress — 4.A (§Q15) + 4.B (admin dashboard) + 4.C (judge scoresheet form) + 4.D (judge hub + table view) + 4.E (medal round forms) done 2026-05-09 |
 | 5 | Implementation sequencing — TDD cycle order, migration plan, MVP slice | ⏳ Pending |
 
 ---
@@ -56,8 +58,10 @@ Once a phase is complete, its open questions should all have decisions or be exp
 
 **Phase 4 in progress (started 2026-05-09).** This session covered §Q15
 (resolved: admin-only BOS for v1), the admin division-level judging
-dashboard (§4.B), and the judge scoresheet form (§4.C). See those
-sections in Decisions.
+dashboard (§4.B), the judge scoresheet form (§4.C), the judge hub +
+table drill-in (§4.D), and the medal round forms (§4.E). New §Q16
+opened (per-entry tasting-label PDF variant — deferred). See those
+sections in Decisions / Open Questions.
 
 ### Phase 4 status
 
@@ -66,27 +70,32 @@ sections in Decisions.
 | §Q15 | BOS authorization for v1 | ✅ §4.A — admin-only |
 | 1 | Admin division-level judging dashboard | ✅ §4.B — `JudgingAdminView` w/ Tables\|Medal Rounds\|BOS tabs |
 | 2 | Admin per-table scoresheet management (drill-in) | ⏳ Pending |
-| 3 | Judge judging hub (`/my-judging`) | ⏳ Pending |
+| 3 | Judge judging hub (`/my-judging`) | ✅ §4.D — `MyJudgingView` + `JudgeTableView` |
 | 4 | Judge scoresheet form | ✅ §4.C — `ScoresheetView` full-page route |
-| 5 | Medal round forms (COMPARATIVE + SCORE_BASED) | ⏳ Pending |
+| 5 | Medal round forms (COMPARATIVE + SCORE_BASED) | ✅ §4.E — `MedalRoundView` |
 | 6 | BOS form detail (admin-only per §4.A) | ⏳ Pending — sketched in §4.B Tab 3, needs placement-entry detail |
 | 7 | Admin Settings extensions (`Competition.commentLanguages`, `Division.bosPlaces`, `Division.minJudgesPerTable`) | ⏳ Pending |
 | 8 | Admin User → JudgeProfile editor | ⏳ Pending |
 | 9 | `ScoresheetPdfService` + layout sketch | ⏳ Pending |
-| 10 | Full i18n key inventory | ⏳ Pending — incremental keys recorded inline in §4.B / §4.C; consolidate in this item |
+| 10 | Full i18n key inventory | ⏳ Pending — incremental keys recorded inline in §4.B–§4.E; consolidate in this item |
 
 ### What next session should address
 
-Best entry points (any of these is a reasonable next step — choose based
-on energy):
+Best entry points (any of these is a reasonable next step — choose
+based on energy):
 
 - **Item 7 (admin Settings extensions)** — small, mechanical, unblocks
   Phase 5 view tests. `Competition.commentLanguages` multi-select on
   CompetitionDetailView Settings tab; `Division.bosPlaces` +
   `minJudgesPerTable` editors on DivisionDetailView Settings tab. Cross-
   references already specified (§2.H, §1.6, §2.D, §2.G).
-- **Items 3 + 5 (judge hub + medal round forms)** — completes the
-  judge-facing surface so all judge actions are designed end-to-end.
+- **Item 2 (admin per-table scoresheet drill-in)** — completes the
+  admin Tables story. Mostly mirrors `JudgeTableView` (§4.D) with
+  added admin actions (revert SUBMITTED, move to another table).
+- **Item 8 (admin User → JudgeProfile editor)** — UI for
+  `certifications` (multi-select MJP/BJCP/OTHER) and
+  `qualificationDetails` (free text) per §2.F. Surfaced from
+  `UserListView`.
 - **Item 6 (BOS form detail)** — completes the admin BOS workflow
   (placement-entry dialog, candidates filtering, "Add Placement" UX).
   Authorization is already pinned to admin-only (§4.A); this item is
@@ -100,9 +109,8 @@ tests first) → events + listeners → views → integration tests.
 
 ### Suggested start prompt for next session
 > "Read `docs/plans/2026-05-05-judging-module-design.md` (especially
-> §4.A, §4.B, §4.C from the 2026-05-09 session) and
-> `docs/SESSION_CONTEXT.md`, then continue Phase 4 with [Item 7 / Items
-> 3 + 5 / Item 6 / Item 9]."
+> §4.A–§4.E from the 2026-05-09 session) and `docs/SESSION_CONTEXT.md`,
+> then continue Phase 4 with [Item 7 / Item 2 / Item 8 / Item 6 / Item 9]."
 
 ---
 
@@ -2728,6 +2736,395 @@ PT translations defer to Phase 5.
   binding pattern `@RouteParameters`).
 - Submission email and downstream flows unchanged — Phase 3 events
   (`ScoresheetSubmittedEvent`) fire at service level.
+
+### 2026-05-09 — Phase 4.D: Judge judging hub + table drill-in (Item 3)
+
+**Two views:**
+
+```
+/my-judging                               → MyJudgingView         (cross-competition hub)
+/my-judging/tables/:tableId               → JudgeTableView        (per-table scoresheet list)
+```
+
+Classes (Phase 5): `app.meads.judging.internal.MyJudgingView`,
+`app.meads.judging.internal.JudgeTableView`.
+
+**Navigation (MainLayout sidebar):** `/my-judging` appears in the user
+dropdown menu / drawer for any user who has at least one
+`JudgeAssignment`. Decision: render the link unconditionally — empty-
+state handles users with no assignments — and rely on auth checks at
+each downstream route to gate access. (Avoids the "user gets a
+judging assignment mid-session and the link doesn't appear until
+re-login" pitfall.) Implementation note for Phase 5: the link visibility
+in MainLayout uses `JudgingService.hasAnyJudgeAssignment(userId)` —
+cheaper than `findTablesByJudgeUserId`.
+
+#### `MyJudgingView` layout
+
+```
+[Header]  My Judging                        [optional: filter selector]
+
+[Resume bar]
+  ▶ Resume next draft scoresheet            ← only shown if any DRAFT exists
+                                              navigates to next DRAFT (oldest first)
+
+[Tables, grouped by competition]
+  ── CHIP 2026 ── Amadora ──
+     ┌─ Table A ─────────────────────────────┐
+     │ M1A — Traditional Dry Mead             │
+     │ Scheduled: 2026-06-12                  │
+     │ Status: ROUND_1                        │
+     │ Scoresheets: 3 / 8 SUBMITTED           │
+     │ [Open table →]                         │
+     └────────────────────────────────────────┘
+     ┌─ Table B ─────────────────────────────┐
+     │ M2B — Cyser                            │
+     │ Status: NOT_STARTED                    │
+     │ Scoresheets: —                         │
+     │ [Open table →]                         │
+     └────────────────────────────────────────┘
+  ── CHIP 2026 ── Profissional ──
+     ...
+
+[Medal Rounds]                              ← only shown when at least one
+                                              CategoryJudgingConfig is ACTIVE for
+                                              a category covered by the judge's tables
+  ┌─ M1A — Traditional Dry Mead ──────────┐
+  │ Mode: SCORE_BASED · Status: ACTIVE     │
+  │ [Open medal round →]                   │
+  └────────────────────────────────────────┘
+```
+
+**Authorization:** `@PermitAll` + `beforeEnter()`. Logged-in users only;
+no role gate. Empty state for users with zero assignments:
+"You have no judging assignments yet. Tables you're assigned to will
+appear here."
+
+**"Resume next draft" semantics:**
+- Visible iff `ScoresheetService.findNextDraftForJudge(userId)` returns
+  non-empty.
+- Ordering: across all tables the judge is assigned to, return the
+  oldest DRAFT scoresheet (stable order: by table.scheduledDate then
+  table.name then scoresheet.createdAt).
+- Click → `UI.navigate(ScoresheetView.class, scoresheetId)`.
+
+**Medal Rounds section visibility:** `JudgingService.findActiveCategoryConfigsForJudge(userId)`
+returns CategoryJudgingConfig rows where status=ACTIVE AND the judge has
+at least one JudgeAssignment for a JudgingTable covering that category.
+
+**New service helpers needed (Phase 5):**
+
+```java
+// JudgingService
+List<JudgingTableSummary> findTablesByJudgeUserId(UUID userId);
+// DTO: tableId, name, divisionName, competitionShortName, divisionShortName,
+// divisionCategoryCode, divisionCategoryName, scheduledDate, status,
+// draftCount, submittedCount.
+
+boolean hasAnyJudgeAssignment(UUID userId);
+// O(1) existence check for sidebar visibility.
+
+List<CategoryJudgingConfigSummary> findActiveCategoryConfigsForJudge(UUID userId);
+// status = ACTIVE AND judge has a table for the category.
+
+// ScoresheetService
+Optional<UUID> findNextDraftForJudge(UUID userId);
+// Returns the scoresheetId of the next DRAFT, ordered by
+// table.scheduledDate, table.name, scoresheet.createdAt.
+```
+
+#### `JudgeTableView` layout
+
+```
+/my-judging/tables/:tableId
+
+[Header]  CHIP 2026 — Amadora — Table A         [back to /my-judging]
+
+[Table info card]
+  Category: M1A — Traditional Dry Mead
+  Scheduled: 2026-06-12
+  Status: ROUND_1
+  Judges: Alice, Bob, Carla
+  Scoresheets: 3 / 8 SUBMITTED
+
+[Scoresheets grid]
+  | Entry         | Status     | Total | Filled by | Actions |
+  | AMA-3 (DRAFT) | DRAFT      | —     | —         | [✏ open] |
+  | AMA-7         | SUBMITTED  | 87    | Alice     | [👁 open] |
+  | AMA-12 (DRAFT)| DRAFT      | —     | Bob       | [✏ open] |
+```
+
+**Authorization:** `@PermitAll` + `beforeEnter()`:
+- SYSTEM_ADMIN
+- Competition ADMIN of the table's division
+- Judge with `JudgeAssignment` for this `tableId`
+- Otherwise redirect to root.
+
+**Row click / action:** navigates to `ScoresheetView` for the entry's
+scoresheet. Read-only mode (per §4.C) for SUBMITTED scoresheets.
+
+**Soft COI surfacing:** if the user is a judge AND
+`MeaderyNameNormalizer.areSimilar(judge, entry)` returns true, show a
+warning icon next to the entry name with tooltip "Possible COI:
+similar meadery name to yours". Clicking still opens ScoresheetView
+(soft only).
+
+#### Incremental i18n keys
+
+```
+my-judging.title                              My Judging
+my-judging.empty                              You have no judging assignments yet. Tables you're assigned to will appear here.
+my-judging.resume                             Resume next draft scoresheet
+
+my-judging.table.scheduled                    Scheduled
+my-judging.table.status                       Status
+my-judging.table.scoresheets                  Scoresheets
+my-judging.table.scoresheets.format           {0} / {1} SUBMITTED
+my-judging.table.scoresheets.empty            —
+my-judging.table.open                         Open table
+
+my-judging.medal-rounds.section               Medal Rounds
+my-judging.medal-rounds.mode                  Mode
+my-judging.medal-rounds.status                Status
+my-judging.medal-rounds.open                  Open medal round
+
+judge-table.title                             Table: {0}
+judge-table.info.category                     Category
+judge-table.info.scheduled                    Scheduled
+judge-table.info.status                       Status
+judge-table.info.judges                       Judges
+judge-table.info.scoresheets                  Scoresheets
+judge-table.column.entry                      Entry
+judge-table.column.status                     Status
+judge-table.column.total                      Total
+judge-table.column.filled-by                  Filled by
+judge-table.column.actions                    Actions
+judge-table.coi.tooltip                       Possible COI: similar meadery name to yours.
+judge-table.empty                             No scoresheets at this table yet.
+```
+
+#### Implications
+
+- `MyJudgingView` and `JudgeTableView` join `ScoresheetView` (§4.C) as
+  the three judge-facing views. All three share authorization helpers
+  (`isAuthorizedJudgeFor*`).
+- New service DTOs (`JudgingTableSummary`, `CategoryJudgingConfigSummary`)
+  flatten cross-aggregate joins so views don't multi-fetch. Same
+  pattern as `EntrantCreditSummary` in entry module.
+- The "Resume next draft" service uses a single ordered repository
+  query — performance-wise insignificant for v1 panel sizes (≤ 100
+  scoresheets per judge).
+- MainLayout sidebar gains an "/my-judging" entry. Its visibility check
+  (`hasAnyJudgeAssignment`) calls into the judging module — same
+  cross-module read pattern as entry module already uses
+  (`MainLayout` already calls into competition / entry services).
+
+### 2026-05-09 — Phase 4.E: Medal round forms (Item 5)
+
+**View:** single shared route used by both judges and admins.
+
+```
+/competitions/:compShortName/divisions/:divShortName/medal-rounds/:divisionCategoryId
+```
+
+Class (Phase 5): `app.meads.judging.internal.MedalRoundView`.
+
+**Access paths:**
+- Judge: from `MyJudgingView` Medal Rounds section.
+- Admin: from `JudgingAdminView` Tab 2 row click ("Open medal round")
+  — appears alongside the row-level start/finalize/reopen/reset
+  actions in §4.B.
+
+**Authorization (`@PermitAll` + `beforeEnter()`):**
+- SYSTEM_ADMIN
+- Competition ADMIN of the category's division
+- Judge with at least one `JudgeAssignment` for a `JudgingTable`
+  covering this `divisionCategoryId`
+- Otherwise redirect to `""` (root).
+
+**Hard COI:** judge actions on entries where `entry.userId ==
+judge.userId` rejected at service layer per §3.7. UI hides the action
+buttons for such rows (replaces with "—" + tooltip "You cannot judge
+your own entry").
+
+#### Layout — common header
+
+```
+[Header]
+  CHIP 2026 — Amadora — Medal Round: M1A Traditional Dry Mead
+  Mode: SCORE_BASED · Status: ACTIVE
+                                       [⟲ Reset] [↻ Reopen] [✓ Finalize]
+                                                  ↑ admin-only
+[Tied-slot banner]                      ← only in SCORE_BASED if ties exist
+  ⚠ {N} slots tied — resolve before finalizing.
+
+[Entries grid]                          ← layout differs per mode (below)
+
+[← Back]                                ← returns to source (/my-judging or /judging-admin)
+```
+
+Action buttons in the header:
+- **Finalize** — admin-only, status=ACTIVE → calls
+  `JudgingService.completeMedalRound`. Confirmation dialog.
+- **Reopen** — admin-only, status=COMPLETE AND `Judging.phase=ACTIVE`
+  → calls `reopenMedalRound`. Tier 2 retreat.
+- **Reset** — admin-only, status=ACTIVE → calls `resetMedalRound`.
+  Type-RESET confirmation gate (per §4.B Tab 2).
+
+Read-only mode when `status = COMPLETE`: medal columns shown as badges,
+no action buttons in rows. `Reopen` button still available for admin.
+
+#### COMPARATIVE mode
+
+Grid sourced from `EntryService.findByDivisionCategoryId(divisionCategoryId)`
+joined with `MedalAward` (left join — rows may not exist).
+
+| Column | Source / format |
+|---|---|
+| Entry | `Entry.entryCode` + meadName + soft-COI warning icon if applicable |
+| Total | `Scoresheet.totalScore` (read-only reference, not authoritative for medals in this mode) |
+| Advanced | `Scoresheet.advancedToMedalRound` (✓/—) |
+| Current medal | `MedalAward.medal` badge or "—" if no row, "Withheld" if `medal=null` |
+| Actions | `[🥇 Gold] [🥈 Silver] [🥉 Bronze] [✗ Withhold] [⊘ Clear]` |
+
+**Action semantics:**
+- `[🥇 Gold]` → `JudgingService.recordMedal(entryId, GOLD, judgeUserId)`
+  if no row exists, else `updateMedal(medalAwardId, GOLD, judgeUserId)`.
+- Same for Silver / Bronze.
+- `[✗ Withhold]` → `recordMedal(entryId, null)` or `updateMedal(id, null)`.
+  Records explicit withhold with `medal=null` (per §1.7 / D11).
+- `[⊘ Clear]` → `deleteMedalAward(id)` — removes the row entirely
+  (entry returns to "no row" state). Useful for reverting a mistaken
+  withhold or medal.
+
+Action buttons disabled (greyed) for:
+- Self-COI entries (judge.userId == entry.userId) — replaced with "—"
+- Status != ACTIVE — entire action column disabled
+
+UI feedback: clicking a medal action immediately updates the row (no
+intermediate confirmation for individual medals — judges award fast).
+Bulk operations (e.g. "withhold all") deferred to future iteration.
+
+#### SCORE_BASED mode
+
+Same column set as COMPARATIVE, but with three additional UX layers:
+
+**1. Auto-populated rows:**
+On entering ACTIVE per §2.D D10, the service auto-creates MedalAward
+rows for un-tied top-N entries (Gold → Silver → Bronze). Rows show:
+- Medal badge with caption "(auto)"
+- Same action set as COMPARATIVE — judge can override
+
+**2. Tied-slot indicator:**
+Rows that the auto-population stopped at (tied at the boundary slot)
+are rendered with `LumoUtility.Background.WARNING_10` and a caption
+"Tied at {slotName} — resolve to continue cascade".
+
+**3. Top banner:**
+When tied slots exist, banner at the top of the grid:
+> ⚠ {N} slots tied — resolve before finalizing. Click "Resolve" on the
+> highlighted rows to assign or withhold.
+
+The cascade can continue manually:
+- Once a tied row receives a definitive medal (or all-but-one tied
+  candidates are withheld), the next slot's candidates are recomputed
+  (read-side: re-sort remaining unassigned entries by score).
+- Service helper: `JudgingService.recomputeScorePreview(divisionCategoryId)`
+  returns the current ranking with auto-suggestions for the next-open
+  slot — UI re-fetches after each medal action.
+
+**Inline tied-slot resolver per highlighted row:**
+- Standard medal action buttons + "↑ Elevate" / "↓ Demote" caption
+  hints (visual only — they map to the same medal action buttons
+  with target-slot info in tooltip).
+- After resolution, auto-row caption updates to "(auto)" or row drops
+  highlight.
+
+#### Authorization at action level
+
+| Action | SYSTEM_ADMIN | Competition ADMIN | Judge (assigned to a table for this category) | Other judge | Entrant |
+|---|---|---|---|---|---|
+| Record/update/delete medal | ✓ | ✓ | ✓ | — | — |
+| Finalize / Reopen / Reset | ✓ | ✓ | — | — | — |
+
+Service-side: `JudgingService.recordMedal`/`updateMedal`/`deleteMedalAward`
+all validate caller has at least one JudgeAssignment for a JudgingTable
+covering this category, OR is an admin (SYSTEM_ADMIN /
+competition-ADMIN). Hard COI rejected.
+
+#### Incremental i18n keys
+
+```
+medal-round.title                              Medal Round: {0}
+medal-round.mode                               Mode
+medal-round.status                             Status
+medal-round.action.finalize                    Finalize
+medal-round.action.reopen                      Reopen
+medal-round.action.reset                       Reset
+medal-round.action.back                        Back
+
+medal-round.banner.ties                        {0} slots tied — resolve before finalizing.
+
+medal-round.column.entry                       Entry
+medal-round.column.total                       Total
+medal-round.column.advanced                    Advanced
+medal-round.column.current-medal               Current medal
+medal-round.column.actions                     Actions
+
+medal-round.medal.gold                         Gold
+medal-round.medal.silver                       Silver
+medal-round.medal.bronze                       Bronze
+medal-round.medal.withheld                     Withheld
+medal-round.medal.none                         —
+medal-round.medal.auto                         (auto)
+
+medal-round.action.award-gold                  Award Gold
+medal-round.action.award-silver                Award Silver
+medal-round.action.award-bronze                Award Bronze
+medal-round.action.withhold                    Withhold
+medal-round.action.clear                       Clear
+medal-round.action.tied-caption                Tied at {0} — resolve to continue.
+
+medal-round.coi.self.tooltip                   You cannot judge your own entry.
+medal-round.coi.similar.tooltip                Possible COI: similar meadery name to yours.
+
+medal-round.finalize.confirm.title             Finalize medals for {0}?
+medal-round.finalize.confirm.body              You can reopen later if needed.
+medal-round.empty                              No entries in this category.
+```
+
+Error keys:
+
+```
+error.medal-round.unauthorized                 You are not authorized to record medals for this category.
+error.medal-round.not-active                   Medals can only be recorded while the round is ACTIVE.
+error.medal-round.coi-self-entry               You cannot judge your own entry.
+error.medal-round.entry-not-in-category        Entry is not in this category.
+```
+
+PT translations defer to Phase 5.
+
+#### Implications
+
+- `MedalRoundView` is a single shared view; access-path differs by
+  source (judge vs admin) but rendering is unified — admin sees Reset/
+  Reopen/Finalize, judge does not.
+- New service helpers needed (Phase 5):
+  - `JudgingService.recomputeScorePreview(divisionCategoryId)` —
+    read-side projection for the SCORE_BASED tied-slot UX. Returns
+    a sorted list with `(entry, totalScore, suggestedMedal,
+    isTiedAtSlot)`.
+  - `EntryService.findByDivisionCategoryId(divisionCategoryId)` —
+    confirmed already exists per existing admin views; if not, add.
+- Auto-population on ACTIVE entry happens inside
+  `JudgingService.startMedalRound` (Phase 3 §3.2) — pure server-side
+  call; the view simply re-fetches after navigation.
+- `MedalAward` row writes go through `JudgingService` (per §3.2);
+  events `MedalRoundActivatedEvent`/`MedalRoundCompletedEvent`/etc.
+  fire at service boundary (per §3.6).
+- `MyJudgingView` Medal Rounds section navigates here; admin
+  `JudgingAdminView` Tab 2 row click navigates here; both pass the
+  same route parameter `:divisionCategoryId`.
 
 ---
 

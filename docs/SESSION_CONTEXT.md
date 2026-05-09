@@ -416,10 +416,10 @@ Design and implementation. **Design in progress (multi-session):** see
 open questions, and the "Next Session: Start Here" marker. Reference:
 `docs/reference/chip-competition-rules.md` and `docs/specs/judging.md`.
 
-**Phase 4 IN PROGRESS (2026-05-09).** Items 1 + 4 + §Q15 closed. Phase
-4 follow-ups: Item 2 (admin per-table drill-in), Item 3 (judge hub),
-Item 5 (medal-round forms), Item 6 (BOS form detail), Item 7 (admin
-Settings extensions), Item 8 (JudgeProfile editor), Item 9
+**Phase 4 IN PROGRESS (2026-05-09).** Items 1 + 3 + 4 + 5 + §Q15
+closed. New §Q16 opened (deferred). Phase 4 follow-ups: Item 2 (admin
+per-table drill-in), Item 6 (BOS form detail), Item 7 (admin Settings
+extensions), Item 8 (JudgeProfile editor), Item 9
 (ScoresheetPdfService), Item 10 (full i18n key inventory).
 
 **Phase 4.A–4.C (2026-05-09) — design decisions:**
@@ -452,6 +452,34 @@ Settings extensions), Item 8 (JudgeProfile editor), Item 9
   5 score values non-null; confirmation Dialog. Read-only mode for
   SUBMITTED scoresheets. Live total preview "Current total: N / 100".
   Inline i18n keys recorded.
+- 4.D: judge hub + table drill-in. `MyJudgingView` at `/my-judging`
+  (cross-competition hub, parallel to `/my-entries`) and
+  `JudgeTableView` at `/my-judging/tables/:tableId`. Hub layout:
+  prominent "▶ Resume next draft scoresheet" button (jumps to oldest
+  DRAFT across assigned tables) → tables grouped by competition
+  (status badge, scheduled date, scoresheet progress) → Medal Rounds
+  section (only when CategoryJudgingConfig is ACTIVE for a category
+  covered by judge's tables). JudgeTableView: per-table scoresheet
+  grid; row click → ScoresheetView. Soft COI warning icon on rows
+  with similar meaderies. New service helpers:
+  `findTablesByJudgeUserId`, `hasAnyJudgeAssignment`,
+  `findActiveCategoryConfigsForJudge`, `findNextDraftForJudge`. Link
+  added to MainLayout sidebar (visible to any user with at least one
+  JudgeAssignment).
+- 4.E: medal round forms. Single shared route
+  `/competitions/:c/divisions/:d/medal-rounds/:divisionCategoryId` →
+  `MedalRoundView` (used by both judges and admins). Header: status +
+  mode + admin-only Reset/Reopen/Finalize buttons. COMPARATIVE: grid
+  of all entries with `[🥇][🥈][🥉][✗ Withhold][⊘ Clear]` action
+  buttons per row. SCORE_BASED: pre-populated MedalAward rows with
+  "(auto)" caption; tied-slot banner at top + warning-bg highlighting
+  on tied rows + inline resolver. `MedalAward.medal=null` = explicit
+  withhold (per D11). Hard COI on self-entries; soft COI tooltip.
+  Read-only mode when status=COMPLETE. Service-side: caller must be
+  admin OR judge with at least one JudgeAssignment for a table
+  covering this category. New helper:
+  `JudgingService.recomputeScorePreview` for SCORE_BASED tied-slot
+  read-side projection. Inline i18n keys recorded.
 
 **Phase 2 ✅ COMPLETE (2026-05-08).** All design questions resolved
 (§Q1, §Q7, §Q8, §Q10, §Q11, §Q12, §Q13).
@@ -558,15 +586,16 @@ to Phase 5):**
 - Open: §Q15 (head-judge designation for BOS authorization) — deferred
   to Phase 4 view design; default leaning is admin-only for v1.
 
-**Phase 4 — view design (in progress, multi-session).** Items 1 + 4 + §Q15
-closed in the 2026-05-09 session (see Phase 4.A/4.B/4.C above). Remaining
-in priority order: Item 2 (admin per-table scoresheet drill-in); Item 3
-(judge judging hub `/my-judging`); Item 5 (medal-round forms COMPARATIVE
-+ SCORE_BASED); Item 6 (BOS form placement-entry detail); Item 7 (admin
-Settings extensions: `Competition.commentLanguages`, `Division.bosPlaces`,
-`Division.minJudgesPerTable`); Item 8 (admin user → JudgeProfile editor);
-Item 9 (`ScoresheetPdfService` + layout sketch); Item 10 (consolidated
-i18n key inventory).
+**Phase 4 — view design (in progress, multi-session).** Items 1 + 3 + 4 + 5
++ §Q15 closed in the 2026-05-09 session (see Phase 4.A/4.B/4.C/4.D/4.E
+above). New §Q16 opened (per-entry tasting-label PDF variant for
+wine-glass tags — deferred). Remaining in priority order: Item 2
+(admin per-table scoresheet drill-in); Item 6 (BOS form placement-
+entry detail); Item 7 (admin Settings extensions:
+`Competition.commentLanguages`, `Division.bosPlaces`,
+`Division.minJudgesPerTable`); Item 8 (admin user → JudgeProfile
+editor); Item 9 (`ScoresheetPdfService` + layout sketch); Item 10
+(consolidated i18n key inventory).
 
 **Phase 5 (impl, deferred):** module skeleton → V20 migration →
 entities → services (TDD, repository tests first) → events + listeners
