@@ -416,6 +416,43 @@ Design and implementation. **Design in progress (multi-session):** see
 open questions, and the "Next Session: Start Here" marker. Reference:
 `docs/reference/chip-competition-rules.md` and `docs/specs/judging.md`.
 
+**Phase 4 IN PROGRESS (2026-05-09).** Items 1 + 4 + §Q15 closed. Phase
+4 follow-ups: Item 2 (admin per-table drill-in), Item 3 (judge hub),
+Item 5 (medal-round forms), Item 6 (BOS form detail), Item 7 (admin
+Settings extensions), Item 8 (JudgeProfile editor), Item 9
+(ScoresheetPdfService), Item 10 (full i18n key inventory).
+
+**Phase 4.A–4.C (2026-05-09) — design decisions:**
+- 4.A: §Q15 resolved — **admin-only BOS for v1**. SYSTEM_ADMIN +
+  competition ADMIN can record/edit/delete `BosPlacement`. No data-
+  model changes (no HEAD_JUDGE role, no JudgeAssignment.isHeadJudge,
+  no per-division designation table). Recordkeeping via
+  `BosPlacement.awardedBy`. §3.7 authorization table updated.
+- 4.B: admin division-level judging dashboard. New top-level view
+  `JudgingAdminView` at `/competitions/:c/divisions/:d/judging-admin`,
+  linked from DivisionDetailView via "Manage Judging" button (visible
+  when `status >= JUDGING`). TabSheet with three tabs: **Tables**
+  (CRUD + judge assignment with COI chips + start), **Medal Rounds**
+  (per-category mode + status + Tier 2 retreat actions), **BOS**
+  (header phase indicator + GOLD candidates list + placements grid;
+  disabled until `Judging.phase != NOT_STARTED`). Lazy-loaded
+  `Judging` row created on `beforeEnter()` if missing. Inline i18n
+  keys recorded; full inventory deferred to Item 10.
+- 4.C: judge scoresheet form. Full-page route `ScoresheetView` at
+  `/my-judging/scoresheets/:scoresheetId`. Three-tier authorization
+  (SYSTEM_ADMIN / competition ADMIN / assigned judge); hard COI page-
+  level rejection if `entry.userId == judge.userId`; soft COI banner
+  via `MeaderyNameNormalizer.areSimilar`. Layout: read-only entry
+  header card → 5 score-field cards (NumberField min=0/max=maxValue
+  with inline tier-label hints under each) → overall comments
+  TextArea → comment-language ComboBox (sourced from
+  `competition.commentLanguages ∪ judge.preferredCommentLanguage`,
+  sorted by display name) → advance-to-medal-round Checkbox →
+  Save Draft + Submit + Cancel buttons. Submit only enabled when all
+  5 score values non-null; confirmation Dialog. Read-only mode for
+  SUBMITTED scoresheets. Live total preview "Current total: N / 100".
+  Inline i18n keys recorded.
+
 **Phase 2 ✅ COMPLETE (2026-05-08).** All design questions resolved
 (§Q1, §Q7, §Q8, §Q10, §Q11, §Q12, §Q13).
 
@@ -521,15 +558,15 @@ to Phase 5):**
 - Open: §Q15 (head-judge designation for BOS authorization) — deferred
   to Phase 4 view design; default leaning is admin-only for v1.
 
-**Next: Phase 4 — view design.** Targets in priority order:
-admin division-level judging dashboard (tables, category medal-round
-panel, BOS panel); admin per-table scoresheet management; judge judging
-hub (`/my-judging`); judge scoresheet form (with comment-language
-dropdown + soft COI banner); medal-round forms (COMPARATIVE +
-SCORE_BASED); BOS form (resolves §Q15); admin Settings extensions
-(`Competition.commentLanguages`, `Division.bosPlaces`,
-`Division.minJudgesPerTable`); admin user → JudgeProfile editor;
-scoresheet PDF layout sketch; i18n key inventory.
+**Phase 4 — view design (in progress, multi-session).** Items 1 + 4 + §Q15
+closed in the 2026-05-09 session (see Phase 4.A/4.B/4.C above). Remaining
+in priority order: Item 2 (admin per-table scoresheet drill-in); Item 3
+(judge judging hub `/my-judging`); Item 5 (medal-round forms COMPARATIVE
++ SCORE_BASED); Item 6 (BOS form placement-entry detail); Item 7 (admin
+Settings extensions: `Competition.commentLanguages`, `Division.bosPlaces`,
+`Division.minJudgesPerTable`); Item 8 (admin user → JudgeProfile editor);
+Item 9 (`ScoresheetPdfService` + layout sketch); Item 10 (consolidated
+i18n key inventory).
 
 **Phase 5 (impl, deferred):** module skeleton → V20 migration →
 entities → services (TDD, repository tests first) → events + listeners

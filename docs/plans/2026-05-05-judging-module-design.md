@@ -1,15 +1,21 @@
 # Judging Module — Design Document
 
 **Started:** 2026-05-05
-**Status:** Phases 1–3 ✅ complete (docs-only through Phase 3). Phase 1
-(2026-05-05) scoped the module boundary. Phase 2 (2026-05-07/2026-05-08)
-decided state machine, retreat semantics, start triggers, COI similarity,
-JudgeProfile, field-level entity definitions, V20 schema, and PDF/comment-
-language tagging (resolves §Q1, §Q7, §Q8, §Q10, §Q11, §Q12, §Q13, §Q14).
-Phase 3 (2026-05-08) sketched service contracts, event records,
-authorization rules, COI mechanism, and cross-module guards as docs only —
-Java skeleton deferred to Phase 5. One open item: §Q15 (head-judge
-designation for BOS authorization). Phase 4 next: view design.
+**Status:** Phases 1–3 ✅ complete; Phase 4 in progress (4.A–4.C done
+2026-05-09, covering §Q15 + admin division-level judging dashboard +
+judge scoresheet form). Phase 1 (2026-05-05) scoped the module boundary.
+Phase 2 (2026-05-07/2026-05-08) decided state machine, retreat semantics,
+start triggers, COI similarity, JudgeProfile, field-level entity
+definitions, V20 schema, and PDF/comment-language tagging (resolves
+§Q1, §Q7, §Q8, §Q10, §Q11, §Q12, §Q13, §Q14). Phase 3 (2026-05-08)
+sketched service contracts, event records, authorization rules, COI
+mechanism, and cross-module guards as docs only — Java skeleton
+deferred to Phase 5. Phase 4 (2026-05-09 ongoing) resolves §Q15
+(admin-only BOS for v1) and pins the admin judging dashboard + judge
+scoresheet form. All Phase 2/3 questions closed. Phase 4 follow-ups:
+admin per-table drill-in, judge hub, medal-round forms, BOS form
+detail, admin Settings extensions, JudgeProfile editor,
+ScoresheetPdfService, full i18n key inventory.
 **Module dependencies:** competition, entry, identity
 **References:**
 - `docs/specs/judging.md` — preliminary spec (post-rework naming)
@@ -41,112 +47,62 @@ Once a phase is complete, its open questions should all have decisions or be exp
 | 1 | Scope & module boundary decisions | ✅ Complete |
 | 2 | Domain model — entity definitions, eager/lazy creation, COI heuristic, MJP qualifications storage, scoresheet locking | ✅ Complete (2.A–2.F 2026-05-07; 2.G + 2.H 2026-05-08) |
 | 3 | Service + event contracts, authorization, COI mechanism, judging start trigger | ✅ Complete (2026-05-08, docs-only sketch; Java skeleton deferred to Phase 5) |
-| 4 | View design (admin table mgmt, judge scoresheet UX, results-before-publication) | ⏳ Pending — Next |
+| 4 | View design (admin table mgmt, judge scoresheet UX, results-before-publication) | 🟡 In progress — 4.A (§Q15) + 4.B (admin dashboard) + 4.C (judge scoresheet form) done 2026-05-09 |
 | 5 | Implementation sequencing — TDD cycle order, migration plan, MVP slice | ⏳ Pending |
 
 ---
 
 ## Next Session: Start Here
 
-**Phase 2 complete (2026-05-08).**
-- 2.A–2.F (2026-05-07): three-tier state model, retreat semantics, start
-  triggers, COI similarity, `JudgeProfile`. See §2.A–§2.F in Decisions.
-- 2.G (2026-05-08): field-level finalization for all 7 aggregates +
-  `Division.bosPlaces` + `Division.minJudgesPerTable` + V20 schema.
-  See §2.G in Decisions.
-- 2.H (2026-05-08): scoresheet PDF locale (locale-aware) +
-  comment-language tagging on Scoresheet + sticky preference on
-  JudgeProfile + admin-curated language list on Competition. JudgeProfile
-  lifecycle adjusted: auto-create on first JudgeAssignment. See §2.H.
+**Phase 4 in progress (started 2026-05-09).** This session covered §Q15
+(resolved: admin-only BOS for v1), the admin division-level judging
+dashboard (§4.B), and the judge scoresheet form (§4.C). See those
+sections in Decisions.
 
-§Q1, §Q7, §Q8, §Q10, §Q11, §Q12, §Q13, §Q14 fully resolved. **All Phase 2
-design questions closed.**
+### Phase 4 status
 
-### What next session must address: Phase 4 — view design
+| Item | Description | Status |
+|---|---|---|
+| §Q15 | BOS authorization for v1 | ✅ §4.A — admin-only |
+| 1 | Admin division-level judging dashboard | ✅ §4.B — `JudgingAdminView` w/ Tables\|Medal Rounds\|BOS tabs |
+| 2 | Admin per-table scoresheet management (drill-in) | ⏳ Pending |
+| 3 | Judge judging hub (`/my-judging`) | ⏳ Pending |
+| 4 | Judge scoresheet form | ✅ §4.C — `ScoresheetView` full-page route |
+| 5 | Medal round forms (COMPARATIVE + SCORE_BASED) | ⏳ Pending |
+| 6 | BOS form detail (admin-only per §4.A) | ⏳ Pending — sketched in §4.B Tab 3, needs placement-entry detail |
+| 7 | Admin Settings extensions (`Competition.commentLanguages`, `Division.bosPlaces`, `Division.minJudgesPerTable`) | ⏳ Pending |
+| 8 | Admin User → JudgeProfile editor | ⏳ Pending |
+| 9 | `ScoresheetPdfService` + layout sketch | ⏳ Pending |
+| 10 | Full i18n key inventory | ⏳ Pending — incremental keys recorded inline in §4.B / §4.C; consolidate in this item |
 
-Phase 4 designs the UI surfaces (admin and judge) and pins the user
-flows so Phase 5 implementation is mechanical. Targets:
+### What next session should address
 
-1. **Admin: Division-level judging dashboard.** New tab on
-   `DivisionDetailView` (or new view) shown once `DivisionStatus = JUDGING`.
-   - Tables list (one row per JudgingTable: name, category, status, judge
-     count, scheduled date, per-status scoresheet counts).
-   - "Add table" / edit / delete actions.
-   - Per-table actions: assign judges (with COI soft-warning surface from
-     §2.E + §3.8), start table (with empty-category soft confirmation),
-     view scoresheets.
-   - Category medal-round panel: per JUDGING-scope category, show mode
-     (COMPARATIVE / SCORE_BASED), medalRoundStatus, "Start medal round" /
-     "Finalize medals" / Tier 2 retreat actions.
-   - BOS panel: shown when `Judging.phase ∈ {ACTIVE, BOS, COMPLETE}`;
-     "Start BOS" / "Finalize BOS" / Tier 3 retreat; placements grid.
+Best entry points (any of these is a reasonable next step — choose based
+on energy):
 
-2. **Admin: Per-table scoresheet management.** Drill-in view from a
-   table row showing all scoresheets at the table — DRAFT/SUBMITTED
-   counts, individual rows with eye/pencil/revert/move actions, plus
-   "Reopen table" UX (which is just "revert any SUBMITTED" — driven by
-   Tier 1 implicit retreat).
+- **Item 7 (admin Settings extensions)** — small, mechanical, unblocks
+  Phase 5 view tests. `Competition.commentLanguages` multi-select on
+  CompetitionDetailView Settings tab; `Division.bosPlaces` +
+  `minJudgesPerTable` editors on DivisionDetailView Settings tab. Cross-
+  references already specified (§2.H, §1.6, §2.D, §2.G).
+- **Items 3 + 5 (judge hub + medal round forms)** — completes the
+  judge-facing surface so all judge actions are designed end-to-end.
+- **Item 6 (BOS form detail)** — completes the admin BOS workflow
+  (placement-entry dialog, candidates filtering, "Add Placement" UX).
+  Authorization is already pinned to admin-only (§4.A); this item is
+  the placement-entry-specific UX that wasn't covered in §4.B Tab 3.
+- **Item 9 (Scoresheet PDF)** — design `ScoresheetPdfService` interface
+  + layout sketch per §2.H D15a/D15b. Mirrors `LabelPdfService`.
 
-3. **Judge: Judging hub.** New top-level route (e.g. `/my-judging`)
-   parallel to `/my-entries`. Lists tables the user is assigned to,
-   grouped by competition, with progress per table. Click → judge
-   scoresheet view.
-
-4. **Judge: Scoresheet form.**
-   - Header: entry blind code (per §Q `entry.entryCode`), category code,
-     sweetness/strength/carbonation, additional info from Entry.
-   - 5 score-field rows: localized field name, tier-label hints with
-     numeric ranges, score input (0..maxValue), comment box.
-   - Overall comments field.
-   - Comment-language dropdown (§2.H) — populated from
-     `competition.commentLanguages ∪ judge.preferredCommentLanguage`,
-     sorted alphabetically by display name in user's locale.
-   - Advance-to-medal-round checkbox (§1.9).
-   - Save Draft / Submit buttons (Submit only enabled when all 5 fields
-     non-null).
-   - Hard COI: page rejects with notification if `entry.userId == judge.userId`.
-   - Soft COI: warning banner if `MeaderyNameNormalizer.areSimilar`
-     returns true.
-
-5. **Judge: Medal round form.** During `medalRoundStatus = ACTIVE`:
-   - COMPARATIVE: blank panel, "Award medal" buttons per entry in the
-     category, withhold via "no row".
-   - SCORE_BASED: pre-populated table from the auto-population
-     algorithm; tied slots flagged for manual resolution.
-
-6. **Judge: BOS form.** During `Judging.phase = BOS`: candidates list
-   (entries with `MedalAward.medal = GOLD`), assign / reassign / delete
-   placements 1..bosPlaces. (Pending §Q15 resolution on who can do this.)
-
-7. **Admin: Settings extensions.**
-   - `Competition` Settings tab: comment-languages multi-select (§2.H);
-     seeded with the 5 UI codes.
-   - `Division` Settings tab: `bosPlaces` editor (DRAFT/REGISTRATION_OPEN);
-     `minJudgesPerTable` editor (until first table starts).
-
-8. **Admin: User → JudgeProfile editor.** From `UserListView`, button to
-   set `certifications` (multi-select MJP/BJCP/OTHER) and
-   `qualificationDetails` (free text). Lazy-show only for users with at
-   least one judging-relevant context (or always — TBD).
-
-9. **Scoresheet PDF.** `ScoresheetPdfService` interface + layout sketch
-   (locale-aware per §2.H D15a; comment-language subheader per §2.H D15b).
-   Single + batch downloads.
-
-10. **i18n key inventory.** New i18n keys grouped by surface (judging
-    hub, scoresheet form, medal round, BOS, admin tabs, COI warnings,
-    error messages). Phase 4 produces the key list; PT translations
-    happen alongside Phase 5 implementation per existing convention.
-
-11. **Open question to close:** §Q15 — who records BosPlacements?
-    Resolve once the BOS form UX is concrete enough to weigh the options.
+After all Phase 4 items close, Phase 5 (implementation) begins:
+module skeleton → V20 migration → entities → services (TDD, repository
+tests first) → events + listeners → views → integration tests.
 
 ### Suggested start prompt for next session
 > "Read `docs/plans/2026-05-05-judging-module-design.md` (especially
-> Phase 3, §3.7 authorization, and §Q15) and `docs/SESSION_CONTEXT.md`,
-> then begin Phase 4 — start with the admin division-level judging
-> dashboard layout (Item 1) and the judge scoresheet form (Item 4), and
-> resolve §Q15 along the way."
+> §4.A, §4.B, §4.C from the 2026-05-09 session) and
+> `docs/SESSION_CONTEXT.md`, then continue Phase 4 with [Item 7 / Items
+> 3 + 5 / Item 6 / Item 9]."
 
 ---
 
@@ -2172,6 +2128,607 @@ in `Division.updateBosPlaces`.
   module skeleton → migrations → entities → services (TDD, repository
   tests first) → events + listeners → views → integration tests.
 
+### 2026-05-09 — Phase 4.A: BOS authorization for v1 (resolves §Q15)
+
+**Decision (D16 from 2026-05-09 conversation).** Option (c) — **admin-only
+for v1**. SYSTEM_ADMIN and competition ADMIN can create / update / delete
+`BosPlacement`. No data-model changes. No `HEAD_JUDGE` role,
+no per-table `isHeadJudge` boolean, no per-division head-judge
+designation table.
+
+**Rationale:**
+- v1 competitions (CHIP first edition) are small enough that the head-
+  judge concept can be handled socially. The data system records the
+  outcome; admins enter it on the panel's behalf.
+- Keeps the data model lean — adding HEAD_JUDGE to `ParticipantRole`
+  would also require edits to the role-combination logic
+  (`CompetitionService.validateRoleCombination`) and the access-code /
+  notification flows. Out of proportion for v1.
+- BOS is a high-stakes, low-volume action (1..bosPlaces rows total per
+  division). Admin gatekeeping is appropriate.
+- `BosPlacement.awardedBy` still records the admin user for audit;
+  future migration to head-judge auth could backfill or accept admin-
+  recorded rows as historical.
+
+**Authorization rule:**
+
+```
+recordBosPlacement / updateBosPlacement / deleteBosPlacement:
+  allow iff (currentUser.role = SYSTEM_ADMIN)
+         OR (currentUser is ParticipantRole.ADMIN of division.competitionId)
+  reject otherwise → BusinessRuleException("error.bos.unauthorized")
+```
+
+**Updates to §3.7 authorization table:**
+
+| Action group | SYSTEM_ADMIN | Competition ADMIN | Judge (assigned) | Judge (other) | Entrant |
+|---|---|---|---|---|---|
+| Record/edit/delete BOS placements | ✓ | ✓ | — | — | — |
+
+(replaces the prior `**see §Q15**` cell).
+
+**UI implications:**
+- Phase 4 BOS UI (§4.B Tab 3) is admin-only — no judge-facing BOS form.
+  The `/my-judging` hub does not surface BOS placement entry.
+- Admin records placements in the dashboard's BOS tab, with the
+  candidates list (GOLD-medalled entries) and an "Add Placement"
+  dialog selecting from candidates.
+- Per §2.B Tier 3, `JudgingService.deleteBosPlacement` is admin-only
+  and required before `resetBos()` is allowed.
+
+**Future (post-v1):** a HEAD_JUDGE designation can be added without
+breaking changes — extend `ParticipantRole` enum, add UI for designation
+in the admin participants tab, and widen the BOS authorization rule to
+include head judges. Existing BosPlacement rows (with admin
+`awardedBy`) remain valid historical records.
+
+**§Q15 closure:** Resolved.
+
+### 2026-05-09 — Phase 4.B: Admin division-level judging dashboard (Item 1)
+
+**View:** new top-level route, parallel to the existing entry-admin
+view.
+
+```
+/competitions/:compShortName/divisions/:divShortName/judging-admin
+```
+
+Class (Phase 5): `app.meads.judging.internal.JudgingAdminView`.
+
+**Visibility:** linked from `DivisionDetailView` via a new
+"Manage Judging" button (next to "Manage Entries"), shown only when
+`division.status.ordinal() >= JUDGING.ordinal()`. The button is
+analogous to the existing "Manage Entries" link.
+
+**Authorization:** `@PermitAll` + `beforeEnter()` →
+`competitionService.isAuthorizedForDivision(divisionId, userId)`. Same
+pattern as `DivisionEntryAdminView` (per CLAUDE.md). Forwards
+unauthorized users to `""` (root).
+
+**Layout:** header (competition logo at 64px + "Competition — Division
+— Judging Admin" title + breadcrumb back to division detail) + a
+top-level `TabSheet` with three tabs.
+
+```
+┌─ Competition logo ─┐  CHIP 2026 — Amadora — Judging Admin   [back]
+│                    │
+└────────────────────┘
+[Tables] [Medal Rounds] [BOS (disabled until ACTIVE)]
+─────────────────────────────────────────────────────
+   <tab content>
+```
+
+**Tab order and default selection:**
+- Default tab on entry: **Tables** (always available once `Judging`
+  exists).
+- BOS tab is disabled (with tooltip "Available once Judging is active")
+  while `Judging.phase = NOT_STARTED`. Enabled for ACTIVE / BOS /
+  COMPLETE.
+
+**Lazy-loaded `Judging` row:** `JudgingService.ensureJudgingExists` is
+called by `beforeEnter()` if `division.status >= JUDGING` and no
+`Judging` row exists yet. Per §2.G the row starts at
+`phase = NOT_STARTED`.
+
+#### Tab 1: Tables
+
+A `Grid<JudgingTable>`:
+
+| Column | Source / format |
+|---|---|
+| Name | `JudgingTable.name` |
+| Category | DivisionCategory (JUDGING-scope) `code — name` |
+| Status | `JudgingTable.status` (NOT_STARTED / ROUND_1 / COMPLETE) — badged like `EntryStatus` |
+| Judges | count of `JudgeAssignment` (tooltip lists names; click to open Assign Judges dialog) |
+| Scheduled | `LocalDate` (locale-aware, `DateTimeFormatter.ofLocalizedDate(SHORT)`) — blank if null |
+| Scoresheets | "DRAFT N · SUBMITTED M" (computed from `ScoresheetService.countByTableIdAndStatus`) |
+| Actions | `[👁 view] [✏ edit] [▶ start] [👥 assign judges] [🗑 delete]` (icons; Vaadin `VaadinIcon`) |
+
+**Header buttons:**
+- **+ Add Table** — opens dialog: `name` (TextField, max 120),
+  `divisionCategoryId` (`Select<DivisionCategory>` filtered to
+  JUDGING-scope), `scheduledDate` (`DatePicker`, optional). Save calls
+  `JudgingService.createTable`.
+
+**Per-row actions:**
+
+- **👁 View** — drills into Item 2 (admin per-table scoresheet
+  management — pending). Phase 4 follow-up. URL stub:
+  `/competitions/:c/divisions/:d/judging-admin/tables/:tableId`.
+- **✏ Edit** — dialog for `name` + `scheduledDate`. Allowed in any
+  status. Calls `JudgingService.updateTableName` + `updateTableScheduledDate`.
+- **▶ Start** — only enabled when `status = NOT_STARTED`. Confirmation
+  Dialog (uses §2.D wording). Hard-block if
+  `JudgeAssignment count < Division.minJudgesPerTable` — service
+  rejects with `BusinessRuleException("error.judging.table.too-few-judges")`.
+  Soft confirm if no entry has matching `finalCategoryId` ("This table
+  has no entries yet. Start anyway?" — passes `allowEmptyCategory =
+  true` to service).
+- **👥 Assign Judges** — opens Dialog. Multi-select of users
+  (filtered to `ParticipantRole.JUDGE` for the competition). Each row
+  shows: judge name + meadery + country + per-entry COI warning chips
+  (one chip per matching entry-meadery pair from §2.E + §3.8).
+  Save commits via repeated `assignJudge` / `removeJudge` calls.
+  Disabled-button tooltip: while `status = ROUND_1`, removal of an
+  assignment that would drop count below `minJudgesPerTable` is
+  rejected (service-side; UI surfaces error notification).
+- **🗑 Delete** — only enabled when `status = NOT_STARTED` and zero
+  `JudgeAssignment` rows. Confirmation Dialog. Calls
+  `JudgingService.deleteTable`.
+
+**Empty state:** "No tables yet. Add a table to start judging."
+
+#### Tab 2: Medal Rounds
+
+A `Grid<CategoryJudgingConfig>` keyed by JUDGING-scope DivisionCategory.
+Rows are eagerly created via service helper that walks the division's
+JUDGING-scope categories and calls `findByDivisionCategoryId(id)` —
+when missing, lazily creates a default-COMPARATIVE config (per §2.G
+"created lazily" lifecycle). Read-side data view.
+
+| Column | Source / format |
+|---|---|
+| Category | DivisionCategory `code — name` |
+| Mode | `medalRoundMode` (COMPARATIVE / SCORE_BASED) — Select inline-edit while `medalRoundStatus ∈ {PENDING, READY}`, read-only otherwise |
+| Status | `medalRoundStatus` — badged (PENDING grey, READY blue, ACTIVE green, COMPLETE gold) |
+| Tables | "X / Y COMPLETE" — count of tables for this category that are status=COMPLETE over total |
+| Awards | "G:n S:m B:k W:w" — counts of MedalAward rows by medal (W = withheld, i.e. `medal = null`) |
+| Actions | `[▶ start] [✓ finalize] [↻ reopen] [⟲ reset]` |
+
+**Per-row actions** (mutually exclusive based on `medalRoundStatus`):
+
+- **▶ Start Medal Round** — enabled only when `status = READY`. Calls
+  `JudgingService.startMedalRound`. SCORE_BASED runs auto-population
+  per §2.D D10 — UI then shows a side-panel summary "Auto-populated N
+  awards; M slots tied (manual resolution needed)".
+- **✓ Finalize Medals** — enabled only when `status = ACTIVE`. Calls
+  `JudgingService.completeMedalRound`. Confirmation Dialog
+  ("Finalize medals for {category}? You can reopen later if needed.").
+- **↻ Reopen** — enabled only when `status = COMPLETE` AND
+  `Judging.phase = ACTIVE`. Tier 2 retreat. Confirmation Dialog. Calls
+  `reopenMedalRound`. MedalAward rows preserved.
+- **⟲ Reset** — enabled only when `status = ACTIVE` AND
+  `Judging.phase = ACTIVE`. Tier 2 wipe retreat. Strong confirmation
+  Dialog ("This wipes all N MedalAward rows for {category}. Type
+  RESET to confirm" — text-input gate). Calls `resetMedalRound`.
+
+**Click on a row → Medal Round drill-in (Phase 4 follow-up, Item 5):**
+opens a panel/page showing the entries with their scoresheet totals
+and current MedalAward state, with judge-side controls for COMPARATIVE
+vs SCORE_BASED (designed in Item 5).
+
+**Empty state:** "No JUDGING-scope categories yet. Initialize judging
+categories from the Division Detail page."
+
+#### Tab 3: BOS
+
+**Tab disabled** with tooltip "Available once Judging is active" while
+`Judging.phase = NOT_STARTED`.
+
+**Header section** (always visible when tab enabled):
+- Phase indicator badge: `Judging.phase` (ACTIVE / BOS / COMPLETE).
+- BOS places: "Configured: {Division.bosPlaces}".
+- Action button — exclusive based on `Judging.phase`:
+  - **ACTIVE** → "▶ Start BOS". Enabled iff every CategoryJudgingConfig
+    has `medalRoundStatus = COMPLETE`. Tooltip explains gate when
+    disabled. Confirmation Dialog → `JudgingService.startBos`. Empty-
+    BOS info note shown if zero GOLD candidates exist (per §2.D D12).
+  - **BOS** → "✓ Finalize BOS" + "⟲ Reset BOS". Reset is only enabled
+    when zero `BosPlacement` rows exist (per §2.B Tier 3) — admin must
+    delete each placement first via the placements grid.
+  - **COMPLETE** → "↻ Reopen BOS" — Tier 3 retreat, preserves rows.
+
+**Candidates section** (read-only list):
+Lists all entries with `MedalAward.medal = GOLD` in the division.
+Shows entry blind code + category + meadName + total score (from the
+scoresheet). Useful as a reference while the admin records placements.
+Empty state: "No GOLD medals were awarded — BOS round has no
+candidates."
+
+**Placements section** (`Grid<BosPlacement>`):
+
+| Column | Source / format |
+|---|---|
+| Place | `BosPlacement.place` (1..bosPlaces) |
+| Entry | `Entry.entryCode` + meadName |
+| Category | DivisionCategory `code — name` |
+| Awarded by | User name (admin who recorded) |
+| Awarded at | timestamp (locale-aware) |
+| Actions | `[✏ edit] [🗑 delete]` (admin-only per §4.A) |
+
+**Header button:**
+- **+ Add Placement** — only enabled when `Judging.phase = BOS` and
+  `count(BosPlacement) < bosPlaces`. Dialog:
+  - **Place** — `Select<Integer>` showing 1..bosPlaces with already-
+    used places greyed out.
+  - **Entry** — `Select<Entry>` filtered to GOLD-medalled candidates
+    not yet in placements (uniqueness gate).
+  - On save → `JudgingService.recordBosPlacement` (admin-only per §4.A).
+
+**Edit / Delete actions:**
+- Edit — same dialog, mutates `place` only (entry is fixed once
+  recorded). Service: `updateBosPlacement`.
+- Delete — confirmation Dialog. Service: `deleteBosPlacement`. Required
+  for `resetBos` per §2.B Tier 3.
+
+**Phase 4 follow-up (Item 6):** detailed UX for "Add Placement"
+including conflict handling (e.g. attempting to record an entry
+already placed) — covered by service-side UNIQUE constraints; UI just
+surfaces the resulting `BusinessRuleException`.
+
+#### Cross-tab interactions
+
+- **Tab 1 ↔ Tab 2 status sync.** When an admin starts a table (Tab 1),
+  the table's category appears in Tab 2 with a CategoryJudgingConfig
+  row created lazily (default mode COMPARATIVE). Tab 2 is data-driven
+  off `JudgingService.findCategoryConfigs(divisionId)`.
+- **Tab 1 → Tab 3 enablement.** First table start advances
+  `Judging.phase: NOT_STARTED → ACTIVE` (per §2.D); Tab 3 enables.
+- **Reload semantics.** Each tab reloads its grid on activation
+  (Karibu lazy-loads anyway; Phase 5 implementation calls
+  `tabSheet.addSelectedChangeListener` to refresh).
+
+#### Incremental i18n keys (consolidated in Item 10)
+
+Top-level (under `judging-admin.*`):
+
+```
+judging-admin.title                                  Judging Admin
+judging-admin.tab.tables                              Tables
+judging-admin.tab.medal-rounds                        Medal Rounds
+judging-admin.tab.bos                                 Best of Show
+judging-admin.tab.bos.disabled-tooltip                Available once Judging is active
+
+judging-admin.tables.add                              Add Table
+judging-admin.tables.column.name                      Name
+judging-admin.tables.column.category                  Category
+judging-admin.tables.column.status                    Status
+judging-admin.tables.column.judges                    Judges
+judging-admin.tables.column.scheduled                 Scheduled
+judging-admin.tables.column.scoresheets               Scoresheets
+judging-admin.tables.column.actions                   Actions
+judging-admin.tables.action.start                     Start Table
+judging-admin.tables.action.start.confirm.title       Start table {0}?
+judging-admin.tables.action.start.empty.body          This table has no entries yet. Start anyway?
+judging-admin.tables.action.assign-judges             Assign Judges
+judging-admin.tables.action.assign-judges.coi-warning Possible COI: judge "{0}" has a similar meadery to entry {1}.
+judging-admin.tables.empty                            No tables yet. Add a table to start judging.
+
+judging-admin.medal-rounds.column.category            Category
+judging-admin.medal-rounds.column.mode                Mode
+judging-admin.medal-rounds.column.status              Status
+judging-admin.medal-rounds.column.tables              Tables
+judging-admin.medal-rounds.column.awards              Awards
+judging-admin.medal-rounds.action.start               Start Medal Round
+judging-admin.medal-rounds.action.finalize            Finalize Medals
+judging-admin.medal-rounds.action.reopen              Reopen
+judging-admin.medal-rounds.action.reset               Reset
+judging-admin.medal-rounds.action.reset.confirm.title Reset medal round for {0}?
+judging-admin.medal-rounds.action.reset.confirm.body  This wipes {0} MedalAward rows. Type RESET to confirm.
+
+judging-admin.bos.places                              Configured BOS places: {0}
+judging-admin.bos.action.start                        Start BOS
+judging-admin.bos.action.finalize                     Finalize BOS
+judging-admin.bos.action.reopen                       Reopen BOS
+judging-admin.bos.action.reset                        Reset BOS
+judging-admin.bos.candidates                          GOLD candidates
+judging-admin.bos.candidates.empty                    No GOLD medals were awarded — BOS round has no candidates.
+judging-admin.bos.placements                          Placements
+judging-admin.bos.placements.add                      Add Placement
+judging-admin.bos.placements.column.place             Place
+judging-admin.bos.placements.column.entry             Entry
+judging-admin.bos.placements.column.category          Category
+judging-admin.bos.placements.column.awarded-by        Awarded by
+judging-admin.bos.placements.column.awarded-at        Awarded at
+```
+
+Error keys (under `error.judging.*`, `error.bos.*`):
+
+```
+error.judging.table.too-few-judges          This table needs at least {0} judges before starting.
+error.judging.table.cannot-delete           Cannot delete a table that has been started or has judges assigned.
+error.judging.medal-round.not-ready         Medal round can only start once all tables for this category are complete.
+error.judging.medal-round.not-active        This action requires medal round status ACTIVE.
+error.bos.unauthorized                      Only admins can record BOS placements.
+error.bos.start-blocked                     All categories must complete medal round before BOS can start.
+error.bos.reset-blocked                     Delete all BOS placements before resetting.
+error.bos.entry-not-gold                    Only GOLD-medal entries can receive BOS placements.
+```
+
+PT translations defer to Phase 5 implementation (existing convention).
+
+#### Implications
+
+- New view class `JudgingAdminView` (Phase 5).
+- New service methods needed: `JudgingService.findCategoryConfigs`,
+  `ScoresheetService.countByTableIdAndStatus` (or repository methods).
+- DivisionDetailView gains a "Manage Judging" button — small change
+  inside competition module that points to a string Anchor URL (per
+  existing cross-module navigation pattern), so the competition module
+  doesn't need to import judging-module classes.
+- Item 2 (per-table scoresheet drill-in) now has a clear entry point:
+  the "👁 View" action in Tables tab. Item 5 (medal round drill-in)
+  has its entry point in the Medal Rounds tab row click.
+
+### 2026-05-09 — Phase 4.C: Judge scoresheet form (Item 4)
+
+**View:** full-page route, accessible from `/my-judging` (Item 3 —
+pending) and from admin per-table drill-in (Item 2 — pending).
+
+```
+/my-judging/scoresheets/:scoresheetId
+```
+
+Class (Phase 5): `app.meads.judging.internal.ScoresheetView`.
+
+**Authorization (`@PermitAll` + `beforeEnter()`):**
+- Hard COI: reject (notification + redirect to `/my-judging`) if
+  `entry.userId == currentUser.userId`. Translated error key
+  `error.scoresheet.coi-self-entry`.
+- Allowed:
+  - SYSTEM_ADMIN
+  - Competition ADMIN of the scoresheet's division (via
+    `isAuthorizedForDivision`)
+  - Judge with a `JudgeAssignment` for the scoresheet's `tableId`
+- Otherwise: redirect to `""` (root) with notification.
+
+**Read-only mode:** when `Scoresheet.status = SUBMITTED`, all inputs
+are disabled, Save Draft / Submit are hidden. Banner at top:
+"This scoresheet has been submitted. Only an admin can revert it to
+draft." Admins viewing a SUBMITTED scoresheet still see the read-only
+form (admin revert action lives in the per-table drill-in view per
+§2.B Tier 0; not on this form). This keeps the scoresheet form
+single-purpose.
+
+#### Layout
+
+```
+┌─ Competition logo ─┐  CHIP 2026 — Amadora — Scoresheet              [back]
+│                    │
+└────────────────────┘
+
+⚠ This scoresheet's entry has a similar meadery name to your own.   ← soft COI banner (only if applicable)
+
+┌─ Entry ─────────────────────────────────────────────────────────────┐
+│ Blind code: AMA-3                                                    │
+│ Category: M1A — Traditional Dry Mead                                │
+│ Sweetness: Dry  ·  Strength: Standard  ·  Carbonation: Still       │
+│ ABV: 12.0%                                                           │
+│ Honey: Acacia                                                        │
+│ Other ingredients: —                                                 │
+│ Wood: Oak (French, 6 months)                                         │
+│ Additional info: "Aged on French oak for 6 months"                  │
+└──────────────────────────────────────────────────────────────────────┘
+
+┌─ Appearance ─────────────────────────────────────────────────────────┐
+│ Score   [  9  ] / 12                                                 │
+│ Unacceptable 0–2 · Below Avg 3–4 · Avg 5–6 · Good 7–8 · Very Good 9–10 · Perfect 11–12
+│ Comment   ┌─────────────────────────────────────────────────────────┐│
+│           │ Brilliant gold; no haze; thin lacing.                   ││
+│           └─────────────────────────────────────────────────────────┘│
+└──────────────────────────────────────────────────────────────────────┘
+[ … 4 more score-field cards: Aroma/Bouquet, Flavour and Body, Finish, Overall Impression … ]
+
+┌─ Overall comments ───────────────────────────────────────────────────┐
+│ ┌──────────────────────────────────────────────────────────────────┐ │
+│ │ Well-crafted dry mead; would benefit from a touch more …         │ │
+│ └──────────────────────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────────────┘
+
+Comment language     [ English        ⌄ ]   ← ComboBox
+
+☐ Advance to medal round                       ← Checkbox
+
+[ Save Draft ]   [ Submit ]   [ Cancel ]
+```
+
+#### Component breakdown
+
+- **Header card** — read-only `Div` styled card; data sourced from
+  `Entry` (read via `EntryService.findById`). Includes: blind code
+  (`Entry.entryCode`, e.g. "AMA-3"), category code+name, sweetness,
+  strength, carbonation, ABV, honey, other ingredients, wood, additional
+  info. (Mirrors the entry view dialog in `MyEntriesView` /
+  `DivisionEntryAdminView`.)
+
+- **Soft COI banner** (only when
+  `MeaderyNameNormalizer.areSimilar(judge.meaderyName, judge.country,
+  entrant.meaderyName, entrant.country)` returns true).
+  - Component: `Span` with `LumoUtility.Background.WARNING_10` /
+    similar warning styling, `VaadinIcon.WARNING` prefix.
+  - Text from i18n key `scoresheet.coi.warning.similar-meadery` (no
+    interpolation — generic warning).
+  - Banner is informational; does not gate save/submit.
+
+- **5 score-field cards** — each is a vertical card containing:
+  1. Field name (localized via `MeadsI18NProvider` keyed off the
+     canonical English name in `ScoreField.fieldName`).
+  2. `NumberField` — `setMin(0)`, `setMax(maxValue)`, `setStep(1)`,
+     `setStepButtonsVisible(true)`, value-change-mode `EAGER`.
+     Width 120px, with " / 12" (or matching maxValue) suffix label.
+  3. Tier hints `Span` below the NumberField — single line, generated
+     from i18n keys joined with " · ":
+     `tier.unacceptable + " 0–2"`, `tier.below-average + " 3–4"`, etc.
+     Uses `MjpScoringFieldDefinition` constants for the per-field
+     ranges. CSS class for muted text.
+  4. Comment `TextArea` — `setMaxLength(2000)`, `setValueChangeMode(LAZY)`
+     (default; we don't need eager). Full-width, 3-row default
+     height, growable.
+
+- **Overall comments** — single `TextArea`, `setMaxLength(2000)`,
+  full-width, 4-row default height.
+
+- **Comment language `ComboBox<String>`:**
+  - Items: `union(competition.commentLanguages, judge.preferredCommentLanguage)`,
+    sorted alphabetically by `Locale.forLanguageTag(code).getDisplayLanguage(uiLocale)`.
+  - Item-label-generator: `getDisplayLanguage` in user's UI locale.
+  - Initial value: per §2.H default-resolution chain
+    (`JudgeProfile.preferredCommentLanguage` → `User.preferredLanguage`
+    → fallback to `en`).
+  - On value-change → `ScoresheetService.setCommentLanguage(scoresheetId,
+    code, judgeUserId)` (DRAFT only; updates both the scoresheet and
+    the JudgeProfile sticky preference atomically per §2.H).
+  - In SUBMITTED read-only mode: `setReadOnly(true)`, value is the
+    frozen `Scoresheet.commentLanguage`.
+
+- **Advance-to-medal-round `Checkbox`:**
+  - Bound to `Scoresheet.advancedToMedalRound`.
+  - Disabled with tooltip "Cannot change after medal round has started"
+    once the scoresheet's category has `medalRoundStatus = ACTIVE`
+    (per service guard in §3.3).
+  - Editable in DRAFT or SUBMITTED, but rejected once medalRoundStatus
+    is ACTIVE — UI surfaces tooltip; service is the source of truth.
+
+- **Footer buttons:**
+  - **Save Draft** — calls `ScoresheetService.updateScore` for each
+    field plus `updateOverallComments`, then exits with success
+    notification. Per existing convention: `setDisableOnClick(true)`,
+    re-enabled in catch blocks. Stays on the page on success.
+  - **Submit** — only enabled when all 5 score values are non-null
+    (form-level live binding). Confirmation Dialog: "Submit scoresheet
+    for {entryCode}? You won't be able to edit it after; only an admin
+    can revert."  On confirm → `ScoresheetService.submit`. On success
+    → notification + `UI.navigate(MyJudgingView.class)`.
+    `setDisableOnClick(true)`.
+  - **Cancel** — navigates back to `/my-judging`. If the form is
+    dirty, prompts an unsaved-changes Dialog.
+
+#### Behavior details
+
+- **Auto-set `filledByJudgeUserId`:** the first DRAFT mutation by a
+  judge sets `Scoresheet.filledByJudgeUserId = judge.userId`. Set
+  inside `ScoresheetService.updateScore` (or `updateOverallComments`)
+  per §3.3. UI shows it as informational metadata in the read-only
+  SUBMITTED view (small caption "Filled by {Judge name}").
+
+- **Save error handling:** `BusinessRuleException` from service is
+  rendered as `Notification.LUMO_ERROR` with translated message
+  (locale-aware per the 2026-05-03 admin-error-locale fix).
+
+- **Score validation:** `0 <= value <= maxValue` enforced both client-
+  side (NumberField min/max) and server-side (entity-level guard in
+  `ScoreField`). UI shows field-level error if server rejects.
+
+- **Total-score live preview:** below the 5 cards, an informational
+  Span shows "Current total: N / 100" (sum of non-null values). Read-
+  only; not stored until SUBMIT computes it.
+
+- **Hard COI in service:** even if a judge somehow reaches the URL
+  for an entry of their own, `ScoresheetService` rejects all
+  mutating calls with `BusinessRuleException("error.scoresheet.coi-self-entry")`
+  via `CoiCheckService.check` (§3.8). Defence in depth.
+
+#### Incremental i18n keys (consolidated in Item 10)
+
+```
+scoresheet.title                              Scoresheet
+scoresheet.entry.section                      Entry
+scoresheet.entry.blind-code                   Blind code
+scoresheet.entry.category                     Category
+scoresheet.entry.sweetness                    Sweetness
+scoresheet.entry.strength                     Strength
+scoresheet.entry.carbonation                  Carbonation
+scoresheet.entry.abv                          ABV
+scoresheet.entry.honey                        Honey
+scoresheet.entry.other-ingredients            Other ingredients
+scoresheet.entry.wood                         Wood
+scoresheet.entry.additional-info              Additional info
+
+scoresheet.field.appearance                   Appearance
+scoresheet.field.aroma-bouquet                Aroma/Bouquet
+scoresheet.field.flavour-body                 Flavour and Body
+scoresheet.field.finish                       Finish
+scoresheet.field.overall-impression           Overall Impression
+
+scoresheet.tier.unacceptable                  Unacceptable
+scoresheet.tier.below-average                 Below Avg
+scoresheet.tier.average                       Avg
+scoresheet.tier.good                          Good
+scoresheet.tier.very-good                     Very Good
+scoresheet.tier.perfect                       Perfect
+scoresheet.tier.range                         {0} {1}–{2}
+scoresheet.tier.separator                     ·
+
+scoresheet.score.label                        Score
+scoresheet.comment.label                      Comment
+scoresheet.overall-comments                   Overall comments
+scoresheet.comment-language.label             Comment language
+scoresheet.total-preview                      Current total: {0} / {1}
+scoresheet.advance-to-medal-round             Advance to medal round
+scoresheet.advance-to-medal-round.locked-tooltip   Cannot change after medal round has started
+
+scoresheet.action.save-draft                  Save Draft
+scoresheet.action.submit                      Submit
+scoresheet.action.cancel                      Cancel
+scoresheet.submit.confirm.title               Submit scoresheet for {0}?
+scoresheet.submit.confirm.body                You won't be able to edit it after submitting. Only an admin can revert.
+scoresheet.cancel.unsaved.title               Discard unsaved changes?
+scoresheet.cancel.unsaved.body                You have unsaved edits. Discard and leave?
+
+scoresheet.coi.warning.similar-meadery        Heads up: this entry's meadery name is similar to yours. Use your judgement.
+
+scoresheet.submitted.notice                   This scoresheet has been submitted. Only an admin can revert it to draft.
+scoresheet.submitted.filled-by                Filled by {0}
+```
+
+Error keys:
+
+```
+error.scoresheet.coi-self-entry               You cannot judge your own entry.
+error.scoresheet.value-out-of-range           Score must be between 0 and {0}.
+error.scoresheet.cannot-edit-submitted        Cannot edit a submitted scoresheet.
+error.scoresheet.invalid-language-code        Selected language is not in the allowed list.
+error.scoresheet.not-found                    Scoresheet not found.
+error.scoresheet.unauthorized                 You are not authorized to view this scoresheet.
+error.scoresheet.advance-after-medal-round    Cannot change advancement flag after medal round started.
+error.scoresheet.submit-incomplete            All score fields must be filled before submitting.
+```
+
+PT translations defer to Phase 5.
+
+#### Implications
+
+- New view class `ScoresheetView` (Phase 5).
+- New service helpers needed (per §3.3 / §3.4): exists already in
+  Phase 3 sketch — `ScoresheetService.updateScore`, `updateOverallComments`,
+  `setCommentLanguage`, `setAdvancedToMedalRound`, `submit`.
+- `EntryService` read-only access from judging module: for the
+  read-only entry header card. Public method `EntryService.findById`
+  already exists (used by admin views). Cross-module read-only access
+  is already declared in the Phase 3 module dependency
+  (`{"competition", "entry", "identity"}`).
+- `MeaderyNameNormalizer.areSimilar` is the soft-COI gate (§3.8).
+  Scoresheet view calls it once on view-render and caches the result.
+- Total-score live preview is computed client-side from current
+  NumberField values; Phase 5 should bind it via Vaadin's
+  `Binder.addStatusChangeListener` or simple `addValueChangeListener`
+  on each NumberField.
+- `MyJudgingView` (Item 3, pending) will navigate to this view via
+  `UI.navigate(ScoresheetView.class, scoresheetId)` (parameter
+  binding pattern `@RouteParameters`).
+- Submission email and downstream flows unchanged — Phase 3 events
+  (`ScoresheetSubmittedEvent`) fire at service level.
+
 ---
 
 ## Open Questions
@@ -2260,26 +2817,53 @@ records the language of judge prose; defaults to
 `JudgeProfile` lifecycle adjusted to auto-create on first `JudgeAssignment`.
 
 ### Q15 — Head-judge designation for BOS authorization
-**Status:** Open (raised 2026-05-08 during Phase 3 §3.7 authorization).
-CHIP §7 implies a "head judge" role for BOS decisions, but the data model
-has only the flat `ParticipantRole.JUDGE`. Options:
+**Status:** ✅ Resolved by Decision §4.A (2026-05-09). Option (c) —
+**admin-only for v1**. SYSTEM_ADMIN and competition ADMIN can record /
+edit / delete `BosPlacement`. No data-model changes (no `HEAD_JUDGE`
+role, no per-table or per-division head-judge designation).
+`BosPlacement.awardedBy` records the admin user; head-judge concept
+can be added post-v1 without breaking changes. §3.7 authorization
+table updated accordingly.
 
-- **(a) Any assigned judge in the division** — matches our flat role
-  model; relies on social process. Simplest; consistent with how Round 1
-  authorization works (assignment-scoped).
-- **(b) Add `ParticipantRole.HEAD_JUDGE`** (or a per-judging boolean
-  `JudgeAssignment.isHeadJudge` at the table level, or per-division
-  designation) — explicit; small data-model addition; requires admin
-  designation step.
-- **(c) Admin-only for v1** — competition ADMIN authority replaces head-
-  judge authority entirely; defer head-judge concept until competitions
-  are large enough to need it.
+### Q16 — Judging-organisation label variant (per-entry tasting labels)
+**Status:** Open (raised 2026-05-09; deferred — UX/print enhancement,
+not blocking judging-module implementation).
 
-Decision deferred to **Phase 4** (view design), specifically when the
-BOS form UX (Item 6 in the Phase 4 Next Session list) is concrete enough
-to weigh the options. Default leaning if undecided: **(c)**, since
-admins can always proxy on behalf of head judges and this avoids
-data-model expansion in v1.
+To support physical tasting logistics, an additional per-entry
+printable PDF that combines two label types on one sheet:
+
+- **Main label** — basic mead info (similar to the existing entry
+  label generated by `LabelPdfService`), printed as a sticker to
+  attach to the bottle.
+- **Detachable mini-labels** — multiple duplicates within the same
+  sheet, each containing only: QR code, entry ID (e.g. `AMA-3`),
+  6-char blind code (`Entry.entryCode`), category code. Mini-labels
+  detach from the surrounding sticker (perforated / die-cut layout)
+  and are used to close the gap in circular wine-glass tags so
+  judges can quickly identify entries during tasting.
+
+**No special logic required** — likely just another button on the
+entry rows in `MyEntriesView` and `DivisionEntryAdminView` that
+downloads the new PDF variant. The current `LabelPdfService` already
+embeds QR codes (with the OpenPDF + ZXing TYPE_INT_RGB conversion
+captured in MEMORY); the variant adds a detachable section with N
+duplicates.
+
+**Open implementation notes:**
+- Number of mini-labels per sheet depends on the standard sticker
+  format chosen (e.g. Avery perforated layouts, or generic A4 with
+  cut-marks). Pick a standard before implementation.
+- The variant likely **supplements** rather than replaces the
+  existing label PDF — the current labels still serve registration-
+  time shipping; the tasting variant is a separate "Download tasting
+  labels" action.
+- Whether to integrate into the batch "Download all labels" flow or
+  keep separate — TBD.
+- Belongs to the entry module's `LabelPdfService`, not judging
+  internals — judging just needs the labels to exist by tasting time.
+
+**Decision deferred:** revisit during or after Phase 5 implementation
+of the judging module.
 
 ---
 
