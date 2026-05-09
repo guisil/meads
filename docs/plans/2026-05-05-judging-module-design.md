@@ -1,10 +1,11 @@
 # Judging Module — Design Document
 
 **Started:** 2026-05-05
-**Status:** Phases 1–3 ✅ complete; Phase 4 in progress (4.A–4.F done
-2026-05-09, covering §Q15 + admin division-level judging dashboard +
-judge scoresheet form + judge hub/table drill-in + medal round
-forms + admin Settings extensions). Phase 1 (2026-05-05) scoped the module boundary. Phase 2
+**Status:** Phases 1–3 ✅ complete; Phase 4 in progress (4.A–4.H done
+2026-05-09 after a branch reconciliation pass, covering §Q15 +
+admin division-level judging dashboard + judge scoresheet form +
+unified per-role TableView (judge hub + admin per-table) + medal
+round forms + admin Settings extensions + dedicated BOS form). Phase 1 (2026-05-05) scoped the module boundary. Phase 2
 (2026-05-07/2026-05-08) decided state machine, retreat semantics,
 start triggers, COI similarity, JudgeProfile, field-level entity
 definitions, V20 schema, and PDF/comment-language tagging (resolves
@@ -49,7 +50,7 @@ Once a phase is complete, its open questions should all have decisions or be exp
 | 1 | Scope & module boundary decisions | ✅ Complete |
 | 2 | Domain model — entity definitions, eager/lazy creation, COI heuristic, MJP qualifications storage, scoresheet locking | ✅ Complete (2.A–2.F 2026-05-07; 2.G + 2.H 2026-05-08) |
 | 3 | Service + event contracts, authorization, COI mechanism, judging start trigger | ✅ Complete (2026-05-08, docs-only sketch; Java skeleton deferred to Phase 5) |
-| 4 | View design (admin table mgmt, judge scoresheet UX, results-before-publication) | 🟡 In progress — 4.A (§Q15) + 4.B (admin dashboard) + 4.C (judge scoresheet form) + 4.D (judge hub + table view) + 4.E (medal round forms) + 4.F (admin Settings extensions) done 2026-05-09 |
+| 4 | View design (admin table mgmt, judge scoresheet UX, results-before-publication) | 🟡 In progress — 4.A (§Q15) + 4.B (admin dashboard) + 4.C (judge scoresheet form) + 4.D (judge hub + unified TableView) + 4.E (medal round forms) + 4.F (admin Settings extensions) + 4.G (admin per-table folded into 4.D) + 4.H (BOS form) done 2026-05-09. Items 8/9/10 + §Q17 pending. |
 | 5 | Implementation sequencing — TDD cycle order, migration plan, MVP slice | ⏳ Pending |
 
 ---
@@ -59,44 +60,55 @@ Once a phase is complete, its open questions should all have decisions or be exp
 **Phase 4 in progress (started 2026-05-09).** This session covered §Q15
 (resolved: admin-only BOS for v1), the admin division-level judging
 dashboard (§4.B), the judge scoresheet form (§4.C), the judge hub +
-table drill-in (§4.D), and the medal round forms (§4.E). New §Q16
-opened (per-entry tasting-label PDF variant — deferred). See those
-sections in Decisions / Open Questions.
+table drill-in unified across roles (§4.D + §4.G), the medal round
+forms (§4.E), the admin Settings extensions (§4.F), and the BOS form
+(§4.H). After a branch reconciliation pass, Items 2 + 6 are now
+designed in main with explicit role-aware splits. New §Q16 opened
+(per-entry tasting-label PDF variant — deferred). New §Q17 opened
+(mobile / touch UX review for judging surfaces — deferred). New
+project-wide policy refinements: judges see no COI indicators during
+scoring (admin vets at table-assignment time); soft-COI warnings are
+admin-only; URLs follow the fully-scoped
+`/competitions/:c/divisions/:d/...` convention; sidebar "My Judging"
+link gated by `hasAnyJudgeAssignment`. See those sections in
+Decisions / Open Questions.
 
 ### Phase 4 status
 
 | Item | Description | Status |
 |---|---|---|
-| §Q15 | BOS authorization for v1 | ✅ §4.A — admin-only |
+| §Q15 | BOS authorization for v1 | ✅ §4.A — admin-only; future paths (b1) / (b2) documented |
 | 1 | Admin division-level judging dashboard | ✅ §4.B — `JudgingAdminView` w/ Tables\|Medal Rounds\|BOS tabs |
-| 2 | Admin per-table scoresheet management (drill-in) | ⏳ Pending |
-| 3 | Judge judging hub (`/my-judging`) | ✅ §4.D — `MyJudgingView` + `JudgeTableView` |
-| 4 | Judge scoresheet form | ✅ §4.C — `ScoresheetView` full-page route |
-| 5 | Medal round forms (COMPARATIVE + SCORE_BASED) | ✅ §4.E — `MedalRoundView` |
-| 6 | BOS form detail (admin-only per §4.A) | ⏳ Pending — sketched in §4.B Tab 3, needs placement-entry detail |
+| 2 | Admin per-table scoresheet management (drill-in) | ✅ §4.G — folded into §4.D unified `TableView` with admin-only revert/move actions |
+| 3 | Judge judging hub (`/my-judging`) | ✅ §4.D — `MyJudgingView` + unified `TableView` (per-role columns/actions) |
+| 4 | Judge scoresheet form | ✅ §4.C — `ScoresheetView` at `/competitions/:c/divisions/:d/scoresheets/:id`, no soft-COI banner per policy |
+| 5 | Medal round forms (COMPARATIVE + SCORE_BASED) | ✅ §4.E — `MedalRoundView` with hybrid button-row + dropdown controls; advancedToMedalRound filter for COMPARATIVE only |
+| 6 | BOS form detail (admin-only per §4.A) | ✅ §4.H — `BosView` with drag-and-drop primary + [+] dialog fallback |
 | 7 | Admin Settings extensions (`Competition.commentLanguages`, `Division.bosPlaces`, `Division.minJudgesPerTable`) | ✅ §4.F — `MultiSelectComboBox` for languages; `IntegerField` for the two Division fields with status-based locking |
 | 8 | Admin User → JudgeProfile editor | ⏳ Pending |
 | 9 | `ScoresheetPdfService` + layout sketch | ⏳ Pending |
-| 10 | Full i18n key inventory | ⏳ Pending — incremental keys recorded inline in §4.B–§4.E; consolidate in this item |
+| 10 | Full i18n key inventory | ⏳ Pending — incremental keys recorded inline in §4.B–§4.H; consolidate in this item |
+| §Q17 | Mobile / touch UX review for judging surfaces | 🟡 Open — deferred; touches BosView, ScoresheetView, MedalRoundView, TableView |
 
 ### What next session should address
 
 Best entry points (any of these is a reasonable next step — choose
 based on energy):
 
-- **Item 2 (admin per-table scoresheet drill-in)** — completes the
-  admin Tables story. Mostly mirrors `JudgeTableView` (§4.D) with
-  added admin actions (revert SUBMITTED, move to another table).
 - **Item 8 (admin User → JudgeProfile editor)** — UI for
   `certifications` (multi-select MJP/BJCP/OTHER) and
   `qualificationDetails` (free text) per §2.F. Surfaced from
-  `UserListView`.
-- **Item 6 (BOS form detail)** — completes the admin BOS workflow
-  (placement-entry dialog, candidates filtering, "Add Placement" UX).
-  Authorization is already pinned to admin-only (§4.A); this item is
-  the placement-entry-specific UX that wasn't covered in §4.B Tab 3.
-- **Item 9 (Scoresheet PDF)** — design `ScoresheetPdfService` interface
-  + layout sketch per §2.H D15a/D15b. Mirrors `LabelPdfService`.
+  `UserListView`. Smallest remaining item.
+- **Item 9 (Scoresheet PDF)** — design `ScoresheetPdfService`
+  interface + layout sketch per §2.H D15a/D15b. Mirrors
+  `LabelPdfService`. Single + batch downloads.
+- **Item 10 (full i18n key inventory)** — consolidate the inline keys
+  from §4.B–§4.H into a single inventory grouped by surface. Useful
+  before Phase 5 implementation so PT translations have one
+  reference point.
+- **§Q17 (mobile / touch UX review)** — pass through judging surfaces
+  with mobile / tablet device frames in mind; recommend touch-
+  friendly alternates where needed.
 
 After all Phase 4 items close, Phase 5 (implementation) begins:
 module skeleton → V20 migration → entities → services (TDD, repository
@@ -104,8 +116,8 @@ tests first) → events + listeners → views → integration tests.
 
 ### Suggested start prompt for next session
 > "Read `docs/plans/2026-05-05-judging-module-design.md` (especially
-> §4.A–§4.E from the 2026-05-09 session) and `docs/SESSION_CONTEXT.md`,
-> then continue Phase 4 with [Item 7 / Item 2 / Item 8 / Item 6 / Item 9]."
+> §4.A–§4.H from the 2026-05-09 session) and `docs/SESSION_CONTEXT.md`,
+> then continue Phase 4 with [Item 8 / Item 9 / Item 10 / §Q17]."
 
 ---
 
@@ -2179,11 +2191,29 @@ recordBosPlacement / updateBosPlacement / deleteBosPlacement:
 - Per §2.B Tier 3, `JudgingService.deleteBosPlacement` is admin-only
   and required before `resetBos()` is allowed.
 
-**Future (post-v1):** a HEAD_JUDGE designation can be added without
-breaking changes — extend `ParticipantRole` enum, add UI for designation
-in the admin participants tab, and widen the BOS authorization rule to
-include head judges. Existing BosPlacement rows (with admin
-`awardedBy`) remain valid historical records.
+**Future paths (post-v1) — both available without breaking changes:**
+
+- **(b1)** `JudgeAssignment.isHeadJudge` boolean — per-table head-judge
+  designation. Smallest data-model change; matches "head judge for this
+  table" mental model. Best fit if multi-table BOS panels ever exist
+  (none planned).
+- **(b2)** `Judging.headJudgeUserId UUID` nullable — single per-division
+  head-judge. Closer to CHIP §7's "head judge of the competition".
+  Authorization expands to "admin OR head-judge".
+
+Whichever is chosen, the BOS form gains only a small "Acting on behalf
+of: {head judge}" badge and an optional dropdown when admin proxies on
+behalf of a non-admin head-judge. Audit-trail expansion (separate
+`recordedBy` vs `awardedBy`) deferred — current single `awardedBy` field
+is sufficient. Existing BosPlacement rows (with admin `awardedBy`)
+remain valid historical records.
+
+**§3.2 service param rename (docs-side; applied at Phase 5).** The
+parameter currently named `judgeUserId` on `recordBosPlacement`,
+`updateBosPlacement`, and `deleteBosPlacement` (per §3.2) is renamed to
+**`adminUserId`** to make the authorization surface explicit at the
+service signature. Phase 3 sketch is amended in place during Phase 5
+implementation.
 
 **§Q15 closure:** Resolved.
 
@@ -2359,25 +2389,22 @@ candidates."
 | Awarded at | timestamp (locale-aware) |
 | Actions | `[✏ edit] [🗑 delete]` (admin-only per §4.A) |
 
-**Header button:**
-- **+ Add Placement** — only enabled when `Judging.phase = BOS` and
-  `count(BosPlacement) < bosPlaces`. Dialog:
-  - **Place** — `Select<Integer>` showing 1..bosPlaces with already-
-    used places greyed out.
-  - **Entry** — `Select<Entry>` filtered to GOLD-medalled candidates
-    not yet in placements (uniqueness gate).
-  - On save → `JudgingService.recordBosPlacement` (admin-only per §4.A).
+**Empty-slot rendering (decided 2026-05-09).** All `Division.bosPlaces`
+rows are always rendered, in order. Empty slots show "Place {N} —
+not assigned" so admins can see all P slots at a glance — matches CHIP
+§7's "places may be withheld" semantics. Filled slots show the placement
+details normally.
 
-**Edit / Delete actions:**
-- Edit — same dialog, mutates `place` only (entry is fixed once
-  recorded). Service: `updateBosPlacement`.
-- Delete — confirmation Dialog. Service: `deleteBosPlacement`. Required
-  for `resetBos` per §2.B Tier 3.
+**Manage Placements link.** The Tab 3 BOS panel summarizes (phase
+indicator, candidates list count, placements count). Detailed
+placement-entry UX lives in the dedicated `BosView` form (§4.H —
+admin-only, drag-and-drop primary). The dashboard's BOS tab includes
+a **"Manage placements →"** button that navigates to the dedicated
+form. Tier-3 actions (Start / Finalize / Reopen / Reset BOS) stay on
+the dashboard tab, **not** the form.
 
-**Phase 4 follow-up (Item 6):** detailed UX for "Add Placement"
-including conflict handling (e.g. attempting to record an entry
-already placed) — covered by service-side UNIQUE constraints; UI just
-surfaces the resulting `BusinessRuleException`.
+**Phase 4 follow-up (Item 6):** detailed Add/Reassign/Delete UX moved
+to §4.H dedicated form section.
 
 #### Cross-tab interactions
 
@@ -2476,11 +2503,15 @@ PT translations defer to Phase 5 implementation (existing convention).
 ### 2026-05-09 — Phase 4.C: Judge scoresheet form (Item 4)
 
 **View:** full-page route, accessible from `/my-judging` (Item 3 —
-pending) and from admin per-table drill-in (Item 2 — pending).
+§4.D) and from admin per-table drill-in (Item 2 — §4.G).
 
 ```
-/my-judging/scoresheets/:scoresheetId
+/competitions/:compShortName/divisions/:divShortName/scoresheets/:scoresheetId
 ```
+
+(Fully scoped under the division — matches the `entry-admin` /
+`my-entries` URL shape per existing convention. Updated 2026-05-09 from
+the earlier `/my-judging/scoresheets/:scoresheetId` draft.)
 
 Class (Phase 5): `app.meads.judging.internal.ScoresheetView`.
 
@@ -2494,6 +2525,17 @@ Class (Phase 5): `app.meads.judging.internal.ScoresheetView`.
     `isAuthorizedForDivision`)
   - Judge with a `JudgeAssignment` for the scoresheet's `tableId`
 - Otherwise: redirect to `""` (root) with notification.
+
+**Blind-judging policy (pinned 2026-05-09).** The entry header card
+**intentionally does not show entrant identity** — no name, no
+meadery name, no country. Only the blind code (`Entry.entryCode`),
+category, and mead characteristics (sweetness, strength, carbonation,
+ABV, honey, other ingredients, wood, additional info). Hard-COI
+redirects the user before the form renders, so the form never reveals
+that an entry belongs to its own viewer. **Soft-COI is not surfaced
+to judges** at all (see §4.D / §4.E for the policy refinement —
+admin is responsible for vetting at table assignment time; judges
+see no COI indication during scoring).
 
 **Read-only mode:** when `Scoresheet.status = SUBMITTED`, all inputs
 are disabled, Save Draft / Submit are hidden. Banner at top:
@@ -2509,8 +2551,6 @@ single-purpose.
 ┌─ Competition logo ─┐  CHIP 2026 — Amadora — Scoresheet              [back]
 │                    │
 └────────────────────┘
-
-⚠ This scoresheet's entry has a similar meadery name to your own.   ← soft COI banner (only if applicable)
 
 ┌─ Entry ─────────────────────────────────────────────────────────────┐
 │ Blind code: AMA-3                                                    │
@@ -2554,14 +2594,12 @@ Comment language     [ English        ⌄ ]   ← ComboBox
   info. (Mirrors the entry view dialog in `MyEntriesView` /
   `DivisionEntryAdminView`.)
 
-- **Soft COI banner** (only when
-  `MeaderyNameNormalizer.areSimilar(judge.meaderyName, judge.country,
-  entrant.meaderyName, entrant.country)` returns true).
-  - Component: `Span` with `LumoUtility.Background.WARNING_10` /
-    similar warning styling, `VaadinIcon.WARNING` prefix.
-  - Text from i18n key `scoresheet.coi.warning.similar-meadery` (no
-    interpolation — generic warning).
-  - Banner is informational; does not gate save/submit.
+- **No soft-COI banner.** Per the policy refinement (2026-05-09), soft
+  COI is admin-only — surfaced when the admin assigns judges to a
+  table (§4.B Tables tab "Assign Judges" dialog). Judges see no COI
+  indication during scoring. Hard COI is enforced at the
+  authorization layer (above) and at every mutating service call as
+  defense-in-depth.
 
 - **5 score-field cards** — each is a vertical card containing:
   1. Field name (localized via `MeadsI18NProvider` keyed off the
@@ -2688,8 +2726,6 @@ scoresheet.submit.confirm.body                You won't be able to edit it after
 scoresheet.cancel.unsaved.title               Discard unsaved changes?
 scoresheet.cancel.unsaved.body                You have unsaved edits. Discard and leave?
 
-scoresheet.coi.warning.similar-meadery        Heads up: this entry's meadery name is similar to yours. Use your judgement.
-
 scoresheet.submitted.notice                   This scoresheet has been submitted. Only an admin can revert it to draft.
 scoresheet.submitted.filled-by                Filled by {0}
 ```
@@ -2720,8 +2756,10 @@ PT translations defer to Phase 5.
   already exists (used by admin views). Cross-module read-only access
   is already declared in the Phase 3 module dependency
   (`{"competition", "entry", "identity"}`).
-- `MeaderyNameNormalizer.areSimilar` is the soft-COI gate (§3.8).
-  Scoresheet view calls it once on view-render and caches the result.
+- `MeaderyNameNormalizer.areSimilar` (the soft-COI gate per §3.8) is
+  **not called from this view** anymore — soft-COI is admin-time only.
+  Hard-COI rejection (`entry.userId == judge.userId`) is enforced at
+  view authorization and at the service layer.
 - Total-score live preview is computed client-side from current
   NumberField values; Phase 5 should bind it via Vaadin's
   `Binder.addStatusChangeListener` or simple `addValueChangeListener`
@@ -2732,27 +2770,34 @@ PT translations defer to Phase 5.
 - Submission email and downstream flows unchanged — Phase 3 events
   (`ScoresheetSubmittedEvent`) fire at service level.
 
-### 2026-05-09 — Phase 4.D: Judge judging hub + table drill-in (Item 3)
+### 2026-05-09 — Phase 4.D: Judge judging hub + table drill-in (Items 3 + 2)
+
+This section also covers Item 2 (admin per-table scoresheet drill-in)
+because the per-table view is **unified across roles** (decided
+2026-05-09): one view class, role-aware columns and actions. The
+admin-specific actions (Tier 0 revert SUBMITTED → DRAFT,
+`moveToTable`) are surfaced only when the current user is admin.
 
 **Two views:**
 
 ```
-/my-judging                               → MyJudgingView         (cross-competition hub)
-/my-judging/tables/:tableId               → JudgeTableView        (per-table scoresheet list)
+/my-judging                                                    → MyJudgingView      (cross-competition hub)
+/competitions/:compShortName/divisions/:divShortName/tables/:tableId  → TableView   (per-table scoresheet list, role-aware)
 ```
 
+(The per-table URL is fully scoped under the division to match
+existing `entry-admin` / `my-entries` conventions. Updated 2026-05-09.)
+
 Classes (Phase 5): `app.meads.judging.internal.MyJudgingView`,
-`app.meads.judging.internal.JudgeTableView`.
+`app.meads.judging.internal.TableView`.
 
 **Navigation (MainLayout sidebar):** `/my-judging` appears in the user
-dropdown menu / drawer for any user who has at least one
-`JudgeAssignment`. Decision: render the link unconditionally — empty-
-state handles users with no assignments — and rely on auth checks at
-each downstream route to gate access. (Avoids the "user gets a
-judging assignment mid-session and the link doesn't appear until
-re-login" pitfall.) Implementation note for Phase 5: the link visibility
-in MainLayout uses `JudgingService.hasAnyJudgeAssignment(userId)` —
-cheaper than `findTablesByJudgeUserId`.
+dropdown menu / drawer **only when the user has at least one
+`JudgeAssignment`** (per the 2026-05-09 decision; gated by
+`JudgingService.hasAnyJudgeAssignment(userId)` — cheap O(1) check).
+Avoids visual clutter for non-judging users. The link visibility is
+recomputed on layout render; new assignments appear after the next
+navigation event.
 
 #### `MyJudgingView` layout
 
@@ -2791,9 +2836,17 @@ cheaper than `findTablesByJudgeUserId`.
 ```
 
 **Authorization:** `@PermitAll` + `beforeEnter()`. Logged-in users only;
-no role gate. Empty state for users with zero assignments:
-"You have no judging assignments yet. Tables you're assigned to will
-appear here."
+no role gate. Empty state for users with zero assignments — helpful
+CTAs for context (per 2026-05-09 decision):
+
+```
+You have no judging assignments yet.
+When a competition admin assigns you to a table, it will appear here.
+
+In the meantime:
+  [Edit your judge profile →]   (Anchor to /profile, JudgeProfile editor section in Item 8)
+  [Browse competitions →]       (Anchor to /competitions)
+```
 
 **"Resume next draft" semantics:**
 - Visible iff `ScoresheetService.findNextDraftForJudge(userId)` returns
@@ -2828,12 +2881,12 @@ Optional<UUID> findNextDraftForJudge(UUID userId);
 // table.scheduledDate, table.name, scoresheet.createdAt.
 ```
 
-#### `JudgeTableView` layout
+#### `TableView` layout (unified per-role)
 
 ```
-/my-judging/tables/:tableId
+/competitions/:c/divisions/:d/tables/:tableId
 
-[Header]  CHIP 2026 — Amadora — Table A         [back to /my-judging]
+[Header]  CHIP 2026 — Amadora — Table A         [back]
 
 [Table info card]
   Category: M1A — Traditional Dry Mead
@@ -2842,11 +2895,13 @@ Optional<UUID> findNextDraftForJudge(UUID userId);
   Judges: Alice, Bob, Carla
   Scoresheets: 3 / 8 SUBMITTED
 
+[Filter bar]   Status: [All ⌄]   Search: [_______________ entry / mead]
+
 [Scoresheets grid]
-  | Entry         | Status     | Total | Filled by | Actions |
-  | AMA-3 (DRAFT) | DRAFT      | —     | —         | [✏ open] |
-  | AMA-7         | SUBMITTED  | 87    | Alice     | [👁 open] |
-  | AMA-12 (DRAFT)| DRAFT      | —     | Bob       | [✏ open] |
+  | Entry  | Mead name      | Status     | Total | Filled by | Actions                           |
+  | AMA-3  | Hiveheart Mead | DRAFT      | —     | —         | [✏ open]              (admin: + ⇆)  |
+  | AMA-7  | Sunset Cyser   | SUBMITTED  | 87    | Alice     | [👁 open]  (admin: + ⏪ revert + ⇆) |
+  | AMA-12 | Wild Bochet    | DRAFT      | —     | Bob       | [✏ open]              (admin: + ⇆)  |
 ```
 
 **Authorization:** `@PermitAll` + `beforeEnter()`:
@@ -2855,14 +2910,56 @@ Optional<UUID> findNextDraftForJudge(UUID userId);
 - Judge with `JudgeAssignment` for this `tableId`
 - Otherwise redirect to root.
 
-**Row click / action:** navigates to `ScoresheetView` for the entry's
-scoresheet. Read-only mode (per §4.C) for SUBMITTED scoresheets.
+**Filter bar** (decided 2026-05-09 — branch design):
+- **Status filter** — `Select<String>` with options `All`, `DRAFT`,
+  `SUBMITTED`. Default `All`.
+- **Search** — `TextField` (placeholder "Mead name or entry code"),
+  `setValueChangeMode(EAGER)`, filters Grid client-side.
 
-**Soft COI surfacing:** if the user is a judge AND
-`MeaderyNameNormalizer.areSimilar(judge, entry)` returns true, show a
-warning icon next to the entry name with tooltip "Possible COI:
-similar meadery name to yours". Clicking still opens ScoresheetView
-(soft only).
+**No COI column** (per the 2026-05-09 policy): judges see no COI
+indication during scoring. Soft-COI vetting happens admin-side at
+table assignment time (§4.B Tables tab "Assign Judges" dialog).
+
+**Per-row actions** (role-aware):
+
+| Action | Icon | Visible to | When |
+|---|---|---|---|
+| Open / View | `eye` (SUBMITTED) or `pencil` (DRAFT) | all roles | always |
+| Revert SUBMITTED → DRAFT | `arrow-backward` | **admin only** | `status = SUBMITTED` AND category `medalRoundStatus ∈ {PENDING, READY}` |
+| Move to another table | `arrows-cross` | **admin only** | `status = DRAFT` AND ≥ 1 other ROUND_1 table covers the same JUDGING category |
+
+**Revert SUBMITTED → DRAFT (admin only).** Confirmation Dialog with
+body: "This re-opens the scoresheet for edits. Score values are
+preserved; total score is cleared until re-submission. If this is the
+last submitted scoresheet at the table, the table status reopens to
+ROUND_1." Hard-block (disabled with tooltip) if
+`medalRoundStatus = ACTIVE` or `COMPLETE`. Calls
+`ScoresheetService.revertToDraft(scoresheetId, adminUserId)` per §2.B
+Tier 0.
+
+**Move-to-table dialog (admin only).** Per §2.1 sync rule. Header:
+"Move scoresheet for {entryCode} to another table?" Field: target
+table `Select<JudgingTable>` populated from
+`JudgingService.findTablesByDivisionAndCategory(divisionId,
+divisionCategoryId)` excluding the current table; only ROUND_1 tables
+listed. Helper: "The scoresheet must be DRAFT and the target table's
+category must match the entry's final category. The current judge
+fill (if any) is preserved." Empty state when no other table matches:
+"No other ROUND_1 tables cover this category. Add a table first."
+(Save disabled.) Calls `ScoresheetService.moveToTable(scoresheetId,
+newTableId, adminUserId)`.
+
+**Tier 1 implicit reopen.** When a revert at a `COMPLETE` table flips
+it to `ROUND_1` (per §2.B Tier 1 implicit retreat — entity method
+`Table.reopenToRound1()` invoked inside
+`ScoresheetService.revertToDraft`), the dashboard's Tables grid status
+badge updates on next reload. **No explicit "Reopen table" button** is
+exposed on this view (matches §2.B: Tier 1 retreat is only reachable
+via Tier 0). Documented in the revert dialog body so admins
+understand why the table status changed.
+
+**Row click / action:** navigates to `ScoresheetView` (per §4.C) for
+the entry's scoresheet. Read-only mode for SUBMITTED scoresheets.
 
 #### Incremental i18n keys
 
@@ -2889,13 +2986,33 @@ judge-table.info.scheduled                    Scheduled
 judge-table.info.status                       Status
 judge-table.info.judges                       Judges
 judge-table.info.scoresheets                  Scoresheets
-judge-table.column.entry                      Entry
-judge-table.column.status                     Status
-judge-table.column.total                      Total
-judge-table.column.filled-by                  Filled by
-judge-table.column.actions                    Actions
-judge-table.coi.tooltip                       Possible COI: similar meadery name to yours.
-judge-table.empty                             No scoresheets at this table yet.
+table.column.entry                            Entry
+table.column.mead                             Mead name
+table.column.status                           Status
+table.column.total                            Total
+table.column.filled-by                        Filled by
+table.column.actions                          Actions
+table.filter.status.label                     Status
+table.filter.status.option.all                All
+table.filter.status.option.draft              Draft
+table.filter.status.option.submitted          Submitted
+table.filter.search.placeholder               Mead name or entry code
+table.action.open                             Open
+table.action.view                             View
+table.action.revert                           Revert to draft
+table.action.move                             Move to another table
+table.revert.confirm.title                    Revert scoresheet for {0}?
+table.revert.confirm.body                     This re-opens the scoresheet for edits. Score values are preserved; total score is cleared until re-submission. If this is the last submitted scoresheet at the table, the table status reopens to ROUND_1.
+table.revert.blocked.medal-round-active       Cannot revert while medal round is active or complete for this category.
+table.revert.success                          Reverted scoresheet for {0} to draft.
+table.move.dialog.title                       Move scoresheet for {0} to another table?
+table.move.target.label                       Target table
+table.move.target.option-template             {0} ({1} judges, {2}/{3} submitted)
+table.move.helper                             The scoresheet must be DRAFT and the target table's category must match the entry's final category. The current judge fill (if any) is preserved.
+table.move.empty.no-other-tables              No other ROUND_1 tables cover this category. Add a table first.
+table.move.success                            Moved scoresheet to {0}.
+table.empty                                   No scoresheets at this table yet.
+table.back                                    Back
 ```
 
 #### Implications
@@ -2916,7 +3033,9 @@ judge-table.empty                             No scoresheets at this table yet.
 
 ### 2026-05-09 — Phase 4.E: Medal round forms (Item 5)
 
-**View:** single shared route used by both judges and admins.
+**View:** single shared route used by both judges and admins. URL is
+fully scoped (matching the per-table `TableView` and `ScoresheetView`
+URL conventions decided 2026-05-09).
 
 ```
 /competitions/:compShortName/divisions/:divShortName/medal-rounds/:divisionCategoryId
@@ -2942,6 +3061,11 @@ judge.userId` rejected at service layer per §3.7. UI hides the action
 buttons for such rows (replaces with "—" + tooltip "You cannot judge
 your own entry").
 
+**No soft-COI surfacing** to judges (per the 2026-05-09 policy). The
+admin handled potential meadery-name conflicts at table-assignment
+time. Judges do not see COI columns or warnings during medal-round
+work.
+
 #### Layout — common header
 
 ```
@@ -2954,6 +3078,9 @@ your own entry").
   ⚠ {N} slots tied — resolve before finalizing.
 
 [Entries grid]                          ← layout differs per mode (below)
+
+[Bottom summary line]                   ← live updates per row mutation
+  Summary: 1 Gold · 2 Silver · 3 Bronze · 1 Withhold · 4 unset
 
 [← Back]                                ← returns to source (/my-judging or /judging-admin)
 ```
@@ -2971,38 +3098,77 @@ no action buttons in rows. `Reopen` button still available for admin.
 
 #### COMPARATIVE mode
 
-Grid sourced from `EntryService.findByDivisionCategoryId(divisionCategoryId)`
-joined with `MedalAward` (left join — rows may not exist).
+**Eligibility (refined 2026-05-09 — branch design):** rows are
+entries with **both**:
+- `Entry.finalCategoryId = divisionCategoryId` (current JUDGING-scope
+  category for this medal round), AND
+- A SUBMITTED Round 1 `Scoresheet` with `advancedToMedalRound = true`
+  (per §1.9).
+
+Service: `JudgingService.findMedalRoundEntries(divisionCategoryId,
+mode)` — returns DTO list `[entryId, entryCode, meadName, r1Total,
+currentMedalAwardId, currentMedal]`. (Note: SCORE_BASED variant uses
+all entries with finalCategoryId — see SCORE_BASED section below.)
 
 | Column | Source / format |
 |---|---|
-| Entry | `Entry.entryCode` + meadName + soft-COI warning icon if applicable |
+| Entry | `Entry.entryCode` + meadName |
 | Total | `Scoresheet.totalScore` (read-only reference, not authoritative for medals in this mode) |
-| Advanced | `Scoresheet.advancedToMedalRound` (✓/—) |
+| Advanced | `Scoresheet.advancedToMedalRound` (✓/—) — always ✓ in COMPARATIVE per eligibility filter |
 | Current medal | `MedalAward.medal` badge or "—" if no row, "Withheld" if `medal=null` |
-| Actions | `[🥇 Gold] [🥈 Silver] [🥉 Bronze] [✗ Withhold] [⊘ Clear]` |
+| Actions | hybrid: button row + dropdown |
+
+**Per-row controls — hybrid (decided 2026-05-09):**
+
+Primary path (button row): `[🥇 Gold] [🥈 Silver] [🥉 Bronze]` —
+fastest click for the most common award decisions.
+
+Secondary path (dropdown): `[ More ▾ ]` opens a small popup menu with
+the rarer actions:
+- **Withhold** — record explicit withhold (`medal=null`)
+- **Clear** — delete the MedalAward row (returns to "no row" state)
+
+Rationale: scanning button rows is fast; the rare withhold/clear
+actions live one extra click away to keep the row visually clean.
 
 **Action semantics:**
-- `[🥇 Gold]` → `JudgingService.recordMedal(entryId, GOLD, judgeUserId)`
-  if no row exists, else `updateMedal(medalAwardId, GOLD, judgeUserId)`.
+- `[🥇 Gold]` → `JudgingService.recordMedal(entryId, GOLD,
+  judgeUserId)` if no row exists, else `updateMedal(medalAwardId,
+  GOLD, judgeUserId)`.
 - Same for Silver / Bronze.
-- `[✗ Withhold]` → `recordMedal(entryId, null)` or `updateMedal(id, null)`.
-  Records explicit withhold with `medal=null` (per §1.7 / D11).
-- `[⊘ Clear]` → `deleteMedalAward(id)` — removes the row entirely
-  (entry returns to "no row" state). Useful for reverting a mistaken
-  withhold or medal.
+- **Withhold** (dropdown) → `recordMedal(entryId, null)` or
+  `updateMedal(id, null)`. Records explicit withhold with `medal=null`
+  (per §1.7 / D11).
+- **Clear** (dropdown) → `deleteMedalAward(id)` — removes the row
+  entirely (entry returns to "no row" state). Useful for reverting a
+  mistaken withhold or medal.
 
-Action buttons disabled (greyed) for:
+Action controls disabled (greyed) for:
 - Self-COI entries (judge.userId == entry.userId) — replaced with "—"
-- Status != ACTIVE — entire action column disabled
+  + tooltip "You cannot judge your own entry"
+- Status != ACTIVE — entire action column disabled (read-only at
+  COMPLETE)
 
 UI feedback: clicking a medal action immediately updates the row (no
 intermediate confirmation for individual medals — judges award fast).
 Bulk operations (e.g. "withhold all") deferred to future iteration.
 
+**Notes column — deferred to v2 (per branch design).** A per-row Notes
+TextField was considered to capture per-medal rationale, but no
+schema field exists on `MedalAward` for it (§1.7 explicitly dropped
+the rationale field). Pinned here so a future session doesn't
+re-debate; revisit if a real need surfaces.
+
 #### SCORE_BASED mode
 
-Same column set as COMPARATIVE, but with three additional UX layers:
+**Eligibility (refined 2026-05-09):** rows are **all entries** with
+`Entry.finalCategoryId = divisionCategoryId` and a SUBMITTED Round 1
+Scoresheet — regardless of `advancedToMedalRound` flag. SCORE_BASED
+walks Round 1 totals; the advancement flag is a COMPARATIVE-only
+filter. (Both modes still require a SUBMITTED scoresheet — entries
+without a Round 1 score can't be ranked.)
+
+Same column set as COMPARATIVE, plus three additional UX layers:
 
 **1. Auto-populated rows:**
 On entering ACTIVE per §2.D D10, the service auto-creates MedalAward
@@ -3076,16 +3242,19 @@ medal-round.medal.auto                         (auto)
 medal-round.action.award-gold                  Award Gold
 medal-round.action.award-silver                Award Silver
 medal-round.action.award-bronze                Award Bronze
+medal-round.action.more                        More
 medal-round.action.withhold                    Withhold
 medal-round.action.clear                       Clear
 medal-round.action.tied-caption                Tied at {0} — resolve to continue.
 
 medal-round.coi.self.tooltip                   You cannot judge your own entry.
-medal-round.coi.similar.tooltip                Possible COI: similar meadery name to yours.
+
+medal-round.summary                            Summary: {0} Gold · {1} Silver · {2} Bronze · {3} Withhold · {4} unset
 
 medal-round.finalize.confirm.title             Finalize medals for {0}?
 medal-round.finalize.confirm.body              You can reopen later if needed.
 medal-round.empty                              No entries in this category.
+medal-round.empty.no-advanced                  No entries advanced to medal round. Judges mark advancement on the Round 1 scoresheet.
 ```
 
 Error keys:
@@ -3316,6 +3485,219 @@ error.division.min-judges-locked                          Minimum judges per tab
   entry limits + meaderyNameRequired DRAFT-only locking) is the
   template for all three new fields.
 
+### 2026-05-09 — Phase 4.G: Admin per-table scoresheet drill-in (Item 2)
+
+**Folded into §4.D** (decision 2026-05-09: unified per-role view, one
+class). Item 2 is no longer a separate view; admin-only actions
+(Tier 0 revert SUBMITTED → DRAFT, `moveToTable`) appear in the same
+`TableView` as the judge view, gated by role check inside the row's
+Actions column.
+
+See §4.D "Per-row actions (role-aware)" + the Revert and Move dialog
+specs. Service helpers added there:
+`JudgingService.findTablesByDivisionAndCategory(divisionId, divisionCategoryId)`
+for the move-target Select.
+
+This section preserved as an explicit pointer so future readers
+looking up "Item 2" find the admin actions in §4.D rather than
+expecting a separate view.
+
+### 2026-05-09 — Phase 4.H: BOS form (Item 6)
+
+**View:** dedicated form for placement entry, separate from the
+dashboard's BOS summary tab (§4.B Tab 3).
+
+```
+/competitions/:compShortName/divisions/:divShortName/bos
+```
+
+(URL fully scoped under the division — matches the per-table /
+medal-round / scoresheet conventions decided 2026-05-09.)
+
+Class (Phase 5): `app.meads.judging.internal.BosView`.
+
+**Authorization (`@PermitAll` + `beforeEnter()`):** admin-only per
+§4.A:
+1. Load `Division` and `Judging`. `error.not-found` if absent.
+2. Reject if `Judging.phase ∉ {BOS, COMPLETE}` with
+   `error.bos.not-active` redirect to dashboard. (BOS placements are
+   only entered during phase=BOS; phase=COMPLETE renders read-only —
+   see "Editing during COMPLETE" below.)
+3. Resolve `currentUserId`. Authorize:
+   - SYSTEM_ADMIN / competition ADMIN of the division's competition →
+     allowed,
+   - Anyone else (including assigned judges) → forward to `""` (root)
+     with `error.not-authorized`.
+
+(Future: head-judge designation per §4.A's (b1) / (b2) reopens this
+gate; v1 stays admin-only.)
+
+#### Layout
+
+```
+[Header]  Best of Show — Profissional             [back to dashboard]
+  Phase: BOS   Places: 3
+
+[Placements grid — all bosPlaces slots rendered]
+  | Place | Entry  | Mead name      | Category | Awarded by | Action       |
+  | 1     | AMA-12 | Hiveheart Mead | M1B      | admin@…    | [✏] [🗑]      |
+  | 2     | AMA-21 | Wild Bochet    | M3       | admin@…    | [✏] [🗑]      |
+  | 3     | (Place 3 — not assigned)                         | [+]          |
+
+[Candidates section — Gold medals not yet placed]
+  | Entry  | Mead name      | Category | R1 total |
+  | AMA-30 | Honey Storm    | M3       | 91       |
+  | AMA-37 | Cyser Light    | M1B      | 89       |
+  | …                                                                       |
+  (Drag a candidate onto a place row, or use [+] to assign.)
+
+[← Back to dashboard]
+```
+
+**Place rows (1..bosPlaces).** All slots always rendered. Empty
+slots show "Place {N} — not assigned" + a `[+]` button. Filled slots
+show placement details + `[✏ Reassign]` and `[🗑 Delete]` buttons.
+
+**Candidates list.** Entries with `MedalAward.medal = GOLD` for the
+current division, **excluding** entries already placed in BOS.
+Columns: entry blind code, mead name, category code, R1 total. Sorted
+by R1 total descending.
+
+#### Drag-and-drop assignment (decided 2026-05-09)
+
+Primary affordance: **drag a candidate row onto a place row** to
+assign. Vaadin Grid native support via `GridDragSource` /
+`GridDropTarget`. Matches CHIP §7's informal in-room process where
+the head judge points at a bottle.
+
+The `[+]` button on empty place rows opens the same dialog as
+Reassign — keyboard-accessible and touch-friendly fallback.
+
+**Phase 4 follow-up: mobile / touch UX review.** A general review of
+which judging UX flows are problematic on mobile / touch devices is
+deferred to a follow-up item within Phase 4 (see Open Questions
+§Q17). The drag-and-drop on `BosView` is the most-affected flow; the
+`[+]` dialog fallback handles touch/keyboard cases for v1.
+
+#### Assign / Reassign dialog
+
+- Header: "Assign place {N}" / "Reassign place {N}"
+- Field: candidate `Select<Entry>` populated from the candidates list
+  above; option label format: `{entryCode} · {meadName} · {categoryCode} · {r1Total}`.
+- Initial value: empty for Assign; current entry for Reassign.
+- Helper: "Only Gold medal entries are eligible for BOS." When
+  candidates list is empty, Select shows "No candidates available."
+- Buttons: Cancel | Save (`setDisableOnClick(true)`).
+- Save semantics:
+  - Assign (no existing placement at this place) →
+    `JudgingService.recordBosPlacement(divisionId, entryId, place,
+    adminUserId)`.
+  - Reassign (existing placement) → `deleteBosPlacement(placementId,
+    adminUserId)` + `recordBosPlacement(...)` in the same transaction.
+    (`updateBosPlacement` per §3.2 only changes the place index, not
+    the entry; entry-change is a delete-then-record.)
+
+#### Delete confirmation
+
+Standard confirmation Dialog. Body: "Remove {entryCode} from place
+{N}?" Calls `JudgingService.deleteBosPlacement(placementId,
+adminUserId)` per §3.2. On the empty-place row, the Action column
+collapses to just `[+]`.
+
+#### Editing during COMPLETE
+
+`Judging.phase = COMPLETE` after `completeBos`. Editing BOS
+placements at COMPLETE is **not allowed** without an explicit Tier 3
+retreat (Reopen BOS). This view, when reached at COMPLETE phase,
+renders **read-only**: candidates list hidden, all action buttons
+hidden, only the placements grid + a banner "BOS is COMPLETE. Reopen
+on the dashboard to edit." with an Anchor.
+
+#### Empty-BOS allowed (per §2.D D11)
+
+If admins choose to leave one or more places empty (e.g. only assign
+place 1), `completeBos` from the dashboard works without all places
+filled. The empty-slot rows simply remain "(not assigned)"
+indefinitely. Both the dashboard's BOS panel and this view render
+them explicitly so the empty state is visible.
+
+#### Authorization rejections
+
+Server-side, all three operations (`recordBosPlacement`,
+`updateBosPlacement`, `deleteBosPlacement`) require `adminUserId` to
+be SYSTEM_ADMIN or competition ADMIN per §3.7 / §4.A. Notifications
+use locale-aware translation.
+
+#### No Tier-3 actions on this form
+
+Start BOS / Reopen BOS / Reset BOS all live on §4.B Tab 3 (BOS
+header). The form is for placements only.
+
+#### Incremental i18n keys
+
+```
+bos.title                                     Best of Show — {0}
+bos.header.phase                              Phase
+bos.header.places                             Places
+bos.placements.column.place                   Place
+bos.placements.column.entry                   Entry
+bos.placements.column.mead                    Mead name
+bos.placements.column.category                Category
+bos.placements.column.awarded-by              Awarded by
+bos.placements.column.action                  Action
+bos.placements.empty-slot                     Place {0} — not assigned
+bos.placements.action.assign                  Assign
+bos.placements.action.reassign                Reassign
+bos.placements.action.delete                  Delete
+bos.assign.dialog.title                       Assign place {0}
+bos.reassign.dialog.title                     Reassign place {0}
+bos.assign.candidate.label                    Candidate
+bos.assign.candidate.option-template          {0} · {1} · {2} · {3}
+bos.assign.candidate.empty                    No candidates available.
+bos.assign.helper                             Only Gold medal entries are eligible for BOS.
+bos.delete.confirm.title                      Remove placement
+bos.delete.confirm.body                       Remove {0} from place {1}?
+bos.candidates.title                          Gold candidates (unplaced)
+bos.candidates.empty                          No remaining Gold candidates.
+bos.candidates.column.entry                   Entry
+bos.candidates.column.mead                    Mead name
+bos.candidates.column.category                Category
+bos.candidates.column.r1-total                R1 total
+bos.candidates.dnd-helper                     Drag a candidate onto a place row, or use [+] to assign.
+bos.complete.banner                           BOS is COMPLETE. Reopen on the dashboard to edit.
+bos.complete.banner.reopen-link               Open dashboard
+bos.back-to-dashboard                         Back to dashboard
+```
+
+Error keys:
+
+```
+error.bos.not-found                           Best of Show not found.
+error.bos.not-active                          BOS is not active for this division.
+error.bos.unauthorized                        Only admins can record BOS placements.
+error.bos.entry-not-gold                      Only GOLD-medal entries can receive BOS placements.
+```
+
+(`error.bos.unauthorized` and `error.bos.entry-not-gold` already
+recorded in §4.B; repeated here for surface clarity.)
+
+#### New service / repo methods (Phase 5)
+
+| Module | Method | Reason |
+|---|---|---|
+| judging | `JudgingService.findBosCandidates(divisionId)` (DTO list of unplaced GOLD entries with R1 total) | Candidates panel render |
+| judging | `JudgingService.findBosPlacements(divisionId)` (DTO list including synthetic empty-slot rows up to bosPlaces) | Placements grid render |
+| judging | (existing per §3.2) `recordBosPlacement` / `updateBosPlacement` / `deleteBosPlacement` with renamed `adminUserId` parameter (per §4.A) | none new |
+
+#### Implications
+
+- Item 6 (BOS form) closed.
+- Phase 4.B Tab 3 (dashboard BOS panel) summarizes; this form is the
+  detailed placement workspace. The dashboard's "Manage placements →"
+  button navigates here.
+- §Q17 (mobile / touch UX review) added to Open Questions —
+  drag-and-drop on this form is the most affected flow.
+
 ---
 
 ## Open Questions
@@ -3411,6 +3793,28 @@ role, no per-table or per-division head-judge designation).
 `BosPlacement.awardedBy` records the admin user; head-judge concept
 can be added post-v1 without breaking changes. §3.7 authorization
 table updated accordingly.
+
+### Q17 — Mobile / touch UX review for judging surfaces
+**Status:** Open (raised 2026-05-09 during Phase 4.H BOS form design;
+deferred — UX review, not blocking implementation).
+
+A pass to identify which judging UX flows are problematic on mobile /
+touch devices and decide which need touch-friendly alternates. Most-
+affected surfaces:
+
+- **`BosView` drag-and-drop** (§4.H) — primary affordance is
+  GridDragSource / GridDropTarget. The `[+]` dialog already handles
+  touch / keyboard fallback; review if it's discoverable enough.
+- **`ScoresheetView` NumberFields** (§4.C) — step buttons help, but
+  the long form may be cumbersome on small screens. Is a stepped /
+  paginated mode useful for tablet judging?
+- **`MedalRoundView` button row + dropdown** (§4.E) — tap targets
+  must be large enough; review the "More ▾" popup positioning.
+- **`TableView` row actions** (§4.D) — multiple icon buttons per row
+  may be cramped; consider an overflow menu on narrow widths.
+
+**Decision deferred** to a later Phase 4 follow-up (or Phase 5
+implementation review with real device testing).
 
 ### Q16 — Judging-organisation label variant (per-entry tasting labels)
 **Status:** Open (raised 2026-05-09; deferred — UX/print enhancement,
