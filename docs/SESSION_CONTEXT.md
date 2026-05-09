@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `feature/judging-module` (Phase 5 in progress)
-**Tests:** 785 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-09 (Phase 5 cycles 1–3: Judging, JudgingTable/JudgeAssignment, CategoryJudgingConfig; V20–V22 migrations)
+**Tests:** 789 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-09 (Phase 5 cycles 1–4: Judging, JudgingTable, CategoryJudgingConfig, Scoresheet+ScoreField; V20–V23 migrations)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -701,8 +701,23 @@ skeleton from Phase 3 translates mechanically.
   `startMedalRound`, `completeMedalRound`, `reopenMedalRound`,
   `resetMedalRound`. `CategoryJudgingConfigRepository` with
   `findByDivisionCategoryId`. V22 migration. 2 repository tests.
-- 🟡 Next: TDD Cycle 4 — `Scoresheet` (+ `ScoreField` child) — uses
-  the same within-aggregate child pattern as JudgingTable.
+- ✅ TDD Cycle 4 — `Scoresheet` aggregate + `ScoreField` child:
+  `Scoresheet` (UUID self-gen, `tableId` mutable while DRAFT,
+  `entryId` UNIQUE FK, `filledByJudgeUserId`, `ScoresheetStatus`
+  enum DRAFT/SUBMITTED, `totalScore` computed at submit, free-text
+  `overallComments`, `advancedToMedalRound` flag, `submittedAt`,
+  `commentLanguage`); 8 domain methods (`updateScore`,
+  `updateOverallComments`, `setFilledBy`, `setAdvancedToMedalRound`,
+  `submit` with all-fields-filled validation, `revertToDraft`,
+  `moveToTable`, `setCommentLanguage`); 5 `ScoreField` children
+  auto-created at construction from `MjpScoringFieldDefinition`
+  constants (Appearance 12, Aroma/Bouquet 30, Flavour and Body 32,
+  Finish 14, Overall Impression 12 = total max 100); `ScoreField`
+  validates `0 <= value <= maxValue`. `ScoresheetRepository` with
+  `findByEntryId` (UNIQUE) + `findByTableId`. V23 migration:
+  `scoresheets` + `score_fields` (FK cascade DELETE on score_fields,
+  UNIQUE (scoresheet_id, field_name)). 4 repository tests.
+- 🟡 Next: TDD Cycle 5 — `MedalAward`.
 
 ### Priority 6: Awards module
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md` and `docs/specs/awards.md`.
