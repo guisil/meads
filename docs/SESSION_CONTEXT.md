@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `feature/judging-module` (Phase 5 in progress)
-**Tests:** 783 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-09 (Phase 5 cycles 1–2: Judging + JudgingTable/JudgeAssignment aggregates, V20 + V21 migrations)
+**Tests:** 785 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-09 (Phase 5 cycles 1–3: Judging, JudgingTable/JudgeAssignment, CategoryJudgingConfig; V20–V22 migrations)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -693,7 +693,16 @@ skeleton from Phase 3 translates mechanically.
   assignments, find-by-judging-id, orphan-removal of assignment,
   cross-table find-by-judge, empty result). V21 migration:
   `judging_tables` + `judge_assignments` (with FK cascade DELETE).
-- 🟡 Next: TDD Cycle 3 — `CategoryJudgingConfig`.
+- ✅ TDD Cycle 3 — `CategoryJudgingConfig` aggregate: UUID self-gen,
+  `divisionCategoryId` UNIQUE FK, `MedalRoundMode` enum (COMPARATIVE
+  default / SCORE_BASED), `MedalRoundStatus` enum (PENDING / READY /
+  ACTIVE / COMPLETE state machine). 7 domain methods per §2.G:
+  `updateMode` (gated to PENDING ∨ READY), `markReady`, `markPending`,
+  `startMedalRound`, `completeMedalRound`, `reopenMedalRound`,
+  `resetMedalRound`. `CategoryJudgingConfigRepository` with
+  `findByDivisionCategoryId`. V22 migration. 2 repository tests.
+- 🟡 Next: TDD Cycle 4 — `Scoresheet` (+ `ScoreField` child) — uses
+  the same within-aggregate child pattern as JudgingTable.
 
 ### Priority 6: Awards module
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md` and `docs/specs/awards.md`.
