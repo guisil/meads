@@ -106,4 +106,47 @@ class CompetitionTest {
         assertThat(competition.getPhoneNumber()).isNull();
         assertThat(competition.getWebsite()).isNull();
     }
+
+    @Test
+    void shouldStartWithEmptyCommentLanguages() {
+        var competition = createCompetition();
+
+        assertThat(competition.getCommentLanguages()).isEmpty();
+    }
+
+    @Test
+    void shouldUpdateCommentLanguages() {
+        var competition = createCompetition();
+
+        competition.updateCommentLanguages(java.util.Set.of("en", "pt"));
+
+        assertThat(competition.getCommentLanguages()).containsExactlyInAnyOrder("en", "pt");
+    }
+
+    @Test
+    void shouldReplaceCommentLanguagesOnUpdate() {
+        var competition = createCompetition();
+        competition.updateCommentLanguages(java.util.Set.of("en", "pt"));
+
+        competition.updateCommentLanguages(java.util.Set.of("es"));
+
+        assertThat(competition.getCommentLanguages()).containsExactly("es");
+    }
+
+    @Test
+    void shouldRejectInvalidLanguageCode() {
+        var competition = createCompetition();
+
+        assertThatThrownBy(() -> competition.updateCommentLanguages(java.util.Set.of("English")))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void shouldAcceptBcp47ExtendedLanguageCode() {
+        var competition = createCompetition();
+
+        competition.updateCommentLanguages(java.util.Set.of("pt-BR"));
+
+        assertThat(competition.getCommentLanguages()).containsExactly("pt-BR");
+    }
 }

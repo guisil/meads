@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `feature/judging-module` (Phase 5 in progress)
-**Tests:** 804 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-09 (Phase 5 cycles 1–7: all 7 judging aggregates persist correctly; V20–V26 migrations)
+**Tests:** 818 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-09 (Phase 5 cycles 1–8: 7 judging aggregates + competition-module additions for judging; V20–V27 migrations)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -747,9 +747,27 @@ skeleton from Phase 3 translates mechanically.
 - 🎉 All 7 judging-module aggregates implemented (Judging,
   JudgingTable+JudgeAssignment, CategoryJudgingConfig,
   Scoresheet+ScoreField, MedalAward, BosPlacement, JudgeProfile).
-- 🟡 Next: Competition-module additions (Competition.commentLanguages,
-  Division.bosPlaces, Division.minJudgesPerTable per §2.G), then
-  services + cross-module guards + events + views.
+- ✅ TDD Cycle 8 — Competition + Division judging fields:
+  `Competition.commentLanguages` (`Set<String>` via
+  `@ElementCollection` → `competition_comment_languages` join table,
+  eager fetch); `updateCommentLanguages(Set<String>)` validates each
+  code against `^[a-z]{2}(-[A-Za-z0-9]+)?$` BCP-47 pattern; getter
+  returns unmodifiable set. `Division.bosPlaces` (default 1, locked
+  past REGISTRATION_OPEN) and `Division.minJudgesPerTable` (default
+  2, locked past REGISTRATION_CLOSED at entity level — additional
+  cross-module lock via `MinJudgesPerTableLockGuard` interface in
+  competition module, to be implemented by judging module). Both
+  domain methods reject `< 1`. V27 migration:
+  `competition_comment_languages` join table + two ALTER TABLE
+  columns on `divisions` with `NOT NULL DEFAULT 1` / `2`
+  (backward-compatible). 14 new unit tests across DivisionTest +
+  CompetitionTest.
+- 🎉 Entity layer COMPLETE. All judging-module aggregates +
+  competition-module additions implemented and persisted.
+- 🟡 Next: services layer (`JudgingService`, `ScoresheetService`,
+  `JudgeProfileService` per §3.2–§3.5) + cross-module guards
+  (`JudgingDivisionStatusRevertGuard`, `JudgingMinJudgesLockGuard`)
+  + events.
 
 ### Priority 6: Awards module
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md` and `docs/specs/awards.md`.

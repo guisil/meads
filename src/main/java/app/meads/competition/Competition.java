@@ -5,8 +5,11 @@ import lombok.Getter;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 @Entity
 @Table(name = "competitions")
@@ -16,6 +19,7 @@ public class Competition {
     private static final int MAX_LOGO_SIZE = 2560 * 1024;
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of("image/png", "image/jpeg");
     static final String SHORT_NAME_PATTERN = "^[a-z0-9][a-z0-9-]*[a-z0-9]$";
+    private static final Pattern LANGUAGE_CODE_PATTERN = Pattern.compile("^[a-z]{2}(-[A-Za-z0-9]+)?$");
 
     @Id
     private UUID id;
@@ -52,6 +56,12 @@ public class Competition {
 
     @Column(name = "website", length = 500)
     private String website;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "competition_comment_languages",
+            joinColumns = @JoinColumn(name = "competition_id"))
+    @Column(name = "language_code", length = 5, nullable = false)
+    private Set<String> commentLanguages = new HashSet<>();
 
     @Column(nullable = false)
     private Instant createdAt;
@@ -132,5 +142,24 @@ public class Competition {
         this.shippingAddress = shippingAddress;
         this.phoneNumber = phoneNumber;
         this.website = website;
+    }
+
+    public Set<String> getCommentLanguages() {
+        return Collections.unmodifiableSet(commentLanguages);
+    }
+
+    public void updateCommentLanguages(Set<String> codes) {
+        if (codes != null) {
+            for (var code : codes) {
+                if (code == null || !LANGUAGE_CODE_PATTERN.matcher(code).matches()) {
+                    throw new IllegalArgumentException(
+                            "Language code must match BCP-47 (e.g. 'en', 'pt-BR'); got: " + code);
+                }
+            }
+        }
+        this.commentLanguages.clear();
+        if (codes != null) {
+            this.commentLanguages.addAll(codes);
+        }
     }
 }

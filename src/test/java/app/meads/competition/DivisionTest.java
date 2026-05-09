@@ -105,6 +105,87 @@ class DivisionTest {
     }
 
     @Test
+    void shouldDefaultBosPlacesToOne() {
+        var division = createDraftDivision();
+
+        assertThat(division.getBosPlaces()).isEqualTo(1);
+    }
+
+    @Test
+    void shouldDefaultMinJudgesPerTableToTwo() {
+        var division = createDraftDivision();
+
+        assertThat(division.getMinJudgesPerTable()).isEqualTo(2);
+    }
+
+    @Test
+    void shouldUpdateBosPlacesInDraft() {
+        var division = createDraftDivision();
+
+        division.updateBosPlaces(3);
+
+        assertThat(division.getBosPlaces()).isEqualTo(3);
+    }
+
+    @Test
+    void shouldUpdateBosPlacesInRegistrationOpen() {
+        var division = createDraftDivision();
+        division.advanceStatus(); // REGISTRATION_OPEN
+
+        division.updateBosPlaces(2);
+
+        assertThat(division.getBosPlaces()).isEqualTo(2);
+    }
+
+    @Test
+    void shouldRejectBosPlacesChangeAfterRegistrationOpen() {
+        var division = createDraftDivision();
+        division.advanceStatus();
+        division.advanceStatus(); // REGISTRATION_CLOSED
+
+        assertThatThrownBy(() -> division.updateBosPlaces(2))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void shouldRejectNonPositiveBosPlaces() {
+        var division = createDraftDivision();
+
+        assertThatThrownBy(() -> division.updateBosPlaces(0))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void shouldUpdateMinJudgesPerTableThroughRegistrationClosed() {
+        var division = createDraftDivision();
+        division.advanceStatus();
+        division.advanceStatus(); // REGISTRATION_CLOSED
+
+        division.updateMinJudgesPerTable(3);
+
+        assertThat(division.getMinJudgesPerTable()).isEqualTo(3);
+    }
+
+    @Test
+    void shouldRejectMinJudgesPerTableChangeOnceJudging() {
+        var division = createDraftDivision();
+        division.advanceStatus();
+        division.advanceStatus();
+        division.advanceStatus(); // JUDGING
+
+        assertThatThrownBy(() -> division.updateMinJudgesPerTable(3))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void shouldRejectNonPositiveMinJudgesPerTable() {
+        var division = createDraftDivision();
+
+        assertThatThrownBy(() -> division.updateMinJudgesPerTable(0))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     void shouldThrowWhenAdvancingPastTerminalStatus() {
         var division = createDraftDivision();
         division.advanceStatus(); // REGISTRATION_OPEN
