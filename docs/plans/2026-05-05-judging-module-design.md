@@ -1,14 +1,14 @@
 # Judging Module — Design Document
 
 **Started:** 2026-05-05
-**Status:** Phases 1–3 ✅ complete; Phase 4 nearly done (4.A–4.J done
-2026-05-09 after a branch reconciliation pass, covering §Q15 +
-admin division-level judging dashboard + judge scoresheet form +
-unified per-role TableView (judge hub + admin per-table) + medal
-round forms + admin Settings extensions + dedicated BOS form +
-JudgeProfile editor surfaces + ScoresheetPdfService). Item 10
-(consolidated i18n inventory) + §Q17 (mobile/touch UX review)
-remain. Phase 1 (2026-05-05) scoped the module boundary. Phase 2
+**Status:** Phases 1–4 ✅ complete (all 10 items + §Q15 closed
+2026-05-09 in a single session after a branch-reconciliation pass).
+§Q16 + §Q17 deferred (per-entry tasting-label PDF variant; mobile /
+touch UX review). **Phase 5 (implementation) is the next phase** —
+Java skeleton from Phases 2–4 translates mechanically. Phase 4 drove
+a project-wide policy refinement: judges see no COI indicators
+during scoring; soft-COI is admin-only at table assignment time;
+URLs are fully scoped under the division. Phase 1 (2026-05-05) scoped the module boundary. Phase 2
 (2026-05-07/2026-05-08) decided state machine, retreat semantics,
 start triggers, COI similarity, JudgeProfile, field-level entity
 definitions, V20 schema, and PDF/comment-language tagging (resolves
@@ -53,28 +53,21 @@ Once a phase is complete, its open questions should all have decisions or be exp
 | 1 | Scope & module boundary decisions | ✅ Complete |
 | 2 | Domain model — entity definitions, eager/lazy creation, COI heuristic, MJP qualifications storage, scoresheet locking | ✅ Complete (2.A–2.F 2026-05-07; 2.G + 2.H 2026-05-08) |
 | 3 | Service + event contracts, authorization, COI mechanism, judging start trigger | ✅ Complete (2026-05-08, docs-only sketch; Java skeleton deferred to Phase 5) |
-| 4 | View design (admin table mgmt, judge scoresheet UX, results-before-publication) | 🟡 In progress — 4.A–4.J done 2026-05-09 (§Q15 + admin dashboard + scoresheet form + unified TableView + medal round + Settings + BOS form + JudgeProfile editor + ScoresheetPdfService). Item 10 + §Q17 pending. |
+| 4 | View design (admin table mgmt, judge scoresheet UX, results-before-publication) | ✅ Complete — 4.A–4.K done 2026-05-09. All 10 items + §Q15 closed; §Q16 + §Q17 deferred. |
 | 5 | Implementation sequencing — TDD cycle order, migration plan, MVP slice | ⏳ Pending |
 
 ---
 
 ## Next Session: Start Here
 
-**Phase 4 in progress (started 2026-05-09).** This session covered §Q15
-(resolved: admin-only BOS for v1), the admin division-level judging
-dashboard (§4.B), the judge scoresheet form (§4.C), the judge hub +
-table drill-in unified across roles (§4.D + §4.G), the medal round
-forms (§4.E), the admin Settings extensions (§4.F), and the BOS form
-(§4.H). After a branch reconciliation pass, Items 2 + 6 are now
-designed in main with explicit role-aware splits. New §Q16 opened
-(per-entry tasting-label PDF variant — deferred). New §Q17 opened
-(mobile / touch UX review for judging surfaces — deferred). New
-project-wide policy refinements: judges see no COI indicators during
-scoring (admin vets at table-assignment time); soft-COI warnings are
-admin-only; URLs follow the fully-scoped
+**Phase 4 ✅ COMPLETE (2026-05-09).** All 10 items + §Q15 closed in a
+single session after a branch-reconciliation pass. New §Q16 + §Q17
+deferred. Project-wide policy refinements landed: judges see no COI
+indicators during scoring (admin vets at table-assignment time);
+soft-COI warnings are admin-only; URLs follow the fully-scoped
 `/competitions/:c/divisions/:d/...` convention; sidebar "My Judging"
-link gated by `hasAnyJudgeAssignment`. See those sections in
-Decisions / Open Questions.
+link gated by `hasAnyJudgeAssignment`. See sections in Decisions /
+Open Questions.
 
 ### Phase 4 status
 
@@ -90,30 +83,55 @@ Decisions / Open Questions.
 | 7 | Admin Settings extensions (`Competition.commentLanguages`, `Division.bosPlaces`, `Division.minJudgesPerTable`) | ✅ §4.F — `MultiSelectComboBox` for languages; `IntegerField` for the two Division fields with status-based locking |
 | 8 | Admin User → JudgeProfile editor | ✅ §4.I — admin dialog from `UserListView` + conditional self-edit section in `ProfileView` |
 | 9 | `ScoresheetPdfService` + layout sketch | ✅ §4.J — A4 portrait single-page PDF, locale-aware, comment-language subheaders, single + by-table + by-category batch (all admin-only) |
-| 10 | Full i18n key inventory | ⏳ Pending — incremental keys recorded inline in §4.B–§4.H; consolidate in this item |
+| 10 | Full i18n key inventory | ✅ §4.K — namespace map, ~280 keys catalogued, one rename pass (#1) deferred to Phase 5 |
+| §Q16 | Per-entry tasting-label PDF variant (wine-glass tags) | 🟡 Open — deferred; not blocking judging implementation |
 | §Q17 | Mobile / touch UX review for judging surfaces | 🟡 Open — deferred; touches BosView, ScoresheetView, MedalRoundView, TableView |
 
-### What next session should address
+### What next session should address — Phase 5 implementation kick-off
 
-Best entry points (any of these is a reasonable next step — choose
-based on energy):
+All design decisions are pinned. Phase 5 implementation order:
 
-- **Item 10 (full i18n key inventory)** — consolidate the inline keys
-  from §4.B–§4.H into a single inventory grouped by surface. Useful
-  before Phase 5 implementation so PT translations have one
-  reference point.
-- **§Q17 (mobile / touch UX review)** — pass through judging surfaces
-  with mobile / tablet device frames in mind; recommend touch-
-  friendly alternates where needed.
+1. **Module skeleton** — create `app.meads.judging` package +
+   `package-info.java` with `@ApplicationModule(allowedDependencies =
+   {"competition", "entry", "identity"})`. Verify `ModulithStructureTest`
+   passes.
+2. **V20 migration** — schema per §2.G (judging tables) + §2.H
+   (`competition_comment_languages`, scoresheet/judgeprofile language
+   columns) + Division.bosPlaces / minJudgesPerTable.
+3. **Entities** (judging-module aggregates per §2.G): `Judging`,
+   `JudgingTable` (+ `JudgeAssignment`), `CategoryJudgingConfig`,
+   `Scoresheet` (+ `ScoreField`), `MedalAward`, `BosPlacement`,
+   `JudgeProfile`. Plus competition-module changes:
+   `Competition.commentLanguages`, `Division.bosPlaces`,
+   `Division.minJudgesPerTable`. TDD: repository tests first per
+   the entry-module pattern.
+4. **Services** (per §3.2–§3.5): `JudgingService`,
+   `ScoresheetService`, `JudgeProfileService`, plus
+   `CompetitionService.updateCommentLanguages` /
+   `updateDivisionBosPlaces` / `updateDivisionMinJudgesPerTable`.
+   Module-integration tests (`@ApplicationModuleTest`).
+5. **Cross-module guards**: `JudgingDivisionStatusRevertGuard`,
+   `JudgingMinJudgesLockGuard`. Wire into existing competition-module
+   guard registration plumbing.
+6. **Events** (per §3.6): 13 records in `app.meads.judging`. Listener
+   stubs (or mark for awards module to come).
+7. **Views** (per §4.B–§4.J): `JudgingAdminView`, `MyJudgingView`,
+   `TableView`, `ScoresheetView`, `MedalRoundView`, `BosView`, plus
+   extensions to `CompetitionDetailView` / `DivisionDetailView` /
+   `UserListView` / `ProfileView` / `MainLayout`.
+8. **`ScoresheetPdfService`** (per §4.J) + UI hooks on 4 surfaces.
+9. **i18n keys** (per §4.K) with PT translations alongside.
+10. **Integration tests** + manual walkthrough updates
+    (`docs/walkthrough/manual-test.md`).
 
-After all Phase 4 items close, Phase 5 (implementation) begins:
-module skeleton → V20 migration → entities → services (TDD, repository
-tests first) → events + listeners → views → integration tests.
+§Q17 (mobile / touch UX review) and §Q16 (tasting-label PDF) revisit
+during or after Phase 5, with real device testing.
 
 ### Suggested start prompt for next session
-> "Read `docs/plans/2026-05-05-judging-module-design.md` (especially
-> §4.A–§4.H from the 2026-05-09 session) and `docs/SESSION_CONTEXT.md`,
-> then continue Phase 4 with [Item 8 / Item 9 / Item 10 / §Q17]."
+> "Read `docs/plans/2026-05-05-judging-module-design.md` (Phase 5
+> implementation order at top) and `docs/SESSION_CONTEXT.md`. Begin
+> Phase 5 — start with the module skeleton + V20 migration, then
+> first repository TDD cycle for `Judging`."
 
 ---
 
@@ -3932,6 +3950,153 @@ convention).
   `ScoresheetPdfService.generateScoresheetPdf(scoresheetId,
   printerLocale)` for the per-entrant PDF. Service interface kept
   cross-module-friendly (no judging-internal types in the signature).
+
+### 2026-05-09 — Phase 4.K: Consolidated i18n key inventory (Item 10)
+
+This section consolidates the inline i18n key lists from §4.B–§4.J
+into a single reference. The inline lists in each surface section
+remain authoritative for their content; this section is the
+**namespace map**, **count summary**, and **normalization log**.
+
+#### Naming convention
+
+Existing project convention (per the `messages.properties` keys
+already in main): **surface-based prefix, kebab-case, dotted
+hierarchy.** Examples already in the codebase: `entry-admin.*`,
+`division-detail.*`, `my-entries.*`, `my-competitions.*`,
+`error.entry.*`. No umbrella `judging.*` prefix is added — judging-
+module surfaces follow the same flat-prefix pattern as entry-module
+surfaces.
+
+Format: `{surface}.{component}.{element}` for content;
+`error.{domain}.{key}` for errors.
+
+#### Surface → namespace map
+
+**New top-level views (judging module):**
+
+| Surface | Namespace | Approx keys | Doc section |
+|---|---|---|---|
+| `JudgingAdminView` | `judging-admin.*` | ~50 | §4.B |
+| `MyJudgingView` | `my-judging.*` | ~10 | §4.D |
+| `TableView` (per-table, unified) | `table.*` | ~25 | §4.D + §4.G |
+| `ScoresheetView` (form) | `scoresheet.*` | ~50 | §4.C |
+| `ScoresheetPdfService` (generated PDF) | `scoresheet-pdf.*` (+ reuses `scoresheet.field.*` and `scoresheet.tier.*`) | ~20 | §4.J |
+| `MedalRoundView` | `medal-round.*` | ~35 | §4.E |
+| `BosView` | `bos.*` | ~30 | §4.H |
+
+**Sections embedded in existing views:**
+
+| Surface | Namespace | Approx keys | Doc section |
+|---|---|---|---|
+| `JudgeProfile` admin dialog content | `judge-profile.*` | ~10 | §4.I |
+| `UserListView` row action button | `user-list.judge-profile.*` | 3 | §4.I |
+| `ProfileView` "Judge Qualifications" section | `profile.judge-qualifications.*` | 2 | §4.I |
+| `CompetitionDetailView` Settings tab — `commentLanguages` section | `competition-settings.*` (TBD: rename to `competition-detail.settings.judging.*` per **Inconsistency #1** below) | 5 | §4.F |
+| `DivisionDetailView` Settings tab — `bosPlaces` + `minJudgesPerTable` fields | `division-settings.*` (TBD: rename to `division-detail.settings.judging.*` per **Inconsistency #1** below) | 7 | §4.F |
+| `MainLayout` sidebar menu link | `mainlayout.menu.my-judging` | 1 | §4.D |
+
+**Errors:**
+
+| Domain | Namespace | Approx keys | Doc section |
+|---|---|---|---|
+| Judging module general | `error.judging.*` | ~8 | §4.B |
+| Scoresheet-specific | `error.scoresheet.*` | ~8 | §4.C |
+| Medal round | `error.medal-round.*` | ~4 | §4.E |
+| BOS | `error.bos.*` | ~4 | §4.B + §4.H |
+| Judge profile | `error.judge-profile.*` | 2 | §4.I |
+| Division (Phase 4 additions) | `error.division.*` (`bos-places-invalid`, `min-judges-invalid`, `min-judges-locked`) | 3 | §4.F |
+| COI hard-block | `error.scoresheet.coi-self-entry` (and admin-only soft-COI text under `judging-admin.tables.action.assign-judges.coi-warning`) | 2 | §4.B + §4.C |
+
+#### Total approximate count
+
+**~280 new keys** across all Phase 4 surfaces (rough; final count
+depends on Phase 5 implementation refinements).
+
+Breakdown:
+- Top-level judging views: ~220 keys
+- Section / extension keys in existing views: ~30
+- Error keys: ~30
+
+#### Inconsistencies to normalize during Phase 5
+
+These are deviations from the existing project convention discovered
+while consolidating; resolve during Phase 5 implementation rather
+than now (avoids further doc churn before any code lands).
+
+**#1 — Settings extension prefixes.** `§4.F` uses
+`competition-settings.*` and `division-settings.*` for the
+Competition.commentLanguages and Division.bosPlaces /
+minJudgesPerTable extensions. This is **inconsistent with existing**
+`division-detail.judging.*` (used for the Judging Categories tab in
+the codebase). Phase 5 should rename:
+
+- `competition-settings.section.judging` → `competition-detail.settings.judging.section`
+- `competition-settings.comment-languages.label` → `competition-detail.settings.judging.comment-languages.label`
+- `competition-settings.comment-languages.empty` → `competition-detail.settings.judging.comment-languages.empty`
+- `competition-settings.comment-languages.help` → `competition-detail.settings.judging.comment-languages.help`
+- `division-settings.bos-places.label` → `division-detail.settings.judging.bos-places.label` (and same for `.help`, `.locked-tooltip`)
+- `division-settings.min-judges-per-table.label` → `division-detail.settings.judging.min-judges-per-table.label` (same)
+
+**#2 — `judge-table.*` → `table.*` (already applied in §4.D).** When
+unifying the per-table view (§4.G folded into §4.D), keys were
+renamed from the original `judge-table.*` to `table.*`. No further
+action; flagged here for transparency. The `table.*` prefix is
+short but unambiguous in context (no other "table" view exists).
+
+**#3 — Field name and tier label key reuse.** `scoresheet.field.*`
+and `scoresheet.tier.*` are referenced from BOTH `ScoresheetView`
+(form, §4.C) and `ScoresheetPdfService` (PDF, §4.J) under the same
+keys. This is intentional — the canonical English field names are
+i18n keys per §2.G, and the PDF should use the same translations
+as the form. No change needed.
+
+**#4 — `MainLayout` link key.** `mainlayout.menu.my-judging` follows
+the existing `mainlayout.menu.*` pattern (e.g.
+`mainlayout.menu.profile`). No change needed.
+
+**#5 — Comment-language display name.** Comment-language values
+shown to users (e.g. "Português", "English") are sourced from
+`Locale.forLanguageTag(code).getDisplayLanguage(uiLocale)` —
+**not** from the message bundle. No i18n keys for language names;
+the JDK provides them.
+
+#### Translation strategy for Phase 5
+
+PT translations alongside Phase 5 view code, per existing convention.
+Translation order (recommended):
+
+1. **Error keys first** (~30 keys) — they're surfaced from the
+   service layer regardless of UI; getting them translated early
+   means service tests can assert PT and EN messages.
+2. **Top-level view content** in admin → judge order:
+   `judging-admin.*` → `table.*` → `medal-round.*` → `bos.*` →
+   `my-judging.*` → `scoresheet.*` → `scoresheet-pdf.*`. Admin
+   surfaces ship first per the existing module-implementation order.
+3. **Section / extension keys** (~30 keys) last — they're embedded
+   in existing views with established patterns; lowest novelty.
+
+ES/IT/PL translations: per the established project pattern, fall
+back to EN for v1 (admin views are EN+PT only — see SESSION_CONTEXT
+"Admin view i18n" entry).
+
+#### Implementation notes
+
+- Phase 5 implementation should add keys to `messages.properties`
+  in the order they're surfaced by the views (avoids "key not found"
+  noise during incremental view tests).
+- `messages_pt.properties` shadows the same keys with PT
+  translations; alphabetical order helps reviewers diff them.
+- Field-name keys (e.g. `scoresheet.field.appearance`) and tier
+  keys (`scoresheet.tier.unacceptable`) are shared with the PDF
+  generator — single translation serves both surfaces.
+
+#### Implications
+
+- Item 10 closed.
+- Phase 5 inputs ready: ~280 keys catalogued, namespaces normalized,
+  one rename pass deferred to Phase 5 implementation (#1 above).
+- Only §Q17 (mobile / touch UX review) remains open from Phase 4.
 
 ### 2026-05-09 — Phase 4.G: Admin per-table scoresheet drill-in (Item 2)
 

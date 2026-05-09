@@ -416,9 +416,10 @@ Design and implementation. **Design in progress (multi-session):** see
 open questions, and the "Next Session: Start Here" marker. Reference:
 `docs/reference/chip-competition-rules.md` and `docs/specs/judging.md`.
 
-**Phase 4 nearly DONE (2026-05-09, post branch-reconciliation).** Items
-1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 + §Q15 closed. New §Q16 + §Q17
-opened (deferred). Only Item 10 (full i18n key inventory) remains.
+**Phase 4 ✅ COMPLETE (2026-05-09, post branch-reconciliation).** All 10
+items + §Q15 closed in a single session. §Q16 (per-entry tasting-label
+PDF) and §Q17 (mobile / touch UX review) deferred. **Phase 5
+(implementation) is next.**
 
 **Branch reconciliation (2026-05-09):** the abandoned
 `origin/judging-module` branch had two pushed commits with overlapping
@@ -636,12 +637,25 @@ to Phase 5):**
 - Open: §Q15 (head-judge designation for BOS authorization) — deferred
   to Phase 4 view design; default leaning is admin-only for v1.
 
-**Phase 4 — view design (nearly done, single session).** Items 1 + 2 + 3
-+ 4 + 5 + 6 + 7 + 8 + 9 + §Q15 closed in the 2026-05-09 session (see
-Phase 4.A–4.J above). §Q16 (per-entry tasting-label PDF variant for
-wine-glass tags) and §Q17 (mobile / touch UX review across judging
-surfaces) opened — both deferred. Only Item 10 (consolidated i18n
-key inventory) remains.
+**Phase 4 ✅ COMPLETE (single session, 2026-05-09).** All 10 items + §Q15
+closed (see Phase 4.A–4.K above). §Q16 (per-entry tasting-label PDF
+variant for wine-glass tags) and §Q17 (mobile / touch UX review across
+judging surfaces) opened — both deferred. Phase 5 (implementation) is
+next; design doc has the recommended TDD order from module skeleton →
+V20 migration → entities → services → guards → events → views →
+PDF service → i18n keys → integration tests.
+
+### Priority 5b: Judging module Phase 5 (implementation)
+
+All design pinned in `docs/plans/2026-05-05-judging-module-design.md`.
+Implementation translates mechanically from Phases 2–4 (entities + V20
+schema in §2.G/§2.H, services in §3.2–§3.5, events in §3.6, COI
+mechanism in §3.8, cross-module guards in §3.9, views in §4.B–§4.J,
+i18n in §4.K).
+
+When Phase 5 starts, switch to a feature branch (e.g.
+`feature/judging-module`) for code work — the design doc is on `main`
+and complete.
 
 **Phase 5 (impl, deferred):** module skeleton → V20 migration →
 entities → services (TDD, repository tests first) → events + listeners
