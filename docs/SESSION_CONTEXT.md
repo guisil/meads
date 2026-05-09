@@ -14,8 +14,8 @@ needed to continue even without memory files or prior conversation history.
 Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
-**Branch:** `feature/judging-module` (Phase 5 in progress)
-**Tests:** 818 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-09 (Phase 5 cycles 1–8: 7 judging aggregates + competition-module additions for judging; V20–V27 migrations)
+**Branch:** `feature/judging-module` (Phase 5 services layer complete; views = Phase 6)
+**Tests:** 916 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-09 (Phase 5 cycles 1–8: 7 judging aggregates + competition-module additions; cycles 9–18: services layer + cross-module guards; V20–V27 migrations)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -764,10 +764,116 @@ skeleton from Phase 3 translates mechanically.
   CompetitionTest.
 - 🎉 Entity layer COMPLETE. All judging-module aggregates +
   competition-module additions implemented and persisted.
-- 🟡 Next: services layer (`JudgingService`, `ScoresheetService`,
-  `JudgeProfileService` per §3.2–§3.5) + cross-module guards
-  (`JudgingDivisionStatusRevertGuard`, `JudgingMinJudgesLockGuard`)
-  + events.
+- ✅ TDD Cycle 9 — 13 event records (§3.6): `ScoresheetSubmittedEvent`,
+  `ScoresheetRevertedEvent`, `TableStartedEvent`, `TableCompletedEvent`,
+  `TableReopenedEvent`, `MedalRoundActivatedEvent`,
+  `MedalRoundCompletedEvent`, `MedalRoundReopenedEvent`,
+  `MedalRoundResetEvent`, `BosStartedEvent`, `BosCompletedEvent`,
+  `BosReopenedEvent`, `BosResetEvent`. All denormalized to carry
+  routing fields (divisionId, divisionCategoryId, totalScore, etc.).
+- ✅ TDD Cycle 10 — `JudgeProfileService` (§3.4): public interface +
+  `JudgeProfileServiceImpl` in `internal/`. 5 methods:
+  `ensureProfileForJudge` (idempotent), `createOrUpdate` (auth: self
+  or SYSTEM_ADMIN), `findByUserId`, `updatePreferredCommentLanguage`
+  (internal helper, creates profile if absent), `delete` (admin-only;
+  rejects if any JudgeAssignment references user via new
+  `JudgingTableRepository.existsAssignmentByJudgeUserId`). 14 unit tests.
+- ✅ TDD Cycle 11 — COI mechanism (§2.E + §3.8):
+  `MeaderyNameNormalizer` utility (compile-time per-country suffix
+  maps for GLOBAL/PT/BR/ES/MX/AR/IT/PL/FR/DE/AT/CH/NL/BE) + `normalize`
+  + `areSimilar` (cross-country gate, exact-or-Levenshtein-≤2).
+  `CoiCheckService` public interface + `CoiCheckServiceImpl` returning
+  `CoiResult(hardBlock, softWarningKey)`. Hard block when
+  `entry.userId == judge.userId`; soft warning when meadery names
+  similar. 13 normalizer tests + 4 service tests.
+- ✅ TDD Cycle 12 — `CompetitionService.updateCommentLanguages`
+  (§3.5): SYSTEM_ADMIN or competition ADMIN auth, validates each code
+  matches BCP-47 pattern (entity throws `IllegalArgumentException`,
+  service translates to `BusinessRuleException`). 4 unit tests.
+- ✅ TDD Cycle 13 — `CompetitionService.updateDivisionBosPlaces` +
+  `updateDivisionMinJudgesPerTable` + `isMinJudgesPerTableLocked`.
+  Constructor now takes `List<MinJudgesPerTableLockGuard>`; the
+  `updateDivisionMinJudgesPerTable` method consults all registered
+  guards via `isMinJudgesPerTableLocked()` before delegating to entity.
+  6 new unit tests. **Note:** The existing
+  `CompetitionServiceJudgingCategoryTest` constructor was updated to
+  pass empty list for the new guard parameter.
+- ✅ TDD Cycle 14 — `JudgingService` table CRUD + judge assignment
+  (§3.2): public interface + `JudgingServiceImpl` in `internal/`.
+  Methods: `ensureJudgingExists` (lazy), `createTable`,
+  `updateTableName`, `updateTableScheduledDate`, `deleteTable` (only
+  NOT_STARTED + no assignments), `findTablesByJudgingId`,
+  `findTablesByJudgeUserId`, `hasAnyJudgeAssignment`, `assignJudge`
+  (idempotent + calls `ensureProfileForJudge`), `removeJudge` (rejects
+  if would drop below `Division.minJudgesPerTable` while ROUND_1).
+  Authorization: `competitionService.isAuthorizedForDivision`. 15 tests.
+  Added `existsAssignmentByJudgeUserId` to JudgingTableRepository.
+- ✅ TDD Cycle 15 — `JudgingService` table state + medal-round
+  transitions: `startTable` (guards minJudgesPerTable, marks
+  judging.markActive() if first table, ensures CategoryJudgingConfig,
+  delegates to `ScoresheetService.createScoresheetsForTable`, publishes
+  `TableStartedEvent`), `configureCategoryMedalRound` (idempotent
+  create-or-update), `startMedalRound` (with SCORE_BASED auto-population
+  per §2.D D10 — walks gold→silver→bronze, stops cascade on first tie),
+  `completeMedalRound`, `reopenMedalRound` (guards Judging.phase=ACTIVE),
+  `resetMedalRound` (deletes MedalAward rows in tx). All publish Tier
+  1+2 events. 8 tests. Added `findDivisionCategoryById` to
+  CompetitionService for division-from-category lookup.
+- ✅ TDD Cycle 16 — `JudgingService` medals + BOS:
+  `recordMedal`/`updateMedal`/`deleteMedalAward` (COI hard block on
+  recordMedal/updateMedal; medalRoundStatus=ACTIVE guard;
+  authorization: admin OR judge with assignment to a table covering
+  this category), `startBos` (guards every CategoryJudgingConfig is
+  COMPLETE), `completeBos`, `reopenBos`, `resetBos` (rejects if any
+  BosPlacement exists per §2.B Tier 3),
+  `recordBosPlacement`/`updateBosPlacement`/`deleteBosPlacement`
+  (admin-only per §Q15; place ∈ [1, Division.bosPlaces]; entry must
+  have MedalAward.medal=GOLD). All publish Tier 3 events. 14 tests.
+- ✅ TDD Cycle 17 — `ScoresheetService` (§3.3): public interface +
+  `ScoresheetServiceImpl` in `internal/`. 9 methods:
+  `createScoresheetsForTable` (eager, idempotent — uses new
+  `EntryService.findEntriesByFinalCategoryId` + new
+  `EntryRepository.findByFinalCategoryId`), `ensureScoresheetForEntry`
+  (sync rule), `updateScore`/`updateOverallComments`/
+  `setAdvancedToMedalRound` (COI hard block, sets
+  filledByJudgeUserId on first edit), `setCommentLanguage` (validates
+  against `competition.commentLanguages ∪ judge.preferredCommentLanguage`,
+  atomically updates JudgeProfile preference), `submit` (DRAFT→SUBMITTED;
+  validates all 5 fields; computes total; resolves default
+  commentLanguage from JudgeProfile; cascades to TableComplete +
+  CategoryJudgingConfig.markReady() if all sheets at table SUBMITTED
+  AND all tables for category COMPLETE; publishes
+  `ScoresheetSubmittedEvent` + `TableCompletedEvent`),
+  `revertToDraft` (Tier 0 admin-only; cascades table reopen +
+  CategoryJudgingConfig.markPending() if applicable; publishes
+  `ScoresheetRevertedEvent` + `TableReopenedEvent`), `moveToTable`
+  (admin-only; validates newTable.divisionCategoryId ==
+  entry.finalCategoryId). 12 tests.
+- ✅ TDD Cycle 18 — Cross-module guards (§3.9):
+  `JudgingDivisionStatusRevertGuard` (impl of competition-module
+  `DivisionRevertGuard`) blocks JUDGING → REGISTRATION_CLOSED revert
+  if `Judging.phase != NOT_STARTED` OR any JudgingTable exists for
+  the judging row. `JudgingMinJudgesLockGuard` (impl of competition-
+  module `MinJudgesPerTableLockGuard`) returns true if any
+  JudgingTable for the division has status != NOT_STARTED. New
+  repo queries: `JudgingTableRepository.existsByJudgingId` +
+  `existsStartedByJudgingId`. Both impl classes are `public` (Java
+  package-private is per-package, not per-module — same convention as
+  `UserRepository`). 5 + 3 = 8 unit tests. Spring auto-discovers and
+  wires them into `CompetitionService` via the `List<...Guard>`
+  constructor parameters.
+- 🎉 Phase 5 services layer COMPLETE. 916 tests (+98 from Phase 5
+  services + guards alone). Spring wiring verified end-to-end via
+  full suite + ModulithStructureTest. **Note:** Listeners for the 13
+  events are NOT yet implemented — they're published, but no
+  `@ApplicationModuleListener` consumers exist yet (deferred to a
+  later cycle, will mostly be email notifications + future awards
+  module integration).
+- 🟡 Next: Phase 6 (views) — `JudgingAdminView`, `MyJudgingView`,
+  `ScoresheetView`, `MedalRoundView`, `JudgeTableView`, BOS form.
+  Per design doc §4.B–§4.J. Also pending: i18n keys for all the new
+  `error.*` and `coi.warning.*` keys introduced in Phase 5 services
+  (currently fall back to English raw key).
 
 ### Priority 6: Awards module
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md` and `docs/specs/awards.md`.

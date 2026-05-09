@@ -49,6 +49,7 @@ public class CompetitionService {
     private final List<DivisionDeletionGuard> deletionGuards;
     private final List<ParticipantRemovalCleanup> removalCleanups;
     private final List<JudgingCategoryDeletionGuard> judgingCategoryDeletionGuards;
+    private final List<MinJudgesPerTableLockGuard> minJudgesPerTableLockGuards;
 
     CompetitionService(CompetitionRepository competitionRepository,
                        DivisionRepository divisionRepository,
@@ -62,7 +63,8 @@ public class CompetitionService {
                        List<DivisionRevertGuard> revertGuards,
                        List<DivisionDeletionGuard> deletionGuards,
                        List<ParticipantRemovalCleanup> removalCleanups,
-                       List<JudgingCategoryDeletionGuard> judgingCategoryDeletionGuards) {
+                       List<JudgingCategoryDeletionGuard> judgingCategoryDeletionGuards,
+                       List<MinJudgesPerTableLockGuard> minJudgesPerTableLockGuards) {
         this.competitionRepository = competitionRepository;
         this.divisionRepository = divisionRepository;
         this.participantRepository = participantRepository;
@@ -76,6 +78,7 @@ public class CompetitionService {
         this.deletionGuards = deletionGuards;
         this.removalCleanups = removalCleanups;
         this.judgingCategoryDeletionGuards = judgingCategoryDeletionGuards;
+        this.minJudgesPerTableLockGuards = minJudgesPerTableLockGuards;
     }
 
     // --- Competition methods (were MeadEvent methods) ---
@@ -158,6 +161,21 @@ public class CompetitionService {
         requireAuthorized(competitionId, requestingUserId);
         competition.updateContactEmail(contactEmail);
         log.info("Updated contact email for competition: {}", competitionId);
+        return competitionRepository.save(competition);
+    }
+
+    public Competition updateCommentLanguages(@NotNull UUID competitionId,
+                                              @NotNull Set<String> languageCodes,
+                                              @NotNull UUID requestingUserId) {
+        var competition = competitionRepository.findById(competitionId)
+                .orElseThrow(() -> new BusinessRuleException("error.competition.not-found"));
+        requireAuthorized(competitionId, requestingUserId);
+        try {
+            competition.updateCommentLanguages(languageCodes);
+        } catch (IllegalArgumentException e) {
+            throw new BusinessRuleException("error.competition.invalid-language-code", e.getMessage());
+        }
+        log.info("Updated comment languages for competition {}: {}", competitionId, languageCodes);
         return competitionRepository.save(competition);
     }
 
@@ -332,6 +350,48 @@ public class CompetitionService {
         return divisionRepository.save(division);
     }
 
+    public Division updateDivisionBosPlaces(@NotNull UUID divisionId,
+                                            int bosPlaces,
+                                            @NotNull UUID requestingUserId) {
+        var division = findDivisionById(divisionId);
+        requireAuthorized(division.getCompetitionId(), requestingUserId);
+        try {
+            division.updateBosPlaces(bosPlaces);
+        } catch (IllegalArgumentException e) {
+            throw new BusinessRuleException("error.division.invalid-bos-places", String.valueOf(bosPlaces));
+        } catch (IllegalStateException e) {
+            throw new BusinessRuleException("error.division.bos-places-locked", division.getStatus().getDisplayName());
+        }
+        log.info("Updated bosPlaces for division {} → {}", divisionId, bosPlaces);
+        return divisionRepository.save(division);
+    }
+
+    public Division updateDivisionMinJudgesPerTable(@NotNull UUID divisionId,
+                                                     int minJudgesPerTable,
+                                                     @NotNull UUID requestingUserId) {
+        var division = findDivisionById(divisionId);
+        requireAuthorized(division.getCompetitionId(), requestingUserId);
+        if (isMinJudgesPerTableLocked(divisionId)) {
+            throw new BusinessRuleException("error.division.min-judges-locked");
+        }
+        try {
+            division.updateMinJudgesPerTable(minJudgesPerTable);
+        } catch (IllegalArgumentException e) {
+            throw new BusinessRuleException("error.division.invalid-min-judges",
+                    String.valueOf(minJudgesPerTable));
+        } catch (IllegalStateException e) {
+            throw new BusinessRuleException("error.division.min-judges-status-locked",
+                    division.getStatus().getDisplayName());
+        }
+        log.info("Updated minJudgesPerTable for division {} → {}", divisionId, minJudgesPerTable);
+        return divisionRepository.save(division);
+    }
+
+    public boolean isMinJudgesPerTableLocked(@NotNull UUID divisionId) {
+        return minJudgesPerTableLockGuards.stream()
+                .anyMatch(g -> g.isLocked(divisionId));
+    }
+
     public Division updateDivisionMeaderyNameRequired(@NotNull UUID divisionId,
                                                        boolean meaderyNameRequired,
                                                        @NotNull UUID requestingUserId) {
@@ -346,6 +406,11 @@ public class CompetitionService {
 
     public List<DivisionCategory> findDivisionCategories(@NotNull UUID divisionId) {
         return divisionCategoryRepository.findByDivisionIdOrderByCode(divisionId);
+    }
+
+    public DivisionCategory findDivisionCategoryById(@NotNull UUID categoryId) {
+        return divisionCategoryRepository.findById(categoryId)
+                .orElseThrow(() -> new BusinessRuleException("error.category.not-found"));
     }
 
     public DivisionCategory addCatalogCategory(@NotNull UUID divisionId,

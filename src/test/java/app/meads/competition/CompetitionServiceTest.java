@@ -77,6 +77,8 @@ class CompetitionServiceTest {
 
     List<JudgingCategoryDeletionGuard> judgingCategoryDeletionGuards = new ArrayList<>();
 
+    List<MinJudgesPerTableLockGuard> minJudgesPerTableLockGuards = new ArrayList<>();
+
     @BeforeEach
     void setUp() {
         competitionService = new CompetitionService(
@@ -85,7 +87,7 @@ class CompetitionServiceTest {
                 divisionCategoryRepository, categoryRepository,
                 competitionDocumentRepository, userService,
                 eventPublisher, revertGuards, deletionGuards, removalCleanups,
-                judgingCategoryDeletionGuards);
+                judgingCategoryDeletionGuards, minJudgesPerTableLockGuards);
     }
 
     private Competition createCompetition() {
@@ -266,6 +268,170 @@ class CompetitionServiceTest {
 
         assertThat(result.getContactEmail()).isEqualTo("organizer@example.com");
         then(competitionRepository).should().save(competition);
+    }
+
+    // --- updateCommentLanguages ---
+
+    @Test
+    void shouldUpdateCommentLanguagesWhenSystemAdmin() {
+        var admin = createAdmin();
+        var competition = createCompetition();
+        given(competitionRepository.findById(competition.getId())).willReturn(Optional.of(competition));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(competitionRepository.save(any(Competition.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var result = competitionService.updateCommentLanguages(
+                competition.getId(), java.util.Set.of("pt", "en"), admin.getId());
+
+        assertThat(result.getCommentLanguages()).containsExactlyInAnyOrder("pt", "en");
+        then(competitionRepository).should().save(competition);
+    }
+
+    @Test
+    void shouldRejectUpdateCommentLanguagesWhenNotAuthorized() {
+        var regular = createRegularUser();
+        var competition = createCompetition();
+        given(competitionRepository.findById(competition.getId())).willReturn(Optional.of(competition));
+        given(userService.findById(regular.getId())).willReturn(regular);
+        given(participantRepository.findByCompetitionIdAndUserId(competition.getId(), regular.getId()))
+                .willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> competitionService.updateCommentLanguages(
+                competition.getId(), java.util.Set.of("pt"), regular.getId()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.auth.unauthorized");
+
+        then(competitionRepository).should(never()).save(any(Competition.class));
+    }
+
+    @Test
+    void shouldRejectUpdateCommentLanguagesWithInvalidCode() {
+        var admin = createAdmin();
+        var competition = createCompetition();
+        given(competitionRepository.findById(competition.getId())).willReturn(Optional.of(competition));
+        given(userService.findById(admin.getId())).willReturn(admin);
+
+        assertThatThrownBy(() -> competitionService.updateCommentLanguages(
+                competition.getId(), java.util.Set.of("INVALID!"), admin.getId()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.competition.invalid-language-code");
+
+        then(competitionRepository).should(never()).save(any(Competition.class));
+    }
+
+    @Test
+    void shouldClearCommentLanguagesWithEmptySet() {
+        var admin = createAdmin();
+        var competition = createCompetition();
+        competition.updateCommentLanguages(java.util.Set.of("pt", "en"));
+        given(competitionRepository.findById(competition.getId())).willReturn(Optional.of(competition));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(competitionRepository.save(any(Competition.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var result = competitionService.updateCommentLanguages(
+                competition.getId(), java.util.Set.of(), admin.getId());
+
+        assertThat(result.getCommentLanguages()).isEmpty();
+    }
+
+    // --- updateDivisionBosPlaces / updateDivisionMinJudgesPerTable ---
+
+    private Division createDraftDivision(UUID competitionId) {
+        return new Division(competitionId, "Amateur", "amateur",
+                ScoringSystem.MJP,
+                LocalDateTime.of(2026, 6, 1, 23, 59),
+                "Europe/Lisbon");
+    }
+
+    @Test
+    void shouldUpdateDivisionBosPlacesWhenAuthorized() {
+        var admin = createAdmin();
+        var competition = createCompetition();
+        var division = createDraftDivision(competition.getId());
+        given(divisionRepository.findById(division.getId())).willReturn(Optional.of(division));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(divisionRepository.save(any(Division.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var result = competitionService.updateDivisionBosPlaces(division.getId(), 3, admin.getId());
+
+        assertThat(result.getBosPlaces()).isEqualTo(3);
+    }
+
+    @Test
+    void shouldRejectUpdateBosPlacesWhenLessThanOne() {
+        var admin = createAdmin();
+        var competition = createCompetition();
+        var division = createDraftDivision(competition.getId());
+        given(divisionRepository.findById(division.getId())).willReturn(Optional.of(division));
+        given(userService.findById(admin.getId())).willReturn(admin);
+
+        assertThatThrownBy(() -> competitionService.updateDivisionBosPlaces(
+                division.getId(), 0, admin.getId()))
+                .isInstanceOf(BusinessRuleException.class);
+    }
+
+    @Test
+    void shouldUpdateDivisionMinJudgesPerTableWhenNotLocked() {
+        var admin = createAdmin();
+        var competition = createCompetition();
+        var division = createDraftDivision(competition.getId());
+        var unlockedGuard = mock(MinJudgesPerTableLockGuard.class);
+        given(unlockedGuard.isLocked(division.getId())).willReturn(false);
+        minJudgesPerTableLockGuards.add(unlockedGuard);
+        given(divisionRepository.findById(division.getId())).willReturn(Optional.of(division));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(divisionRepository.save(any(Division.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var result = competitionService.updateDivisionMinJudgesPerTable(
+                division.getId(), 3, admin.getId());
+
+        assertThat(result.getMinJudgesPerTable()).isEqualTo(3);
+    }
+
+    @Test
+    void shouldRejectUpdateMinJudgesPerTableWhenLockedByGuard() {
+        var admin = createAdmin();
+        var competition = createCompetition();
+        var division = createDraftDivision(competition.getId());
+        var lockedGuard = mock(MinJudgesPerTableLockGuard.class);
+        given(lockedGuard.isLocked(division.getId())).willReturn(true);
+        minJudgesPerTableLockGuards.add(lockedGuard);
+        given(divisionRepository.findById(division.getId())).willReturn(Optional.of(division));
+        given(userService.findById(admin.getId())).willReturn(admin);
+
+        assertThatThrownBy(() -> competitionService.updateDivisionMinJudgesPerTable(
+                division.getId(), 3, admin.getId()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.division.min-judges-locked");
+
+        then(divisionRepository).should(never()).save(any(Division.class));
+    }
+
+    @Test
+    void shouldReportMinJudgesLockedWhenAnyGuardSaysSo() {
+        var divisionId = UUID.randomUUID();
+        var unlocked = mock(MinJudgesPerTableLockGuard.class);
+        given(unlocked.isLocked(divisionId)).willReturn(false);
+        var locked = mock(MinJudgesPerTableLockGuard.class);
+        given(locked.isLocked(divisionId)).willReturn(true);
+        minJudgesPerTableLockGuards.add(unlocked);
+        minJudgesPerTableLockGuards.add(locked);
+
+        assertThat(competitionService.isMinJudgesPerTableLocked(divisionId)).isTrue();
+    }
+
+    @Test
+    void shouldReportMinJudgesUnlockedWhenAllGuardsAgree() {
+        var divisionId = UUID.randomUUID();
+        var unlocked = mock(MinJudgesPerTableLockGuard.class);
+        given(unlocked.isLocked(divisionId)).willReturn(false);
+        minJudgesPerTableLockGuards.add(unlocked);
+
+        assertThat(competitionService.isMinJudgesPerTableLocked(divisionId)).isFalse();
     }
 
     // --- updateCompetitionShippingDetails ---

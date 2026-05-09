@@ -33,6 +33,8 @@ public interface EntryRepository extends JpaRepository<Entry, UUID> {
 
     boolean existsByFinalCategoryId(UUID finalCategoryId);
 
+    List<Entry> findByFinalCategoryId(UUID finalCategoryId);
+
     @Query("SELECT COALESCE(MAX(e.entryNumber), 0) FROM Entry e WHERE e.divisionId = :divisionId")
     int findMaxEntryNumberByDivisionId(@Param("divisionId") UUID divisionId);
 

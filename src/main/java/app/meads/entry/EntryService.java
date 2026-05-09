@@ -394,6 +394,10 @@ public class EntryService {
                 .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
     }
 
+    public List<Entry> findEntriesByFinalCategoryId(@NotNull UUID finalCategoryId) {
+        return entryRepository.findByFinalCategoryId(finalCategoryId);
+    }
+
     public Entry assignFinalCategory(@NotNull UUID entryId, UUID finalCategoryId,
                                       @NotNull UUID requestingUserId) {
         var entry = entryRepository.findById(entryId)
