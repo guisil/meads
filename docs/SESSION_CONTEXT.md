@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `feature/judging-module` (Phase 5 in progress)
-**Tests:** 789 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-09 (Phase 5 cycles 1–4: Judging, JudgingTable, CategoryJudgingConfig, Scoresheet+ScoreField; V20–V23 migrations)
+**Tests:** 793 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-09 (Phase 5 cycles 1–5: Judging, JudgingTable, CategoryJudgingConfig, Scoresheet, MedalAward; V20–V24 migrations)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -717,7 +717,17 @@ skeleton from Phase 3 translates mechanically.
   `findByEntryId` (UNIQUE) + `findByTableId`. V23 migration:
   `scoresheets` + `score_fields` (FK cascade DELETE on score_fields,
   UNIQUE (scoresheet_id, field_name)). 4 repository tests.
-- 🟡 Next: TDD Cycle 5 — `MedalAward`.
+- ✅ TDD Cycle 5 — `MedalAward` aggregate: UUID self-gen, `entryId`
+  UNIQUE FK, `divisionId` (denormalized for query), `finalCategoryId`,
+  nullable `medal` (per D11 — null = explicit withhold; absence of row
+  = not a candidate), `awardedAt` `@PrePersist`, `awardedBy`,
+  `updatedAt` `@PreUpdate`. `Medal` enum (GOLD / SILVER / BRONZE).
+  `updateMedal(newValue, awardedBy)` mutator (service-level
+  guard: `medalRoundStatus = ACTIVE` enforced later by
+  `JudgingService`). `MedalAwardRepository`: `findByEntryId`,
+  `findByDivisionId`, `findByFinalCategoryId`. V24 migration. 4
+  repository tests.
+- 🟡 Next: TDD Cycle 6 — `BosPlacement`.
 
 ### Priority 6: Awards module
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md` and `docs/specs/awards.md`.
