@@ -1,10 +1,10 @@
 # Judging Module — Design Document
 
 **Started:** 2026-05-05
-**Status:** Phases 1–3 ✅ complete; Phase 4 in progress (4.A–4.E done
+**Status:** Phases 1–3 ✅ complete; Phase 4 in progress (4.A–4.F done
 2026-05-09, covering §Q15 + admin division-level judging dashboard +
 judge scoresheet form + judge hub/table drill-in + medal round
-forms). Phase 1 (2026-05-05) scoped the module boundary. Phase 2
+forms + admin Settings extensions). Phase 1 (2026-05-05) scoped the module boundary. Phase 2
 (2026-05-07/2026-05-08) decided state machine, retreat semantics,
 start triggers, COI similarity, JudgeProfile, field-level entity
 definitions, V20 schema, and PDF/comment-language tagging (resolves
@@ -49,7 +49,7 @@ Once a phase is complete, its open questions should all have decisions or be exp
 | 1 | Scope & module boundary decisions | ✅ Complete |
 | 2 | Domain model — entity definitions, eager/lazy creation, COI heuristic, MJP qualifications storage, scoresheet locking | ✅ Complete (2.A–2.F 2026-05-07; 2.G + 2.H 2026-05-08) |
 | 3 | Service + event contracts, authorization, COI mechanism, judging start trigger | ✅ Complete (2026-05-08, docs-only sketch; Java skeleton deferred to Phase 5) |
-| 4 | View design (admin table mgmt, judge scoresheet UX, results-before-publication) | 🟡 In progress — 4.A (§Q15) + 4.B (admin dashboard) + 4.C (judge scoresheet form) + 4.D (judge hub + table view) + 4.E (medal round forms) done 2026-05-09 |
+| 4 | View design (admin table mgmt, judge scoresheet UX, results-before-publication) | 🟡 In progress — 4.A (§Q15) + 4.B (admin dashboard) + 4.C (judge scoresheet form) + 4.D (judge hub + table view) + 4.E (medal round forms) + 4.F (admin Settings extensions) done 2026-05-09 |
 | 5 | Implementation sequencing — TDD cycle order, migration plan, MVP slice | ⏳ Pending |
 
 ---
@@ -74,7 +74,7 @@ sections in Decisions / Open Questions.
 | 4 | Judge scoresheet form | ✅ §4.C — `ScoresheetView` full-page route |
 | 5 | Medal round forms (COMPARATIVE + SCORE_BASED) | ✅ §4.E — `MedalRoundView` |
 | 6 | BOS form detail (admin-only per §4.A) | ⏳ Pending — sketched in §4.B Tab 3, needs placement-entry detail |
-| 7 | Admin Settings extensions (`Competition.commentLanguages`, `Division.bosPlaces`, `Division.minJudgesPerTable`) | ⏳ Pending |
+| 7 | Admin Settings extensions (`Competition.commentLanguages`, `Division.bosPlaces`, `Division.minJudgesPerTable`) | ✅ §4.F — `MultiSelectComboBox` for languages; `IntegerField` for the two Division fields with status-based locking |
 | 8 | Admin User → JudgeProfile editor | ⏳ Pending |
 | 9 | `ScoresheetPdfService` + layout sketch | ⏳ Pending |
 | 10 | Full i18n key inventory | ⏳ Pending — incremental keys recorded inline in §4.B–§4.E; consolidate in this item |
@@ -84,11 +84,6 @@ sections in Decisions / Open Questions.
 Best entry points (any of these is a reasonable next step — choose
 based on energy):
 
-- **Item 7 (admin Settings extensions)** — small, mechanical, unblocks
-  Phase 5 view tests. `Competition.commentLanguages` multi-select on
-  CompetitionDetailView Settings tab; `Division.bosPlaces` +
-  `minJudgesPerTable` editors on DivisionDetailView Settings tab. Cross-
-  references already specified (§2.H, §1.6, §2.D, §2.G).
 - **Item 2 (admin per-table scoresheet drill-in)** — completes the
   admin Tables story. Mostly mirrors `JudgeTableView` (§4.D) with
   added admin actions (revert SUBMITTED, move to another table).
@@ -3125,6 +3120,201 @@ PT translations defer to Phase 5.
 - `MyJudgingView` Medal Rounds section navigates here; admin
   `JudgingAdminView` Tab 2 row click navigates here; both pass the
   same route parameter `:divisionCategoryId`.
+
+### 2026-05-09 — Phase 4.F: Admin Settings extensions (Item 7)
+
+Three new fields surface in existing Settings tabs of the competition
+and division views. All editable inline; persistence via existing
+`CompetitionService` / `Division` domain methods.
+
+#### 4.F.1 `Competition.commentLanguages` — `CompetitionDetailView` Settings tab
+
+**Field type:** `Set<String>` (per §2.H, §2.G).
+
+**Widget:** `MultiSelectComboBox<String>` — chip-style multi-select.
+Vaadin's stock multi-select is the right primitive here:
+- Item set: `MeadsI18NProvider.getSupportedLanguageCodes()` (currently
+  `en`, `es`, `it`, `pl`, `pt`) — admins can pick any combination.
+- Future-proofing: if admins need to extend with codes outside the
+  supported UI list (e.g. `de`), add a free-text "Other code"
+  TextField beside the multi-select that on Add appends to the chip
+  list. Defer this until requested — v1 sticks to the 5 UI codes.
+- Item label generator: `Locale.forLanguageTag(code).getDisplayLanguage(uiLocale)`
+  — same as the scoresheet form's comment-language ComboBox in §4.C.
+- Sort: alphabetically by display name in admin's UI locale.
+- Default value (read from competition): `competition.getCommentLanguages()`.
+
+**Placement in Settings tab:** new section heading "Judging" with
+the multi-select underneath. Position: below the existing fields
+(name, dates, contact email, etc.), near the bottom of the Settings
+tab. Heading consistent with future judging-related competition fields.
+
+**Editability:** any DivisionStatus, any time. Per §2.H: judging-time
+additions are allowed (admin can extend the list mid-judging if a
+new judge arrives needing a different language).
+
+**Save:** invokes `CompetitionService.updateCommentLanguages(competitionId,
+Set<String>, adminUserId)` (per Phase 3 §3.5). Replaces the entire
+set on save.
+
+**Authorization:** SYSTEM_ADMIN OR competition ADMIN of the
+competitionId (per §3.5). Existing `isAuthorizedForCompetition`
+gate already applies — Settings tab only renders for authorized users.
+
+**Empty-set guard:** if admin clears all languages and saves, accept
+(empty set is valid; `Scoresheet.commentLanguage` resolution falls
+back to `User.preferredLanguage` per §2.H). UI shows informational
+caption "No languages selected — judges will fall back to their UI
+language" when empty.
+
+**Lookup integrity:** if a comment language already in use by a
+JudgeProfile (`preferredCommentLanguage`) is removed from the set,
+the JudgeProfile sticky preference is preserved (per §2.H — union
+on the dropdown means already-selected sticky values stay visible).
+Service does not need to mutate JudgeProfile rows on update.
+
+**i18n keys:**
+
+```
+competition-settings.section.judging              Judging
+competition-settings.comment-languages.label      Comment languages for scoresheets
+competition-settings.comment-languages.empty      No languages selected — judges will fall back to their UI language.
+competition-settings.comment-languages.help       Languages judges may pick when writing scoresheet comments.
+```
+
+#### 4.F.2 `Division.bosPlaces` — `DivisionDetailView` Settings tab
+
+**Field type:** `int` (per §1.6, §2.G), NOT NULL DEFAULT 1.
+
+**Widget:** `IntegerField` (Vaadin) with `setMin(1)`, no max. Stepper
+buttons visible. Width 120px, label "BOS places".
+
+**Placement:** in the existing "Judging" sub-section of Division
+Settings tab (alongside `meaderyNameRequired` checkbox added during
+the entry module). If no Judging section exists yet, add one.
+
+**Editability:** DRAFT or REGISTRATION_OPEN only. Locked once
+`division.status` is REGISTRATION_CLOSED or later (per §1.6).
+
+- Editable case: rendered as a normal `IntegerField`.
+- Locked case: rendered as read-only `IntegerField` (`setReadOnly(true)`)
+  with a Span tooltip wrapper (per existing pattern from credits-tab
+  registration lock) explaining "BOS places are locked once the
+  division advances past REGISTRATION_OPEN."
+
+**Save:** invokes `Division.updateBosPlaces(int)` via a new service
+method `CompetitionService.updateDivisionBosPlaces(divisionId, int,
+adminUserId)` — entity-level guard (`>= 1`) plus status-based gate.
+
+**Authorization:** SYSTEM_ADMIN OR competition ADMIN of the division.
+
+**Validation:** integer >= 1; reject 0 or negative with
+`error.division.bos-places-invalid`. CHIP example values: Amadora = 3,
+Profissional = 1.
+
+**Cross-module guard:** none needed — locking is purely on
+DivisionStatus, which Division already owns (per §2.G "bosPlaces
+does not need a cross-module guard").
+
+**i18n keys:**
+
+```
+division-settings.bos-places.label                BOS places
+division-settings.bos-places.help                 Number of Best of Show placements awarded for this division.
+division-settings.bos-places.locked-tooltip       BOS places are locked once the division advances past REGISTRATION_OPEN.
+error.division.bos-places-invalid                 BOS places must be at least 1.
+```
+
+#### 4.F.3 `Division.minJudgesPerTable` — `DivisionDetailView` Settings tab
+
+**Field type:** `int` (per §2.D, §2.G), NOT NULL DEFAULT 2.
+
+**Widget:** `IntegerField` with `setMin(1)`, no max. Width 120px,
+label "Minimum judges per table".
+
+**Placement:** same Settings sub-section ("Judging") as `bosPlaces`,
+adjacent.
+
+**Editability:** DRAFT through REGISTRATION_CLOSED — wider window
+than `bosPlaces` because the field only locks once any JudgingTable
+for the division has `status != NOT_STARTED` (per §2.D / §2.G).
+
+- Editable case: normal `IntegerField`.
+- Locked case (any JudgingTable started): read-only with tooltip
+  "Minimum judges per table is locked once any judging table has
+  started. To change, no table in this division may have begun."
+
+**Lock check (cross-module):** UI calls into
+`CompetitionService.isMinJudgesPerTableLocked(divisionId)` — which
+delegates to registered `MinJudgesPerTableLockGuard` impls (Phase 3
+§3.9; judging module provides `JudgingMinJudgesLockGuard` — calls
+`tableRepo.existsByJudgingDivisionIdAndStatusNot(divisionId,
+NOT_STARTED)`).
+
+**Save:** invokes new service method
+`CompetitionService.updateDivisionMinJudgesPerTable(divisionId, int,
+adminUserId)` — checks every registered `MinJudgesPerTableLockGuard`
+before delegating to `Division.updateMinJudgesPerTable`. Rejects
+with `BusinessRuleException("error.division.min-judges-locked")` if
+any guard returns true.
+
+**Authorization:** SYSTEM_ADMIN OR competition ADMIN of the division.
+
+**Validation:** integer >= 1; reject 0 or negative with
+`error.division.min-judges-invalid`. Default 2 (per §2.D).
+
+**Service-side guard rationale (per §2.G):** entity-level guard is
+`>= 1`; the *cross-module* lock check (any-table-started) lives in
+the service because the Division entity must not depend on judging
+internals.
+
+**i18n keys:**
+
+```
+division-settings.min-judges-per-table.label             Minimum judges per table
+division-settings.min-judges-per-table.help              Hard minimum enforced when starting a judging table.
+division-settings.min-judges-per-table.locked-tooltip    Minimum judges per table is locked once any judging table has started.
+error.division.min-judges-invalid                         Minimum judges per table must be at least 1.
+error.division.min-judges-locked                          Minimum judges per table cannot change because at least one table has started.
+```
+
+#### 4.F.4 Implementation notes
+
+- All three fields render in their respective Settings tabs only
+  when the user is authorized for the parent competition / division
+  (existing `isAuthorizedForCompetition` / `isAuthorizedForDivision`
+  gates).
+- Save buttons follow the existing `setDisableOnClick(true)` pattern
+  (consistent with the post-i18n hardening from 2026-03-17).
+- Field-level error keys are surfaced via the same admin-error-locale
+  pattern (translated, locale-aware per the 2026-05-03 admin-error fix).
+- The "Judging" Settings sub-section heading is shared between
+  `bosPlaces` and `minJudgesPerTable` — a single Section component
+  with two IntegerFields stacked vertically.
+- New `CompetitionService` methods (Phase 5):
+  - `updateCommentLanguages(competitionId, Set<String>, adminUserId)` — per §3.5
+  - `updateDivisionBosPlaces(divisionId, int, adminUserId)`
+  - `updateDivisionMinJudgesPerTable(divisionId, int, adminUserId)`
+  - `isMinJudgesPerTableLocked(divisionId)` — read-only helper
+    delegating to all registered `MinJudgesPerTableLockGuard` impls.
+
+#### Implications
+
+- Phase 5 implementation order:
+  1. Migration adds the three columns/table (already in V20 per §2.G,
+     §2.H — no new migration needed).
+  2. Entity domain methods (`Division.updateBosPlaces`,
+     `Division.updateMinJudgesPerTable`,
+     `Competition.updateCommentLanguages`) — already specified in §2.G.
+  3. New `CompetitionService` methods + tests.
+  4. UI changes to `CompetitionDetailView` (Settings tab) and
+     `DivisionDetailView` (Settings tab).
+  5. `MinJudgesPerTableLockGuard` interface + `JudgingMinJudgesLockGuard`
+     impl (in judging module) — wired into `CompetitionService`.
+- No new migration version needed — V20 already covers the schema.
+- The existing test pattern from Division Settings (entry prefix +
+  entry limits + meaderyNameRequired DRAFT-only locking) is the
+  template for all three new fields.
 
 ---
 

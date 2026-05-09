@@ -416,11 +416,11 @@ Design and implementation. **Design in progress (multi-session):** see
 open questions, and the "Next Session: Start Here" marker. Reference:
 `docs/reference/chip-competition-rules.md` and `docs/specs/judging.md`.
 
-**Phase 4 IN PROGRESS (2026-05-09).** Items 1 + 3 + 4 + 5 + §Q15
+**Phase 4 IN PROGRESS (2026-05-09).** Items 1 + 3 + 4 + 5 + 7 + §Q15
 closed. New §Q16 opened (deferred). Phase 4 follow-ups: Item 2 (admin
-per-table drill-in), Item 6 (BOS form detail), Item 7 (admin Settings
-extensions), Item 8 (JudgeProfile editor), Item 9
-(ScoresheetPdfService), Item 10 (full i18n key inventory).
+per-table drill-in), Item 6 (BOS form detail), Item 8 (JudgeProfile
+editor), Item 9 (ScoresheetPdfService), Item 10 (full i18n key
+inventory).
 
 **Phase 4.A–4.C (2026-05-09) — design decisions:**
 - 4.A: §Q15 resolved — **admin-only BOS for v1**. SYSTEM_ADMIN +
@@ -480,6 +480,22 @@ extensions), Item 8 (JudgeProfile editor), Item 9
   covering this category. New helper:
   `JudgingService.recomputeScorePreview` for SCORE_BASED tied-slot
   read-side projection. Inline i18n keys recorded.
+- 4.F: admin Settings extensions. (1) `Competition.commentLanguages`
+  — `MultiSelectComboBox<String>` on `CompetitionDetailView` Settings
+  tab in a new "Judging" sub-section, sourced from
+  `MeadsI18NProvider.getSupportedLanguageCodes()`, sorted by display
+  name; editable any DivisionStatus. (2) `Division.bosPlaces` —
+  `IntegerField` (min 1) on `DivisionDetailView` Settings tab,
+  editable in DRAFT/REGISTRATION_OPEN, locked beyond with tooltip.
+  (3) `Division.minJudgesPerTable` — `IntegerField` (min 1, default 2)
+  on same tab, editable through REGISTRATION_CLOSED but locked once
+  any JudgingTable in the division has `status != NOT_STARTED`
+  (cross-module check via `MinJudgesPerTableLockGuard`). New
+  CompetitionService methods (Phase 5):
+  `updateCommentLanguages`, `updateDivisionBosPlaces`,
+  `updateDivisionMinJudgesPerTable`, `isMinJudgesPerTableLocked`. No
+  new migration — schema already in V20 per §2.G/§2.H. Inline i18n
+  keys recorded.
 
 **Phase 2 ✅ COMPLETE (2026-05-08).** All design questions resolved
 (§Q1, §Q7, §Q8, §Q10, §Q11, §Q12, §Q13).
@@ -586,16 +602,14 @@ to Phase 5):**
 - Open: §Q15 (head-judge designation for BOS authorization) — deferred
   to Phase 4 view design; default leaning is admin-only for v1.
 
-**Phase 4 — view design (in progress, multi-session).** Items 1 + 3 + 4 + 5
-+ §Q15 closed in the 2026-05-09 session (see Phase 4.A/4.B/4.C/4.D/4.E
+**Phase 4 — view design (in progress, multi-session).** Items 1 + 3 + 4 +
+5 + 7 + §Q15 closed in the 2026-05-09 session (see Phase 4.A–4.F
 above). New §Q16 opened (per-entry tasting-label PDF variant for
 wine-glass tags — deferred). Remaining in priority order: Item 2
 (admin per-table scoresheet drill-in); Item 6 (BOS form placement-
-entry detail); Item 7 (admin Settings extensions:
-`Competition.commentLanguages`, `Division.bosPlaces`,
-`Division.minJudgesPerTable`); Item 8 (admin user → JudgeProfile
-editor); Item 9 (`ScoresheetPdfService` + layout sketch); Item 10
-(consolidated i18n key inventory).
+entry detail); Item 8 (admin user → JudgeProfile editor); Item 9
+(`ScoresheetPdfService` + layout sketch); Item 10 (consolidated i18n
+key inventory).
 
 **Phase 5 (impl, deferred):** module skeleton → V20 migration →
 entities → services (TDD, repository tests first) → events + listeners
