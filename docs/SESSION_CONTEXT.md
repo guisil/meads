@@ -14,8 +14,8 @@ needed to continue even without memory files or prior conversation history.
 Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
-**Branch:** `main`
-**Tests:** 777 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-03 (MFA for system admins: TotpService, UserService MFA methods, UserRepository persistence, MFA integration, MfaVerifyView, ProfileView MFA section)
+**Branch:** `feature/judging-module` (Phase 5 in progress)
+**Tests:** 778 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-09 (Judging entity + JudgingRepository + V20 migration, first TDD cycle of Phase 5)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -657,10 +657,29 @@ When Phase 5 starts, switch to a feature branch (e.g.
 `feature/judging-module`) for code work — the design doc is on `main`
 and complete.
 
-**Phase 5 (impl, deferred):** module skeleton → V20 migration →
-entities → services (TDD, repository tests first) → events + listeners
-→ views → integration tests. Java skeleton from Phase 3 translates
-mechanically.
+**Phase 5 (impl, IN PROGRESS on `feature/judging-module`):** module
+skeleton → V20 migration → entities → services (TDD, repository tests
+first) → events + listeners → views → integration tests. Java
+skeleton from Phase 3 translates mechanically.
+
+**Phase 5 progress (2026-05-09):**
+- ✅ Module skeleton: `app.meads.judging` package + `package-info.java`
+  with `@ApplicationModule(allowedDependencies = {"competition",
+  "entry", "identity"})`. `internal/` sub-package created.
+- ✅ V20 migration started: `V20__create_judgings_table.sql`. Per the
+  established pattern (V9–V13 split entry-module schema across 5
+  migrations, one per table), V20+ for judging tables will likewise
+  split per table — V20 for `judgings`, V21 for `judging_tables` +
+  `judge_assignments`, etc. The single-V20 sketch in §2.G of the
+  design doc is treated as a logical schema, not a literal migration
+  plan.
+- ✅ TDD Cycle 1 — `Judging` aggregate (judging-module aggregate root):
+  `Judging` entity (UUID self-gen, `phase` enum, `@PrePersist`
+  `createdAt`, `@PreUpdate` `updatedAt`, all 5 state-machine domain
+  methods per §2.G); `JudgingPhase` enum (NOT_STARTED / ACTIVE / BOS
+  / COMPLETE); `JudgingRepository` with `findByDivisionId`. Test:
+  `JudgingRepositoryTest#shouldSaveAndFindJudgingByDivisionId`.
+- 🟡 Next: TDD Cycle 2 — `JudgingTable` (+ `JudgeAssignment` child).
 
 ### Priority 6: Awards module
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md` and `docs/specs/awards.md`.
