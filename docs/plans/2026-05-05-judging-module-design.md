@@ -1,11 +1,12 @@
 # Judging Module — Design Document
 
 **Started:** 2026-05-05
-**Status:** Phases 1–3 ✅ complete; Phase 4 in progress (4.A–4.H done
+**Status:** Phases 1–3 ✅ complete; Phase 4 in progress (4.A–4.I done
 2026-05-09 after a branch reconciliation pass, covering §Q15 +
 admin division-level judging dashboard + judge scoresheet form +
 unified per-role TableView (judge hub + admin per-table) + medal
-round forms + admin Settings extensions + dedicated BOS form). Phase 1 (2026-05-05) scoped the module boundary. Phase 2
+round forms + admin Settings extensions + dedicated BOS form +
+JudgeProfile editor surfaces). Phase 1 (2026-05-05) scoped the module boundary. Phase 2
 (2026-05-07/2026-05-08) decided state machine, retreat semantics,
 start triggers, COI similarity, JudgeProfile, field-level entity
 definitions, V20 schema, and PDF/comment-language tagging (resolves
@@ -50,7 +51,7 @@ Once a phase is complete, its open questions should all have decisions or be exp
 | 1 | Scope & module boundary decisions | ✅ Complete |
 | 2 | Domain model — entity definitions, eager/lazy creation, COI heuristic, MJP qualifications storage, scoresheet locking | ✅ Complete (2.A–2.F 2026-05-07; 2.G + 2.H 2026-05-08) |
 | 3 | Service + event contracts, authorization, COI mechanism, judging start trigger | ✅ Complete (2026-05-08, docs-only sketch; Java skeleton deferred to Phase 5) |
-| 4 | View design (admin table mgmt, judge scoresheet UX, results-before-publication) | 🟡 In progress — 4.A (§Q15) + 4.B (admin dashboard) + 4.C (judge scoresheet form) + 4.D (judge hub + unified TableView) + 4.E (medal round forms) + 4.F (admin Settings extensions) + 4.G (admin per-table folded into 4.D) + 4.H (BOS form) done 2026-05-09. Items 8/9/10 + §Q17 pending. |
+| 4 | View design (admin table mgmt, judge scoresheet UX, results-before-publication) | 🟡 In progress — 4.A–4.I done 2026-05-09 (§Q15 + admin dashboard + scoresheet form + unified TableView + medal round + Settings + BOS form + JudgeProfile editor). Items 9/10 + §Q17 pending. |
 | 5 | Implementation sequencing — TDD cycle order, migration plan, MVP slice | ⏳ Pending |
 
 ---
@@ -85,7 +86,7 @@ Decisions / Open Questions.
 | 5 | Medal round forms (COMPARATIVE + SCORE_BASED) | ✅ §4.E — `MedalRoundView` with hybrid button-row + dropdown controls; advancedToMedalRound filter for COMPARATIVE only |
 | 6 | BOS form detail (admin-only per §4.A) | ✅ §4.H — `BosView` with drag-and-drop primary + [+] dialog fallback |
 | 7 | Admin Settings extensions (`Competition.commentLanguages`, `Division.bosPlaces`, `Division.minJudgesPerTable`) | ✅ §4.F — `MultiSelectComboBox` for languages; `IntegerField` for the two Division fields with status-based locking |
-| 8 | Admin User → JudgeProfile editor | ⏳ Pending |
+| 8 | Admin User → JudgeProfile editor | ✅ §4.I — admin dialog from `UserListView` + conditional self-edit section in `ProfileView` |
 | 9 | `ScoresheetPdfService` + layout sketch | ⏳ Pending |
 | 10 | Full i18n key inventory | ⏳ Pending — incremental keys recorded inline in §4.B–§4.H; consolidate in this item |
 | §Q17 | Mobile / touch UX review for judging surfaces | 🟡 Open — deferred; touches BosView, ScoresheetView, MedalRoundView, TableView |
@@ -95,10 +96,6 @@ Decisions / Open Questions.
 Best entry points (any of these is a reasonable next step — choose
 based on energy):
 
-- **Item 8 (admin User → JudgeProfile editor)** — UI for
-  `certifications` (multi-select MJP/BJCP/OTHER) and
-  `qualificationDetails` (free text) per §2.F. Surfaced from
-  `UserListView`. Smallest remaining item.
 - **Item 9 (Scoresheet PDF)** — design `ScoresheetPdfService`
   interface + layout sketch per §2.H D15a/D15b. Mirrors
   `LabelPdfService`. Single + batch downloads.
@@ -3484,6 +3481,213 @@ error.division.min-judges-locked                          Minimum judges per tab
 - The existing test pattern from Division Settings (entry prefix +
   entry limits + meaderyNameRequired DRAFT-only locking) is the
   template for all three new fields.
+
+### 2026-05-09 — Phase 4.I: Admin User → JudgeProfile editor (Item 8)
+
+Two surfaces edit `JudgeProfile.certifications` and
+`qualificationDetails`. `preferredCommentLanguage` is **not** exposed
+in either surface — it's auto-managed via the scoresheet form's
+language dropdown per §2.H.
+
+**Service surface (already pinned in §3.4):**
+- `JudgeProfileService.createOrUpdate(userId, Set<Certification>,
+  qualificationDetails, requestingUserId)` — authorization:
+  SYSTEM_ADMIN OR self.
+- `JudgeProfileService.findByUserId(userId)` — read-only.
+- `JudgeProfileService.ensureProfileForJudge(userId)` — idempotent
+  bootstrap (used internally by `JudgingService.assignJudge` per
+  §2.H lifecycle).
+
+#### 4.I.1 Admin surface — dialog from `UserListView`
+
+**Where it lives.** New row action button on `UserListView`:
+icon `VaadinIcon.ACADEMIC_CAP` (graduation cap), tooltip "Judge
+profile". Visible for all rows; SYSTEM_ADMIN only (existing
+`@RolesAllowed("SYSTEM_ADMIN")` on the view already gates it).
+
+**Authorization.** `UserListView` is SYSTEM_ADMIN-only; the dialog
+inherits. Per §3.7 "Edit JudgeProfile: ✓ (any user)" for SYSTEM_ADMIN
+and "(any user in own competition's judge pool)" for competition
+ADMIN. v1 surfaces only the SYSTEM_ADMIN path here. Competition
+admins editing JudgeProfile is **deferred to a future iteration** —
+not blocking; competition admins coordinate with system admins for
+qualification updates in v1. (Recorded as a Phase 4 follow-up note.)
+
+**Dialog layout.**
+
+```
+[Header]  Judge profile — {userName}
+─────────────────────────────────────────────────────────
+Certifications
+  ☐ MJP   ☐ BJCP   ☐ OTHER
+
+Qualification details
+  ┌─────────────────────────────────────────────────────┐
+  │ MJP Master, certified 2018; WSET Diploma 2020.      │
+  └─────────────────────────────────────────────────────┘
+  Helper: Free-text — level, year, "OTHER" specifics.
+          Max 200 chars.
+
+(read-only) Preferred comment language: Português (auto-set from scoresheet form)
+─────────────────────────────────────────────────────────
+[ Cancel ]   [ Save ]
+```
+
+**Field widgets:**
+- **Certifications** — `CheckboxGroup<Certification>` with all 3 enum
+  values rendered horizontally. Empty selection allowed (per the
+  domain method `updateCertifications(Set<Certification>)` which
+  accepts an empty set per §2.G). i18n labels via
+  `judge-profile.certification.MJP` / `.BJCP` / `.OTHER`.
+- **Qualification details** — `TextField` (or `TextArea` if length
+  warrants — 200 chars is short enough for `TextField` in practice).
+  `setMaxLength(200)`. Trimmed; null/blank stored as null per §2.G.
+- **Preferred comment language** — read-only `Span` showing the
+  current sticky preference (display name in admin's UI locale).
+  "Not set" when null. Caption "auto-set from scoresheet form" so
+  admin understands they shouldn't try to edit it here.
+
+**Save button.** `setDisableOnClick(true)`. Calls
+`JudgeProfileService.createOrUpdate(targetUserId,
+selectedCertifications, qualificationDetails.value, currentUser.id)`.
+On success: success notification + close dialog. Errors surfaced
+locale-aware.
+
+**Lifecycle handling:** if no `JudgeProfile` row exists yet for the
+user, the service's `createOrUpdate` creates one (idempotent). The
+dialog opens with empty certifications / null details for new
+profiles, populated values for existing.
+
+#### 4.I.2 Self-edit surface — section in `ProfileView`
+
+**Where it lives.** New collapsible / always-visible section in
+`ProfileView` titled "Judge Qualifications", positioned after the
+existing language + MFA sections.
+
+**Conditional visibility (decided 2026-05-09).** Section renders
+**only when** the user satisfies *either*:
+- `JudgingService.hasAnyJudgeAssignment(userId)` returns true, OR
+- The user has any `ParticipantRole.JUDGE` in any competition (via
+  `CompetitionService.hasAnyJudgeRole(userId)` — new helper).
+
+This matches the §2.F + §2.H lifecycle: a `JudgeProfile` row
+auto-creates on first `JudgeAssignment`, and giving users without
+judging context an editor would be confusing clutter. Entrants
+without any judging role see no section.
+
+The section starts hidden and reveals only when conditions are met.
+No UX leaks (e.g. no greyed-out section).
+
+**Section layout:**
+
+```
+─────────────────────────────────────────
+Judge Qualifications
+
+Certifications
+  ☐ MJP   ☐ BJCP   ☑ OTHER
+
+Qualification details
+  ┌─────────────────────────────────────────────────────┐
+  │ WSET Diploma 2020.                                   │
+  └─────────────────────────────────────────────────────┘
+  Helper: Free-text — level, year, "OTHER" specifics. Max 200 chars.
+
+[ Save qualifications ]
+─────────────────────────────────────────
+```
+
+Fields are identical to the admin dialog. Save button calls the
+same service method, with `requestingUserId == targetUserId`
+(authorization passes per §3.4 "SYSTEM_ADMIN or self").
+
+**No preferred-comment-language field** in this section either — it's
+set sticky by the scoresheet form. Adding a clear/reset control here
+is over-engineering for v1; if a user wants to clear the sticky pref,
+they pick a different language on their next scoresheet and it
+overrides.
+
+#### 4.I.3 Authorization summary
+
+| Action | SYSTEM_ADMIN | Competition ADMIN | Self | Other |
+|---|---|---|---|---|
+| Edit own JudgeProfile (ProfileView section) | ✓ | ✓ | ✓ | — |
+| Edit any user's JudgeProfile (UserListView dialog) | ✓ | (deferred to v2) | — | — |
+| View own JudgeProfile | ✓ | ✓ | ✓ | — |
+| View other users' JudgeProfile | ✓ | ✓ (own competition's judges) | — | — |
+
+(Competition ADMIN edit-others path deferred per §4.I.1; recorded for
+post-v1 follow-up.)
+
+#### 4.I.4 Incremental i18n keys
+
+Under `judge-profile.*`:
+
+```
+judge-profile.certification.MJP                     MJP
+judge-profile.certification.BJCP                    BJCP
+judge-profile.certification.OTHER                   Other
+judge-profile.certifications.label                  Certifications
+judge-profile.qualification-details.label           Qualification details
+judge-profile.qualification-details.helper          Free-text — level, year, "OTHER" specifics. Max 200 chars.
+judge-profile.preferred-comment-language.label      Preferred comment language
+judge-profile.preferred-comment-language.helper     Auto-set from the scoresheet form when you pick a comment language.
+judge-profile.preferred-comment-language.empty      Not set
+judge-profile.save                                  Save qualifications
+judge-profile.save.success                          Saved.
+```
+
+Admin dialog (under `user-list.judge-profile.*`):
+
+```
+user-list.judge-profile.action                      Judge profile
+user-list.judge-profile.dialog.title                Judge profile — {0}
+user-list.judge-profile.tooltip                     Edit qualifications and certifications
+```
+
+Self-edit section (under `profile.judge-qualifications.*`):
+
+```
+profile.judge-qualifications.section.title          Judge Qualifications
+profile.judge-qualifications.section.helper         Visible because you're assigned to a judging table or have a JUDGE role.
+```
+
+Error keys:
+
+```
+error.judge-profile.unauthorized                    Not authorized to edit this judge profile.
+error.judge-profile.qualification-details-too-long  Qualification details must be 200 characters or fewer.
+```
+
+PT translations defer to Phase 5.
+
+#### 4.I.5 Implementation notes
+
+- New service method needed (Phase 5):
+  `CompetitionService.hasAnyJudgeRole(userId)` — returns true if the
+  user has any `ParticipantRole = JUDGE` across any competition.
+  Cheap O(1) `existsByUserIdAndRole` query.
+- `UserListView` row action wiring is mechanical (mirrors existing
+  per-row edit / send-magic-link / password-reset buttons).
+- `ProfileView` section visibility uses the existing
+  `@PermitAll` + `beforeEnter` pattern; the new condition is just an
+  additional `if (showSection) add(section)` in the render path —
+  no auth changes.
+- The auto-creation-on-first-JudgeAssignment lifecycle from §2.H is
+  **service-side**, invoked from `JudgingService.assignJudge`. The
+  editor surfaces don't need to invoke `ensureProfileForJudge`
+  themselves — `createOrUpdate` is idempotent and creates the row
+  if missing.
+
+#### 4.I.6 Implications
+
+- Item 8 closed.
+- Phase 4 follow-up: competition-ADMIN edit-others path
+  (§3.7 "any user in own competition's judge pool") deferred to v2;
+  noted in §4.I.1.
+- No schema changes (V20 already covers JudgeProfile per §2.G).
+- Phase 5 implementation: service methods already specified per
+  §3.4; only UI wiring is new.
 
 ### 2026-05-09 — Phase 4.G: Admin per-table scoresheet drill-in (Item 2)
 
