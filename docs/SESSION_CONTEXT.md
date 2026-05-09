@@ -416,10 +416,9 @@ Design and implementation. **Design in progress (multi-session):** see
 open questions, and the "Next Session: Start Here" marker. Reference:
 `docs/reference/chip-competition-rules.md` and `docs/specs/judging.md`.
 
-**Phase 4 IN PROGRESS (2026-05-09, post branch-reconciliation).** Items
-1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + §Q15 closed. New §Q16 + §Q17 opened
-(deferred). Phase 4 follow-ups: Item 9 (ScoresheetPdfService), Item
-10 (full i18n key inventory).
+**Phase 4 nearly DONE (2026-05-09, post branch-reconciliation).** Items
+1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 + §Q15 closed. New §Q16 + §Q17
+opened (deferred). Only Item 10 (full i18n key inventory) remains.
 
 **Branch reconciliation (2026-05-09):** the abandoned
 `origin/judging-module` branch had two pushed commits with overlapping
@@ -637,13 +636,12 @@ to Phase 5):**
 - Open: §Q15 (head-judge designation for BOS authorization) — deferred
   to Phase 4 view design; default leaning is admin-only for v1.
 
-**Phase 4 — view design (in progress, multi-session).** Items 1 + 2 + 3 +
-4 + 5 + 6 + 7 + 8 + §Q15 closed in the 2026-05-09 session (see Phase
-4.A–4.I above). §Q16 (per-entry tasting-label PDF variant for
+**Phase 4 — view design (nearly done, single session).** Items 1 + 2 + 3
++ 4 + 5 + 6 + 7 + 8 + 9 + §Q15 closed in the 2026-05-09 session (see
+Phase 4.A–4.J above). §Q16 (per-entry tasting-label PDF variant for
 wine-glass tags) and §Q17 (mobile / touch UX review across judging
-surfaces) opened — both deferred. Remaining in priority order:
-Item 9 (`ScoresheetPdfService` + layout sketch); Item 10
-(consolidated i18n key inventory).
+surfaces) opened — both deferred. Only Item 10 (consolidated i18n
+key inventory) remains.
 
 **Phase 5 (impl, deferred):** module skeleton → V20 migration →
 entities → services (TDD, repository tests first) → events + listeners

@@ -1,12 +1,14 @@
 # Judging Module — Design Document
 
 **Started:** 2026-05-05
-**Status:** Phases 1–3 ✅ complete; Phase 4 in progress (4.A–4.I done
+**Status:** Phases 1–3 ✅ complete; Phase 4 nearly done (4.A–4.J done
 2026-05-09 after a branch reconciliation pass, covering §Q15 +
 admin division-level judging dashboard + judge scoresheet form +
 unified per-role TableView (judge hub + admin per-table) + medal
 round forms + admin Settings extensions + dedicated BOS form +
-JudgeProfile editor surfaces). Phase 1 (2026-05-05) scoped the module boundary. Phase 2
+JudgeProfile editor surfaces + ScoresheetPdfService). Item 10
+(consolidated i18n inventory) + §Q17 (mobile/touch UX review)
+remain. Phase 1 (2026-05-05) scoped the module boundary. Phase 2
 (2026-05-07/2026-05-08) decided state machine, retreat semantics,
 start triggers, COI similarity, JudgeProfile, field-level entity
 definitions, V20 schema, and PDF/comment-language tagging (resolves
@@ -51,7 +53,7 @@ Once a phase is complete, its open questions should all have decisions or be exp
 | 1 | Scope & module boundary decisions | ✅ Complete |
 | 2 | Domain model — entity definitions, eager/lazy creation, COI heuristic, MJP qualifications storage, scoresheet locking | ✅ Complete (2.A–2.F 2026-05-07; 2.G + 2.H 2026-05-08) |
 | 3 | Service + event contracts, authorization, COI mechanism, judging start trigger | ✅ Complete (2026-05-08, docs-only sketch; Java skeleton deferred to Phase 5) |
-| 4 | View design (admin table mgmt, judge scoresheet UX, results-before-publication) | 🟡 In progress — 4.A–4.I done 2026-05-09 (§Q15 + admin dashboard + scoresheet form + unified TableView + medal round + Settings + BOS form + JudgeProfile editor). Items 9/10 + §Q17 pending. |
+| 4 | View design (admin table mgmt, judge scoresheet UX, results-before-publication) | 🟡 In progress — 4.A–4.J done 2026-05-09 (§Q15 + admin dashboard + scoresheet form + unified TableView + medal round + Settings + BOS form + JudgeProfile editor + ScoresheetPdfService). Item 10 + §Q17 pending. |
 | 5 | Implementation sequencing — TDD cycle order, migration plan, MVP slice | ⏳ Pending |
 
 ---
@@ -87,7 +89,7 @@ Decisions / Open Questions.
 | 6 | BOS form detail (admin-only per §4.A) | ✅ §4.H — `BosView` with drag-and-drop primary + [+] dialog fallback |
 | 7 | Admin Settings extensions (`Competition.commentLanguages`, `Division.bosPlaces`, `Division.minJudgesPerTable`) | ✅ §4.F — `MultiSelectComboBox` for languages; `IntegerField` for the two Division fields with status-based locking |
 | 8 | Admin User → JudgeProfile editor | ✅ §4.I — admin dialog from `UserListView` + conditional self-edit section in `ProfileView` |
-| 9 | `ScoresheetPdfService` + layout sketch | ⏳ Pending |
+| 9 | `ScoresheetPdfService` + layout sketch | ✅ §4.J — A4 portrait single-page PDF, locale-aware, comment-language subheaders, single + by-table + by-category batch (all admin-only) |
 | 10 | Full i18n key inventory | ⏳ Pending — incremental keys recorded inline in §4.B–§4.H; consolidate in this item |
 | §Q17 | Mobile / touch UX review for judging surfaces | 🟡 Open — deferred; touches BosView, ScoresheetView, MedalRoundView, TableView |
 
@@ -96,9 +98,6 @@ Decisions / Open Questions.
 Best entry points (any of these is a reasonable next step — choose
 based on energy):
 
-- **Item 9 (Scoresheet PDF)** — design `ScoresheetPdfService`
-  interface + layout sketch per §2.H D15a/D15b. Mirrors
-  `LabelPdfService`. Single + batch downloads.
 - **Item 10 (full i18n key inventory)** — consolidate the inline keys
   from §4.B–§4.H into a single inventory grouped by surface. Useful
   before Phase 5 implementation so PT translations have one
@@ -3688,6 +3687,251 @@ PT translations defer to Phase 5.
 - No schema changes (V20 already covers JudgeProfile per §2.G).
 - Phase 5 implementation: service methods already specified per
   §3.4; only UI wiring is new.
+
+### 2026-05-09 — Phase 4.J: ScoresheetPdfService + layout (Item 9)
+
+**Service interface** (Phase 5; mirrors `LabelPdfService` in the entry
+module):
+
+```java
+// app.meads.judging.ScoresheetPdfService (public API)
+public interface ScoresheetPdfService {
+
+    byte[] generateScoresheetPdf(UUID scoresheetId, Locale printerLocale);
+    // Single-scoresheet PDF, locale-aware per §2.H D15a.
+    // Throws BusinessRuleException if scoresheet not found or
+    // status not SUBMITTED (PDFs only render submitted scoresheets;
+    // DRAFT scoresheets are work-in-progress and not exported).
+
+    byte[] generateScoresheetsForTablePdf(UUID tableId, Locale printerLocale);
+    // Batch — all SUBMITTED scoresheets at the table, concatenated
+    // into one PDF (page break between sheets).
+
+    byte[] generateScoresheetsForCategoryPdf(UUID divisionCategoryId, Locale printerLocale);
+    // Batch — all SUBMITTED scoresheets across all tables for this
+    // judging-scope category, concatenated.
+}
+```
+
+**Implementation toolchain** (Phase 5):
+- OpenPDF + embedded Liberation Sans (already in classpath for
+  `LabelPdfService` — Unicode coverage including Polish diacritics,
+  Portuguese accented characters, etc.).
+- No QR code embedding (scoresheets are not glued to bottles; no
+  scannable element needed). Skip the ZXing TYPE_BYTE_BINARY → INT_RGB
+  conversion captured in MEMORY for `LabelPdfService`.
+- Cell embedding via `PdfPCell` directly; no `Paragraph.add(image)`
+  workaround needed.
+
+**Locale-awareness (§2.H D15a):**
+- All field names (`Appearance`, `Aroma/Bouquet`, etc.) and tier
+  labels (`Unacceptable`, `Below Avg`, etc.) render in the printer's
+  UI locale via `MeadsI18NProvider.getTranslation(key, locale)`.
+- The locale is passed in as a method parameter; the controller /
+  view that triggers the download resolves it from
+  `UI.getCurrent().getLocale()` (or
+  `LocaleContextHolder.getLocale()` for non-UI contexts).
+- Comment-block subheaders carry "Comments — written in {Language}"
+  per §2.H D15b. The `{Language}` value is the localized display
+  name of `Scoresheet.commentLanguage` in the printer's locale, e.g.
+  printer locale = `pt`, comment language = `it` → "Comentários —
+  escritos em Italiano".
+
+#### Page layout (A4 portrait, single page; auto-flow to page 2)
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│ [logo 24px]  CHIP 2026 — Amadora                                 │  ← thin top strip
+│              SCORESHEET                                          │
+├──────────────────────────────────────────────────────────────────┤
+│ Blind code:    AMA-3                                             │
+│ Category:      M1A — Traditional Dry Mead                        │
+│ Sweetness:     Dry   Strength: Standard   Carbonation: Still     │
+│ ABV:           12.0%                                             │
+│ Honey:         Acacia                                            │
+│ Other ingr.:   —                                                 │
+│ Wood:          Oak (French, 6 months)                            │
+│ Add. info:     "Aged on French oak for 6 months"                 │
+├──────────────────────────────────────────────────────────────────┤
+│ Appearance                                                       │
+│ Score: 9 / 12                                                    │
+│ Unacceptable 0–2 · Below Avg 3–4 · Avg 5–6 · Good 7–8 ·          │
+│ Very Good 9–10 · Perfect 11–12                                   │
+│ Comments — written in Português                                  │
+│   Limpidez excelente, cor âmbar profunda; sem turbidez visível.  │
+├──────────────────────────────────────────────────────────────────┤
+│ Aroma/Bouquet                                                    │
+│ Score: 24 / 30                                                   │
+│ Unacceptable 0–5 · Below Avg 6–10 · Avg 11–15 · Good 16–20 ·     │
+│ Very Good 21–25 · Perfect 26–30                                  │
+│ Comments — written in Português                                  │
+│   Notas florais e de mel claro; ligeiro toque de baunilha.       │
+├──────────────────────────────────────────────────────────────────┤
+│ ... 3 more score-field blocks (Flavour and Body, Finish,         │
+│     Overall Impression) following the same pattern ...           │
+├──────────────────────────────────────────────────────────────────┤
+│ Overall comments — written in Português                          │
+│   Hidromel bem elaborado, seco e equilibrado. Beneficiaria de    │
+│   um pouco mais de complexidade no perfil aromático.             │
+├──────────────────────────────────────────────────────────────────┤
+│ TOTAL: 87 / 100                                                  │
+├──────────────────────────────────────────────────────────────────┤
+│ FOR INTERNAL USE — BLIND JUDGING                                 │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+**Section breakdown:**
+
+- **Top strip** — small competition logo + "Competition — Division"
+  + "SCORESHEET" subheader. Mirrors the entry-side label PDF top
+  strip from `LabelPdfService`.
+- **Entry section** — read-only entry data. Same fields as the
+  scoresheet form's entry header card (per §4.C blind-judging
+  policy: no name, no meadery, no country).
+- **Score-field blocks (5)** — one block per `ScoreField`:
+  - Field name (localized)
+  - Score line: "Score: N / maxValue"
+  - Tier-hints line (single, joined by " · "): localized labels +
+    numeric ranges
+  - Comment block subheader: "Comments — written in {Language}"
+    (where `{Language}` is the localized display name of
+    `Scoresheet.commentLanguage`)
+  - Comment body
+- **Overall comments section** — same subheader pattern; comment
+  body below.
+- **Total line** — bold, large font ("TOTAL: 87 / 100").
+- **Footer** — "FOR INTERNAL USE — BLIND JUDGING" disclaimer at
+  bottom of every page (auto-flow safe).
+
+**Auto-flow behavior:** OpenPDF naturally flows content to page 2 if
+content exceeds one A4 page. Footer repeats. Score-field blocks
+should not break across pages (use `setKeepTogether(true)` on the
+containing `PdfPTable` per row).
+
+**Judge identity not rendered** (per §2.F decision — v1 anonymized).
+`Scoresheet.filledByJudgeUserId` is informational only; not on PDF.
+Per-jurisdiction template config (when judge details should be on
+the PDF) deferred to a future feature.
+
+#### Authorization
+
+| Action | SYSTEM_ADMIN | Competition ADMIN | Judge | Entrant |
+|---|---|---|---|---|
+| Download single scoresheet PDF | ✓ | ✓ (own competition) | — (deferred) | — (post-v1, via awards) |
+| Download by-table batch | ✓ | ✓ (own competition) | — | — |
+| Download by-category batch | ✓ | ✓ (own competition) | — | — |
+
+**Judge access** (decided 2026-05-09): judges do **not** download
+scoresheet PDFs in v1 — judges interact via the form (`ScoresheetView`)
+and don't need to print/archive sheets they entered. Removes the
+authorization edge case where a judge could download SUBMITTED
+scoresheets they weren't part of.
+
+**Entrant access**: deferred to the awards module post-v1 (see Q9).
+Once awards publishes results, entrants will get their own scoresheet
+PDFs via the awards-public results view; not via the judging module
+directly.
+
+#### UI surfaces
+
+- `ScoresheetView` (§4.C) header for SUBMITTED scoresheets:
+  add a "📄 Download PDF" button (admin-only visibility).
+- `TableView` (§4.D) admin actions: per-row "📄" button on
+  SUBMITTED scoresheet rows + a header "📄 Download all scoresheets
+  at this table" button.
+- `MedalRoundView` (§4.E) header (admin-only): "📄 Download all
+  scoresheets in this category" button. Useful right before
+  finalize-medals as a printable record.
+- `JudgingAdminView` (§4.B) Tables tab: per-table row action "📄"
+  for the by-table batch download.
+
+All buttons follow the existing `setDisableOnClick(true)` pattern
+to prevent double-fire. PDF generation runs server-side; response
+streams as `application/pdf` with a `Content-Disposition: attachment;
+filename="..."` header.
+
+**Filename conventions:**
+- Single: `scoresheet-{entryCode}-{compShortName}-{divShortName}.pdf`
+  (e.g. `scoresheet-AMA-3-chip-2026-amadora.pdf`)
+- By-table batch: `scoresheets-table-{tableName-slug}-{compShortName}-{divShortName}.pdf`
+- By-category batch: `scoresheets-category-{categoryCode}-{compShortName}-{divShortName}.pdf`
+
+(Slugs use kebab-case lowercase; mirrors existing label PDF
+filename conventions from `LabelPdfService`.)
+
+#### Incremental i18n keys
+
+Under `scoresheet-pdf.*`:
+
+```
+scoresheet-pdf.title                              SCORESHEET
+scoresheet-pdf.entry.blind-code                   Blind code
+scoresheet-pdf.entry.category                     Category
+scoresheet-pdf.entry.sweetness                    Sweetness
+scoresheet-pdf.entry.strength                     Strength
+scoresheet-pdf.entry.carbonation                  Carbonation
+scoresheet-pdf.entry.abv                          ABV
+scoresheet-pdf.entry.honey                        Honey
+scoresheet-pdf.entry.other-ingredients            Other ingredients
+scoresheet-pdf.entry.wood                         Wood
+scoresheet-pdf.entry.additional-info              Additional info
+scoresheet-pdf.score                              Score
+scoresheet-pdf.score.format                       {0} / {1}
+scoresheet-pdf.tier.range                         {0} {1}–{2}
+scoresheet-pdf.tier.separator                     ·
+scoresheet-pdf.comments.subheader                 Comments — written in {0}
+scoresheet-pdf.overall-comments.subheader         Overall comments — written in {0}
+scoresheet-pdf.total                              TOTAL
+scoresheet-pdf.total.format                       {0} / {1}
+scoresheet-pdf.disclaimer                         FOR INTERNAL USE — BLIND JUDGING
+```
+
+(Field name keys `scoresheet.field.appearance` etc. and tier label
+keys `scoresheet.tier.unacceptable` etc. are reused from §4.C —
+same canonical English keys serve both the form and the PDF.)
+
+Action / button keys (under each surface):
+
+```
+scoresheet.action.download-pdf                    Download PDF
+table.action.download-batch-pdf                   Download all scoresheets (PDF)
+medal-round.action.download-batch-pdf             Download all scoresheets (PDF)
+```
+
+PT translations alongside Phase 5 implementation (existing
+convention).
+
+#### Implementation notes
+
+- `ScoresheetPdfService` lives in `app.meads.judging` (public API)
+  with implementation in `app.meads.judging.internal`. Mirrors the
+  `LabelPdfService` arrangement.
+- Reuse `LabelPdfService`'s embedded Liberation Sans font setup —
+  factor into a shared `PdfFontProvider` utility if needed during
+  Phase 5 (mild duplication acceptable in v1).
+- PDF tests follow the existing pattern from `LabelPdfServiceTest`:
+  generate to a `byte[]`, parse with iText (or just verify size +
+  basic header bytes); no rendering assertions beyond presence.
+- Byte streaming via the `StreamResource` / `Anchor` pattern Vaadin
+  uses for `LabelPdfService` downloads — same plumbing for download
+  triggers.
+- Comment-language display name: `Locale.forLanguageTag(commentLanguage)
+  .getDisplayLanguage(printerLocale)` resolves the language name in
+  the printer's locale (e.g. printer=`pt`, comment=`it` →
+  "Italiano").
+
+#### Implications
+
+- Item 9 closed.
+- Phase 5 implementation: new module-public service interface; new
+  internal implementation; UI hooks on 4 surfaces (`ScoresheetView`,
+  `TableView`, `MedalRoundView`, `JudgingAdminView`). No schema
+  changes.
+- Awards module dependency note: when awards is implemented, the
+  entrant-facing results view will likely call into
+  `ScoresheetPdfService.generateScoresheetPdf(scoresheetId,
+  printerLocale)` for the per-entrant PDF. Service interface kept
+  cross-module-friendly (no judging-internal types in the signature).
 
 ### 2026-05-09 — Phase 4.G: Admin per-table scoresheet drill-in (Item 2)
 
