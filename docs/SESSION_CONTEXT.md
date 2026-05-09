@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `feature/judging-module` (Phase 5 in progress)
-**Tests:** 799 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-09 (Phase 5 cycles 1–6: Judging, JudgingTable, CategoryJudgingConfig, Scoresheet, MedalAward, BosPlacement; V20–V25 migrations)
+**Tests:** 804 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-09 (Phase 5 cycles 1–7: all 7 judging aggregates persist correctly; V20–V26 migrations)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -734,8 +734,22 @@ skeleton from Phase 3 translates mechanically.
   `updatePlace(newPlace, awardedBy)` mutator. `BosPlacementRepository`:
   `findByDivisionIdOrderByPlace`, `findByEntryId`. V25 migration. 6
   repository tests.
-- 🟡 Next: TDD Cycle 7 — `JudgeProfile` (final aggregate, includes
-  `@ElementCollection` Set<Certification>).
+- ✅ TDD Cycle 7 — `JudgeProfile` aggregate: UUID self-gen, `userId`
+  UNIQUE FK, `Set<Certification>` via `@ElementCollection` +
+  `@CollectionTable(name = "judge_profile_certifications")`,
+  `qualificationDetails` VARCHAR(200), `preferredCommentLanguage`
+  VARCHAR(5) (sticky preference per §2.H). `Certification` enum
+  (MJP/BJCP/OTHER). 3 domain methods: `updateCertifications` (full
+  set replacement), `updateQualificationDetails` (trim + null on
+  blank), `updatePreferredCommentLanguage` (null clears). Eager fetch
+  on the certifications collection. `JudgeProfileRepository.findByUserId`.
+  V26 migration. 5 repository tests.
+- 🎉 All 7 judging-module aggregates implemented (Judging,
+  JudgingTable+JudgeAssignment, CategoryJudgingConfig,
+  Scoresheet+ScoreField, MedalAward, BosPlacement, JudgeProfile).
+- 🟡 Next: Competition-module additions (Competition.commentLanguages,
+  Division.bosPlaces, Division.minJudgesPerTable per §2.G), then
+  services + cross-module guards + events + views.
 
 ### Priority 6: Awards module
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md` and `docs/specs/awards.md`.
