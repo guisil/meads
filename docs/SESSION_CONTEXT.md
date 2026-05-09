@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `feature/judging-module` (Phase 5 in progress)
-**Tests:** 778 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-09 (Judging entity + JudgingRepository + V20 migration, first TDD cycle of Phase 5)
+**Tests:** 783 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-09 (Phase 5 cycles 1–2: Judging + JudgingTable/JudgeAssignment aggregates, V20 + V21 migrations)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -679,7 +679,21 @@ skeleton from Phase 3 translates mechanically.
   methods per §2.G); `JudgingPhase` enum (NOT_STARTED / ACTIVE / BOS
   / COMPLETE); `JudgingRepository` with `findByDivisionId`. Test:
   `JudgingRepositoryTest#shouldSaveAndFindJudgingByDivisionId`.
-- 🟡 Next: TDD Cycle 2 — `JudgingTable` (+ `JudgeAssignment` child).
+- ✅ TDD Cycle 2 — `JudgingTable` aggregate + `JudgeAssignment` child:
+  `JudgingTable` entity in public package with `@OneToMany` +
+  `@JoinColumn(name="judging_table_id")` + `orphanRemoval = true` over
+  `JudgeAssignment`; `JudgingTableStatus` enum (NOT_STARTED / ROUND_1
+  / COMPLETE); `JudgeAssignment` `@Entity` in `internal/` (no FK
+  field on the child — JPA-managed via parent's `@JoinColumn` to
+  avoid duplicate mapping); 6 domain methods (`updateName`,
+  `updateScheduledDate`, `assignJudge` idempotent, `removeJudge`,
+  `startRound1` / `markComplete` / `reopenToRound1` state machine);
+  `JudgingTableRepository` with `findByJudgingId` and JPQL-based
+  `findByJudgeUserId` (joins to assignments). 5 tests (save w/
+  assignments, find-by-judging-id, orphan-removal of assignment,
+  cross-table find-by-judge, empty result). V21 migration:
+  `judging_tables` + `judge_assignments` (with FK cascade DELETE).
+- 🟡 Next: TDD Cycle 3 — `CategoryJudgingConfig`.
 
 ### Priority 6: Awards module
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md` and `docs/specs/awards.md`.
