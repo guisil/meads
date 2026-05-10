@@ -26,8 +26,6 @@ import app.meads.judging.CoiCheckService;
 import app.meads.judging.ScoresheetService;
 import app.meads.judging.ScoresheetStatus;
 import app.meads.judging.TableStartedEvent;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -90,7 +88,7 @@ public class JudgingServiceImpl implements JudgingService {
     }
 
     @Override
-    public Judging ensureJudgingExists(@NotNull UUID divisionId) {
+    public Judging ensureJudgingExists(UUID divisionId) {
         return judgingRepository.findByDivisionId(divisionId)
                 .orElseGet(() -> {
                     var judging = new Judging(divisionId);
@@ -101,11 +99,11 @@ public class JudgingServiceImpl implements JudgingService {
     }
 
     @Override
-    public JudgingTable createTable(@NotNull UUID judgingId,
-                                    @NotBlank String name,
-                                    @NotNull UUID divisionCategoryId,
+    public JudgingTable createTable(UUID judgingId,
+                                    String name,
+                                    UUID divisionCategoryId,
                                     LocalDate scheduledDate,
-                                    @NotNull UUID adminUserId) {
+                                    UUID adminUserId) {
         var judging = requireJudging(judgingId);
         requireAuthorizedForJudging(judging, adminUserId);
         var table = new JudgingTable(judgingId, name, divisionCategoryId, scheduledDate);
@@ -116,8 +114,8 @@ public class JudgingServiceImpl implements JudgingService {
     }
 
     @Override
-    public void updateTableName(@NotNull UUID tableId, @NotBlank String name,
-                                @NotNull UUID adminUserId) {
+    public void updateTableName(UUID tableId, String name,
+                                UUID adminUserId) {
         var table = requireTable(tableId);
         var judging = requireJudging(table.getJudgingId());
         requireAuthorizedForJudging(judging, adminUserId);
@@ -127,8 +125,8 @@ public class JudgingServiceImpl implements JudgingService {
     }
 
     @Override
-    public void updateTableScheduledDate(@NotNull UUID tableId, LocalDate date,
-                                          @NotNull UUID adminUserId) {
+    public void updateTableScheduledDate(UUID tableId, LocalDate date,
+                                          UUID adminUserId) {
         var table = requireTable(tableId);
         var judging = requireJudging(table.getJudgingId());
         requireAuthorizedForJudging(judging, adminUserId);
@@ -138,7 +136,7 @@ public class JudgingServiceImpl implements JudgingService {
     }
 
     @Override
-    public void deleteTable(@NotNull UUID tableId, @NotNull UUID adminUserId) {
+    public void deleteTable(UUID tableId, UUID adminUserId) {
         var table = requireTable(tableId);
         var judging = requireJudging(table.getJudgingId());
         requireAuthorizedForJudging(judging, adminUserId);
@@ -154,25 +152,25 @@ public class JudgingServiceImpl implements JudgingService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<JudgingTable> findTablesByJudgingId(@NotNull UUID judgingId) {
+    public List<JudgingTable> findTablesByJudgingId(UUID judgingId) {
         return judgingTableRepository.findByJudgingId(judgingId);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<JudgingTable> findTablesByJudgeUserId(@NotNull UUID judgeUserId) {
+    public List<JudgingTable> findTablesByJudgeUserId(UUID judgeUserId) {
         return judgingTableRepository.findByJudgeUserId(judgeUserId);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public boolean hasAnyJudgeAssignment(@NotNull UUID judgeUserId) {
+    public boolean hasAnyJudgeAssignment(UUID judgeUserId) {
         return judgingTableRepository.existsAssignmentByJudgeUserId(judgeUserId);
     }
 
     @Override
-    public void assignJudge(@NotNull UUID tableId, @NotNull UUID judgeUserId,
-                            @NotNull UUID adminUserId) {
+    public void assignJudge(UUID tableId, UUID judgeUserId,
+                            UUID adminUserId) {
         var table = requireTable(tableId);
         var judging = requireJudging(table.getJudgingId());
         requireAuthorizedForJudging(judging, adminUserId);
@@ -183,8 +181,8 @@ public class JudgingServiceImpl implements JudgingService {
     }
 
     @Override
-    public void removeJudge(@NotNull UUID tableId, @NotNull UUID judgeUserId,
-                            @NotNull UUID adminUserId) {
+    public void removeJudge(UUID tableId, UUID judgeUserId,
+                            UUID adminUserId) {
         var table = requireTable(tableId);
         var judging = requireJudging(table.getJudgingId());
         requireAuthorizedForJudging(judging, adminUserId);
@@ -207,7 +205,7 @@ public class JudgingServiceImpl implements JudgingService {
     // === Table state transitions ===
 
     @Override
-    public void startTable(@NotNull UUID tableId, @NotNull UUID adminUserId) {
+    public void startTable(UUID tableId, UUID adminUserId) {
         var table = requireTable(tableId);
         var judging = requireJudging(table.getJudgingId());
         requireAuthorizedForJudging(judging, adminUserId);
@@ -240,9 +238,9 @@ public class JudgingServiceImpl implements JudgingService {
     // === Category medal-round configuration ===
 
     @Override
-    public CategoryJudgingConfig configureCategoryMedalRound(@NotNull UUID divisionCategoryId,
-                                                              @NotNull MedalRoundMode mode,
-                                                              @NotNull UUID adminUserId) {
+    public CategoryJudgingConfig configureCategoryMedalRound(UUID divisionCategoryId,
+                                                              MedalRoundMode mode,
+                                                              UUID adminUserId) {
         // Authorization: load division of the category via competitionService
         var divisionId = resolveDivisionIdFromCategory(divisionCategoryId);
         if (!competitionService.isAuthorizedForDivision(divisionId, adminUserId)) {
@@ -267,7 +265,7 @@ public class JudgingServiceImpl implements JudgingService {
     // === Medal round transitions ===
 
     @Override
-    public void startMedalRound(@NotNull UUID divisionCategoryId, @NotNull UUID adminUserId) {
+    public void startMedalRound(UUID divisionCategoryId, UUID adminUserId) {
         var config = requireConfig(divisionCategoryId);
         var divisionId = resolveDivisionIdFromCategory(divisionCategoryId);
         requireAuthorizedForDivision(divisionId, adminUserId);
@@ -287,7 +285,7 @@ public class JudgingServiceImpl implements JudgingService {
     }
 
     @Override
-    public void completeMedalRound(@NotNull UUID divisionCategoryId, @NotNull UUID adminUserId) {
+    public void completeMedalRound(UUID divisionCategoryId, UUID adminUserId) {
         var config = requireConfig(divisionCategoryId);
         var divisionId = resolveDivisionIdFromCategory(divisionCategoryId);
         requireAuthorizedForDivision(divisionId, adminUserId);
@@ -303,7 +301,7 @@ public class JudgingServiceImpl implements JudgingService {
     }
 
     @Override
-    public void reopenMedalRound(@NotNull UUID divisionCategoryId, @NotNull UUID adminUserId) {
+    public void reopenMedalRound(UUID divisionCategoryId, UUID adminUserId) {
         var config = requireConfig(divisionCategoryId);
         var divisionId = resolveDivisionIdFromCategory(divisionCategoryId);
         requireAuthorizedForDivision(divisionId, adminUserId);
@@ -324,7 +322,7 @@ public class JudgingServiceImpl implements JudgingService {
     }
 
     @Override
-    public void resetMedalRound(@NotNull UUID divisionCategoryId, @NotNull UUID adminUserId) {
+    public void resetMedalRound(UUID divisionCategoryId, UUID adminUserId) {
         var config = requireConfig(divisionCategoryId);
         var divisionId = resolveDivisionIdFromCategory(divisionCategoryId);
         requireAuthorizedForDivision(divisionId, adminUserId);
@@ -350,8 +348,8 @@ public class JudgingServiceImpl implements JudgingService {
     // === Medal awards ===
 
     @Override
-    public MedalAward recordMedal(@NotNull UUID entryId, @NotNull Medal medal,
-                                   @NotNull UUID judgeUserId) {
+    public MedalAward recordMedal(UUID entryId, Medal medal,
+                                   UUID judgeUserId) {
         var entry = entryService.findEntryById(entryId);
         var finalCategoryId = entry.getFinalCategoryId();
         if (finalCategoryId == null) {
@@ -382,8 +380,8 @@ public class JudgingServiceImpl implements JudgingService {
     }
 
     @Override
-    public void updateMedal(@NotNull UUID medalAwardId, Medal newValue,
-                            @NotNull UUID judgeUserId) {
+    public void updateMedal(UUID medalAwardId, Medal newValue,
+                            UUID judgeUserId) {
         var award = medalAwardRepository.findById(medalAwardId)
                 .orElseThrow(() -> new BusinessRuleException("error.medal.not-found"));
         var coi = coiCheckService.check(judgeUserId, award.getEntryId());
@@ -402,7 +400,7 @@ public class JudgingServiceImpl implements JudgingService {
     }
 
     @Override
-    public void deleteMedalAward(@NotNull UUID medalAwardId, @NotNull UUID judgeUserId) {
+    public void deleteMedalAward(UUID medalAwardId, UUID judgeUserId) {
         var award = medalAwardRepository.findById(medalAwardId)
                 .orElseThrow(() -> new BusinessRuleException("error.medal.not-found"));
         var config = categoryConfigRepository.findByDivisionCategoryId(award.getFinalCategoryId())
@@ -418,7 +416,7 @@ public class JudgingServiceImpl implements JudgingService {
     // === BOS lifecycle (admin-only per §Q15) ===
 
     @Override
-    public void startBos(@NotNull UUID divisionId, @NotNull UUID adminUserId) {
+    public void startBos(UUID divisionId, UUID adminUserId) {
         requireAuthorizedForDivision(divisionId, adminUserId);
         var judging = judgingRepository.findByDivisionId(divisionId)
                 .orElseThrow(() -> new BusinessRuleException("error.judging.not-found"));
@@ -441,7 +439,7 @@ public class JudgingServiceImpl implements JudgingService {
     }
 
     @Override
-    public void completeBos(@NotNull UUID divisionId, @NotNull UUID adminUserId) {
+    public void completeBos(UUID divisionId, UUID adminUserId) {
         requireAuthorizedForDivision(divisionId, adminUserId);
         var judging = judgingRepository.findByDivisionId(divisionId)
                 .orElseThrow(() -> new BusinessRuleException("error.judging.not-found"));
@@ -458,7 +456,7 @@ public class JudgingServiceImpl implements JudgingService {
     }
 
     @Override
-    public void reopenBos(@NotNull UUID divisionId, @NotNull UUID adminUserId) {
+    public void reopenBos(UUID divisionId, UUID adminUserId) {
         requireAuthorizedForDivision(divisionId, adminUserId);
         var judging = judgingRepository.findByDivisionId(divisionId)
                 .orElseThrow(() -> new BusinessRuleException("error.judging.not-found"));
@@ -473,7 +471,7 @@ public class JudgingServiceImpl implements JudgingService {
     }
 
     @Override
-    public void resetBos(@NotNull UUID divisionId, @NotNull UUID adminUserId) {
+    public void resetBos(UUID divisionId, UUID adminUserId) {
         requireAuthorizedForDivision(divisionId, adminUserId);
         var judging = judgingRepository.findByDivisionId(divisionId)
                 .orElseThrow(() -> new BusinessRuleException("error.judging.not-found"));
@@ -494,8 +492,8 @@ public class JudgingServiceImpl implements JudgingService {
     // === BOS placements ===
 
     @Override
-    public BosPlacement recordBosPlacement(@NotNull UUID divisionId, @NotNull UUID entryId,
-                                            int place, @NotNull UUID adminUserId) {
+    public BosPlacement recordBosPlacement(UUID divisionId, UUID entryId,
+                                            int place, UUID adminUserId) {
         requireAuthorizedForDivision(divisionId, adminUserId);
         var judging = judgingRepository.findByDivisionId(divisionId)
                 .orElseThrow(() -> new BusinessRuleException("error.judging.not-found"));
@@ -531,7 +529,7 @@ public class JudgingServiceImpl implements JudgingService {
     }
 
     @Override
-    public void updateBosPlacement(@NotNull UUID placementId, int place, @NotNull UUID adminUserId) {
+    public void updateBosPlacement(UUID placementId, int place, UUID adminUserId) {
         var placement = bosPlacementRepository.findById(placementId)
                 .orElseThrow(() -> new BusinessRuleException("error.bos.placement-not-found"));
         requireAuthorizedForDivision(placement.getDivisionId(), adminUserId);
@@ -546,7 +544,7 @@ public class JudgingServiceImpl implements JudgingService {
     }
 
     @Override
-    public void deleteBosPlacement(@NotNull UUID placementId, @NotNull UUID adminUserId) {
+    public void deleteBosPlacement(UUID placementId, UUID adminUserId) {
         var placement = bosPlacementRepository.findById(placementId)
                 .orElseThrow(() -> new BusinessRuleException("error.bos.placement-not-found"));
         requireAuthorizedForDivision(placement.getDivisionId(), adminUserId);

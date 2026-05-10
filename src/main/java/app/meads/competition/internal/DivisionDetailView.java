@@ -163,6 +163,14 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                                 + "/divisions/" + division.getShortName() + "/entry-admin")));
         header.add(manageEntriesButton);
 
+        if (division.getStatus().ordinal() >= DivisionStatus.JUDGING.ordinal()) {
+            var manageJudgingButton = new Button(getTranslation("division-detail.manage-judging"), e ->
+                    getUI().ifPresent(ui -> ui.navigate(
+                            "competitions/" + competition.getShortName()
+                                    + "/divisions/" + division.getShortName() + "/judging-admin")));
+            header.add(manageJudgingButton);
+        }
+
         if (division.getStatus() != DivisionStatus.DRAFT) {
             var revertButton = new Button(getTranslation("division-detail.revert-status"), e -> revertStatus());
             header.add(revertButton);

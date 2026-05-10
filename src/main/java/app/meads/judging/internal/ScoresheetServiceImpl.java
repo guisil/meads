@@ -17,7 +17,6 @@ import app.meads.judging.ScoresheetStatus;
 import app.meads.judging.ScoresheetSubmittedEvent;
 import app.meads.judging.TableCompletedEvent;
 import app.meads.judging.TableReopenedEvent;
-import jakarta.validation.constraints.NotNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -66,7 +65,7 @@ public class ScoresheetServiceImpl implements ScoresheetService {
     }
 
     @Override
-    public void createScoresheetsForTable(@NotNull UUID tableId) {
+    public void createScoresheetsForTable(UUID tableId) {
         var table = requireTable(tableId);
         var entries = entryService.findEntriesByFinalCategoryId(table.getDivisionCategoryId());
         for (var entry : entries) {
@@ -78,7 +77,7 @@ public class ScoresheetServiceImpl implements ScoresheetService {
     }
 
     @Override
-    public void ensureScoresheetForEntry(@NotNull UUID entryId) {
+    public void ensureScoresheetForEntry(UUID entryId) {
         if (scoresheetRepository.findByEntryId(entryId).isPresent()) {
             return;
         }
@@ -104,8 +103,8 @@ public class ScoresheetServiceImpl implements ScoresheetService {
     }
 
     @Override
-    public void updateScore(@NotNull UUID scoresheetId, @NotNull String fieldName,
-                            Integer value, String comment, @NotNull UUID judgeUserId) {
+    public void updateScore(UUID scoresheetId, String fieldName,
+                            Integer value, String comment, UUID judgeUserId) {
         var sheet = requireScoresheet(scoresheetId);
         enforceCoi(judgeUserId, sheet);
         try {
@@ -122,8 +121,8 @@ public class ScoresheetServiceImpl implements ScoresheetService {
     }
 
     @Override
-    public void updateOverallComments(@NotNull UUID scoresheetId, String comments,
-                                       @NotNull UUID judgeUserId) {
+    public void updateOverallComments(UUID scoresheetId, String comments,
+                                       UUID judgeUserId) {
         var sheet = requireScoresheet(scoresheetId);
         enforceCoi(judgeUserId, sheet);
         try {
@@ -138,8 +137,8 @@ public class ScoresheetServiceImpl implements ScoresheetService {
     }
 
     @Override
-    public void setAdvancedToMedalRound(@NotNull UUID scoresheetId, boolean advanced,
-                                         @NotNull UUID judgeUserId) {
+    public void setAdvancedToMedalRound(UUID scoresheetId, boolean advanced,
+                                         UUID judgeUserId) {
         var sheet = requireScoresheet(scoresheetId);
         enforceCoi(judgeUserId, sheet);
         var table = requireTable(sheet.getTableId());
@@ -152,8 +151,8 @@ public class ScoresheetServiceImpl implements ScoresheetService {
     }
 
     @Override
-    public void setCommentLanguage(@NotNull UUID scoresheetId, String languageCode,
-                                    @NotNull UUID judgeUserId) {
+    public void setCommentLanguage(UUID scoresheetId, String languageCode,
+                                    UUID judgeUserId) {
         var sheet = requireScoresheet(scoresheetId);
         enforceCoi(judgeUserId, sheet);
         var table = requireTable(sheet.getTableId());
@@ -177,7 +176,7 @@ public class ScoresheetServiceImpl implements ScoresheetService {
     }
 
     @Override
-    public void submit(@NotNull UUID scoresheetId, @NotNull UUID judgeUserId) {
+    public void submit(UUID scoresheetId, UUID judgeUserId) {
         var sheet = requireScoresheet(scoresheetId);
         enforceCoi(judgeUserId, sheet);
         if (sheet.getCommentLanguage() == null) {
@@ -213,7 +212,7 @@ public class ScoresheetServiceImpl implements ScoresheetService {
     }
 
     @Override
-    public void revertToDraft(@NotNull UUID scoresheetId, @NotNull UUID adminUserId) {
+    public void revertToDraft(UUID scoresheetId, UUID adminUserId) {
         var sheet = requireScoresheet(scoresheetId);
         var table = requireTable(sheet.getTableId());
         var judging = requireJudging(table.getJudgingId());
@@ -253,8 +252,8 @@ public class ScoresheetServiceImpl implements ScoresheetService {
     }
 
     @Override
-    public void moveToTable(@NotNull UUID scoresheetId, @NotNull UUID newTableId,
-                            @NotNull UUID adminUserId) {
+    public void moveToTable(UUID scoresheetId, UUID newTableId,
+                            UUID adminUserId) {
         var sheet = requireScoresheet(scoresheetId);
         var newTable = requireTable(newTableId);
         var judging = requireJudging(newTable.getJudgingId());

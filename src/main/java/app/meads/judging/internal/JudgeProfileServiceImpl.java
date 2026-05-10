@@ -6,7 +6,6 @@ import app.meads.identity.UserService;
 import app.meads.judging.Certification;
 import app.meads.judging.JudgeProfile;
 import app.meads.judging.JudgeProfileService;
-import jakarta.validation.constraints.NotNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,7 +34,7 @@ public class JudgeProfileServiceImpl implements JudgeProfileService {
     }
 
     @Override
-    public JudgeProfile ensureProfileForJudge(@NotNull UUID userId) {
+    public JudgeProfile ensureProfileForJudge(UUID userId) {
         return judgeProfileRepository.findByUserId(userId)
                 .orElseGet(() -> {
                     var profile = new JudgeProfile(userId);
@@ -46,10 +45,10 @@ public class JudgeProfileServiceImpl implements JudgeProfileService {
     }
 
     @Override
-    public JudgeProfile createOrUpdate(@NotNull UUID userId,
+    public JudgeProfile createOrUpdate(UUID userId,
                                        Set<Certification> certifications,
                                        String qualificationDetails,
-                                       @NotNull UUID requestingUserId) {
+                                       UUID requestingUserId) {
         requireSelfOrSystemAdmin(userId, requestingUserId);
         var profile = judgeProfileRepository.findByUserId(userId)
                 .orElseGet(() -> new JudgeProfile(userId));
@@ -61,12 +60,12 @@ public class JudgeProfileServiceImpl implements JudgeProfileService {
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<JudgeProfile> findByUserId(@NotNull UUID userId) {
+    public Optional<JudgeProfile> findByUserId(UUID userId) {
         return judgeProfileRepository.findByUserId(userId);
     }
 
     @Override
-    public void updatePreferredCommentLanguage(@NotNull UUID userId, String languageCode) {
+    public void updatePreferredCommentLanguage(UUID userId, String languageCode) {
         var profile = judgeProfileRepository.findByUserId(userId)
                 .orElseGet(() -> new JudgeProfile(userId));
         profile.updatePreferredCommentLanguage(languageCode);
@@ -75,7 +74,7 @@ public class JudgeProfileServiceImpl implements JudgeProfileService {
     }
 
     @Override
-    public void delete(@NotNull UUID userId, @NotNull UUID adminUserId) {
+    public void delete(UUID userId, UUID adminUserId) {
         requireSystemAdmin(adminUserId);
         if (judgingTableRepository.existsAssignmentByJudgeUserId(userId)) {
             throw new BusinessRuleException("error.judge-profile.has-assignments");

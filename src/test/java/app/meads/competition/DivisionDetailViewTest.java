@@ -389,6 +389,40 @@ class DivisionDetailViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldDisplayManageJudgingButtonWhenDivisionInJudgingStatus() {
+        testDivision.advanceStatus(); // DRAFT → REGISTRATION_OPEN
+        testDivision.advanceStatus(); // → REGISTRATION_CLOSED
+        testDivision.advanceStatus(); // → JUDGING
+        divisionRepository.save(testDivision);
+
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName()
+                + "/divisions/" + testDivision.getShortName());
+
+        var buttons = _find(Button.class);
+        var manageJudging = buttons.stream()
+                .filter(b -> b.getText().equals("Manage Judging"))
+                .findFirst();
+        assertThat(manageJudging).isPresent();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldHideManageJudgingButtonWhenDivisionBelowJudgingStatus() {
+        testDivision.advanceStatus(); // DRAFT → REGISTRATION_OPEN
+        divisionRepository.save(testDivision);
+
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName()
+                + "/divisions/" + testDivision.getShortName());
+
+        var buttons = _find(Button.class);
+        var manageJudging = buttons.stream()
+                .filter(b -> b.getText().equals("Manage Judging"))
+                .findFirst();
+        assertThat(manageJudging).isNotPresent();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldDisplayRevertStatusButtonWhenNotDraft() {
         testDivision.advanceStatus(); // DRAFT → REGISTRATION_OPEN
         divisionRepository.save(testDivision);

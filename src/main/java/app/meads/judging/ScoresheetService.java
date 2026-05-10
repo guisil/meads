@@ -1,5 +1,7 @@
 package app.meads.judging;
 
+import jakarta.validation.constraints.NotNull;
+
 import java.util.UUID;
 
 /**
@@ -8,22 +10,22 @@ import java.util.UUID;
  */
 public interface ScoresheetService {
 
-    void createScoresheetsForTable(UUID tableId);
+    void createScoresheetsForTable(@NotNull UUID tableId);
 
-    void ensureScoresheetForEntry(UUID entryId);
+    void ensureScoresheetForEntry(@NotNull UUID entryId);
 
-    void updateScore(UUID scoresheetId, String fieldName,
-                     Integer value, String comment, UUID judgeUserId);
+    void updateScore(@NotNull UUID scoresheetId, @NotNull String fieldName,
+                     Integer value, String comment, @NotNull UUID judgeUserId);
 
-    void updateOverallComments(UUID scoresheetId, String comments, UUID judgeUserId);
+    void updateOverallComments(@NotNull UUID scoresheetId, String comments, @NotNull UUID judgeUserId);
 
-    void setAdvancedToMedalRound(UUID scoresheetId, boolean advanced, UUID judgeUserId);
+    void setAdvancedToMedalRound(@NotNull UUID scoresheetId, boolean advanced, @NotNull UUID judgeUserId);
 
-    void setCommentLanguage(UUID scoresheetId, String languageCode, UUID judgeUserId);
+    void setCommentLanguage(@NotNull UUID scoresheetId, String languageCode, @NotNull UUID judgeUserId);
 
-    void submit(UUID scoresheetId, UUID judgeUserId);
+    void submit(@NotNull UUID scoresheetId, @NotNull UUID judgeUserId);
 
-    void revertToDraft(UUID scoresheetId, UUID adminUserId);
+    void revertToDraft(@NotNull UUID scoresheetId, @NotNull UUID adminUserId);
 
-    void moveToTable(UUID scoresheetId, UUID newTableId, UUID adminUserId);
+    void moveToTable(@NotNull UUID scoresheetId, @NotNull UUID newTableId, @NotNull UUID adminUserId);
 }

@@ -1,21 +1,23 @@
 package app.meads.judging;
 
+import jakarta.validation.constraints.NotNull;
+
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
 public interface JudgeProfileService {
 
-    JudgeProfile ensureProfileForJudge(UUID userId);
+    JudgeProfile ensureProfileForJudge(@NotNull UUID userId);
 
-    JudgeProfile createOrUpdate(UUID userId,
+    JudgeProfile createOrUpdate(@NotNull UUID userId,
                                 Set<Certification> certifications,
                                 String qualificationDetails,
-                                UUID requestingUserId);
+                                @NotNull UUID requestingUserId);
 
-    Optional<JudgeProfile> findByUserId(UUID userId);
+    Optional<JudgeProfile> findByUserId(@NotNull UUID userId);
 
-    void updatePreferredCommentLanguage(UUID userId, String languageCode);
+    void updatePreferredCommentLanguage(@NotNull UUID userId, String languageCode);
 
-    void delete(UUID userId, UUID adminUserId);
+    void delete(@NotNull UUID userId, @NotNull UUID adminUserId);
 }

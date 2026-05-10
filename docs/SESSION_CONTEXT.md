@@ -14,8 +14,8 @@ needed to continue even without memory files or prior conversation history.
 Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
-**Branch:** `feature/judging-module` (Phase 5 services layer complete; views = Phase 6)
-**Tests:** 916 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-09 (Phase 5 cycles 1–8: 7 judging aggregates + competition-module additions; cycles 9–18: services layer + cross-module guards; V20–V27 migrations)
+**Branch:** `feature/judging-module` (Phase 6 views — JudgingAdminView skeleton + Tables tab basic done; remaining: Tables actions, Medal Rounds, BOS, Judge views)
+**Tests:** 921 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-10 (Phase 6.1: skeleton + Manage Judging button + Tables tab grid + Add Table dialog; +5 tests)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -874,6 +874,50 @@ skeleton from Phase 3 translates mechanically.
   Per design doc §4.B–§4.J. Also pending: i18n keys for all the new
   `error.*` and `coi.warning.*` keys introduced in Phase 5 services
   (currently fall back to English raw key).
+
+**Phase 6 progress (2026-05-10) — JudgingAdminView skeleton + Tables tab basic:**
+- ✅ Cycle 1 — `JudgingAdminView` skeleton at
+  `/competitions/:c/divisions/:d/judging-admin` (judging.internal).
+  `@PermitAll` + `beforeEnter()` auth (SYSTEM_ADMIN OR
+  isAuthorizedForDivision; password gate; status >= JUDGING gate;
+  forwards to `""` or division detail when blocked).
+  Lazy-loaded `Judging` row via `ensureJudgingExists` on entry.
+  Header: competition logo + "Competition — Division — Judging Admin"
+  H2 + breadcrumb. TabSheet with three tabs: Tables / Medal Rounds /
+  Best of Show (latter two empty placeholders for now). i18n keys:
+  `judging-admin.nav.judging-admin`, `judging-admin.tab.{tables,
+  medal-rounds, bos}` in EN + PT.
+- ✅ Cycle 2 — "Manage Judging" button on `DivisionDetailView`,
+  visible only when `division.status.ordinal() >= JUDGING.ordinal()`,
+  navigates to the new view via string-based ui.navigate (no
+  cross-module import). i18n: `division-detail.manage-judging` in
+  EN + PT.
+- ✅ Cycle 3 — Tables tab grid + Add Table dialog. Grid columns
+  (Name, Category "code — name", Status, Judges count, Scheduled,
+  Scoresheets, Actions). "+ Add Table" header button opens Dialog
+  (TextField name + `Select<DivisionCategory>` filtered to JUDGING
+  scope via `competitionService.findJudgingCategories` + DatePicker
+  scheduledDate). Save calls `JudgingService.createTable`. Per-field
+  validation; `BusinessRuleException` translated via
+  `getTranslation(messageKey, params)`. Scoresheets column shows "—"
+  placeholder (real DRAFT/SUBMITTED counts deferred — needs
+  `ScoresheetService.countByTableIdAndStatus` helper). Actions column
+  empty for now (per-row buttons in next cycle).
+- ✅ Pre-existing bug surfaced + fixed: `JudgingServiceImpl`,
+  `ScoresheetServiceImpl`, `JudgeProfileServiceImpl` had `@NotNull`
+  / `@NotBlank` on impl method parameters but the public-API
+  interfaces had none. Hibernate Validator's HV000151 (LSP
+  enforcement) fires when these `@Validated` services are bean-
+  proxied. Bug never surfaced because all existing Spring tests for
+  these services use unit-test impl-construction (no proxy). The
+  view is the first Spring-wired consumer. Fix: moved all
+  `@NotNull` / `@NotBlank` annotations from impls to interfaces (the
+  contract is the right place for Bean Validation).
+- 🟡 Next cycles for Phase 6: Tables tab per-row actions (Start /
+  Edit / Assign Judges / Delete), Medal Rounds tab grid + actions,
+  BOS tab content, then judge-side views (`MyJudgingView`,
+  `JudgeTableView`, `ScoresheetView`, `MedalRoundView`, BOS form).
+  Per design doc §4.B–§4.J.
 
 ### Priority 6: Awards module
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md` and `docs/specs/awards.md`.

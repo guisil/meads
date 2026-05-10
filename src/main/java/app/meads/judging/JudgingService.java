@@ -1,5 +1,8 @@
 package app.meads.judging;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -11,70 +14,70 @@ import java.util.UUID;
 public interface JudgingService {
 
     // === Lazy bootstrap ===
-    Judging ensureJudgingExists(UUID divisionId);
+    Judging ensureJudgingExists(@NotNull UUID divisionId);
 
     // === Table CRUD ===
-    JudgingTable createTable(UUID judgingId,
-                             String name,
-                             UUID divisionCategoryId,
+    JudgingTable createTable(@NotNull UUID judgingId,
+                             @NotBlank String name,
+                             @NotNull UUID divisionCategoryId,
                              LocalDate scheduledDate,
-                             UUID adminUserId);
+                             @NotNull UUID adminUserId);
 
-    void updateTableName(UUID tableId, String name, UUID adminUserId);
+    void updateTableName(@NotNull UUID tableId, @NotBlank String name, @NotNull UUID adminUserId);
 
-    void updateTableScheduledDate(UUID tableId, LocalDate date, UUID adminUserId);
+    void updateTableScheduledDate(@NotNull UUID tableId, LocalDate date, @NotNull UUID adminUserId);
 
-    void deleteTable(UUID tableId, UUID adminUserId);
+    void deleteTable(@NotNull UUID tableId, @NotNull UUID adminUserId);
 
-    List<JudgingTable> findTablesByJudgingId(UUID judgingId);
+    List<JudgingTable> findTablesByJudgingId(@NotNull UUID judgingId);
 
-    List<JudgingTable> findTablesByJudgeUserId(UUID judgeUserId);
+    List<JudgingTable> findTablesByJudgeUserId(@NotNull UUID judgeUserId);
 
-    boolean hasAnyJudgeAssignment(UUID judgeUserId);
+    boolean hasAnyJudgeAssignment(@NotNull UUID judgeUserId);
 
     // === Judge assignment ===
-    void assignJudge(UUID tableId, UUID judgeUserId, UUID adminUserId);
+    void assignJudge(@NotNull UUID tableId, @NotNull UUID judgeUserId, @NotNull UUID adminUserId);
 
-    void removeJudge(UUID tableId, UUID judgeUserId, UUID adminUserId);
+    void removeJudge(@NotNull UUID tableId, @NotNull UUID judgeUserId, @NotNull UUID adminUserId);
 
     // === Table state transitions ===
-    void startTable(UUID tableId, UUID adminUserId);
+    void startTable(@NotNull UUID tableId, @NotNull UUID adminUserId);
 
     // === Category medal-round configuration ===
-    CategoryJudgingConfig configureCategoryMedalRound(UUID divisionCategoryId,
-                                                       MedalRoundMode mode,
-                                                       UUID adminUserId);
+    CategoryJudgingConfig configureCategoryMedalRound(@NotNull UUID divisionCategoryId,
+                                                       @NotNull MedalRoundMode mode,
+                                                       @NotNull UUID adminUserId);
 
     // === Medal round transitions ===
-    void startMedalRound(UUID divisionCategoryId, UUID adminUserId);
+    void startMedalRound(@NotNull UUID divisionCategoryId, @NotNull UUID adminUserId);
 
-    void completeMedalRound(UUID divisionCategoryId, UUID adminUserId);
+    void completeMedalRound(@NotNull UUID divisionCategoryId, @NotNull UUID adminUserId);
 
-    void reopenMedalRound(UUID divisionCategoryId, UUID adminUserId);
+    void reopenMedalRound(@NotNull UUID divisionCategoryId, @NotNull UUID adminUserId);
 
-    void resetMedalRound(UUID divisionCategoryId, UUID adminUserId);
+    void resetMedalRound(@NotNull UUID divisionCategoryId, @NotNull UUID adminUserId);
 
     // === Medal awards (during ACTIVE) ===
-    MedalAward recordMedal(UUID entryId, Medal medal, UUID judgeUserId);
+    MedalAward recordMedal(@NotNull UUID entryId, @NotNull Medal medal, @NotNull UUID judgeUserId);
 
-    void updateMedal(UUID medalAwardId, Medal newValue, UUID judgeUserId);
+    void updateMedal(@NotNull UUID medalAwardId, Medal newValue, @NotNull UUID judgeUserId);
 
-    void deleteMedalAward(UUID medalAwardId, UUID judgeUserId);
+    void deleteMedalAward(@NotNull UUID medalAwardId, @NotNull UUID judgeUserId);
 
     // === BOS lifecycle ===
-    void startBos(UUID divisionId, UUID adminUserId);
+    void startBos(@NotNull UUID divisionId, @NotNull UUID adminUserId);
 
-    void completeBos(UUID divisionId, UUID adminUserId);
+    void completeBos(@NotNull UUID divisionId, @NotNull UUID adminUserId);
 
-    void reopenBos(UUID divisionId, UUID adminUserId);
+    void reopenBos(@NotNull UUID divisionId, @NotNull UUID adminUserId);
 
-    void resetBos(UUID divisionId, UUID adminUserId);
+    void resetBos(@NotNull UUID divisionId, @NotNull UUID adminUserId);
 
     // === BOS placements (during BOS) ===
-    BosPlacement recordBosPlacement(UUID divisionId, UUID entryId,
-                                    int place, UUID adminUserId);
+    BosPlacement recordBosPlacement(@NotNull UUID divisionId, @NotNull UUID entryId,
+                                    int place, @NotNull UUID adminUserId);
 
-    void updateBosPlacement(UUID placementId, int place, UUID adminUserId);
+    void updateBosPlacement(@NotNull UUID placementId, int place, @NotNull UUID adminUserId);
 
-    void deleteBosPlacement(UUID placementId, UUID adminUserId);
+    void deleteBosPlacement(@NotNull UUID placementId, @NotNull UUID adminUserId);
 }
