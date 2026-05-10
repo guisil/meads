@@ -3,15 +3,21 @@ package app.meads.judging.internal;
 import app.meads.BusinessRuleException;
 import app.meads.MainLayout;
 import app.meads.competition.Competition;
+import app.meads.competition.CompetitionRole;
 import app.meads.competition.CompetitionService;
 import app.meads.competition.Division;
 import app.meads.competition.DivisionCategory;
 import app.meads.competition.DivisionStatus;
+import app.meads.entry.Entry;
+import app.meads.entry.EntryService;
 import app.meads.identity.Role;
+import app.meads.identity.User;
 import app.meads.identity.UserService;
+import app.meads.judging.CoiCheckService;
 import app.meads.judging.Judging;
 import app.meads.judging.JudgingService;
 import app.meads.judging.JudgingTable;
+import app.meads.judging.JudgingTableStatus;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.datepicker.DatePicker;
@@ -22,6 +28,8 @@ import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.html.Nav;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment;
@@ -52,6 +60,8 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
     private final CompetitionService competitionService;
     private final UserService userService;
     private final JudgingService judgingService;
+    private final EntryService entryService;
+    private final CoiCheckService coiCheckService;
     private final transient AuthenticationContext authenticationContext;
 
     private Competition competition;
@@ -66,10 +76,14 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
     public JudgingAdminView(CompetitionService competitionService,
                             UserService userService,
                             JudgingService judgingService,
+                            EntryService entryService,
+                            CoiCheckService coiCheckService,
                             AuthenticationContext authenticationContext) {
         this.competitionService = competitionService;
         this.userService = userService;
         this.judgingService = judgingService;
+        this.entryService = entryService;
+        this.coiCheckService = coiCheckService;
         this.authenticationContext = authenticationContext;
     }
 
@@ -187,7 +201,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
                 .setHeader(getTranslation("judging-admin.tables.column.scheduled"));
         tablesGrid.addColumn(t -> "—")
                 .setHeader(getTranslation("judging-admin.tables.column.scoresheets"));
-        tablesGrid.addColumn(t -> "")
+        tablesGrid.addComponentColumn(this::createActionsCell)
                 .setHeader(getTranslation("judging-admin.tables.column.actions"));
 
         refreshTablesGrid();
@@ -268,6 +282,225 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
 
         dialog.getFooter().add(cancelButton, saveButton);
+        dialog.open();
+    }
+
+    private HorizontalLayout createActionsCell(JudgingTable table) {
+        var editButton = new Button(new Icon(VaadinIcon.EDIT));
+        editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+        editButton.setTooltipText(getTranslation("judging-admin.tables.action.edit"));
+        editButton.addClickListener(e -> openEditTableDialog(table));
+
+        var startButton = new Button(new Icon(VaadinIcon.PLAY));
+        startButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+        startButton.setEnabled(table.getStatus() == JudgingTableStatus.NOT_STARTED);
+        startButton.setTooltipText(getTranslation("judging-admin.tables.action.start"));
+        startButton.addClickListener(e -> openStartTableDialog(table));
+
+        var assignJudgesButton = new Button(new Icon(VaadinIcon.USERS));
+        assignJudgesButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+        assignJudgesButton.setTooltipText(getTranslation("judging-admin.tables.action.assign-judges"));
+        assignJudgesButton.addClickListener(e -> openAssignJudgesDialog(table));
+
+        var deleteButton = new Button(new Icon(VaadinIcon.TRASH));
+        deleteButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+        boolean canDelete = table.getStatus() == JudgingTableStatus.NOT_STARTED
+                && table.getAssignments().isEmpty();
+        deleteButton.setEnabled(canDelete);
+        deleteButton.setTooltipText(canDelete
+                ? getTranslation("judging-admin.tables.action.delete")
+                : getTranslation("judging-admin.tables.action.delete.blocked"));
+        deleteButton.addClickListener(e -> openDeleteTableDialog(table));
+
+        return new HorizontalLayout(editButton, startButton, assignJudgesButton, deleteButton);
+    }
+
+    public void openEditTableDialog(JudgingTable table) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("judging-admin.tables.action.edit"));
+
+        var form = new VerticalLayout();
+        form.setPadding(false);
+
+        var nameField = new TextField(getTranslation("judging-admin.tables.dialog.name"));
+        nameField.setId("edit-table-name");
+        nameField.setWidthFull();
+        nameField.setMaxLength(120);
+        nameField.setValue(table.getName());
+
+        var datePicker = new DatePicker(getTranslation("judging-admin.tables.dialog.scheduled"));
+        datePicker.setId("edit-table-scheduled");
+        datePicker.setWidthFull();
+        datePicker.setValue(table.getScheduledDate());
+
+        form.add(nameField, datePicker);
+        dialog.add(form);
+
+        var saveButton = new Button(getTranslation("button.save"), e -> {
+            if (nameField.getValue() == null || nameField.getValue().isBlank()) {
+                nameField.setInvalid(true);
+                nameField.setErrorMessage(getTranslation("judging-admin.tables.dialog.name.error"));
+                return;
+            }
+            try {
+                if (!nameField.getValue().trim().equals(table.getName())) {
+                    judgingService.updateTableName(table.getId(), nameField.getValue().trim(), currentUserId);
+                }
+                if (!java.util.Objects.equals(datePicker.getValue(), table.getScheduledDate())) {
+                    judgingService.updateTableScheduledDate(table.getId(), datePicker.getValue(), currentUserId);
+                }
+                dialog.close();
+                refreshTablesGrid();
+                Notification.show(getTranslation("judging-admin.tables.updated"))
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+        saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        saveButton.setDisableOnClick(true);
+
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
+
+        dialog.getFooter().add(cancelButton, saveButton);
+        dialog.open();
+    }
+
+    public void openStartTableDialog(JudgingTable table) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("judging-admin.tables.action.start.confirm.title", table.getName()));
+        boolean hasEntries = !entryService.findEntriesByFinalCategoryId(table.getDivisionCategoryId()).isEmpty();
+        var bodyKey = hasEntries
+                ? "judging-admin.tables.action.start.confirm.body"
+                : "judging-admin.tables.action.start.confirm.body.empty";
+        dialog.add(new Span(getTranslation(bodyKey)));
+
+        var startButton = new Button(getTranslation("judging-admin.tables.action.start"), e -> {
+            try {
+                judgingService.startTable(table.getId(), currentUserId);
+                dialog.close();
+                refreshTablesGrid();
+                Notification.show(getTranslation("judging-admin.tables.started"))
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+        startButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        startButton.setDisableOnClick(true);
+
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
+
+        dialog.getFooter().add(cancelButton, startButton);
+        dialog.open();
+    }
+
+    public void openAssignJudgesDialog(JudgingTable table) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("judging-admin.tables.action.assign-judges"));
+        dialog.setWidth("700px");
+
+        var availableJudges = competitionService.findUsersByRoleInCompetition(
+                competition.getId(), CompetitionRole.JUDGE);
+        var entriesInCategory = entryService.findEntriesByFinalCategoryId(table.getDivisionCategoryId());
+        var currentlyAssigned = table.getAssignments().stream()
+                .map(a -> a.getJudgeUserId())
+                .collect(Collectors.toSet());
+
+        var judgesGrid = new Grid<User>(User.class, false);
+        judgesGrid.setId("assign-judges-grid");
+        judgesGrid.setSelectionMode(Grid.SelectionMode.MULTI);
+        judgesGrid.addColumn(User::getName)
+                .setHeader(getTranslation("judging-admin.tables.assign.column.name"));
+        judgesGrid.addColumn(u -> u.getMeaderyName() == null ? "" : u.getMeaderyName())
+                .setHeader(getTranslation("judging-admin.tables.assign.column.meadery"));
+        judgesGrid.addColumn(u -> u.getCountry() == null ? "" : u.getCountry())
+                .setHeader(getTranslation("judging-admin.tables.assign.column.country"));
+        judgesGrid.addComponentColumn(judge -> coiChips(judge, entriesInCategory))
+                .setHeader(getTranslation("judging-admin.tables.assign.column.coi"));
+        judgesGrid.setItems(availableJudges);
+        availableJudges.stream()
+                .filter(j -> currentlyAssigned.contains(j.getId()))
+                .forEach(j -> judgesGrid.asMultiSelect().select(j));
+
+        dialog.add(judgesGrid);
+
+        var saveButton = new Button(getTranslation("button.save"), e -> {
+            var selected = judgesGrid.asMultiSelect().getSelectedItems().stream()
+                    .map(User::getId)
+                    .collect(Collectors.toSet());
+            try {
+                for (var judgeId : selected) {
+                    if (!currentlyAssigned.contains(judgeId)) {
+                        judgingService.assignJudge(table.getId(), judgeId, currentUserId);
+                    }
+                }
+                for (var judgeId : currentlyAssigned) {
+                    if (!selected.contains(judgeId)) {
+                        judgingService.removeJudge(table.getId(), judgeId, currentUserId);
+                    }
+                }
+                dialog.close();
+                refreshTablesGrid();
+                Notification.show(getTranslation("judging-admin.tables.assign.saved"))
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+        saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        saveButton.setDisableOnClick(true);
+
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
+
+        dialog.getFooter().add(cancelButton, saveButton);
+        dialog.open();
+    }
+
+    private HorizontalLayout coiChips(User judge, List<Entry> entries) {
+        var layout = new HorizontalLayout();
+        layout.setSpacing(false);
+        for (var entry : entries) {
+            var coi = coiCheckService.check(judge.getId(), entry.getId());
+            if (coi.hardBlock()) {
+                var chip = new Span(getTranslation("judging-admin.tables.assign.coi.hard"));
+                chip.getElement().getThemeList().add("badge error");
+                layout.add(chip);
+            } else if (coi.softWarningKey().isPresent()) {
+                var chip = new Span(getTranslation("judging-admin.tables.assign.coi.soft", entry.getEntryNumber()));
+                chip.getElement().getThemeList().add("badge contrast");
+                layout.add(chip);
+            }
+        }
+        return layout;
+    }
+
+    public void openDeleteTableDialog(JudgingTable table) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("judging-admin.tables.action.delete.confirm.title", table.getName()));
+        dialog.add(new Span(getTranslation("judging-admin.tables.action.delete.confirm.body")));
+
+        var deleteButton = new Button(getTranslation("button.delete"), e -> {
+            try {
+                judgingService.deleteTable(table.getId(), currentUserId);
+                dialog.close();
+                refreshTablesGrid();
+                Notification.show(getTranslation("judging-admin.tables.deleted"))
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+        deleteButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
+        deleteButton.setDisableOnClick(true);
+
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
+
+        dialog.getFooter().add(cancelButton, deleteButton);
         dialog.open();
     }
 

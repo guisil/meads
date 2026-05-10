@@ -14,8 +14,8 @@ needed to continue even without memory files or prior conversation history.
 Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
-**Branch:** `feature/judging-module` (Phase 6 views — JudgingAdminView skeleton + Tables tab basic done; `findUsersByRoleInCompetition` helper added; remaining: Tables actions, Medal Rounds, BOS, Judge views)
-**Tests:** 922 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-10 (Phase 6.1: skeleton + Manage Judging button + Tables tab grid + Add Table dialog; +5 tests. +1 prerequisite test for `CompetitionService.findUsersByRoleInCompetition`)
+**Branch:** `feature/judging-module` (Phase 6 views — JudgingAdminView skeleton + Tables tab + per-row actions done; remaining: Medal Rounds, BOS, Judge views)
+**Tests:** 927 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-10 (Phase 6.1: skeleton + Manage Judging button + Tables tab grid + Add Table dialog. Phase 6.2 prereq: `CompetitionService.findUsersByRoleInCompetition`. Phase 6.2: per-row actions Edit / Start / Assign Judges / Delete; +5 view tests)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -919,12 +919,34 @@ skeleton from Phase 3 translates mechanically.
   + `participantRoleRepository.existsByParticipantIdAndRole` +
   `userService.findAllByIds` (no new repo query). Needed by the
   Assign Judges dialog in the next Tables-actions cycle. 1 unit test.
-- 🟡 Next cycles for Phase 6: Tables tab per-row actions (Start /
-  Edit / Assign Judges / Delete — uses the new finder above),
-  Scoresheets-column counts via new `ScoresheetService.countByTableIdAndStatus`,
-  Medal Rounds tab grid + actions, BOS tab content, then judge-side
-  views (`MyJudgingView`, `JudgeTableView`, `ScoresheetView`,
-  `MedalRoundView`, BOS form). Per design doc §4.B–§4.J.
+- ✅ Phase 6.2 cycle (2026-05-10): Tables tab per-row actions on
+  `JudgingAdminView`. Action buttons in column order: ✏ Edit (always
+  enabled), ▶ Start (NOT_STARTED only), 👥 Assign Judges, 🗑 Delete
+  (NOT_STARTED + no assignments). Each opens a Dialog via
+  `openEditTableDialog` / `openStartTableDialog` /
+  `openAssignJudgesDialog` / `openDeleteTableDialog` (public for
+  test access). Start dialog shows different body text based on
+  whether `entryService.findEntriesByFinalCategoryId` returns any
+  entries. Assign Judges dialog: `Grid<User>` (multi-select)
+  pre-selected with currently-assigned judges; columns Name /
+  Meadery / Country / COI; per-row COI chips computed via
+  `coiCheckService.check(judgeId, entryId)` against entries in the
+  table's category (hard-block badge for self-entries, soft-warning
+  badge for similar meadery). Save diffs selection vs current and
+  calls `assignJudge` / `removeJudge` per delta. Service errors
+  caught and shown as ERROR notifications. New repo query:
+  `JudgingTableRepository.countAssignmentsByTableId` (used by
+  test, exposed for any future query needs). Added i18n keys for
+  all action labels, dialog titles/bodies, and a first batch of
+  judging-table service error keys (`error.judging-table.*`,
+  `error.judging.not-found`) in EN + PT (broader Phase 5 service
+  error key cleanup still deferred). 5 new view tests.
+- 🟡 Next cycles for Phase 6: Scoresheets-column counts via new
+  `ScoresheetService.countByTableIdAndStatus`, table drill-in (👁
+  View action), Medal Rounds tab grid + actions, BOS tab content,
+  then judge-side views (`MyJudgingView`, `JudgeTableView`,
+  `ScoresheetView`, `MedalRoundView`, BOS form). Per design doc
+  §4.B–§4.J.
 
 ### Priority 6: Awards module
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md` and `docs/specs/awards.md`.

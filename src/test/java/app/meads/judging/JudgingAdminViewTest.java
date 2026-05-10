@@ -3,6 +3,8 @@ package app.meads.judging;
 import app.meads.TestcontainersConfiguration;
 import app.meads.competition.CategoryScope;
 import app.meads.competition.Competition;
+import app.meads.competition.CompetitionRole;
+import app.meads.competition.CompetitionService;
 import app.meads.competition.Division;
 import app.meads.competition.DivisionCategory;
 import app.meads.competition.ScoringSystem;
@@ -13,15 +15,19 @@ import app.meads.identity.Role;
 import app.meads.identity.User;
 import app.meads.identity.UserStatus;
 import app.meads.identity.internal.UserRepository;
+import app.meads.judging.internal.JudgingAdminView;
+import app.meads.judging.internal.JudgingTableRepository;
 import com.github.mvysny.fakeservlet.FakeRequest;
 import com.github.mvysny.kaributesting.v10.MockVaadin;
 import com.github.mvysny.kaributesting.v10.Routes;
 import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.tabs.TabSheet;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.server.VaadinServletRequest;
@@ -74,6 +80,12 @@ class JudgingAdminViewTest {
 
     @Autowired
     JudgingService judgingService;
+
+    @Autowired
+    CompetitionService competitionService;
+
+    @Autowired
+    JudgingTableRepository judgingTableRepository;
 
     private Competition competition;
     private Division division;
@@ -196,6 +208,147 @@ class JudgingAdminViewTest {
                 .toList();
         assertThat(headers).containsExactly("Name", "Category", "Status",
                 "Judges", "Scheduled", "Scoresheets", "Actions");
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldAssignJudgesWhenAssignDialogSaved() {
+        advanceDivisionToJudging();
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Dry mead category",
+                null, 1, CategoryScope.JUDGING));
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        competitionService.addParticipantByEmail(competition.getId(),
+                "judge-a@example.com", CompetitionRole.JUDGE, admin.getId());
+        competitionService.addParticipantByEmail(competition.getId(),
+                "judge-b@example.com", CompetitionRole.JUDGE, admin.getId());
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var view = _get(JudgingAdminView.class);
+        var judging = judgingService.ensureJudgingExists(division.getId());
+        var table = judgingService.createTable(judging.getId(), "Table 1",
+                category.getId(), null, admin.getId());
+
+        view.openAssignJudgesDialog(table);
+
+        @SuppressWarnings("unchecked")
+        var judgesGrid = (Grid<User>) _get(Grid.class, spec -> spec.withId("assign-judges-grid"));
+        var allJudges = judgesGrid.getGenericDataView().getItems().toList();
+        judgesGrid.asMultiSelect().select(allJudges.toArray(new User[0]));
+
+        _click(_get(Button.class, spec -> spec.withText("Save")));
+
+        assertThat(judgingTableRepository.countAssignmentsByTableId(table.getId())).isEqualTo(2);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldStartTableWhenJudgesMeetMinimum() {
+        advanceDivisionToJudging();
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Dry mead category",
+                null, 1, CategoryScope.JUDGING));
+        var judge1 = userRepository.save(new User("judge1@example.com", "Judge 1",
+                UserStatus.ACTIVE, Role.USER));
+        var judge2 = userRepository.save(new User("judge2@example.com", "Judge 2",
+                UserStatus.ACTIVE, Role.USER));
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var view = _get(JudgingAdminView.class);
+        var judging = judgingService.ensureJudgingExists(division.getId());
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var table = judgingService.createTable(judging.getId(), "Table 1",
+                category.getId(), null, admin.getId());
+        judgingService.assignJudge(table.getId(), judge1.getId(), admin.getId());
+        judgingService.assignJudge(table.getId(), judge2.getId(), admin.getId());
+
+        view.openStartTableDialog(table);
+
+        _click(_get(Button.class, spec -> spec.withText("Start")));
+
+        var refreshed = judgingService.findTablesByJudgingId(judging.getId()).get(0);
+        assertThat(refreshed.getStatus().name()).isEqualTo("ROUND_1");
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldRejectStartWhenJudgesBelowMinimum() {
+        advanceDivisionToJudging();
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Dry mead category",
+                null, 1, CategoryScope.JUDGING));
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var view = _get(JudgingAdminView.class);
+        var judging = judgingService.ensureJudgingExists(division.getId());
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var table = judgingService.createTable(judging.getId(), "Empty Table",
+                category.getId(), null, admin.getId());
+
+        view.openStartTableDialog(table);
+        _click(_get(Button.class, spec -> spec.withText("Start")));
+
+        var refreshed = judgingService.findTablesByJudgingId(judging.getId()).get(0);
+        assertThat(refreshed.getStatus().name()).isEqualTo("NOT_STARTED");
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldDeleteTableWhenDeleteDialogConfirmed() {
+        advanceDivisionToJudging();
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Dry mead category",
+                null, 1, CategoryScope.JUDGING));
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var view = _get(JudgingAdminView.class);
+        var judging = judgingService.ensureJudgingExists(division.getId());
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var table = judgingService.createTable(judging.getId(), "Doomed Table",
+                category.getId(), null, admin.getId());
+
+        view.openDeleteTableDialog(table);
+
+        _click(_get(Button.class, spec -> spec.withText("Delete")));
+
+        assertThat(judgingService.findTablesByJudgingId(judging.getId())).isEmpty();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldUpdateTableWhenEditDialogSaved() {
+        advanceDivisionToJudging();
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Dry mead category",
+                null, 1, CategoryScope.JUDGING));
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var view = _get(JudgingAdminView.class);
+        var judging = judgingService.ensureJudgingExists(division.getId());
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var table = judgingService.createTable(judging.getId(), "Original Name",
+                category.getId(), LocalDate.of(2026, 7, 1), admin.getId());
+
+        view.openEditTableDialog(table);
+
+        var nameField = _get(TextField.class, spec -> spec.withId("edit-table-name"));
+        nameField.setValue("Renamed Table");
+        var datePicker = _get(DatePicker.class, spec -> spec.withId("edit-table-scheduled"));
+        datePicker.setValue(LocalDate.of(2026, 8, 15));
+
+        _click(_get(Button.class, spec -> spec.withText("Save")));
+
+        var refreshed = judgingService.findTablesByJudgingId(judging.getId()).get(0);
+        assertThat(refreshed.getName()).isEqualTo("Renamed Table");
+        assertThat(refreshed.getScheduledDate()).isEqualTo(LocalDate.of(2026, 8, 15));
     }
 
     @Test
