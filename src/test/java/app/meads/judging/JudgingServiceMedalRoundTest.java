@@ -204,6 +204,18 @@ class JudgingServiceMedalRoundTest {
     }
 
     @Test
+    void shouldFindMedalAwardsForCategory() {
+        var awards = List.of(
+                new MedalAward(UUID.randomUUID(), divisionId, divisionCategoryId, Medal.GOLD, adminUserId),
+                new MedalAward(UUID.randomUUID(), divisionId, divisionCategoryId, Medal.SILVER, adminUserId));
+        given(medalAwardRepository.findByFinalCategoryId(divisionCategoryId)).willReturn(awards);
+
+        var result = service.findMedalAwardsForCategory(divisionCategoryId);
+
+        assertThat(result).isEqualTo(awards);
+    }
+
+    @Test
     void shouldFindCategoryConfigsForDivisionAndLazyCreateMissing() {
         var existingCat = new DivisionCategory(divisionId, null, "M1A", "Dry Trad",
                 "Desc", null, 0, app.meads.competition.CategoryScope.JUDGING);

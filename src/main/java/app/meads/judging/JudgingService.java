@@ -51,6 +51,8 @@ public interface JudgingService {
     List<CategoryJudgingConfig> findCategoryConfigsForDivision(@NotNull UUID divisionId,
                                                                 @NotNull UUID adminUserId);
 
+    List<MedalAward> findMedalAwardsForCategory(@NotNull UUID divisionCategoryId);
+
     // === Medal round transitions ===
     void startMedalRound(@NotNull UUID divisionCategoryId, @NotNull UUID adminUserId);
 

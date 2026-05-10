@@ -263,6 +263,11 @@ public class JudgingServiceImpl implements JudgingService {
     }
 
     @Override
+    public List<MedalAward> findMedalAwardsForCategory(UUID divisionCategoryId) {
+        return medalAwardRepository.findByFinalCategoryId(divisionCategoryId);
+    }
+
+    @Override
     public List<CategoryJudgingConfig> findCategoryConfigsForDivision(UUID divisionId, UUID adminUserId) {
         if (!competitionService.isAuthorizedForDivision(divisionId, adminUserId)) {
             throw new BusinessRuleException("error.auth.unauthorized");

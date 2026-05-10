@@ -15,7 +15,9 @@ import app.meads.identity.Role;
 import app.meads.identity.User;
 import app.meads.identity.UserStatus;
 import app.meads.identity.internal.UserRepository;
+import app.meads.judging.internal.CategoryJudgingConfigRepository;
 import app.meads.judging.internal.JudgingAdminView;
+import app.meads.judging.internal.JudgingRepository;
 import app.meads.judging.internal.JudgingTableRepository;
 import com.github.mvysny.fakeservlet.FakeRequest;
 import com.github.mvysny.kaributesting.v10.MockVaadin;
@@ -86,6 +88,12 @@ class JudgingAdminViewTest {
 
     @Autowired
     JudgingTableRepository judgingTableRepository;
+
+    @Autowired
+    CategoryJudgingConfigRepository categoryJudgingConfigRepository;
+
+    @Autowired
+    JudgingRepository judgingRepository;
 
     private Competition competition;
     private Division division;
@@ -212,6 +220,72 @@ class JudgingAdminViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldStartMedalRoundWhenStartDialogConfirmed() {
+        advanceDivisionToJudging();
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Desc",
+                null, 1, CategoryScope.JUDGING));
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        // The view's render lazily created a default-COMPARATIVE PENDING config; advance it to READY.
+        var config = categoryJudgingConfigRepository.findByDivisionCategoryId(category.getId())
+                .orElseThrow();
+        config.markReady();
+        config = categoryJudgingConfigRepository.save(config);
+
+        var view = _get(JudgingAdminView.class);
+        view.openStartMedalRoundDialog(config);
+        _click(_get(Button.class, spec -> spec.withText("Start")));
+
+        var refreshed = categoryJudgingConfigRepository.findByDivisionCategoryId(category.getId())
+                .orElseThrow();
+        assertThat(refreshed.getMedalRoundStatus()).isEqualTo(MedalRoundStatus.ACTIVE);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldBlockResetMedalRoundUntilTypingResetExactly() {
+        advanceDivisionToJudging();
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Desc",
+                null, 1, CategoryScope.JUDGING));
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        // Reset requires Judging.phase=ACTIVE.
+        var judging = judgingRepository.findByDivisionId(division.getId()).orElseThrow();
+        judging.markActive();
+        judgingRepository.save(judging);
+
+        var config = categoryJudgingConfigRepository.findByDivisionCategoryId(category.getId())
+                .orElseThrow();
+        config.markReady();
+        config.startMedalRound();
+        config = categoryJudgingConfigRepository.save(config);
+
+        var view = _get(JudgingAdminView.class);
+        view.openResetMedalRoundDialog(config);
+
+        // Click Reset without typing — should NOT call service (status stays ACTIVE).
+        _click(_get(Button.class, spec -> spec.withText("Reset")));
+        var stillActive = categoryJudgingConfigRepository.findByDivisionCategoryId(category.getId())
+                .orElseThrow();
+        assertThat(stillActive.getMedalRoundStatus()).isEqualTo(MedalRoundStatus.ACTIVE);
+
+        // Type RESET and click — now resets to READY.
+        var confirmField = _get(TextField.class, spec -> spec.withId("reset-confirm-field"));
+        confirmField.setValue("RESET");
+        _click(_get(Button.class, spec -> spec.withText("Reset")));
+        var afterReset = categoryJudgingConfigRepository.findByDivisionCategoryId(category.getId())
+                .orElseThrow();
+        assertThat(afterReset.getMedalRoundStatus()).isEqualTo(MedalRoundStatus.READY);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     @SuppressWarnings("unchecked")
     void shouldRenderMedalRoundsGridWithCategoryConfigs() {
         advanceDivisionToJudging();
@@ -239,7 +313,7 @@ class JudgingAdminViewTest {
         var headers = medalGrid.getColumns().stream()
                 .map(c -> ((Grid.Column<?>) c).getHeaderText())
                 .toList();
-        assertThat(headers).containsExactly("Category", "Mode", "Status", "Tables");
+        assertThat(headers).containsExactly("Category", "Mode", "Status", "Tables", "Awards", "Actions");
     }
 
     @Test

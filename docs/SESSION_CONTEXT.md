@@ -14,8 +14,8 @@ needed to continue even without memory files or prior conversation history.
 Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
-**Branch:** `feature/judging-module` (Phase 6 views — Tables tab complete; Medal Rounds tab basic grid done; remaining: Medal Rounds row actions + awards counts, View drill-in, BOS tab, Judge views)
-**Tests:** 930 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-10 (Phase 6.4: `JudgingService.findCategoryConfigsForDivision` + Medal Rounds tab basic grid; +2 tests)
+**Branch:** `feature/judging-module` (Phase 6 views — Tables tab complete; Medal Rounds tab complete with per-row actions + awards counts; remaining: View drill-in, BOS tab, Judge views)
+**Tests:** 933 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-10 (Phase 6.5: Medal Rounds tab Awards counts column + per-row actions Start / Finalize / Reopen / Reset (with type-RESET strong-confirm); +3 tests)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -956,11 +956,23 @@ skeleton from Phase 3 translates mechanically.
   (Start / Finalize / Reopen / Reset are next cycle). i18n keys
   `judging-admin.medal-rounds.column.*` + `.empty` in EN + PT.
   2 new tests (1 service + 1 view).
-- 🟡 Next cycles for Phase 6: Medal Rounds per-row actions + Awards
-  counts column, table drill-in (👁 View action, per-table scoresheet
-  admin), BOS tab content, then judge-side views (`MyJudgingView`,
-  `JudgeTableView`, `ScoresheetView`, `MedalRoundView`, BOS form).
-  Per design doc §4.B–§4.J.
+- ✅ Phase 6.5 cycle (2026-05-10): Medal Rounds tab Awards counts +
+  per-row actions. Awards column renders "G:n S:m B:k W:w" (W = null
+  medal = explicit withhold per D11). Actions column has 4 buttons:
+  ▶ Start (READY only), ✓ Finalize (ACTIVE only), ↻ Reopen (COMPLETE
+  + Judging.phase=ACTIVE), ⟲ Reset (ACTIVE + Judging.phase=ACTIVE,
+  type-RESET strong-confirm with custom validation gate, no
+  setDisableOnClick because validation may need to retry). Each
+  button opens a dialog via public `openXxxMedalRoundDialog` (test
+  access). Service helper `findMedalAwardsForCategory(divisionCategoryId)`
+  exposes the medal awards for read-side counts. i18n keys in EN +
+  PT for all action labels, dialog titles, body, RESET-confirm
+  label/error, and result notifications. 3 new tests (1 service +
+  2 view, including the strong-confirm gating).
+- 🟡 Next cycles for Phase 6: table drill-in (👁 View action,
+  per-table scoresheet admin), BOS tab content, then judge-side
+  views (`MyJudgingView`, `JudgeTableView`, `ScoresheetView`,
+  `MedalRoundView`, BOS form). Per design doc §4.B–§4.J.
 
 ### Priority 6: Awards module
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md` and `docs/specs/awards.md`.

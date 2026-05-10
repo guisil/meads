@@ -15,6 +15,9 @@ import app.meads.identity.User;
 import app.meads.identity.UserService;
 import app.meads.judging.CategoryJudgingConfig;
 import app.meads.judging.CoiCheckService;
+import app.meads.judging.Medal;
+import app.meads.judging.MedalRoundStatus;
+import app.meads.judging.JudgingPhase;
 import app.meads.judging.Judging;
 import app.meads.judging.JudgingService;
 import app.meads.judging.JudgingTable;
@@ -540,9 +543,172 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
                 .setHeader(getTranslation("judging-admin.medal-rounds.column.status"));
         grid.addColumn(this::formatTablesProgress)
                 .setHeader(getTranslation("judging-admin.medal-rounds.column.tables"));
+        grid.addColumn(this::formatAwardsCounts)
+                .setHeader(getTranslation("judging-admin.medal-rounds.column.awards"));
+        grid.addComponentColumn(this::createMedalRoundActionsCell)
+                .setHeader(getTranslation("judging-admin.medal-rounds.column.actions"));
         grid.setItems(configs);
         tab.add(grid);
         return tab;
+    }
+
+    private String formatAwardsCounts(CategoryJudgingConfig config) {
+        var awards = judgingService.findMedalAwardsForCategory(config.getDivisionCategoryId());
+        long gold = awards.stream().filter(a -> a.getMedal() == Medal.GOLD).count();
+        long silver = awards.stream().filter(a -> a.getMedal() == Medal.SILVER).count();
+        long bronze = awards.stream().filter(a -> a.getMedal() == Medal.BRONZE).count();
+        long withheld = awards.stream().filter(a -> a.getMedal() == null).count();
+        return "G:" + gold + " S:" + silver + " B:" + bronze + " W:" + withheld;
+    }
+
+    private HorizontalLayout createMedalRoundActionsCell(CategoryJudgingConfig config) {
+        var status = config.getMedalRoundStatus();
+        boolean judgingActive = judging.getPhase() == JudgingPhase.ACTIVE;
+
+        var startButton = new Button(new Icon(VaadinIcon.PLAY));
+        startButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+        startButton.setEnabled(status == MedalRoundStatus.READY);
+        startButton.setTooltipText(getTranslation("judging-admin.medal-rounds.action.start"));
+        startButton.addClickListener(e -> openStartMedalRoundDialog(config));
+
+        var finalizeButton = new Button(new Icon(VaadinIcon.CHECK));
+        finalizeButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+        finalizeButton.setEnabled(status == MedalRoundStatus.ACTIVE);
+        finalizeButton.setTooltipText(getTranslation("judging-admin.medal-rounds.action.finalize"));
+        finalizeButton.addClickListener(e -> openFinalizeMedalRoundDialog(config));
+
+        var reopenButton = new Button(new Icon(VaadinIcon.REFRESH));
+        reopenButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+        reopenButton.setEnabled(status == MedalRoundStatus.COMPLETE && judgingActive);
+        reopenButton.setTooltipText(getTranslation("judging-admin.medal-rounds.action.reopen"));
+        reopenButton.addClickListener(e -> openReopenMedalRoundDialog(config));
+
+        var resetButton = new Button(new Icon(VaadinIcon.TRASH));
+        resetButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+        resetButton.setEnabled(status == MedalRoundStatus.ACTIVE && judgingActive);
+        resetButton.setTooltipText(getTranslation("judging-admin.medal-rounds.action.reset"));
+        resetButton.addClickListener(e -> openResetMedalRoundDialog(config));
+
+        return new HorizontalLayout(startButton, finalizeButton, reopenButton, resetButton);
+    }
+
+    public void openStartMedalRoundDialog(CategoryJudgingConfig config) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("judging-admin.medal-rounds.action.start.confirm.title",
+                formatCategory(config.getDivisionCategoryId())));
+        var confirmButton = new Button(getTranslation("judging-admin.medal-rounds.action.start"), e -> {
+            try {
+                judgingService.startMedalRound(config.getDivisionCategoryId(), currentUserId);
+                dialog.close();
+                refreshMedalRoundsTab();
+                Notification.show(getTranslation("judging-admin.medal-rounds.started"))
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+        confirmButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        confirmButton.setDisableOnClick(true);
+        var cancel = new Button(getTranslation("button.cancel"), e -> dialog.close());
+        dialog.getFooter().add(cancel, confirmButton);
+        dialog.open();
+    }
+
+    public void openFinalizeMedalRoundDialog(CategoryJudgingConfig config) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("judging-admin.medal-rounds.action.finalize.confirm.title",
+                formatCategory(config.getDivisionCategoryId())));
+        dialog.add(new Span(getTranslation("judging-admin.medal-rounds.action.finalize.confirm.body")));
+        var confirmButton = new Button(getTranslation("judging-admin.medal-rounds.action.finalize"), e -> {
+            try {
+                judgingService.completeMedalRound(config.getDivisionCategoryId(), currentUserId);
+                dialog.close();
+                refreshMedalRoundsTab();
+                Notification.show(getTranslation("judging-admin.medal-rounds.finalized"))
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+        confirmButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        confirmButton.setDisableOnClick(true);
+        var cancel = new Button(getTranslation("button.cancel"), e -> dialog.close());
+        dialog.getFooter().add(cancel, confirmButton);
+        dialog.open();
+    }
+
+    public void openReopenMedalRoundDialog(CategoryJudgingConfig config) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("judging-admin.medal-rounds.action.reopen.confirm.title",
+                formatCategory(config.getDivisionCategoryId())));
+        var confirmButton = new Button(getTranslation("judging-admin.medal-rounds.action.reopen"), e -> {
+            try {
+                judgingService.reopenMedalRound(config.getDivisionCategoryId(), currentUserId);
+                dialog.close();
+                refreshMedalRoundsTab();
+                Notification.show(getTranslation("judging-admin.medal-rounds.reopened"))
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+        confirmButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        confirmButton.setDisableOnClick(true);
+        var cancel = new Button(getTranslation("button.cancel"), e -> dialog.close());
+        dialog.getFooter().add(cancel, confirmButton);
+        dialog.open();
+    }
+
+    public void openResetMedalRoundDialog(CategoryJudgingConfig config) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("judging-admin.medal-rounds.action.reset.confirm.title",
+                formatCategory(config.getDivisionCategoryId())));
+        var awards = judgingService.findMedalAwardsForCategory(config.getDivisionCategoryId());
+        dialog.add(new Span(getTranslation("judging-admin.medal-rounds.action.reset.confirm.body",
+                awards.size())));
+        var confirmField = new TextField(getTranslation("judging-admin.medal-rounds.action.reset.confirm.label"));
+        confirmField.setId("reset-confirm-field");
+        confirmField.setWidthFull();
+        dialog.add(confirmField);
+
+        var resetButton = new Button(getTranslation("judging-admin.medal-rounds.action.reset"));
+        resetButton.addClickListener(e -> {
+            if (!"RESET".equals(confirmField.getValue())) {
+                confirmField.setInvalid(true);
+                confirmField.setErrorMessage(
+                        getTranslation("judging-admin.medal-rounds.action.reset.confirm.error"));
+                return;
+            }
+            try {
+                judgingService.resetMedalRound(config.getDivisionCategoryId(), currentUserId);
+                dialog.close();
+                refreshMedalRoundsTab();
+                Notification.show(getTranslation("judging-admin.medal-rounds.reset"))
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+        resetButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
+        var cancel = new Button(getTranslation("button.cancel"), e -> dialog.close());
+        dialog.getFooter().add(cancel, resetButton);
+        dialog.open();
+    }
+
+    private void refreshMedalRoundsTab() {
+        // Simplest approach: rerender whole view to refresh tab bodies and cross-tab state
+        beforeEnterRefresh();
+    }
+
+    private void beforeEnterRefresh() {
+        removeAll();
+        add(createBreadcrumb());
+        add(createHeader());
+        add(createTabSheet());
     }
 
     private String formatTablesProgress(CategoryJudgingConfig config) {
