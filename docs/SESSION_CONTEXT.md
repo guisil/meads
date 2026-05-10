@@ -14,8 +14,8 @@ needed to continue even without memory files or prior conversation history.
 Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
-**Branch:** `feature/judging-module` (Phase 6 views — JudgingAdminView skeleton + Tables tab + per-row actions done; remaining: Medal Rounds, BOS, Judge views)
-**Tests:** 927 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-10 (Phase 6.1: skeleton + Manage Judging button + Tables tab grid + Add Table dialog. Phase 6.2 prereq: `CompetitionService.findUsersByRoleInCompetition`. Phase 6.2: per-row actions Edit / Start / Assign Judges / Delete; +5 view tests)
+**Branch:** `feature/judging-module` (Phase 6 views — Tables tab fully done with per-row actions + scoresheets count; remaining: View drill-in, Medal Rounds tab, BOS tab, Judge views)
+**Tests:** 928 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-10 (Phase 6.3: `ScoresheetService.countByTableIdAndStatus` + Tables tab Scoresheets column wiring; +1 unit test)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -941,12 +941,17 @@ skeleton from Phase 3 translates mechanically.
   judging-table service error keys (`error.judging-table.*`,
   `error.judging.not-found`) in EN + PT (broader Phase 5 service
   error key cleanup still deferred). 5 new view tests.
-- 🟡 Next cycles for Phase 6: Scoresheets-column counts via new
-  `ScoresheetService.countByTableIdAndStatus`, table drill-in (👁
-  View action), Medal Rounds tab grid + actions, BOS tab content,
-  then judge-side views (`MyJudgingView`, `JudgeTableView`,
-  `ScoresheetView`, `MedalRoundView`, BOS form). Per design doc
-  §4.B–§4.J.
+- ✅ Phase 6.3 cycle (2026-05-10): added
+  `ScoresheetService.countByTableIdAndStatus(tableId, status)` (and
+  `ScoresheetRepository` derived query). Tables tab Scoresheets
+  column now renders "DRAFT N · SUBMITTED M" (or "—" when both 0).
+  i18n key `judging-admin.tables.scoresheets.format` in EN + PT.
+  1 new unit test.
+- 🟡 Next cycles for Phase 6: table drill-in (👁 View action,
+  per-table scoresheet admin), Medal Rounds tab grid + actions,
+  BOS tab content, then judge-side views (`MyJudgingView`,
+  `JudgeTableView`, `ScoresheetView`, `MedalRoundView`, BOS form).
+  Per design doc §4.B–§4.J.
 
 ### Priority 6: Awards module
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md` and `docs/specs/awards.md`.

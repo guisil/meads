@@ -99,6 +99,17 @@ class ScoresheetServiceTest {
     }
 
     @Test
+    void shouldCountScoresheetsByTableAndStatus() {
+        given(scoresheetRepository.countByTableIdAndStatus(tableId, ScoresheetStatus.DRAFT))
+                .willReturn(3L);
+        given(scoresheetRepository.countByTableIdAndStatus(tableId, ScoresheetStatus.SUBMITTED))
+                .willReturn(2L);
+
+        assertThat(service.countByTableIdAndStatus(tableId, ScoresheetStatus.DRAFT)).isEqualTo(3L);
+        assertThat(service.countByTableIdAndStatus(tableId, ScoresheetStatus.SUBMITTED)).isEqualTo(2L);
+    }
+
+    @Test
     void shouldCreateOneScoresheetPerEntryWithMatchingFinalCategory() {
         var e1 = mockEntry(UUID.randomUUID(), UUID.randomUUID());
         var e2 = mockEntry(UUID.randomUUID(), UUID.randomUUID());

@@ -28,4 +28,6 @@ public interface ScoresheetService {
     void revertToDraft(@NotNull UUID scoresheetId, @NotNull UUID adminUserId);
 
     void moveToTable(@NotNull UUID scoresheetId, @NotNull UUID newTableId, @NotNull UUID adminUserId);
+
+    long countByTableIdAndStatus(@NotNull UUID tableId, @NotNull ScoresheetStatus status);
 }

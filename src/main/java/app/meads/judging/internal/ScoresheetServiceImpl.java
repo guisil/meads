@@ -327,6 +327,11 @@ public class ScoresheetServiceImpl implements ScoresheetService {
                 .orElseThrow(() -> new BusinessRuleException("error.judging.not-found"));
     }
 
+    @Override
+    public long countByTableIdAndStatus(UUID tableId, ScoresheetStatus status) {
+        return scoresheetRepository.countByTableIdAndStatus(tableId, status);
+    }
+
     @SuppressWarnings("unused")
     private static final Set<ScoresheetStatus> ANY_STATUS = Set.of(ScoresheetStatus.values());
 }

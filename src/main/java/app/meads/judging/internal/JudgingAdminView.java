@@ -18,6 +18,8 @@ import app.meads.judging.Judging;
 import app.meads.judging.JudgingService;
 import app.meads.judging.JudgingTable;
 import app.meads.judging.JudgingTableStatus;
+import app.meads.judging.ScoresheetService;
+import app.meads.judging.ScoresheetStatus;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.datepicker.DatePicker;
@@ -60,6 +62,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
     private final CompetitionService competitionService;
     private final UserService userService;
     private final JudgingService judgingService;
+    private final ScoresheetService scoresheetService;
     private final EntryService entryService;
     private final CoiCheckService coiCheckService;
     private final transient AuthenticationContext authenticationContext;
@@ -76,12 +79,14 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
     public JudgingAdminView(CompetitionService competitionService,
                             UserService userService,
                             JudgingService judgingService,
+                            ScoresheetService scoresheetService,
                             EntryService entryService,
                             CoiCheckService coiCheckService,
                             AuthenticationContext authenticationContext) {
         this.competitionService = competitionService;
         this.userService = userService;
         this.judgingService = judgingService;
+        this.scoresheetService = scoresheetService;
         this.entryService = entryService;
         this.coiCheckService = coiCheckService;
         this.authenticationContext = authenticationContext;
@@ -199,7 +204,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
                         : t.getScheduledDate().format(DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT)
                                 .withLocale(getLocale())))
                 .setHeader(getTranslation("judging-admin.tables.column.scheduled"));
-        tablesGrid.addColumn(t -> "—")
+        tablesGrid.addColumn(this::formatScoresheetCounts)
                 .setHeader(getTranslation("judging-admin.tables.column.scoresheets"));
         tablesGrid.addComponentColumn(this::createActionsCell)
                 .setHeader(getTranslation("judging-admin.tables.column.actions"));
@@ -211,6 +216,15 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
 
     private void refreshTablesGrid() {
         tablesGrid.setItems(judgingService.findTablesByJudgingId(judging.getId()));
+    }
+
+    private String formatScoresheetCounts(JudgingTable table) {
+        long drafts = scoresheetService.countByTableIdAndStatus(table.getId(), ScoresheetStatus.DRAFT);
+        long submitted = scoresheetService.countByTableIdAndStatus(table.getId(), ScoresheetStatus.SUBMITTED);
+        if (drafts == 0 && submitted == 0) {
+            return "—";
+        }
+        return getTranslation("judging-admin.tables.scoresheets.format", drafts, submitted);
     }
 
     private String formatCategory(UUID divisionCategoryId) {
