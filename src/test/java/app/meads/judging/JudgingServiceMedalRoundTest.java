@@ -204,6 +204,32 @@ class JudgingServiceMedalRoundTest {
     }
 
     @Test
+    void shouldFindCategoryConfigsForDivisionAndLazyCreateMissing() {
+        var existingCat = new DivisionCategory(divisionId, null, "M1A", "Dry Trad",
+                "Desc", null, 0, app.meads.competition.CategoryScope.JUDGING);
+        var newCat = new DivisionCategory(divisionId, null, "M1B", "Medium Trad",
+                "Desc", null, 1, app.meads.competition.CategoryScope.JUDGING);
+        var existingConfig = new CategoryJudgingConfig(existingCat.getId(), MedalRoundMode.SCORE_BASED);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(competitionService.findJudgingCategories(divisionId))
+                .willReturn(List.of(existingCat, newCat));
+        given(categoryConfigRepository.findByDivisionCategoryId(existingCat.getId()))
+                .willReturn(Optional.of(existingConfig));
+        given(categoryConfigRepository.findByDivisionCategoryId(newCat.getId()))
+                .willReturn(Optional.empty());
+        given(categoryConfigRepository.save(any(CategoryJudgingConfig.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var result = service.findCategoryConfigsForDivision(divisionId, adminUserId);
+
+        assertThat(result).hasSize(2);
+        assertThat(result).extracting(CategoryJudgingConfig::getDivisionCategoryId)
+                .containsExactlyInAnyOrder(existingCat.getId(), newCat.getId());
+        // The missing one should have been saved lazily with default COMPARATIVE
+        then(categoryConfigRepository).should().save(any(CategoryJudgingConfig.class));
+    }
+
+    @Test
     void shouldRejectReopenMedalRoundWhenJudgingNotActive() {
         var config = new CategoryJudgingConfig(divisionCategoryId, MedalRoundMode.COMPARATIVE);
         config.markReady();

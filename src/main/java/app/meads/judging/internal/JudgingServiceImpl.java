@@ -262,6 +262,18 @@ public class JudgingServiceImpl implements JudgingService {
         return categoryConfigRepository.save(config);
     }
 
+    @Override
+    public List<CategoryJudgingConfig> findCategoryConfigsForDivision(UUID divisionId, UUID adminUserId) {
+        if (!competitionService.isAuthorizedForDivision(divisionId, adminUserId)) {
+            throw new BusinessRuleException("error.auth.unauthorized");
+        }
+        return competitionService.findJudgingCategories(divisionId).stream()
+                .map(cat -> categoryConfigRepository.findByDivisionCategoryId(cat.getId())
+                        .orElseGet(() -> categoryConfigRepository.save(
+                                new CategoryJudgingConfig(cat.getId()))))
+                .toList();
+    }
+
     // === Medal round transitions ===
 
     @Override

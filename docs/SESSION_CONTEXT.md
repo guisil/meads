@@ -14,8 +14,8 @@ needed to continue even without memory files or prior conversation history.
 Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
-**Branch:** `feature/judging-module` (Phase 6 views — Tables tab fully done with per-row actions + scoresheets count; remaining: View drill-in, Medal Rounds tab, BOS tab, Judge views)
-**Tests:** 928 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-10 (Phase 6.3: `ScoresheetService.countByTableIdAndStatus` + Tables tab Scoresheets column wiring; +1 unit test)
+**Branch:** `feature/judging-module` (Phase 6 views — Tables tab complete; Medal Rounds tab basic grid done; remaining: Medal Rounds row actions + awards counts, View drill-in, BOS tab, Judge views)
+**Tests:** 930 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-10 (Phase 6.4: `JudgingService.findCategoryConfigsForDivision` + Medal Rounds tab basic grid; +2 tests)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -947,9 +947,18 @@ skeleton from Phase 3 translates mechanically.
   column now renders "DRAFT N · SUBMITTED M" (or "—" when both 0).
   i18n key `judging-admin.tables.scoresheets.format` in EN + PT.
   1 new unit test.
-- 🟡 Next cycles for Phase 6: table drill-in (👁 View action,
-  per-table scoresheet admin), Medal Rounds tab grid + actions,
-  BOS tab content, then judge-side views (`MyJudgingView`,
+- ✅ Phase 6.4 cycle (2026-05-10): Medal Rounds tab basic grid.
+  New `JudgingService.findCategoryConfigsForDivision(divisionId,
+  adminUserId)` lazy-creates default-COMPARATIVE configs for all
+  JUDGING-scope categories. Tab renders `Grid<CategoryJudgingConfig>`
+  with columns Category, Mode, Status, Tables (X / Y COMPLETE).
+  Empty state when no JUDGING categories. No per-row actions yet
+  (Start / Finalize / Reopen / Reset are next cycle). i18n keys
+  `judging-admin.medal-rounds.column.*` + `.empty` in EN + PT.
+  2 new tests (1 service + 1 view).
+- 🟡 Next cycles for Phase 6: Medal Rounds per-row actions + Awards
+  counts column, table drill-in (👁 View action, per-table scoresheet
+  admin), BOS tab content, then judge-side views (`MyJudgingView`,
   `JudgeTableView`, `ScoresheetView`, `MedalRoundView`, BOS form).
   Per design doc §4.B–§4.J.
 

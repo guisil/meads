@@ -13,6 +13,7 @@ import app.meads.entry.EntryService;
 import app.meads.identity.Role;
 import app.meads.identity.User;
 import app.meads.identity.UserService;
+import app.meads.judging.CategoryJudgingConfig;
 import app.meads.judging.CoiCheckService;
 import app.meads.judging.Judging;
 import app.meads.judging.JudgingService;
@@ -519,7 +520,39 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
     }
 
     private VerticalLayout createMedalRoundsTab() {
-        return new VerticalLayout();
+        var tab = new VerticalLayout();
+        tab.setPadding(false);
+
+        var configs = judgingService.findCategoryConfigsForDivision(division.getId(), currentUserId);
+
+        if (configs.isEmpty()) {
+            tab.add(new Span(getTranslation("judging-admin.medal-rounds.empty")));
+            return tab;
+        }
+
+        var grid = new Grid<CategoryJudgingConfig>(CategoryJudgingConfig.class, false);
+        grid.setId("medal-rounds-grid");
+        grid.addColumn(c -> formatCategory(c.getDivisionCategoryId()))
+                .setHeader(getTranslation("judging-admin.medal-rounds.column.category"));
+        grid.addColumn(c -> c.getMedalRoundMode().name())
+                .setHeader(getTranslation("judging-admin.medal-rounds.column.mode"));
+        grid.addColumn(c -> c.getMedalRoundStatus().name())
+                .setHeader(getTranslation("judging-admin.medal-rounds.column.status"));
+        grid.addColumn(this::formatTablesProgress)
+                .setHeader(getTranslation("judging-admin.medal-rounds.column.tables"));
+        grid.setItems(configs);
+        tab.add(grid);
+        return tab;
+    }
+
+    private String formatTablesProgress(CategoryJudgingConfig config) {
+        var tables = judgingService.findTablesByJudgingId(judging.getId()).stream()
+                .filter(t -> config.getDivisionCategoryId().equals(t.getDivisionCategoryId()))
+                .toList();
+        long complete = tables.stream()
+                .filter(t -> t.getStatus() == JudgingTableStatus.COMPLETE)
+                .count();
+        return complete + " / " + tables.size();
     }
 
     private VerticalLayout createBosTab() {

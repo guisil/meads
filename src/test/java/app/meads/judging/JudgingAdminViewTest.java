@@ -212,6 +212,38 @@ class JudgingAdminViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    @SuppressWarnings("unchecked")
+    void shouldRenderMedalRoundsGridWithCategoryConfigs() {
+        advanceDivisionToJudging();
+        divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Desc",
+                null, 1, CategoryScope.JUDGING));
+        divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1B", "Medium Mead", "Desc",
+                null, 2, CategoryScope.JUDGING));
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(1); // Medal Rounds tab
+
+        var grids = _find(Grid.class);
+        var medalGrid = grids.stream()
+                .filter(g -> "medal-rounds-grid".equals(g.getId().orElse(null)))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Medal rounds grid not found"));
+        var rows = medalGrid.getGenericDataView().getItems().toList();
+        assertThat(rows).hasSize(2);
+
+        var headers = medalGrid.getColumns().stream()
+                .map(c -> ((Grid.Column<?>) c).getHeaderText())
+                .toList();
+        assertThat(headers).containsExactly("Category", "Mode", "Status", "Tables");
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldAssignJudgesWhenAssignDialogSaved() {
         advanceDivisionToJudging();
         var category = divisionCategoryRepository.save(new DivisionCategory(
