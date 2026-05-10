@@ -3,6 +3,7 @@ package app.meads.competition;
 import app.meads.BusinessRuleException;
 import app.meads.competition.internal.*;
 import app.meads.identity.Role;
+import app.meads.identity.User;
 import app.meads.identity.UserService;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -821,6 +822,15 @@ public class CompetitionService {
 
     public List<ParticipantRole> findRolesForParticipant(@NotNull UUID participantId) {
         return participantRoleRepository.findByParticipantId(participantId);
+    }
+
+    public List<User> findUsersByRoleInCompetition(@NotNull UUID competitionId,
+                                                     @NotNull CompetitionRole role) {
+        var userIds = participantRepository.findByCompetitionId(competitionId).stream()
+                .filter(p -> participantRoleRepository.existsByParticipantIdAndRole(p.getId(), role))
+                .map(Participant::getUserId)
+                .toList();
+        return userService.findAllByIds(userIds);
     }
 
     public boolean hasIncompatibleRolesForEntrant(@NotNull UUID competitionId, @NotNull UUID userId) {

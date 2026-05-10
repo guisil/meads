@@ -14,8 +14,8 @@ needed to continue even without memory files or prior conversation history.
 Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
-**Branch:** `feature/judging-module` (Phase 6 views — JudgingAdminView skeleton + Tables tab basic done; remaining: Tables actions, Medal Rounds, BOS, Judge views)
-**Tests:** 921 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-10 (Phase 6.1: skeleton + Manage Judging button + Tables tab grid + Add Table dialog; +5 tests)
+**Branch:** `feature/judging-module` (Phase 6 views — JudgingAdminView skeleton + Tables tab basic done; `findUsersByRoleInCompetition` helper added; remaining: Tables actions, Medal Rounds, BOS, Judge views)
+**Tests:** 922 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-10 (Phase 6.1: skeleton + Manage Judging button + Tables tab grid + Add Table dialog; +5 tests. +1 prerequisite test for `CompetitionService.findUsersByRoleInCompetition`)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -913,11 +913,18 @@ skeleton from Phase 3 translates mechanically.
   view is the first Spring-wired consumer. Fix: moved all
   `@NotNull` / `@NotBlank` annotations from impls to interfaces (the
   contract is the right place for Bean Validation).
+- ✅ Prerequisite cycle (2026-05-10): added
+  `CompetitionService.findUsersByRoleInCompetition(competitionId, role)`
+  returning `List<User>`. Composes `participantRepository.findByCompetitionId`
+  + `participantRoleRepository.existsByParticipantIdAndRole` +
+  `userService.findAllByIds` (no new repo query). Needed by the
+  Assign Judges dialog in the next Tables-actions cycle. 1 unit test.
 - 🟡 Next cycles for Phase 6: Tables tab per-row actions (Start /
-  Edit / Assign Judges / Delete), Medal Rounds tab grid + actions,
-  BOS tab content, then judge-side views (`MyJudgingView`,
-  `JudgeTableView`, `ScoresheetView`, `MedalRoundView`, BOS form).
-  Per design doc §4.B–§4.J.
+  Edit / Assign Judges / Delete — uses the new finder above),
+  Scoresheets-column counts via new `ScoresheetService.countByTableIdAndStatus`,
+  Medal Rounds tab grid + actions, BOS tab content, then judge-side
+  views (`MyJudgingView`, `JudgeTableView`, `ScoresheetView`,
+  `MedalRoundView`, BOS form). Per design doc §4.B–§4.J.
 
 ### Priority 6: Awards module
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md` and `docs/specs/awards.md`.

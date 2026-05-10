@@ -1397,6 +1397,34 @@ class CompetitionServiceTest {
         assertThat(result).containsExactlyInAnyOrder(judgeRole, entrantRole);
     }
 
+    // --- findUsersByRoleInCompetition ---
+
+    @Test
+    void shouldFindUsersByRoleInCompetition() {
+        var competition = createCompetition();
+        var judge1 = new User("j1@example.com", "Judge One", UserStatus.ACTIVE, Role.USER);
+        var judge2 = new User("j2@example.com", "Judge Two", UserStatus.ACTIVE, Role.USER);
+        var entrant = new User("e@example.com", "Entrant", UserStatus.ACTIVE, Role.USER);
+        var p1 = new Participant(competition.getId(), judge1.getId());
+        var p2 = new Participant(competition.getId(), judge2.getId());
+        var p3 = new Participant(competition.getId(), entrant.getId());
+        given(participantRepository.findByCompetitionId(competition.getId()))
+                .willReturn(List.of(p1, p2, p3));
+        given(participantRoleRepository.existsByParticipantIdAndRole(p1.getId(), CompetitionRole.JUDGE))
+                .willReturn(true);
+        given(participantRoleRepository.existsByParticipantIdAndRole(p2.getId(), CompetitionRole.JUDGE))
+                .willReturn(true);
+        given(participantRoleRepository.existsByParticipantIdAndRole(p3.getId(), CompetitionRole.JUDGE))
+                .willReturn(false);
+        given(userService.findAllByIds(List.of(judge1.getId(), judge2.getId())))
+                .willReturn(List.of(judge1, judge2));
+
+        var result = competitionService.findUsersByRoleInCompetition(
+                competition.getId(), CompetitionRole.JUDGE);
+
+        assertThat(result).containsExactlyInAnyOrder(judge1, judge2);
+    }
+
     // --- addParticipantByEmail ---
 
     @Test
