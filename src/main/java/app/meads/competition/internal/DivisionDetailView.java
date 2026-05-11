@@ -637,6 +637,38 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         statusField.setValue(division.getStatus().getDisplayName());
         statusField.setReadOnly(true);
 
+        var judgingSection = new Span(getTranslation("division-detail.settings.judging.section"));
+        judgingSection.addClassName("field-label");
+
+        boolean canEditBosPlaces = isDraft
+                || division.getStatus() == DivisionStatus.REGISTRATION_OPEN;
+        var bosPlacesField = new com.vaadin.flow.component.textfield.IntegerField(
+                getTranslation("division-detail.settings.bos-places"));
+        bosPlacesField.setId("bos-places-field");
+        bosPlacesField.setMin(1);
+        bosPlacesField.setStepButtonsVisible(true);
+        bosPlacesField.setValue(division.getBosPlaces());
+        bosPlacesField.setHelperText(getTranslation("division-detail.settings.bos-places.help"));
+        bosPlacesField.setWidth("200px");
+        bosPlacesField.setReadOnly(!canEditBosPlaces);
+        if (!canEditBosPlaces) {
+            bosPlacesField.setTooltipText(getTranslation("division-detail.settings.bos-places.locked"));
+        }
+
+        boolean minJudgesLocked = competitionService.isMinJudgesPerTableLocked(divisionId);
+        var minJudgesField = new com.vaadin.flow.component.textfield.IntegerField(
+                getTranslation("division-detail.settings.min-judges"));
+        minJudgesField.setId("min-judges-field");
+        minJudgesField.setMin(1);
+        minJudgesField.setStepButtonsVisible(true);
+        minJudgesField.setValue(division.getMinJudgesPerTable());
+        minJudgesField.setHelperText(getTranslation("division-detail.settings.min-judges.help"));
+        minJudgesField.setWidth("200px");
+        minJudgesField.setReadOnly(minJudgesLocked);
+        if (minJudgesLocked) {
+            minJudgesField.setTooltipText(getTranslation("division-detail.settings.min-judges.locked"));
+        }
+
         var saveButton = new Button("Save", e -> {
             if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
@@ -674,6 +706,14 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                             divisionId, deadlinePicker.getValue(),
                             timezoneCombo.getValue(), getCurrentUserId());
                 }
+                if (canEditBosPlaces && bosPlacesField.getValue() != null) {
+                    division = competitionService.updateDivisionBosPlaces(
+                            divisionId, bosPlacesField.getValue(), getCurrentUserId());
+                }
+                if (!minJudgesLocked && minJudgesField.getValue() != null) {
+                    division = competitionService.updateDivisionMinJudgesPerTable(
+                            divisionId, minJudgesField.getValue(), getCurrentUserId());
+                }
                 refreshBreadcrumbAndHeader();
                 var notification = Notification.show(getTranslation("division-detail.settings.saved"));
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
@@ -691,7 +731,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         tab.add(nameField, shortNameField, entryPrefixField, scoringSelect,
                 maxPerSubcategoryField, maxPerMainCategoryField, maxTotalField,
                 meaderyRequiredCheckbox, deadlinePicker, timezoneCombo,
-                statusField, saveButton);
+                statusField, judgingSection, bosPlacesField, minJudgesField, saveButton);
         return tab;
     }
 

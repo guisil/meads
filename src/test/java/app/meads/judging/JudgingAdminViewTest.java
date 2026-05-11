@@ -15,10 +15,15 @@ import app.meads.identity.Role;
 import app.meads.identity.User;
 import app.meads.identity.UserStatus;
 import app.meads.identity.internal.UserRepository;
+import app.meads.entry.Carbonation;
+import app.meads.entry.EntryService;
+import app.meads.entry.Sweetness;
+import app.meads.judging.internal.BosPlacementRepository;
 import app.meads.judging.internal.CategoryJudgingConfigRepository;
 import app.meads.judging.internal.JudgingAdminView;
 import app.meads.judging.internal.JudgingRepository;
 import app.meads.judging.internal.JudgingTableRepository;
+import app.meads.judging.internal.MedalAwardRepository;
 import com.github.mvysny.fakeservlet.FakeRequest;
 import com.github.mvysny.kaributesting.v10.MockVaadin;
 import com.github.mvysny.kaributesting.v10.Routes;
@@ -94,6 +99,15 @@ class JudgingAdminViewTest {
 
     @Autowired
     JudgingRepository judgingRepository;
+
+    @Autowired
+    MedalAwardRepository medalAwardRepository;
+
+    @Autowired
+    BosPlacementRepository bosPlacementRepository;
+
+    @Autowired
+    EntryService entryService;
 
     private Competition competition;
     private Division division;
@@ -491,5 +505,156 @@ class JudgingAdminViewTest {
         assertThat(tables).hasSize(1);
         assertThat(tables.get(0).getName()).isEqualTo("Table 1");
         assertThat(tables.get(0).getDivisionCategoryId()).isEqualTo(category.getId());
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldRenderDisabledMessageOnBosTabWhenJudgingPhaseNotStarted() {
+        advanceDivisionToJudging();
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(2); // BOS tab
+
+        var spans = _find(com.vaadin.flow.component.html.Span.class);
+        var hasDisabledMessage = spans.stream()
+                .anyMatch(s -> s.getText() != null && s.getText().contains("BOS round is unavailable"));
+        assertThat(hasDisabledMessage).isTrue();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    @SuppressWarnings("unchecked")
+    void shouldRenderBosPlacementsGridWithEmptySlotsWhenPhaseActive() {
+        // Configure 3 BOS places while still in DRAFT
+        division.updateBosPlaces(3);
+        division = divisionRepository.save(division);
+        advanceDivisionToJudging();
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        // Force phase to ACTIVE
+        var judging = judgingRepository.findByDivisionId(division.getId()).orElseThrow();
+        judging.markActive();
+        judgingRepository.save(judging);
+
+        // Re-render
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(2); // BOS tab
+
+        var grids = _find(Grid.class);
+        var placementsGrid = grids.stream()
+                .filter(g -> "bos-placements-grid".equals(g.getId().orElse(null)))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("BOS placements grid not found"));
+
+        var rows = placementsGrid.getGenericDataView().getItems().toList();
+        assertThat(rows).hasSize(3); // bosPlaces=3 — all rows rendered (all empty)
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldRenderEmptyCandidatesMessageWhenNoGoldMedals() {
+        advanceDivisionToJudging();
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var judging = judgingRepository.findByDivisionId(division.getId()).orElseThrow();
+        judging.markActive();
+        judgingRepository.save(judging);
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(2);
+
+        var emptyMsg = _get(com.vaadin.flow.component.html.Span.class,
+                spec -> spec.withId("bos-candidates-empty"));
+        assertThat(emptyMsg.getText()).contains("No GOLD medals");
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldFinalizeBosWhenFinalizeDialogConfirmed() {
+        advanceDivisionToJudging();
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        // Force phase to BOS via repo so we don't have to set up medal-rounds.
+        var judging = judgingRepository.findByDivisionId(division.getId()).orElseThrow();
+        judging.markActive();
+        judging.startBos();
+        judgingRepository.save(judging);
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var view = _get(JudgingAdminView.class);
+        view.openFinalizeBosDialog();
+
+        _click(_get(Button.class, spec -> spec.withText("Finalize BOS")));
+
+        var refreshed = judgingRepository.findByDivisionId(division.getId()).orElseThrow();
+        assertThat(refreshed.getPhase()).isEqualTo(JudgingPhase.COMPLETE);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldResetBosWhenNoPlacementsExist() {
+        advanceDivisionToJudging();
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var judging = judgingRepository.findByDivisionId(division.getId()).orElseThrow();
+        judging.markActive();
+        judging.startBos();
+        judgingRepository.save(judging);
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var view = _get(JudgingAdminView.class);
+        view.openResetBosDialog();
+
+        _click(_get(Button.class, spec -> spec.withText("Reset BOS")));
+
+        var refreshed = judgingRepository.findByDivisionId(division.getId()).orElseThrow();
+        assertThat(refreshed.getPhase()).isEqualTo(JudgingPhase.ACTIVE);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldReopenBosWhenReopenDialogConfirmed() {
+        advanceDivisionToJudging();
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var judging = judgingRepository.findByDivisionId(division.getId()).orElseThrow();
+        judging.markActive();
+        judging.startBos();
+        judging.completeBos();
+        judgingRepository.save(judging);
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var view = _get(JudgingAdminView.class);
+        view.openReopenBosDialog();
+
+        _click(_get(Button.class, spec -> spec.withText("Reopen BOS")));
+
+        var refreshed = judgingRepository.findByDivisionId(division.getId()).orElseThrow();
+        assertThat(refreshed.getPhase()).isEqualTo(JudgingPhase.BOS);
     }
 }

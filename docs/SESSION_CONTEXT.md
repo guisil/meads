@@ -14,8 +14,8 @@ needed to continue even without memory files or prior conversation history.
 Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
-**Branch:** `feature/judging-module` (Phase 6 views — Tables tab complete; Medal Rounds tab complete with per-row actions + awards counts; remaining: View drill-in, BOS tab, Judge views)
-**Tests:** 933 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-10 (Phase 6.5: Medal Rounds tab Awards counts column + per-row actions Start / Finalize / Reopen / Reset (with type-RESET strong-confirm); +3 tests)
+**Branch:** `feature/judging-module` (Phase 6 views — Tables tab complete; Medal Rounds tab complete; BOS tab complete; Settings extensions complete; remaining: Table View drill-in, Judge views)
+**Tests:** 950 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-11 (Phase 6.6 BOS tab on JudgingAdminView: phase indicator + GOLD candidates + placements grid with empty-slot rendering + Add/Edit/Delete per row + Start/Finalize/Reopen/Reset BOS actions; Phase 6.7 Settings extensions: Competition.commentLanguages MultiSelectComboBox + Division.bosPlaces + Division.minJudgesPerTable IntegerFields with status-based locking; +17 tests)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -969,10 +969,43 @@ skeleton from Phase 3 translates mechanically.
   PT for all action labels, dialog titles, body, RESET-confirm
   label/error, and result notifications. 3 new tests (1 service +
   2 view, including the strong-confirm gating).
+- ✅ Phase 6.6 cycle (2026-05-11): BOS tab on `JudgingAdminView`.
+  New service methods `JudgingService.findGoldMedalAwardsForDivision`
+  + `findBosPlacementsForDivision` (both with division authorization).
+  Tab content: disabled message when `Judging.phase=NOT_STARTED`;
+  otherwise a header (phase badge `bos-phase-badge` + "Configured: N"
+  span + phase-exclusive action buttons Start/Finalize+Reset/Reopen),
+  a candidates section (`bos-candidates-grid` of GOLD MedalAwards
+  with entry code + mead name + category; or `bos-candidates-empty`
+  span when none), and a placements section (`bos-placements-grid`
+  with empty-slot rendering — always renders `Division.bosPlaces`
+  rows; empty rows show ✚ Add, filled rows show ✏ Edit + 🗑 Delete).
+  All 7 BOS dialogs are `public openXxxBosDialog`/`openXxxBosPlacementDialog`
+  for test access. ~50 i18n keys in EN + PT for all labels, errors,
+  notifications. 10 new tests (4 service + 6 view). Note: design's
+  "Manage placements →" deep link to dedicated `BosView` (§4.H)
+  deferred until that view is built; the Add/Edit/Delete on the tab
+  already covers the basic workflow.
+- ✅ Phase 6.7 cycle (2026-05-11): Settings extensions (§4.F).
+  CompetitionDetailView Settings tab: new "Judging" sub-section
+  with `MultiSelectComboBox<String>` (`comment-languages-combo`)
+  for `Competition.commentLanguages`. Items sourced from
+  `MeadsI18NProvider.getSupportedLanguageCodes()`, sorted by display
+  name in UI locale, persisted via existing `updateCommentLanguages`.
+  DivisionDetailView Settings tab: new "Judging" sub-section with
+  two `IntegerField`s — `bos-places-field` (locked past
+  REGISTRATION_OPEN via `setReadOnly`) and `min-judges-field`
+  (locked once `CompetitionService.isMinJudgesPerTableLocked`
+  returns true). Save handler invokes existing `updateDivisionBosPlaces`
+  and `updateDivisionMinJudgesPerTable` services. i18n keys in
+  EN + PT for section heading, labels, help text, locked-tooltips.
+  7 new view tests (2 commentLanguages + 5 division fields incl.
+  lock behavior).
 - 🟡 Next cycles for Phase 6: table drill-in (👁 View action,
-  per-table scoresheet admin), BOS tab content, then judge-side
-  views (`MyJudgingView`, `JudgeTableView`, `ScoresheetView`,
-  `MedalRoundView`, BOS form). Per design doc §4.B–§4.J.
+  per-table scoresheet admin), then judge-side views
+  (`MyJudgingView`, `JudgeTableView`, `ScoresheetView`,
+  `MedalRoundView`, dedicated `BosView` form). Per design doc
+  §4.B–§4.J.
 
 ### Priority 6: Awards module
 Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md` and `docs/specs/awards.md`.

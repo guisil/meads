@@ -53,6 +53,10 @@ public interface JudgingService {
 
     List<MedalAward> findMedalAwardsForCategory(@NotNull UUID divisionCategoryId);
 
+    List<MedalAward> findGoldMedalAwardsForDivision(@NotNull UUID divisionId, @NotNull UUID adminUserId);
+
+    List<BosPlacement> findBosPlacementsForDivision(@NotNull UUID divisionId, @NotNull UUID adminUserId);
+
     // === Medal round transitions ===
     void startMedalRound(@NotNull UUID divisionCategoryId, @NotNull UUID adminUserId);
 

@@ -63,50 +63,49 @@ Once a phase is complete, its open questions should all have decisions or be exp
 **Phase 5 ✅ COMPLETE (2026-05-09).** Services layer + cross-module
 guards done. **Phase 6 IN PROGRESS (`feature/judging-module`).**
 
-**Current state (2026-05-10, 933 tests passing):**
+**Current state (2026-05-11, 950 tests passing):**
 - ✅ JudgingAdminView at `/competitions/:c/divisions/:d/judging-admin`
 - ✅ Tab 1 Tables: full CRUD + per-row actions (Edit / Start / Assign
   Judges with COI chips / Delete) + scoresheets count column
 - ✅ Tab 2 Medal Rounds: full grid (Category / Mode / Status / Tables
   / Awards) + per-row actions (Start / Finalize / Reopen / Reset
   with type-RESET strong-confirm)
-- 🟡 Tab 3 BOS: empty placeholder
+- ✅ Tab 3 BOS: phase indicator + GOLD candidates list + placements
+  grid (empty-slot rendering, Add/Edit/Delete per row) +
+  Start/Finalize/Reopen/Reset BOS actions
+- ✅ Settings extensions (§4.F): `Competition.commentLanguages`
+  MultiSelectComboBox on CompetitionDetailView; `Division.bosPlaces`
+  + `Division.minJudgesPerTable` IntegerFields on DivisionDetailView
+  with status-based + cross-module-guard locking
 - 🟡 Table 👁 View drill-in: deferred
 - 🟡 All judge-side views: not started
-- 🟡 Settings extensions (commentLanguages / bosPlaces / minJudgesPerTable
-  UI): not started
+- 🟡 Dedicated `BosView` (drag-and-drop): deferred ("Manage placements →"
+  navigation stub from Tab 3 not yet wired)
 - 🟡 Event listeners: published but not consumed
 - 🟡 ScoresheetPdfService: not started
 - 🟡 Service-error i18n cleanup: only ~10% of `error.judging-*` keys
-  translated
+  translated (BOS error keys are now translated in EN + PT)
 
 **Recommended next-session order (matches design §4 ordering for
 remaining work):**
-1. **BOS tab** in `JudgingAdminView` (§4.B Tab 3) — closes the admin
-   dashboard. Phase indicator, GOLD candidates list, placements grid,
-   Start/Finalize/Reopen/Reset BOS actions, "Manage placements →"
-   navigation stub. Comparable in size to Phase 6.5 (Medal Rounds).
-2. Settings extensions (§4.F) — `Competition.commentLanguages`
-   MultiSelectComboBox + `Division.bosPlaces` / `minJudgesPerTable`
-   IntegerFields. Services + V27 migration already exist.
-3. View drill-in (§4.B Item 2 / §4.G unified TableView) — admin per-
+1. View drill-in (§4.B Item 2 / §4.G unified TableView) — admin per-
    table scoresheet management. Could be folded with judge-side
    `TableView` per §4.D since the design says they share a route.
-4. Judge hub `MyJudgingView` (§4.D) + sidebar entry gating.
-5. `ScoresheetView` (§4.C) — largest single view (5 fields, COI,
+2. Judge hub `MyJudgingView` (§4.D) + sidebar entry gating.
+3. `ScoresheetView` (§4.C) — largest single view (5 fields, COI,
    comment-language flow). Plan as 1-2 cycles.
-6. `MedalRoundView` (§4.E) — shared judge/admin form.
-7. `BosView` (§4.H) — admin-only, drag-and-drop primary.
-8. Event listeners (§3.6) + ScoresheetPdfService (§4.J).
-9. Service-error i18n cleanup batched.
-10. Manual walkthrough additions in `docs/walkthrough/manual-test.md`.
+4. `MedalRoundView` (§4.E) — shared judge/admin form.
+5. `BosView` (§4.H) — admin-only, drag-and-drop primary; wire
+   "Manage placements →" deep link from Tab 3.
+6. Event listeners (§3.6) + ScoresheetPdfService (§4.J).
+7. Service-error i18n cleanup batched.
+8. Manual walkthrough additions in `docs/walkthrough/manual-test.md`.
 
 ### Suggested start prompt for next session
 > "Read `docs/SESSION_CONTEXT.md` and the **Next Session: Start Here**
 > section of `docs/plans/2026-05-05-judging-module-design.md`. Continue
-> Phase 6 with the BOS tab (§4.B Tab 3) on `JudgingAdminView`. Confirm
-> 933 tests pass first, then start a TDD cycle: RED test for the BOS
-> tab rendering with phase indicator + empty placements grid."
+> Phase 6 with the unified TableView drill-in (§4.G + §4.D). Confirm
+> 950 tests pass first, then start a TDD cycle."
 
 ### Phase 4 status
 
@@ -140,6 +139,8 @@ extensions. See `docs/SESSION_CONTEXT.md` "What's done" section.
 - Phase 6.3 (2026-05-10) — `ScoresheetService.countByTableIdAndStatus` + Tables tab Scoresheets column ✅
 - Phase 6.4 (2026-05-10) — `JudgingService.findCategoryConfigsForDivision` + Medal Rounds tab basic grid ✅
 - Phase 6.5 (2026-05-10) — Medal Rounds Awards counts + per-row actions (Start / Finalize / Reopen / Reset) ✅
+- Phase 6.6 (2026-05-11) — BOS tab on JudgingAdminView: phase indicator + GOLD candidates + placements grid (empty-slot rendering + Add/Edit/Delete per row) + Start/Finalize/Reopen/Reset BOS actions; +10 tests ✅
+- Phase 6.7 (2026-05-11) — Settings extensions (§4.F): commentLanguages MultiSelectComboBox + Division.bosPlaces / minJudgesPerTable IntegerFields with locking; +7 tests ✅
 - Remaining: see "Recommended next-session order" above.
 
 §Q17 (mobile / touch UX review) and §Q16 (tasting-label PDF) revisit

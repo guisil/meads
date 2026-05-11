@@ -18,10 +18,13 @@ import app.meads.judging.CoiCheckService;
 import app.meads.judging.Medal;
 import app.meads.judging.MedalRoundStatus;
 import app.meads.judging.JudgingPhase;
+import app.meads.judging.BosPlacement;
 import app.meads.judging.Judging;
 import app.meads.judging.JudgingService;
 import app.meads.judging.JudgingTable;
 import app.meads.judging.JudgingTableStatus;
+import app.meads.judging.MedalAward;
+import app.meads.judging.MedalRoundMode;
 import app.meads.judging.ScoresheetService;
 import app.meads.judging.ScoresheetStatus;
 import com.vaadin.flow.component.button.Button;
@@ -43,6 +46,7 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.tabs.TabSheet;
+import com.vaadin.flow.component.textfield.IntegerField;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
@@ -722,7 +726,430 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
     }
 
     private VerticalLayout createBosTab() {
-        return new VerticalLayout();
+        var tab = new VerticalLayout();
+        tab.setPadding(false);
+        tab.setId("bos-tab");
+
+        if (judging.getPhase() == JudgingPhase.NOT_STARTED) {
+            tab.add(new Span(getTranslation("judging-admin.bos.disabled")));
+            return tab;
+        }
+
+        tab.add(createBosHeader());
+        tab.add(createBosCandidatesSection());
+        tab.add(createBosPlacementsSection());
+        return tab;
+    }
+
+    private HorizontalLayout createBosHeader() {
+        var header = new HorizontalLayout();
+        header.setDefaultVerticalComponentAlignment(Alignment.CENTER);
+
+        var phaseBadge = new Span(getTranslation("judging-admin.bos.phase." + judging.getPhase().name()));
+        phaseBadge.setId("bos-phase-badge");
+        header.add(phaseBadge);
+
+        header.add(new Span(getTranslation("judging-admin.bos.places", division.getBosPlaces())));
+
+        var phase = judging.getPhase();
+        if (phase == JudgingPhase.ACTIVE) {
+            var startButton = new Button(getTranslation("judging-admin.bos.action.start"),
+                    e -> openStartBosDialog());
+            startButton.setId("bos-start-button");
+            startButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+            startButton.setEnabled(allCategoryRoundsComplete());
+            if (!allCategoryRoundsComplete()) {
+                startButton.setTooltipText(getTranslation("judging-admin.bos.action.start.disabled-tooltip"));
+            }
+            header.add(startButton);
+        } else if (phase == JudgingPhase.BOS) {
+            var finalizeButton = new Button(getTranslation("judging-admin.bos.action.finalize"),
+                    e -> openFinalizeBosDialog());
+            finalizeButton.setId("bos-finalize-button");
+            finalizeButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+            var resetButton = new Button(getTranslation("judging-admin.bos.action.reset"),
+                    e -> openResetBosDialog());
+            resetButton.setId("bos-reset-button");
+            resetButton.addThemeVariants(ButtonVariant.LUMO_ERROR);
+            var placementsExist = !judgingService.findBosPlacementsForDivision(
+                    division.getId(), currentUserId).isEmpty();
+            resetButton.setEnabled(!placementsExist);
+            if (placementsExist) {
+                resetButton.setTooltipText(getTranslation("judging-admin.bos.action.reset.disabled-tooltip"));
+            }
+            header.add(finalizeButton, resetButton);
+        } else if (phase == JudgingPhase.COMPLETE) {
+            var reopenButton = new Button(getTranslation("judging-admin.bos.action.reopen"),
+                    e -> openReopenBosDialog());
+            reopenButton.setId("bos-reopen-button");
+            reopenButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+            header.add(reopenButton);
+        }
+        return header;
+    }
+
+    private boolean allCategoryRoundsComplete() {
+        var configs = judgingService.findCategoryConfigsForDivision(division.getId(), currentUserId);
+        return !configs.isEmpty()
+                && configs.stream().allMatch(c -> c.getMedalRoundStatus() == MedalRoundStatus.COMPLETE);
+    }
+
+    private VerticalLayout createBosCandidatesSection() {
+        var section = new VerticalLayout();
+        section.setPadding(false);
+        section.add(new Span(getTranslation("judging-admin.bos.candidates")));
+
+        var goldAwards = judgingService.findGoldMedalAwardsForDivision(
+                division.getId(), currentUserId);
+        if (goldAwards.isEmpty()) {
+            var empty = new Span(getTranslation("judging-admin.bos.candidates.empty"));
+            empty.setId("bos-candidates-empty");
+            section.add(empty);
+            return section;
+        }
+
+        var candidatesGrid = new Grid<MedalAward>(MedalAward.class, false);
+        candidatesGrid.setId("bos-candidates-grid");
+        candidatesGrid.addColumn(this::formatEntryCode)
+                .setHeader(getTranslation("judging-admin.bos.candidates.column.entry"));
+        candidatesGrid.addColumn(this::formatEntryMeadName)
+                .setHeader(getTranslation("judging-admin.bos.candidates.column.mead-name"));
+        candidatesGrid.addColumn(a -> formatCategory(a.getFinalCategoryId()))
+                .setHeader(getTranslation("judging-admin.bos.candidates.column.category"));
+        candidatesGrid.setItems(goldAwards);
+        section.add(candidatesGrid);
+        return section;
+    }
+
+    private String formatEntryCode(MedalAward award) {
+        try {
+            return entryService.findEntryById(award.getEntryId()).getEntryCode();
+        } catch (Exception e) {
+            return "?";
+        }
+    }
+
+    private String formatEntryMeadName(MedalAward award) {
+        try {
+            return entryService.findEntryById(award.getEntryId()).getMeadName();
+        } catch (Exception e) {
+            return "?";
+        }
+    }
+
+    private VerticalLayout createBosPlacementsSection() {
+        var section = new VerticalLayout();
+        section.setPadding(false);
+        section.add(new Span(getTranslation("judging-admin.bos.placements")));
+
+        var placements = judgingService.findBosPlacementsForDivision(
+                division.getId(), currentUserId);
+        var rows = new java.util.ArrayList<BosPlacementRow>();
+        for (int p = 1; p <= division.getBosPlaces(); p++) {
+            final int place = p;
+            var match = placements.stream()
+                    .filter(bp -> bp.getPlace() == place)
+                    .findFirst();
+            rows.add(new BosPlacementRow(place, match.orElse(null)));
+        }
+
+        var placementsGrid = new Grid<BosPlacementRow>(BosPlacementRow.class, false);
+        placementsGrid.setId("bos-placements-grid");
+        placementsGrid.addColumn(BosPlacementRow::place)
+                .setHeader(getTranslation("judging-admin.bos.placements.column.place"));
+        placementsGrid.addColumn(this::formatPlacementEntry)
+                .setHeader(getTranslation("judging-admin.bos.placements.column.entry"));
+        placementsGrid.addColumn(this::formatPlacementCategory)
+                .setHeader(getTranslation("judging-admin.bos.placements.column.category"));
+        placementsGrid.addColumn(this::formatPlacementAwardedBy)
+                .setHeader(getTranslation("judging-admin.bos.placements.column.awarded-by"));
+        placementsGrid.addComponentColumn(this::createPlacementActionsCell)
+                .setHeader(getTranslation("judging-admin.bos.placements.column.actions"));
+        placementsGrid.setItems(rows);
+        section.add(placementsGrid);
+        return section;
+    }
+
+    private String formatPlacementEntry(BosPlacementRow row) {
+        if (row.placement() == null) {
+            return getTranslation("judging-admin.bos.placements.not-assigned");
+        }
+        try {
+            var entry = entryService.findEntryById(row.placement().getEntryId());
+            return entry.getEntryCode() + " — " + entry.getMeadName();
+        } catch (Exception e) {
+            return "?";
+        }
+    }
+
+    private String formatPlacementCategory(BosPlacementRow row) {
+        if (row.placement() == null) {
+            return "";
+        }
+        try {
+            var entry = entryService.findEntryById(row.placement().getEntryId());
+            return formatCategory(entry.getFinalCategoryId());
+        } catch (Exception e) {
+            return "?";
+        }
+    }
+
+    private String formatPlacementAwardedBy(BosPlacementRow row) {
+        if (row.placement() == null) {
+            return "";
+        }
+        try {
+            return userService.findById(row.placement().getAwardedBy()).getName();
+        } catch (Exception e) {
+            return "?";
+        }
+    }
+
+    private HorizontalLayout createPlacementActionsCell(BosPlacementRow row) {
+        var actions = new HorizontalLayout();
+        actions.setPadding(false);
+        actions.setSpacing(false);
+        boolean phaseBos = judging.getPhase() == JudgingPhase.BOS;
+
+        if (row.placement() == null) {
+            var addButton = new Button(new Icon(VaadinIcon.PLUS));
+            addButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            addButton.setEnabled(phaseBos);
+            addButton.setTooltipText(getTranslation("judging-admin.bos.placements.action.add"));
+            addButton.addClickListener(e -> openAddBosPlacementDialog(row.place()));
+            actions.add(addButton);
+            return actions;
+        }
+
+        var editButton = new Button(new Icon(VaadinIcon.EDIT));
+        editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+        editButton.setEnabled(phaseBos);
+        editButton.setTooltipText(getTranslation("judging-admin.bos.placements.action.edit"));
+        editButton.addClickListener(e -> openEditBosPlacementDialog(row.placement()));
+
+        var deleteButton = new Button(new Icon(VaadinIcon.TRASH));
+        deleteButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+        deleteButton.setEnabled(phaseBos);
+        deleteButton.setTooltipText(getTranslation("judging-admin.bos.placements.action.delete"));
+        deleteButton.addClickListener(e -> openDeleteBosPlacementDialog(row.placement()));
+
+        actions.add(editButton, deleteButton);
+        return actions;
+    }
+
+    public void openStartBosDialog() {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("judging-admin.bos.action.start.confirm.title"));
+        dialog.add(new Span(getTranslation("judging-admin.bos.action.start.confirm.body")));
+        var confirm = new Button(getTranslation("judging-admin.bos.action.start"), e -> {
+            try {
+                judgingService.startBos(division.getId(), currentUserId);
+                dialog.close();
+                refreshView();
+                Notification.show(getTranslation("judging-admin.bos.started"))
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+        confirm.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        confirm.setDisableOnClick(true);
+        var cancel = new Button(getTranslation("button.cancel"), e -> dialog.close());
+        dialog.getFooter().add(cancel, confirm);
+        dialog.open();
+    }
+
+    public void openFinalizeBosDialog() {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("judging-admin.bos.action.finalize.confirm.title"));
+        dialog.add(new Span(getTranslation("judging-admin.bos.action.finalize.confirm.body")));
+        var confirm = new Button(getTranslation("judging-admin.bos.action.finalize"), e -> {
+            try {
+                judgingService.completeBos(division.getId(), currentUserId);
+                dialog.close();
+                refreshView();
+                Notification.show(getTranslation("judging-admin.bos.finalized"))
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+        confirm.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        confirm.setDisableOnClick(true);
+        var cancel = new Button(getTranslation("button.cancel"), e -> dialog.close());
+        dialog.getFooter().add(cancel, confirm);
+        dialog.open();
+    }
+
+    public void openReopenBosDialog() {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("judging-admin.bos.action.reopen.confirm.title"));
+        dialog.add(new Span(getTranslation("judging-admin.bos.action.reopen.confirm.body")));
+        var confirm = new Button(getTranslation("judging-admin.bos.action.reopen"), e -> {
+            try {
+                judgingService.reopenBos(division.getId(), currentUserId);
+                dialog.close();
+                refreshView();
+                Notification.show(getTranslation("judging-admin.bos.reopened"))
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+        confirm.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        confirm.setDisableOnClick(true);
+        var cancel = new Button(getTranslation("button.cancel"), e -> dialog.close());
+        dialog.getFooter().add(cancel, confirm);
+        dialog.open();
+    }
+
+    public void openResetBosDialog() {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("judging-admin.bos.action.reset.confirm.title"));
+        dialog.add(new Span(getTranslation("judging-admin.bos.action.reset.confirm.body")));
+        var confirm = new Button(getTranslation("judging-admin.bos.action.reset"), e -> {
+            try {
+                judgingService.resetBos(division.getId(), currentUserId);
+                dialog.close();
+                refreshView();
+                Notification.show(getTranslation("judging-admin.bos.reset"))
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+        confirm.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
+        confirm.setDisableOnClick(true);
+        var cancel = new Button(getTranslation("button.cancel"), e -> dialog.close());
+        dialog.getFooter().add(cancel, confirm);
+        dialog.open();
+    }
+
+    public void openAddBosPlacementDialog(int place) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("judging-admin.bos.placements.dialog.add.title", place));
+
+        var goldAwards = judgingService.findGoldMedalAwardsForDivision(
+                division.getId(), currentUserId);
+        var existingPlacements = judgingService.findBosPlacementsForDivision(
+                division.getId(), currentUserId);
+        var placedEntryIds = existingPlacements.stream()
+                .map(BosPlacement::getEntryId)
+                .collect(Collectors.toSet());
+        var unplaced = goldAwards.stream()
+                .filter(a -> !placedEntryIds.contains(a.getEntryId()))
+                .toList();
+
+        var entrySelect = new Select<MedalAward>();
+        entrySelect.setId("bos-add-entry-select");
+        entrySelect.setLabel(getTranslation("judging-admin.bos.placements.dialog.entry"));
+        entrySelect.setItems(unplaced);
+        entrySelect.setItemLabelGenerator(a -> a == null ? "" :
+                formatEntryCode(a) + " — " + formatEntryMeadName(a));
+        entrySelect.setWidthFull();
+
+        dialog.add(entrySelect);
+
+        var save = new Button(getTranslation("button.save"), e -> {
+            var selected = entrySelect.getValue();
+            if (selected == null) {
+                entrySelect.setInvalid(true);
+                entrySelect.setErrorMessage(getTranslation("judging-admin.bos.placements.dialog.entry.error"));
+                return;
+            }
+            try {
+                judgingService.recordBosPlacement(division.getId(),
+                        selected.getEntryId(), place, currentUserId);
+                dialog.close();
+                refreshView();
+                Notification.show(getTranslation("judging-admin.bos.placements.added"))
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+        save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        save.setDisableOnClick(true);
+        var cancel = new Button(getTranslation("button.cancel"), e -> dialog.close());
+        dialog.getFooter().add(cancel, save);
+        dialog.open();
+    }
+
+    public void openEditBosPlacementDialog(BosPlacement placement) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("judging-admin.bos.placements.dialog.edit.title",
+                placement.getPlace()));
+
+        var placeField = new IntegerField(getTranslation("judging-admin.bos.placements.dialog.place"));
+        placeField.setId("bos-edit-place-field");
+        placeField.setMin(1);
+        placeField.setMax(division.getBosPlaces());
+        placeField.setValue(placement.getPlace());
+        placeField.setStepButtonsVisible(true);
+        placeField.setWidthFull();
+        dialog.add(placeField);
+
+        var save = new Button(getTranslation("button.save"), e -> {
+            var newPlace = placeField.getValue();
+            if (newPlace == null || newPlace < 1) {
+                placeField.setInvalid(true);
+                placeField.setErrorMessage(getTranslation("judging-admin.bos.placements.dialog.place.error"));
+                return;
+            }
+            try {
+                judgingService.updateBosPlacement(placement.getId(), newPlace, currentUserId);
+                dialog.close();
+                refreshView();
+                Notification.show(getTranslation("judging-admin.bos.placements.updated"))
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+        save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        save.setDisableOnClick(true);
+        var cancel = new Button(getTranslation("button.cancel"), e -> dialog.close());
+        dialog.getFooter().add(cancel, save);
+        dialog.open();
+    }
+
+    public void openDeleteBosPlacementDialog(BosPlacement placement) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("judging-admin.bos.placements.dialog.delete.title",
+                placement.getPlace()));
+        dialog.add(new Span(getTranslation("judging-admin.bos.placements.dialog.delete.body")));
+        var confirm = new Button(getTranslation("button.delete"), e -> {
+            try {
+                judgingService.deleteBosPlacement(placement.getId(), currentUserId);
+                dialog.close();
+                refreshView();
+                Notification.show(getTranslation("judging-admin.bos.placements.deleted"))
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+        confirm.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
+        confirm.setDisableOnClick(true);
+        var cancel = new Button(getTranslation("button.cancel"), e -> dialog.close());
+        dialog.getFooter().add(cancel, confirm);
+        dialog.open();
+    }
+
+    private void refreshView() {
+        judging = judgingService.ensureJudgingExists(division.getId());
+        beforeEnterRefresh();
+    }
+
+    public record BosPlacementRow(int place, BosPlacement placement) {
     }
 
     private UUID getCurrentUserId() {

@@ -22,6 +22,7 @@ import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.combobox.ComboBox;
+import com.vaadin.flow.component.combobox.MultiSelectComboBox;
 import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.tabs.TabSheet;
 import com.vaadin.flow.component.textfield.TextArea;
@@ -221,6 +222,41 @@ class CompetitionDetailViewTest {
 
         var uploads = _find(Upload.class);
         assertThat(uploads).hasSize(1);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    @SuppressWarnings("unchecked")
+    void shouldDisplayJudgingCommentLanguagesMultiSelectInSettingsTab() {
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName());
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(2); // Settings tab
+
+        var combo = (MultiSelectComboBox<String>) _get(MultiSelectComboBox.class,
+                spec -> spec.withId("comment-languages-combo"));
+        var items = combo.getGenericDataView().getItems().toList();
+        // Sourced from MeadsI18NProvider.getSupportedLanguageCodes() — en/es/it/pl/pt
+        assertThat(items).contains("en", "es", "it", "pl", "pt");
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    @SuppressWarnings("unchecked")
+    void shouldPersistCommentLanguagesWhenSettingsSaved() {
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName());
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(2);
+
+        var combo = (MultiSelectComboBox<String>) _get(MultiSelectComboBox.class,
+                spec -> spec.withId("comment-languages-combo"));
+        combo.setValue(java.util.Set.of("en", "pt"));
+
+        _click(_get(Button.class, spec -> spec.withText("Save")));
+
+        var refreshed = competitionRepository.findById(testCompetition.getId()).orElseThrow();
+        assertThat(refreshed.getCommentLanguages()).containsExactlyInAnyOrder("en", "pt");
     }
 
     @Test

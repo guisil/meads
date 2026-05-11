@@ -322,4 +322,55 @@ class JudgingServiceMedalsBosTest {
 
         then(bosPlacementRepository).should().delete(placement);
     }
+
+    @Test
+    void shouldFindGoldMedalAwardsForDivisionFilteredFromAllMedals() {
+        var goldId = UUID.randomUUID();
+        var silverId = UUID.randomUUID();
+        var bronzeId = UUID.randomUUID();
+        var gold = new MedalAward(goldId, divisionId, divisionCategoryId,
+                Medal.GOLD, adminUserId);
+        var silver = new MedalAward(silverId, divisionId, divisionCategoryId,
+                Medal.SILVER, adminUserId);
+        var bronze = new MedalAward(bronzeId, divisionId, divisionCategoryId,
+                Medal.BRONZE, adminUserId);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(medalAwardRepository.findByDivisionId(divisionId))
+                .willReturn(List.of(gold, silver, bronze));
+
+        var golds = service.findGoldMedalAwardsForDivision(divisionId, adminUserId);
+
+        assertThat(golds).extracting(MedalAward::getMedal).containsExactly(Medal.GOLD);
+    }
+
+    @Test
+    void shouldRejectFindGoldMedalAwardsForDivisionWhenUnauthorized() {
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(false);
+
+        assertThatThrownBy(() -> service.findGoldMedalAwardsForDivision(divisionId, adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.auth.unauthorized");
+    }
+
+    @Test
+    void shouldFindBosPlacementsForDivisionOrderedByPlace() {
+        var p1 = new BosPlacement(divisionId, UUID.randomUUID(), 1, adminUserId);
+        var p2 = new BosPlacement(divisionId, UUID.randomUUID(), 2, adminUserId);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(bosPlacementRepository.findByDivisionIdOrderByPlace(divisionId))
+                .willReturn(List.of(p1, p2));
+
+        var placements = service.findBosPlacementsForDivision(divisionId, adminUserId);
+
+        assertThat(placements).containsExactly(p1, p2);
+    }
+
+    @Test
+    void shouldRejectFindBosPlacementsForDivisionWhenUnauthorized() {
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(false);
+
+        assertThatThrownBy(() -> service.findBosPlacementsForDivision(divisionId, adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.auth.unauthorized");
+    }
 }

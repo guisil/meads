@@ -268,6 +268,20 @@ public class JudgingServiceImpl implements JudgingService {
     }
 
     @Override
+    public List<MedalAward> findGoldMedalAwardsForDivision(UUID divisionId, UUID adminUserId) {
+        requireAuthorizedForDivision(divisionId, adminUserId);
+        return medalAwardRepository.findByDivisionId(divisionId).stream()
+                .filter(a -> a.getMedal() == Medal.GOLD)
+                .toList();
+    }
+
+    @Override
+    public List<BosPlacement> findBosPlacementsForDivision(UUID divisionId, UUID adminUserId) {
+        requireAuthorizedForDivision(divisionId, adminUserId);
+        return bosPlacementRepository.findByDivisionIdOrderByPlace(divisionId);
+    }
+
+    @Override
     public List<CategoryJudgingConfig> findCategoryConfigsForDivision(UUID divisionId, UUID adminUserId) {
         if (!competitionService.isAuthorizedForDivision(divisionId, adminUserId)) {
             throw new BusinessRuleException("error.auth.unauthorized");

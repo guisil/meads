@@ -545,6 +545,92 @@ class DivisionDetailViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldDisplayBosPlacesIntegerFieldInSettingsTab() {
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName()
+                + "/divisions/" + testDivision.getShortName());
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(1); // Settings
+
+        var bosField = _get(com.vaadin.flow.component.textfield.IntegerField.class,
+                spec -> spec.withId("bos-places-field"));
+        assertThat(bosField.getValue()).isEqualTo(1); // default
+        assertThat(bosField.isReadOnly()).isFalse(); // DRAFT allows editing
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldLockBosPlacesFieldWhenRegistrationClosed() {
+        testDivision.advanceStatus(); // → REGISTRATION_OPEN
+        testDivision.advanceStatus(); // → REGISTRATION_CLOSED
+        divisionRepository.save(testDivision);
+
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName()
+                + "/divisions/" + testDivision.getShortName());
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(2); // Settings (index shifts when judging categories tab added)
+
+        var bosField = _get(com.vaadin.flow.component.textfield.IntegerField.class,
+                spec -> spec.withId("bos-places-field"));
+        assertThat(bosField.isReadOnly()).isTrue();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldPersistBosPlacesWhenSettingsSaved() {
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName()
+                + "/divisions/" + testDivision.getShortName());
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(1);
+
+        var bosField = _get(com.vaadin.flow.component.textfield.IntegerField.class,
+                spec -> spec.withId("bos-places-field"));
+        bosField.setValue(5);
+
+        _click(_get(Button.class, spec -> spec.withText("Save")));
+
+        var refreshed = divisionRepository.findById(testDivision.getId()).orElseThrow();
+        assertThat(refreshed.getBosPlaces()).isEqualTo(5);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldDisplayMinJudgesPerTableIntegerFieldInSettingsTab() {
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName()
+                + "/divisions/" + testDivision.getShortName());
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(1);
+
+        var minJudgesField = _get(com.vaadin.flow.component.textfield.IntegerField.class,
+                spec -> spec.withId("min-judges-field"));
+        assertThat(minJudgesField.getValue()).isEqualTo(2); // default
+        assertThat(minJudgesField.isReadOnly()).isFalse();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldPersistMinJudgesPerTableWhenSettingsSaved() {
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName()
+                + "/divisions/" + testDivision.getShortName());
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(1);
+
+        var minJudgesField = _get(com.vaadin.flow.component.textfield.IntegerField.class,
+                spec -> spec.withId("min-judges-field"));
+        minJudgesField.setValue(3);
+
+        _click(_get(Button.class, spec -> spec.withText("Save")));
+
+        var refreshed = divisionRepository.findById(testDivision.getId()).orElseThrow();
+        assertThat(refreshed.getMinJudgesPerTable()).isEqualTo(3);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldShowAddJudgingCategoryButtonAfterInitialization() {
         testDivision.advanceStatus(); // DRAFT → REGISTRATION_OPEN
         testDivision.advanceStatus(); // → REGISTRATION_CLOSED

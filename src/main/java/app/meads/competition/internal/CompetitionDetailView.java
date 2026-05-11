@@ -14,6 +14,7 @@ import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
+import com.vaadin.flow.component.combobox.MultiSelectComboBox;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.datetimepicker.DateTimePicker;
 import com.vaadin.flow.component.dialog.Dialog;
@@ -665,6 +666,24 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         websiteField.setHelperText(getTranslation("competition-detail.settings.website.helper"));
         websiteField.setClearButtonVisible(true);
 
+        var judgingSection = new Span(getTranslation("competition-detail.settings.judging.section"));
+        judgingSection.addClassName("field-label");
+
+        var commentLanguagesCombo = new MultiSelectComboBox<String>(
+                getTranslation("competition-detail.settings.comment-languages.label"));
+        commentLanguagesCombo.setId("comment-languages-combo");
+        var uiLocale = UI.getCurrent().getLocale();
+        var languageCodes = MeadsI18NProvider.getSupportedLanguageCodes().stream()
+                .sorted((a, b) -> java.util.Locale.forLanguageTag(a).getDisplayLanguage(uiLocale)
+                        .compareTo(java.util.Locale.forLanguageTag(b).getDisplayLanguage(uiLocale)))
+                .toList();
+        commentLanguagesCombo.setItems(languageCodes);
+        commentLanguagesCombo.setItemLabelGenerator(
+                code -> java.util.Locale.forLanguageTag(code).getDisplayLanguage(uiLocale));
+        commentLanguagesCombo.setHelperText(getTranslation("competition-detail.settings.comment-languages.help"));
+        commentLanguagesCombo.setWidth("400px");
+        commentLanguagesCombo.setValue(competition.getCommentLanguages());
+
         var logoData = new byte[1][];
         var logoContentType = new String[1];
 
@@ -754,6 +773,8 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                         ? websiteField.getValue().trim() : null;
                 competitionService.updateCompetitionShippingDetails(
                         competitionId, shippingAddress, phoneNumber, website, getCurrentUserId());
+                competitionService.updateCommentLanguages(competitionId,
+                        commentLanguagesCombo.getValue(), getCurrentUserId());
                 if (logoData[0] != null) {
                     competitionService.updateCompetitionLogo(
                             competitionId, logoData[0], logoContentType[0],
@@ -771,7 +792,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         });
         saveButton.setDisableOnClick(true);
 
-        tab.add(nameField, shortNameField, startDatePicker, endDatePicker, locationField, contactEmailField, shippingAddressField, phoneNumberField, websiteField, logoLabel, logoSection, saveButton);
+        tab.add(nameField, shortNameField, startDatePicker, endDatePicker, locationField, contactEmailField, shippingAddressField, phoneNumberField, websiteField, judgingSection, commentLanguagesCombo, logoLabel, logoSection, saveButton);
         return tab;
     }
 
