@@ -30,6 +30,10 @@ public enum DivisionStatus {
         return ordinal() >= REGISTRATION_CLOSED.ordinal();
     }
 
+    public boolean isResultsFrozen() {
+        return this == RESULTS_PUBLISHED;
+    }
+
     public Optional<DivisionStatus> next() {
         var values = values();
         int nextOrdinal = ordinal() + 1;

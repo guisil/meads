@@ -31,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
@@ -91,6 +92,7 @@ class JudgingServiceTableTest {
                 ScoringSystem.MJP,
                 LocalDateTime.of(2026, 6, 1, 23, 59),
                 "Europe/Lisbon");
+        lenient().when(competitionService.findDivisionById(any())).thenReturn(division);
     }
 
     @Test

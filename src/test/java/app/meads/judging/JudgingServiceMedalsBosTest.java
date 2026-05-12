@@ -80,6 +80,7 @@ class JudgingServiceMedalsBosTest {
         category = new DivisionCategory(divisionId, null, "M1A", "Dry Trad",
                 "Description", null, 0);
         judging = new Judging(divisionId);
+        lenient().when(competitionService.findDivisionById(any())).thenReturn(division);
     }
 
     private Entry mockEntry() {

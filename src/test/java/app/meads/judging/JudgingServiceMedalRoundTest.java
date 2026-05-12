@@ -31,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
@@ -71,6 +72,7 @@ class JudgingServiceMedalRoundTest {
         category = new DivisionCategory(divisionId, null, "M1A", "Dry Trad",
                 "Description", null, 0);
         judging = new Judging(divisionId);
+        lenient().when(competitionService.findDivisionById(any())).thenReturn(division);
     }
 
     @Test

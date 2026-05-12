@@ -3,6 +3,8 @@ package app.meads.judging;
 import app.meads.BusinessRuleException;
 import app.meads.competition.Competition;
 import app.meads.competition.CompetitionService;
+import app.meads.competition.Division;
+import app.meads.competition.DivisionStatus;
 import app.meads.entry.Entry;
 import app.meads.entry.EntryService;
 import app.meads.judging.CoiCheckService.CoiResult;
@@ -87,6 +89,11 @@ class ScoresheetServiceTest {
         judging = new Judging(divisionId);
         table = new JudgingTable(judging.getId(), "T1", divisionCategoryId, LocalDate.of(2026, 7, 1));
         tableId = table.getId();
+        var nonFrozenDivision = mock(Division.class);
+        lenient().when(nonFrozenDivision.getStatus()).thenReturn(DivisionStatus.JUDGING);
+        lenient().when(competitionService.findDivisionById(any())).thenReturn(nonFrozenDivision);
+        lenient().when(judgingTableRepository.findById(tableId)).thenReturn(Optional.of(table));
+        lenient().when(judgingRepository.findById(judging.getId())).thenReturn(Optional.of(judging));
     }
 
     private Entry mockEntry(UUID entryId, UUID userId) {
@@ -302,6 +309,7 @@ class ScoresheetServiceTest {
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(coiCheckService.check(judgeUserId, entryId)).willReturn(CoiResult.clear());
         given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(division.getStatus()).willReturn(DivisionStatus.JUDGING);
         given(division.getCompetitionId()).willReturn(competitionId);
         given(competitionService.findCompetitionById(competitionId)).willReturn(competition);
         given(competition.getCommentLanguages()).willReturn(Set.of("en", "pt"));
@@ -326,6 +334,7 @@ class ScoresheetServiceTest {
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(coiCheckService.check(judgeUserId, entryId)).willReturn(CoiResult.clear());
         given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(division.getStatus()).willReturn(DivisionStatus.JUDGING);
         given(division.getCompetitionId()).willReturn(competitionId);
         given(competitionService.findCompetitionById(competitionId)).willReturn(competition);
         given(competition.getCommentLanguages()).willReturn(Set.of("en"));

@@ -68,6 +68,8 @@ public class ScoresheetServiceImpl implements ScoresheetService {
     @Override
     public void createScoresheetsForTable(UUID tableId) {
         var table = requireTable(tableId);
+        var judging = requireJudging(table.getJudgingId());
+        requireNotFrozen(judging.getDivisionId());
         var entries = entryService.findEntriesByFinalCategoryId(table.getDivisionCategoryId());
         for (var entry : entries) {
             if (scoresheetRepository.findByEntryId(entry.getId()).isEmpty()) {
@@ -86,6 +88,7 @@ public class ScoresheetServiceImpl implements ScoresheetService {
         if (entry.getFinalCategoryId() == null) {
             return;
         }
+        requireNotFrozen(entry.getDivisionId());
         var judging = judgingRepository.findByDivisionId(entry.getDivisionId()).orElse(null);
         if (judging == null) {
             return;
@@ -107,6 +110,7 @@ public class ScoresheetServiceImpl implements ScoresheetService {
     public void updateScore(UUID scoresheetId, String fieldName,
                             Integer value, String comment, UUID judgeUserId) {
         var sheet = requireScoresheet(scoresheetId);
+        requireNotFrozenForSheet(sheet);
         enforceCoi(judgeUserId, sheet);
         try {
             sheet.updateScore(fieldName, value, comment);
@@ -125,6 +129,7 @@ public class ScoresheetServiceImpl implements ScoresheetService {
     public void updateOverallComments(UUID scoresheetId, String comments,
                                        UUID judgeUserId) {
         var sheet = requireScoresheet(scoresheetId);
+        requireNotFrozenForSheet(sheet);
         enforceCoi(judgeUserId, sheet);
         try {
             sheet.updateOverallComments(comments);
@@ -141,6 +146,7 @@ public class ScoresheetServiceImpl implements ScoresheetService {
     public void setAdvancedToMedalRound(UUID scoresheetId, boolean advanced,
                                          UUID judgeUserId) {
         var sheet = requireScoresheet(scoresheetId);
+        requireNotFrozenForSheet(sheet);
         enforceCoi(judgeUserId, sheet);
         var table = requireTable(sheet.getTableId());
         var configOpt = categoryConfigRepository.findByDivisionCategoryId(table.getDivisionCategoryId());
@@ -155,10 +161,13 @@ public class ScoresheetServiceImpl implements ScoresheetService {
     public void setCommentLanguage(UUID scoresheetId, String languageCode,
                                     UUID judgeUserId) {
         var sheet = requireScoresheet(scoresheetId);
-        enforceCoi(judgeUserId, sheet);
         var table = requireTable(sheet.getTableId());
         var judging = requireJudging(table.getJudgingId());
         var division = competitionService.findDivisionById(judging.getDivisionId());
+        if (division.getStatus().isResultsFrozen()) {
+            throw new BusinessRuleException("error.judging.results-published-frozen");
+        }
+        enforceCoi(judgeUserId, sheet);
         var competition = competitionService.findCompetitionById(division.getCompetitionId());
         var allowed = new HashSet<>(competition.getCommentLanguages());
         judgeProfileService.findByUserId(judgeUserId)
@@ -179,6 +188,7 @@ public class ScoresheetServiceImpl implements ScoresheetService {
     @Override
     public void submit(UUID scoresheetId, UUID judgeUserId) {
         var sheet = requireScoresheet(scoresheetId);
+        requireNotFrozenForSheet(sheet);
         enforceCoi(judgeUserId, sheet);
         if (sheet.getCommentLanguage() == null) {
             var defaultLang = resolveDefaultCommentLanguage(judgeUserId, sheet);
@@ -220,6 +230,7 @@ public class ScoresheetServiceImpl implements ScoresheetService {
         if (!competitionService.isAuthorizedForDivision(judging.getDivisionId(), adminUserId)) {
             throw new BusinessRuleException("error.auth.unauthorized");
         }
+        requireNotFrozen(judging.getDivisionId());
         var configOpt = categoryConfigRepository.findByDivisionCategoryId(table.getDivisionCategoryId());
         if (configOpt.isPresent()) {
             var status = configOpt.get().getMedalRoundStatus();
@@ -261,6 +272,7 @@ public class ScoresheetServiceImpl implements ScoresheetService {
         if (!competitionService.isAuthorizedForDivision(judging.getDivisionId(), adminUserId)) {
             throw new BusinessRuleException("error.auth.unauthorized");
         }
+        requireNotFrozen(judging.getDivisionId());
         var entry = entryService.findEntryById(sheet.getEntryId());
         if (entry.getFinalCategoryId() == null
                 || !entry.getFinalCategoryId().equals(newTable.getDivisionCategoryId())) {
@@ -326,6 +338,18 @@ public class ScoresheetServiceImpl implements ScoresheetService {
     private Judging requireJudging(UUID id) {
         return judgingRepository.findById(id)
                 .orElseThrow(() -> new BusinessRuleException("error.judging.not-found"));
+    }
+
+    private void requireNotFrozen(UUID divisionId) {
+        if (competitionService.findDivisionById(divisionId).getStatus().isResultsFrozen()) {
+            throw new BusinessRuleException("error.judging.results-published-frozen");
+        }
+    }
+
+    private void requireNotFrozenForSheet(Scoresheet sheet) {
+        var table = requireTable(sheet.getTableId());
+        var judging = requireJudging(table.getJudgingId());
+        requireNotFrozen(judging.getDivisionId());
     }
 
     @Override

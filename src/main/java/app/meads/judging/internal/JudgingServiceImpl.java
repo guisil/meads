@@ -106,6 +106,7 @@ public class JudgingServiceImpl implements JudgingService {
                                     UUID adminUserId) {
         var judging = requireJudging(judgingId);
         requireAuthorizedForJudging(judging, adminUserId);
+        requireNotFrozen(judging.getDivisionId());
         var table = new JudgingTable(judgingId, name, divisionCategoryId, scheduledDate);
         var saved = judgingTableRepository.save(table);
         log.info("Created JudgingTable {} (name={}, category={})",
@@ -119,6 +120,7 @@ public class JudgingServiceImpl implements JudgingService {
         var table = requireTable(tableId);
         var judging = requireJudging(table.getJudgingId());
         requireAuthorizedForJudging(judging, adminUserId);
+        requireNotFrozen(judging.getDivisionId());
         table.updateName(name);
         judgingTableRepository.save(table);
         log.debug("Updated table name {} → '{}'", tableId, name);
@@ -130,6 +132,7 @@ public class JudgingServiceImpl implements JudgingService {
         var table = requireTable(tableId);
         var judging = requireJudging(table.getJudgingId());
         requireAuthorizedForJudging(judging, adminUserId);
+        requireNotFrozen(judging.getDivisionId());
         table.updateScheduledDate(date);
         judgingTableRepository.save(table);
         log.debug("Updated table {} scheduled date → {}", tableId, date);
@@ -140,6 +143,7 @@ public class JudgingServiceImpl implements JudgingService {
         var table = requireTable(tableId);
         var judging = requireJudging(table.getJudgingId());
         requireAuthorizedForJudging(judging, adminUserId);
+        requireNotFrozen(judging.getDivisionId());
         if (table.getStatus() != JudgingTableStatus.NOT_STARTED) {
             throw new BusinessRuleException("error.judging-table.cannot-delete-started");
         }
@@ -196,6 +200,7 @@ public class JudgingServiceImpl implements JudgingService {
         var table = requireTable(tableId);
         var judging = requireJudging(table.getJudgingId());
         requireAuthorizedForJudging(judging, adminUserId);
+        requireNotFrozen(judging.getDivisionId());
         table.assignJudge(judgeUserId);
         judgingTableRepository.save(table);
         judgeProfileService.ensureProfileForJudge(judgeUserId);
@@ -208,6 +213,7 @@ public class JudgingServiceImpl implements JudgingService {
         var table = requireTable(tableId);
         var judging = requireJudging(table.getJudgingId());
         requireAuthorizedForJudging(judging, adminUserId);
+        requireNotFrozen(judging.getDivisionId());
         if (table.getStatus() == JudgingTableStatus.ROUND_1) {
             var division = competitionService.findDivisionById(judging.getDivisionId());
             int currentCount = table.getAssignments().size();
@@ -232,6 +238,9 @@ public class JudgingServiceImpl implements JudgingService {
         var judging = requireJudging(table.getJudgingId());
         requireAuthorizedForJudging(judging, adminUserId);
         var division = competitionService.findDivisionById(judging.getDivisionId());
+        if (division.getStatus().isResultsFrozen()) {
+            throw new BusinessRuleException("error.judging.results-published-frozen");
+        }
         if (table.getAssignments().size() < division.getMinJudgesPerTable()) {
             throw new BusinessRuleException("error.judging-table.too-few-judges",
                     String.valueOf(division.getMinJudgesPerTable()));
@@ -268,6 +277,7 @@ public class JudgingServiceImpl implements JudgingService {
         if (!competitionService.isAuthorizedForDivision(divisionId, adminUserId)) {
             throw new BusinessRuleException("error.auth.unauthorized");
         }
+        requireNotFrozen(divisionId);
         var existing = categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId);
         CategoryJudgingConfig config;
         if (existing.isPresent()) {
@@ -340,6 +350,7 @@ public class JudgingServiceImpl implements JudgingService {
         var config = requireConfig(divisionCategoryId);
         var divisionId = resolveDivisionIdFromCategory(divisionCategoryId);
         requireAuthorizedForDivision(divisionId, adminUserId);
+        requireNotFrozen(divisionId);
         try {
             config.startMedalRound();
         } catch (IllegalStateException e) {
@@ -360,6 +371,7 @@ public class JudgingServiceImpl implements JudgingService {
         var config = requireConfig(divisionCategoryId);
         var divisionId = resolveDivisionIdFromCategory(divisionCategoryId);
         requireAuthorizedForDivision(divisionId, adminUserId);
+        requireNotFrozen(divisionId);
         try {
             config.completeMedalRound();
         } catch (IllegalStateException e) {
@@ -376,6 +388,7 @@ public class JudgingServiceImpl implements JudgingService {
         var config = requireConfig(divisionCategoryId);
         var divisionId = resolveDivisionIdFromCategory(divisionCategoryId);
         requireAuthorizedForDivision(divisionId, adminUserId);
+        requireNotFrozen(divisionId);
         var judging = judgingRepository.findByDivisionId(divisionId)
                 .orElseThrow(() -> new BusinessRuleException("error.judging.not-found"));
         if (judging.getPhase() != JudgingPhase.ACTIVE) {
@@ -397,6 +410,7 @@ public class JudgingServiceImpl implements JudgingService {
         var config = requireConfig(divisionCategoryId);
         var divisionId = resolveDivisionIdFromCategory(divisionCategoryId);
         requireAuthorizedForDivision(divisionId, adminUserId);
+        requireNotFrozen(divisionId);
         var judging = judgingRepository.findByDivisionId(divisionId)
                 .orElseThrow(() -> new BusinessRuleException("error.judging.not-found"));
         if (judging.getPhase() != JudgingPhase.ACTIVE) {
@@ -426,6 +440,7 @@ public class JudgingServiceImpl implements JudgingService {
         if (finalCategoryId == null) {
             throw new BusinessRuleException("error.medal.no-final-category");
         }
+        requireNotFrozen(entry.getDivisionId());
         var coi = coiCheckService.check(judgeUserId, entryId);
         if (coi.hardBlock()) {
             throw new BusinessRuleException("error.coi.self-entry");
@@ -455,6 +470,7 @@ public class JudgingServiceImpl implements JudgingService {
                             UUID judgeUserId) {
         var award = medalAwardRepository.findById(medalAwardId)
                 .orElseThrow(() -> new BusinessRuleException("error.medal.not-found"));
+        requireNotFrozen(award.getDivisionId());
         var coi = coiCheckService.check(judgeUserId, award.getEntryId());
         if (coi.hardBlock()) {
             throw new BusinessRuleException("error.coi.self-entry");
@@ -474,6 +490,7 @@ public class JudgingServiceImpl implements JudgingService {
     public void deleteMedalAward(UUID medalAwardId, UUID judgeUserId) {
         var award = medalAwardRepository.findById(medalAwardId)
                 .orElseThrow(() -> new BusinessRuleException("error.medal.not-found"));
+        requireNotFrozen(award.getDivisionId());
         var config = categoryConfigRepository.findByDivisionCategoryId(award.getFinalCategoryId())
                 .orElseThrow(() -> new BusinessRuleException("error.category-config.not-found"));
         if (config.getMedalRoundStatus() != MedalRoundStatus.ACTIVE) {
@@ -489,6 +506,7 @@ public class JudgingServiceImpl implements JudgingService {
     @Override
     public void startBos(UUID divisionId, UUID adminUserId) {
         requireAuthorizedForDivision(divisionId, adminUserId);
+        requireNotFrozen(divisionId);
         var judging = judgingRepository.findByDivisionId(divisionId)
                 .orElseThrow(() -> new BusinessRuleException("error.judging.not-found"));
         // Guard: every CategoryJudgingConfig for this division must be COMPLETE
@@ -512,6 +530,7 @@ public class JudgingServiceImpl implements JudgingService {
     @Override
     public void completeBos(UUID divisionId, UUID adminUserId) {
         requireAuthorizedForDivision(divisionId, adminUserId);
+        requireNotFrozen(divisionId);
         var judging = judgingRepository.findByDivisionId(divisionId)
                 .orElseThrow(() -> new BusinessRuleException("error.judging.not-found"));
         try {
@@ -529,6 +548,7 @@ public class JudgingServiceImpl implements JudgingService {
     @Override
     public void reopenBos(UUID divisionId, UUID adminUserId) {
         requireAuthorizedForDivision(divisionId, adminUserId);
+        requireNotFrozen(divisionId);
         var judging = judgingRepository.findByDivisionId(divisionId)
                 .orElseThrow(() -> new BusinessRuleException("error.judging.not-found"));
         try {
@@ -544,6 +564,7 @@ public class JudgingServiceImpl implements JudgingService {
     @Override
     public void resetBos(UUID divisionId, UUID adminUserId) {
         requireAuthorizedForDivision(divisionId, adminUserId);
+        requireNotFrozen(divisionId);
         var judging = judgingRepository.findByDivisionId(divisionId)
                 .orElseThrow(() -> new BusinessRuleException("error.judging.not-found"));
         var placements = bosPlacementRepository.findByDivisionIdOrderByPlace(divisionId);
@@ -566,12 +587,15 @@ public class JudgingServiceImpl implements JudgingService {
     public BosPlacement recordBosPlacement(UUID divisionId, UUID entryId,
                                             int place, UUID adminUserId) {
         requireAuthorizedForDivision(divisionId, adminUserId);
+        var division = competitionService.findDivisionById(divisionId);
+        if (division.getStatus().isResultsFrozen()) {
+            throw new BusinessRuleException("error.judging.results-published-frozen");
+        }
         var judging = judgingRepository.findByDivisionId(divisionId)
                 .orElseThrow(() -> new BusinessRuleException("error.judging.not-found"));
         if (judging.getPhase() != JudgingPhase.BOS) {
             throw new BusinessRuleException("error.bos.not-active");
         }
-        var division = competitionService.findDivisionById(divisionId);
         if (place < 1 || place > division.getBosPlaces()) {
             throw new BusinessRuleException("error.bos.invalid-place",
                     String.valueOf(place), String.valueOf(division.getBosPlaces()));
@@ -605,6 +629,9 @@ public class JudgingServiceImpl implements JudgingService {
                 .orElseThrow(() -> new BusinessRuleException("error.bos.placement-not-found"));
         requireAuthorizedForDivision(placement.getDivisionId(), adminUserId);
         var division = competitionService.findDivisionById(placement.getDivisionId());
+        if (division.getStatus().isResultsFrozen()) {
+            throw new BusinessRuleException("error.judging.results-published-frozen");
+        }
         if (place < 1 || place > division.getBosPlaces()) {
             throw new BusinessRuleException("error.bos.invalid-place",
                     String.valueOf(place), String.valueOf(division.getBosPlaces()));
@@ -619,6 +646,7 @@ public class JudgingServiceImpl implements JudgingService {
         var placement = bosPlacementRepository.findById(placementId)
                 .orElseThrow(() -> new BusinessRuleException("error.bos.placement-not-found"));
         requireAuthorizedForDivision(placement.getDivisionId(), adminUserId);
+        requireNotFrozen(placement.getDivisionId());
         bosPlacementRepository.delete(placement);
         log.info("Deleted BOS placement {}", placementId);
     }
@@ -681,6 +709,12 @@ public class JudgingServiceImpl implements JudgingService {
     private void requireAuthorizedForDivision(UUID divisionId, UUID userId) {
         if (!competitionService.isAuthorizedForDivision(divisionId, userId)) {
             throw new BusinessRuleException("error.auth.unauthorized");
+        }
+    }
+
+    private void requireNotFrozen(UUID divisionId) {
+        if (competitionService.findDivisionById(divisionId).getStatus().isResultsFrozen()) {
+            throw new BusinessRuleException("error.judging.results-published-frozen");
         }
     }
 
