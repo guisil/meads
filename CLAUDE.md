@@ -202,6 +202,25 @@ app.meads.entry                              ← Entry module public API
     ├── EntrantOverviewView.java             ← Cross-competition entrant hub (/my-entries, @PermitAll)
     ├── MyEntriesView.java                   ← Entrant-facing view (@PermitAll + beforeEnter auth)
     └── DivisionEntryAdminView.java          ← Admin view with Credits/Entries/Products/Orders tabs
+
+app.meads.awards                             ← Awards module public API
+├── package-info.java                        ← @ApplicationModule(allowedDependencies = {"judging", "competition", "entry", "identity"})
+├── Publication.java                         ← JPA entity / audit-only aggregate (divisionId, version, justification, initial)
+├── AwardsService.java                       ← Service interface (publish, republish, sendAnnouncement, getLatestPublication, getPublicationHistory, getResultsForEntrant, getResultsForAdmin, getPublicResults, getAnonymizedScoresheet)
+├── EntrantResultRow.java                    ← DTO record (entrant grid row)
+├── AdminResultsView.java                    ← DTO record + inner records (full admin results)
+├── PublicResultsView.java                   ← DTO record + inner records (anonymized public results)
+├── AnonymizedScoresheetView.java            ← DTO record (Judge N anonymization)
+├── ResultsPublishedEvent.java               ← Spring application event (record)
+├── ResultsRepublishedEvent.java             ← Spring application event (record, carries justification)
+└── AnnouncementSentEvent.java               ← Spring application event (record)
+└── internal/                                ← Module-private
+    ├── PublicationRepository.java           ← JPA repository
+    ├── AwardsServiceImpl.java               ← Service impl (@Validated, @Transactional)
+    ├── AwardsAdminView.java                 ← Admin view (@PermitAll + beforeEnter auth) — Publish/Republish/Announce/Revert + Publication history
+    ├── AwardsPublicResultsView.java         ← Public anonymized view (@AnonymousAllowed)
+    ├── MyResultsView.java                   ← Entrant results grid (@PermitAll + beforeEnter)
+    └── MyScoresheetView.java                ← Anonymized scoresheet drill-in + PDF download (@PermitAll + beforeEnter)
 ```
 
 ### Module Rules
@@ -234,7 +253,7 @@ Read `.claude/skills/new-module.md` before creating a module.
 | `competition` | **Exists** | Events, competitions, scoring systems (MJP), categories, participants, access codes, status workflow, competition admin authorization |
 | `entry` | **Exists** | Jumpseller webhook, entry credits (ledger), mead entry registration, entry limits, admin management. Design: `docs/plans/2026-03-02-entry-module-design.md` |
 | `judging` | **In progress** (Phase 6 views — all views complete; service-error i18n complete; event listeners remain) | 7 aggregates (Judging, JudgingTable+JudgeAssignment, CategoryJudgingConfig, Scoresheet+ScoreField, MedalAward, BosPlacement, JudgeProfile), services (JudgingService, ScoresheetService, JudgeProfileService, CoiCheckService), 13 events, 2 cross-module guards (JudgingDivisionStatusRevertGuard, JudgingMinJudgesLockGuard), `JudgeAssignmentChecker` interface (root) for sidebar gating. Views: JudgingAdminView (Tables/Medal Rounds/BOS), TableView (admin scoresheet management + row click → ScoresheetView), MyJudgingView (judge hub), ScoresheetView (judge form: 5 score fields + comments + comment language + advance + submit; read-only when SUBMITTED), BosView (admin placement form with Assign/Reassign/Delete; read-only when COMPLETE). `JudgingErrorKeyCoverageTest` guards EN+PT translation coverage for every `BusinessRuleException` key the module throws. Reference: `docs/reference/chip-competition-rules.md` |
-| `awards` | Planned | Score aggregation, rankings, medal determination (withholding), BOS (variable places), results publication. Reference: `docs/reference/chip-competition-rules.md` |
+| `awards` | **Exists** | Publication lifecycle on top of judging data: `publish` / `republish` / `sendAnnouncement`. Single `Publication` audit-only aggregate; judging data frozen-in-place via `DivisionStatus.isResultsFrozen()` guard on every judging mutator. Views: `AwardsAdminView` (publish/republish/announce/revert), `AwardsPublicResultsView` (anonymized, `@AnonymousAllowed`), `MyResultsView` + `MyScoresheetView` (entrant-facing drill-in). `ScoresheetPdfService` in judging module supports ANONYMIZED + FULL modes. Reference: `docs/reference/chip-competition-rules.md`, design+plan `docs/plans/2026-05-12-awards-module-{design,plan}.md` |
 
 ---
 
@@ -392,7 +411,7 @@ void tearDown() {
 ## Database & Migrations
 
 - **Location:** `src/main/resources/db/migration/V{N}__{description}.sql`
-- **Current highest version:** V19 (`V19__add_mfa_to_users.sql`). V2 includes users + meadery_name. V3–V8 are competition module (V3 includes contact_email + shipping_address + phone_number, V4 includes entry limits + prefix). V9–V13 are entry module. V14 is competition documents. V15 adds website to competitions. V16 adds preferred_language to users (i18n). V17 is document language filtering. V18 adds `scope` column to `division_categories` and updates unique constraint to `(division_id, code, scope)`. V19 adds `totp_secret` and `mfa_enabled` columns to `users`.
+- **Current highest version:** V28 (`V28__create_publications.sql`). V2 includes users + meadery_name. V3–V8 are competition module. V9–V13 are entry module. V14 is competition documents. V15 adds website to competitions. V16 adds preferred_language to users (i18n). V17 is document language filtering. V18 adds `scope` column + updates unique constraint to `(division_id, code, scope)` on `division_categories`. V19 adds `totp_secret` and `mfa_enabled` to `users`. V20-V27 are judging module (V20 judgings, V21 judging_tables + judge_assignments, V22 category_judging_configs, V23 scoresheets + score_fields, V24 medal_awards, V25 bos_placements, V26 judge_profiles + judge_profile_certifications, V27 judging fields on competition/division). V28 adds `publications` table (awards module).
 - **Naming:** `V{next}__{snake_case_description}.sql` (double underscore)
 - Migrations are created in **Step 2** (GREEN), when a repository test needs a table.
 - **Never edit existing migrations.** Always create new ones.

@@ -14,8 +14,8 @@ needed to continue even without memory files or prior conversation history.
 Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
-**Branch:** `feature/judging-module` (Phase 6 views — ALL VIEWS COMPLETE; service-error i18n complete; ES/IT/PL i18n coverage complete; manual walkthrough has full judging coverage (Section 12, 17 subsections). JudgingAdminView (Tables/Medal Rounds/BOS tabs), Settings extensions, TableView (with row click → ScoresheetView), MyJudgingView, ScoresheetView, dedicated BosView. Remaining: event listeners (deferred), native-speaker review of ES/IT/PL translations (deferred), §Q16/§Q17 (deferred). **Awards module design + plan committed 2026-05-12** (`docs/plans/2026-05-12-awards-module-{design,plan}.md`); 3 commits ahead of `origin/feature/judging-module` — push before switching machines.)
-**Tests:** 975 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-12 (Phase 6.34 ES/IT/PL admin-view + judging-module i18n catch-up: ~733 keys added to each of ES, IT, PL covering admin views (UserList, CompetitionList, CompetitionDetail tabs, DivisionDetail tabs, DivisionEntryAdmin, MyCompetitions, JudgingAdmin, BosView, ScoresheetView, TableView, MyJudgingView) + all judging service error keys. Style: ES formal usted, IT informal tu, PL standard. All non-ASCII converted to `\uXXXX` escapes via `/tmp/escape_non_ascii.py` to match the existing Java Properties convention; EN+PT files re-escaped in-place to fix prior literal-UTF-8 drift)
+**Branch:** `feature/judging-module` — **Awards module COMPLETE** (2026-05-12, all 13 tasks done). Judging Phase 6 views also complete. Architecture: `Publication` audit-trail aggregate + freeze-in-place via `DivisionStatus.isResultsFrozen()` guard on every judging mutator. Decoupled publish/republish/announcement: only `sendAnnouncement` triggers emails. Per the plan's open question, chose option B for entrant-facing scoresheet drill-in (new `MyResultsView` + `MyScoresheetView` in awards module + banner-link from `MyEntriesView`) to keep dependency direction unidirectional (awards → entry).
+**Tests:** 1047 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-12 after Awards module Task 13 (ES/IT/PL i18n catch-up: ~75 new awards keys added to each of ES/IT/PL covering error/email/PDF/public-view/admin-view/my-results/my-scoresheet namespaces; non-ASCII escaped per project convention). New tests over the awards module: PublicationTest (4), PublicationRepositoryTest (3), JudgingServiceFreezeGuardTest (22), ScoresheetServiceFreezeGuardTest (9), AwardsServiceImplTest (21), AwardsPublicResultsViewTest (2), AwardsAdminViewTest (3), MyResultsViewTest (2), ScoresheetPdfServiceTest (4), AwardsModuleTest (2). Existing service tests updated with lenient `findDivisionById` stubs to satisfy new freeze guard. Validation constraints moved from `AwardsServiceImpl` to `AwardsService` interface to avoid HV000151 LSP under CGLIB proxy.
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -142,6 +142,56 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 - `application.properties` — added `app.jumpseller.hooks-token`
 
 #### Migrations: V9–V13
+
+### awards module (`app.meads.awards`) — COMPLETE
+
+- **Depends on:** judging, competition, entry, identity
+- **Status:** All 13 plan tasks complete (2026-05-12). Design + plan: `docs/plans/2026-05-12-awards-module-{design,plan}.md`
+
+#### Entities (public API)
+| Entity | Table | Migration | Description |
+|--------|-------|-----------|-------------|
+| `Publication` | `publications` | V28 | Audit-only aggregate: divisionId, version (unique per division), publishedAt, publishedBy FK, justification (nullable for v1), initial boolean |
+
+#### Service — `AwardsService` (public API)
+- `publish(divisionId, adminUserId)` — DELIBERATION → RESULTS_PUBLISHED, creates Publication v1
+- `republish(divisionId, justification, adminUserId)` — creates Publication v(n+1); justification 20-1000 chars, required
+- `sendAnnouncement(divisionId, customMessage, adminUserId)` — emails all entrants in their preferred locale; picks template by publication version + custom-message presence
+- `getLatestPublication / getPublicationHistory` — repo wrappers
+- `getResultsForEntrant(userId, divisionId)` — per-entry rows (round-1 total, medal, BOS, scoresheet drill-in); requires RESULTS_PUBLISHED
+- `getResultsForAdmin(divisionId, adminUserId)` — full leaderboard + BOS + publication history
+- `getPublicResults(competitionShortName, divisionShortName)` — anonymized public view by short names; requires RESULTS_PUBLISHED
+- `getAnonymizedScoresheet(scoresheetId, requestingUserId)` — admin OR entry owner auth; "Judge N" anonymization; entrant access requires RESULTS_PUBLISHED
+- Revert: admin view calls `competitionService.revertDivisionStatus(...)` directly (asymmetric — no awards-owned data to roll back; publication record kept in audit log)
+
+#### Events
+- `ResultsPublishedEvent(divisionId, publicationId, version, publishedAt, publishedBy)`
+- `ResultsRepublishedEvent(...same + justification)`
+- `AnnouncementSentEvent(divisionId, publicationId, recipientCount, usedCustomMessage)`
+
+#### DTOs (public records)
+- `EntrantResultRow`, `AdminResultsView` (+ inner: AdminCategoryLeaderboard, AdminEntryRow, AdminBosRow, PublicationSummary), `PublicResultsView` (+ inner: PublicCategorySection, PublicMedalRow, PublicBosRow), `AnonymizedScoresheetView` (+ inner: AnonymizedScoresheet, FieldScore)
+
+#### Views
+- `AwardsPublicResultsView` (`/competitions/:c/divisions/:d/results`, `@AnonymousAllowed`) — anonymized public results
+- `AwardsAdminView` (`/competitions/:c/divisions/:d/results-admin`, `@PermitAll` + auth) — publish/republish/announce/revert + publication history grid
+- `MyResultsView` (`/competitions/:c/divisions/:d/my-results`, `@PermitAll`) — entrant-facing results grid + "View scoresheet" drill-in
+- `MyScoresheetView` (`/competitions/:c/divisions/:d/my-entries/:entryId/scoresheet`) — anonymized scoresheet display + PDF download
+- Banner added to `MyEntriesView` when status = RESULTS_PUBLISHED, linking to `MyResultsView`
+- "Manage results" button added to `JudgingAdminView` header when status >= DELIBERATION
+
+#### Cross-cutting changes
+- `DivisionStatus.isResultsFrozen()` helper — true iff RESULTS_PUBLISHED
+- `JudgingServiceImpl` + `ScoresheetServiceImpl` — every mutator (~30) calls `requireNotFrozen(divisionId)` before mutation, throwing `BusinessRuleException("error.judging.results-published-frozen")`
+- `JudgingService` gained `findMedalAwardByEntryId`, `findBosPlacementByEntryId`
+- `ScoresheetService` gained `findByEntryIdOrderBySubmittedAtAsc` (single derived query — entry_id is UNIQUE on scoresheets so the list is 0 or 1)
+- `ScoreField` moved from `judging.internal` to `judging` public API (needed for awards anonymized score-field rendering; Scoresheet.getFields() was already public)
+- `EmailService.sendResultsAnnouncement` + new `ResultsAnnouncementType` enum (INITIAL_NO_CUSTOM, REPUBLISH_NO_CUSTOM, CUSTOM_MESSAGE); `SmtpEmailService` reuses the existing `email-base.html` template with type-specific subject/heading/body keys
+- `EntryService.findEntrantUserIdsForDivision` (delegates new `EntryRepository.findDistinctUserIdsByDivisionId`)
+- `ScoresheetPdfService` in judging public API — A4 portrait PDF generation with `AnonymizationLevel.ANONYMIZED` (Judge N) and `AnonymizationLevel.FULL` (judge name) modes; mirrors `LabelPdfService` pattern
+- Validation constraints (`@NotNull`, `@NotBlank`) declared on `AwardsService` interface, not impl (CGLIB proxy + HV000151 LSP — per [project memory](memory/project_validated_interface_constraints.md))
+
+#### Migrations: V28
 
 ### Cross-cutting
 
