@@ -14,7 +14,7 @@ needed to continue even without memory files or prior conversation history.
 Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
-**Branch:** `feature/judging-module` (Phase 6 views — ALL VIEWS COMPLETE; service-error i18n complete; ES/IT/PL i18n coverage complete; manual walkthrough has full judging coverage (Section 12, 17 subsections). JudgingAdminView (Tables/Medal Rounds/BOS tabs), Settings extensions, TableView (with row click → ScoresheetView), MyJudgingView, ScoresheetView, dedicated BosView. Remaining: event listeners (deferred), native-speaker review of ES/IT/PL translations (deferred), §Q16/§Q17 (deferred))
+**Branch:** `feature/judging-module` (Phase 6 views — ALL VIEWS COMPLETE; service-error i18n complete; ES/IT/PL i18n coverage complete; manual walkthrough has full judging coverage (Section 12, 17 subsections). JudgingAdminView (Tables/Medal Rounds/BOS tabs), Settings extensions, TableView (with row click → ScoresheetView), MyJudgingView, ScoresheetView, dedicated BosView. Remaining: event listeners (deferred), native-speaker review of ES/IT/PL translations (deferred), §Q16/§Q17 (deferred). **Awards module design + plan committed 2026-05-12** (`docs/plans/2026-05-12-awards-module-{design,plan}.md`); 3 commits ahead of `origin/feature/judging-module` — push before switching machines.)
 **Tests:** 975 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-12 (Phase 6.34 ES/IT/PL admin-view + judging-module i18n catch-up: ~733 keys added to each of ES, IT, PL covering admin views (UserList, CompetitionList, CompetitionDetail tabs, DivisionDetail tabs, DivisionEntryAdmin, MyCompetitions, JudgingAdmin, BosView, ScoresheetView, TableView, MyJudgingView) + all judging service error keys. Style: ES formal usted, IT informal tu, PL standard. All non-ASCII converted to `\uXXXX` escapes via `/tmp/escape_non_ascii.py` to match the existing Java Properties convention; EN+PT files re-escaped in-place to fix prior literal-UTF-8 drift)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
@@ -162,6 +162,8 @@ docs/
 │   ├── 2026-03-10-i18n-design.md          ← i18n design (implementation deferred)
 │   ├── 2026-03-10-deployment-design.md    ← Deployment options evaluation (decision: DO App Platform)
 │   ├── 2026-05-05-judging-module-design.md ← Judging module design (in progress, multi-session)
+│   ├── 2026-05-12-awards-module-design.md  ← Awards module design (complete, ready for impl)
+│   ├── 2026-05-12-awards-module-plan.md    ← Awards module implementation plan (13 TDD tasks)
 │   └── deployment-checklist.md           ← Deployment reference: setup, release process, redeployment, rollback
 ├── reference/
 │   ├── chip-competition-rules.md          ← CHIP competition rules (active reference)
@@ -1007,29 +1009,35 @@ skeleton from Phase 3 translates mechanically.
   `MedalRoundView`, dedicated `BosView` form). Per design doc
   §4.B–§4.J.
 
-### Priority 6: Awards module — DESIGN STARTING NEXT
-Design and implementation. Reference: `docs/reference/chip-competition-rules.md` and `docs/specs/awards.md`.
+### Priority 6: Awards module — DESIGN + PLAN COMPLETE, READY TO IMPLEMENT
 
-**Important context for the design session:** `docs/specs/awards.md` is **outdated** — it was written before the judging module was fully specified. The judging module now owns what the original spec called "awards":
-- `MedalAward(entryId, divisionId, finalCategoryId, medal, awardedBy)` — judge-decided medals incl. explicit withhold (`medal=null`); see §2.B / §3.2 of `docs/plans/2026-05-05-judging-module-design.md`
-- `BosPlacement(divisionId, entryId, place, awardedBy)` — variable `bosPlaces` per division
-- `Scoresheet.totalScore` — per-entry Round 1 totals
-- Medal/BOS state machines + 13 published events (`MedalRoundCompletedEvent`, `BosCompletedEvent`, etc.)
-- `MedalRoundView` already exists for judge/admin medal entry; `BosView` for admin BOS
+**Design** (2026-05-12): `docs/plans/2026-05-12-awards-module-design.md` — supersedes the obsolete `docs/specs/awards.md`.
 
-The original spec's `CategoryResult` with `averageScore` + `rank` + computed `award` is therefore **redundant for MJP/CHIP** — medals aren't score-thresholded, they're judge decisions. A more accurate framing of the awards module's remaining scope:
-- **Presentation** — entrant + admin views that read from judging data
-- **Visibility gate** — separating "judging finished" from "entrants can see results" (`Division.status=RESULTS_PUBLISHED` already exists and could itself be the gate)
-- **Notifications** — emailing entrants when their results are visible
-- **Documents** — per-entry scoresheet PDFs, certificates
-- **Public results** (optional) — anonymous read-only view
+**Implementation plan** (2026-05-12): `docs/plans/2026-05-12-awards-module-plan.md` — 13 bite-sized TDD tasks.
 
-**Brainstorming was started 2026-05-12, then paused for a context reset.** First foundational question to resolve (before any approach proposals):
+**Architecture in one sentence:** Awards module owns the *publication lifecycle* (publish + republish + announce) on top of judging data; judging data is frozen in place via a new `DivisionStatus.isResultsFrozen()` guard line on every judging mutator; awards owns only a small `Publication` audit aggregate.
 
-> How should awards be scoped? (a) Thin read model + notifications — no entities of its own, queries judging data live, listener sends emails on RESULTS_PUBLISHED; (b) Read model with snapshot — `PublishedResult` aggregate freezes medal/BOS at publish time so historical results can't shift; (c) Stick to original spec (probably not — see above).
+**Key design decisions (locked):**
+- **Freeze-in-place snapshot** with `Publication` audit aggregate (not data-copy snapshot). Past publications kept as append-only audit log.
+- **Decoupled actions:** `publish` and `republish` never auto-send emails; `sendAnnouncement` is the only email path. After republish, the admin view shows a non-blocking reminder banner.
+- **Republish requires non-blank `justification`** (min 20 / max 1000 chars). The justification is the default email body when admin sends an announcement after republishing.
+- **Email scope on republish:** all entrants in the division (not just affected).
+- **Judge anonymity:** entrant + public views fully anonymize judges (`Judge 1`, `Judge 2`, …) with stable per-entry ordering by `submittedAt`. Admin view shows full identity + certifications.
+- **Withheld medals** render as `—` (same as no medal) for entrants. Admin view distinguishes withheld vs unset.
+- **Public results:** mead name + meadery name only — no entry IDs, no category column in BOS. Withheld medals not listed. Visible only when `status = RESULTS_PUBLISHED`.
+- **v1 scope:** public anonymous results page, anonymized scoresheet PDF (per entry), admin results view with publish controls. **Out of v1:** medal-winner certificate PDFs (deferred — first competition prints manually).
+- **DELIBERATION:** silent to entrants until publication.
+- **Revert publication:** awards admin view calls `competitionService.revertDivisionStatus(...)` directly (no method on AwardsService — asymmetric with publish because there's no awards-owned data to roll back).
+- **Migration:** V28 (single table `publications`).
+- **`ScoresheetPdfService`** lives in judging module (mirrors `LabelPdfService` in entry module).
 
-Recommended start prompt for next session:
-> "Read `docs/SESSION_CONTEXT.md`'s Priority 6 section and `docs/specs/awards.md`. Continue brainstorming the awards module design — the foundational scope question is unresolved (thin read-model vs. snapshot vs. original-spec compute-from-scratch)."
+**Open decision flagged in plan:**
+- Task 11 (`MyEntriesView` extension) introduces a potential circular dep awards↔entry. Plan recommends **option B**: a new `MyResultsView` in awards module + a banner-with-link from `MyEntriesView`. Confirm at implementation time.
+
+**Recommended start prompt for next session:**
+> "Read `docs/SESSION_CONTEXT.md`'s Priority 6 + `docs/plans/2026-05-12-awards-module-plan.md`. Resume awards module implementation at Task 1 (Publication entity + V28). Subagent-driven execution preferred."
+
+**Estimated effort (with parallel subagent dispatch):** ~3–6 hours of session time, 1–2 long sessions. Tasks 1→2→3→4→5→6 sequential; then Tasks 7+8 parallel; then Tasks 9+10+11 parallel; then 12; then 13.
 
 ### Priority 7: Auto-close + deadline reminders (deferred)
 - **Auto-close** — automatically advance division from REGISTRATION_OPEN → REGISTRATION_CLOSED
