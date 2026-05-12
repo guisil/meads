@@ -10,6 +10,8 @@ public interface AwardsService {
 
     Publication republish(UUID divisionId, String justification, UUID adminUserId);
 
+    void sendAnnouncement(UUID divisionId, String customMessage, UUID adminUserId);
+
     Optional<Publication> getLatestPublication(UUID divisionId);
 
     List<Publication> getPublicationHistory(UUID divisionId);

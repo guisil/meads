@@ -190,6 +190,51 @@ class SmtpEmailService implements EmailService {
         sendEmail(recipientEmail, subject, ctx, myEntriesUrl);
     }
 
+    @Override
+    public void sendResultsAnnouncement(String recipientEmail, Locale locale,
+                                         EmailService.ResultsAnnouncementType type,
+                                         String competitionName, String divisionName,
+                                         String customOrJustificationBody,
+                                         String resultsUrl, String contactEmail) {
+        var subjectKey = switch (type) {
+            case INITIAL_NO_CUSTOM -> "email.results-published.subject";
+            case REPUBLISH_NO_CUSTOM -> "email.results-republished.subject";
+            case CUSTOM_MESSAGE -> "email.custom-announcement.subject";
+        };
+        var headingKey = switch (type) {
+            case INITIAL_NO_CUSTOM -> "email.results-published.heading";
+            case REPUBLISH_NO_CUSTOM -> "email.results-republished.heading";
+            case CUSTOM_MESSAGE -> "email.custom-announcement.heading";
+        };
+        var bodyKey = switch (type) {
+            case INITIAL_NO_CUSTOM -> "email.results-published.body";
+            case REPUBLISH_NO_CUSTOM -> "email.results-republished.intro";
+            case CUSTOM_MESSAGE -> null;
+        };
+        var subject = msg(subjectKey, locale, competitionName, divisionName);
+        var heading = msg(headingKey, locale, competitionName, divisionName);
+        var bodyText = type == EmailService.ResultsAnnouncementType.CUSTOM_MESSAGE
+                ? customOrJustificationBody
+                : msg(bodyKey, locale, competitionName, divisionName);
+        var bodyText2 = type == EmailService.ResultsAnnouncementType.REPUBLISH_NO_CUSTOM
+                ? customOrJustificationBody
+                : null;
+
+        var link = jwtMagicLinkService.generateLink(recipientEmail, TOKEN_VALIDITY);
+        var ctx = new Context();
+        ctx.setVariable("subject", subject);
+        ctx.setVariable("heading", heading);
+        ctx.setVariable("bodyText", bodyText);
+        ctx.setVariable("bodyText2", bodyText2);
+        ctx.setVariable("ctaLabel", msg("email.results.cta-label", locale));
+        ctx.setVariable("ctaUrl", link + resultsUrl);
+        ctx.setVariable("fallbackText", msg("email.fallback", locale));
+        ctx.setVariable("footerText", msg("email.footer", locale));
+        ctx.setVariable("contactText", msg("email.contact", locale));
+        ctx.setVariable("contactEmail", contactEmail);
+        sendEmail(recipientEmail, subject, ctx, link + resultsUrl);
+    }
+
     private String msg(String key, Locale locale, Object... args) {
         return messageSource.getMessage(key, args, key, locale);
     }

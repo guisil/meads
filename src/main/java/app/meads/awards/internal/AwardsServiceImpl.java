@@ -1,7 +1,9 @@
 package app.meads.awards.internal;
 
 import app.meads.BusinessRuleException;
+import app.meads.LanguageMapping;
 import app.meads.awards.AdminResultsView;
+import app.meads.awards.AnnouncementSentEvent;
 import app.meads.awards.AnonymizedScoresheetView;
 import app.meads.awards.AwardsService;
 import app.meads.awards.EntrantResultRow;
@@ -14,6 +16,7 @@ import app.meads.competition.DivisionCategory;
 import app.meads.competition.DivisionStatus;
 import app.meads.entry.Entry;
 import app.meads.entry.EntryService;
+import app.meads.identity.EmailService;
 import app.meads.identity.User;
 import app.meads.identity.UserService;
 import app.meads.judging.JudgingService;
@@ -53,6 +56,7 @@ public class AwardsServiceImpl implements AwardsService {
     private final JudgingService judgingService;
     private final ScoresheetService scoresheetService;
     private final UserService userService;
+    private final EmailService emailService;
     private final ApplicationEventPublisher eventPublisher;
 
     public AwardsServiceImpl(PublicationRepository publicationRepository,
@@ -61,6 +65,7 @@ public class AwardsServiceImpl implements AwardsService {
                              JudgingService judgingService,
                              ScoresheetService scoresheetService,
                              UserService userService,
+                             EmailService emailService,
                              ApplicationEventPublisher eventPublisher) {
         this.publicationRepository = publicationRepository;
         this.competitionService = competitionService;
@@ -68,6 +73,7 @@ public class AwardsServiceImpl implements AwardsService {
         this.judgingService = judgingService;
         this.scoresheetService = scoresheetService;
         this.userService = userService;
+        this.emailService = emailService;
         this.eventPublisher = eventPublisher;
     }
 
@@ -119,6 +125,64 @@ public class AwardsServiceImpl implements AwardsService {
                 publication.getPublishedAt(), publication.getPublishedBy(), trimmed));
         log.info("Republished results for division {} (version {})", divisionId, publication.getVersion());
         return publication;
+    }
+
+    @Override
+    public void sendAnnouncement(@NotNull UUID divisionId, String customMessage,
+                                  @NotNull UUID adminUserId) {
+        if (!competitionService.isAuthorizedForDivision(divisionId, adminUserId)) {
+            throw new BusinessRuleException("error.awards.unauthorized");
+        }
+        var division = competitionService.findDivisionById(divisionId);
+        if (division.getStatus() != DivisionStatus.RESULTS_PUBLISHED) {
+            throw new BusinessRuleException("error.awards.announcement-wrong-status");
+        }
+        var latest = publicationRepository.findTopByDivisionIdOrderByVersionDesc(divisionId)
+                .orElseThrow(() -> new BusinessRuleException("error.awards.no-prior-publication"));
+        var competition = competitionService.findCompetitionById(division.getCompetitionId());
+        boolean useCustom = customMessage != null && !customMessage.isBlank();
+        EmailService.ResultsAnnouncementType type;
+        String body;
+        if (useCustom) {
+            type = EmailService.ResultsAnnouncementType.CUSTOM_MESSAGE;
+            body = customMessage.trim();
+        } else if (latest.getVersion() > 1) {
+            type = EmailService.ResultsAnnouncementType.REPUBLISH_NO_CUSTOM;
+            body = latest.getJustification();
+        } else {
+            type = EmailService.ResultsAnnouncementType.INITIAL_NO_CUSTOM;
+            body = null;
+        }
+        var resultsUrl = "/competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/my-entries";
+        var userIds = entryService.findEntrantUserIdsForDivision(divisionId);
+        int sent = 0;
+        for (var userId : userIds) {
+            User user;
+            try {
+                user = userService.findById(userId);
+            } catch (Exception e) {
+                log.warn("Skipping user {} for announcement: {}", userId, e.getMessage());
+                continue;
+            }
+            if (user == null || user.getEmail() == null || user.getEmail().isBlank()) {
+                continue;
+            }
+            var locale = LanguageMapping.resolveLocale(user.getPreferredLanguage(), user.getCountry());
+            try {
+                emailService.sendResultsAnnouncement(user.getEmail(), locale, type,
+                        competition.getName(), division.getName(),
+                        body, resultsUrl, competition.getContactEmail());
+                sent++;
+            } catch (Exception e) {
+                log.error("Failed to send announcement to {} for division {}",
+                        user.getEmail(), divisionId, e);
+            }
+        }
+        eventPublisher.publishEvent(new AnnouncementSentEvent(
+                divisionId, latest.getId(), sent, useCustom));
+        log.info("Sent {} results announcements for division {} (publication v{}, type={})",
+                sent, divisionId, latest.getVersion(), type);
     }
 
     @Override

@@ -398,6 +398,10 @@ public class EntryService {
         return entryRepository.findByFinalCategoryId(finalCategoryId);
     }
 
+    public List<UUID> findEntrantUserIdsForDivision(@NotNull UUID divisionId) {
+        return entryRepository.findDistinctUserIdsByDivisionId(divisionId);
+    }
+
     public Entry assignFinalCategory(@NotNull UUID entryId, UUID finalCategoryId,
                                       @NotNull UUID requestingUserId) {
         var entry = entryRepository.findById(entryId)

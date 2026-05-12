@@ -4,6 +4,18 @@ import java.util.Locale;
 
 public interface EmailService {
 
+    enum ResultsAnnouncementType {
+        INITIAL_NO_CUSTOM,
+        REPUBLISH_NO_CUSTOM,
+        CUSTOM_MESSAGE
+    }
+
+    void sendResultsAnnouncement(String recipientEmail, Locale locale,
+                                  ResultsAnnouncementType type,
+                                  String competitionName, String divisionName,
+                                  String customOrJustificationBody,
+                                  String resultsUrl, String contactEmail);
+
     void sendMagicLink(String recipientEmail, Locale locale);
 
     void sendPasswordReset(String recipientEmail, Locale locale);

@@ -3,10 +3,13 @@ package app.meads.awards;
 import app.meads.BusinessRuleException;
 import app.meads.awards.internal.AwardsServiceImpl;
 import app.meads.awards.internal.PublicationRepository;
+import app.meads.competition.Competition;
 import app.meads.competition.CompetitionService;
 import app.meads.competition.Division;
 import app.meads.competition.DivisionStatus;
 import app.meads.entry.EntryService;
+import app.meads.identity.EmailService;
+import app.meads.identity.User;
 import app.meads.identity.UserService;
 import app.meads.judging.JudgingService;
 import app.meads.judging.ScoresheetService;
@@ -36,6 +39,7 @@ class AwardsServiceImplTest {
     @Mock JudgingService judgingService;
     @Mock ScoresheetService scoresheetService;
     @Mock UserService userService;
+    @Mock EmailService emailService;
     @Mock ApplicationEventPublisher eventPublisher;
 
     @Test
@@ -291,8 +295,143 @@ class AwardsServiceImplTest {
                 .hasMessageContaining("error.awards.unauthorized");
     }
 
+    @Test
+    void shouldSendInitialAnnouncementWithDefaultTemplate() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var adminUserId = UUID.randomUUID();
+        var competitionId = UUID.randomUUID();
+        var division = mock(Division.class);
+        given(division.getStatus()).willReturn(DivisionStatus.RESULTS_PUBLISHED);
+        given(division.getCompetitionId()).willReturn(competitionId);
+        given(division.getShortName()).willReturn("amadora");
+        given(division.getName()).willReturn("Amadora");
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        var competition = mock(Competition.class);
+        given(competition.getName()).willReturn("CHIP 2026");
+        given(competition.getShortName()).willReturn("chip-2026");
+        given(competition.getContactEmail()).willReturn("admin@chip.pt");
+        given(competitionService.findCompetitionById(competitionId)).willReturn(competition);
+        given(publicationRepository.findTopByDivisionIdOrderByVersionDesc(divisionId))
+                .willReturn(Optional.of(new Publication(divisionId, adminUserId)));
+        var user1 = UUID.randomUUID();
+        given(entryService.findEntrantUserIdsForDivision(divisionId))
+                .willReturn(java.util.List.of(user1));
+        var u1 = mock(User.class);
+        given(u1.getEmail()).willReturn("entrant@test.com");
+        given(u1.getPreferredLanguage()).willReturn("en");
+        given(userService.findById(user1)).willReturn(u1);
+
+        service.sendAnnouncement(divisionId, null, adminUserId);
+
+        then(emailService).should().sendResultsAnnouncement(
+                org.mockito.ArgumentMatchers.eq("entrant@test.com"),
+                any(),
+                org.mockito.ArgumentMatchers.eq(EmailService.ResultsAnnouncementType.INITIAL_NO_CUSTOM),
+                org.mockito.ArgumentMatchers.eq("CHIP 2026"),
+                org.mockito.ArgumentMatchers.eq("Amadora"),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.contains("chip-2026/divisions/amadora/my-entries"),
+                org.mockito.ArgumentMatchers.eq("admin@chip.pt"));
+        var captor = ArgumentCaptor.forClass(app.meads.awards.AnnouncementSentEvent.class);
+        then(eventPublisher).should().publishEvent(captor.capture());
+        assertThat(captor.getValue().recipientCount()).isEqualTo(1);
+        assertThat(captor.getValue().usedCustomMessage()).isFalse();
+    }
+
+    @Test
+    void shouldSendRepublishAnnouncementWithJustification() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var adminUserId = UUID.randomUUID();
+        var competitionId = UUID.randomUUID();
+        var division = mock(Division.class);
+        given(division.getStatus()).willReturn(DivisionStatus.RESULTS_PUBLISHED);
+        given(division.getCompetitionId()).willReturn(competitionId);
+        given(division.getShortName()).willReturn("amadora");
+        given(division.getName()).willReturn("Amadora");
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        var competition = mock(Competition.class);
+        given(competition.getName()).willReturn("CHIP 2026");
+        given(competition.getShortName()).willReturn("chip-2026");
+        given(competitionService.findCompetitionById(competitionId)).willReturn(competition);
+        var republished = Publication.republish(divisionId, 1,
+                "Corrected silver medal after spreadsheet error.", adminUserId);
+        given(publicationRepository.findTopByDivisionIdOrderByVersionDesc(divisionId))
+                .willReturn(Optional.of(republished));
+        var user1 = UUID.randomUUID();
+        given(entryService.findEntrantUserIdsForDivision(divisionId))
+                .willReturn(java.util.List.of(user1));
+        var u1 = mock(User.class);
+        given(u1.getEmail()).willReturn("a@test.com");
+        given(userService.findById(user1)).willReturn(u1);
+
+        service.sendAnnouncement(divisionId, null, adminUserId);
+
+        then(emailService).should().sendResultsAnnouncement(
+                any(), any(),
+                org.mockito.ArgumentMatchers.eq(EmailService.ResultsAnnouncementType.REPUBLISH_NO_CUSTOM),
+                any(), any(),
+                org.mockito.ArgumentMatchers.eq("Corrected silver medal after spreadsheet error."),
+                any(), any());
+    }
+
+    @Test
+    void shouldSendCustomAnnouncementWhenMessageProvided() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var adminUserId = UUID.randomUUID();
+        var competitionId = UUID.randomUUID();
+        var division = mock(Division.class);
+        given(division.getStatus()).willReturn(DivisionStatus.RESULTS_PUBLISHED);
+        given(division.getCompetitionId()).willReturn(competitionId);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        var competition = mock(Competition.class);
+        given(competitionService.findCompetitionById(competitionId)).willReturn(competition);
+        given(publicationRepository.findTopByDivisionIdOrderByVersionDesc(divisionId))
+                .willReturn(Optional.of(new Publication(divisionId, adminUserId)));
+        given(entryService.findEntrantUserIdsForDivision(divisionId))
+                .willReturn(java.util.List.of());
+
+        service.sendAnnouncement(divisionId, "Thanks to all entrants!", adminUserId);
+
+        var captor = ArgumentCaptor.forClass(app.meads.awards.AnnouncementSentEvent.class);
+        then(eventPublisher).should().publishEvent(captor.capture());
+        assertThat(captor.getValue().usedCustomMessage()).isTrue();
+    }
+
+    @Test
+    void shouldRejectSendAnnouncementWhenStatusNotPublished() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var adminUserId = UUID.randomUUID();
+        var division = mock(Division.class);
+        given(division.getStatus()).willReturn(DivisionStatus.DELIBERATION);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+
+        assertThatThrownBy(() -> service.sendAnnouncement(divisionId, null, adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.awards.announcement-wrong-status");
+    }
+
+    @Test
+    void shouldRejectSendAnnouncementWhenUnauthorized() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var adminUserId = UUID.randomUUID();
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(false);
+
+        assertThatThrownBy(() -> service.sendAnnouncement(divisionId, null, adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.awards.unauthorized");
+    }
+
     private AwardsServiceImpl createService() {
         return new AwardsServiceImpl(publicationRepository, competitionService,
-                entryService, judgingService, scoresheetService, userService, eventPublisher);
+                entryService, judgingService, scoresheetService, userService, emailService, eventPublisher);
     }
 }
