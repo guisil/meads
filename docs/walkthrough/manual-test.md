@@ -1895,7 +1895,285 @@ For this you need a *second* ROUND_1 table in the same JUDGING category. Create 
 
 ---
 
-## 13. Cross-cutting Concerns
+## 13. Awards Module
+
+**Covers:** `AwardsServiceImplTest`, `AwardsPublicResultsViewTest`,
+`AwardsAdminViewTest`, `MyResultsViewTest`, `AwardsModuleTest`,
+`PublicationTest`, `PublicationRepositoryTest`,
+`JudgingServiceFreezeGuardTest`, `ScoresheetServiceFreezeGuardTest`,
+`ScoresheetPdfServiceTest`.
+
+This section assumes Section 12 left Amadora deep in the judging flow,
+with at least one COMPLETE category medal round and ideally one
+BosPlacement. If you reset everything at the end of §12 to keep
+Amadora reusable, use the seeded `Test Competition 2026 > Open`
+division for §13 instead — or re-run a thin slice of §12 first
+(start a table, advance the medal round, record one GOLD, finalize the
+medal round, place that entry in BOS, complete BOS).
+
+The awards flow advances the division `DELIBERATION → RESULTS_PUBLISHED`.
+Steps below are admin-driven unless noted.
+
+### 13.1 Prerequisites — advance to DELIBERATION
+
+*Log in as `compadmin@example.com`.*
+
+- [ ] Navigate to CHIP 2026 → Amadora.
+- [ ] **Verify:** Current status is `JUDGING`. (If `REGISTRATION_CLOSED`, advance once.)
+- [ ] In the division header, click "Advance Status" → confirm
+  "Advance from Judging to Deliberation?".
+- [ ] **Expected:** Status badge updates to `DELIBERATION`.
+- [ ] Navigate to Manage Judging.
+- [ ] **Expected:** A new "Manage Results" button appears in the JudgingAdminView
+  header (between the title and the tabs).
+
+### 13.2 Publish — first publication
+
+*Stay on the Amadora JudgingAdminView header.*
+
+- [ ] Click "Manage Results".
+- [ ] **Expected:** Navigates to `/competitions/chip-2026/divisions/amadora/results-admin`
+  with breadcrumb `Competitions / CHIP 2026 / Amadora / Results admin`.
+- [ ] **Expected:** Page shows "CHIP 2026 — Amadora — Results admin" heading.
+- [ ] **Expected:** A single "Publish results" primary button is visible in the
+  actions row (no Re-publish / Send announcement / Revert yet — those only
+  appear post-publication).
+- [ ] **Expected:** A "Publication history" section is rendered below with an
+  empty grid (columns: Version, Published at, Published by, Justification).
+- [ ] Click "Publish results".
+- [ ] **Expected:** Confirmation dialog appears: "Publish results for this
+  division?" with body explaining the freeze + advance + no-auto-email.
+- [ ] Click "Publish results" in the dialog.
+- [ ] **Expected:** Green success notification: "Results published
+  successfully."; page reloads.
+- [ ] **Expected:** Status of the division is now `RESULTS_PUBLISHED` (verify
+  on DivisionDetailView or RootView redirect).
+- [ ] **Expected:** Mailpit at `http://localhost:8025` shows **no new mail**
+  (publish never sends emails).
+- [ ] **Expected:** Publication history grid now has one row: version `1`,
+  current timestamp, "compadmin" (or admin's display name), justification
+  empty.
+
+### 13.3 Public results page
+
+*Open an incognito / logged-out browser window.*
+
+- [ ] Visit `http://localhost:8080/competitions/chip-2026/divisions/amadora/results`.
+- [ ] **Expected:** Page renders without requiring login (`@AnonymousAllowed`).
+- [ ] **Expected:** Heading "CHIP 2026 — Amadora — Results".
+- [ ] **Expected:** "Best of Show" section visible only when at least one
+  BosPlacement exists; columns: Place, Mead, Meadery (no entry IDs).
+- [ ] **Expected:** Per-category sections rendered for each category that has
+  at least one medal awarded. Within each section, separate blocks for Gold /
+  Silver / Bronze, listing `Mead name — Meadery name` only (no entry IDs, no
+  entrant names, no category in BOS rows).
+- [ ] **Expected:** Withheld medals (Medal = null) are **not** rendered.
+- [ ] Hard refresh the page in a logged-out window for a division still in
+  `REGISTRATION_OPEN` (e.g., another division of CHIP 2026 you haven't published):
+  `/competitions/chip-2026/divisions/amadora-old/results`.
+- [ ] **Expected:** View forwards back to root — no leak of unpublished results.
+- [ ] **(Optional, language switch)** Change the navbar language (or open in a
+  different browser locale) and reload — labels translate per locale.
+
+### 13.4 Entrant view — banner + results
+
+*Log in as an entrant who has entries in Amadora.* For dev: `entrant1@example.com`
+(magic-link login via Mailpit).
+
+- [ ] Navigate to `/competitions/chip-2026/divisions/amadora/my-entries`.
+- [ ] **Expected:** A green banner appears at the top: "Results have been
+  published. View your results" with the second clause as a link.
+- [ ] Click "View your results".
+- [ ] **Expected:** Navigates to `/competitions/chip-2026/divisions/amadora/my-results`.
+- [ ] **Expected:** Heading "CHIP 2026 — Amadora — Your results".
+- [ ] **Expected:** Grid with columns: Entry, Mead, Category, Round 1 total
+  (`N / 100` or `—`), Advanced (Yes/No), Medal (Gold / Silver / Bronze / —),
+  BOS place (number or —), Action.
+- [ ] **Expected:** Withheld medals render as `—` (same as no medal) — entrant
+  view does NOT distinguish withheld vs unset.
+- [ ] **Expected:** "View scoresheet" button is enabled only for rows whose
+  scoresheet is SUBMITTED.
+
+### 13.5 Scoresheet drill-in (entrant)
+
+*Stay on MyResultsView.*
+
+- [ ] Click "View scoresheet" on a submitted-scoresheet row.
+- [ ] **Expected:** Navigates to
+  `/competitions/chip-2026/divisions/amadora/my-entries/{entryId}/scoresheet`.
+- [ ] **Expected:** Heading shows entry code + mead name (e.g., `AMA-3 — My
+  Wildflower`). Category line below.
+- [ ] **Expected:** One card per submitted scoresheet (likely just one in dev),
+  headed "Judge 1" — **no judge name or certifications**. Comment language
+  line, then 5 score fields rendered as `field: value / max`, then total, then
+  overall comments (if any).
+- [ ] **Expected:** "Download PDF" anchor is rendered as a download link.
+- [ ] Click "Download PDF".
+- [ ] **Expected:** PDF downloads. Open it: heading "Anonymized Scoresheet",
+  entry/mead/category in a 2-col table, "Judge 1" label (never the real name),
+  scores table, total, overall comments. Liberation Sans font (Unicode-safe).
+- [ ] **Expected:** Back link "Back to results" returns to MyResultsView.
+
+### 13.6 Freeze guard — judging mutations rejected
+
+*Log back in as `compadmin@example.com`.*
+
+- [ ] Navigate to Amadora → Manage Judging → Medal Rounds tab.
+- [ ] Try to record / change a medal (e.g., click the gear or edit icon on a
+  category, then change a Medal value).
+- [ ] **Expected:** Notification with message:
+  *"Results have been published — judging data cannot be modified. Revert
+  the publication first."* (i18n key `error.judging.results-published-frozen`)
+- [ ] Try the same in the Tables tab (e.g., add a table, assign a judge,
+  start a table).
+- [ ] **Expected:** Same frozen notification.
+- [ ] Try the same in BOS (record/update/delete a placement).
+- [ ] **Expected:** Same frozen notification.
+- [ ] Navigate into a table → ScoresheetView (admin entry) and try to edit a
+  scoresheet (update a score, revert to draft, set comment language).
+- [ ] **Expected:** Same frozen notification on save.
+
+### 13.7 Revert publication
+
+*Navigate to Manage Results.*
+
+- [ ] **Expected:** Three buttons in the actions row: "Re-publish",
+  "Send announcement" (primary), "Revert publication" (error variant).
+- [ ] Click "Revert publication".
+- [ ] **Expected:** Dialog with body explaining roll-back to DELIBERATION,
+  audit-log preservation. Below the body, a TextField "Type REVERT to confirm".
+- [ ] Leave the field empty (or type something else like `revert`) and click
+  the in-dialog "Revert publication" button.
+- [ ] **Expected:** Notification "Type REVERT exactly to confirm." — the
+  publication is NOT reverted.
+- [ ] Type `REVERT` (uppercase) and click again.
+- [ ] **Expected:** Green success notification "Publication reverted."; page
+  reloads. Status reverts to `DELIBERATION`.
+- [ ] **Expected:** Publication history grid still shows version 1 — the audit
+  record is preserved.
+- [ ] Verify the public results page now forwards away (logged-out): visit
+  `/competitions/chip-2026/divisions/amadora/results` → redirects to root.
+- [ ] Verify the entrant banner is gone on `/my-entries`.
+
+### 13.8 Edit judging data + re-publish
+
+*Navigate back to Manage Judging → Medal Rounds tab.*
+
+- [ ] Pick a medal in some category and change its value (e.g., SILVER →
+  BRONZE on one entry) via the per-category edit dialog.
+- [ ] **Expected:** Save succeeds (no frozen notification — data is editable
+  again in DELIBERATION).
+- [ ] In the division header, click "Advance Status" → confirm "Advance from
+  Deliberation to Results Published?". (Note: this DOES NOT create a
+  Publication record — the explicit awards flow does that.)
+- [ ] **Actually**, instead of advancing manually, the correct flow is to use
+  the awards re-publish path which expects the division to already be at
+  `RESULTS_PUBLISHED`. So first advance manually back to RESULTS_PUBLISHED via
+  the division header. *(Implementation note: an admin who wants a "second
+  publication" must re-advance manually; awards.republish requires the status
+  to already be RESULTS_PUBLISHED.)*
+- [ ] Navigate to Manage Results.
+- [ ] Click "Re-publish".
+- [ ] **Expected:** Dialog with title "Re-publish results" and a TextArea
+  labeled "Justification (required)" with helper text about the 20-char
+  minimum.
+- [ ] Type a short string (e.g., `oops`) and click the in-dialog "Re-publish".
+- [ ] **Expected:** Error notification ending with
+  `error.awards.justification-too-short` (locale-dependent text); dialog stays
+  open.
+- [ ] Replace with a real justification: `Corrected silver to bronze in M1A
+  after spreadsheet error.` and click "Re-publish".
+- [ ] **Expected:** Green success notification "Results re-published
+  successfully. You may now send an announcement."; page reloads.
+- [ ] **Expected:** Publication history now has two rows (version 1 and
+  version 2 with the justification populated).
+- [ ] **Expected:** No email sent (verify Mailpit empty).
+
+### 13.9 Send announcement — initial template
+
+*Revert your dev state so the latest publication is version 1* (or
+work against another division at its first publication).
+For this step, the script below assumes you're at version 1 — if you ran
+13.8 you'll be at version 2, which is fine but the email type will be the
+republish variant. Adjust expectations accordingly.
+
+*From Manage Results, version 1 case:*
+
+- [ ] Click "Send announcement".
+- [ ] **Expected:** Dialog "Send results announcement" with a TextArea
+  labeled "Optional custom message" + helper text about leaving empty for
+  defaults.
+- [ ] Leave the message blank and click "Send announcement".
+- [ ] **Expected:** Green success notification "Announcement queued for
+  delivery."; dialog closes.
+- [ ] Open Mailpit at `http://localhost:8025`.
+- [ ] **Expected:** One email per entrant in the division (each entrant gets
+  a single email — even those without entries don't, since the recipient
+  list comes from distinct entry `userId`s).
+- [ ] Open one email.
+- [ ] **Expected:** Subject "Your CHIP 2026 — Amadora results are available".
+- [ ] **Expected:** Body uses the standard "results published" template:
+  heading "Results are available" + intro body + a "View results" CTA
+  button whose link is a magic-link URL that lands on
+  `/competitions/chip-2026/divisions/amadora/my-entries`.
+- [ ] **Expected:** Subject + body render in the entrant's `preferredLanguage`
+  locale (verify by setting one entrant's preferredLanguage to `pt` and
+  re-sending — that recipient gets the PT email).
+
+### 13.10 Send announcement — republish template
+
+*Repeat against a division at version ≥ 2 (use the state from 13.8).*
+
+- [ ] Click "Send announcement" → leave message blank → submit.
+- [ ] **Expected:** Mailpit shows one email per entrant.
+- [ ] **Expected:** Subject "CHIP 2026 — Amadora results have been updated".
+- [ ] **Expected:** Body uses the republish template: heading "Results
+  updated", intro line *"The results for CHIP 2026 — Amadora have been
+  updated. Reason given by the administrator:"*, followed by the justification
+  from the latest publication as a second paragraph (`bodyText2`).
+- [ ] **Expected:** CTA still goes to the entrant's My Entries (magic link).
+
+### 13.11 Send announcement — custom message
+
+*From Manage Results.*
+
+- [ ] Click "Send announcement".
+- [ ] In the TextArea type: `Thank you for participating! Awards ceremony
+  is this Saturday at 19:00.` and click "Send announcement".
+- [ ] **Expected:** Green success; Mailpit shows one email per entrant.
+- [ ] Open one email.
+- [ ] **Expected:** Subject "Update from CHIP 2026 — Amadora".
+- [ ] **Expected:** Heading "Announcement"; body is exactly the typed
+  message (no justification, no default template body).
+
+### 13.12 Anonymity sanity check
+
+*Log in as `entrant1@example.com` and re-run §13.5 against the current
+state.* (After §13.8, that entrant may see a different medal — that's fine.)
+
+- [ ] **Expected:** Scoresheet view still shows "Judge 1" — never the real
+  judge name or certifications.
+- [ ] Download PDF.
+- [ ] **Expected:** PDF body shows "Judge 1" only.
+
+*Sanity check on the admin path:* log in as `compadmin@example.com` and
+generate a FULL-mode PDF by visiting Manage Judging → Tables → click into a
+table → click on a scoresheet — admin-side surfaces still show real judge
+names. (The admin "View Scoresheet" path is not part of the awards flow per
+se, but it confirms the two anonymization modes are wired correctly.)
+
+### 13.13 Cleanup
+
+*If you want Amadora to remain testable for re-runs:*
+
+- [ ] Revert the publication (§13.7 procedure) until status is DELIBERATION.
+- [ ] Manually revert further status changes (DELIBERATION → JUDGING) as
+  desired. Note: the `JudgingDivisionStatusRevertGuard` may block further
+  reverts depending on judging state.
+
+---
+
+## 14. Cross-cutting Concerns
 
 ### Mutual exclusivity (end-to-end)
 
@@ -1958,7 +2236,7 @@ For this you need a *second* ROUND_1 table in the same JUDGING category. Create 
 
 ---
 
-## 14. Multi-Role & Cross-Competition Edge Cases
+## 15. Multi-Role & Cross-Competition Edge Cases
 
 **Goal:** Test combinations of roles across competitions and identify gaps in
 credential management and authorization. Some of these are exploratory — note
@@ -2015,7 +2293,7 @@ may be invited as a competition ADMIN for a different competition.
 
 ---
 
-## 15. Security Testing
+## 16. Security Testing
 
 **Goal:** Verify the application is resilient to common web attacks (OWASP Top 10)
 across all input surfaces. Use browser dev tools, Mailpit, and direct HTTP requests.
@@ -2255,9 +2533,10 @@ curl -X PUT http://localhost:8080/api/webhooks/jumpseller/order-paid \
 | 9. Webhook | `JumpsellerWebhookControllerTest`, `WebhookServiceTest`, `JumpsellerOrderTest`, `JumpsellerOrderLineItemTest` |
 | 10–11. My Entries | `MyEntriesViewTest`, `EntryServiceTest`, `EntryTest`, `EntryCreditRepositoryTest`, `EntryRepositoryTest` |
 | 12. Judging Module | `JudgingAdminViewTest`, `TableViewTest`, `ScoresheetViewTest`, `MyJudgingViewTest`, `BosViewTest`, `JudgingServiceTest`, `ScoresheetServiceTest`, `JudgeProfileServiceTest`, `MeaderyNameNormalizerTest`, `CoiCheckServiceTest`, `JudgingDivisionStatusRevertGuardTest`, `JudgingMinJudgesLockGuardTest`, `JudgingErrorKeyCoverageTest`, `JudgingRepositoryTest`, `JudgingTableRepositoryTest`, `CategoryJudgingConfigRepositoryTest`, `ScoresheetRepositoryTest`, `MedalAwardRepositoryTest`, `BosPlacementRepositoryTest`, `JudgeProfileRepositoryTest` |
-| 13. Cross-cutting | `EntryServiceTest`, `DevDataInitializerTest`, `EntryModuleTest`, `CompetitionModuleTest`, `ModulithStructureTest` |
-| 14. Multi-Role | (exploratory; no dedicated automated tests — covered indirectly by service-level role-combination tests in `CompetitionServiceTest` and `EntryServiceTest`) |
-| 15. Security | `SecurityConfigTest`, `JumpsellerWebhookControllerTest`, `SmtpEmailServiceTest`, `JwtMagicLinkServiceTest`, `LoginViewTest` |
+| 13. Awards Module | `AwardsServiceImplTest`, `AwardsPublicResultsViewTest`, `AwardsAdminViewTest`, `MyResultsViewTest`, `AwardsModuleTest`, `PublicationTest`, `PublicationRepositoryTest`, `JudgingServiceFreezeGuardTest`, `ScoresheetServiceFreezeGuardTest`, `ScoresheetPdfServiceTest` |
+| 14. Cross-cutting | `EntryServiceTest`, `DevDataInitializerTest`, `EntryModuleTest`, `CompetitionModuleTest`, `ModulithStructureTest` |
+| 15. Multi-Role | (exploratory; no dedicated automated tests — covered indirectly by service-level role-combination tests in `CompetitionServiceTest` and `EntryServiceTest`) |
+| 16. Security | `SecurityConfigTest`, `JumpsellerWebhookControllerTest`, `SmtpEmailServiceTest`, `JwtMagicLinkServiceTest`, `LoginViewTest` |
 
 ### Tests without direct manual coverage
 
