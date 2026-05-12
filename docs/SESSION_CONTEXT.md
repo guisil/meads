@@ -1007,8 +1007,29 @@ skeleton from Phase 3 translates mechanically.
   `MedalRoundView`, dedicated `BosView` form). Per design doc
   §4.B–§4.J.
 
-### Priority 6: Awards module
-Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md` and `docs/specs/awards.md`.
+### Priority 6: Awards module — DESIGN STARTING NEXT
+Design and implementation. Reference: `docs/reference/chip-competition-rules.md` and `docs/specs/awards.md`.
+
+**Important context for the design session:** `docs/specs/awards.md` is **outdated** — it was written before the judging module was fully specified. The judging module now owns what the original spec called "awards":
+- `MedalAward(entryId, divisionId, finalCategoryId, medal, awardedBy)` — judge-decided medals incl. explicit withhold (`medal=null`); see §2.B / §3.2 of `docs/plans/2026-05-05-judging-module-design.md`
+- `BosPlacement(divisionId, entryId, place, awardedBy)` — variable `bosPlaces` per division
+- `Scoresheet.totalScore` — per-entry Round 1 totals
+- Medal/BOS state machines + 13 published events (`MedalRoundCompletedEvent`, `BosCompletedEvent`, etc.)
+- `MedalRoundView` already exists for judge/admin medal entry; `BosView` for admin BOS
+
+The original spec's `CategoryResult` with `averageScore` + `rank` + computed `award` is therefore **redundant for MJP/CHIP** — medals aren't score-thresholded, they're judge decisions. A more accurate framing of the awards module's remaining scope:
+- **Presentation** — entrant + admin views that read from judging data
+- **Visibility gate** — separating "judging finished" from "entrants can see results" (`Division.status=RESULTS_PUBLISHED` already exists and could itself be the gate)
+- **Notifications** — emailing entrants when their results are visible
+- **Documents** — per-entry scoresheet PDFs, certificates
+- **Public results** (optional) — anonymous read-only view
+
+**Brainstorming was started 2026-05-12, then paused for a context reset.** First foundational question to resolve (before any approach proposals):
+
+> How should awards be scoped? (a) Thin read model + notifications — no entities of its own, queries judging data live, listener sends emails on RESULTS_PUBLISHED; (b) Read model with snapshot — `PublishedResult` aggregate freezes medal/BOS at publish time so historical results can't shift; (c) Stick to original spec (probably not — see above).
+
+Recommended start prompt for next session:
+> "Read `docs/SESSION_CONTEXT.md`'s Priority 6 section and `docs/specs/awards.md`. Continue brainstorming the awards module design — the foundational scope question is unresolved (thin read-model vs. snapshot vs. original-spec compute-from-scratch)."
 
 ### Priority 7: Auto-close + deadline reminders (deferred)
 - **Auto-close** — automatically advance division from REGISTRATION_OPEN → REGISTRATION_CLOSED
