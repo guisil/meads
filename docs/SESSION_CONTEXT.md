@@ -14,8 +14,8 @@ needed to continue even without memory files or prior conversation history.
 Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
-**Branch:** `feature/judging-module` (Phase 6 views — Tables tab complete; Medal Rounds tab complete; BOS tab complete; Settings extensions complete; TableView complete except row click → ScoresheetView (waiting on ScoresheetView itself); MyJudgingView complete with sidebar gating; remaining: ScoresheetView, dedicated BosView)
-**Tests:** 959 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-12 (Phase 6.8 TableView skeleton; 6.9 scoresheets grid; 6.10 filter bar; 6.11 admin Revert; 6.12 admin Move; 6.13 MyJudgingView skeleton + empty state; 6.14 tables grouped by competition; 6.15 Resume Next Draft anchor via `ScoresheetService.findNextDraftForJudge`; 6.16 Medal Rounds section via `JudgingService.findActiveCategoryConfigsForJudge`; 6.17 sidebar gating in MainLayout via new `JudgeAssignmentChecker` interface; +9 tests total)
+**Branch:** `feature/judging-module` (Phase 6 views — Tables tab complete; Medal Rounds tab complete; BOS tab complete; Settings extensions complete; TableView complete (incl. row click → ScoresheetView); MyJudgingView complete; ScoresheetView complete (skeleton + score fields + comments + comment language + advance flag + submit + read-only when SUBMITTED); remaining: dedicated BosView)
+**Tests:** 967 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-12 (Phase 6.13 MyJudgingView; 6.18–6.24 ScoresheetView (skeleton/auth/COI, 5 NumberFields with live total, overall comments TextArea, comment language ComboBox sourced from competition + judge profile, advance Checkbox, Submit + confirmation, read-only mode for SUBMITTED); 6.25 row click → ScoresheetView on TableView; new repo query `ScoresheetRepository.findFieldsByScoresheetId`)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---

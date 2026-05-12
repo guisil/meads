@@ -215,6 +215,14 @@ public class TableView extends VerticalLayout implements BeforeEnterObserver {
                 .setHeader(getTranslation("table.column.actions"));
 
         scoresheetsGrid.setItems(allSheets);
+        scoresheetsGrid.asSingleSelect().addValueChangeListener(e -> {
+            if (e.getValue() != null) {
+                var url = "competitions/" + compShortName
+                        + "/divisions/" + divShortName
+                        + "/scoresheets/" + e.getValue().getId();
+                getUI().ifPresent(ui -> ui.navigate(url));
+            }
+        });
         return scoresheetsGrid;
     }
 

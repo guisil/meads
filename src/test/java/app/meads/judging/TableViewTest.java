@@ -326,4 +326,42 @@ class TableViewTest {
         var moved = scoresheetRepository.findById(savedSheet.getId()).orElseThrow();
         assertThat(moved.getTableId()).isEqualTo(table2.getId());
     }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    @SuppressWarnings("unchecked")
+    void shouldNavigateToScoresheetViewWhenGridRowClicked() {
+        advanceDivisionToJudging();
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Desc",
+                null, 1, CategoryScope.JUDGING));
+        var entrant = userRepository.save(new User(
+                "entrant-tv-rowclick-" + UUID.randomUUID() + "@example.com",
+                "Entrant", UserStatus.ACTIVE, Role.USER));
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var judging = judgingService.ensureJudgingExists(division.getId());
+        var table = judgingService.createTable(judging.getId(), "Table A",
+                category.getId(), null, admin.getId());
+
+        var entry = new Entry(division.getId(), entrant.getId(), 1, "AMA-9",
+                "Test", category.getId(), Sweetness.DRY,
+                BigDecimal.valueOf(11.0), Carbonation.STILL,
+                "Wildflower", null, false, null, null);
+        entry = entryRepository.save(entry);
+        var sheet = scoresheetRepository.save(new app.meads.judging.Scoresheet(table.getId(), entry.getId()));
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName()
+                + "/tables/" + table.getId());
+
+        var grids = _find(Grid.class);
+        var scoresheetsGrid = (Grid<app.meads.judging.Scoresheet>) grids.stream()
+                .filter(g -> "scoresheets-grid".equals(g.getId().orElse(null)))
+                .findFirst().orElseThrow();
+        scoresheetsGrid.asSingleSelect().setValue(sheet);
+
+        var expectedSuffix = "scoresheets/" + sheet.getId();
+        assertThat(UI.getCurrent().getInternals().getActiveViewLocation().getPath())
+                .endsWith(expectedSuffix);
+    }
 }

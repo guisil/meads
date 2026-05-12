@@ -63,7 +63,7 @@ Once a phase is complete, its open questions should all have decisions or be exp
 **Phase 5 ✅ COMPLETE (2026-05-09).** Services layer + cross-module
 guards done. **Phase 6 IN PROGRESS (`feature/judging-module`).**
 
-**Current state (2026-05-12, 959 tests passing):**
+**Current state (2026-05-12, 967 tests passing):**
 - ✅ JudgingAdminView at `/competitions/:c/divisions/:d/judging-admin`
 - ✅ Tab 1 Tables: full CRUD + per-row actions (Edit / Start / Assign
   Judges with COI chips / Delete) + scoresheets count column
@@ -93,7 +93,17 @@ guards done. **Phase 6 IN PROGRESS (`feature/judging-module`).**
   the judge's tables), empty-state with CTAs. Sidebar entry in
   `MainLayout` (gavel icon) gated by new `JudgeAssignmentChecker`
   interface.
-- 🟡 `ScoresheetView` (§4.C) — not started
+- ✅ `ScoresheetView` (§4.C) — full-page route
+  `/competitions/:c/divisions/:d/scoresheets/:scoresheetId`. Three-tier
+  auth (SYSTEM_ADMIN / division ADMIN / assigned judge) with hard COI
+  page-level rejection (judge cannot judge own entry). Entry header,
+  5 score `NumberField`s with max-value bounds and live "Current total"
+  preview, overall comments `TextArea`, comment-language `ComboBox`
+  sourced from `competition.commentLanguages ∪ judge.preferredCommentLanguage`,
+  advance-to-medal-round `Checkbox`, Save Draft + Submit (with
+  confirmation Dialog). Submit enabled only when all 5 fields filled
+  in-memory. Read-only mode when scoresheet status = SUBMITTED.
+- ✅ `TableView` row click → `ScoresheetView` (Phase 6.25)
 - 🟡 Dedicated `BosView` (§4.H) — not started
 - 🟡 Dedicated `BosView` (drag-and-drop): deferred ("Manage placements →"
   navigation stub from Tab 3 not yet wired)
@@ -167,6 +177,14 @@ extensions. See `docs/SESSION_CONTEXT.md` "What's done" section.
 - Phase 6.15 (2026-05-12) — `MyJudgingView` Resume Next Draft anchor; new `ScoresheetService.findNextDraftForJudge` (oldest DRAFT across assigned tables, ordered by scheduledDate then table name then createdAt) + `ScoresheetService.findById` ✅
 - Phase 6.16 (2026-05-12) — `MyJudgingView` Medal Rounds section (visible only when at least one ACTIVE `CategoryJudgingConfig` covers the judge's tables); new `JudgingService.findActiveCategoryConfigsForJudge` ✅
 - Phase 6.17 (2026-05-12) — `MainLayout` sidebar entry for `/my-judging` (gavel icon), gated by new `JudgeAssignmentChecker` interface in root package (implemented in judging module, mirrors `CompetitionAdminChecker` pattern to avoid circular deps) ✅
+- Phase 6.18 (2026-05-12) — `ScoresheetView` skeleton at `/competitions/:c/divisions/:d/scoresheets/:scoresheetId`: three-tier auth (SYSTEM_ADMIN / division ADMIN / assigned judge) + hard COI page-level rejection (judge cannot judge own entry) + entry header card ✅
+- Phase 6.19 (2026-05-12) — 5 score field `NumberField`s (Appearance/Aroma+Bouquet/Flavour+Body/Finish/Overall Impression) with max-value bounds + live "Current total: N / 100" preview; new repo query `ScoresheetRepository.findFieldsByScoresheetId` (JPQL) to avoid `LazyInitializationException` on `Scoresheet.fields` outside transaction ✅
+- Phase 6.20 (2026-05-12) — Overall comments `TextArea` + Save Draft button that persists scores via `ScoresheetService.updateScore` and comments via `updateOverallComments` ✅
+- Phase 6.21 (2026-05-12) — Comment language `ComboBox` items sourced from `competition.commentLanguages ∪ judge.preferredCommentLanguage`, sorted by display name in UI locale; persisted via `ScoresheetService.setCommentLanguage` on Save Draft ✅
+- Phase 6.22 (2026-05-12) — Advance-to-medal-round `Checkbox` persisted via `ScoresheetService.setAdvancedToMedalRound` on Save Draft ✅
+- Phase 6.23 (2026-05-12) — Submit button with confirmation Dialog; enabled only when all 5 in-memory NumberFields have values; submits via `ScoresheetService.submit` then reloads view ✅
+- Phase 6.24 (2026-05-12) — Read-only mode for SUBMITTED scoresheets: all fields/combos/checkbox become `setReadOnly(true)`; Save Draft and Submit buttons hidden ✅
+- Phase 6.25 (2026-05-12) — `TableView` grid row selection navigates to the corresponding `ScoresheetView` ✅
 - Remaining: see "Recommended next-session order" above.
 
 §Q17 (mobile / touch UX review) and §Q16 (tasting-label PDF) revisit
