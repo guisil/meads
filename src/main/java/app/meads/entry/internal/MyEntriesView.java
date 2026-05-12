@@ -144,6 +144,9 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         removeAll();
         add(createBreadcrumb());
         add(createHeader());
+        if (division.getStatus() == DivisionStatus.RESULTS_PUBLISHED) {
+            add(createResultsBanner());
+        }
         if (division.isMeaderyNameRequired()) {
             if (meaderyNameMissing) {
                 add(createMeaderyWarning());
@@ -254,6 +257,24 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         warning.add(userIcon);
         warning.add(new Span(getTranslation("entries.meadery-warning.part2")));
         return warning;
+    }
+
+    private Div createResultsBanner() {
+        var banner = new Div();
+        banner.setId("results-published-banner");
+        banner.getStyle()
+                .set("background-color", "var(--lumo-success-color-10pct)")
+                .set("color", "var(--lumo-success-text-color)")
+                .set("padding", "var(--lumo-space-m)")
+                .set("border-radius", "var(--lumo-border-radius-m)")
+                .set("margin-bottom", "var(--lumo-space-m)");
+        banner.add(new Span(getTranslation("entries.results-published.banner") + " "));
+        var link = new com.vaadin.flow.component.html.Anchor(
+                "competitions/" + compShortName + "/divisions/" + divShortName + "/my-results",
+                getTranslation("entries.results-published.link"));
+        link.setId("view-results-link");
+        banner.add(link);
+        return banner;
     }
 
     private Div createMeaderyConfirmation() {
