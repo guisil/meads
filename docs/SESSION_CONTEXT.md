@@ -14,8 +14,8 @@ needed to continue even without memory files or prior conversation history.
 Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
-**Branch:** `feature/judging-module` (Phase 6 views — ALL VIEWS COMPLETE. JudgingAdminView (Tables/Medal Rounds/BOS tabs), Settings extensions, TableView (with row click → ScoresheetView), MyJudgingView, ScoresheetView, dedicated BosView. Remaining: event listeners (deferred), service-error i18n cleanup, manual walkthrough)
-**Tests:** 974 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-12 (Phase 6.26 BosView skeleton + auth (admin-only when Judging.phase ∈ {BOS, COMPLETE}); 6.27 placements grid with all bosPlaces slots; 6.28 candidates grid with GOLD MedalAwards not yet placed; 6.29 Assign dialog → recordBosPlacement; 6.30 Reassign + Delete dialogs; 6.31 read-only mode when COMPLETE (banner + candidates hidden); 6.32 "Manage placements →" deep link from JudgingAdminView BOS tab)
+**Branch:** `feature/judging-module` (Phase 6 views — ALL VIEWS COMPLETE; service-error i18n complete. JudgingAdminView (Tables/Medal Rounds/BOS tabs), Settings extensions, TableView (with row click → ScoresheetView), MyJudgingView, ScoresheetView, dedicated BosView. Remaining: event listeners (deferred), manual walkthrough additions)
+**Tests:** 975 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-12 (Phase 6.33 service-error i18n cleanup: 23 previously-missing `error.judging-*` keys (category-config, coi, division.cannot-revert, judge-assignment, judge-profile, medal-round.*, medal.*, scoresheet.*) added in both EN and PT; new `JudgingErrorKeyCoverageTest` lint scans the judging module for `BusinessRuleException` constructor calls and fails if any key lacks an EN or PT translation, guarding against future drift)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---

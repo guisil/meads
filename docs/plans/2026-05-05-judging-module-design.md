@@ -63,7 +63,7 @@ Once a phase is complete, its open questions should all have decisions or be exp
 **Phase 5 ✅ COMPLETE (2026-05-09).** Services layer + cross-module
 guards done. **Phase 6 IN PROGRESS (`feature/judging-module`).**
 
-**Current state (2026-05-12, 974 tests passing — all Phase 6 views complete):**
+**Current state (2026-05-12, 975 tests passing — all Phase 6 views complete; service-error i18n complete):**
 - ✅ JudgingAdminView at `/competitions/:c/divisions/:d/judging-admin`
 - ✅ Tab 1 Tables: full CRUD + per-row actions (Edit / Start / Assign
   Judges with COI chips / Delete) + scoresheets count column
@@ -119,8 +119,10 @@ guards done. **Phase 6 IN PROGRESS (`feature/judging-module`).**
   navigation stub from Tab 3 not yet wired)
 - 🟡 Event listeners: published but not consumed
 - 🟡 ScoresheetPdfService: not started
-- 🟡 Service-error i18n cleanup: only ~10% of `error.judging-*` keys
-  translated (BOS error keys are now translated in EN + PT)
+- ✅ Service-error i18n cleanup: every `error.judging-*` key thrown by
+  judging services now has an EN + PT translation. Guarded by
+  `JudgingErrorKeyCoverageTest`, which scans the module source and
+  fails on any new key without a translation.
 
 **Recommended next-session order (matches design §4 ordering for
 remaining work):**
@@ -202,6 +204,7 @@ extensions. See `docs/SESSION_CONTEXT.md` "What's done" section.
 - Phase 6.30 (2026-05-12) — `BosView` Reassign dialog (preselects current entry; delete-then-record switch) + Delete confirmation dialog ✅
 - Phase 6.31 (2026-05-12) — `BosView` read-only mode when `Judging.phase = COMPLETE`: candidates section hidden + action column hidden + "BOS is COMPLETE" banner ✅
 - Phase 6.32 (2026-05-12) — "Manage placements →" deep link added to JudgingAdminView BOS tab ✅
+- Phase 6.33 (2026-05-12) — Service-error i18n cleanup: 23 previously-missing `error.judging-*` keys (category-config, coi, division.cannot-revert, judge-assignment, judge-profile, medal-round.*, medal.*, scoresheet.*) added in both EN and PT; new `JudgingErrorKeyCoverageTest` lint scans the judging module for `BusinessRuleException` constructor calls and fails if any key lacks a translation in EN or PT ✅
 - Remaining: see "Recommended next-session order" above.
 
 §Q17 (mobile / touch UX review) and §Q16 (tasting-label PDF) revisit
