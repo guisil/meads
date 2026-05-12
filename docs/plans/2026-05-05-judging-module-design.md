@@ -63,7 +63,7 @@ Once a phase is complete, its open questions should all have decisions or be exp
 **Phase 5 ✅ COMPLETE (2026-05-09).** Services layer + cross-module
 guards done. **Phase 6 IN PROGRESS (`feature/judging-module`).**
 
-**Current state (2026-05-12, 967 tests passing):**
+**Current state (2026-05-12, 974 tests passing — all Phase 6 views complete):**
 - ✅ JudgingAdminView at `/competitions/:c/divisions/:d/judging-admin`
 - ✅ Tab 1 Tables: full CRUD + per-row actions (Edit / Start / Assign
   Judges with COI chips / Delete) + scoresheets count column
@@ -104,7 +104,17 @@ guards done. **Phase 6 IN PROGRESS (`feature/judging-module`).**
   confirmation Dialog). Submit enabled only when all 5 fields filled
   in-memory. Read-only mode when scoresheet status = SUBMITTED.
 - ✅ `TableView` row click → `ScoresheetView` (Phase 6.25)
-- 🟡 Dedicated `BosView` (§4.H) — not started
+- ✅ Dedicated `BosView` (§4.H) — admin-only route
+  `/competitions/:c/divisions/:d/bos` gated to `Judging.phase ∈ {BOS,
+  COMPLETE}`. Placements grid with all `bosPlaces` slots rendered
+  (empty rows show `[+]` button, filled rows show edit/delete).
+  Candidates grid lists unplaced GOLD MedalAwards. Assign dialog
+  (`Select<MedalAward>`, helper text), Reassign dialog (delete-then-
+  record entry switch), Delete confirmation. Read-only mode when
+  `Judging.phase = COMPLETE` (banner + candidates hidden + action
+  column hidden). Drag-and-drop primary affordance deferred per design
+  note — `[+]` dialog handles touch/keyboard cases for v1.
+  "Manage placements →" deep link wired from JudgingAdminView BOS tab.
 - 🟡 Dedicated `BosView` (drag-and-drop): deferred ("Manage placements →"
   navigation stub from Tab 3 not yet wired)
 - 🟡 Event listeners: published but not consumed
@@ -185,6 +195,13 @@ extensions. See `docs/SESSION_CONTEXT.md` "What's done" section.
 - Phase 6.23 (2026-05-12) — Submit button with confirmation Dialog; enabled only when all 5 in-memory NumberFields have values; submits via `ScoresheetService.submit` then reloads view ✅
 - Phase 6.24 (2026-05-12) — Read-only mode for SUBMITTED scoresheets: all fields/combos/checkbox become `setReadOnly(true)`; Save Draft and Submit buttons hidden ✅
 - Phase 6.25 (2026-05-12) — `TableView` grid row selection navigates to the corresponding `ScoresheetView` ✅
+- Phase 6.26 (2026-05-12) — `BosView` skeleton at `/competitions/:c/divisions/:d/bos`: admin-only auth + phase gate (BOS or COMPLETE only) + header + back link ✅
+- Phase 6.27 (2026-05-12) — `BosView` placements grid with all `bosPlaces` slots rendered (empty rows show `[+]` button via `PlacementSlot` record); columns Place / Entry / Mead name / Category / Awarded by / Action ✅
+- Phase 6.28 (2026-05-12) — `BosView` candidates grid lists GOLD MedalAwards not yet placed ✅
+- Phase 6.29 (2026-05-12) — `BosView` Assign dialog (`Select<MedalAward>`, helper text, empty-state when no candidates); saves via `JudgingService.recordBosPlacement` ✅
+- Phase 6.30 (2026-05-12) — `BosView` Reassign dialog (preselects current entry; delete-then-record switch) + Delete confirmation dialog ✅
+- Phase 6.31 (2026-05-12) — `BosView` read-only mode when `Judging.phase = COMPLETE`: candidates section hidden + action column hidden + "BOS is COMPLETE" banner ✅
+- Phase 6.32 (2026-05-12) — "Manage placements →" deep link added to JudgingAdminView BOS tab ✅
 - Remaining: see "Recommended next-session order" above.
 
 §Q17 (mobile / touch UX review) and §Q16 (tasting-label PDF) revisit

@@ -736,9 +736,16 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         }
 
         tab.add(createBosHeader());
+        tab.add(createManagePlacementsLink());
         tab.add(createBosCandidatesSection());
         tab.add(createBosPlacementsSection());
         return tab;
+    }
+
+    private Anchor createManagePlacementsLink() {
+        return new Anchor(
+                "competitions/" + compShortName + "/divisions/" + divShortName + "/bos",
+                getTranslation("judging-admin.bos.manage-placements"));
     }
 
     private HorizontalLayout createBosHeader() {

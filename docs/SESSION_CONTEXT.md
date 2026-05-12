@@ -14,8 +14,8 @@ needed to continue even without memory files or prior conversation history.
 Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
-**Branch:** `feature/judging-module` (Phase 6 views — Tables tab complete; Medal Rounds tab complete; BOS tab complete; Settings extensions complete; TableView complete (incl. row click → ScoresheetView); MyJudgingView complete; ScoresheetView complete (skeleton + score fields + comments + comment language + advance flag + submit + read-only when SUBMITTED); remaining: dedicated BosView)
-**Tests:** 967 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-12 (Phase 6.13 MyJudgingView; 6.18–6.24 ScoresheetView (skeleton/auth/COI, 5 NumberFields with live total, overall comments TextArea, comment language ComboBox sourced from competition + judge profile, advance Checkbox, Submit + confirmation, read-only mode for SUBMITTED); 6.25 row click → ScoresheetView on TableView; new repo query `ScoresheetRepository.findFieldsByScoresheetId`)
+**Branch:** `feature/judging-module` (Phase 6 views — ALL VIEWS COMPLETE. JudgingAdminView (Tables/Medal Rounds/BOS tabs), Settings extensions, TableView (with row click → ScoresheetView), MyJudgingView, ScoresheetView, dedicated BosView. Remaining: event listeners (deferred), service-error i18n cleanup, manual walkthrough)
+**Tests:** 974 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-12 (Phase 6.26 BosView skeleton + auth (admin-only when Judging.phase ∈ {BOS, COMPLETE}); 6.27 placements grid with all bosPlaces slots; 6.28 candidates grid with GOLD MedalAwards not yet placed; 6.29 Assign dialog → recordBosPlacement; 6.30 Reassign + Delete dialogs; 6.31 read-only mode when COMPLETE (banner + candidates hidden); 6.32 "Manage placements →" deep link from JudgingAdminView BOS tab)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---

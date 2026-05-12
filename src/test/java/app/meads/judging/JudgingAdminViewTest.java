@@ -33,6 +33,7 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.tabs.TabSheet;
@@ -656,5 +657,28 @@ class JudgingAdminViewTest {
 
         var refreshed = judgingRepository.findByDivisionId(division.getId()).orElseThrow();
         assertThat(refreshed.getPhase()).isEqualTo(JudgingPhase.BOS);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldRenderManagePlacementsDeepLinkOnBosTab() {
+        advanceDivisionToJudging();
+        var judging = judgingRepository.findByDivisionId(division.getId())
+                .orElseGet(() -> judgingService.ensureJudgingExists(division.getId()));
+        judging.markActive();
+        judgingRepository.save(judging);
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(2); // BOS tab
+
+        var expectedHref = "competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/bos";
+        var managePlacements = _find(Anchor.class).stream()
+                .filter(a -> expectedHref.equals(a.getHref()))
+                .findFirst();
+        assertThat(managePlacements).as("Manage placements deep link").isPresent();
     }
 }
