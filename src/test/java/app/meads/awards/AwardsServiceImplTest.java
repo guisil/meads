@@ -13,6 +13,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -94,6 +95,91 @@ class AwardsServiceImplTest {
         assertThatThrownBy(() -> service.publish(divisionId, adminUserId))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("error.awards.already-published");
+    }
+
+    @Test
+    void shouldRepublishWithIncrementedVersion() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var adminUserId = UUID.randomUUID();
+        var division = mock(Division.class);
+        given(division.getStatus()).willReturn(DivisionStatus.RESULTS_PUBLISHED);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        var existing = new Publication(divisionId, adminUserId);
+        given(publicationRepository.findTopByDivisionIdOrderByVersionDesc(divisionId))
+                .willReturn(Optional.of(existing));
+        given(publicationRepository.save(any(Publication.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var publication = service.republish(divisionId,
+                "Fixed gold medal in M1A — judge re-scored after spreadsheet error.", adminUserId);
+
+        assertThat(publication.getVersion()).isEqualTo(2);
+        assertThat(publication.isInitial()).isFalse();
+        assertThat(publication.getJustification()).contains("Fixed gold medal");
+
+        var captor = ArgumentCaptor.forClass(ResultsRepublishedEvent.class);
+        then(eventPublisher).should().publishEvent(captor.capture());
+        assertThat(captor.getValue().version()).isEqualTo(2);
+    }
+
+    @Test
+    void shouldRejectRepublishWhenStatusNotPublished() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var adminUserId = UUID.randomUUID();
+        var division = mock(Division.class);
+        given(division.getStatus()).willReturn(DivisionStatus.DELIBERATION);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+
+        assertThatThrownBy(() -> service.republish(divisionId, "valid justification text here", adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.awards.republish-wrong-status");
+    }
+
+    @Test
+    void shouldRejectRepublishWithJustificationTooShort() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var adminUserId = UUID.randomUUID();
+        var division = mock(Division.class);
+        given(division.getStatus()).willReturn(DivisionStatus.RESULTS_PUBLISHED);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+
+        assertThatThrownBy(() -> service.republish(divisionId, "short", adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.awards.justification-too-short");
+    }
+
+    @Test
+    void shouldRejectRepublishWithJustificationTooLong() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var adminUserId = UUID.randomUUID();
+        var division = mock(Division.class);
+        given(division.getStatus()).willReturn(DivisionStatus.RESULTS_PUBLISHED);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+
+        var tooLong = "x".repeat(1001);
+        assertThatThrownBy(() -> service.republish(divisionId, tooLong, adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.awards.justification-too-long");
+    }
+
+    @Test
+    void shouldRejectRepublishWhenUnauthorized() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var adminUserId = UUID.randomUUID();
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(false);
+
+        assertThatThrownBy(() -> service.republish(divisionId, "valid justification text here", adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.awards.unauthorized");
     }
 
     private AwardsServiceImpl createService() {
