@@ -25,8 +25,6 @@ import app.meads.judging.ScoreField;
 import app.meads.judging.Scoresheet;
 import app.meads.judging.ScoresheetService;
 import app.meads.judging.ScoresheetStatus;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -78,7 +76,7 @@ public class AwardsServiceImpl implements AwardsService {
     }
 
     @Override
-    public Publication publish(@NotNull UUID divisionId, @NotNull UUID adminUserId) {
+    public Publication publish(UUID divisionId, UUID adminUserId) {
         if (!competitionService.isAuthorizedForDivision(divisionId, adminUserId)) {
             throw new BusinessRuleException("error.awards.unauthorized");
         }
@@ -99,9 +97,9 @@ public class AwardsServiceImpl implements AwardsService {
     }
 
     @Override
-    public Publication republish(@NotNull UUID divisionId,
-                                  @NotBlank String justification,
-                                  @NotNull UUID adminUserId) {
+    public Publication republish(UUID divisionId,
+                                  String justification,
+                                  UUID adminUserId) {
         if (!competitionService.isAuthorizedForDivision(divisionId, adminUserId)) {
             throw new BusinessRuleException("error.awards.unauthorized");
         }
@@ -128,8 +126,8 @@ public class AwardsServiceImpl implements AwardsService {
     }
 
     @Override
-    public void sendAnnouncement(@NotNull UUID divisionId, String customMessage,
-                                  @NotNull UUID adminUserId) {
+    public void sendAnnouncement(UUID divisionId, String customMessage,
+                                  UUID adminUserId) {
         if (!competitionService.isAuthorizedForDivision(divisionId, adminUserId)) {
             throw new BusinessRuleException("error.awards.unauthorized");
         }
@@ -187,19 +185,19 @@ public class AwardsServiceImpl implements AwardsService {
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<Publication> getLatestPublication(@NotNull UUID divisionId) {
+    public Optional<Publication> getLatestPublication(UUID divisionId) {
         return publicationRepository.findTopByDivisionIdOrderByVersionDesc(divisionId);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Publication> getPublicationHistory(@NotNull UUID divisionId) {
+    public List<Publication> getPublicationHistory(UUID divisionId) {
         return publicationRepository.findByDivisionIdOrderByVersionAsc(divisionId);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<EntrantResultRow> getResultsForEntrant(@NotNull UUID userId, @NotNull UUID divisionId) {
+    public List<EntrantResultRow> getResultsForEntrant(UUID userId, UUID divisionId) {
         var division = competitionService.findDivisionById(divisionId);
         if (division.getStatus() != DivisionStatus.RESULTS_PUBLISHED) {
             throw new BusinessRuleException("error.awards.not-published");
@@ -232,7 +230,7 @@ public class AwardsServiceImpl implements AwardsService {
 
     @Override
     @Transactional(readOnly = true)
-    public AdminResultsView getResultsForAdmin(@NotNull UUID divisionId, @NotNull UUID adminUserId) {
+    public AdminResultsView getResultsForAdmin(UUID divisionId, UUID adminUserId) {
         if (!competitionService.isAuthorizedForDivision(divisionId, adminUserId)) {
             throw new BusinessRuleException("error.awards.unauthorized");
         }
@@ -311,8 +309,8 @@ public class AwardsServiceImpl implements AwardsService {
 
     @Override
     @Transactional(readOnly = true)
-    public PublicResultsView getPublicResults(@NotBlank String competitionShortName,
-                                              @NotBlank String divisionShortName) {
+    public PublicResultsView getPublicResults(String competitionShortName,
+                                              String divisionShortName) {
         var competition = competitionService.findCompetitionByShortName(competitionShortName);
         var division = competitionService.findDivisionByShortName(competition.getId(), divisionShortName);
         if (division.getStatus() != DivisionStatus.RESULTS_PUBLISHED) {
@@ -395,8 +393,8 @@ public class AwardsServiceImpl implements AwardsService {
 
     @Override
     @Transactional(readOnly = true)
-    public AnonymizedScoresheetView getAnonymizedScoresheet(@NotNull UUID scoresheetId,
-                                                              @NotNull UUID requestingUserId) {
+    public AnonymizedScoresheetView getAnonymizedScoresheet(UUID scoresheetId,
+                                                              UUID requestingUserId) {
         var sheet = scoresheetService.findById(scoresheetId)
                 .orElseThrow(() -> new BusinessRuleException("error.awards.scoresheet-not-found"));
         if (sheet.getStatus() != ScoresheetStatus.SUBMITTED) {
