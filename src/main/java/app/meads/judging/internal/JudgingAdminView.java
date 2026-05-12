@@ -177,6 +177,15 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
 
         header.add(new H2(competition.getName() + " — " + division.getName()
                 + " — " + getTranslation("judging-admin.nav.judging-admin")));
+
+        if (division.getStatus().ordinal() >= DivisionStatus.DELIBERATION.ordinal()) {
+            var manageResults = new Button(getTranslation("judging-admin.manage-results"),
+                    e -> com.vaadin.flow.component.UI.getCurrent().navigate(
+                            "competitions/" + compShortName
+                                    + "/divisions/" + divShortName + "/results-admin"));
+            manageResults.setId("judging-admin-manage-results");
+            header.add(manageResults);
+        }
         return header;
     }
 
