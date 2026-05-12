@@ -17,6 +17,9 @@ public interface JudgingTableRepository extends JpaRepository<JudgingTable, UUID
     @Query("SELECT COUNT(a) > 0 FROM JudgingTable t JOIN t.assignments a WHERE a.judgeUserId = :judgeUserId")
     boolean existsAssignmentByJudgeUserId(UUID judgeUserId);
 
+    @Query("SELECT COUNT(a) > 0 FROM JudgingTable t JOIN t.assignments a WHERE t.id = :tableId AND a.judgeUserId = :judgeUserId")
+    boolean existsAssignmentByTableIdAndJudgeUserId(UUID tableId, UUID judgeUserId);
+
     boolean existsByJudgingId(UUID judgingId);
 
     @Query("SELECT COUNT(t) > 0 FROM JudgingTable t WHERE t.judgingId = :judgingId AND t.status <> app.meads.judging.JudgingTableStatus.NOT_STARTED")

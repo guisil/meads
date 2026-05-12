@@ -14,8 +14,8 @@ needed to continue even without memory files or prior conversation history.
 Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
-**Branch:** `feature/judging-module` (Phase 6 views — Tables tab complete; Medal Rounds tab complete; BOS tab complete; Settings extensions complete; remaining: Table View drill-in, Judge views)
-**Tests:** 950 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-11 (Phase 6.6 BOS tab on JudgingAdminView: phase indicator + GOLD candidates + placements grid with empty-slot rendering + Add/Edit/Delete per row + Start/Finalize/Reopen/Reset BOS actions; Phase 6.7 Settings extensions: Competition.commentLanguages MultiSelectComboBox + Division.bosPlaces + Division.minJudgesPerTable IntegerFields with status-based locking; +17 tests)
+**Branch:** `feature/judging-module` (Phase 6 views — Tables tab complete; Medal Rounds tab complete; BOS tab complete; Settings extensions complete; TableView complete except row click → ScoresheetView (waiting on ScoresheetView itself); remaining: Judge views (MyJudgingView, ScoresheetView, dedicated BosView))
+**Tests:** 955 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-12 (Phase 6.8 skeleton; 6.9 scoresheets grid; 6.10 filter bar; 6.11 admin Revert SUBMITTED→DRAFT with medal-round-active hard-block; 6.12 admin Move-to-table with `JudgingService.findTablesByDivisionAndCategory`; +5 tests total for `TableView`)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---

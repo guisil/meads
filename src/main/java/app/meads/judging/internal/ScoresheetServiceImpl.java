@@ -25,6 +25,7 @@ import org.springframework.validation.annotation.Validated;
 
 import java.time.Instant;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -330,6 +331,12 @@ public class ScoresheetServiceImpl implements ScoresheetService {
     @Override
     public long countByTableIdAndStatus(UUID tableId, ScoresheetStatus status) {
         return scoresheetRepository.countByTableIdAndStatus(tableId, status);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Scoresheet> findByTableId(UUID tableId) {
+        return scoresheetRepository.findByTableId(tableId);
     }
 
     @SuppressWarnings("unused")

@@ -158,6 +158,22 @@ public class JudgingServiceImpl implements JudgingService {
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<JudgingTable> findTableById(UUID tableId) {
+        return judgingTableRepository.findById(tableId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<JudgingTable> findTablesByDivisionAndCategory(UUID divisionId, UUID divisionCategoryId) {
+        return judgingRepository.findByDivisionId(divisionId)
+                .map(j -> judgingTableRepository.findByJudgingId(j.getId()).stream()
+                        .filter(t -> t.getDivisionCategoryId().equals(divisionCategoryId))
+                        .toList())
+                .orElse(List.of());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<JudgingTable> findTablesByJudgeUserId(UUID judgeUserId) {
         return judgingTableRepository.findByJudgeUserId(judgeUserId);
     }
@@ -166,6 +182,12 @@ public class JudgingServiceImpl implements JudgingService {
     @Transactional(readOnly = true)
     public boolean hasAnyJudgeAssignment(UUID judgeUserId) {
         return judgingTableRepository.existsAssignmentByJudgeUserId(judgeUserId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isJudgeAssignedToTable(UUID tableId, UUID judgeUserId) {
+        return judgingTableRepository.existsAssignmentByTableIdAndJudgeUserId(tableId, judgeUserId);
     }
 
     @Override
@@ -291,6 +313,12 @@ public class JudgingServiceImpl implements JudgingService {
                         .orElseGet(() -> categoryConfigRepository.save(
                                 new CategoryJudgingConfig(cat.getId()))))
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<CategoryJudgingConfig> findCategoryConfigByDivisionCategoryId(UUID divisionCategoryId) {
+        return categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId);
     }
 
     // === Medal round transitions ===

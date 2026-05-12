@@ -2,6 +2,7 @@ package app.meads.judging;
 
 import jakarta.validation.constraints.NotNull;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -30,4 +31,6 @@ public interface ScoresheetService {
     void moveToTable(@NotNull UUID scoresheetId, @NotNull UUID newTableId, @NotNull UUID adminUserId);
 
     long countByTableIdAndStatus(@NotNull UUID tableId, @NotNull ScoresheetStatus status);
+
+    List<Scoresheet> findByTableId(@NotNull UUID tableId);
 }

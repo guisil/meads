@@ -31,9 +31,15 @@ public interface JudgingService {
 
     List<JudgingTable> findTablesByJudgingId(@NotNull UUID judgingId);
 
+    java.util.Optional<JudgingTable> findTableById(@NotNull UUID tableId);
+
+    List<JudgingTable> findTablesByDivisionAndCategory(@NotNull UUID divisionId, @NotNull UUID divisionCategoryId);
+
     List<JudgingTable> findTablesByJudgeUserId(@NotNull UUID judgeUserId);
 
     boolean hasAnyJudgeAssignment(@NotNull UUID judgeUserId);
+
+    boolean isJudgeAssignedToTable(@NotNull UUID tableId, @NotNull UUID judgeUserId);
 
     // === Judge assignment ===
     void assignJudge(@NotNull UUID tableId, @NotNull UUID judgeUserId, @NotNull UUID adminUserId);
@@ -50,6 +56,8 @@ public interface JudgingService {
 
     List<CategoryJudgingConfig> findCategoryConfigsForDivision(@NotNull UUID divisionId,
                                                                 @NotNull UUID adminUserId);
+
+    java.util.Optional<CategoryJudgingConfig> findCategoryConfigByDivisionCategoryId(@NotNull UUID divisionCategoryId);
 
     List<MedalAward> findMedalAwardsForCategory(@NotNull UUID divisionCategoryId);
 
