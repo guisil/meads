@@ -29,6 +29,7 @@ public class MainLayout extends AppLayout {
 
     private final transient AuthenticationContext authenticationContext;
     private final CompetitionAdminChecker competitionAdminChecker;
+    private final JudgeAssignmentChecker judgeAssignmentChecker;
     private final UserLocaleResolver userLocaleResolver;
     private final UserLanguageUpdater userLanguageUpdater;
     private final I18NProvider i18nProvider;
@@ -36,12 +37,14 @@ public class MainLayout extends AppLayout {
 
     public MainLayout(AuthenticationContext authenticationContext,
                        CompetitionAdminChecker competitionAdminChecker,
+                       JudgeAssignmentChecker judgeAssignmentChecker,
                        UserLocaleResolver userLocaleResolver,
                        UserLanguageUpdater userLanguageUpdater,
                        I18NProvider i18nProvider,
                        @Nullable BuildProperties buildProperties) {
         this.authenticationContext = authenticationContext;
         this.competitionAdminChecker = competitionAdminChecker;
+        this.judgeAssignmentChecker = judgeAssignmentChecker;
         this.userLocaleResolver = userLocaleResolver;
         this.userLanguageUpdater = userLanguageUpdater;
         this.i18nProvider = i18nProvider;
@@ -118,6 +121,14 @@ public class MainLayout extends AppLayout {
 
         if (authenticationContext.isAuthenticated() && !authenticationContext.hasRole("SYSTEM_ADMIN")) {
             nav.addItem(new SideNavItem(getTranslation("nav.my-entries"), "my-entries", VaadinIcon.LIST.create()));
+        }
+
+        if (authenticationContext.isAuthenticated()) {
+            var email = authenticationContext.getPrincipalName().orElse("");
+            if (judgeAssignmentChecker.hasAnyJudgeAssignment(email)) {
+                nav.addItem(new SideNavItem(getTranslation("my-judging.nav.my-judging"),
+                        "my-judging", VaadinIcon.GAVEL.create()));
+            }
         }
 
         var drawerContent = new Div();

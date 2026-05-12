@@ -339,6 +339,35 @@ public class ScoresheetServiceImpl implements ScoresheetService {
         return scoresheetRepository.findByTableId(tableId);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.Optional<Scoresheet> findById(UUID scoresheetId) {
+        return scoresheetRepository.findById(scoresheetId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.Optional<UUID> findNextDraftForJudge(UUID judgeUserId) {
+        var tables = judgingTableRepository.findByJudgeUserId(judgeUserId);
+        return tables.stream()
+                .sorted((a, b) -> {
+                    var ad = a.getScheduledDate();
+                    var bd = b.getScheduledDate();
+                    if (ad == null && bd == null) {
+                        return a.getName().compareTo(b.getName());
+                    }
+                    if (ad == null) return 1;
+                    if (bd == null) return -1;
+                    int dateCmp = ad.compareTo(bd);
+                    return dateCmp != 0 ? dateCmp : a.getName().compareTo(b.getName());
+                })
+                .flatMap(t -> scoresheetRepository.findByTableId(t.getId()).stream())
+                .filter(s -> s.getStatus() == ScoresheetStatus.DRAFT)
+                .sorted((a, b) -> a.getCreatedAt().compareTo(b.getCreatedAt()))
+                .map(Scoresheet::getId)
+                .findFirst();
+    }
+
     @SuppressWarnings("unused")
     private static final Set<ScoresheetStatus> ANY_STATUS = Set.of(ScoresheetStatus.values());
 }

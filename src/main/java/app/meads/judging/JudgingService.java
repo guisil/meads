@@ -59,6 +59,8 @@ public interface JudgingService {
 
     java.util.Optional<CategoryJudgingConfig> findCategoryConfigByDivisionCategoryId(@NotNull UUID divisionCategoryId);
 
+    List<CategoryJudgingConfig> findActiveCategoryConfigsForJudge(@NotNull UUID judgeUserId);
+
     List<MedalAward> findMedalAwardsForCategory(@NotNull UUID divisionCategoryId);
 
     List<MedalAward> findGoldMedalAwardsForDivision(@NotNull UUID divisionId, @NotNull UUID adminUserId);

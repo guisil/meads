@@ -33,4 +33,8 @@ public interface ScoresheetService {
     long countByTableIdAndStatus(@NotNull UUID tableId, @NotNull ScoresheetStatus status);
 
     List<Scoresheet> findByTableId(@NotNull UUID tableId);
+
+    java.util.Optional<java.util.UUID> findNextDraftForJudge(@NotNull UUID judgeUserId);
+
+    java.util.Optional<Scoresheet> findById(@NotNull UUID scoresheetId);
 }

@@ -321,6 +321,18 @@ public class JudgingServiceImpl implements JudgingService {
         return categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<CategoryJudgingConfig> findActiveCategoryConfigsForJudge(UUID judgeUserId) {
+        var tables = judgingTableRepository.findByJudgeUserId(judgeUserId);
+        return tables.stream()
+                .map(JudgingTable::getDivisionCategoryId)
+                .distinct()
+                .flatMap(catId -> categoryConfigRepository.findByDivisionCategoryId(catId).stream())
+                .filter(c -> c.getMedalRoundStatus() == MedalRoundStatus.ACTIVE)
+                .toList();
+    }
+
     // === Medal round transitions ===
 
     @Override
