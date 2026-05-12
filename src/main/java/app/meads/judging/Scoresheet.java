@@ -1,7 +1,6 @@
 package app.meads.judging;
 
 import app.meads.judging.internal.MjpScoringFieldDefinition;
-import app.meads.judging.internal.ScoreField;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

@@ -67,6 +67,10 @@ public interface JudgingService {
 
     List<BosPlacement> findBosPlacementsForDivision(@NotNull UUID divisionId, @NotNull UUID adminUserId);
 
+    java.util.Optional<MedalAward> findMedalAwardByEntryId(@NotNull UUID entryId);
+
+    java.util.Optional<BosPlacement> findBosPlacementByEntryId(@NotNull UUID entryId);
+
     // === Medal round transitions ===
     void startMedalRound(@NotNull UUID divisionCategoryId, @NotNull UUID adminUserId);
 

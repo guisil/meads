@@ -12,6 +12,7 @@ import app.meads.identity.UserService;
 import app.meads.judging.JudgeProfileService;
 import app.meads.judging.JudgingService;
 import app.meads.judging.JudgingTable;
+import app.meads.judging.ScoreField;
 import app.meads.judging.Scoresheet;
 import app.meads.judging.ScoresheetService;
 import com.vaadin.flow.component.UI;

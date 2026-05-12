@@ -371,6 +371,12 @@ public class ScoresheetServiceImpl implements ScoresheetService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<Scoresheet> findByEntryIdOrderBySubmittedAtAsc(UUID entryId) {
+        return scoresheetRepository.findByEntryIdOrderBySubmittedAtAsc(entryId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public java.util.Optional<UUID> findNextDraftForJudge(UUID judgeUserId) {
         var tables = judgingTableRepository.findByJudgeUserId(judgeUserId);
         return tables.stream()

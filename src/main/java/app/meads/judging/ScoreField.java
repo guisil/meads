@@ -1,4 +1,4 @@
-package app.meads.judging.internal;
+package app.meads.judging;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

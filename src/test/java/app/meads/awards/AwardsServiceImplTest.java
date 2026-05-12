@@ -6,6 +6,10 @@ import app.meads.awards.internal.PublicationRepository;
 import app.meads.competition.CompetitionService;
 import app.meads.competition.Division;
 import app.meads.competition.DivisionStatus;
+import app.meads.entry.EntryService;
+import app.meads.identity.UserService;
+import app.meads.judging.JudgingService;
+import app.meads.judging.ScoresheetService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -28,6 +32,10 @@ class AwardsServiceImplTest {
 
     @Mock PublicationRepository publicationRepository;
     @Mock CompetitionService competitionService;
+    @Mock EntryService entryService;
+    @Mock JudgingService judgingService;
+    @Mock ScoresheetService scoresheetService;
+    @Mock UserService userService;
     @Mock ApplicationEventPublisher eventPublisher;
 
     @Test
@@ -171,6 +179,107 @@ class AwardsServiceImplTest {
     }
 
     @Test
+    void shouldReturnEmptyOptionalWhenNoPublication() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        given(publicationRepository.findTopByDivisionIdOrderByVersionDesc(divisionId))
+                .willReturn(Optional.empty());
+
+        assertThat(service.getLatestPublication(divisionId)).isEmpty();
+    }
+
+    @Test
+    void shouldReturnLatestPublicationWhenPresent() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var publication = new Publication(divisionId, UUID.randomUUID());
+        given(publicationRepository.findTopByDivisionIdOrderByVersionDesc(divisionId))
+                .willReturn(Optional.of(publication));
+
+        assertThat(service.getLatestPublication(divisionId)).contains(publication);
+    }
+
+    @Test
+    void shouldReturnPublicationHistoryOrderedByVersion() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var p1 = new Publication(divisionId, UUID.randomUUID());
+        var p2 = Publication.republish(divisionId, 1, "first revision applied to gold list", UUID.randomUUID());
+        given(publicationRepository.findByDivisionIdOrderByVersionAsc(divisionId))
+                .willReturn(java.util.List.of(p1, p2));
+
+        var history = service.getPublicationHistory(divisionId);
+        assertThat(history).hasSize(2);
+        assertThat(history.get(0).getVersion()).isEqualTo(1);
+        assertThat(history.get(1).getVersion()).isEqualTo(2);
+    }
+
+    @Test
+    void shouldRejectGetResultsForEntrantWhenDivisionNotPublished() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var userId = UUID.randomUUID();
+        var division = mock(Division.class);
+        given(division.getStatus()).willReturn(DivisionStatus.DELIBERATION);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+
+        assertThatThrownBy(() -> service.getResultsForEntrant(userId, divisionId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.awards.not-published");
+    }
+
+    @Test
+    void shouldRejectGetPublicResultsWhenNotPublished() {
+        var service = createService();
+        var competitionId = UUID.randomUUID();
+        var competition = mock(app.meads.competition.Competition.class);
+        given(competition.getId()).willReturn(competitionId);
+        var division = mock(Division.class);
+        given(division.getStatus()).willReturn(DivisionStatus.JUDGING);
+        given(competitionService.findCompetitionByShortName("test")).willReturn(competition);
+        given(competitionService.findDivisionByShortName(competitionId, "amateur"))
+                .willReturn(division);
+
+        assertThatThrownBy(() -> service.getPublicResults("test", "amateur"))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.awards.not-published");
+    }
+
+    @Test
+    void shouldRejectGetAnonymizedScoresheetWhenScoresheetNotFound() {
+        var service = createService();
+        var sheetId = UUID.randomUUID();
+        given(scoresheetService.findById(sheetId)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.getAnonymizedScoresheet(sheetId, UUID.randomUUID()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.awards.scoresheet-not-found");
+    }
+
+    @Test
+    void shouldRejectGetAnonymizedScoresheetWhenNotAdminAndNotOwner() {
+        var service = createService();
+        var sheetId = UUID.randomUUID();
+        var entryId = UUID.randomUUID();
+        var divisionId = UUID.randomUUID();
+        var requestingUserId = UUID.randomUUID();
+        var ownerUserId = UUID.randomUUID();
+        var sheet = mock(app.meads.judging.Scoresheet.class);
+        given(sheet.getStatus()).willReturn(app.meads.judging.ScoresheetStatus.SUBMITTED);
+        given(sheet.getEntryId()).willReturn(entryId);
+        given(scoresheetService.findById(sheetId)).willReturn(Optional.of(sheet));
+        var entry = mock(app.meads.entry.Entry.class);
+        given(entry.getDivisionId()).willReturn(divisionId);
+        given(entry.getUserId()).willReturn(ownerUserId);
+        given(entryService.findEntryById(entryId)).willReturn(entry);
+        given(competitionService.isAuthorizedForDivision(divisionId, requestingUserId)).willReturn(false);
+
+        assertThatThrownBy(() -> service.getAnonymizedScoresheet(sheetId, requestingUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.awards.unauthorized");
+    }
+
+    @Test
     void shouldRejectRepublishWhenUnauthorized() {
         var service = createService();
         var divisionId = UUID.randomUUID();
@@ -183,6 +292,7 @@ class AwardsServiceImplTest {
     }
 
     private AwardsServiceImpl createService() {
-        return new AwardsServiceImpl(publicationRepository, competitionService, eventPublisher);
+        return new AwardsServiceImpl(publicationRepository, competitionService,
+                entryService, judgingService, scoresheetService, userService, eventPublisher);
     }
 }

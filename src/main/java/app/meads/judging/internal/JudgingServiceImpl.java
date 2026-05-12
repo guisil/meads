@@ -314,6 +314,18 @@ public class JudgingServiceImpl implements JudgingService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Optional<MedalAward> findMedalAwardByEntryId(UUID entryId) {
+        return medalAwardRepository.findByEntryId(entryId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<BosPlacement> findBosPlacementByEntryId(UUID entryId) {
+        return bosPlacementRepository.findByEntryId(entryId);
+    }
+
+    @Override
     public List<CategoryJudgingConfig> findCategoryConfigsForDivision(UUID divisionId, UUID adminUserId) {
         if (!competitionService.isAuthorizedForDivision(divisionId, adminUserId)) {
             throw new BusinessRuleException("error.auth.unauthorized");

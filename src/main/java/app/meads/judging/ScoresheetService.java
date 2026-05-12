@@ -37,4 +37,6 @@ public interface ScoresheetService {
     java.util.Optional<java.util.UUID> findNextDraftForJudge(@NotNull UUID judgeUserId);
 
     java.util.Optional<Scoresheet> findById(@NotNull UUID scoresheetId);
+
+    List<Scoresheet> findByEntryIdOrderBySubmittedAtAsc(@NotNull UUID entryId);
 }
