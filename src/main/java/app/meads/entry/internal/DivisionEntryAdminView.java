@@ -999,10 +999,10 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         var judgingCategories = competitionService.findJudgingCategories(divisionId);
         var finalCategoryOptions = judgingCategories.isEmpty() ? divisionCategories : judgingCategories;
         var finalCategorySelect = new Select<DivisionCategory>();
-        finalCategorySelect.setLabel("Final Category");
+        finalCategorySelect.setLabel(getTranslation("entry-admin.entries.edit.final-category"));
         finalCategorySelect.setWidthFull();
         finalCategorySelect.setEmptySelectionAllowed(true);
-        finalCategorySelect.setEmptySelectionCaption("— Not assigned —");
+        finalCategorySelect.setEmptySelectionCaption(getTranslation("entry-admin.entries.edit.final-category.unset"));
         finalCategorySelect.setItemLabelGenerator(dc ->
                 dc != null ? dc.getCode() + " — " + dc.getName() : "");
         finalCategorySelect.setItems(finalCategoryOptions);
