@@ -195,6 +195,47 @@ class SmtpEmailServiceTest {
     }
 
     @Test
+    void shouldSendMfaResetEmail() {
+        given(jwtMagicLinkService.generateMfaResetLink(eq("admin@example.com"), any()))
+                .willReturn("http://localhost:8080/mfa-reset?token=mfa123");
+
+        emailService.sendMfaReset("admin@example.com", Locale.ENGLISH);
+
+        verify(mailSender).send(any(MimeMessage.class));
+        var contextCaptor = ArgumentCaptor.forClass(IContext.class);
+        verify(templateEngine).process(eq("email/email-base"), contextCaptor.capture());
+        var ctx = contextCaptor.getValue();
+        assertThat(ctx.getVariable("heading")).isEqualTo("email.mfa-reset.heading");
+        assertThat(ctx.getVariable("ctaLabel")).isEqualTo("email.mfa-reset.cta");
+        assertThat(ctx.getVariable("ctaUrl")).isEqualTo("http://localhost:8080/mfa-reset?token=mfa123");
+        assertThat(ctx.getVariable("contactEmail")).isNull();
+    }
+
+    @Test
+    void shouldUseShortValidityForMfaResetToken() {
+        given(jwtMagicLinkService.generateMfaResetLink(eq("admin@example.com"), any()))
+                .willReturn("http://localhost:8080/mfa-reset?token=mfa123");
+
+        emailService.sendMfaReset("admin@example.com", Locale.ENGLISH);
+
+        var validityCaptor = ArgumentCaptor.forClass(Duration.class);
+        verify(jwtMagicLinkService).generateMfaResetLink(eq("admin@example.com"), validityCaptor.capture());
+        // MFA reset must be short-lived (1 hour) — security-critical, not a multi-day flow
+        assertThat(validityCaptor.getValue()).isEqualTo(Duration.ofHours(1));
+    }
+
+    @Test
+    void shouldNotSendMfaResetWhenRateLimited() {
+        given(jwtMagicLinkService.generateMfaResetLink(eq("admin@example.com"), any()))
+                .willReturn("http://localhost:8080/mfa-reset?token=mfa123");
+
+        emailService.sendMfaReset("admin@example.com", Locale.ENGLISH);
+        emailService.sendMfaReset("admin@example.com", Locale.ENGLISH);
+
+        verify(mailSender, times(1)).send(any(MimeMessage.class));
+    }
+
+    @Test
     void shouldSendCredentialsReminderEmail() {
         emailService.sendCredentialsReminder("user@example.com", Locale.ENGLISH);
 

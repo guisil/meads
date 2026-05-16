@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicReference;
 class SmtpEmailService implements EmailService {
 
     private static final Duration TOKEN_VALIDITY = Duration.ofDays(7);
+    private static final Duration MFA_RESET_TOKEN_VALIDITY = Duration.ofHours(1);
     private static final String TEMPLATE_NAME = "email/email-base";
 
     private final JavaMailSender mailSender;
@@ -108,6 +109,25 @@ class SmtpEmailService implements EmailService {
         ctx.setVariable("heading", msg("email.password-reset.heading", locale));
         ctx.setVariable("bodyText", msg("email.password-reset.body", locale));
         ctx.setVariable("ctaLabel", msg("email.password-reset.cta", locale));
+        ctx.setVariable("ctaUrl", link);
+        ctx.setVariable("fallbackText", msg("email.fallback", locale));
+        ctx.setVariable("footerText", msg("email.footer", locale));
+        ctx.setVariable("contactEmail", null);
+        sendEmail(recipientEmail, subject, ctx, link);
+    }
+
+    @Override
+    public void sendMfaReset(String recipientEmail, Locale locale) {
+        if (isRateLimited(recipientEmail, "mfa-reset")) {
+            return;
+        }
+        var link = jwtMagicLinkService.generateMfaResetLink(recipientEmail, MFA_RESET_TOKEN_VALIDITY);
+        var subject = msg("email.mfa-reset.subject", locale);
+        var ctx = new Context();
+        ctx.setVariable("subject", subject);
+        ctx.setVariable("heading", msg("email.mfa-reset.heading", locale));
+        ctx.setVariable("bodyText", msg("email.mfa-reset.body", locale));
+        ctx.setVariable("ctaLabel", msg("email.mfa-reset.cta", locale));
         ctx.setVariable("ctaUrl", link);
         ctx.setVariable("fallbackText", msg("email.fallback", locale));
         ctx.setVariable("footerText", msg("email.footer", locale));

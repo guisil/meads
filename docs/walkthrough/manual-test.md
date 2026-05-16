@@ -286,6 +286,29 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] Navigate to `/profile`
 - [ ] **Expected:** No "Two-Factor Authentication" section (only visible for SYSTEM_ADMIN)
 
+### MFA email reset ("Lost your device?")
+
+Pre-requisite: enable MFA on `admin@example.com` first (see "MFA setup" above).
+
+- [ ] Log out. Log in as `admin@example.com` / `admin`
+- [ ] **Expected:** redirected to `/mfa`
+- [ ] **Expected:** A "Lost your device?" button is visible below the Verify button (small, tertiary style)
+- [ ] Click "Lost your device?"
+- [ ] **Expected:** notification "If your account has 2FA enabled, a reset link has been emailed to you. Check your inbox."
+- [ ] **Check Mailpit:** email "Disable two-factor authentication on your MEADS account" arrives, body explains the link is valid for 1 hour, CTA button "Disable 2FA"
+- [ ] Click "Lost your device?" again immediately
+- [ ] **Expected:** notification still shown but no second email in Mailpit (rate-limited, 5 min cooldown)
+- [ ] Click the **Disable 2FA** button in the email — opens `/mfa-reset?token=...`
+- [ ] **Expected:** page shows heading "Two-Factor Authentication Disabled", body confirming the disable, "Continue to Login" button
+- [ ] Click "Continue to Login" — navigates to `/login`
+- [ ] Log in as `admin@example.com` / `admin`
+- [ ] **Expected:** straight to `/competitions` (no `/mfa` step — MFA is now disabled)
+- [ ] Navigate to `/profile` — **Expected:** "2FA is not enabled" + "Set Up 2FA" button (status reset)
+- [ ] **Test invalid token:** open `/mfa-reset?token=garbage.token.here` in a fresh tab
+- [ ] **Expected:** page shows heading "Reset Link Problem" + red error "The 2FA reset link is invalid or has expired. Request a new one." + Continue to Login button
+- [ ] **Test missing token:** open `/mfa-reset` (no query param)
+- [ ] **Expected:** forwarded to `/login` (no error shown)
+
 ---
 
 ## 3. Navigation & Layout

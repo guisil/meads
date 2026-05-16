@@ -49,6 +49,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/login/magic").permitAll()
                 .requestMatchers("/mfa").permitAll()
+                .requestMatchers("/mfa-reset").permitAll()
                 .requestMatchers("/images/**").permitAll()
             )
             .with(vaadin(), vaadin -> vaadin

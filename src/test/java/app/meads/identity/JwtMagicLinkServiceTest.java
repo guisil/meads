@@ -91,6 +91,16 @@ class JwtMagicLinkServiceTest {
     }
 
     @Test
+    void shouldGenerateMfaResetLinkWithCorrectUrl() {
+        String link = jwtMagicLinkService.generateMfaResetLink("admin@example.com", Duration.ofHours(1));
+
+        assertThat(link).startsWith(BASE_URL + "/mfa-reset?token=");
+        String token = link.substring(link.indexOf("token=") + "token=".length());
+        String email = jwtMagicLinkService.extractEmail(token);
+        assertThat(email).isEqualTo("admin@example.com");
+    }
+
+    @Test
     void shouldAllowReusingValidToken() {
         // Arrange
         String link = jwtMagicLinkService.generateLink("user@example.com", Duration.ofDays(7));

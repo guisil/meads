@@ -47,6 +47,12 @@ public class JwtMagicLinkService {
         return baseUrl + "/set-password?token=" + token;
     }
 
+    public String generateMfaResetLink(String email, Duration validity) {
+        String token = buildToken(email, validity);
+        log.debug("Generated MFA reset link for: {} (validity={})", email, validity);
+        return baseUrl + "/mfa-reset?token=" + token;
+    }
+
     private String buildToken(String email, Duration validity) {
         Instant now = Instant.now();
         return Jwts.builder()
