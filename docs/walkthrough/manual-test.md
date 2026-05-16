@@ -1256,6 +1256,30 @@ curl -s -o /dev/null -w "%{http_code}" \
 - [ ] **Check Mailpit:** admin alert email(s) sent for PARTIALLY_PROCESSED order, body includes competition name and affected division(s)
 - [ ] **Check Mailpit:** credit notification email sent to `newbuyer@example.com` for 2 credits in Amadora (the processed portion)
 
+### Registration-closed division — flagged
+
+Advance Amadora to REGISTRATION_CLOSED first (DivisionDetailView > Advance Status).
+Then post an order targeting Amadora (product `1001`).
+
+```bash
+PAYLOAD5='{"order":{"id":"WH-006","customer":{"email":"latebuyer@example.com"},"shipping_address":{"name":"Late","surname":"Buyer"},"products":[{"id":"1001","sku":"CHIP-AMA","name":"CHIP Amadora Entry","qty":2}]}}'
+SIGNATURE5=$(sign "$PAYLOAD5")
+
+curl -s -o /dev/null -w "%{http_code}" \
+  -X POST http://localhost:8080/api/webhooks/jumpseller/order-paid \
+  -H "Content-Type: application/json" \
+  -H "Jumpseller-Hmac-Sha256: $SIGNATURE5" \
+  -d "$PAYLOAD5"
+```
+
+- [ ] **Expected:** HTTP 200
+- [ ] Verify in UI (Amadora entry-admin):
+  - **Orders tab:** `WH-006` appears with status NEEDS_REVIEW; Review Reason column / tooltip reads "Registration closed: division no longer accepting new credits"
+  - **Credits tab:** `latebuyer@example.com` does NOT appear (no credits awarded)
+  - **Users grid:** `latebuyer@example.com` exists (created by webhook) but is NOT a participant in CHIP 2026
+- [ ] **Check Mailpit:** admin alert email sent for NEEDS_REVIEW order. No "Entry credits received" email sent to `latebuyer@example.com`
+- [ ] Revert Amadora back to REGISTRATION_OPEN after testing (if entries exist this is blocked — leave closed and continue with later tests, or test on a fresh division)
+
 ---
 
 ## 10. My Entries Overview (entrant hub)

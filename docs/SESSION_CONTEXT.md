@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `main`
-**Tests:** 777 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-16 (post-fix for DivisionEntryAdminView Credits-tab stale-refresh bug)
+**Tests:** 778 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-16 (post-fix for webhook awarding credits after REGISTRATION_CLOSED)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -724,6 +724,7 @@ move to `LoginForm` for other reasons or if Bitwarden softens the threshold.
 - community.bitwarden.com thread 92519 ("This page is interfering with the Bitwarden experience")
 
 ### Completed priorities
+- **Webhook post-registration guard** — Completed 2026-05-16. `WebhookService.processOrderPaid()` now checks `division.getStatus().allowsRegistrationActions()` after the mutual-exclusivity and role-conflict checks. Orders for a division past REGISTRATION_OPEN are marked NEEDS_REVIEW with reason "Registration closed: division no longer accepting new credits" — no credits awarded, no ENTRANT promotion, no misleading credit-notification email. Admin gets the existing OrderRequiresReviewEvent alert email. 1 new unit test in WebhookServiceTest. 778 tests.
 - **Credits-grid stale-refresh fix** — Completed 2026-05-16. DivisionEntryAdminView's Credits tab now auto-refreshes after entry mutations that change per-user entry count (admin create, delete, withdraw, revert). Previously only `refreshEntriesGrid()` was called, leaving the Credits grid's per-user `Entries` column stale until manual reload. Symmetric with the existing pattern where credit mutations refresh both credits grid and balance. Regression check is manual (Karibu dialog disambiguation cost > value for this UI bookkeeping bug). 777 tests.
 - **Version bump to 0.3.0-SNAPSHOT** — 2026-05-02. Bumped from 0.2.9-SNAPSHOT to 0.3.0-SNAPSHOT ahead of judging category management and the judging module. 723 tests.
 - **Post-registration guards + admin add entry** — Completed 2026-05-02. Credits (add/adjust), product mappings (add/edit/delete), and entrant entry edits all blocked after REGISTRATION_OPEN. `DivisionStatus.allowsRegistrationActions()`. Disabled-button tooltips via Span wrapper. Credits balance auto-refreshes after credit operations. Submit All Drafts disabled when not REGISTRATION_OPEN. MyEntriesView shows "Registration is closed" in red when past REGISTRATION_OPEN. Admin "Add Entry" in Entries tab (two-step: warning confirmation → entry form with entrant email). `EntryService.adminCreateEntry()` skips credit check and status check. 8 new unit tests. 723 tests.

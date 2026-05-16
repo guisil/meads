@@ -188,6 +188,19 @@ public class WebhookService {
                     continue;
                 }
 
+                // Registration-closed check — division no longer accepting new credits
+                if (!division.getStatus().allowsRegistrationActions()) {
+                    var intendedCredits = quantity * mapping.getCreditsPerUnit();
+                    lineItem.markNeedsReview(divisionId, intendedCredits,
+                            "Registration closed: division no longer accepting new credits");
+                    lineItemRepository.save(lineItem);
+                    affectedDivisionNames.add(division.getName());
+                    needsReviewCount++;
+                    log.warn("Webhook line item needs review (registration closed): product={}, division={}, user={}",
+                            productId, divisionId, customerEmail);
+                    continue;
+                }
+
                 // Create credits
                 var credits = quantity * mapping.getCreditsPerUnit();
                 lineItem.markProcessed(divisionId, credits);
