@@ -672,6 +672,28 @@ Design and implementation, after judging module. Reference: `docs/reference/chip
   deadline is approaching (e.g., 7 days, 3 days, 1 day before deadline)
 - Other potential: entry received confirmation (when admin marks entry as RECEIVED), results published notification
 
+### Priority 7b: MFA recovery codes (deferred)
+**Status:** deferred at v0.3.0. Email-based MFA reset (the "Lost your device?" flow) ships as
+the only recovery path for now. Recovery codes are the industry-standard primary self-service
+fallback (Google, GitHub, AWS) — generated once at MFA setup, shown to the user, each redeemable
+once. Worth adding when:
+- Admins want recovery that does **not** depend on email integrity (defense against email-account
+  compromise — currently the security ceiling is capped by email since password reset also goes
+  through email)
+- The MEADS install adds non-admin MFA-enabled accounts where users may not have reliable email
+
+**Sketch when implementing:**
+- Generate 8–10 one-time codes at `setupMfa()` / via "Regenerate Codes" button on ProfileView
+- Store as bcrypt hashes (NOT plaintext) on a new `user_recovery_codes` table (V## migration)
+- Show codes once in a copy-friendly format; user prints/saves them
+- On `/mfa`, add "Use a recovery code" link next to "Lost your device?"
+- Service method: `verifyAndConsumeRecoveryCode(userId, code)` — match against hashes, mark used
+- Combine: keep email reset as the fallback when codes are also lost
+- i18n: ~10 new keys
+- Tests: unit for code generation/verification, repository test for persistence, UI test for the redeem flow
+
+Reference: this conversation's MFA recovery discussion when the user picked email reset (2026-05-16).
+
 ### Priority 8: Full category constraint system (low priority — future competition)
 Full field locking/validation based on category selection. Design doc: `docs/plans/2026-03-11-category-hints-design.md` (appendix).
 Includes: sweetness locking (M1A→Dry, M1B→Medium, M1C→Sweet), ingredient restrictions (M1/M4E),
