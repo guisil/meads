@@ -1079,6 +1079,7 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] **Expected:** Full entry form dialog opens with: Entrant Email, Category (subcategories only), Mead Name, Sweetness, ABV, Strength (read-only, auto-updates with ABV), Carbonation, Honey Varieties, Other Ingredients, Wood Aged checkbox, Wood Ageing Details, Additional Information
 - [ ] Enter email `entrant@example.com`, fill all required fields, click "Add Entry"
 - [ ] **Expected:** Notification "Entry added" (green), entry appears in grid, summary row updates
+- [ ] Click the "Credits" tab — **Expected:** `entrant@example.com` row shows the new entry count (e.g. 2 instead of 1) without manual refresh. Repeat the round trip after deleting/withdrawing/reverting an entry — the Credits tab Entries column must stay in sync.
 - [ ] Try entering an unknown email (e.g. `unknown@example.com`) and submitting
 - [ ] **Expected:** Error notification "User not found" (or similar)
 - [ ] Leave required fields empty and click "Add Entry"

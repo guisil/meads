@@ -814,6 +814,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
                 refreshEntriesGrid();
+                refreshCreditsGrid();
             } catch (BusinessRuleException ex) {
                 Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 e.getSource().setEnabled(true);
@@ -1095,6 +1096,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
                 refreshEntriesGrid();
+                refreshCreditsGrid();
             } catch (BusinessRuleException ex) {
                 Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 e.getSource().setEnabled(true);
@@ -1157,6 +1159,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
                 refreshEntriesGrid();
+                refreshCreditsGrid();
             } catch (BusinessRuleException ex) {
                 Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 e.getSource().setEnabled(true);
@@ -1164,6 +1167,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 Notification.show(getTranslation("entry-admin.entries.status-changed"));
                 dialog.close();
                 refreshEntriesGrid();
+                refreshCreditsGrid();
             }
         });
         confirmButton.setDisableOnClick(true);
@@ -1187,6 +1191,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
                 refreshEntriesGrid();
+                refreshCreditsGrid();
             } catch (BusinessRuleException ex) {
                 Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 e.getSource().setEnabled(true);
