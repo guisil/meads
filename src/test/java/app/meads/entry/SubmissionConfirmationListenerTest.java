@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.*;
 
@@ -109,8 +110,8 @@ class SubmissionConfirmationListenerTest {
                 eq("http://localhost:8080/login/magic?token=xyz"),
                 any(Locale.class));
         var lines = linesCaptor.getValue();
-        org.assertj.core.api.Assertions.assertThat(lines).hasSize(1);
-        org.assertj.core.api.Assertions.assertThat((String) lines.getFirst())
+        assertThat(lines).hasSize(1);
+        assertThat((String) lines.getFirst())
                 .contains("#1")
                 .contains("Solo Mead")
                 .contains("M4B")

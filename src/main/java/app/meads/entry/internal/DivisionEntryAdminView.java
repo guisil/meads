@@ -39,6 +39,7 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.StreamResource;
 import com.vaadin.flow.spring.security.AuthenticationContext;
 import jakarta.annotation.security.PermitAll;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.util.StringUtils;
 
@@ -323,7 +324,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             } catch (BusinessRuleException ex) {
                 Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 e.getSource().setEnabled(true);
-            } catch (jakarta.validation.ConstraintViolationException ex) {
+            } catch (ConstraintViolationException ex) {
                 emailField.setInvalid(true);
                 emailField.setErrorMessage(getTranslation("entry-admin.credits.add.email.invalid"));
                 e.getSource().setEnabled(true);
@@ -818,7 +819,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             } catch (BusinessRuleException ex) {
                 Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 e.getSource().setEnabled(true);
-            } catch (jakarta.validation.ConstraintViolationException ex) {
+            } catch (ConstraintViolationException ex) {
                 emailField.setInvalid(true);
                 emailField.setErrorMessage(getTranslation("entry-admin.entries.add.email.error"));
                 e.getSource().setEnabled(true);

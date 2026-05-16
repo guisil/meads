@@ -19,6 +19,7 @@ import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -547,13 +548,32 @@ public class CompetitionService {
         }
         var category = divisionCategoryRepository.findById(categoryId)
                 .orElseThrow(() -> new BusinessRuleException("error.category.not-found"));
-        judgingCategoryDeletionGuards.forEach(guard -> guard.checkDeletionAllowed(categoryId));
-        var children = divisionCategoryRepository.findByParentId(categoryId);
-        if (!children.isEmpty()) {
-            divisionCategoryRepository.deleteAll(children);
+
+        // Collect the subtree depth-first so deeper nodes appear later; we delete in reverse
+        // so children are gone before their parents (parent_id FK).
+        var subtree = new ArrayList<DivisionCategory>();
+        collectSubtree(category, subtree);
+
+        // Guard every node in the subtree, not just the root — a referenced descendant
+        // would otherwise surface as a raw DataIntegrityViolationException at delete time.
+        for (var node : subtree) {
+            for (var guard : judgingCategoryDeletionGuards) {
+                guard.checkDeletionAllowed(node.getId());
+            }
         }
-        divisionCategoryRepository.delete(category);
-        log.debug("Removed judging category {} from division {}", category.getCode(), divisionId);
+
+        for (int i = subtree.size() - 1; i >= 0; i--) {
+            divisionCategoryRepository.delete(subtree.get(i));
+        }
+        log.debug("Removed judging category {} (subtree size {}) from division {}",
+                category.getCode(), subtree.size(), divisionId);
+    }
+
+    private void collectSubtree(DivisionCategory node, List<DivisionCategory> acc) {
+        acc.add(node);
+        for (var child : divisionCategoryRepository.findByParentId(node.getId())) {
+            collectSubtree(child, acc);
+        }
     }
 
     public List<Category> findAvailableCatalogCategories(@NotNull UUID divisionId) {

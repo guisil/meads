@@ -910,6 +910,20 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] **Expected:** Page loads (user has credits in this division, so MyEntriesView would be accessible, but DivisionDetailView requires ADMIN)
 - [ ] **Note:** Check whether regular entrant can see division detail or is redirected
 
+### Judging Categories tab (status ≥ REGISTRATION_CLOSED)
+
+- [ ] Advance Amadora to REGISTRATION_CLOSED first (Advance Status button)
+- [ ] **Expected:** TabSheet now has three tabs: Categories, Judging Categories, Settings; default selected is Judging Categories
+- [ ] **Expected:** Categories tab (registration categories) is read-only — no Add or Remove buttons
+- [ ] **Initialize:** Judging Categories tab shows "Initialize Judging Categories" button (no grid yet)
+- [ ] Click "Initialize Judging Categories" — **Expected:** grid populated with clones of the registration categories (same codes/names/parent hierarchy); "Add Judging Category" button appears; init button disappears
+- [ ] **Add Judging Category:** dialog with Code → Name → Description → Parent (optional) fields stacked vertically; blank fields show per-field errors; successful add appears in grid
+- [ ] **Remove (leaf):** X icon → "Remove \"CX1 — ...\"?" confirm → "Judging category removed" notification; row gone
+- [ ] **Assign Final Category on an entry:** go to Entries tab on Entry Admin → edit a SUBMITTED entry → Final Category dropdown lists JUDGING-scope categories (clearable); pick one, Save; entry's Final Category column updates from "—" to the picked code
+- [ ] **Deletion guard (leaf):** try to remove the judging category assigned to the entry — **Expected:** error notification "Cannot remove judging category: it is referenced by one or more entries"; row stays
+- [ ] **Deletion guard (parent of referenced child):** try to remove the PARENT of the assigned judging category — **Expected:** same friendly error notification (NOT a stack trace or silent failure); row stays
+- [ ] **Cleanup:** clear the Final Category on the entry (set to empty, Save), then re-attempt the leaf remove → success
+
 ---
 
 ## 8. Entry Admin (Amadora)

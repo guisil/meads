@@ -324,6 +324,15 @@ Auth-agnostic patterns that ARE canonical: `User.java`, `Role.java`, `UserStatus
 - Always call a service method (e.g., `competitionService.updateCompetition(...)`) for state changes
 - Views keep basic `StringUtils.hasText()` checks for UX; delegate enforcement to services
 
+### Imports — no inline fully-qualified names
+- Always import the type/method and reference it by its simple name. Never use
+  `org.assertj.core.api.Assertions.assertThatThrownBy(...)` or
+  `} catch (jakarta.validation.ConstraintViolationException ex) {` inline.
+- Applies to types (`catch`, declarations, generics) and statics (assertions, matchers, factories).
+- Exceptions:
+  - When the simple name collides with another already-imported type in the same file (e.g. Spring's `org.springframework.security.core.userdetails.User` vs. domain `app.meads.identity.User`), keep the inline FQN rather than renaming the imported type.
+  - `package-info.java` annotations (e.g. `@org.springframework.modulith.ApplicationModule`) must be fully qualified — imports can't precede the package declaration.
+
 ---
 
 ## Testing Conventions

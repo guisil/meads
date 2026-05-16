@@ -19,6 +19,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @ApplicationModuleTest(mode = ApplicationModuleTest.BootstrapMode.DIRECT_DEPENDENCIES)
 @Import(TestcontainersConfiguration.class)
@@ -147,9 +148,53 @@ class EntryModuleTest {
         entryService.assignFinalCategory(entry.getId(), judgingCategory.getId(), admin.getId());
 
         // Deletion should be blocked by the guard
-        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+        assertThatThrownBy(() ->
                 competitionService.removeJudgingCategory(
                         division.getId(), judgingCategory.getId(), admin.getId()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.category.judging-has-entries");
+    }
+
+    @Test
+    void shouldPreventDeletionOfJudgingCategoryParentWhenChildReferencedByFinalCategoryId() {
+        var admin = userService.createUser("admin-parent-guard@test.com", "Admin",
+                UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
+        var competition = competitionService.createCompetition("Parent Guard Test", "parent-guard-test",
+                LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30), null, admin.getId());
+        var division = competitionService.createDivision(
+                competition.getId(), "Home", "home-parent-guard", ScoringSystem.MJP,
+                LocalDateTime.of(2026, 12, 31, 23, 59), "UTC", admin.getId());
+
+        competitionService.advanceDivisionStatus(division.getId(), admin.getId()); // → REGISTRATION_OPEN
+        var entrant = userService.createUser("entrant-parent-guard@test.com", "Entrant",
+                UserStatus.ACTIVE, Role.USER);
+        entryService.addCredits(division.getId(), entrant.getEmail(), 1, admin.getId());
+
+        var regSubCategory = competitionService.findDivisionCategories(division.getId()).stream()
+                .filter(c -> c.getScope() == CategoryScope.REGISTRATION && c.getParentId() != null)
+                .findFirst().orElseThrow();
+        var entry = entryService.createEntry(division.getId(), entrant.getId(),
+                "My Mead", regSubCategory.getId(), Sweetness.DRY, new BigDecimal("12.0"),
+                Carbonation.STILL, "Honey", null, false, null, null);
+
+        competitionService.advanceDivisionStatus(division.getId(), admin.getId()); // → REGISTRATION_CLOSED
+        competitionService.initializeJudgingCategories(division.getId(), admin.getId());
+
+        // Pick a JUDGING child + its parent
+        var judgingCategories = competitionService.findJudgingCategories(division.getId());
+        var judgingChild = judgingCategories.stream()
+                .filter(c -> c.getParentId() != null)
+                .findFirst().orElseThrow();
+        var judgingParent = judgingCategories.stream()
+                .filter(c -> c.getId().equals(judgingChild.getParentId()))
+                .findFirst().orElseThrow();
+
+        entryService.assignFinalCategory(entry.getId(), judgingChild.getId(), admin.getId());
+
+        // Deleting the PARENT should be blocked by the guard (because the CHILD is referenced)
+        assertThatThrownBy(() ->
+                competitionService.removeJudgingCategory(
+                        division.getId(), judgingParent.getId(), admin.getId()))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("error.category.judging-has-entries");
     }
