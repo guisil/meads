@@ -335,7 +335,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         });
         addButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, addButton);
         dialog.open();
     }
@@ -350,7 +350,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
 
         dialog.add(new VerticalLayout(amountField));
 
-        var saveButton = new Button("Save", e -> {
+        var saveButton = new Button(getTranslation("button.save"), e -> {
             if (amountField.getValue() == null || amountField.getValue() == 0) {
                 e.getSource().setEnabled(true);
                 return;
@@ -376,7 +376,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         });
         saveButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, saveButton);
         dialog.open();
     }
@@ -421,7 +421,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             downloadAnchor.getElement().setAttribute("download", true);
             downloadAnchor.getElement().addEventListener("click", ev -> dialog.close());
 
-            var cancelBtn = new Button("Cancel", ev -> dialog.close());
+            var cancelBtn = new Button(getTranslation("button.cancel"), ev -> dialog.close());
             dialog.getFooter().add(cancelBtn, downloadAnchor);
             dialog.open();
         });
@@ -874,7 +874,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         layout.add(readOnlyField(getTranslation("entry-admin.entries.view.entrant"), userService.findById(entry.getUserId()).getEmail()));
 
         dialog.add(layout);
-        dialog.getFooter().add(new Button("Close", e -> dialog.close()));
+        dialog.getFooter().add(new Button(getTranslation("button.close"), e -> dialog.close()));
         dialog.open();
     }
 
@@ -903,7 +903,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             confirmDialog.close();
             openEditEntryForm(entry);
         });
-        var cancelButton = new Button("Cancel", e -> confirmDialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> confirmDialog.close());
         confirmDialog.getFooter().add(cancelButton, proceedButton);
         confirmDialog.open();
     }
@@ -1016,7 +1016,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 finalCategorySelect);
         dialog.add(layout);
 
-        var saveButton = new Button("Save", e -> {
+        var saveButton = new Button(getTranslation("button.save"), e -> {
             if (!StringUtils.hasText(meadNameField.getValue())) {
                 meadNameField.setInvalid(true);
                 meadNameField.setErrorMessage(getTranslation("entry-admin.entries.edit.mead-name.error"));
@@ -1081,7 +1081,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         });
         saveButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, saveButton);
         dialog.open();
     }
@@ -1203,7 +1203,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         });
         confirmButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
         dialog.open();
     }
@@ -1335,7 +1335,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         });
         addButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, addButton);
         dialog.open();
     }
@@ -1353,7 +1353,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
 
         dialog.add(new VerticalLayout(nameField, creditsField));
 
-        var saveButton = new Button("Save", e -> {
+        var saveButton = new Button(getTranslation("button.save"), e -> {
             if (!StringUtils.hasText(nameField.getValue()) || creditsField.getValue() == null) {
                 e.getSource().setEnabled(true);
                 return;
@@ -1372,7 +1372,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         });
         saveButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, saveButton);
         dialog.open();
     }
@@ -1516,7 +1516,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
 
         dialog.add(new VerticalLayout(statusSelect, noteField));
 
-        var saveButton = new Button("Save", e -> {
+        var saveButton = new Button(getTranslation("button.save"), e -> {
             try {
                 entryService.updateOrderAdminDetails(order.getId(),
                         statusSelect.getValue(),
@@ -1534,7 +1534,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         });
         saveButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, saveButton);
         dialog.open();
     }

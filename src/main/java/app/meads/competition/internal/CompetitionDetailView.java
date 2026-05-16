@@ -394,7 +394,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         });
         confirmButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
         dialog.open();
     }
@@ -447,7 +447,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         form.setPadding(false);
         dialog.add(form);
 
-        var saveButton = new Button("Save", e -> {
+        var saveButton = new Button(getTranslation("button.save"), e -> {
             var selectedRoles = checkboxes.entrySet().stream()
                     .filter(entry -> entry.getValue().getValue())
                     .map(Map.Entry::getKey)
@@ -501,7 +501,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         });
         saveButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, saveButton);
         dialog.open();
     }
@@ -558,7 +558,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         });
         addButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
 
         var form = new VerticalLayout(emailField, nameField, meaderyField, countryCombo, roleSelect);
         form.setPadding(false);
@@ -706,7 +706,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
             logoSection.add(removeLogoButton);
         }
 
-        var saveButton = new Button("Save", e -> {
+        var saveButton = new Button(getTranslation("button.save"), e -> {
             if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
                 nameField.setErrorMessage(getTranslation("competition-detail.settings.name.error"));
@@ -822,7 +822,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         maxTotalField.setClearButtonVisible(true);
         maxTotalField.setHelperText(getTranslation("competition-detail.division.create.max-total.helper"));
 
-        var saveButton = new Button("Save", e -> {
+        var saveButton = new Button(getTranslation("button.save"), e -> {
             if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
                 nameField.setErrorMessage(getTranslation("competition-detail.division.create.name.error"));
@@ -871,7 +871,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         });
         saveButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
 
         var form = new VerticalLayout(nameField, shortNameField, scoringSelect,
                 maxPerSubcategoryField, maxPerMainCategoryField, maxTotalField,
@@ -904,7 +904,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         });
         confirmButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
         dialog.open();
     }
@@ -931,7 +931,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         });
         confirmButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
         dialog.open();
     }
@@ -1119,7 +1119,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
             urlField.setVisible(e.getValue() == DocumentType.LINK);
         });
 
-        var saveButton = new Button("Save", e -> {
+        var saveButton = new Button(getTranslation("button.save"), e -> {
             if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
                 nameField.setErrorMessage(getTranslation("competition-detail.documents.add.name.error"));
@@ -1154,7 +1154,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         });
         saveButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
 
         var form = new VerticalLayout(nameField, typeSelect, upload, urlField, languageCombo);
         form.setPadding(false);
@@ -1188,7 +1188,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         nameField.setValue(doc.getName());
         nameField.setWidthFull();
 
-        var saveButton = new Button("Save", e -> {
+        var saveButton = new Button(getTranslation("button.save"), e -> {
             if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
                 nameField.setErrorMessage(getTranslation("competition-detail.documents.edit.name.error"));
@@ -1209,7 +1209,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         });
         saveButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.add(nameField);
         dialog.getFooter().add(cancelButton, saveButton);
         dialog.open();

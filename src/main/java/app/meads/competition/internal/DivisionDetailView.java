@@ -359,7 +359,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         });
         addButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.add(content);
         dialog.getFooter().add(cancelButton, addButton);
         dialog.open();
@@ -386,7 +386,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         });
         confirmButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
         dialog.open();
     }
@@ -428,7 +428,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         });
         confirmButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
         dialog.open();
     }
@@ -545,7 +545,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
             customAddButton.setVisible(e.getSelectedTab().getLabel().equals(customTabLabel));
         });
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.add(dialogTabs);
         dialog.getFooter().add(cancelButton, catalogAddButton, customAddButton);
         dialog.open();
@@ -631,7 +631,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         statusField.setValue(division.getStatus().getDisplayName());
         statusField.setReadOnly(true);
 
-        var saveButton = new Button("Save", e -> {
+        var saveButton = new Button(getTranslation("button.save"), e -> {
             if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
                 nameField.setErrorMessage(getTranslation("division-detail.settings.name.error"));
@@ -713,7 +713,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         });
         confirmButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
         dialog.open();
     }
@@ -742,7 +742,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         });
         confirmButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
         dialog.open();
     }
