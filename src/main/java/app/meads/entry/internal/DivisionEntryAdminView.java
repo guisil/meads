@@ -12,9 +12,11 @@ import app.meads.identity.UserService;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dialog.Dialog;
+import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.html.Nav;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
@@ -39,6 +41,7 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.StreamResource;
 import com.vaadin.flow.spring.security.AuthenticationContext;
 import jakarta.annotation.security.PermitAll;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.util.StringUtils;
 
@@ -52,6 +55,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Route(value = "competitions/:compShortName/divisions/:divShortName/entry-admin", layout = MainLayout.class)
@@ -173,7 +177,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         if (competition.hasLogo()) {
             var dataUri = "data:" + competition.getLogoContentType() + ";base64,"
                     + java.util.Base64.getEncoder().encodeToString(competition.getLogo());
-            var logo = new com.vaadin.flow.component.html.Image(dataUri, competition.getName() + " logo");
+            var logo = new Image(dataUri, competition.getName() + " logo");
             logo.setHeight("64px");
             header.add(logo);
         }
@@ -209,7 +213,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         boolean registrationOpen = division.getStatus().allowsRegistrationActions();
         var addCreditsButton = new Button(getTranslation("entry-admin.credits.add"), e -> openAddCreditsDialog());
         addCreditsButton.setEnabled(registrationOpen);
-        com.vaadin.flow.component.Component addCreditsComponent;
+        Component addCreditsComponent;
         if (!registrationOpen) {
             var wrapper = new Span(addCreditsButton);
             wrapper.getStyle().set("display", "inline-block");
@@ -323,7 +327,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             } catch (BusinessRuleException ex) {
                 Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 e.getSource().setEnabled(true);
-            } catch (jakarta.validation.ConstraintViolationException ex) {
+            } catch (ConstraintViolationException ex) {
                 emailField.setInvalid(true);
                 emailField.setErrorMessage(getTranslation("entry-admin.credits.add.email.invalid"));
                 e.getSource().setEnabled(true);
@@ -331,7 +335,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         });
         addButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, addButton);
         dialog.open();
     }
@@ -346,7 +350,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
 
         dialog.add(new VerticalLayout(amountField));
 
-        var saveButton = new Button("Save", e -> {
+        var saveButton = new Button(getTranslation("button.save"), e -> {
             if (amountField.getValue() == null || amountField.getValue() == 0) {
                 e.getSource().setEnabled(true);
                 return;
@@ -372,7 +376,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         });
         saveButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, saveButton);
         dialog.open();
     }
@@ -405,7 +409,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             dialog.add(new Span(getTranslation("entry-admin.entries.download-all.confirm.body", qualifyingEntries.size())));
 
             var resource = new StreamResource("all-labels.pdf", () -> {
-                java.util.function.Function<UUID, DivisionCategory> resolver = id ->
+                Function<UUID, DivisionCategory> resolver = id ->
                         divisionCategories.stream()
                                 .filter(c -> c.getId().equals(id)).findFirst().orElse(null);
                 return new ByteArrayInputStream(
@@ -417,7 +421,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             downloadAnchor.getElement().setAttribute("download", true);
             downloadAnchor.getElement().addEventListener("click", ev -> dialog.close());
 
-            var cancelBtn = new Button("Cancel", ev -> dialog.close());
+            var cancelBtn = new Button(getTranslation("button.cancel"), ev -> dialog.close());
             dialog.getFooter().add(cancelBtn, downloadAnchor);
             dialog.open();
         });
@@ -692,7 +696,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         emailField.setMaxLength(255);
         emailField.setWidthFull();
 
-        var categorySelect = new com.vaadin.flow.component.select.Select<DivisionCategory>();
+        var categorySelect = new Select<DivisionCategory>();
         categorySelect.setLabel(getTranslation("entry-admin.entries.edit.category"));
         categorySelect.setWidthFull();
         var subcategories = divisionCategories.stream()
@@ -705,7 +709,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         meadNameField.setMaxLength(255);
         meadNameField.setWidthFull();
 
-        var sweetnessSelect = new com.vaadin.flow.component.select.Select<Sweetness>();
+        var sweetnessSelect = new Select<Sweetness>();
         sweetnessSelect.setLabel(getTranslation("entry-admin.entries.edit.sweetness"));
         sweetnessSelect.setItems(Sweetness.values());
         sweetnessSelect.setItemLabelGenerator(Sweetness::getDisplayName);
@@ -727,7 +731,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             }
         });
 
-        var carbonationSelect = new com.vaadin.flow.component.select.Select<Carbonation>();
+        var carbonationSelect = new Select<Carbonation>();
         carbonationSelect.setLabel(getTranslation("entry-admin.entries.edit.carbonation"));
         carbonationSelect.setItems(Carbonation.values());
         carbonationSelect.setItemLabelGenerator(Carbonation::getDisplayName);
@@ -741,7 +745,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         otherField.setMaxLength(255);
         otherField.setWidthFull();
 
-        var woodAgedCheckbox = new com.vaadin.flow.component.checkbox.Checkbox(getTranslation("entry-admin.entries.edit.wood-aged"));
+        var woodAgedCheckbox = new Checkbox(getTranslation("entry-admin.entries.edit.wood-aged"));
         var woodDetailsField = new TextField(getTranslation("entry-admin.entries.edit.wood-details"));
         woodDetailsField.setMaxLength(255);
         woodDetailsField.setWidthFull();
@@ -814,10 +818,11 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
                 refreshEntriesGrid();
+                refreshCreditsGrid();
             } catch (BusinessRuleException ex) {
                 Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 e.getSource().setEnabled(true);
-            } catch (jakarta.validation.ConstraintViolationException ex) {
+            } catch (ConstraintViolationException ex) {
                 emailField.setInvalid(true);
                 emailField.setErrorMessage(getTranslation("entry-admin.entries.add.email.error"));
                 e.getSource().setEnabled(true);
@@ -869,7 +874,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         layout.add(readOnlyField(getTranslation("entry-admin.entries.view.entrant"), userService.findById(entry.getUserId()).getEmail()));
 
         dialog.add(layout);
-        dialog.getFooter().add(new Button("Close", e -> dialog.close()));
+        dialog.getFooter().add(new Button(getTranslation("button.close"), e -> dialog.close()));
         dialog.open();
     }
 
@@ -898,7 +903,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             confirmDialog.close();
             openEditEntryForm(entry);
         });
-        var cancelButton = new Button("Cancel", e -> confirmDialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> confirmDialog.close());
         confirmDialog.getFooter().add(cancelButton, proceedButton);
         confirmDialog.open();
     }
@@ -994,10 +999,10 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         var judgingCategories = competitionService.findJudgingCategories(divisionId);
         var finalCategoryOptions = judgingCategories.isEmpty() ? divisionCategories : judgingCategories;
         var finalCategorySelect = new Select<DivisionCategory>();
-        finalCategorySelect.setLabel("Final Category");
+        finalCategorySelect.setLabel(getTranslation("entry-admin.entries.edit.final-category"));
         finalCategorySelect.setWidthFull();
         finalCategorySelect.setEmptySelectionAllowed(true);
-        finalCategorySelect.setEmptySelectionCaption("— Not assigned —");
+        finalCategorySelect.setEmptySelectionCaption(getTranslation("entry-admin.entries.edit.final-category.unset"));
         finalCategorySelect.setItemLabelGenerator(dc ->
                 dc != null ? dc.getCode() + " — " + dc.getName() : "");
         finalCategorySelect.setItems(finalCategoryOptions);
@@ -1011,7 +1016,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 finalCategorySelect);
         dialog.add(layout);
 
-        var saveButton = new Button("Save", e -> {
+        var saveButton = new Button(getTranslation("button.save"), e -> {
             if (!StringUtils.hasText(meadNameField.getValue())) {
                 meadNameField.setInvalid(true);
                 meadNameField.setErrorMessage(getTranslation("entry-admin.entries.edit.mead-name.error"));
@@ -1076,7 +1081,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         });
         saveButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, saveButton);
         dialog.open();
     }
@@ -1095,6 +1100,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
                 refreshEntriesGrid();
+                refreshCreditsGrid();
             } catch (BusinessRuleException ex) {
                 Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 e.getSource().setEnabled(true);
@@ -1157,6 +1163,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
                 refreshEntriesGrid();
+                refreshCreditsGrid();
             } catch (BusinessRuleException ex) {
                 Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 e.getSource().setEnabled(true);
@@ -1164,6 +1171,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 Notification.show(getTranslation("entry-admin.entries.status-changed"));
                 dialog.close();
                 refreshEntriesGrid();
+                refreshCreditsGrid();
             }
         });
         confirmButton.setDisableOnClick(true);
@@ -1187,6 +1195,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
                 refreshEntriesGrid();
+                refreshCreditsGrid();
             } catch (BusinessRuleException ex) {
                 Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
                 e.getSource().setEnabled(true);
@@ -1194,7 +1203,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         });
         confirmButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
         dialog.open();
     }
@@ -1248,7 +1257,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 editButton.addClickListener(e -> openEditProductDialog(mapping));
                 deleteButton.setTooltipText(getTranslation("entry-admin.entries.action.delete.tooltip"));
                 deleteButton.addClickListener(e -> openDeleteProductDialog(mapping));
-                return (com.vaadin.flow.component.Component) new HorizontalLayout(editButton, deleteButton);
+                return (Component) new HorizontalLayout(editButton, deleteButton);
             }
             var editWrapper = new Span(editButton);
             editWrapper.getStyle().set("display", "inline-block");
@@ -1326,7 +1335,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         });
         addButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, addButton);
         dialog.open();
     }
@@ -1344,7 +1353,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
 
         dialog.add(new VerticalLayout(nameField, creditsField));
 
-        var saveButton = new Button("Save", e -> {
+        var saveButton = new Button(getTranslation("button.save"), e -> {
             if (!StringUtils.hasText(nameField.getValue()) || creditsField.getValue() == null) {
                 e.getSource().setEnabled(true);
                 return;
@@ -1363,7 +1372,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         });
         saveButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, saveButton);
         dialog.open();
     }
@@ -1507,7 +1516,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
 
         dialog.add(new VerticalLayout(statusSelect, noteField));
 
-        var saveButton = new Button("Save", e -> {
+        var saveButton = new Button(getTranslation("button.save"), e -> {
             try {
                 entryService.updateOrderAdminDetails(order.getId(),
                         statusSelect.getValue(),
@@ -1525,7 +1534,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         });
         saveButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, saveButton);
         dialog.open();
     }

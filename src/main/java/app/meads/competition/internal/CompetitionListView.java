@@ -183,7 +183,7 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
             }
         }
 
-        var submitButton = new Button("Save", e -> {
+        var submitButton = new Button(getTranslation("button.save"), e -> {
             if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
                 nameField.setErrorMessage(getTranslation("competition-list.dialog.name.error"));
@@ -241,7 +241,7 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
         });
         submitButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
 
         var form = new VerticalLayout(nameField, shortNameField, startDatePicker, endDatePicker, locationField, logoSection);
         form.setPadding(false);
@@ -260,7 +260,7 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
             dialog.add(getTranslation("competition-list.delete.confirm.with-participants", competition.getName(), participants.size()));
         }
 
-        var confirmButton = new Button("Delete", e -> {
+        var confirmButton = new Button(getTranslation("button.delete"), e -> {
             try {
                 competitionService.deleteCompetition(competition.getId(), getCurrentUserId());
                 refreshGrid();
@@ -275,7 +275,7 @@ public class CompetitionListView extends VerticalLayout implements BeforeEnterOb
         });
         confirmButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
         dialog.open();
     }

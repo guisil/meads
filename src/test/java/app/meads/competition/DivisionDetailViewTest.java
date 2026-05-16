@@ -21,6 +21,7 @@ import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.treegrid.TreeGrid;
+import com.vaadin.flow.data.provider.hierarchy.HierarchicalQuery;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Nav;
 import com.vaadin.flow.component.html.Span;
@@ -257,7 +258,7 @@ class DivisionDetailViewTest {
 
         var dataProvider = grid.getDataProvider();
         var rootItems = dataProvider.fetchChildren(
-                new com.vaadin.flow.data.provider.hierarchy.HierarchicalQuery<>(
+                new HierarchicalQuery<>(
                         null, null)).toList();
         assertThat(rootItems).hasSize(2);
         assertThat(rootItems.get(0).getCode()).isEqualTo("M1A");
@@ -537,7 +538,7 @@ class DivisionDetailViewTest {
         assertThat(judgingGrid).isNotNull();
 
         var rootItems = judgingGrid.getDataProvider().fetchChildren(
-                new com.vaadin.flow.data.provider.hierarchy.HierarchicalQuery<>(null, null))
+                new HierarchicalQuery<>(null, null))
                 .toList();
         assertThat(rootItems).hasSize(1);
         assertThat(rootItems.getFirst().getCode()).isEqualTo("CX1");

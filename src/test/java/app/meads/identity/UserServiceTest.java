@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.ArrayList;
@@ -203,12 +204,12 @@ class UserServiceTest {
                 new User("a@example.com", "A", UserStatus.ACTIVE, Role.USER),
                 new User("b@example.com", "B", UserStatus.PENDING, Role.SYSTEM_ADMIN)
         );
-        given(userRepository.findAll(any(org.springframework.data.domain.Sort.class))).willReturn(users);
+        given(userRepository.findAll(any(Sort.class))).willReturn(users);
 
         List<User> result = userService.findAll();
 
         assertThat(result).hasSize(2);
-        then(userRepository).should().findAll(any(org.springframework.data.domain.Sort.class));
+        then(userRepository).should().findAll(any(Sort.class));
     }
 
     @Test
@@ -529,5 +530,43 @@ class UserServiceTest {
         assertThat(user.isMfaEnabled()).isFalse();
         assertThat(user.getTotpSecret()).isNull();
         then(userRepository).should().save(user);
+    }
+
+    @Test
+    void shouldCompleteMfaResetByToken() {
+        var user = new User("admin@example.com", "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
+        user.enableMfa("TESTSECRET");
+        given(jwtMagicLinkService.extractEmail("valid-token")).willReturn("admin@example.com");
+        given(userRepository.findByEmail("admin@example.com")).willReturn(Optional.of(user));
+        given(userRepository.save(any(User.class))).willAnswer(inv -> inv.getArgument(0));
+
+        var email = userService.completeMfaReset("valid-token");
+
+        assertThat(email).isEqualTo("admin@example.com");
+        assertThat(user.isMfaEnabled()).isFalse();
+        assertThat(user.getTotpSecret()).isNull();
+        then(userRepository).should().save(user);
+    }
+
+    @Test
+    void shouldRejectCompleteMfaResetWhenTokenInvalid() {
+        given(jwtMagicLinkService.extractEmail("bad-token"))
+                .willThrow(new io.jsonwebtoken.JwtException("expired"));
+
+        assertThatThrownBy(() -> userService.completeMfaReset("bad-token"))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.mfa.reset.invalid-token");
+        then(userRepository).should(never()).save(any());
+    }
+
+    @Test
+    void shouldRejectCompleteMfaResetWhenUserNotFound() {
+        given(jwtMagicLinkService.extractEmail("valid-token")).willReturn("ghost@example.com");
+        given(userRepository.findByEmail("ghost@example.com")).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.completeMfaReset("valid-token"))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.mfa.reset.invalid-token");
+        then(userRepository).should(never()).save(any());
     }
 }

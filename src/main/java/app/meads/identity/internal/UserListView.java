@@ -180,7 +180,7 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
             }
         });
 
-        Button cancelButton = new Button("Cancel");
+        Button cancelButton = new Button(getTranslation("button.cancel"));
         cancelButton.addClickListener(e -> dialog.close());
 
         dialog.add(content);
@@ -279,7 +279,7 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
         }
 
         var statusSelectRef = statusSelect;
-        Button saveButton = new Button("Save");
+        Button saveButton = new Button(getTranslation("button.save"));
         saveButton.setDisableOnClick(true);
         saveButton.addClickListener(e -> {
             if (isCreate && !StringUtils.hasText(emailField.getValue())) {
@@ -353,7 +353,7 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
             }
         });
 
-        Button cancelButton = new Button("Cancel");
+        Button cancelButton = new Button(getTranslation("button.cancel"));
         cancelButton.addClickListener(e -> dialog.close());
 
         VerticalLayout formLayout = new VerticalLayout();

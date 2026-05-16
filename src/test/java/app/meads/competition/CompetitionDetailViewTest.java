@@ -26,6 +26,7 @@ import com.vaadin.flow.component.combobox.MultiSelectComboBox;
 import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.tabs.TabSheet;
 import com.vaadin.flow.component.textfield.TextArea;
+import com.vaadin.flow.component.treegrid.TreeGrid;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.upload.Upload;
 import com.vaadin.flow.server.VaadinServletRequest;
@@ -191,7 +192,7 @@ class CompetitionDetailViewTest {
 
         @SuppressWarnings("unchecked")
         var grid = (Grid<Participant>) _find(Grid.class).stream()
-                .filter(g -> !(g instanceof com.vaadin.flow.component.treegrid.TreeGrid))
+                .filter(g -> !(g instanceof TreeGrid))
                 .reduce((first, second) -> second) // get the last non-TreeGrid
                 .orElseThrow();
         var headers = grid.getColumns().stream()
@@ -327,7 +328,7 @@ class CompetitionDetailViewTest {
 
         @SuppressWarnings("unchecked")
         var grid = (Grid<CompetitionDocument>) _find(Grid.class).stream()
-                .filter(g -> !(g instanceof com.vaadin.flow.component.treegrid.TreeGrid))
+                .filter(g -> !(g instanceof TreeGrid))
                 .reduce((first, second) -> second)
                 .orElseThrow();
         assertThat(grid.getGenericDataView().getItems().count()).isEqualTo(1);

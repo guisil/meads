@@ -40,6 +40,7 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.upload.Upload;
 import com.vaadin.flow.server.StreamResource;
 import com.vaadin.flow.server.streams.UploadHandler;
+import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
@@ -187,11 +188,11 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
     private String formatDateRange() {
         var start = competition.getStartDate();
         var end = competition.getEndDate();
-        var formatter = java.time.format.DateTimeFormatter.ofPattern("MMM d, yyyy", java.util.Locale.ENGLISH);
+        var formatter = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.ENGLISH);
 
         if (start.getMonth() == end.getMonth() && start.getYear() == end.getYear()) {
-            return start.format(java.time.format.DateTimeFormatter.ofPattern("MMM d", java.util.Locale.ENGLISH))
-                    + "–" + end.format(java.time.format.DateTimeFormatter.ofPattern("d, yyyy", java.util.Locale.ENGLISH));
+            return start.format(DateTimeFormatter.ofPattern("MMM d", Locale.ENGLISH))
+                    + "–" + end.format(DateTimeFormatter.ofPattern("d, yyyy", Locale.ENGLISH));
         }
         return start.format(formatter) + " – " + end.format(formatter);
     }
@@ -272,7 +273,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
         var filterField = new TextField();
         filterField.setPlaceholder(getTranslation("competition-detail.participants.filter.placeholder"));
-        filterField.setValueChangeMode(com.vaadin.flow.data.value.ValueChangeMode.EAGER);
+        filterField.setValueChangeMode(ValueChangeMode.EAGER);
         filterField.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
         filterField.setClearButtonVisible(true);
 
@@ -394,7 +395,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         });
         confirmButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
         dialog.open();
     }
@@ -447,7 +448,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         form.setPadding(false);
         dialog.add(form);
 
-        var saveButton = new Button("Save", e -> {
+        var saveButton = new Button(getTranslation("button.save"), e -> {
             var selectedRoles = checkboxes.entrySet().stream()
                     .filter(entry -> entry.getValue().getValue())
                     .map(Map.Entry::getKey)
@@ -501,7 +502,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         });
         saveButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, saveButton);
         dialog.open();
     }
@@ -558,7 +559,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         });
         addButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
 
         var form = new VerticalLayout(emailField, nameField, meaderyField, countryCombo, roleSelect);
         form.setPadding(false);
@@ -724,7 +725,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
             logoSection.add(removeLogoButton);
         }
 
-        var saveButton = new Button("Save", e -> {
+        var saveButton = new Button(getTranslation("button.save"), e -> {
             if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
                 nameField.setErrorMessage(getTranslation("competition-detail.settings.name.error"));
@@ -842,7 +843,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         maxTotalField.setClearButtonVisible(true);
         maxTotalField.setHelperText(getTranslation("competition-detail.division.create.max-total.helper"));
 
-        var saveButton = new Button("Save", e -> {
+        var saveButton = new Button(getTranslation("button.save"), e -> {
             if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
                 nameField.setErrorMessage(getTranslation("competition-detail.division.create.name.error"));
@@ -891,7 +892,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         });
         saveButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
 
         var form = new VerticalLayout(nameField, shortNameField, scoringSelect,
                 maxPerSubcategoryField, maxPerMainCategoryField, maxTotalField,
@@ -924,7 +925,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         });
         confirmButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
         dialog.open();
     }
@@ -951,7 +952,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         });
         confirmButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
         dialog.open();
     }
@@ -1139,7 +1140,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
             urlField.setVisible(e.getValue() == DocumentType.LINK);
         });
 
-        var saveButton = new Button("Save", e -> {
+        var saveButton = new Button(getTranslation("button.save"), e -> {
             if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
                 nameField.setErrorMessage(getTranslation("competition-detail.documents.add.name.error"));
@@ -1174,7 +1175,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         });
         saveButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
 
         var form = new VerticalLayout(nameField, typeSelect, upload, urlField, languageCombo);
         form.setPadding(false);
@@ -1185,7 +1186,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
     private void moveDocument(Grid<CompetitionDocument> grid, CompetitionDocument doc, int direction) {
         var docs = competitionService.getDocuments(competitionId);
-        var ids = docs.stream().map(CompetitionDocument::getId).collect(java.util.stream.Collectors.toList());
+        var ids = docs.stream().map(CompetitionDocument::getId).collect(Collectors.toList());
         int currentIndex = ids.indexOf(doc.getId());
         int targetIndex = currentIndex + direction;
         if (targetIndex < 0 || targetIndex >= ids.size()) return;
@@ -1208,7 +1209,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         nameField.setValue(doc.getName());
         nameField.setWidthFull();
 
-        var saveButton = new Button("Save", e -> {
+        var saveButton = new Button(getTranslation("button.save"), e -> {
             if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
                 nameField.setErrorMessage(getTranslation("competition-detail.documents.edit.name.error"));
@@ -1229,7 +1230,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         });
         saveButton.setDisableOnClick(true);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.add(nameField);
         dialog.getFooter().add(cancelButton, saveButton);
         dialog.open();

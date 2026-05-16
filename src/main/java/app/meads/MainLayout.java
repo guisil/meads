@@ -110,12 +110,12 @@ public class MainLayout extends AppLayout {
         var nav = new SideNav();
 
         if (authenticationContext.hasRole("SYSTEM_ADMIN")) {
-            nav.addItem(new SideNavItem("Competitions", "competitions", VaadinIcon.CALENDAR.create())); // Admin-only, no i18n
-            nav.addItem(new SideNavItem("Users", "users", VaadinIcon.USERS.create())); // Admin-only, no i18n
+            nav.addItem(new SideNavItem(getTranslation("nav.competitions"), "competitions", VaadinIcon.CALENDAR.create()));
+            nav.addItem(new SideNavItem(getTranslation("nav.users"), "users", VaadinIcon.USERS.create()));
         } else if (authenticationContext.isAuthenticated()) {
             var email = authenticationContext.getPrincipalName().orElse("");
             if (competitionAdminChecker.hasAdminCompetitions(email)) {
-                nav.addItem(new SideNavItem("My Competitions", "my-competitions", VaadinIcon.CALENDAR.create())); // Admin-only, no i18n
+                nav.addItem(new SideNavItem(getTranslation("nav.my-competitions"), "my-competitions", VaadinIcon.CALENDAR.create()));
             }
         }
 

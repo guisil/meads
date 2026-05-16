@@ -3,6 +3,7 @@ package app.meads.identity;
 import app.meads.BusinessRuleException;
 import app.meads.identity.internal.TotpService;
 import app.meads.identity.internal.UserRepository;
+import io.jsonwebtoken.JwtException;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -187,6 +188,25 @@ public class UserService {
         user.disableMfa();
         userRepository.save(user);
         log.info("MFA disabled for user: {}", userId);
+    }
+
+    public String completeMfaReset(@NotBlank String token) {
+        String email;
+        try {
+            email = jwtMagicLinkService.extractEmail(token);
+        } catch (JwtException ex) {
+            log.warn("Rejected MFA reset with invalid token: {}", ex.getMessage());
+            throw new BusinessRuleException("error.mfa.reset.invalid-token");
+        }
+        var user = userRepository.findByEmail(email)
+                .orElseThrow(() -> {
+                    log.warn("Rejected MFA reset for unknown email: {}", email);
+                    return new BusinessRuleException("error.mfa.reset.invalid-token");
+                });
+        user.disableMfa();
+        userRepository.save(user);
+        log.info("MFA disabled via reset token for user: {}", email);
+        return email;
     }
 
     private void validatePassword(String rawPassword) {

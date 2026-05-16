@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 
 import javax.imageio.ImageIO;
 import java.awt.Color;
+import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
@@ -320,9 +321,9 @@ public class LabelPdfService {
         var binaryImage = MatrixToImageWriter.toBufferedImage(bitMatrix);
 
         // ZXing produces TYPE_BYTE_BINARY images which OpenPDF cannot embed — convert to RGB
-        var rgbImage = new java.awt.image.BufferedImage(
+        var rgbImage = new BufferedImage(
                 binaryImage.getWidth(), binaryImage.getHeight(),
-                java.awt.image.BufferedImage.TYPE_INT_RGB);
+                BufferedImage.TYPE_INT_RGB);
         var g = rgbImage.createGraphics();
         g.drawImage(binaryImage, 0, 0, null);
         g.dispose();

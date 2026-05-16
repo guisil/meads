@@ -20,6 +20,8 @@ public interface EmailService {
 
     void sendPasswordReset(String recipientEmail, Locale locale);
 
+    void sendMfaReset(String recipientEmail, Locale locale);
+
     void sendCredentialsReminder(String recipientEmail, Locale locale);
 
     void sendPasswordSetup(String recipientEmail, String competitionName, String contactEmail, Locale locale);

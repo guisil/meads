@@ -318,6 +318,44 @@ class WebhookServiceTest {
     }
 
     @Test
+    void shouldFlagRegistrationClosedWhenDivisionPastRegistrationOpen() {
+        var service = createService();
+        var competitionId = UUID.randomUUID();
+        var divisionId = UUID.randomUUID();
+        var division = new Division(competitionId, "Home", "home", ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
+        division.advanceStatus(); // DRAFT → REGISTRATION_OPEN
+        division.advanceStatus(); // REGISTRATION_OPEN → REGISTRATION_CLOSED
+        var user = new User("late@test.com", "Late Buyer", UserStatus.ACTIVE, Role.USER);
+        var mapping = new ProductMapping(divisionId, "101", "SKU-001", "Entry Pack", 1);
+
+        var payload = buildPayload("ORDER-LATE", "late@test.com", "Late Buyer",
+                buildProduct("101", "SKU-001", "Entry Pack", 2));
+
+        given(orderRepository.existsByJumpsellerOrderId("ORDER-LATE")).willReturn(false);
+        given(orderRepository.save(any(JumpsellerOrder.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(productMappingRepository.findByJumpsellerProductId("101"))
+                .willReturn(List.of(mapping));
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(userService.findOrCreateByEmail("late@test.com", "Late Buyer")).willReturn(user);
+        given(lineItemRepository.save(any(JumpsellerOrderLineItem.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.processOrderPaid(payload);
+
+        // Line item should be NEEDS_REVIEW with intended credits preserved (quantity 2 × creditsPerUnit 1 = 2)
+        var lineItemCaptor = ArgumentCaptor.forClass(JumpsellerOrderLineItem.class);
+        then(lineItemRepository).should().save(lineItemCaptor.capture());
+        assertThat(lineItemCaptor.getValue().getStatus()).isEqualTo(LineItemStatus.NEEDS_REVIEW);
+        assertThat(lineItemCaptor.getValue().getReviewReason()).contains("Registration closed");
+        assertThat(lineItemCaptor.getValue().getCreditsAwarded()).isEqualTo(2);
+
+        // No credits, no ENTRANT promotion, no credits-awarded event
+        then(creditRepository).should(never()).save(any());
+        then(competitionService).should(never()).ensureEntrantParticipant(any(), any());
+    }
+
+    @Test
     void shouldCreateUserForUnknownEmail() {
         var service = createService();
         var divisionId = UUID.randomUUID();

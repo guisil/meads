@@ -288,6 +288,29 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] Navigate to `/profile`
 - [ ] **Expected:** No "Two-Factor Authentication" section (only visible for SYSTEM_ADMIN)
 
+### MFA email reset ("Lost your device?")
+
+Pre-requisite: enable MFA on `admin@example.com` first (see "MFA setup" above).
+
+- [ ] Log out. Log in as `admin@example.com` / `admin`
+- [ ] **Expected:** redirected to `/mfa`
+- [ ] **Expected:** A "Lost your device?" button is visible below the Verify button (small, tertiary style)
+- [ ] Click "Lost your device?"
+- [ ] **Expected:** notification "If your account has 2FA enabled, a reset link has been emailed to you. Check your inbox."
+- [ ] **Check Mailpit:** email "Disable two-factor authentication on your MEADS account" arrives, body explains the link is valid for 1 hour, CTA button "Disable 2FA"
+- [ ] Click "Lost your device?" again immediately
+- [ ] **Expected:** notification still shown but no second email in Mailpit (rate-limited, 5 min cooldown)
+- [ ] Click the **Disable 2FA** button in the email — opens `/mfa-reset?token=...`
+- [ ] **Expected:** page shows heading "Two-Factor Authentication Disabled", body confirming the disable, "Continue to Login" button
+- [ ] Click "Continue to Login" — navigates to `/login`
+- [ ] Log in as `admin@example.com` / `admin`
+- [ ] **Expected:** straight to `/competitions` (no `/mfa` step — MFA is now disabled)
+- [ ] Navigate to `/profile` — **Expected:** "2FA is not enabled" + "Set Up 2FA" button (status reset)
+- [ ] **Test invalid token:** open `/mfa-reset?token=garbage.token.here` in a fresh tab
+- [ ] **Expected:** page shows heading "Reset Link Problem" + red error "The 2FA reset link is invalid or has expired. Request a new one." + Continue to Login button
+- [ ] **Test missing token:** open `/mfa-reset` (no query param)
+- [ ] **Expected:** forwarded to `/login` (no error shown)
+
 ---
 
 ## 3. Navigation & Layout
@@ -912,6 +935,20 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] **Expected:** Page loads (user has credits in this division, so MyEntriesView would be accessible, but DivisionDetailView requires ADMIN)
 - [ ] **Note:** Check whether regular entrant can see division detail or is redirected
 
+### Judging Categories tab (status ≥ REGISTRATION_CLOSED)
+
+- [ ] Advance Amadora to REGISTRATION_CLOSED first (Advance Status button)
+- [ ] **Expected:** TabSheet now has three tabs: Categories, Judging Categories, Settings; default selected is Judging Categories
+- [ ] **Expected:** Categories tab (registration categories) is read-only — no Add or Remove buttons
+- [ ] **Initialize:** Judging Categories tab shows "Initialize Judging Categories" button (no grid yet)
+- [ ] Click "Initialize Judging Categories" — **Expected:** grid populated with clones of the registration categories (same codes/names/parent hierarchy); "Add Judging Category" button appears; init button disappears
+- [ ] **Add Judging Category:** dialog with Code → Name → Description → Parent (optional) fields stacked vertically; blank fields show per-field errors; successful add appears in grid
+- [ ] **Remove (leaf):** X icon → "Remove \"CX1 — ...\"?" confirm → "Judging category removed" notification; row gone
+- [ ] **Assign Final Category on an entry:** go to Entries tab on Entry Admin → edit a SUBMITTED entry → Final Category dropdown lists JUDGING-scope categories (clearable); pick one, Save; entry's Final Category column updates from "—" to the picked code
+- [ ] **Deletion guard (leaf):** try to remove the judging category assigned to the entry — **Expected:** error notification "Cannot remove judging category: it is referenced by one or more entries"; row stays
+- [ ] **Deletion guard (parent of referenced child):** try to remove the PARENT of the assigned judging category — **Expected:** same friendly error notification (NOT a stack trace or silent failure); row stays
+- [ ] **Cleanup:** clear the Final Category on the entry (set to empty, Save), then re-attempt the leaf remove → success
+
 ---
 
 ## 8. Entry Admin (Amadora)
@@ -1081,6 +1118,7 @@ CTA button, fallback URL, and optional contact footer.
 - [ ] **Expected:** Full entry form dialog opens with: Entrant Email, Category (subcategories only), Mead Name, Sweetness, ABV, Strength (read-only, auto-updates with ABV), Carbonation, Honey Varieties, Other Ingredients, Wood Aged checkbox, Wood Ageing Details, Additional Information
 - [ ] Enter email `entrant@example.com`, fill all required fields, click "Add Entry"
 - [ ] **Expected:** Notification "Entry added" (green), entry appears in grid, summary row updates
+- [ ] Click the "Credits" tab — **Expected:** `entrant@example.com` row shows the new entry count (e.g. 2 instead of 1) without manual refresh. Repeat the round trip after deleting/withdrawing/reverting an entry — the Credits tab Entries column must stay in sync.
 - [ ] Try entering an unknown email (e.g. `unknown@example.com`) and submitting
 - [ ] **Expected:** Error notification "User not found" (or similar)
 - [ ] Leave required fields empty and click "Add Entry"
@@ -1256,6 +1294,30 @@ curl -s -o /dev/null -w "%{http_code}" \
   - Amadora Orders tab: `WH-005` appears with status PARTIALLY_PROCESSED
 - [ ] **Check Mailpit:** admin alert email(s) sent for PARTIALLY_PROCESSED order, body includes competition name and affected division(s)
 - [ ] **Check Mailpit:** credit notification email sent to `newbuyer@example.com` for 2 credits in Amadora (the processed portion)
+
+### Registration-closed division — flagged
+
+Advance Amadora to REGISTRATION_CLOSED first (DivisionDetailView > Advance Status).
+Then post an order targeting Amadora (product `1001`).
+
+```bash
+PAYLOAD5='{"order":{"id":"WH-006","customer":{"email":"latebuyer@example.com"},"shipping_address":{"name":"Late","surname":"Buyer"},"products":[{"id":"1001","sku":"CHIP-AMA","name":"CHIP Amadora Entry","qty":2}]}}'
+SIGNATURE5=$(sign "$PAYLOAD5")
+
+curl -s -o /dev/null -w "%{http_code}" \
+  -X POST http://localhost:8080/api/webhooks/jumpseller/order-paid \
+  -H "Content-Type: application/json" \
+  -H "Jumpseller-Hmac-Sha256: $SIGNATURE5" \
+  -d "$PAYLOAD5"
+```
+
+- [ ] **Expected:** HTTP 200
+- [ ] Verify in UI (Amadora entry-admin):
+  - **Orders tab:** `WH-006` appears with status NEEDS_REVIEW; Review Reason column / tooltip reads "Registration closed: division no longer accepting new credits"
+  - **Credits tab:** `latebuyer@example.com` does NOT appear (no credits awarded)
+  - **Users grid:** `latebuyer@example.com` exists (created by webhook) but is NOT a participant in CHIP 2026
+- [ ] **Check Mailpit:** admin alert email sent for NEEDS_REVIEW order. No "Entry credits received" email sent to `latebuyer@example.com`
+- [ ] Revert Amadora back to REGISTRATION_OPEN after testing (if entries exist this is blocked — leave closed and continue with later tests, or test on a fresh division)
 
 ---
 
