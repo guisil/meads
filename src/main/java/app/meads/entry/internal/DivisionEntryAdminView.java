@@ -12,9 +12,11 @@ import app.meads.identity.UserService;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dialog.Dialog;
+import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.html.Nav;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
@@ -53,6 +55,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Route(value = "competitions/:compShortName/divisions/:divShortName/entry-admin", layout = MainLayout.class)
@@ -174,7 +177,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         if (competition.hasLogo()) {
             var dataUri = "data:" + competition.getLogoContentType() + ";base64,"
                     + java.util.Base64.getEncoder().encodeToString(competition.getLogo());
-            var logo = new com.vaadin.flow.component.html.Image(dataUri, competition.getName() + " logo");
+            var logo = new Image(dataUri, competition.getName() + " logo");
             logo.setHeight("64px");
             header.add(logo);
         }
@@ -210,7 +213,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         boolean registrationOpen = division.getStatus().allowsRegistrationActions();
         var addCreditsButton = new Button(getTranslation("entry-admin.credits.add"), e -> openAddCreditsDialog());
         addCreditsButton.setEnabled(registrationOpen);
-        com.vaadin.flow.component.Component addCreditsComponent;
+        Component addCreditsComponent;
         if (!registrationOpen) {
             var wrapper = new Span(addCreditsButton);
             wrapper.getStyle().set("display", "inline-block");
@@ -406,7 +409,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             dialog.add(new Span(getTranslation("entry-admin.entries.download-all.confirm.body", qualifyingEntries.size())));
 
             var resource = new StreamResource("all-labels.pdf", () -> {
-                java.util.function.Function<UUID, DivisionCategory> resolver = id ->
+                Function<UUID, DivisionCategory> resolver = id ->
                         divisionCategories.stream()
                                 .filter(c -> c.getId().equals(id)).findFirst().orElse(null);
                 return new ByteArrayInputStream(
@@ -693,7 +696,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         emailField.setMaxLength(255);
         emailField.setWidthFull();
 
-        var categorySelect = new com.vaadin.flow.component.select.Select<DivisionCategory>();
+        var categorySelect = new Select<DivisionCategory>();
         categorySelect.setLabel(getTranslation("entry-admin.entries.edit.category"));
         categorySelect.setWidthFull();
         var subcategories = divisionCategories.stream()
@@ -706,7 +709,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         meadNameField.setMaxLength(255);
         meadNameField.setWidthFull();
 
-        var sweetnessSelect = new com.vaadin.flow.component.select.Select<Sweetness>();
+        var sweetnessSelect = new Select<Sweetness>();
         sweetnessSelect.setLabel(getTranslation("entry-admin.entries.edit.sweetness"));
         sweetnessSelect.setItems(Sweetness.values());
         sweetnessSelect.setItemLabelGenerator(Sweetness::getDisplayName);
@@ -728,7 +731,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             }
         });
 
-        var carbonationSelect = new com.vaadin.flow.component.select.Select<Carbonation>();
+        var carbonationSelect = new Select<Carbonation>();
         carbonationSelect.setLabel(getTranslation("entry-admin.entries.edit.carbonation"));
         carbonationSelect.setItems(Carbonation.values());
         carbonationSelect.setItemLabelGenerator(Carbonation::getDisplayName);
@@ -742,7 +745,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         otherField.setMaxLength(255);
         otherField.setWidthFull();
 
-        var woodAgedCheckbox = new com.vaadin.flow.component.checkbox.Checkbox(getTranslation("entry-admin.entries.edit.wood-aged"));
+        var woodAgedCheckbox = new Checkbox(getTranslation("entry-admin.entries.edit.wood-aged"));
         var woodDetailsField = new TextField(getTranslation("entry-admin.entries.edit.wood-details"));
         woodDetailsField.setMaxLength(255);
         woodDetailsField.setWidthFull();
@@ -1254,7 +1257,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 editButton.addClickListener(e -> openEditProductDialog(mapping));
                 deleteButton.setTooltipText(getTranslation("entry-admin.entries.action.delete.tooltip"));
                 deleteButton.addClickListener(e -> openDeleteProductDialog(mapping));
-                return (com.vaadin.flow.component.Component) new HorizontalLayout(editButton, deleteButton);
+                return (Component) new HorizontalLayout(editButton, deleteButton);
             }
             var editWrapper = new Span(editButton);
             editWrapper.getStyle().set("display", "inline-block");

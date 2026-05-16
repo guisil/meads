@@ -39,6 +39,7 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.upload.Upload;
 import com.vaadin.flow.server.StreamResource;
 import com.vaadin.flow.server.streams.UploadHandler;
+import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
@@ -186,11 +187,11 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
     private String formatDateRange() {
         var start = competition.getStartDate();
         var end = competition.getEndDate();
-        var formatter = java.time.format.DateTimeFormatter.ofPattern("MMM d, yyyy", java.util.Locale.ENGLISH);
+        var formatter = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.ENGLISH);
 
         if (start.getMonth() == end.getMonth() && start.getYear() == end.getYear()) {
-            return start.format(java.time.format.DateTimeFormatter.ofPattern("MMM d", java.util.Locale.ENGLISH))
-                    + "–" + end.format(java.time.format.DateTimeFormatter.ofPattern("d, yyyy", java.util.Locale.ENGLISH));
+            return start.format(DateTimeFormatter.ofPattern("MMM d", Locale.ENGLISH))
+                    + "–" + end.format(DateTimeFormatter.ofPattern("d, yyyy", Locale.ENGLISH));
         }
         return start.format(formatter) + " – " + end.format(formatter);
     }
@@ -271,7 +272,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
         var filterField = new TextField();
         filterField.setPlaceholder(getTranslation("competition-detail.participants.filter.placeholder"));
-        filterField.setValueChangeMode(com.vaadin.flow.data.value.ValueChangeMode.EAGER);
+        filterField.setValueChangeMode(ValueChangeMode.EAGER);
         filterField.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
         filterField.setClearButtonVisible(true);
 
@@ -1164,7 +1165,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
 
     private void moveDocument(Grid<CompetitionDocument> grid, CompetitionDocument doc, int direction) {
         var docs = competitionService.getDocuments(competitionId);
-        var ids = docs.stream().map(CompetitionDocument::getId).collect(java.util.stream.Collectors.toList());
+        var ids = docs.stream().map(CompetitionDocument::getId).collect(Collectors.toList());
         int currentIndex = ids.indexOf(doc.getId());
         int targetIndex = currentIndex + direction;
         if (targetIndex < 0 || targetIndex >= ids.size()) return;

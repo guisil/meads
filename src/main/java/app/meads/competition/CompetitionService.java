@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -641,8 +642,8 @@ public class CompetitionService {
         requireAuthorized(competitionId, requestingUserId);
         var docs = competitionDocumentRepository.findByCompetitionIdOrderByDisplayOrder(competitionId);
         var docMap = docs.stream()
-                .collect(java.util.stream.Collectors.toMap(CompetitionDocument::getId,
-                        java.util.function.Function.identity()));
+                .collect(Collectors.toMap(CompetitionDocument::getId,
+                        Function.identity()));
         for (int i = 0; i < orderedIds.size(); i++) {
             var doc = docMap.get(orderedIds.get(i));
             if (doc != null) {

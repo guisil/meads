@@ -23,6 +23,7 @@ import com.vaadin.flow.component.grid.GridSortOrder;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.html.Nav;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.server.StreamResource;
@@ -37,6 +38,7 @@ import com.vaadin.flow.component.textfield.NumberField;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.provider.ListDataProvider;
+import com.vaadin.flow.data.provider.SortDirection;
 import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
@@ -48,6 +50,8 @@ import org.springframework.util.StringUtils;
 
 import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -198,7 +202,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         if (competition.hasLogo()) {
             var dataUri = "data:" + competition.getLogoContentType() + ";base64,"
                     + java.util.Base64.getEncoder().encodeToString(competition.getLogo());
-            var logo = new com.vaadin.flow.component.html.Image(dataUri, competition.getName() + " logo");
+            var logo = new Image(dataUri, competition.getName() + " logo");
             logo.setHeight("64px");
             header.add(logo);
         }
@@ -477,7 +481,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
 
         // Default sort by entry number
         entriesGrid.sort(List.of(new GridSortOrder<>(entryNumCol,
-                com.vaadin.flow.data.provider.SortDirection.ASCENDING)));
+                SortDirection.ASCENDING)));
 
         refreshGrid();
         return entriesGrid;
@@ -902,8 +906,8 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
     }
 
     private Span createDeadlineInfo() {
-        var dateFmt = java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.SHORT).withLocale(userLocale);
-        var timeFmt = java.time.format.DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT).withLocale(userLocale);
+        var dateFmt = DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT).withLocale(userLocale);
+        var timeFmt = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(userLocale);
         var deadline = division.getRegistrationDeadline();
         var formatted = deadline.format(dateFmt) + ", " + deadline.format(timeFmt);
         var deadlineSpan = new Span(getTranslation("entries.deadline") + " " + formatted);

@@ -16,6 +16,7 @@ import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.treegrid.TreeGrid;
 import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.html.Nav;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.notification.Notification;
@@ -24,6 +25,7 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.tabs.TabSheet;
+import com.vaadin.flow.component.textfield.IntegerField;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
@@ -139,7 +141,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         if (competition.hasLogo()) {
             var dataUri = "data:" + competition.getLogoContentType() + ";base64,"
                     + java.util.Base64.getEncoder().encodeToString(competition.getLogo());
-            var logo = new com.vaadin.flow.component.html.Image(dataUri, competition.getName() + " logo");
+            var logo = new Image(dataUri, competition.getName() + " logo");
             logo.setHeight("64px");
             header.add(logo);
         }
@@ -577,7 +579,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         entryPrefixField.setValue(division.getEntryPrefix() != null ? division.getEntryPrefix() : "");
         entryPrefixField.setEnabled(isDraft);
 
-        var maxPerSubcategoryField = new com.vaadin.flow.component.textfield.IntegerField(getTranslation("division-detail.settings.max-per-subcategory"));
+        var maxPerSubcategoryField = new IntegerField(getTranslation("division-detail.settings.max-per-subcategory"));
         maxPerSubcategoryField.setMin(1);
         maxPerSubcategoryField.setStepButtonsVisible(true);
         maxPerSubcategoryField.setClearButtonVisible(true);
@@ -587,7 +589,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
             maxPerSubcategoryField.setValue(division.getMaxEntriesPerSubcategory());
         }
 
-        var maxPerMainCategoryField = new com.vaadin.flow.component.textfield.IntegerField(getTranslation("division-detail.settings.max-per-main-category"));
+        var maxPerMainCategoryField = new IntegerField(getTranslation("division-detail.settings.max-per-main-category"));
         maxPerMainCategoryField.setMin(1);
         maxPerMainCategoryField.setStepButtonsVisible(true);
         maxPerMainCategoryField.setClearButtonVisible(true);
@@ -597,7 +599,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
             maxPerMainCategoryField.setValue(division.getMaxEntriesPerMainCategory());
         }
 
-        var maxTotalField = new com.vaadin.flow.component.textfield.IntegerField(getTranslation("division-detail.settings.max-total"));
+        var maxTotalField = new IntegerField(getTranslation("division-detail.settings.max-total"));
         maxTotalField.setMin(1);
         maxTotalField.setStepButtonsVisible(true);
         maxTotalField.setClearButtonVisible(true);

@@ -18,6 +18,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Sort;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -143,7 +144,7 @@ class CompetitionServiceTest {
     @Test
     void shouldFindAllCompetitions() {
         var competition = createCompetition();
-        given(competitionRepository.findAll(any(org.springframework.data.domain.Sort.class))).willReturn(List.of(competition));
+        given(competitionRepository.findAll(any(Sort.class))).willReturn(List.of(competition));
 
         var result = competitionService.findAllCompetitions();
 

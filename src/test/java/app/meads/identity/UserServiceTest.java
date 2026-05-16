@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.ArrayList;
@@ -203,12 +204,12 @@ class UserServiceTest {
                 new User("a@example.com", "A", UserStatus.ACTIVE, Role.USER),
                 new User("b@example.com", "B", UserStatus.PENDING, Role.SYSTEM_ADMIN)
         );
-        given(userRepository.findAll(any(org.springframework.data.domain.Sort.class))).willReturn(users);
+        given(userRepository.findAll(any(Sort.class))).willReturn(users);
 
         List<User> result = userService.findAll();
 
         assertThat(result).hasSize(2);
-        then(userRepository).should().findAll(any(org.springframework.data.domain.Sort.class));
+        then(userRepository).should().findAll(any(Sort.class));
     }
 
     @Test
