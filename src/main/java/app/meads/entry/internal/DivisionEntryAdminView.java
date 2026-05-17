@@ -996,7 +996,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             additionalInfo.setValue(entry.getAdditionalInformation());
         }
 
-        var judgingCategories = competitionService.findJudgingCategories(divisionId);
+        var leafJudgingCategories = competitionService.findLeafJudgingCategories(divisionId);
         var finalCategorySelect = new Select<DivisionCategory>();
         finalCategorySelect.setLabel(getTranslation("entry-admin.entries.edit.final-category"));
         finalCategorySelect.setWidthFull();
@@ -1004,13 +1004,13 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         finalCategorySelect.setEmptySelectionCaption(getTranslation("entry-admin.entries.edit.final-category.unset"));
         finalCategorySelect.setItemLabelGenerator(dc ->
                 dc != null ? dc.getCode() + " — " + dc.getName() : "");
-        if (judgingCategories.isEmpty()) {
+        if (leafJudgingCategories.isEmpty()) {
             finalCategorySelect.setEnabled(false);
             finalCategorySelect.setHelperText(
                     getTranslation("entry-admin.entries.edit.final-category.no-judging-helper"));
         } else {
-            finalCategorySelect.setItems(judgingCategories);
-            judgingCategories.stream()
+            finalCategorySelect.setItems(leafJudgingCategories);
+            leafJudgingCategories.stream()
                     .filter(c -> c.getId().equals(entry.getFinalCategoryId()))
                     .findFirst()
                     .ifPresent(finalCategorySelect::setValue);

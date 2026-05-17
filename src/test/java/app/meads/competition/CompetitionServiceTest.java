@@ -1478,6 +1478,28 @@ class CompetitionServiceTest {
     }
 
     @Test
+    void shouldFindLeafJudgingCategoriesExcludingParentsThatHaveChildren() {
+        // M1 (parent) → M1A, M1B leaves; CX1 standalone leaf
+        var divisionId = UUID.randomUUID();
+        var m1 = new DivisionCategory(divisionId, null,
+                "M1", "Traditional Mead", "desc", null, 0, CategoryScope.JUDGING);
+        var m1a = new DivisionCategory(divisionId, null,
+                "M1A", "Traditional Mead Dry", "desc", m1.getId(), 1, CategoryScope.JUDGING);
+        var m1b = new DivisionCategory(divisionId, null,
+                "M1B", "Traditional Mead Semi", "desc", m1.getId(), 2, CategoryScope.JUDGING);
+        var cx1 = new DivisionCategory(divisionId, null,
+                "CX1", "Combined Melomel", "desc", null, 3, CategoryScope.JUDGING);
+        given(divisionCategoryRepository.findByDivisionIdAndScopeOrderByCode(
+                divisionId, CategoryScope.JUDGING))
+                .willReturn(List.of(m1, m1a, m1b, cx1));
+
+        var leaves = competitionService.findLeafJudgingCategories(divisionId);
+
+        assertThat(leaves).extracting(DivisionCategory::getCode)
+                .containsExactlyInAnyOrder("M1A", "M1B", "CX1");
+    }
+
+    @Test
     void shouldFindRegistrationCategoriesOnlyExcludingJudgingScope() {
         var divisionId = UUID.randomUUID();
         var registrationCat = new DivisionCategory(divisionId, null,

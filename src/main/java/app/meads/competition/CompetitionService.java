@@ -22,6 +22,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -447,6 +448,17 @@ public class CompetitionService {
 
     public List<DivisionCategory> findJudgingCategories(@NotNull UUID divisionId) {
         return divisionCategoryRepository.findByDivisionIdAndScopeOrderByCode(divisionId, CategoryScope.JUDGING);
+    }
+
+    public List<DivisionCategory> findLeafJudgingCategories(@NotNull UUID divisionId) {
+        var all = findJudgingCategories(divisionId);
+        var parentIds = all.stream()
+                .map(DivisionCategory::getParentId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        return all.stream()
+                .filter(c -> !parentIds.contains(c.getId()))
+                .toList();
     }
 
     public List<DivisionCategory> initializeJudgingCategories(@NotNull UUID divisionId,
