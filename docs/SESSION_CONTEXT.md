@@ -407,9 +407,73 @@ from scratch using standard Java APIs. Full implementation:
 - i18n: `mfa.verify.*` + `profile.mfa.*` keys in EN and PT. `error.mfa.invalid-code` error key.
 23 new tests (7 TotpService + 3 UserRepository + 5 UserService unit + 5 MFA integration + 3 ProfileView UI). 777 total.
 
-### Priority 4: Full manual walkthrough
-Run the full `docs/walkthrough/manual-test.md` end-to-end (all 14 sections) before
-starting the judging module implementation.
+### Priority 4: Full manual walkthrough (v0.3.0 pre-release) — IN PROGRESS
+
+Running the full `docs/walkthrough/manual-test.md` end-to-end (14 sections) before
+tagging v0.3.0. **Branch:** `main` at `0.3.0-SNAPSHOT`.
+
+**Progress at 2026-05-17 EOD:**
+- ✅ Sections 1–10 verified green (Prerequisites through My Entries Overview).
+- ⏸ **Section 11** (My Entries entrant view) paused mid-Batch 11B. Batch 11A confirmed
+  (header, documents, credit display, registration deadline, entries grid layout).
+  Remaining: 11B (Add entry / validation / edit / view), 11C (submit single, filter,
+  submit all drafts), 11D (label downloads, meadery-name-required warning, entry-limit
+  enforcement).
+- 🔄 **4 fixes landed mid-walkthrough on `main`** (all 795 tests pass; commits are
+  local — push before resuming on a different machine):
+  - `ee093ed` — MFA verify Enter key: code field now uses `ValueChangeMode.EAGER` so
+    pressing Enter submits the typed value instead of the stale on-blur empty value.
+  - `4d0c715` — Final Category picker disabled until judging categories are
+    initialized (no more silent fallback to ALL division categories;
+    `EntryService.assignFinalCategory` rejects pre-init non-null IDs with
+    `error.entry.final-category-no-judging-categories`; also added the
+    previously-undefined `error.entry.final-category-not-judging` translation).
+  - `4cdd18e` — Entry primary-category dropdowns filter to REGISTRATION scope only
+    (was showing duplicate codes after judging-cat init). New
+    `CompetitionService.findRegistrationCategories(divisionId)`. Applies to admin
+    Add Entry, admin Edit Entry, and entrant entry dialogs.
+  - `be48c63` — Final Category picker shows leaf judging categories only (parents
+    that have subcategories are hidden). New
+    `CompetitionService.findLeafJudgingCategories(divisionId)`. Service-side
+    `assignFinalCategory` still accepts any JUDGING-scope id; UI is the only gate.
+
+**Resume plan (next session):**
+1. Read this file + `CLAUDE.md`. Verify `git status` is clean and you're on `main`. If
+   the local branch is ahead of `origin/main`, the 4 fix commits aren't on remote yet —
+   `git push origin main` first.
+2. Start the app: `docker-compose up -d && mvn spring-boot:run -Dspring-boot.run.profiles=dev`.
+3. **Sanity-test the 4 fixes** (5 min — full checklist in the conversation's task #20,
+   or re-derive from the bullet list above): MFA Enter, Final Category disabled
+   pre-init, no primary-category duplicates after init, Final Category shows leaves
+   only. Revert Amadora to REGISTRATION_OPEN afterwards.
+4. Resume Section 11 from Batch 11B (Add entry / validation / edit / view). The
+   walkthrough file is `docs/walkthrough/manual-test.md`.
+5. Continue through Sections 12, 13, 14.
+6. Run full test suite, update this file, bump pom.xml from `0.3.0-SNAPSHOT` to
+   `0.3.0`, commit "Release v0.3.0", tag `v0.3.0`, push branch + tag. CI auto-builds
+   the Docker image and updates DigitalOcean — monitor it. Smoke-test prod per
+   `docs/walkthrough/post-deployment-test.md`. Bump pom.xml to next SNAPSHOT
+   (`0.3.1-SNAPSHOT`) and commit. Reference: `docs/plans/deployment-checklist.md`.
+7. **After v0.3.0 ships, merge today's fixes into the WIP judging branch:**
+   `git checkout feature/judging-module && git merge origin/main`. Expected
+   conflict surface (today's 4 commits touched these files):
+   - `CompetitionService.java` — keep both: feature branch's Phase 5 methods + main's
+     `findRegistrationCategories` and `findLeafJudgingCategories`
+   - `DivisionEntryAdminView.java` — likely the biggest conflict. Reapply main's
+     dropdown changes: primary Category dropdowns use `findRegistrationCategories`;
+     Final Category Select uses `findLeafJudgingCategories` and disables with helper
+     text when empty.
+   - `EntryService.assignFinalCategory()` — main rejects pre-init assignments; keep
+     that branch + whatever the feature branch adds.
+   - `MyEntriesView.java` — main switched primary-category dropdown to
+     `findRegistrationCategories`. Small.
+   - `MfaVerifyView.java` — main added `setValueChangeMode(EAGER)`. Tiny.
+   - `messages.properties` + `messages_pt.properties` — append both sets of new keys.
+   - `pom.xml` — take feature branch's version (`0.4.0-SNAPSHOT`).
+   - `docs/SESSION_CONTEXT.md` — reconcile manually; take feature branch's
+     `Branch:` line and Phase 5/6 status text, append main's v0.3.0 release entry.
+   - `docs/walkthrough/manual-test.md` — keep both sides.
+   Run `mvn test -Dsurefire.useFile=false 2>&1 | tail -50` to verify the merge.
 
 ### Priority 5: Judging module
 Design and implementation. **Design in progress (multi-session):** see
