@@ -350,6 +350,10 @@ public class CompetitionService {
         return divisionCategoryRepository.findByDivisionIdOrderByCode(divisionId);
     }
 
+    public List<DivisionCategory> findRegistrationCategories(@NotNull UUID divisionId) {
+        return divisionCategoryRepository.findByDivisionIdAndScopeOrderByCode(divisionId, CategoryScope.REGISTRATION);
+    }
+
     public DivisionCategory addCatalogCategory(@NotNull UUID divisionId,
                                                 @NotNull UUID catalogCategoryId,
                                                 @NotNull UUID requestingUserId) {

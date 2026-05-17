@@ -1477,6 +1477,23 @@ class CompetitionServiceTest {
                 .findByDivisionIdOrderByCode(divisionId);
     }
 
+    @Test
+    void shouldFindRegistrationCategoriesOnlyExcludingJudgingScope() {
+        var divisionId = UUID.randomUUID();
+        var registrationCat = new DivisionCategory(divisionId, null,
+                "M1A", "Traditional Mead", "A traditional mead", null, 0);
+        given(divisionCategoryRepository.findByDivisionIdAndScopeOrderByCode(
+                divisionId, CategoryScope.REGISTRATION))
+                .willReturn(List.of(registrationCat));
+
+        var result = competitionService.findRegistrationCategories(divisionId);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().getScope()).isEqualTo(CategoryScope.REGISTRATION);
+        then(divisionCategoryRepository).should()
+                .findByDivisionIdAndScopeOrderByCode(divisionId, CategoryScope.REGISTRATION);
+    }
+
     // --- addCatalogCategory ---
 
     @Test

@@ -699,7 +699,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         var categorySelect = new Select<DivisionCategory>();
         categorySelect.setLabel(getTranslation("entry-admin.entries.edit.category"));
         categorySelect.setWidthFull();
-        var subcategories = divisionCategories.stream()
+        var subcategories = competitionService.findRegistrationCategories(divisionId).stream()
                 .filter(c -> c.getParentId() != null)
                 .toList();
         categorySelect.setItems(subcategories);
@@ -927,7 +927,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         categorySelect.setWidthFull();
         categorySelect.setItemLabelGenerator(dc ->
                 dc.getCode() + " — " + dc.getName());
-        categorySelect.setItems(divisionCategories.stream()
+        categorySelect.setItems(competitionService.findRegistrationCategories(divisionId).stream()
                 .filter(dc -> dc.getParentId() != null)
                 .toList());
         categorySelect.getListDataView().getItems()

@@ -681,7 +681,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         categorySelect.setWidthFull();
         categorySelect.setItemLabelGenerator(dc ->
                 dc.getCode() + " — " + translateCategoryName(dc));
-        categorySelect.setItems(competitionService.findDivisionCategories(divisionId).stream()
+        categorySelect.setItems(competitionService.findRegistrationCategories(divisionId).stream()
                 .filter(dc -> dc.getParentId() != null)
                 .toList());
 
