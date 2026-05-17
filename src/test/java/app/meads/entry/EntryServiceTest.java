@@ -1588,7 +1588,7 @@ class EntryServiceTest {
     }
 
     @Test
-    void shouldAssignFinalCategoryFromRegistrationCategoriesWhenNoJudgingCategoriesExist() {
+    void shouldRejectAssignFinalCategoryWhenNoJudgingCategoriesExist() {
         var competitionId = UUID.randomUUID();
         var division = createRegistrationClosedDivision(competitionId);
         var adminUser = createSystemAdmin();
@@ -1600,11 +1600,30 @@ class EntryServiceTest {
         given(userService.findById(adminUser.getId())).willReturn(adminUser);
         given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
         given(competitionService.findJudgingCategories(division.getId())).willReturn(List.of());
+
+        assertThatThrownBy(() -> entryService.assignFinalCategory(
+                entry.getId(), anyCategoryId, adminUser.getId()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.entry.final-category-no-judging-categories");
+    }
+
+    @Test
+    void shouldAllowClearingFinalCategoryEvenWhenNoJudgingCategoriesExist() {
+        // Clearing (null) is always safe and is the way to fix a stale assignment.
+        var competitionId = UUID.randomUUID();
+        var division = createRegistrationClosedDivision(competitionId);
+        var adminUser = createSystemAdmin();
+        var entry = new Entry(division.getId(), UUID.randomUUID(), 1, "ABC123",
+                "My Mead", UUID.randomUUID(), Sweetness.DRY, new BigDecimal("12.0"),
+                Carbonation.STILL, "Wildflower honey", null, false, null, null);
+
+        given(userService.findById(adminUser.getId())).willReturn(adminUser);
+        given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
         given(entryRepository.save(any(Entry.class))).willAnswer(inv -> inv.getArgument(0));
 
-        var result = entryService.assignFinalCategory(entry.getId(), anyCategoryId, adminUser.getId());
+        var result = entryService.assignFinalCategory(entry.getId(), null, adminUser.getId());
 
-        assertThat(result.getFinalCategoryId()).isEqualTo(anyCategoryId);
+        assertThat(result.getFinalCategoryId()).isNull();
     }
 
     @Test

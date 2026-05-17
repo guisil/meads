@@ -939,6 +939,7 @@ Pre-requisite: enable MFA on `admin@example.com` first (see "MFA setup" above).
 - [ ] **Expected:** TabSheet now has three tabs: Categories, Judging Categories, Settings; default selected is Judging Categories
 - [ ] **Expected:** Categories tab (registration categories) is read-only — no Add or Remove buttons
 - [ ] **Initialize:** Judging Categories tab shows "Initialize Judging Categories" button (no grid yet)
+- [ ] **Pre-initialization Final Category check:** open Entry Admin → Entries tab → edit a SUBMITTED entry — **Expected:** Final Category Select is **disabled** with helper text "Initialize judging categories first to assign a final category". Cancel the edit dialog and return to Judging Categories tab.
 - [ ] Click "Initialize Judging Categories" — **Expected:** grid populated with clones of the registration categories (same codes/names/parent hierarchy); "Add Judging Category" button appears; init button disappears
 - [ ] **Add Judging Category:** dialog with Code → Name → Description → Parent (optional) fields stacked vertically; blank fields show per-field errors; successful add appears in grid
 - [ ] **Remove (leaf):** X icon → "Remove \"CX1 — ...\"?" confirm → "Judging category removed" notification; row gone

@@ -997,7 +997,6 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         }
 
         var judgingCategories = competitionService.findJudgingCategories(divisionId);
-        var finalCategoryOptions = judgingCategories.isEmpty() ? divisionCategories : judgingCategories;
         var finalCategorySelect = new Select<DivisionCategory>();
         finalCategorySelect.setLabel(getTranslation("entry-admin.entries.edit.final-category"));
         finalCategorySelect.setWidthFull();
@@ -1005,11 +1004,17 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         finalCategorySelect.setEmptySelectionCaption(getTranslation("entry-admin.entries.edit.final-category.unset"));
         finalCategorySelect.setItemLabelGenerator(dc ->
                 dc != null ? dc.getCode() + " — " + dc.getName() : "");
-        finalCategorySelect.setItems(finalCategoryOptions);
-        finalCategoryOptions.stream()
-                .filter(c -> c.getId().equals(entry.getFinalCategoryId()))
-                .findFirst()
-                .ifPresent(finalCategorySelect::setValue);
+        if (judgingCategories.isEmpty()) {
+            finalCategorySelect.setEnabled(false);
+            finalCategorySelect.setHelperText(
+                    getTranslation("entry-admin.entries.edit.final-category.no-judging-helper"));
+        } else {
+            finalCategorySelect.setItems(judgingCategories);
+            judgingCategories.stream()
+                    .filter(c -> c.getId().equals(entry.getFinalCategoryId()))
+                    .findFirst()
+                    .ifPresent(finalCategorySelect::setValue);
+        }
 
         layout.add(meadNameField, categorySelect, sweetness, strengthField, abv, carbonation,
                 honeyVarieties, otherIngredients, woodAged, woodAgeingDetails, additionalInfo,

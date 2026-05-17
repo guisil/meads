@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `main`
-**Tests:** 792 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-17 (MFA verify code field now uses ValueChangeMode.EAGER so Enter submits the typed value instead of the stale blurred value)
+**Tests:** 793 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-17 (Final Category picker no longer silently falls back to registration categories when no JUDGING categories exist; service-side validation now rejects pre-initialization assignments)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -309,7 +309,7 @@ Add a `scope` enum (`REGISTRATION` / `JUDGING`) to `DivisionCategory`:
 - JUDGING categories require a description (same as REGISTRATION — no nullable change)
 - `finalCategoryId` is clearable (nullable) from admin UI — Select includes empty option
 - Standalone `EntryService.assignFinalCategory(entryId, finalCategoryId, userId)` method (not bundled into `adminUpdateEntry`)
-- Final category picker falls back to ALL categories if no JUDGING categories exist yet
+- Final category picker is **disabled** with helper text when no JUDGING categories exist yet (the original "fall back to ALL categories" design was reverted on 2026-05-17 — see Completed priorities — to prevent stale registration-scope assignments slipping past the judging-category deletion guard)
 - Judging category management allowed for any status >= REGISTRATION_CLOSED (through JUDGING, DELIBERATION, RESULTS_PUBLISHED)
 - "Initialize judging categories" is part of this feature; full judging module workflows come later
 - Unique constraint changes to `UNIQUE(division_id, code, scope)` — same code can exist in both scopes
@@ -322,8 +322,9 @@ Add a `scope` enum (`REGISTRATION` / `JUDGING`) to `DivisionCategory`:
 - "Initialize judging categories" button clones all REGISTRATION categories into JUDGING ones
   (same codes, names, descriptions, hierarchy; `catalogCategoryId = null` on clones) — admin can then diverge freely
 - When setting `finalCategoryId` on an entry (in DivisionEntryAdminView), the category picker shows
-  only JUDGING categories (if any exist) or falls back to all division categories
-- Service validates `finalCategoryId` references a JUDGING category when JUDGING categories exist
+  only JUDGING categories; disabled with helper text when none are initialized yet
+- Service rejects non-null `finalCategoryId` when no JUDGING categories exist, and validates the ID
+  is in JUDGING scope when they do
 
 **New files:**
 - `app.meads.competition.CategoryScope.java` — public enum (`REGISTRATION`, `JUDGING`)
@@ -746,6 +747,7 @@ move to `LoginForm` for other reasons or if Bitwarden softens the threshold.
 - community.bitwarden.com thread 92519 ("This page is interfering with the Bitwarden experience")
 
 ### Completed priorities
+- **Final Category picker — no fallback to registration categories** — Completed 2026-05-17. Reversed the original design decision that let the admin entry-edit dialog fall back to ALL division categories when no JUDGING-scope categories existed. Problem: an entry's `finalCategoryId` could end up pointing to a registration-scope row, which `EntryJudgingCategoryDeletionGuard` doesn't protect (it only walks JUDGING-scope), so a later admin could silently break the entry by removing the registration category. Fix: `DivisionEntryAdminView` now disables the Final Category Select with helper text "Initialize judging categories first to assign a final category" when `judgingCategories.isEmpty()`; `EntryService.assignFinalCategory()` now throws `BusinessRuleException("error.entry.final-category-no-judging-categories")` when a non-null `finalCategoryId` is passed before judging categories are initialized. Clearing (null) is still allowed unconditionally, so any stale prior assignments can be cleaned up. Also added the previously-missing `error.entry.final-category-not-judging` translation (referenced by the existing validation path but never defined in messages*.properties — would have rendered as raw key). 1 new test (`shouldAllowClearingFinalCategoryEvenWhenNoJudgingCategoriesExist`) + 1 reversed test (`shouldRejectAssignFinalCategoryWhenNoJudgingCategoriesExist`, formerly `shouldAssignFinalCategoryFromRegistrationCategoriesWhenNoJudgingCategoriesExist`). 793 tests.
 - **MFA verify Enter shortcut fix** — Completed 2026-05-17. `MfaVerifyView` code field now uses `ValueChangeMode.EAGER` so the Enter shortcut listener sees the currently typed value instead of the stale on-blur value. Before: user had to Tab/click out of the field before pressing Enter to submit. Same pattern as `LoginView` (password), `SetPasswordView` (password+confirm), `UserListView` (filter). 1 new UI test in `MfaVerifyViewTest` asserts `getValueChangeMode() == EAGER`. 792 tests.
 - **i18n cleanup: dialog buttons** — Completed 2026-05-16. Replaced 40+ hardcoded "Cancel"/"Save"/"Close"/"Delete" button strings with `getTranslation("button.*")` across `UserListView`, `DivisionEntryAdminView`, `DivisionDetailView`, `CompetitionListView`, `CompetitionDetailView`. Added missing `button.save` and `button.close` keys in EN+PT (`button.cancel` and `button.delete` already existed). Tests still pass because they run in default ENGLISH locale where `getTranslation("button.save") == "Save"`. 791 tests.
 - **i18n gaps in sidebar + entry edit dialog** — Completed 2026-05-16. `MainLayout` now resolves sidebar nav items via `getTranslation()` for SYSTEM_ADMIN ("Competitions"/"Users") and competition-admin ("My Competitions") roles — they were hardcoded English with a misleading "Admin-only, no i18n" comment. The Final Category select label and "— Not assigned —" placeholder in the admin entry edit dialog (`DivisionEntryAdminView`) were also hardcoded. New keys: `nav.users`, `entry-admin.entries.edit.final-category`, `entry-admin.entries.edit.final-category.unset` (EN+PT). 791 tests.

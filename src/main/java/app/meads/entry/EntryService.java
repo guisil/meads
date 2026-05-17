@@ -401,12 +401,13 @@ public class EntryService {
         requireAuthorizedForDivision(entry.getDivisionId(), requestingUserId);
         if (finalCategoryId != null) {
             var judgingCategories = competitionService.findJudgingCategories(entry.getDivisionId());
-            if (!judgingCategories.isEmpty()) {
-                var isValid = judgingCategories.stream()
-                        .anyMatch(c -> c.getId().equals(finalCategoryId));
-                if (!isValid) {
-                    throw new BusinessRuleException("error.entry.final-category-not-judging");
-                }
+            if (judgingCategories.isEmpty()) {
+                throw new BusinessRuleException("error.entry.final-category-no-judging-categories");
+            }
+            var isValid = judgingCategories.stream()
+                    .anyMatch(c -> c.getId().equals(finalCategoryId));
+            if (!isValid) {
+                throw new BusinessRuleException("error.entry.final-category-not-judging");
             }
         }
         entry.assignFinalCategory(finalCategoryId);
