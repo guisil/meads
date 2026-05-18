@@ -266,6 +266,35 @@ class DivisionDetailViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldExcludeJudgingScopeCategoriesFromCategoriesTabGrid() {
+        // REGISTRATION-scope category
+        divisionCategoryRepository.save(new DivisionCategory(
+                testDivision.getId(), null,
+                "M1A", "Traditional Mead", "A traditional mead", null, 0));
+        // JUDGING-scope category with same code (cloned by Initialize Judging Categories)
+        divisionCategoryRepository.save(new DivisionCategory(
+                testDivision.getId(), null,
+                "M1A", "Traditional Mead", "A traditional mead", null, 0,
+                CategoryScope.JUDGING));
+
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName()
+                + "/divisions/" + testDivision.getShortName());
+
+        // Categories tab is the first tab (index 0) — selected by default.
+        // The grid must show REGISTRATION-scope only; the JUDGING-scope clone belongs
+        // to the Judging Categories tab and must not appear here as a duplicate row.
+        @SuppressWarnings("unchecked")
+        var grid = (TreeGrid<DivisionCategory>) _get(TreeGrid.class,
+                spec -> spec.withId("categories-grid"));
+        var rootItems = grid.getDataProvider().fetchChildren(
+                new HierarchicalQuery<>(null, null)).toList();
+        assertThat(rootItems).hasSize(1);
+        assertThat(rootItems.getFirst().getCode()).isEqualTo("M1A");
+        assertThat(rootItems.getFirst().getScope()).isEqualTo(CategoryScope.REGISTRATION);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldDisplayCategoriesInTreeGrid() {
         var parent = divisionCategoryRepository.save(new DivisionCategory(
                 testDivision.getId(), null,
@@ -374,6 +403,37 @@ class DivisionDetailViewTest {
         assertThat(categories.getFirst().getCode()).isEqualTo("CUSTOM1");
         assertThat(categories.getFirst().getName()).isEqualTo("Best Local Honey");
         assertThat(categories.getFirst().getCatalogCategoryId()).isNull();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldExcludeJudgingScopeCategoriesFromCustomCategoryParentSelect() {
+        // REGISTRATION-scope top-level category
+        divisionCategoryRepository.save(new DivisionCategory(
+                testDivision.getId(), null,
+                "M1", "Traditional Mead", "Traditional mead category", null, 0));
+        // JUDGING-scope top-level category with same code (cloned by Initialize Judging Categories)
+        divisionCategoryRepository.save(new DivisionCategory(
+                testDivision.getId(), null,
+                "M1", "Traditional Mead", "Traditional mead category", null, 0,
+                CategoryScope.JUDGING));
+
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName()
+                + "/divisions/" + testDivision.getShortName());
+
+        var addButton = _get(Button.class, spec -> spec.withText("Add Category"));
+        _click(addButton);
+
+        var dialog = _get(Dialog.class);
+        var dialogTabSheet = _get(dialog, TabSheet.class);
+        dialogTabSheet.setSelectedIndex(1); // Custom tab
+
+        @SuppressWarnings("unchecked")
+        var parentSelect = (Select<DivisionCategory>) _get(dialog, Select.class,
+                spec -> spec.withCaption("Parent Category (optional)"));
+        var parents = parentSelect.getListDataView().getItems().toList();
+        assertThat(parents).hasSize(1);
+        assertThat(parents.getFirst().getScope()).isEqualTo(CategoryScope.REGISTRATION);
     }
 
     @Test

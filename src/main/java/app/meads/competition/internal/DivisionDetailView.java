@@ -392,12 +392,12 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
     }
 
     private void refreshCategoriesGrid() {
-        var allCategories = competitionService.findDivisionCategories(divisionId);
-        var rootCategories = allCategories.stream()
+        var registrationCategories = competitionService.findRegistrationCategories(divisionId);
+        var rootCategories = registrationCategories.stream()
                 .filter(dc -> dc.getParentId() == null)
                 .toList();
         categoriesGrid.setItems(rootCategories,
-                parent -> allCategories.stream()
+                parent -> registrationCategories.stream()
                         .filter(dc -> parent.getId().equals(dc.getParentId()))
                         .toList());
         rootCategories.forEach(root -> categoriesGrid.expand(root));
@@ -491,7 +491,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         parentSelect.setEmptySelectionCaption(getTranslation("division-detail.categories.add.custom.parent.none"));
         parentSelect.setItemLabelGenerator(dc ->
                 dc != null ? dc.getCode() + " — " + dc.getName() : "");
-        var topLevel = competitionService.findDivisionCategories(divisionId).stream()
+        var topLevel = competitionService.findRegistrationCategories(divisionId).stream()
                 .filter(dc -> dc.getParentId() == null)
                 .toList();
         parentSelect.setItems(topLevel);

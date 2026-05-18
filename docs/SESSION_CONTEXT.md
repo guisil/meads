@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `main`
-**Tests:** 795 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-17 (Final Category picker now shows leaf judging categories only; parent rows that have subcategories are hidden)
+**Tests:** 797 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-18 (Categories tab grid and Add Category dialog's parent select now filter to REGISTRATION-scope only — no JUDGING-scope duplicates after Initialize Judging Categories)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -412,15 +412,20 @@ from scratch using standard Java APIs. Full implementation:
 Running the full `docs/walkthrough/manual-test.md` end-to-end (14 sections) before
 tagging v0.3.0. **Branch:** `main` at `0.3.0-SNAPSHOT`.
 
-**Progress at 2026-05-17 EOD:**
+**Progress at 2026-05-18 mid-day:**
 - ✅ Sections 1–10 verified green (Prerequisites through My Entries Overview).
+- ✅ Mid-walkthrough sanity-test of the 5 mid-walkthrough fixes complete (Tests A–F on
+  2026-05-18). Fix #1 (MFA Enter, `ee093ed`) deferred to manual test optional — covered
+  by `MfaVerifyViewTest` asserting `getValueChangeMode() == EAGER`. Test F surfaced a
+  fifth bug, now fixed (see last bullet below).
 - ⏸ **Section 11** (My Entries entrant view) paused mid-Batch 11B. Batch 11A confirmed
   (header, documents, credit display, registration deadline, entries grid layout).
   Remaining: 11B (Add entry / validation / edit / view), 11C (submit single, filter,
   submit all drafts), 11D (label downloads, meadery-name-required warning, entry-limit
   enforcement).
-- 🔄 **4 fixes landed mid-walkthrough on `main`** (all 795 tests pass; commits are
-  local — push before resuming on a different machine):
+- 🔄 **5 fixes landed mid-walkthrough on `main`** (all 797 tests pass; first 4 already
+  pushed in `ee093ed` … `be48c63`; the 5th is a new local commit — push before
+  resuming on a different machine):
   - `ee093ed` — MFA verify Enter key: code field now uses `ValueChangeMode.EAGER` so
     pressing Enter submits the typed value instead of the stale on-blur empty value.
   - `4d0c715` — Final Category picker disabled until judging categories are
@@ -436,16 +441,22 @@ tagging v0.3.0. **Branch:** `main` at `0.3.0-SNAPSHOT`.
     that have subcategories are hidden). New
     `CompetitionService.findLeafJudgingCategories(divisionId)`. Service-side
     `assignFinalCategory` still accepts any JUDGING-scope id; UI is the only gate.
+  - **(new, this session)** — `DivisionDetailView.refreshCategoriesGrid()` and the
+    Add Category dialog's Custom-tab Parent Category Select both now use
+    `findRegistrationCategories(divisionId)` (was using all-scope
+    `findDivisionCategories` and showing JUDGING-scope clones as duplicates after
+    Initialize Judging Categories). Caught at sanity-test F when reverting
+    REGISTRATION_CLOSED → REGISTRATION_OPEN hid the Judging Categories tab but left
+    the JUDGING-scope rows visible in the Categories tab grid. 2 new UI tests in
+    `DivisionDetailViewTest`.
 
 **Resume plan (next session):**
 1. Read this file + `CLAUDE.md`. Verify `git status` is clean and you're on `main`. If
-   the local branch is ahead of `origin/main`, the 4 fix commits aren't on remote yet —
+   the local branch is ahead of `origin/main`, the new fix commit isn't on remote yet —
    `git push origin main` first.
 2. Start the app: `docker-compose up -d && mvn spring-boot:run -Dspring-boot.run.profiles=dev`.
-3. **Sanity-test the 4 fixes** (5 min — full checklist in the conversation's task #20,
-   or re-derive from the bullet list above): MFA Enter, Final Category disabled
-   pre-init, no primary-category duplicates after init, Final Category shows leaves
-   only. Revert Amadora to REGISTRATION_OPEN afterwards.
+3. Sanity tests for the 5 fixes already complete (Tests A–F on 2026-05-18). Confirm
+   Amadora is at REGISTRATION_OPEN; if not, revert it.
 4. Resume Section 11 from Batch 11B (Add entry / validation / edit / view). The
    walkthrough file is `docs/walkthrough/manual-test.md`.
 5. Continue through Sections 12, 13, 14.
@@ -456,13 +467,16 @@ tagging v0.3.0. **Branch:** `main` at `0.3.0-SNAPSHOT`.
    (`0.3.1-SNAPSHOT`) and commit. Reference: `docs/plans/deployment-checklist.md`.
 7. **After v0.3.0 ships, merge today's fixes into the WIP judging branch:**
    `git checkout feature/judging-module && git merge origin/main`. Expected
-   conflict surface (today's 4 commits touched these files):
+   conflict surface (the 5 mid-walkthrough fixes touched these files):
    - `CompetitionService.java` — keep both: feature branch's Phase 5 methods + main's
      `findRegistrationCategories` and `findLeafJudgingCategories`
    - `DivisionEntryAdminView.java` — likely the biggest conflict. Reapply main's
      dropdown changes: primary Category dropdowns use `findRegistrationCategories`;
      Final Category Select uses `findLeafJudgingCategories` and disables with helper
      text when empty.
+   - `DivisionDetailView.java` — main switched the Categories tab grid
+     (`refreshCategoriesGrid`) and the Add Category dialog's Parent Category Select
+     (Custom tab) to `findRegistrationCategories`. Small.
    - `EntryService.assignFinalCategory()` — main rejects pre-init assignments; keep
      that branch + whatever the feature branch adds.
    - `MyEntriesView.java` — main switched primary-category dropdown to
@@ -811,6 +825,7 @@ move to `LoginForm` for other reasons or if Bitwarden softens the threshold.
 - community.bitwarden.com thread 92519 ("This page is interfering with the Bitwarden experience")
 
 ### Completed priorities
+- **Categories tab grid + Add Category parent select — REGISTRATION scope only** — Completed 2026-05-18. After Initialize Judging Categories (which clones REGISTRATION → JUDGING with the same codes), the DivisionDetailView's Categories tab TreeGrid showed duplicate codes (M1A, M1B, …) because `refreshCategoriesGrid()` sourced from `findDivisionCategories()` which returns all scopes. The same bug also surfaced in the Add Category dialog's Custom tab → Parent Category Select (let admins pick a JUDGING-scope parent for a new REGISTRATION-scope category). Caught during v0.3.0 mid-walkthrough sanity-test F (revert REGISTRATION_CLOSED → REGISTRATION_OPEN, judging tab hides, but Categories tab grid still shows the JUDGING clones). Fix: both call sites now use `CompetitionService.findRegistrationCategories(divisionId)` (introduced in `4cdd18e`). Third instance of the same scope-filter pattern after entry primary-category dropdowns. 2 new UI tests (`shouldExcludeJudgingScopeCategoriesFromCategoriesTabGrid`, `shouldExcludeJudgingScopeCategoriesFromCustomCategoryParentSelect`). 797 tests.
 - **Final Category picker — leaf categories only** — Completed 2026-05-17. The Final Category Select in the admin Edit Entry dialog used to list ALL judging-scope categories — both parents (M1, M2, ...) and subcategories (M1A, M1B, ...) — letting an admin assign a parent that has subcategories, which doesn't make semantic sense for a "final" classification. Fix: new `CompetitionService.findLeafJudgingCategories(divisionId)` returns only categories whose id is NOT referenced as parentId by any other JUDGING-scope category in the same division. Standalone categories without children are still considered leaves (e.g. a custom "CX1 — Combined" without subcategories shows). Service-side validation in `assignFinalCategory` is unchanged (still allows any JUDGING-scope id — UI is the only gate); a future hardening could reject non-leaf assignments service-side. 1 new unit test. 795 tests.
 - **Primary Category dropdowns — no duplicates after judging-category init** — Completed 2026-05-17. Once judging categories were initialized (cloned from registration with same codes), the entry primary-category dropdowns in the admin Add Entry, admin Edit Entry, and entrant edit dialogs all listed BOTH the REGISTRATION and JUDGING-scope rows (loaded via `findDivisionCategories` which doesn't filter by scope), so M1A, M1B, etc. appeared twice — making it look like there were duplicate categories. Fix: new `CompetitionService.findRegistrationCategories(divisionId)` (parallel to `findJudgingCategories`); all 3 dropdown sites now use it. `findDivisionCategories` is still called once at view init to cache all-scope rows for by-ID lookups (e.g., the grid Final Category column needs to resolve JUDGING-scope IDs). 1 new unit test `shouldFindRegistrationCategoriesOnlyExcludingJudgingScope`. 794 tests.
 - **Final Category picker — no fallback to registration categories** — Completed 2026-05-17. Reversed the original design decision that let the admin entry-edit dialog fall back to ALL division categories when no JUDGING-scope categories existed. Problem: an entry's `finalCategoryId` could end up pointing to a registration-scope row, which `EntryJudgingCategoryDeletionGuard` doesn't protect (it only walks JUDGING-scope), so a later admin could silently break the entry by removing the registration category. Fix: `DivisionEntryAdminView` now disables the Final Category Select with helper text "Initialize judging categories first to assign a final category" when `judgingCategories.isEmpty()`; `EntryService.assignFinalCategory()` now throws `BusinessRuleException("error.entry.final-category-no-judging-categories")` when a non-null `finalCategoryId` is passed before judging categories are initialized. Clearing (null) is still allowed unconditionally, so any stale prior assignments can be cleaned up. Also added the previously-missing `error.entry.final-category-not-judging` translation (referenced by the existing validation path but never defined in messages*.properties — would have rendered as raw key). 1 new test (`shouldAllowClearingFinalCategoryEvenWhenNoJudgingCategoriesExist`) + 1 reversed test (`shouldRejectAssignFinalCategoryWhenNoJudgingCategoriesExist`, formerly `shouldAssignFinalCategoryFromRegistrationCategoriesWhenNoJudgingCategoriesExist`). 793 tests.
