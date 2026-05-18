@@ -1515,12 +1515,15 @@ Or use a test division where the flag is already set.*
 - [ ] Create entries to test the subcategory limit (max 3 per subcategory in Amadora)
 - [ ] After reaching 3 non-withdrawn entries in M1A (Traditional Mead Dry), attempt to create a 4th
 - [ ] **Expected:** Error "Entry limit reached for this subcategory (max 3)"
+- [ ] **Edit into a full subcategory:** with M1A at the 3-entry limit, edit a DRAFT entry currently in a different subcategory (e.g. M1B or M2A) and change its Category to M1A → Save → **Expected:** the same subcategory-limit error notification; entry's category not changed.
 
 **Main category limit (5 per main category):**
 
 - [ ] Create entries across multiple M1 subcategories (M1A, M1B, M1C) to total 5
 - [ ] Attempt to create a 6th entry under any M1 subcategory
 - [ ] **Expected:** Error "Entry limit reached for this main category (max 5)"
+- [ ] **Cross-main edit into a full main category:** with M1 at the 5-entry limit, edit a DRAFT entry that is currently in a DIFFERENT main category (e.g. M2A) and change its Category to any M1.x → Save → **Expected:** main-category-limit error notification; entry's category not changed.
+- [ ] **Cross-subcategory edit within the same main category at the limit:** with M1 at the 5-entry limit (say 3 in M1A + 2 in M1B), edit a DRAFT entry from M1A to M1C → **Expected:** allowed (still 5 total in M1; the existing entry is being moved, not added).
 
 ---
 

@@ -272,6 +272,9 @@ public class EntryService {
         if (division.getStatus() != DivisionStatus.REGISTRATION_OPEN) {
             throw new BusinessRuleException("error.entry.division-not-open");
         }
+        if (!initialCategoryId.equals(entry.getInitialCategoryId())) {
+            checkEntryLimitsForUpdate(division, entry, initialCategoryId);
+        }
         entry.updateDetails(meadName, initialCategoryId, sweetness, abv,
                 carbonation, honeyVarieties, otherIngredients, woodAged,
                 woodAgeingDetails, additionalInformation);
@@ -549,6 +552,53 @@ public class EntryService {
                     divisionId, userId, mainCategoryGroupIds, EntryStatus.WITHDRAWN);
             if (count >= division.getMaxEntriesPerMainCategory()) {
                 throw new BusinessRuleException("error.entry.limit-main-category", division.getMaxEntriesPerMainCategory());
+            }
+        }
+    }
+
+    private void checkEntryLimitsForUpdate(Division division, Entry existingEntry,
+                                            UUID newInitialCategoryId) {
+        var divisionId = division.getId();
+        var userId = existingEntry.getUserId();
+        var oldCategoryId = existingEntry.getInitialCategoryId();
+        var existingCountsTowardLimit = existingEntry.getStatus() != EntryStatus.WITHDRAWN;
+
+        // Subcategory limit on the NEW category. The query excludes WITHDRAWN; the existing
+        // entry's current category is the OLD category, so it is not in this count.
+        if (division.getMaxEntriesPerSubcategory() != null) {
+            var count = entryRepository.countByDivisionIdAndUserIdAndInitialCategoryIdAndStatusNot(
+                    divisionId, userId, newInitialCategoryId, EntryStatus.WITHDRAWN);
+            if (count >= division.getMaxEntriesPerSubcategory()) {
+                throw new BusinessRuleException("error.entry.limit-subcategory",
+                        division.getMaxEntriesPerSubcategory());
+            }
+        }
+
+        // Main category limit on the NEW main category. If the existing entry's OLD main
+        // category equals the NEW main category, the query includes the existing entry —
+        // subtract it so we don't reject moves within the same main category.
+        if (division.getMaxEntriesPerMainCategory() != null) {
+            var categories = competitionService.findDivisionCategories(divisionId);
+            var newCategory = categories.stream()
+                    .filter(c -> c.getId().equals(newInitialCategoryId))
+                    .findFirst()
+                    .orElseThrow(() -> new BusinessRuleException("error.category.not-found"));
+            var newMainCategoryId = newCategory.getParentId() != null
+                    ? newCategory.getParentId() : newCategory.getId();
+            var newMainCategoryGroupIds = categories.stream()
+                    .filter(c -> c.getId().equals(newMainCategoryId)
+                            || newMainCategoryId.equals(c.getParentId()))
+                    .map(DivisionCategory::getId)
+                    .toList();
+
+            var count = entryRepository.countByDivisionIdAndUserIdAndInitialCategoryIdInAndStatusNot(
+                    divisionId, userId, newMainCategoryGroupIds, EntryStatus.WITHDRAWN);
+            if (existingCountsTowardLimit && newMainCategoryGroupIds.contains(oldCategoryId)) {
+                count -= 1;
+            }
+            if (count >= division.getMaxEntriesPerMainCategory()) {
+                throw new BusinessRuleException("error.entry.limit-main-category",
+                        division.getMaxEntriesPerMainCategory());
             }
         }
     }

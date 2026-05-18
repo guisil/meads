@@ -792,6 +792,64 @@ class EntryServiceTest {
     }
 
     @Test
+    void shouldRejectUpdateEntryWhenNewSubcategoryAtLimit() {
+        var competitionId = UUID.randomUUID();
+        var division = createRegistrationOpenDivisionWithLimits(competitionId, 3, null, null);
+        var userId = UUID.randomUUID();
+        var oldCategoryId = UUID.randomUUID();
+        var newCategoryId = UUID.randomUUID();
+        var entry = new Entry(division.getId(), userId, 1, "ABC123",
+                "Old Mead", oldCategoryId, Sweetness.DRY, new BigDecimal("12.5"), Carbonation.STILL,
+                "Wildflower honey", null, false, null, null);
+
+        given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
+        given(competitionService.findDivisionById(entry.getDivisionId())).willReturn(division);
+        given(entryRepository.countByDivisionIdAndUserIdAndInitialCategoryIdAndStatusNot(
+                division.getId(), userId, newCategoryId, EntryStatus.WITHDRAWN)).willReturn(3L);
+
+        assertThatThrownBy(() -> entryService.updateEntry(entry.getId(), userId,
+                "New Mead", newCategoryId, Sweetness.DRY, new BigDecimal("12.5"), Carbonation.STILL,
+                "Wildflower honey", null, false, null, null))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.entry.limit-subcategory");
+    }
+
+    @Test
+    void shouldAllowUpdateEntryWhenMovingWithinSameMainCategoryAtLimit() {
+        // Main limit = 3, no subcategory limit. User has 3 entries total in M1
+        // (2 in M1A, 1 in M1B). Edit one M1A entry to M1B — still 3 in M1, must be allowed.
+        var competitionId = UUID.randomUUID();
+        var division = createRegistrationOpenDivisionWithLimits(competitionId, null, 3, null);
+        var userId = UUID.randomUUID();
+        var parent = new DivisionCategory(division.getId(), null, "M1",
+                "Traditional", "Traditional category", null, 0);
+        var subA = new DivisionCategory(division.getId(), null, "M1A",
+                "Dry", "Dry traditional", parent.getId(), 1);
+        var subB = new DivisionCategory(division.getId(), null, "M1B",
+                "Medium", "Medium traditional", parent.getId(), 2);
+        var entry = new Entry(division.getId(), userId, 1, "ABC123",
+                "Old Mead", subA.getId(), Sweetness.DRY, new BigDecimal("12.5"), Carbonation.STILL,
+                "Wildflower honey", null, false, null, null);
+
+        given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
+        given(competitionService.findDivisionById(entry.getDivisionId())).willReturn(division);
+        given(competitionService.findDivisionCategories(division.getId()))
+                .willReturn(List.of(parent, subA, subB));
+        given(entryRepository.countByDivisionIdAndUserIdAndInitialCategoryIdInAndStatusNot(
+                eq(division.getId()), eq(userId),
+                eq(List.of(parent.getId(), subA.getId(), subB.getId())),
+                eq(EntryStatus.WITHDRAWN))).willReturn(3L);
+        given(entryRepository.save(any(Entry.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var result = entryService.updateEntry(entry.getId(), userId, "New Mead",
+                subB.getId(), Sweetness.DRY, new BigDecimal("12.5"), Carbonation.STILL,
+                "Wildflower honey", null, false, null, null);
+
+        assertThat(result.getInitialCategoryId()).isEqualTo(subB.getId());
+    }
+
+    @Test
     void shouldRejectUpdateEntryWhenDivisionNotOpen() {
         var competitionId = UUID.randomUUID();
         var division = createRegistrationClosedDivision(competitionId);

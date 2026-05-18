@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `main`
-**Tests:** 797 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-18 (Categories tab grid and Add Category dialog's parent select now filter to REGISTRATION-scope only — no JUDGING-scope duplicates after Initialize Judging Categories)
+**Tests:** 799 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-18 (entrant `updateEntry` now enforces subcategory + main-category limits when the entry's category changes; main-category check subtracts the existing entry when it's already in the same main-category group, so cross-subcategory moves within the same main category at the limit are still allowed)
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -423,8 +423,8 @@ tagging v0.3.0. **Branch:** `main` at `0.3.0-SNAPSHOT`.
   Remaining: 11B (Add entry / validation / edit / view), 11C (submit single, filter,
   submit all drafts), 11D (label downloads, meadery-name-required warning, entry-limit
   enforcement).
-- 🔄 **5 fixes landed mid-walkthrough on `main`** (all 797 tests pass; first 4 already
-  pushed in `ee093ed` … `be48c63`; the 5th is a new local commit — push before
+- 🔄 **6 fixes landed mid-walkthrough on `main`** (all 799 tests pass; first 4 already
+  pushed in `ee093ed` … `be48c63`; fixes 5 and 6 are local commits — push before
   resuming on a different machine):
   - `ee093ed` — MFA verify Enter key: code field now uses `ValueChangeMode.EAGER` so
     pressing Enter submits the typed value instead of the stale on-blur empty value.
@@ -441,14 +441,22 @@ tagging v0.3.0. **Branch:** `main` at `0.3.0-SNAPSHOT`.
     that have subcategories are hidden). New
     `CompetitionService.findLeafJudgingCategories(divisionId)`. Service-side
     `assignFinalCategory` still accepts any JUDGING-scope id; UI is the only gate.
-  - **(new, this session)** — `DivisionDetailView.refreshCategoriesGrid()` and the
-    Add Category dialog's Custom-tab Parent Category Select both now use
+  - `41cd5e6` — `DivisionDetailView.refreshCategoriesGrid()` and the Add Category
+    dialog's Custom-tab Parent Category Select both now use
     `findRegistrationCategories(divisionId)` (was using all-scope
     `findDivisionCategories` and showing JUDGING-scope clones as duplicates after
     Initialize Judging Categories). Caught at sanity-test F when reverting
     REGISTRATION_CLOSED → REGISTRATION_OPEN hid the Judging Categories tab but left
     the JUDGING-scope rows visible in the Categories tab grid. 2 new UI tests in
     `DivisionDetailViewTest`.
+  - **(new, this session)** — `EntryService.updateEntry()` now enforces subcategory
+    and main-category limits when the entrant changes an entry's category. Helper
+    `checkEntryLimitsForUpdate` runs only when category changes; main-category check
+    subtracts 1 when entry is already in the same main-category group (so
+    cross-subcategory moves within the same main-category at the limit still work).
+    Admin path (`adminUpdateEntry`) still bypasses. Caught during walkthrough Batch
+    11D — entrant could edit into a subcategory already at the limit. 2 new unit
+    tests in `EntryServiceTest`.
 
 **Resume plan (next session):**
 1. Read this file + `CLAUDE.md`. Verify `git status` is clean and you're on `main`. If
@@ -467,7 +475,7 @@ tagging v0.3.0. **Branch:** `main` at `0.3.0-SNAPSHOT`.
    (`0.3.1-SNAPSHOT`) and commit. Reference: `docs/plans/deployment-checklist.md`.
 7. **After v0.3.0 ships, merge today's fixes into the WIP judging branch:**
    `git checkout feature/judging-module && git merge origin/main`. Expected
-   conflict surface (the 5 mid-walkthrough fixes touched these files):
+   conflict surface (the 6 mid-walkthrough fixes touched these files):
    - `CompetitionService.java` — keep both: feature branch's Phase 5 methods + main's
      `findRegistrationCategories` and `findLeafJudgingCategories`
    - `DivisionEntryAdminView.java` — likely the biggest conflict. Reapply main's
@@ -479,6 +487,10 @@ tagging v0.3.0. **Branch:** `main` at `0.3.0-SNAPSHOT`.
      (Custom tab) to `findRegistrationCategories`. Small.
    - `EntryService.assignFinalCategory()` — main rejects pre-init assignments; keep
      that branch + whatever the feature branch adds.
+   - `EntryService.updateEntry()` + new `checkEntryLimitsForUpdate` — main enforces
+     entry limits on entrant edits when category changes (subcategory + main category,
+     with same-main subtraction). Keep main's behavior; verify feature branch tests
+     still pass.
    - `MyEntriesView.java` — main switched primary-category dropdown to
      `findRegistrationCategories`. Small.
    - `MfaVerifyView.java` — main added `setValueChangeMode(EAGER)`. Tiny.
@@ -825,6 +837,7 @@ move to `LoginForm` for other reasons or if Bitwarden softens the threshold.
 - community.bitwarden.com thread 92519 ("This page is interfering with the Bitwarden experience")
 
 ### Completed priorities
+- **Entrant updateEntry now enforces entry limits** — Completed 2026-05-18. `EntryService.updateEntry()` previously called `entry.updateDetails()` directly without any limit check, so an entrant could edit a DRAFT entry into a subcategory or main category already at the limit (caught during v0.3.0 walkthrough Batch 11D). Fix: new `checkEntryLimitsForUpdate(division, existingEntry, newInitialCategoryId)` runs **only when the category actually changes**. Subcategory check: count of entries in the new category (the existing entry contributes to its OLD category's count, so no subtraction needed). Main-category check: count of entries in the new main-category group MINUS 1 when the existing entry's current main category equals the new main category (otherwise cross-subcategory moves within the same main category at the limit would be wrongly rejected). Total limit not re-checked on update (entry count unchanged). Admin path (`adminUpdateEntry`) intentionally still bypasses limits — admins routinely correct categories after registration. 2 new unit tests: `shouldRejectUpdateEntryWhenNewSubcategoryAtLimit`, `shouldAllowUpdateEntryWhenMovingWithinSameMainCategoryAtLimit`. 799 tests.
 - **Categories tab grid + Add Category parent select — REGISTRATION scope only** — Completed 2026-05-18. After Initialize Judging Categories (which clones REGISTRATION → JUDGING with the same codes), the DivisionDetailView's Categories tab TreeGrid showed duplicate codes (M1A, M1B, …) because `refreshCategoriesGrid()` sourced from `findDivisionCategories()` which returns all scopes. The same bug also surfaced in the Add Category dialog's Custom tab → Parent Category Select (let admins pick a JUDGING-scope parent for a new REGISTRATION-scope category). Caught during v0.3.0 mid-walkthrough sanity-test F (revert REGISTRATION_CLOSED → REGISTRATION_OPEN, judging tab hides, but Categories tab grid still shows the JUDGING clones). Fix: both call sites now use `CompetitionService.findRegistrationCategories(divisionId)` (introduced in `4cdd18e`). Third instance of the same scope-filter pattern after entry primary-category dropdowns. 2 new UI tests (`shouldExcludeJudgingScopeCategoriesFromCategoriesTabGrid`, `shouldExcludeJudgingScopeCategoriesFromCustomCategoryParentSelect`). 797 tests.
 - **Final Category picker — leaf categories only** — Completed 2026-05-17. The Final Category Select in the admin Edit Entry dialog used to list ALL judging-scope categories — both parents (M1, M2, ...) and subcategories (M1A, M1B, ...) — letting an admin assign a parent that has subcategories, which doesn't make semantic sense for a "final" classification. Fix: new `CompetitionService.findLeafJudgingCategories(divisionId)` returns only categories whose id is NOT referenced as parentId by any other JUDGING-scope category in the same division. Standalone categories without children are still considered leaves (e.g. a custom "CX1 — Combined" without subcategories shows). Service-side validation in `assignFinalCategory` is unchanged (still allows any JUDGING-scope id — UI is the only gate); a future hardening could reject non-leaf assignments service-side. 1 new unit test. 795 tests.
 - **Primary Category dropdowns — no duplicates after judging-category init** — Completed 2026-05-17. Once judging categories were initialized (cloned from registration with same codes), the entry primary-category dropdowns in the admin Add Entry, admin Edit Entry, and entrant edit dialogs all listed BOTH the REGISTRATION and JUDGING-scope rows (loaded via `findDivisionCategories` which doesn't filter by scope), so M1A, M1B, etc. appeared twice — making it look like there were duplicate categories. Fix: new `CompetitionService.findRegistrationCategories(divisionId)` (parallel to `findJudgingCategories`); all 3 dropdown sites now use it. `findDivisionCategories` is still called once at view init to cache all-scope rows for by-ID lookups (e.g., the grid Final Category column needs to resolve JUDGING-scope IDs). 1 new unit test `shouldFindRegistrationCategoriesOnlyExcludingJudgingScope`. 794 tests.
