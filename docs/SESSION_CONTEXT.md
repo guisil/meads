@@ -1,5 +1,59 @@
 # Session Context — MEADS Project
 
+> ## ⚠️ DO THIS FIRST — MERGE `main` BEFORE RESUMING JUDGING/AWARDS WORK
+>
+> `v0.3.0` shipped from `main` on 2026-05-18 with 6 mid-walkthrough fixes plus the
+> release commits. **This branch is behind by 10 commits**, including:
+>
+> - `ee093ed` MFA verify Enter shortcut
+> - `4d0c715` Final Category picker disabled until judging categories initialized
+> - `4cdd18e` Primary-category dropdowns filter to REGISTRATION scope
+> - `be48c63` Final Category picker shows leaf judging categories only
+> - `41cd5e6` Categories tab grid + Add Category parent select filter to REGISTRATION
+> - `3f56f53` Entrant updateEntry enforces entry limits on category change
+> - `42b870a` Release v0.3.0
+> - `f702973` Bump version to 0.3.1-SNAPSHOT
+>
+> Before any further judging/awards work:
+>
+> ```bash
+> git fetch origin
+> git merge origin/main
+> # resolve conflicts (likely surface: CompetitionService.java, DivisionEntryAdminView.java,
+> # DivisionDetailView.java, EntryService.java, MyEntriesView.java, MfaVerifyView.java,
+> # messages*.properties, pom.xml, docs/SESSION_CONTEXT.md, docs/walkthrough/manual-test.md)
+> mvn test -Dsurefire.useFile=false 2>&1 | tail -50
+> ```
+>
+> **Conflict resolution guide:**
+> - `CompetitionService.java` — keep both: this branch's Phase 5/6 methods + main's
+>   `findRegistrationCategories` and `findLeafJudgingCategories`.
+> - `DivisionEntryAdminView.java` — likely biggest conflict. Reapply main's dropdown
+>   changes: primary Category dropdowns use `findRegistrationCategories`; Final
+>   Category Select uses `findLeafJudgingCategories` and disables with helper text
+>   when empty.
+> - `DivisionDetailView.java` — main switched the Categories tab grid
+>   (`refreshCategoriesGrid`) and the Add Category dialog's Custom-tab Parent
+>   Category Select to `findRegistrationCategories`.
+> - `EntryService.assignFinalCategory()` — main rejects pre-init assignments; keep
+>   that behavior on top of whatever this branch added.
+> - `EntryService.updateEntry()` + new `checkEntryLimitsForUpdate` — main enforces
+>   entry limits on entrant edits when the category changes (subcategory + main
+>   category, with same-main subtraction). Keep main's behavior.
+> - `MyEntriesView.java` — main switched primary-category dropdown to
+>   `findRegistrationCategories`. Small.
+> - `MfaVerifyView.java` — main added `setValueChangeMode(EAGER)`. Tiny.
+> - `messages.properties` + `messages_pt.properties` — append both sets of new keys.
+> - `pom.xml` — keep this branch's version (`0.4.0-SNAPSHOT`); do NOT take
+>   `0.3.1-SNAPSHOT` from main.
+> - `docs/SESSION_CONTEXT.md` — reconcile manually: keep this branch's `Branch:`
+>   line and judging/awards status, append main's v0.3.0 release entry into
+>   "Completed priorities", and delete this banner.
+> - `docs/walkthrough/manual-test.md` — keep both sides; the entry-limit-on-edit
+>   and Categories-tab-no-duplicates checks from main are net-new.
+>
+> Delete this banner once the merge is complete and tests pass.
+
 ## What this file is
 
 Standalone context for resuming work on the MEADS project. Contains everything
