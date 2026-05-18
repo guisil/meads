@@ -1,5 +1,24 @@
 # Session Context — MEADS Project
 
+> ## ⚠️ DO THIS FIRST — `feature/judging-module` MERGE PENDING
+>
+> `v0.3.0` shipped from `main` on 2026-05-18 with 6 mid-walkthrough fixes that are
+> NOT on `feature/judging-module`. **Before resuming any judging work, merge `main`
+> into the feature branch:**
+>
+> ```bash
+> git checkout feature/judging-module
+> git merge origin/main
+> # resolve conflicts per "Priority 4" below
+> mvn test -Dsurefire.useFile=false 2>&1 | tail -50
+> ```
+>
+> Conflict-resolution guide is in **Priority 4** further down this file. Do not start
+> new judging Phase 6 work, do not commit unrelated changes, and do not push the
+> feature branch until the merge lands and tests pass.
+>
+> Delete this banner once the merge is complete.
+
 ## What this file is
 
 Standalone context for resuming work on the MEADS project. Contains everything
