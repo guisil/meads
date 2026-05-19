@@ -14,6 +14,7 @@ import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
@@ -77,6 +78,7 @@ public class MfaVerifyView extends VerticalLayout implements BeforeEnterObserver
         codeField.setMaxLength(6);
         codeField.setWidth("100%");
         codeField.setPlaceholder("000000");
+        codeField.setValueChangeMode(ValueChangeMode.EAGER);
 
         var submitButton = new Button(getTranslation("mfa.verify.submit"), e -> verifyCode());
         submitButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);

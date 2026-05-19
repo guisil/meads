@@ -941,10 +941,13 @@ Pre-requisite: enable MFA on `admin@example.com` first (see "MFA setup" above).
 - [ ] **Expected:** TabSheet now has three tabs: Categories, Judging Categories, Settings; default selected is Judging Categories
 - [ ] **Expected:** Categories tab (registration categories) is read-only — no Add or Remove buttons
 - [ ] **Initialize:** Judging Categories tab shows "Initialize Judging Categories" button (no grid yet)
+- [ ] **Pre-initialization Final Category check:** open Entry Admin → Entries tab → edit a SUBMITTED entry — **Expected:** Final Category Select is **disabled** with helper text "Initialize judging categories first to assign a final category". Cancel the edit dialog and return to Judging Categories tab.
 - [ ] Click "Initialize Judging Categories" — **Expected:** grid populated with clones of the registration categories (same codes/names/parent hierarchy); "Add Judging Category" button appears; init button disappears
+- [ ] **Categories tab no-duplicates check:** click the Categories tab — **Expected:** grid still shows each registration code exactly once (e.g. M1A appears once, not twice). The cloned JUDGING-scope rows must NOT appear in this tab.
+- [ ] **Add Category dialog parent select check:** on the Categories tab, click "Add Category" → switch to the "Custom" tab inside the dialog → open the "Parent Category" select — **Expected:** each top-level code (M1, M2, M3, M4) appears exactly once (no JUDGING-scope duplicates). Cancel the dialog.
 - [ ] **Add Judging Category:** dialog with Code → Name → Description → Parent (optional) fields stacked vertically; blank fields show per-field errors; successful add appears in grid
 - [ ] **Remove (leaf):** X icon → "Remove \"CX1 — ...\"?" confirm → "Judging category removed" notification; row gone
-- [ ] **Assign Final Category on an entry:** go to Entries tab on Entry Admin → edit a SUBMITTED entry → Final Category dropdown lists JUDGING-scope categories (clearable); pick one, Save; entry's Final Category column updates from "—" to the picked code
+- [ ] **Assign Final Category on an entry:** go to Entries tab on Entry Admin → edit a SUBMITTED entry → **Expected:** the primary **Category** dropdown lists each subcategory exactly once (no duplicates from the cloned JUDGING-scope rows). Final Category dropdown lists JUDGING-scope **leaves only** — e.g. M1A/M1B/M1C are shown but M1 (the parent) is not; a standalone custom judging category with no children IS shown. Clearable; pick one, Save; entry's Final Category column updates from "—" to the picked code
 - [ ] **Deletion guard (leaf):** try to remove the judging category assigned to the entry — **Expected:** error notification "Cannot remove judging category: it is referenced by one or more entries"; row stays
 - [ ] **Deletion guard (parent of referenced child):** try to remove the PARENT of the assigned judging category — **Expected:** same friendly error notification (NOT a stack trace or silent failure); row stays
 - [ ] **Cleanup:** clear the Final Category on the entry (set to empty, Save), then re-attempt the leaf remove → success
@@ -1514,12 +1517,15 @@ Or use a test division where the flag is already set.*
 - [ ] Create entries to test the subcategory limit (max 3 per subcategory in Amadora)
 - [ ] After reaching 3 non-withdrawn entries in M1A (Traditional Mead Dry), attempt to create a 4th
 - [ ] **Expected:** Error "Entry limit reached for this subcategory (max 3)"
+- [ ] **Edit into a full subcategory:** with M1A at the 3-entry limit, edit a DRAFT entry currently in a different subcategory (e.g. M1B or M2A) and change its Category to M1A → Save → **Expected:** the same subcategory-limit error notification; entry's category not changed.
 
 **Main category limit (5 per main category):**
 
 - [ ] Create entries across multiple M1 subcategories (M1A, M1B, M1C) to total 5
 - [ ] Attempt to create a 6th entry under any M1 subcategory
 - [ ] **Expected:** Error "Entry limit reached for this main category (max 5)"
+- [ ] **Cross-main edit into a full main category:** with M1 at the 5-entry limit, edit a DRAFT entry that is currently in a DIFFERENT main category (e.g. M2A) and change its Category to any M1.x → Save → **Expected:** main-category-limit error notification; entry's category not changed.
+- [ ] **Cross-subcategory edit within the same main category at the limit:** with M1 at the 5-entry limit (say 3 in M1A + 2 in M1B), edit a DRAFT entry from M1A to M1C → **Expected:** allowed (still 5 total in M1; the existing entry is being moved, not added).
 
 ---
 

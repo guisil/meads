@@ -1,59 +1,5 @@
 # Session Context — MEADS Project
 
-> ## ⚠️ DO THIS FIRST — MERGE `main` BEFORE RESUMING JUDGING/AWARDS WORK
->
-> `v0.3.0` shipped from `main` on 2026-05-18 with 6 mid-walkthrough fixes plus the
-> release commits. **This branch is behind by 10 commits**, including:
->
-> - `ee093ed` MFA verify Enter shortcut
-> - `4d0c715` Final Category picker disabled until judging categories initialized
-> - `4cdd18e` Primary-category dropdowns filter to REGISTRATION scope
-> - `be48c63` Final Category picker shows leaf judging categories only
-> - `41cd5e6` Categories tab grid + Add Category parent select filter to REGISTRATION
-> - `3f56f53` Entrant updateEntry enforces entry limits on category change
-> - `42b870a` Release v0.3.0
-> - `f702973` Bump version to 0.3.1-SNAPSHOT
->
-> Before any further judging/awards work:
->
-> ```bash
-> git fetch origin
-> git merge origin/main
-> # resolve conflicts (likely surface: CompetitionService.java, DivisionEntryAdminView.java,
-> # DivisionDetailView.java, EntryService.java, MyEntriesView.java, MfaVerifyView.java,
-> # messages*.properties, pom.xml, docs/SESSION_CONTEXT.md, docs/walkthrough/manual-test.md)
-> mvn test -Dsurefire.useFile=false 2>&1 | tail -50
-> ```
->
-> **Conflict resolution guide:**
-> - `CompetitionService.java` — keep both: this branch's Phase 5/6 methods + main's
->   `findRegistrationCategories` and `findLeafJudgingCategories`.
-> - `DivisionEntryAdminView.java` — likely biggest conflict. Reapply main's dropdown
->   changes: primary Category dropdowns use `findRegistrationCategories`; Final
->   Category Select uses `findLeafJudgingCategories` and disables with helper text
->   when empty.
-> - `DivisionDetailView.java` — main switched the Categories tab grid
->   (`refreshCategoriesGrid`) and the Add Category dialog's Custom-tab Parent
->   Category Select to `findRegistrationCategories`.
-> - `EntryService.assignFinalCategory()` — main rejects pre-init assignments; keep
->   that behavior on top of whatever this branch added.
-> - `EntryService.updateEntry()` + new `checkEntryLimitsForUpdate` — main enforces
->   entry limits on entrant edits when the category changes (subcategory + main
->   category, with same-main subtraction). Keep main's behavior.
-> - `MyEntriesView.java` — main switched primary-category dropdown to
->   `findRegistrationCategories`. Small.
-> - `MfaVerifyView.java` — main added `setValueChangeMode(EAGER)`. Tiny.
-> - `messages.properties` + `messages_pt.properties` — append both sets of new keys.
-> - `pom.xml` — keep this branch's version (`0.4.0-SNAPSHOT`); do NOT take
->   `0.3.1-SNAPSHOT` from main.
-> - `docs/SESSION_CONTEXT.md` — reconcile manually: keep this branch's `Branch:`
->   line and judging/awards status, append main's v0.3.0 release entry into
->   "Completed priorities", and delete this banner.
-> - `docs/walkthrough/manual-test.md` — keep both sides; the entry-limit-on-edit
->   and Categories-tab-no-duplicates checks from main are net-new.
->
-> Delete this banner once the merge is complete and tests pass.
-
 ## What this file is
 
 Standalone context for resuming work on the MEADS project. Contains everything
@@ -68,8 +14,8 @@ needed to continue even without memory files or prior conversation history.
 Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
-**Branch:** `feature/judging-module` — **Awards module COMPLETE** (2026-05-12, all 13 tasks done). Judging Phase 6 views also complete. Architecture: `Publication` audit-trail aggregate + freeze-in-place via `DivisionStatus.isResultsFrozen()` guard on every judging mutator. Decoupled publish/republish/announcement: only `sendAnnouncement` triggers emails. Per the plan's open question, chose option B for entrant-facing scoresheet drill-in (new `MyResultsView` + `MyScoresheetView` in awards module + banner-link from `MyEntriesView`) to keep dependency direction unidirectional (awards → entry). **Merged main 2026-05-16** to pick up the v0.3.0 bug fixes (credits-grid refresh, webhook post-registration guard, judging-category parent-delete guard), MFA email reset flow, codebase-wide inline-FQN cleanup + CLAUDE.md rule, and i18n cleanup (sidebar nav, Final Category, dialog buttons). Post-merge: caught up ES/IT/PL with the 14 new keys that main only added to EN/PT.
-**Tests:** 1061 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-16 post-merge (1047 FJM baseline + 14 from main: MFA reset suite + webhook guard + judging-category parent-delete guard).
+**Branch:** `feature/judging-module` at `0.4.0-SNAPSHOT` — **Awards module COMPLETE** (2026-05-12, all 13 tasks done). Judging Phase 6 views also complete. Architecture: `Publication` audit-trail aggregate + freeze-in-place via `DivisionStatus.isResultsFrozen()` guard on every judging mutator. Decoupled publish/republish/announcement: only `sendAnnouncement` triggers emails. Per the plan's open question, chose option B for entrant-facing scoresheet drill-in (new `MyResultsView` + `MyScoresheetView` in awards module + banner-link from `MyEntriesView`) to keep dependency direction unidirectional (awards → entry). **Merged main 2026-05-16** to pick up the v0.3.0 bug fixes (credits-grid refresh, webhook post-registration guard, judging-category parent-delete guard), MFA email reset flow, codebase-wide inline-FQN cleanup + CLAUDE.md rule, and i18n cleanup (sidebar nav, Final Category, dialog buttons). Post-merge: caught up ES/IT/PL with the 14 new keys that main only added to EN/PT. **Merged main again 2026-05-19** to pick up the v0.3.0 release commits + 6 mid-walkthrough fixes (MFA verify Enter shortcut, Final Category picker disabled until init, primary-category dropdowns filtered to REGISTRATION scope, leaf-only judging categories in Final Category picker, Categories tab + parent select filter to REGISTRATION, entrant updateEntry enforces entry limits on category change).
+**Tests:** 1069 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-19 after merging main (v0.3.0 + 6 mid-walkthrough fixes, +8 tests vs. 1061 pre-merge baseline).
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -415,7 +361,7 @@ Add a `scope` enum (`REGISTRATION` / `JUDGING`) to `DivisionCategory`:
 - JUDGING categories require a description (same as REGISTRATION — no nullable change)
 - `finalCategoryId` is clearable (nullable) from admin UI — Select includes empty option
 - Standalone `EntryService.assignFinalCategory(entryId, finalCategoryId, userId)` method (not bundled into `adminUpdateEntry`)
-- Final category picker falls back to ALL categories if no JUDGING categories exist yet
+- Final category picker is **disabled** with helper text when no JUDGING categories exist yet (the original "fall back to ALL categories" design was reverted on 2026-05-17 — see Completed priorities — to prevent stale registration-scope assignments slipping past the judging-category deletion guard)
 - Judging category management allowed for any status >= REGISTRATION_CLOSED (through JUDGING, DELIBERATION, RESULTS_PUBLISHED)
 - "Initialize judging categories" is part of this feature; full judging module workflows come later
 - Unique constraint changes to `UNIQUE(division_id, code, scope)` — same code can exist in both scopes
@@ -428,8 +374,9 @@ Add a `scope` enum (`REGISTRATION` / `JUDGING`) to `DivisionCategory`:
 - "Initialize judging categories" button clones all REGISTRATION categories into JUDGING ones
   (same codes, names, descriptions, hierarchy; `catalogCategoryId = null` on clones) — admin can then diverge freely
 - When setting `finalCategoryId` on an entry (in DivisionEntryAdminView), the category picker shows
-  only JUDGING categories (if any exist) or falls back to all division categories
-- Service validates `finalCategoryId` references a JUDGING category when JUDGING categories exist
+  only JUDGING categories; disabled with helper text when none are initialized yet
+- Service rejects non-null `finalCategoryId` when no JUDGING categories exist, and validates the ID
+  is in JUDGING scope when they do
 
 **New files:**
 - `app.meads.competition.CategoryScope.java` — public enum (`REGISTRATION`, `JUDGING`)
@@ -512,9 +459,41 @@ from scratch using standard Java APIs. Full implementation:
 - i18n: `mfa.verify.*` + `profile.mfa.*` keys in EN and PT. `error.mfa.invalid-code` error key.
 23 new tests (7 TotpService + 3 UserRepository + 5 UserService unit + 5 MFA integration + 3 ProfileView UI). 777 total.
 
-### Priority 4: Full manual walkthrough
-Run the full `docs/walkthrough/manual-test.md` end-to-end (all 14 sections) before
-starting the judging module implementation.
+### Priority 4: Merge v0.3.0 fixes into `feature/judging-module`
+
+`feature/judging-module` was forked before the v0.3.0 mid-walkthrough fixes landed.
+Once you resume judging work, merge `main` into it first:
+
+```bash
+git checkout feature/judging-module && git merge origin/main
+```
+
+Expected conflict surface (the 6 mid-walkthrough fixes touched these files):
+- `CompetitionService.java` — keep both: feature branch's Phase 5 methods + main's
+  `findRegistrationCategories` and `findLeafJudgingCategories`
+- `DivisionEntryAdminView.java` — likely the biggest conflict. Reapply main's
+  dropdown changes: primary Category dropdowns use `findRegistrationCategories`;
+  Final Category Select uses `findLeafJudgingCategories` and disables with helper
+  text when empty.
+- `DivisionDetailView.java` — main switched the Categories tab grid
+  (`refreshCategoriesGrid`) and the Add Category dialog's Parent Category Select
+  (Custom tab) to `findRegistrationCategories`. Small.
+- `EntryService.assignFinalCategory()` — main rejects pre-init assignments; keep
+  that branch + whatever the feature branch adds.
+- `EntryService.updateEntry()` + new `checkEntryLimitsForUpdate` — main enforces
+  entry limits on entrant edits when category changes (subcategory + main category,
+  with same-main subtraction). Keep main's behavior; verify feature branch tests
+  still pass.
+- `MyEntriesView.java` — main switched primary-category dropdown to
+  `findRegistrationCategories`. Small.
+- `MfaVerifyView.java` — main added `setValueChangeMode(EAGER)`. Tiny.
+- `messages.properties` + `messages_pt.properties` — append both sets of new keys.
+- `pom.xml` — take feature branch's version (`0.4.0-SNAPSHOT`).
+- `docs/SESSION_CONTEXT.md` — reconcile manually; take feature branch's
+  `Branch:` line and Phase 5/6 status text, append main's v0.3.0 release entry.
+- `docs/walkthrough/manual-test.md` — keep both sides.
+
+Run `mvn test -Dsurefire.useFile=false 2>&1 | tail -50` to verify the merge.
 
 ### Priority 5: Judging module
 Design and implementation. **Design in progress (multi-session):** see
@@ -1224,6 +1203,12 @@ move to `LoginForm` for other reasons or if Bitwarden softens the threshold.
 - community.bitwarden.com thread 92519 ("This page is interfering with the Bitwarden experience")
 
 ### Completed priorities
+- **Entrant updateEntry now enforces entry limits** — Completed 2026-05-18 (on main, merged into feature/judging-module 2026-05-19). `EntryService.updateEntry()` previously called `entry.updateDetails()` directly without any limit check, so an entrant could edit a DRAFT entry into a subcategory or main category already at the limit (caught during v0.3.0 walkthrough Batch 11D). Fix: new `checkEntryLimitsForUpdate(division, existingEntry, newInitialCategoryId)` runs **only when the category actually changes**. Subcategory check: count of entries in the new category (the existing entry contributes to its OLD category's count, so no subtraction needed). Main-category check: count of entries in the new main-category group MINUS 1 when the existing entry's current main category equals the new main category (otherwise cross-subcategory moves within the same main category at the limit would be wrongly rejected). Total limit not re-checked on update (entry count unchanged). Admin path (`adminUpdateEntry`) intentionally still bypasses limits — admins routinely correct categories after registration. 2 new unit tests: `shouldRejectUpdateEntryWhenNewSubcategoryAtLimit`, `shouldAllowUpdateEntryWhenMovingWithinSameMainCategoryAtLimit`.
+- **Categories tab grid + Add Category parent select — REGISTRATION scope only** — Completed 2026-05-18 (on main, merged into feature/judging-module 2026-05-19). After Initialize Judging Categories (which clones REGISTRATION → JUDGING with the same codes), the DivisionDetailView's Categories tab TreeGrid showed duplicate codes (M1A, M1B, …) because `refreshCategoriesGrid()` sourced from `findDivisionCategories()` which returns all scopes. The same bug also surfaced in the Add Category dialog's Custom tab → Parent Category Select (let admins pick a JUDGING-scope parent for a new REGISTRATION-scope category). Caught during v0.3.0 mid-walkthrough sanity-test F. Fix: both call sites now use `CompetitionService.findRegistrationCategories(divisionId)` (introduced in `4cdd18e`). Third instance of the same scope-filter pattern after entry primary-category dropdowns. 2 new UI tests (`shouldExcludeJudgingScopeCategoriesFromCategoriesTabGrid`, `shouldExcludeJudgingScopeCategoriesFromCustomCategoryParentSelect`).
+- **Final Category picker — leaf categories only** — Completed 2026-05-17 (on main, merged into feature/judging-module 2026-05-19). The Final Category Select in the admin Edit Entry dialog used to list ALL judging-scope categories — both parents (M1, M2, ...) and subcategories (M1A, M1B, ...) — letting an admin assign a parent that has subcategories, which doesn't make semantic sense for a "final" classification. Fix: new `CompetitionService.findLeafJudgingCategories(divisionId)` returns only categories whose id is NOT referenced as parentId by any other JUDGING-scope category in the same division. Standalone categories without children are still considered leaves (e.g. a custom "CX1 — Combined" without subcategories shows). Service-side validation in `assignFinalCategory` is unchanged (still allows any JUDGING-scope id — UI is the only gate); a future hardening could reject non-leaf assignments service-side. 1 new unit test.
+- **Primary Category dropdowns — no duplicates after judging-category init** — Completed 2026-05-17 (on main, merged into feature/judging-module 2026-05-19). Once judging categories were initialized (cloned from registration with same codes), the entry primary-category dropdowns in the admin Add Entry, admin Edit Entry, and entrant edit dialogs all listed BOTH the REGISTRATION and JUDGING-scope rows (loaded via `findDivisionCategories` which doesn't filter by scope), so M1A, M1B, etc. appeared twice. Fix: new `CompetitionService.findRegistrationCategories(divisionId)` (parallel to `findJudgingCategories`); all 3 dropdown sites now use it. `findDivisionCategories` is still called once at view init to cache all-scope rows for by-ID lookups (e.g., the grid Final Category column needs to resolve JUDGING-scope IDs). 1 new unit test `shouldFindRegistrationCategoriesOnlyExcludingJudgingScope`.
+- **Final Category picker — no fallback to registration categories** — Completed 2026-05-17 (on main, merged into feature/judging-module 2026-05-19). Reversed the original design decision that let the admin entry-edit dialog fall back to ALL division categories when no JUDGING-scope categories existed. Problem: an entry's `finalCategoryId` could end up pointing to a registration-scope row, which `EntryJudgingCategoryDeletionGuard` doesn't protect (it only walks JUDGING-scope), so a later admin could silently break the entry by removing the registration category. Fix: `DivisionEntryAdminView` now disables the Final Category Select with helper text "Initialize judging categories first to assign a final category" when `judgingCategories.isEmpty()`; `EntryService.assignFinalCategory()` now throws `BusinessRuleException("error.entry.final-category-no-judging-categories")` when a non-null `finalCategoryId` is passed before judging categories are initialized. Clearing (null) is still allowed unconditionally, so any stale prior assignments can be cleaned up. Also added the previously-missing `error.entry.final-category-not-judging` translation. 1 new test + 1 reversed test.
+- **MFA verify Enter shortcut fix** — Completed 2026-05-17 (on main, merged into feature/judging-module 2026-05-19). `MfaVerifyView` code field now uses `ValueChangeMode.EAGER` so the Enter shortcut listener sees the currently typed value instead of the stale on-blur value. Before: user had to Tab/click out of the field before pressing Enter to submit. Same pattern as `LoginView` (password), `SetPasswordView` (password+confirm), `UserListView` (filter). 1 new UI test in `MfaVerifyViewTest` asserts `getValueChangeMode() == EAGER`.
 - **i18n cleanup: dialog buttons** — Completed 2026-05-16 (on main, merged into feature/judging-module). Replaced 40+ hardcoded "Cancel"/"Save"/"Close"/"Delete" button strings with `getTranslation("button.*")` across `UserListView`, `DivisionEntryAdminView`, `DivisionDetailView`, `CompetitionListView`, `CompetitionDetailView`. Added missing `button.save` and `button.close` keys in EN+PT (`button.cancel` and `button.delete` already existed). Tests still pass because they run in default ENGLISH locale where `getTranslation("button.save") == "Save"`.
 - **i18n gaps in sidebar + entry edit dialog** — Completed 2026-05-16 (on main, merged into feature/judging-module). `MainLayout` now resolves sidebar nav items via `getTranslation()` for SYSTEM_ADMIN ("Competitions"/"Users") and competition-admin ("My Competitions") roles — they were hardcoded English with a misleading "Admin-only, no i18n" comment. The Final Category select label and "— Not assigned —" placeholder in the admin entry edit dialog (`DivisionEntryAdminView`) were also hardcoded. New keys: `nav.users`, `entry-admin.entries.edit.final-category`, `entry-admin.entries.edit.final-category.unset` (EN+PT).
 - **MFA email reset (Lost your device?)** — Completed 2026-05-16 (on main, merged into feature/judging-module). Recovery path for SYSTEM_ADMIN locked out of TOTP. On `/mfa`, a "Lost your device?" button triggers `EmailService.sendMfaReset(email, locale)`. Reset link points to new `/mfa-reset` route; clicking validates the JWT, calls `UserService.completeMfaReset(token)` which clears `totpSecret` + `mfaEnabled`, invalidates session, then renders a confirmation page with a "Continue to Login" button. Token validity is 1 hour (short — security-critical, not the 7-day generic). Rate-limited via the existing per-user 5-minute cooldown (`mfa-reset` key). i18n keys added in EN+PT (`mfa.verify.lost-device`, `mfa.verify.reset-link-sent`, `mfa.reset.*`, `email.mfa-reset.*`). New: `JwtMagicLinkService.generateMfaResetLink`, `UserService.completeMfaReset`, `EmailService.sendMfaReset`, `SmtpEmailService` impl with `MFA_RESET_TOKEN_VALIDITY=1h`, `MfaResetView` (`@AnonymousAllowed`), `MfaVerifyView` updated. SecurityConfig adds `/mfa-reset` to permitAll. Visibility fix: `MfaVerifyView` and `MfaResetView` made public so Karibu's `autoDiscoverViews` can find them (it skips package-private classes). 12 new tests (1 JWT + 3 UserService + 3 SmtpEmailService + 3 MfaResetView + 2 MfaVerifyView).
@@ -1234,6 +1219,7 @@ move to `LoginForm` for other reasons or if Bitwarden softens the threshold.
 - **Branch `feature/judging-module` + version bump to 0.4.0-SNAPSHOT** — 2026-05-09. Phase 4 design closed on `main` (4 commits pushed). Created `feature/judging-module` for Phase 5 implementation work; bumped version to 0.4.0-SNAPSHOT to clearly separate the in-progress judging module from `main` (which stays at 0.3.0-SNAPSHOT until merge).
 - **Version bump to 0.3.0-SNAPSHOT** — 2026-05-02. Bumped from 0.2.9-SNAPSHOT to 0.3.0-SNAPSHOT ahead of judging category management and the judging module. 723 tests.
 - **Post-registration guards + admin add entry** — Completed 2026-05-02. Credits (add/adjust), product mappings (add/edit/delete), and entrant entry edits all blocked after REGISTRATION_OPEN. `DivisionStatus.allowsRegistrationActions()`. Disabled-button tooltips via Span wrapper. Credits balance auto-refreshes after credit operations. Submit All Drafts disabled when not REGISTRATION_OPEN. MyEntriesView shows "Registration is closed" in red when past REGISTRATION_OPEN. Admin "Add Entry" in Entries tab (two-step: warning confirmation → entry form with entrant email). `EntryService.adminCreateEntry()` skips credit check and status check. 8 new unit tests. 723 tests.
+- **v0.3.0 release** — Released 2026-05-18. Judging category management (initialize from REGISTRATION, add/edit/remove with deletion guards, leaf-only Final Category picker, entry → judging-category assignment with deletion guard recursing through subtree); TOTP-based MFA for SYSTEM_ADMIN (setup/verify/disable + email recovery "Lost your device?"); post-registration guards on credits/products/entrant edits with admin "Add Entry" bypass; entry status redesign (`←`/`→` arrow buttons for DRAFT → SUBMITTED → RECEIVED, summary row with per-status breakdown); admin view i18n (~270 strings, EN+PT); webhook credits blocked past REGISTRATION_OPEN; entrant updateEntry now enforces entry limits with same-main-category subtraction; codebase-wide inline FQN cleanup (new convention banning inline FQNs); dependency upgrades (Spring Boot 4.0.6, Vaadin 25.1.3, Spring Modulith 2.0.6, Testcontainers 2.0.5). Full pre-release walkthrough (`docs/walkthrough/manual-test.md`, 14 sections) completed 2026-05-18 with 6 mid-walkthrough fixes landed. Judging module design Phases 1–4 documented in `docs/plans/2026-05-05-judging-module-design.md` (no judging code on main yet — that work continues on `feature/judging-module`). 799 tests.
 - **v0.2.8 release** — Released 2026-05-02. Includes entry status redesign, expanded entries summary row (per-status breakdown), admin view i18n (PT translations), dependency upgrades, and PT translation fixes (pre-AO orthography, wood-aged terminology).
 - **Entry status management redesign** — Completed 2026-04-30. Replaced "Mark as Received" button with `←`/`→` arrow buttons for the full DRAFT → SUBMITTED → RECEIVED flow. WITHDRAWN entries revert to DRAFT. New domain methods `advanceStatus()`/`revertStatus()` on `Entry`; new service methods `advanceEntryStatus()`/`revertEntryStatus()` on `EntryService`. `advanceEntryStatus()` calls `publishSubmissionEventIfComplete()` (consistent with entrant-triggered path). `getTotalCreditBalance(divisionId)` replaces N+1 participant loop. Summary row: "Credits balance: N | Total entries: N (Draft: X, Submitted: Y, Received: Z, Withdrawn: W)". 715 tests.
 - **Dependency upgrades + entry admin summary row** — Completed 2026-04-29. Bumped Spring Boot 4.0.2→4.0.6, Vaadin 25.0.7→25.1.3, Spring Modulith 2.0.4→2.0.6, Testcontainers 2.0.4→2.0.5. Added summary row to DivisionEntryAdminView Entries tab (credits balance + full per-status entry breakdown). 696 tests.

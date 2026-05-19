@@ -8,6 +8,8 @@ import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.server.VaadinServletRequest;
 import jakarta.mail.internet.MimeMessage;
 import org.junit.jupiter.api.AfterEach;
@@ -76,6 +78,14 @@ class MfaVerifyViewTest {
 
         var lostDeviceButton = _get(Button.class, spec -> spec.withText("Lost your device?"));
         assertThat(lostDeviceButton).isNotNull();
+    }
+
+    @Test
+    void codeFieldShouldUseEagerValueChangeModeSoEnterSeesTypedValue() {
+        UI.getCurrent().navigate("mfa");
+
+        var codeField = _get(TextField.class, spec -> spec.withLabel("Verification Code"));
+        assertThat(codeField.getValueChangeMode()).isEqualTo(ValueChangeMode.EAGER);
     }
 
     @Test
