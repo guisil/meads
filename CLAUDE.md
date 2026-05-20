@@ -97,6 +97,7 @@ app.meads                                ← @SpringBootApplication (root module
 ├── MeadsI18NProvider.java               ← Vaadin I18NProvider backed by Spring MessageSource + getPlural() for CLDR-aware pluralization
 ├── PluralRules.java                     ← CLDR plural category resolution (one/few/many/other) per locale
 ├── LanguageMapping.java                 ← Country → language mapping + locale resolution
+├── CountryDisplay.java                  ← ISO 3166-1 country code → display name localized to the current UI locale
 ├── CompetitionAdminChecker.java         ← Interface (avoids circular dependency root ↔ competition)
 ├── UserLocaleResolver.java              ← Interface (avoids circular dependency root ↔ identity)
 ├── UserLanguageUpdater.java             ← Interface (avoids circular dependency root ↔ identity)

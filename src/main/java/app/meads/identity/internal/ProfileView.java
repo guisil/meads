@@ -1,6 +1,7 @@
 package app.meads.identity.internal;
 
 import app.meads.BusinessRuleException;
+import app.meads.CountryDisplay;
 import app.meads.LanguageMapping;
 import app.meads.MainLayout;
 import app.meads.MeadsI18NProvider;
@@ -78,12 +79,11 @@ public class ProfileView extends VerticalLayout {
 
         var countryCombo = new ComboBox<String>(getTranslation("profile.country.label"));
         var countries = Arrays.stream(Locale.getISOCountries())
-                .sorted((a, b) -> new Locale("", a).getDisplayCountry(Locale.ENGLISH)
-                        .compareTo(new Locale("", b).getDisplayCountry(Locale.ENGLISH)))
+                .sorted((a, b) -> CountryDisplay.name(a, getLocale())
+                        .compareTo(CountryDisplay.name(b, getLocale())))
                 .toList();
         countryCombo.setItems(countries);
-        countryCombo.setItemLabelGenerator(code ->
-                new Locale("", code).getDisplayCountry(Locale.ENGLISH));
+        countryCombo.setItemLabelGenerator(code -> CountryDisplay.name(code, getLocale()));
         countryCombo.setClearButtonVisible(true);
         countryCombo.setWidthFull();
         if (user.getCountry() != null) {

@@ -381,7 +381,7 @@ Pre-requisite: enable MFA on `admin@example.com` first (see "MFA setup" above).
 - [ ] Navigate to `/users`
 - [ ] **Expected:** Page title "Users"
 - [ ] **Expected:** Filter field with search icon and placeholder "Filter by email or name..."
-- [ ] **Expected:** Grid with columns: Name (sortable), Email (sortable), Meadery (sortable), Country (sortable, full name), Role (sortable), Status (sortable), Actions (icon buttons)
+- [ ] **Expected:** Grid with columns: Name (sortable), Email (sortable), Meadery (sortable), Country (sortable, full name localized to the current UI language), Role (sortable), Status (sortable), Actions (icon buttons)
 - [ ] **Expected:** Grid contains at least 7 dev users (admin, compadmin, user, pending/active, judge, steward, entrant)
 - [ ] Type a name fragment in the filter field
 - [ ] **Expected:** Grid filters immediately (EAGER mode), showing only matching users
@@ -1014,7 +1014,7 @@ Pre-requisite: enable MFA on `admin@example.com` first (see "MFA setup" above).
 - [ ] **Expected:** Filter field: "Filter by mead name, entrant, or entry code..." + status dropdown ("All statuses")
 - [ ] **Expected:** Grid with columns: Entry # (with AMA prefix, e.g. "AMA-1"), Code, Mead Name, Category (code with tooltip for full name), Final Category (code with tooltip, or "—" if not set), Entrant, Meadery, Country, Status, Actions (view/edit/←/→/withdraw/delete icons)
 - [ ] **Expected:** Meadery column shows user's meadery name (or empty if not set)
-- [ ] **Expected:** Country column shows display name (e.g. "Portugal") based on user's ISO country code
+- [ ] **Expected:** Country column shows the display name based on the user's ISO country code, localized to the current UI language (e.g. "Portugal" in English, "Portogallo" in Italian) — switch the language in the top-right menu to confirm the column updates
 - [ ] **Expected:** 4 entries total (3 from user@example.com, 1 from entrant@example.com), sorted by entry number
 - [ ] **Expected:** Wildflower Traditional and Blueberry Bliss -- Status: SUBMITTED
 - [ ] **Expected:** Oak-Aged Bochet and Lavender Metheglin -- Status: DRAFT

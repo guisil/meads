@@ -1,6 +1,7 @@
 package app.meads.identity.internal;
 
 import app.meads.BusinessRuleException;
+import app.meads.CountryDisplay;
 import app.meads.LanguageMapping;
 import app.meads.MainLayout;
 import app.meads.identity.EmailService;
@@ -75,7 +76,7 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
                 .setHeader(getTranslation("user-list.column.meadery")).setSortable(true).setFlexGrow(2);
         grid.addColumn(user -> {
             if (user.getCountry() == null) return "—";
-            return new Locale("", user.getCountry()).getDisplayCountry(Locale.ENGLISH);
+            return CountryDisplay.name(user.getCountry(), getLocale());
         }).setHeader(getTranslation("user-list.column.country")).setSortable(true).setAutoWidth(true);
         grid.addColumn(User::getRole).setHeader(getTranslation("user-list.column.role")).setSortable(true).setAutoWidth(true);
         grid.addColumn(User::getStatus).setHeader(getTranslation("user-list.column.status")).setSortable(true).setAutoWidth(true);
@@ -246,12 +247,11 @@ public class UserListView extends VerticalLayout implements BeforeEnterObserver 
 
         var countryCombo = new ComboBox<String>(getTranslation("user-list.dialog.country.label"));
         var countries = Arrays.stream(Locale.getISOCountries())
-                .sorted((a, b) -> new Locale("", a).getDisplayCountry(Locale.ENGLISH)
-                        .compareTo(new Locale("", b).getDisplayCountry(Locale.ENGLISH)))
+                .sorted((a, b) -> CountryDisplay.name(a, getLocale())
+                        .compareTo(CountryDisplay.name(b, getLocale())))
                 .toList();
         countryCombo.setItems(countries);
-        countryCombo.setItemLabelGenerator(code ->
-                new Locale("", code).getDisplayCountry(Locale.ENGLISH));
+        countryCombo.setItemLabelGenerator(code -> CountryDisplay.name(code, getLocale()));
         countryCombo.setClearButtonVisible(true);
         countryCombo.setWidthFull();
         if (!isCreate && existingUser.getCountry() != null) {
