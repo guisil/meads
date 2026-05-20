@@ -117,7 +117,10 @@ guards done. **Phase 6 IN PROGRESS (`feature/judging-module`).**
   "Manage placements →" deep link wired from JudgingAdminView BOS tab.
 - 🟡 Dedicated `BosView` (drag-and-drop): deferred ("Manage placements →"
   navigation stub from Tab 3 not yet wired)
-- 🟡 Event listeners: published but not consumed
+- ✅ Event listeners (2026-05-20): `JudgingNotificationListener` consumes
+  `TableStartedEvent`, `ScoresheetRevertedEvent`, `MedalRoundActivatedEvent`
+  (emails the affected judges). The other 10 events are admin-triggered
+  state transitions, intentionally left unconsumed.
 - 🟡 ScoresheetPdfService: not started
 - ✅ Service-error i18n cleanup: every `error.judging-*` key thrown by
   judging services now has an EN + PT translation. Guarded by

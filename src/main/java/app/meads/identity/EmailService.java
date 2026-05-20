@@ -38,4 +38,16 @@ public interface EmailService {
                                 int credits, String divisionName,
                                 String competitionName, String myEntriesUrl,
                                 String contactEmail, Locale locale);
+
+    void sendJudgingTableReady(String recipientEmail, String tableName,
+                               String categoryLabel, String competitionName,
+                               String divisionName, String myJudgingUrl, Locale locale);
+
+    void sendScoresheetReverted(String recipientEmail, String entryLabel,
+                                String competitionName, String divisionName,
+                                String myJudgingUrl, Locale locale);
+
+    void sendMedalRoundReady(String recipientEmail, String categoryLabel,
+                             String competitionName, String divisionName,
+                             String myJudgingUrl, Locale locale);
 }

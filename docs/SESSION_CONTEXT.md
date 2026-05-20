@@ -14,8 +14,8 @@ needed to continue even without memory files or prior conversation history.
 Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
-**Branch:** `feature/judging-module` at `0.4.0-SNAPSHOT` — **Awards module COMPLETE** (2026-05-12, all 13 tasks done). Judging Phase 6 views also complete. Architecture: `Publication` audit-trail aggregate + freeze-in-place via `DivisionStatus.isResultsFrozen()` guard on every judging mutator. Decoupled publish/republish/announcement: only `sendAnnouncement` triggers emails. Per the plan's open question, chose option B for entrant-facing scoresheet drill-in (new `MyResultsView` + `MyScoresheetView` in awards module + banner-link from `MyEntriesView`) to keep dependency direction unidirectional (awards → entry). **Merged main 2026-05-16** to pick up the v0.3.0 bug fixes (credits-grid refresh, webhook post-registration guard, judging-category parent-delete guard), MFA email reset flow, codebase-wide inline-FQN cleanup + CLAUDE.md rule, and i18n cleanup (sidebar nav, Final Category, dialog buttons). Post-merge: caught up ES/IT/PL with the 14 new keys that main only added to EN/PT. **Merged main again 2026-05-19** to pick up the v0.3.0 release commits + 6 mid-walkthrough fixes (MFA verify Enter shortcut, Final Category picker disabled until init, primary-category dropdowns filtered to REGISTRATION scope, leaf-only judging categories in Final Category picker, Categories tab + parent select filter to REGISTRATION, entrant updateEntry enforces entry limits on category change).
-**Tests:** 1069 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-19 after merging main (v0.3.0 + 6 mid-walkthrough fixes, +8 tests vs. 1061 pre-merge baseline).
+**Branch:** `feature/judging-module` at `0.4.0-SNAPSHOT` — **Awards module COMPLETE** (2026-05-12, all 13 tasks done). Judging Phase 6 views also complete. **Judging event listeners complete (2026-05-20)** — `JudgingNotificationListener` emails judges on table start / scoresheet revert / medal-round activation; the judging module is now functionally complete. Architecture: `Publication` audit-trail aggregate + freeze-in-place via `DivisionStatus.isResultsFrozen()` guard on every judging mutator. Decoupled publish/republish/announcement: only `sendAnnouncement` triggers emails. Per the plan's open question, chose option B for entrant-facing scoresheet drill-in (new `MyResultsView` + `MyScoresheetView` in awards module + banner-link from `MyEntriesView`) to keep dependency direction unidirectional (awards → entry). **Merged main 2026-05-16** to pick up the v0.3.0 bug fixes (credits-grid refresh, webhook post-registration guard, judging-category parent-delete guard), MFA email reset flow, codebase-wide inline-FQN cleanup + CLAUDE.md rule, and i18n cleanup (sidebar nav, Final Category, dialog buttons). Post-merge: caught up ES/IT/PL with the 14 new keys that main only added to EN/PT. **Merged main again 2026-05-19** to pick up the v0.3.0 release commits + 6 mid-walkthrough fixes (MFA verify Enter shortcut, Final Category picker disabled until init, primary-category dropdowns filtered to REGISTRATION scope, leaf-only judging categories in Final Category picker, Categories tab + parent select filter to REGISTRATION, entrant updateEntry enforces entry limits on category change).
+**Tests:** 1073 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-20 after adding the judging event listeners (+4 `JudgingNotificationListenerTest` tests vs. the 1069 post-merge baseline).
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -231,6 +231,21 @@ docs/
 ---
 
 ## What's Next
+
+### CURRENT (2026-05-20): judging + awards complete → walkthrough → v0.4.0 release
+
+The judging and awards modules are functionally complete on `feature/judging-module`
+(judging event listeners landed 2026-05-20 — the last flagged gap). Remaining work
+before merge to `main`:
+1. **Manual walkthrough** of the full `docs/walkthrough/manual-test.md` against a
+   running app — focus on §12 (Judging, incl. the 3 new judge-notification emails)
+   and §13 (Awards). Fix anything that surfaces.
+2. **Merge `feature/judging-module` → `main`** and release **v0.4.0** (see the
+   release process in the Deployment notes / `docs/plans/deployment-checklist.md`).
+3. Deferred items below (auto-close, MFA recovery codes, category constraints) stay
+   deferred — they are post-v0.4.0.
+
+The historical priority log below is kept for context; most items are COMPLETE.
 
 ### Priority 1: Manual walkthrough — COMPLETE
 All 14 sections completed with fixes along the way.
@@ -949,11 +964,20 @@ skeleton from Phase 3 translates mechanically.
   constructor parameters.
 - 🎉 Phase 5 services layer COMPLETE. 916 tests (+98 from Phase 5
   services + guards alone). Spring wiring verified end-to-end via
-  full suite + ModulithStructureTest. **Note:** Listeners for the 13
-  events are NOT yet implemented — they're published, but no
-  `@ApplicationModuleListener` consumers exist yet (deferred to a
-  later cycle, will mostly be email notifications + future awards
-  module integration).
+  full suite + ModulithStructureTest. **Event listeners (added
+  2026-05-20):** `JudgingNotificationListener` (`judging.internal`)
+  consumes 3 of the 13 events — `TableStartedEvent` (emails each
+  assigned judge), `ScoresheetRevertedEvent` (emails the judge who
+  filled it; skipped if never filled), `MedalRoundActivatedEvent`
+  (emails every judge on a table covering that category). Each sends
+  a magic-link email via 3 new `EmailService` methods
+  (`sendJudgingTableReady` / `sendScoresheetReverted` /
+  `sendMedalRoundReady`) + `SmtpEmailService` impls + i18n keys in
+  all 5 bundles. The other 10 events are admin-triggered state
+  transitions with no judge-facing call to action and are
+  intentionally left unconsumed (decided listener-by-listener with
+  the user). New repo query `JudgingTableRepository.findByDivisionCategoryId`.
+  4 unit tests in `JudgingNotificationListenerTest`.
 - 🟡 Next: Phase 6 (views) — `JudgingAdminView`, `MyJudgingView`,
   `ScoresheetView`, `MedalRoundView`, `JudgeTableView`, BOS form.
   Per design doc §4.B–§4.J. Also pending: i18n keys for all the new
@@ -1086,11 +1110,14 @@ skeleton from Phase 3 translates mechanically.
   EN + PT for section heading, labels, help text, locked-tooltips.
   7 new view tests (2 commentLanguages + 5 division fields incl.
   lock behavior).
-- 🟡 Next cycles for Phase 6: table drill-in (👁 View action,
-  per-table scoresheet admin), then judge-side views
-  (`MyJudgingView`, `JudgeTableView`, `ScoresheetView`,
-  `MedalRoundView`, dedicated `BosView` form). Per design doc
-  §4.B–§4.J.
+- 🎉 Phase 6 (views) COMPLETE — all judging views built: table
+  drill-in (`TableView`), judge hub (`MyJudgingView`), judge form
+  (`ScoresheetView`), medal-round form, dedicated `BosView`. Per
+  design doc §4.B–§4.J.
+- 🎉 Judging event listeners COMPLETE (2026-05-20) — see Phase 5
+  services-layer note above. The judging module is now functionally
+  complete: aggregates, services, events, listeners, guards, views,
+  and i18n all done.
 
 ### Priority 6: Awards module — DESIGN + PLAN COMPLETE, READY TO IMPLEMENT
 

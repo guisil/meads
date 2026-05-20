@@ -11,6 +11,8 @@ public interface JudgingTableRepository extends JpaRepository<JudgingTable, UUID
 
     List<JudgingTable> findByJudgingId(UUID judgingId);
 
+    List<JudgingTable> findByDivisionCategoryId(UUID divisionCategoryId);
+
     @Query("SELECT t FROM JudgingTable t JOIN t.assignments a WHERE a.judgeUserId = :judgeUserId")
     List<JudgingTable> findByJudgeUserId(UUID judgeUserId);
 

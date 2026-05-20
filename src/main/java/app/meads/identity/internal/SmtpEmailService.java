@@ -255,6 +255,60 @@ class SmtpEmailService implements EmailService {
         sendEmail(recipientEmail, subject, ctx, link + resultsUrl);
     }
 
+    @Override
+    public void sendJudgingTableReady(String recipientEmail, String tableName,
+                                      String categoryLabel, String competitionName,
+                                      String divisionName, String myJudgingUrl, Locale locale) {
+        var subject = msg("email.judging-table-ready.subject", locale, tableName);
+        var ctx = new Context();
+        ctx.setVariable("subject", subject);
+        ctx.setVariable("heading", msg("email.judging-table-ready.heading", locale));
+        ctx.setVariable("bodyText", msg("email.judging-table-ready.body", locale,
+                tableName, categoryLabel, divisionName, competitionName));
+        ctx.setVariable("ctaLabel", msg("email.judging.cta", locale));
+        ctx.setVariable("ctaUrl", myJudgingUrl);
+        ctx.setVariable("fallbackText", msg("email.fallback", locale));
+        ctx.setVariable("footerText", msg("email.footer", locale));
+        ctx.setVariable("contactEmail", null);
+        sendEmail(recipientEmail, subject, ctx, myJudgingUrl);
+    }
+
+    @Override
+    public void sendScoresheetReverted(String recipientEmail, String entryLabel,
+                                       String competitionName, String divisionName,
+                                       String myJudgingUrl, Locale locale) {
+        var subject = msg("email.scoresheet-reverted.subject", locale, entryLabel);
+        var ctx = new Context();
+        ctx.setVariable("subject", subject);
+        ctx.setVariable("heading", msg("email.scoresheet-reverted.heading", locale));
+        ctx.setVariable("bodyText", msg("email.scoresheet-reverted.body", locale,
+                entryLabel, divisionName, competitionName));
+        ctx.setVariable("ctaLabel", msg("email.judging.cta", locale));
+        ctx.setVariable("ctaUrl", myJudgingUrl);
+        ctx.setVariable("fallbackText", msg("email.fallback", locale));
+        ctx.setVariable("footerText", msg("email.footer", locale));
+        ctx.setVariable("contactEmail", null);
+        sendEmail(recipientEmail, subject, ctx, myJudgingUrl);
+    }
+
+    @Override
+    public void sendMedalRoundReady(String recipientEmail, String categoryLabel,
+                                    String competitionName, String divisionName,
+                                    String myJudgingUrl, Locale locale) {
+        var subject = msg("email.medal-round-ready.subject", locale, categoryLabel);
+        var ctx = new Context();
+        ctx.setVariable("subject", subject);
+        ctx.setVariable("heading", msg("email.medal-round-ready.heading", locale));
+        ctx.setVariable("bodyText", msg("email.medal-round-ready.body", locale,
+                categoryLabel, divisionName, competitionName));
+        ctx.setVariable("ctaLabel", msg("email.judging.cta", locale));
+        ctx.setVariable("ctaUrl", myJudgingUrl);
+        ctx.setVariable("fallbackText", msg("email.fallback", locale));
+        ctx.setVariable("footerText", msg("email.footer", locale));
+        ctx.setVariable("contactEmail", null);
+        sendEmail(recipientEmail, subject, ctx, myJudgingUrl);
+    }
+
     private String msg(String key, Locale locale, Object... args) {
         return messageSource.getMessage(key, args, key, locale);
     }

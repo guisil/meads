@@ -82,6 +82,9 @@ CTA button, fallback URL, and optional contact footer.
 | Admin manually adds credits | [MEADS] Entry credits received — {division} | Entry Credits Received | View My Entries | Yes (if competition has contactEmail) |
 | Entrant submits entries | [MEADS] Entries submitted — {division} | Entries Submitted | View My Entries | No |
 | Order requires manual review | [MEADS] Order requires review — {competition} | Order Requires Review | (none) | No |
+| Judging table started (to each assigned judge) | [MEADS] Judging table ready — {table} | Your judging table is ready | Log in to MEADS | No |
+| Submitted scoresheet reopened by an admin (to the judge who filled it) | [MEADS] Scoresheet reopened — {entry code} | A scoresheet needs your attention | Log in to MEADS | No |
+| Medal round activated (to each judge covering that category) | [MEADS] Medal round ready — {category} | A medal round is ready | Log in to MEADS | No |
 
 ---
 
@@ -1535,7 +1538,7 @@ Or use a test division where the flag is already set.*
 `MyJudgingViewTest`, `BosViewTest`, `JudgingServiceTest`, `ScoresheetServiceTest`,
 `JudgeProfileServiceTest`, `MeaderyNameNormalizerTest`, `CoiCheckServiceTest`,
 `JudgingDivisionStatusRevertGuardTest`, `JudgingMinJudgesLockGuardTest`,
-`JudgingErrorKeyCoverageTest`. Plus the seven aggregate repository tests
+`JudgingErrorKeyCoverageTest`, `JudgingNotificationListenerTest`. Plus the seven aggregate repository tests
 (`JudgingRepositoryTest`, `JudgingTableRepositoryTest`,
 `CategoryJudgingConfigRepositoryTest`, `ScoresheetRepositoryTest`,
 `MedalAwardRepositoryTest`, `BosPlacementRepositoryTest`,
@@ -1668,6 +1671,7 @@ For COI badges to appear, `judge@example.com` should already exist as a JUDGE in
 - [ ] **Expected:** Notification "Table started"; Status column changes from `NOT_STARTED` to `ROUND_1`; Scoresheets column now reads `DRAFT N · SUBMITTED 0` for some N ≥ 0.
 - [ ] **Expected:** ▶ Start button becomes disabled (already started).
 - [ ] **Expected:** 🗑 Delete button is disabled with tooltip "Cannot delete a started table or one with assigned judges".
+- [ ] **Check Mailpit:** each assigned judge receives a "Judging table ready" email, subject "[MEADS] Judging table ready — {table}", heading "Your judging table is ready", body names the table, category, division and competition, CTA button "Log in to MEADS" (magic link). `JudgingNotificationListener` handles `TableStartedEvent`.
 
 #### 12.6.5 minJudgesPerTable lock — verify settings tab
 
@@ -1771,6 +1775,7 @@ For COI badges to appear, `judge@example.com` should already exist as a JUDGE in
 - [ ] **Expected:** Confirmation dialog body explains the scoresheet returns to DRAFT, total score is cleared, and if it was the last submitted at the table, table status reopens to ROUND_1.
 - [ ] Click Revert.
 - [ ] **Expected:** Notification "Reverted scoresheet for {entryCode} to draft."; row Status changes; table Status (visible in JudgingAdmin Tables grid) returns to ROUND_1 if applicable.
+- [ ] **Check Mailpit:** the judge who filled that scoresheet receives a "Scoresheet reopened" email, subject "[MEADS] Scoresheet reopened — {entryCode}", heading "A scoresheet needs your attention", CTA button "Log in to MEADS". `JudgingNotificationListener` handles `ScoresheetRevertedEvent`. (No email if the scoresheet was reverted before any judge had filled it.)
 
 ##### Move to another table
 
@@ -1832,6 +1837,7 @@ For this you need a *second* ROUND_1 table in the same JUDGING category. Create 
 
 *Pre-req: at least one CategoryJudgingConfig is ACTIVE for the judge's category. Use JudgingAdminView → Medal Rounds tab to Start the round for `M1A` (after the M1A table is COMPLETE).*
 
+- [ ] **Check Mailpit (right after Starting the medal round):** each judge assigned to a table covering `M1A` receives a "Medal round ready" email, subject "[MEADS] Medal round ready — {category}", heading "A medal round is ready", CTA button "Log in to MEADS". `JudgingNotificationListener` handles `MedalRoundActivatedEvent`.
 - [ ] As `judge@example.com`, navigate via `/my-judging` → Medal Rounds section → "Open medal round →".
 - [ ] **Expected:** URL `competitions/.../divisions/.../medal-rounds/<divisionCategoryId>`.
 - [ ] **Expected:** Header shows category code + name, mode badge (`COMPARATIVE` or `SCORE_BASED`), status badge.
@@ -2600,7 +2606,7 @@ curl -X PUT http://localhost:8080/api/webhooks/jumpseller/order-paid \
 | 8. Entry Admin | `DivisionEntryAdminViewTest`, `EntryServiceTest`, `ProductMappingRepositoryTest`, `JumpsellerOrderRepositoryTest` |
 | 9. Webhook | `JumpsellerWebhookControllerTest`, `WebhookServiceTest`, `JumpsellerOrderTest`, `JumpsellerOrderLineItemTest` |
 | 10–11. My Entries | `MyEntriesViewTest`, `EntryServiceTest`, `EntryTest`, `EntryCreditRepositoryTest`, `EntryRepositoryTest` |
-| 12. Judging Module | `JudgingAdminViewTest`, `TableViewTest`, `ScoresheetViewTest`, `MyJudgingViewTest`, `BosViewTest`, `JudgingServiceTest`, `ScoresheetServiceTest`, `JudgeProfileServiceTest`, `MeaderyNameNormalizerTest`, `CoiCheckServiceTest`, `JudgingDivisionStatusRevertGuardTest`, `JudgingMinJudgesLockGuardTest`, `JudgingErrorKeyCoverageTest`, `JudgingRepositoryTest`, `JudgingTableRepositoryTest`, `CategoryJudgingConfigRepositoryTest`, `ScoresheetRepositoryTest`, `MedalAwardRepositoryTest`, `BosPlacementRepositoryTest`, `JudgeProfileRepositoryTest` |
+| 12. Judging Module | `JudgingAdminViewTest`, `TableViewTest`, `ScoresheetViewTest`, `MyJudgingViewTest`, `BosViewTest`, `JudgingServiceTest`, `ScoresheetServiceTest`, `JudgeProfileServiceTest`, `MeaderyNameNormalizerTest`, `CoiCheckServiceTest`, `JudgingDivisionStatusRevertGuardTest`, `JudgingMinJudgesLockGuardTest`, `JudgingErrorKeyCoverageTest`, `JudgingNotificationListenerTest`, `JudgingRepositoryTest`, `JudgingTableRepositoryTest`, `CategoryJudgingConfigRepositoryTest`, `ScoresheetRepositoryTest`, `MedalAwardRepositoryTest`, `BosPlacementRepositoryTest`, `JudgeProfileRepositoryTest` |
 | 13. Awards Module | `AwardsServiceImplTest`, `AwardsPublicResultsViewTest`, `AwardsAdminViewTest`, `MyResultsViewTest`, `AwardsModuleTest`, `PublicationTest`, `PublicationRepositoryTest`, `JudgingServiceFreezeGuardTest`, `ScoresheetServiceFreezeGuardTest`, `ScoresheetPdfServiceTest` |
 | 14. Cross-cutting | `EntryServiceTest`, `DevDataInitializerTest`, `EntryModuleTest`, `CompetitionModuleTest`, `ModulithStructureTest` |
 | 15. Multi-Role | (exploratory; no dedicated automated tests — covered indirectly by service-level role-combination tests in `CompetitionServiceTest` and `EntryServiceTest`) |
