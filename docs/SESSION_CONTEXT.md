@@ -778,6 +778,21 @@ move to `LoginForm` for other reasons or if Bitwarden softens the threshold.
 - bitwarden/clients PR #17400 — `apps/browser/src/autofill/overlay/inline-menu/content/autofill-inline-menu-content.service.ts`
 - community.bitwarden.com thread 92519 ("This page is interfering with the Bitwarden experience")
 
+### Priority 10: Statistics / metrics view (deferred, low priority)
+A view — or a section within an existing admin view — surfacing aggregate competition
+metrics suitable for presentations, reports, and award ceremonies. Candidate metrics:
+- Entries per entrant country, per division, per category
+- Entrant / meadery counts; distribution of entries per entrant
+- Sweetness / strength / carbonation breakdowns
+- Medal distribution per category (once judging data exists)
+- Submission timeline — entries over the registration window
+
+Open questions to settle when picked up: where it lives (new top-level `statistics`
+module vs. a tab on `CompetitionDetailView` or `DivisionEntryAdminView`), per-division
+vs. per-competition scope, visibility (admins only vs. a public page), and whether
+charts are worth it (Vaadin Charts is a commercial add-on — plain Grids/Spans are
+likely enough for v1). CSV/PDF export would make the numbers presentation-ready.
+
 ### Completed priorities
 - **European Portuguese country names + CI/dependency maintenance** — Completed 2026-05-20 (post-v0.3.1, on main). `CountryDisplay` now pins a region-less `pt` locale to `pt-PT` for the country-name lookup: the bare `pt` locale resolves to Brazilian forms in CLDR (Polônia, Romênia) but MEADS targets European Portuguese (Polónia, Roménia). 1 new test (`shouldUseEuropeanPortugueseForTheBarePtLocale`). Also: the GitHub Actions workflow (`ci.yml`) was moved off the deprecated Node 20 runtime — `actions/checkout@v6`, `actions/setup-java@v5`, `actions/cache@v5`, `docker/setup-buildx-action@v4`, `docker/login-action@v4`, `docker/build-push-action@v7` (all Node 24; `digitalocean/action-doctl@v2` was not affected). Dependency bumps: Vaadin 25.1.3 → 25.1.5, OpenPDF 3.0.3 → 3.0.4. 802 tests.
 - **Country names localized to the UI language** — Completed 2026-05-20. Country codes are stored as ISO 3166-1 alpha-2 (e.g. `PT`) but were always rendered with `getDisplayCountry(Locale.ENGLISH)` hardcoded in 9 spots across 4 views, so a user with the UI in Italian still saw English country names. New `app.meads.CountryDisplay` utility (`name(code, locale)`) wraps `Locale.of("", code).getDisplayCountry(locale)`; all 4 views (`UserListView`, `ProfileView`, `CompetitionDetailView`, `DivisionEntryAdminView`) now pass `getLocale()` — the current UI locale — for both the grid country columns and the country `ComboBox`es (item labels + sort order). `CountryDisplayTest` (1 unit test) + `UserListViewTest.shouldLocalizeCountryNamesInEditDialogToTheUiLocale` (1 UI test, sets the locale after navigation since `MainLayout` sets it from the user's preference on navigate). 801 tests.
