@@ -13,7 +13,7 @@ reference implementations; future modules will follow the same patterns.
 ## Tech Stack
 
 - **Java 25**, Spring Boot 4.0.6, Spring Modulith 2.0.6, Jakarta Bean Validation (`spring-boot-starter-validation`)
-- **Vaadin 25.1.3** (Java Flow — server-side, NOT React/Hilla)
+- **Vaadin 25.1.5** (Java Flow — server-side, NOT React/Hilla)
 - **PostgreSQL 18**, Flyway (managed by Boot)
 - **Testcontainers 2.0.5**, Karibu Testing 2.7.0, Mockito, Awaitility 4.3.0
 - **jjwt 0.13.0** (JWT magic link tokens)

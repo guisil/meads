@@ -15,4 +15,12 @@ class CountryDisplayTest {
         assertThat(CountryDisplay.name("DE", Locale.of("pt"))).isEqualTo("Alemanha");
         assertThat(CountryDisplay.name("DE", Locale.of("es"))).isEqualTo("Alemania");
     }
+
+    @Test
+    void shouldUseEuropeanPortugueseForTheBarePtLocale() {
+        // MEADS targets European Portuguese; the bare "pt" locale otherwise
+        // resolves to Brazilian country names in CLDR (Polônia, Romênia).
+        assertThat(CountryDisplay.name("PL", Locale.of("pt"))).isEqualTo("Polónia");
+        assertThat(CountryDisplay.name("RO", Locale.of("pt"))).isEqualTo("Roménia");
+    }
 }
