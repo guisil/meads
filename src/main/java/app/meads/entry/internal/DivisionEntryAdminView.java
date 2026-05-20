@@ -1,6 +1,7 @@
 package app.meads.entry.internal;
 
 import app.meads.BusinessRuleException;
+import app.meads.CountryDisplay;
 import app.meads.MainLayout;
 import app.meads.competition.Competition;
 import app.meads.competition.CompetitionService;
@@ -52,7 +53,6 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
@@ -486,7 +486,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         entriesGrid.addColumn(entry -> {
             var user = userService.findById(entry.getUserId());
             return user.getCountry() != null
-                    ? new Locale("", user.getCountry()).getDisplayCountry(Locale.ENGLISH)
+                    ? CountryDisplay.name(user.getCountry(), getLocale())
                     : "";
         }).setHeader(getTranslation("entry-admin.entries.column.country")).setSortable(true).setAutoWidth(true);
         entriesGrid.addColumn(entry -> entry.getStatus().name())

@@ -34,6 +34,7 @@ import org.springframework.test.annotation.DirtiesContext;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 import static com.github.mvysny.kaributesting.v10.LocatorJ.*;
@@ -715,6 +716,23 @@ class UserListViewTest {
         @SuppressWarnings("unchecked")
         var countryCombo = (ComboBox<String>) _get(ComboBox.class, spec -> spec.withLabel("Country"));
         assertThat(countryCombo.getValue()).isEqualTo("PT");
+    }
+
+    @Test
+    @WithMockUser(roles = "SYSTEM_ADMIN")
+    void shouldLocalizeCountryNamesInEditDialogToTheUiLocale() {
+        var user = new User("localized@test.com", "Localized User", UserStatus.ACTIVE, Role.USER);
+        userRepository.save(user);
+
+        UI.getCurrent().navigate("users");
+        // MainLayout sets the UI locale from the user's preference on navigate;
+        // override it afterwards to simulate a UI shown in Italian.
+        UI.getCurrent().setLocale(Locale.ITALIAN);
+        _get(UserListView.class).openEditDialog(user);
+
+        @SuppressWarnings("unchecked")
+        var countryCombo = (ComboBox<String>) _get(ComboBox.class);
+        assertThat(countryCombo.getItemLabelGenerator().apply("DE")).isEqualTo("Germania");
     }
 
     @Test

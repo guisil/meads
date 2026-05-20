@@ -1,6 +1,7 @@
 package app.meads.competition.internal;
 
 import app.meads.BusinessRuleException;
+import app.meads.CountryDisplay;
 import app.meads.LanguageMapping;
 import app.meads.MainLayout;
 import app.meads.MeadsI18NProvider;
@@ -300,7 +301,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         participantsGrid.addColumn(p -> {
             var user = userMap.get(p.getUserId());
             if (user == null || user.getCountry() == null) return "—";
-            return new Locale("", user.getCountry()).getDisplayCountry(Locale.ENGLISH);
+            return CountryDisplay.name(user.getCountry(), getLocale());
         }).setHeader(getTranslation("competition-detail.participants.column.country")).setSortable(true).setAutoWidth(true);
         participantsGrid.addColumn(p -> {
             var roles = rolesMap.getOrDefault(p.getId(), List.of());
@@ -588,12 +589,11 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
     private ComboBox<String> createCountryComboBox() {
         var countryCombo = new ComboBox<String>(getTranslation("competition-detail.settings.country"));
         var countries = Arrays.stream(Locale.getISOCountries())
-                .sorted((a, b) -> new Locale("", a).getDisplayCountry(Locale.ENGLISH)
-                        .compareTo(new Locale("", b).getDisplayCountry(Locale.ENGLISH)))
+                .sorted((a, b) -> CountryDisplay.name(a, getLocale())
+                        .compareTo(CountryDisplay.name(b, getLocale())))
                 .toList();
         countryCombo.setItems(countries);
-        countryCombo.setItemLabelGenerator(code ->
-                new Locale("", code).getDisplayCountry(Locale.ENGLISH));
+        countryCombo.setItemLabelGenerator(code -> CountryDisplay.name(code, getLocale()));
         countryCombo.setClearButtonVisible(true);
         countryCombo.setWidthFull();
         return countryCombo;
