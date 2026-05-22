@@ -232,34 +232,41 @@ docs/
 
 ## What's Next
 
-### CURRENT (2026-05-22): MedalRoundView built → walkthrough → v0.4.0 release
+### CURRENT (2026-05-22): judging module hardened → walkthrough → v0.4.0 release
 
-A pre-walkthrough audit (2026-05-22) found the judging module was **not** actually
-complete: `MedalRoundView` — the UI for awarding medals — was never built, despite
-SESSION_CONTEXT and the Phase 6 log claiming a "medal-round form" existed. The
-`recordMedal`/`updateMedal`/`deleteMedalAward` service methods had zero view callers,
-`MyJudgingView`'s "Open medal round →" link was dead, and COMPARATIVE-mode rounds
-(the default) had no way to award a medal at all. **`MedalRoundView` was built
-2026-05-22** in 7 TDD cycles — see the "MedalRoundView" completed-priority entry
-below. The judging module is now genuinely complete.
+Two rounds of work landed on `feature/judging-module` on 2026-05-22 — both fully
+documented in the completed-priorities log below:
+1. **`MedalRoundView`** — a pre-walkthrough audit found the medal-awarding UI had
+   never been built (despite the Phase 6 log claiming a "medal-round form" existed):
+   `recordMedal`/`updateMedal`/`deleteMedalAward` had zero view callers, COMPARATIVE
+   rounds (the default) could not award a medal at all. Built in 7 TDD cycles.
+2. **Judging-workflow audit fixes** — a domain-aware audit (grounded in
+   `docs/reference/chip-competition-rules.md`) fixed four gaps: only RECEIVED entries
+   are judged; `JudgingAdminView` warns about entries with no judging category; the
+   judge's scoresheet now shows the declared attributes (judges work from coded
+   samples, not the bottle); new read-only `StewardView` (`/my-stewarding`).
+
+The judging module is now functionally complete and domain-correct. 1098 tests.
 
 Remaining work before merge to `main`:
-1. **Manual walkthrough** of the full `docs/walkthrough/manual-test.md` against a
-   running app — focus on §12 (Judging, incl. §12.12 MedalRoundView and the 3
+1. **Manual walkthrough** of `docs/walkthrough/manual-test.md` against a running app
+   — focus on §12 (Judging, incl. §12.12 MedalRoundView, §12.16 StewardView, the
+   RECEIVED-gate at §12.5–§12.6.4, the rich scoresheet card §12.11, the 3
    judge-notification emails) and §13 (Awards). Fix anything that surfaces.
-2. **Merge `feature/judging-module` → `main`** and release **v0.4.0** (see the
-   release process in the Deployment notes / `docs/plans/deployment-checklist.md`).
+2. **Merge `feature/judging-module` → `main`** and release **v0.4.0** (release
+   process in `docs/plans/deployment-checklist.md`).
 3. Deferred items below (auto-close, MFA recovery codes, category constraints) stay
-   deferred — they are post-v0.4.0.
+   deferred — post-v0.4.0.
 
 **Audit follow-ups still open (lower severity, not v0.4.0 blockers):**
 - No admin-facing FULL-mode scoresheet PDF — `ScoresheetPdfService`'s
-  `AnonymizationLevel.FULL` is dead code (only `MyScoresheetView` calls the service,
-  ANONYMIZED). Walkthrough §13.12's admin-PDF step has been corrected to drop the
-  false claim.
+  `AnonymizationLevel.FULL` has no UI caller (only `MyScoresheetView` uses
+  ANONYMIZED). Walkthrough §13.12's admin-PDF step was corrected to drop the false claim.
 - `AwardsService.getResultsForAdmin` + the `AdminResultsView` DTO have no view caller
-  (no admin results leaderboard). Possibly redundant with `JudgingAdminView`; revisit
-  post-v0.4.0.
+  (no admin results leaderboard). Possibly redundant with `JudgingAdminView`.
+- SCORE_BASED medal mode is rank-based (top-3 → Gold/Silver/Bronze). A threshold-medal
+  mode (a category may have 0 or many of each medal) is a possible future option —
+  not needed for CHIP, which uses COMPARATIVE.
 
 The historical priority log below is kept for context; most items are COMPLETE.
 

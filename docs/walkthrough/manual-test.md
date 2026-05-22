@@ -7,7 +7,7 @@ with checkboxes for progress tracking.
 **Date:** 2026-05-12
 **Seeded data:** Dev profile (`spring.profiles.active=dev`)
 
-> Section 12 (Judging Module) drives Amadora through `REGISTRATION_OPEN → REGISTRATION_CLOSED → JUDGING`. Section 12.17 explains how to clean up afterwards if you want Amadora to remain testable for entry-side flows; alternatively, run §12 against Amadora last or use the seeded `Test Competition 2026 > Open` division for further entry-side experiments.
+> Section 12 (Judging Module) drives Amadora through `REGISTRATION_OPEN → REGISTRATION_CLOSED → JUDGING`. Section 12.18 explains how to clean up afterwards if you want Amadora to remain testable for entry-side flows; alternatively, run §12 against Amadora last or use the seeded `Test Competition 2026 > Open` division for further entry-side experiments.
 
 ---
 
