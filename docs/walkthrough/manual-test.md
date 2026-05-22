@@ -1535,7 +1535,8 @@ Or use a test division where the flag is already set.*
 ## 12. Judging Module
 
 **Covers:** `JudgingAdminViewTest`, `TableViewTest`, `ScoresheetViewTest`,
-`MyJudgingViewTest`, `BosViewTest`, `JudgingServiceTest`, `ScoresheetServiceTest`,
+`MyJudgingViewTest`, `MedalRoundViewTest`, `BosViewTest`, `JudgingServiceTest`,
+`JudgingServiceMedalRoundTest`, `ScoresheetServiceTest`,
 `JudgeProfileServiceTest`, `MeaderyNameNormalizerTest`, `CoiCheckServiceTest`,
 `JudgingDivisionStatusRevertGuardTest`, `JudgingMinJudgesLockGuardTest`,
 `JudgingErrorKeyCoverageTest`, `JudgingNotificationListenerTest`. Plus the seven aggregate repository tests
@@ -1700,6 +1701,8 @@ For COI badges to appear, `judge@example.com` should already exist as a JUDGE in
 
 - [ ] **Expected:** Empty-state message if no JUDGING-scope categories exist, otherwise a `Grid<CategoryJudgingConfig>` with columns: Category, Mode, Status, Tables, Awards, Actions.
 - [ ] **Expected:** Each JUDGING category appears with a lazily-created default config: Mode = `COMPARATIVE`, Status = `PENDING`, Tables = `0 / 1 COMPLETE` for M1A, Awards = `G:0 S:0 B:0 W:0`.
+- [ ] **Expected:** The **Mode** column is a dropdown (`Select<MedalRoundMode>`) — change M1A to `SCORE_BASED` and back; a "Medal round mode updated" notification confirms each change. It is editable only while status is `PENDING` or `READY` (disabled once `ACTIVE`).
+- [ ] **Expected:** The **Actions** column ends with an "Open medal round →" link that navigates to `MedalRoundView` for that category (see §12.12).
 
 #### 12.7.1 Start medal round (cannot start until tables complete)
 
@@ -1856,9 +1859,9 @@ For this you need a *second* ROUND_1 table in the same JUDGING category. Create 
 
 #### 12.12.2 SCORE_BASED mode
 
-- [ ] *Pre-req: change a category's mode to SCORE_BASED via JudgingAdminView → Medal Rounds tab → row's mode column (TBD — currently only set at config creation; if no UI for this, edit DB).*
+- [ ] *Pre-req: set the category's mode to SCORE_BASED **before starting the medal round** — JudgingAdminView → Medal Rounds tab → the **Mode** column is a dropdown (editable only while the round status is PENDING or READY; it locks once ACTIVE).*
 - [ ] On Start, rows are auto-populated walking gold→silver→bronze by total score. Ties stop the cascade.
-- [ ] **Expected:** A "tied-slot" banner at the top when ties exist; tied rows highlighted with a warning background; per-row resolver lets you pick which entry gets the slot.
+- [ ] **Expected:** A "tied-slot" banner at the top of MedalRoundView when ties exist (red text: "{N} slots tied — resolve before finalizing."); tied rows are flagged with a `⚠` marker in the Entry column. Resolve a tie by awarding a medal to one tied entry (or withholding the others) — the view recomputes the cascade live on every action.
 
 #### 12.12.3 Admin actions (Reset / Reopen / Finalize)
 
@@ -2230,11 +2233,13 @@ state.* (After §13.8, that entrant may see a different medal — that's fine.)
 - [ ] Download PDF.
 - [ ] **Expected:** PDF body shows "Judge 1" only.
 
-*Sanity check on the admin path:* log in as `compadmin@example.com` and
-generate a FULL-mode PDF by visiting Manage Judging → Tables → click into a
-table → click on a scoresheet — admin-side surfaces still show real judge
-names. (The admin "View Scoresheet" path is not part of the awards flow per
-se, but it confirms the two anonymization modes are wired correctly.)
+*Note on the admin path:* admin-side scoresheet surfaces (Manage Judging →
+Tables → a table → a scoresheet) show real judge names, confirming the
+non-anonymized path. There is currently **no admin-facing FULL-mode PDF
+download** — `ScoresheetPdfService`'s `AnonymizationLevel.FULL` is implemented
+and unit-tested but has no UI caller. The only scoresheet PDF download in the
+app is the entrant's ANONYMIZED one (§13.5). Wiring a FULL-mode admin download
+is a deferred post-v0.4.0 item.
 
 ### 13.13 Cleanup
 

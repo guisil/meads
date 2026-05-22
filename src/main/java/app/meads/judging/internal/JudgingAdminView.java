@@ -550,7 +550,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         grid.setId("medal-rounds-grid");
         grid.addColumn(c -> formatCategory(c.getDivisionCategoryId()))
                 .setHeader(getTranslation("judging-admin.medal-rounds.column.category"));
-        grid.addColumn(c -> c.getMedalRoundMode().name())
+        grid.addComponentColumn(this::createModeCell)
                 .setHeader(getTranslation("judging-admin.medal-rounds.column.mode"));
         grid.addColumn(c -> c.getMedalRoundStatus().name())
                 .setHeader(getTranslation("judging-admin.medal-rounds.column.status"));
@@ -563,6 +563,35 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         grid.setItems(configs);
         tab.add(grid);
         return tab;
+    }
+
+    private Select<MedalRoundMode> createModeCell(CategoryJudgingConfig config) {
+        var select = new Select<MedalRoundMode>();
+        select.setItems(MedalRoundMode.values());
+        select.setItemLabelGenerator(Enum::name);
+        select.setValue(config.getMedalRoundMode());
+        var status = config.getMedalRoundStatus();
+        select.setEnabled(status == MedalRoundStatus.PENDING || status == MedalRoundStatus.READY);
+        select.addValueChangeListener(e -> {
+            if (e.getValue() != null && e.getValue() != config.getMedalRoundMode()) {
+                changeMedalRoundMode(config, e.getValue());
+            }
+        });
+        return select;
+    }
+
+    /** Sets the per-category medal-round mode; allowed only before the round starts. */
+    public void changeMedalRoundMode(CategoryJudgingConfig config, MedalRoundMode mode) {
+        try {
+            judgingService.configureCategoryMedalRound(
+                    config.getDivisionCategoryId(), mode, currentUserId);
+            refreshMedalRoundsTab();
+            Notification.show(getTranslation("judging-admin.medal-rounds.mode-updated"))
+                    .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+        } catch (BusinessRuleException ex) {
+            Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        }
     }
 
     private String formatAwardsCounts(CategoryJudgingConfig config) {
@@ -602,7 +631,14 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         resetButton.setTooltipText(getTranslation("judging-admin.medal-rounds.action.reset"));
         resetButton.addClickListener(e -> openResetMedalRoundDialog(config));
 
-        return new HorizontalLayout(startButton, finalizeButton, reopenButton, resetButton);
+        var openLink = new Anchor("competitions/" + compShortName + "/divisions/" + divShortName
+                + "/medal-rounds/" + config.getDivisionCategoryId(),
+                getTranslation("judging-admin.medal-rounds.action.open"));
+        openLink.getElement().getStyle().set("align-self", "center");
+
+        var cell = new HorizontalLayout(startButton, finalizeButton, reopenButton, resetButton, openLink);
+        cell.setDefaultVerticalComponentAlignment(Alignment.CENTER);
+        return cell;
     }
 
     public void openStartMedalRoundDialog(CategoryJudgingConfig config) {

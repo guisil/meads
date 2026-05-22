@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `feature/judging-module` at `0.4.0-SNAPSHOT` — **Awards module COMPLETE** (2026-05-12, all 13 tasks done). Judging Phase 6 views also complete. **Judging event listeners complete (2026-05-20)** — `JudgingNotificationListener` emails judges on table start / scoresheet revert / medal-round activation; the judging module is now functionally complete. Architecture: `Publication` audit-trail aggregate + freeze-in-place via `DivisionStatus.isResultsFrozen()` guard on every judging mutator. Decoupled publish/republish/announcement: only `sendAnnouncement` triggers emails. Per the plan's open question, chose option B for entrant-facing scoresheet drill-in (new `MyResultsView` + `MyScoresheetView` in awards module + banner-link from `MyEntriesView`) to keep dependency direction unidirectional (awards → entry). **Merged main 2026-05-16** to pick up the v0.3.0 bug fixes (credits-grid refresh, webhook post-registration guard, judging-category parent-delete guard), MFA email reset flow, codebase-wide inline-FQN cleanup + CLAUDE.md rule, and i18n cleanup (sidebar nav, Final Category, dialog buttons). Post-merge: caught up ES/IT/PL with the 14 new keys that main only added to EN/PT. **Merged main again 2026-05-19** to pick up the v0.3.0 release commits + 6 mid-walkthrough fixes (MFA verify Enter shortcut, Final Category picker disabled until init, primary-category dropdowns filtered to REGISTRATION scope, leaf-only judging categories in Final Category picker, Categories tab + parent select filter to REGISTRATION, entrant updateEntry enforces entry limits on category change). **Merged main again 2026-05-20** to pick up v0.3.1 (country names localized to the current UI language — `app.meads.CountryDisplay`) and then **v0.3.2** (European Portuguese country names — `pt` pinned to `pt-PT`; CI moved off the deprecated Node 20 runtime; Vaadin 25.1.5 / OpenPDF 3.0.4 bumps).
-**Tests:** 1076 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-20 after merging main v0.3.2 (+1 European-Portuguese test vs. the 1075 v0.3.1-merge baseline).
+**Tests:** 1089 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-22 after building `MedalRoundView` (+13 tests vs. the 1076 v0.3.2-merge baseline).
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -232,18 +232,34 @@ docs/
 
 ## What's Next
 
-### CURRENT (2026-05-20): judging + awards complete → walkthrough → v0.4.0 release
+### CURRENT (2026-05-22): MedalRoundView built → walkthrough → v0.4.0 release
 
-The judging and awards modules are functionally complete on `feature/judging-module`
-(judging event listeners landed 2026-05-20 — the last flagged gap). Remaining work
-before merge to `main`:
+A pre-walkthrough audit (2026-05-22) found the judging module was **not** actually
+complete: `MedalRoundView` — the UI for awarding medals — was never built, despite
+SESSION_CONTEXT and the Phase 6 log claiming a "medal-round form" existed. The
+`recordMedal`/`updateMedal`/`deleteMedalAward` service methods had zero view callers,
+`MyJudgingView`'s "Open medal round →" link was dead, and COMPARATIVE-mode rounds
+(the default) had no way to award a medal at all. **`MedalRoundView` was built
+2026-05-22** in 7 TDD cycles — see the "MedalRoundView" completed-priority entry
+below. The judging module is now genuinely complete.
+
+Remaining work before merge to `main`:
 1. **Manual walkthrough** of the full `docs/walkthrough/manual-test.md` against a
-   running app — focus on §12 (Judging, incl. the 3 new judge-notification emails)
-   and §13 (Awards). Fix anything that surfaces.
+   running app — focus on §12 (Judging, incl. §12.12 MedalRoundView and the 3
+   judge-notification emails) and §13 (Awards). Fix anything that surfaces.
 2. **Merge `feature/judging-module` → `main`** and release **v0.4.0** (see the
    release process in the Deployment notes / `docs/plans/deployment-checklist.md`).
 3. Deferred items below (auto-close, MFA recovery codes, category constraints) stay
    deferred — they are post-v0.4.0.
+
+**Audit follow-ups still open (lower severity, not v0.4.0 blockers):**
+- No admin-facing FULL-mode scoresheet PDF — `ScoresheetPdfService`'s
+  `AnonymizationLevel.FULL` is dead code (only `MyScoresheetView` calls the service,
+  ANONYMIZED). Walkthrough §13.12's admin-PDF step has been corrected to drop the
+  false claim.
+- `AwardsService.getResultsForAdmin` + the `AdminResultsView` DTO have no view caller
+  (no admin results leaderboard). Possibly redundant with `JudgingAdminView`; revisit
+  post-v0.4.0.
 
 The historical priority log below is kept for context; most items are COMPLETE.
 
@@ -1110,14 +1126,16 @@ skeleton from Phase 3 translates mechanically.
   EN + PT for section heading, labels, help text, locked-tooltips.
   7 new view tests (2 commentLanguages + 5 division fields incl.
   lock behavior).
-- 🎉 Phase 6 (views) COMPLETE — all judging views built: table
-  drill-in (`TableView`), judge hub (`MyJudgingView`), judge form
-  (`ScoresheetView`), medal-round form, dedicated `BosView`. Per
-  design doc §4.B–§4.J.
+- 🎉 Phase 6 (views) — table drill-in (`TableView`), judge hub
+  (`MyJudgingView`), judge form (`ScoresheetView`), dedicated `BosView`.
+  ⚠️ This entry **wrongly claimed a "medal-round form" was built** — it
+  was not. `MedalRoundView` was finally built 2026-05-22 (see the
+  completed-priority entry below).
 - 🎉 Judging event listeners COMPLETE (2026-05-20) — see Phase 5
-  services-layer note above. The judging module is now functionally
-  complete: aggregates, services, events, listeners, guards, views,
-  and i18n all done.
+  services-layer note above.
+- 🎉 `MedalRoundView` COMPLETE (2026-05-22) — the judging module is now
+  genuinely complete: aggregates, services, events, listeners, guards,
+  all views (incl. the medal-round form), and i18n all done.
 
 ### Priority 6: Awards module — DESIGN + PLAN COMPLETE, READY TO IMPLEMENT
 
@@ -1245,6 +1263,7 @@ charts are worth it (Vaadin Charts is a commercial add-on — plain Grids/Spans 
 likely enough for v1). CSV/PDF export would make the numbers presentation-ready.
 
 ### Completed priorities
+- **`MedalRoundView` — the missing medal-awarding UI** — Completed 2026-05-22 on `feature/judging-module`. A pre-walkthrough audit found the judging module shipped no UI to award medals: `JudgingService.recordMedal`/`updateMedal`/`deleteMedalAward` had zero view callers, `MyJudgingView`'s "Open medal round →" anchor pointed at a non-existent route, and COMPARATIVE-mode medal rounds (the default) had no way to award a medal at all (only SCORE_BASED auto-populated on start). Built in 7 TDD cycles: **(1)** `JudgingService.findMedalRoundEntries(divisionCategoryId, mode)` + public `MedalRoundEntryRow` DTO — COMPARATIVE filters to SUBMITTED + `advancedToMedalRound`, SCORE_BASED includes all SUBMITTED ranked by Round 1 total desc. **(2–4)** `MedalRoundView` (`app.meads.judging.internal`, route `competitions/:c/divisions/:d/medal-rounds/:divisionCategoryId`, `@PermitAll` + three-tier `beforeEnter` auth) — entries grid with `🥇`/`🥈`/`🥉` buttons + `More ▾` menu (Withhold/Clear) wired to the medal mutators, self-COI rows show `—`, live summary line, admin Finalize/Reopen/Reset header dialogs. **(5)** SCORE_BASED tie cascade — `JudgingService.recomputeScorePreview(divisionCategoryId)` + public `MedalRoundScorePreview` DTO; the view shows a tied-slot banner and `⚠`-marks tied rows, recomputed live on every medal action (`reload()`). **(6)** `JudgingAdminView` Medal Rounds tab — Mode column is now a `Select<MedalRoundMode>` (editable while PENDING/READY) wired to `configureCategoryMedalRound`, plus an "Open medal round →" link per row. **(7)** i18n: 37 `medal-round.*` + 2 `judging-admin.medal-rounds.*` keys in **all five languages** (EN/ES/IT/PL/PT). Also relaxed `recordMedal`'s `@NotNull` on the medal param so an explicit Withhold (`medal = null`, design D11) can be recorded from a no-row state. 13 new tests (6 `JudgingServiceMedalRoundTest` + 8 `MedalRoundViewTest` − 1 overlap, +1 `JudgingAdminViewTest`); 1089 total. No migration (uses existing tables).
 - **European Portuguese country names + CI/dependency maintenance** — Completed 2026-05-20 (released on main as v0.3.2, merged into feature/judging-module 2026-05-20). `CountryDisplay` now pins a region-less `pt` locale to `pt-PT` for the country-name lookup: the bare `pt` locale resolves to Brazilian forms in CLDR (Polônia, Romênia) but MEADS targets European Portuguese (Polónia, Roménia). 1 new test (`shouldUseEuropeanPortugueseForTheBarePtLocale`). Also: the GitHub Actions workflow (`ci.yml`) was moved off the deprecated Node 20 runtime — `actions/checkout@v6`, `actions/setup-java@v5`, `actions/cache@v5`, `docker/setup-buildx-action@v4`, `docker/login-action@v4`, `docker/build-push-action@v7` (all Node 24; `digitalocean/action-doctl@v2` was not affected). Dependency bumps: Vaadin 25.1.3 → 25.1.5, OpenPDF 3.0.3 → 3.0.4.
 - **Country names localized to the UI language** — Completed 2026-05-20 (released on main as v0.3.1, merged into feature/judging-module 2026-05-20). Country codes are stored as ISO 3166-1 alpha-2 (e.g. `PT`) but were always rendered with `getDisplayCountry(Locale.ENGLISH)` hardcoded in 9 spots across 4 views, so a user with the UI in Italian still saw English country names. New `app.meads.CountryDisplay` utility (`name(code, locale)`) wraps `Locale.of("", code).getDisplayCountry(locale)`; all 4 views (`UserListView`, `ProfileView`, `CompetitionDetailView`, `DivisionEntryAdminView`) now pass `getLocale()` — the current UI locale — for both the grid country columns and the country `ComboBox`es (item labels + sort order). `CountryDisplayTest` + `UserListViewTest.shouldLocalizeCountryNamesInEditDialogToTheUiLocale`.
 - **Entrant updateEntry now enforces entry limits** — Completed 2026-05-18 (on main, merged into feature/judging-module 2026-05-19). `EntryService.updateEntry()` previously called `entry.updateDetails()` directly without any limit check, so an entrant could edit a DRAFT entry into a subcategory or main category already at the limit (caught during v0.3.0 walkthrough Batch 11D). Fix: new `checkEntryLimitsForUpdate(division, existingEntry, newInitialCategoryId)` runs **only when the category actually changes**. Subcategory check: count of entries in the new category (the existing entry contributes to its OLD category's count, so no subtraction needed). Main-category check: count of entries in the new main-category group MINUS 1 when the existing entry's current main category equals the new main category (otherwise cross-subcategory moves within the same main category at the limit would be wrongly rejected). Total limit not re-checked on update (entry count unchanged). Admin path (`adminUpdateEntry`) intentionally still bypasses limits — admins routinely correct categories after registration. 2 new unit tests: `shouldRejectUpdateEntryWhenNewSubcategoryAtLimit`, `shouldAllowUpdateEntryWhenMovingWithinSameMainCategoryAtLimit`.

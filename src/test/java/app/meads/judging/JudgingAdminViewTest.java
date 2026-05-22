@@ -333,6 +333,29 @@ class JudgingAdminViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldChangeMedalRoundModeWhenAdminSelectsNewMode() {
+        advanceDivisionToJudging();
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Desc",
+                null, 1, CategoryScope.JUDGING));
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var config = categoryJudgingConfigRepository.findByDivisionCategoryId(category.getId())
+                .orElseThrow();
+        assertThat(config.getMedalRoundMode()).isEqualTo(MedalRoundMode.COMPARATIVE);
+
+        var view = _get(JudgingAdminView.class);
+        view.changeMedalRoundMode(config, MedalRoundMode.SCORE_BASED);
+
+        var refreshed = categoryJudgingConfigRepository.findByDivisionCategoryId(category.getId())
+                .orElseThrow();
+        assertThat(refreshed.getMedalRoundMode()).isEqualTo(MedalRoundMode.SCORE_BASED);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldAssignJudgesWhenAssignDialogSaved() {
         advanceDivisionToJudging();
         var category = divisionCategoryRepository.save(new DivisionCategory(

@@ -13,7 +13,9 @@ import app.meads.judging.Medal;
 import app.meads.judging.MedalAward;
 import app.meads.judging.MedalRoundActivatedEvent;
 import app.meads.judging.MedalRoundCompletedEvent;
+import app.meads.judging.MedalRoundEntryRow;
 import app.meads.judging.MedalRoundMode;
+import app.meads.judging.MedalRoundScorePreview;
 import app.meads.judging.MedalRoundReopenedEvent;
 import app.meads.judging.MedalRoundResetEvent;
 import app.meads.judging.MedalRoundStatus;
@@ -39,8 +41,11 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -297,6 +302,56 @@ public class JudgingServiceImpl implements JudgingService {
     @Override
     public List<MedalAward> findMedalAwardsForCategory(UUID divisionCategoryId) {
         return medalAwardRepository.findByFinalCategoryId(divisionCategoryId);
+    }
+
+    @Override
+    public List<MedalRoundEntryRow> findMedalRoundEntries(UUID divisionCategoryId,
+                                                          MedalRoundMode mode) {
+        var rows = new ArrayList<MedalRoundEntryRow>();
+        for (var entry : entryService.findEntriesByFinalCategoryId(divisionCategoryId)) {
+            var sheetOpt = scoresheetRepository.findByEntryId(entry.getId());
+            if (sheetOpt.isEmpty() || sheetOpt.get().getStatus() != ScoresheetStatus.SUBMITTED) {
+                continue;
+            }
+            var sheet = sheetOpt.get();
+            if (mode == MedalRoundMode.COMPARATIVE && !sheet.isAdvancedToMedalRound()) {
+                continue;
+            }
+            var medalOpt = medalAwardRepository.findByEntryId(entry.getId());
+            rows.add(new MedalRoundEntryRow(
+                    entry.getId(), entry.getEntryCode(), entry.getMeadName(),
+                    entry.getUserId(), sheet.getTotalScore(), sheet.isAdvancedToMedalRound(),
+                    medalOpt.map(MedalAward::getId).orElse(null),
+                    medalOpt.map(MedalAward::getMedal).orElse(null)));
+        }
+        if (mode == MedalRoundMode.SCORE_BASED) {
+            rows.sort(Comparator.comparing(MedalRoundEntryRow::round1Total,
+                    Comparator.nullsLast(Comparator.reverseOrder())));
+        }
+        return rows;
+    }
+
+    @Override
+    public MedalRoundScorePreview recomputeScorePreview(UUID divisionCategoryId) {
+        var rows = findMedalRoundEntries(divisionCategoryId, MedalRoundMode.SCORE_BASED);
+        long medaled = rows.stream().filter(r -> r.currentMedal() != null).count();
+        int openSlots = Math.max(0, Medal.values().length - (int) medaled);
+        var unresolved = rows.stream()
+                .filter(r -> r.medalAwardId() == null)
+                .toList();
+        if (openSlots == 0 || unresolved.isEmpty()) {
+            return new MedalRoundScorePreview(0, Set.of());
+        }
+        var topScore = unresolved.get(0).round1Total();
+        var tied = unresolved.stream()
+                .filter(r -> Objects.equals(r.round1Total(), topScore))
+                .toList();
+        if (tied.size() > 1) {
+            return new MedalRoundScorePreview(openSlots, tied.stream()
+                    .map(MedalRoundEntryRow::entryId)
+                    .collect(Collectors.toSet()));
+        }
+        return new MedalRoundScorePreview(0, Set.of());
     }
 
     @Override

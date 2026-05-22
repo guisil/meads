@@ -63,6 +63,22 @@ public interface JudgingService {
 
     List<MedalAward> findMedalAwardsForCategory(@NotNull UUID divisionCategoryId);
 
+    /**
+     * Read-model rows for the medal round of a category. COMPARATIVE mode includes
+     * only entries whose Round 1 scoresheet is SUBMITTED and flagged
+     * {@code advancedToMedalRound}; SCORE_BASED includes every entry with a
+     * SUBMITTED scoresheet, ranked by Round 1 total descending.
+     */
+    List<MedalRoundEntryRow> findMedalRoundEntries(@NotNull UUID divisionCategoryId,
+                                                   @NotNull MedalRoundMode mode);
+
+    /**
+     * Re-evaluates the SCORE_BASED tie cascade for a category against the current
+     * medal awards. Used by {@code MedalRoundView} to warn when the score cascade
+     * is blocked by a tie that needs manual resolution.
+     */
+    MedalRoundScorePreview recomputeScorePreview(@NotNull UUID divisionCategoryId);
+
     List<MedalAward> findGoldMedalAwardsForDivision(@NotNull UUID divisionId, @NotNull UUID adminUserId);
 
     List<BosPlacement> findBosPlacementsForDivision(@NotNull UUID divisionId, @NotNull UUID adminUserId);
@@ -81,7 +97,8 @@ public interface JudgingService {
     void resetMedalRound(@NotNull UUID divisionCategoryId, @NotNull UUID adminUserId);
 
     // === Medal awards (during ACTIVE) ===
-    MedalAward recordMedal(@NotNull UUID entryId, @NotNull Medal medal, @NotNull UUID judgeUserId);
+    /** A {@code null} medal records an explicit withhold (per design D11). */
+    MedalAward recordMedal(@NotNull UUID entryId, Medal medal, @NotNull UUID judgeUserId);
 
     void updateMedal(@NotNull UUID medalAwardId, Medal newValue, @NotNull UUID judgeUserId);
 
