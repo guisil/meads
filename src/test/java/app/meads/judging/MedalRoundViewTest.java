@@ -180,9 +180,12 @@ class MedalRoundViewTest {
         var entrant = userRepository.save(new User(
                 "mr-sb-" + UUID.randomUUID() + "@example.com",
                 "Entrant", UserStatus.ACTIVE, Role.USER));
-        var entry = entryRepository.save(new Entry(division.getId(), entrant.getId(),
+        var entry = new Entry(division.getId(), entrant.getId(),
                 entryNum++, code, code + " Mead", category.getId(), Sweetness.DRY,
-                BigDecimal.valueOf(11.0), Carbonation.STILL, "Wildflower", null, false, null, null));
+                BigDecimal.valueOf(11.0), Carbonation.STILL, "Wildflower", null, false, null, null);
+        entry.submit();
+        entry.markReceived();
+        entry = entryRepository.save(entry);
         var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
         entryService.assignFinalCategory(entry.getId(), category.getId(), admin.getId());
         var sheet = new Scoresheet(table.getId(), entry.getId());
@@ -210,9 +213,12 @@ class MedalRoundViewTest {
         var entrant = userRepository.save(new User(
                 "mr-entrant-" + UUID.randomUUID() + "@example.com",
                 "Entrant", UserStatus.ACTIVE, Role.USER));
-        var entry = entryRepository.save(new Entry(division.getId(), entrant.getId(),
+        var entry = new Entry(division.getId(), entrant.getId(),
                 entryNum++, code, code + " Mead", category.getId(), Sweetness.DRY,
-                BigDecimal.valueOf(11.0), Carbonation.STILL, "Wildflower", null, false, null, null));
+                BigDecimal.valueOf(11.0), Carbonation.STILL, "Wildflower", null, false, null, null);
+        entry.submit();
+        entry.markReceived();
+        entry = entryRepository.save(entry);
         var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
         entryService.assignFinalCategory(entry.getId(), category.getId(), admin.getId());
         var sheet = new Scoresheet(table.getId(), entry.getId());

@@ -41,6 +41,9 @@ public interface JudgingService {
 
     boolean isJudgeAssignedToTable(@NotNull UUID tableId, @NotNull UUID judgeUserId);
 
+    /** Judge user IDs assigned to a table — loads the assignment collection in-transaction. */
+    List<UUID> findJudgeUserIdsForTable(@NotNull UUID tableId);
+
     // === Judge assignment ===
     void assignJudge(@NotNull UUID tableId, @NotNull UUID judgeUserId, @NotNull UUID adminUserId);
 

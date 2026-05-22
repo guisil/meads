@@ -2,6 +2,7 @@ package app.meads.judging.internal;
 
 import app.meads.BusinessRuleException;
 import app.meads.competition.CompetitionService;
+import app.meads.entry.EntryStatus;
 import app.meads.judging.CategoryJudgingConfig;
 import app.meads.judging.Judging;
 import app.meads.judging.JudgeProfileService;
@@ -167,6 +168,16 @@ public class JudgingServiceImpl implements JudgingService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<UUID> findJudgeUserIdsForTable(UUID tableId) {
+        return judgingTableRepository.findById(tableId)
+                .map(t -> t.getAssignments().stream()
+                        .map(JudgeAssignment::getJudgeUserId)
+                        .toList())
+                .orElse(List.of());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<JudgingTable> findTableById(UUID tableId) {
         return judgingTableRepository.findById(tableId);
     }
@@ -309,6 +320,10 @@ public class JudgingServiceImpl implements JudgingService {
                                                           MedalRoundMode mode) {
         var rows = new ArrayList<MedalRoundEntryRow>();
         for (var entry : entryService.findEntriesByFinalCategoryId(divisionCategoryId)) {
+            // A withdrawn entry drops out of the medal round even if it was judged.
+            if (entry.getStatus() != EntryStatus.RECEIVED) {
+                continue;
+            }
             var sheetOpt = scoresheetRepository.findByEntryId(entry.getId());
             if (sheetOpt.isEmpty() || sheetOpt.get().getStatus() != ScoresheetStatus.SUBMITTED) {
                 continue;

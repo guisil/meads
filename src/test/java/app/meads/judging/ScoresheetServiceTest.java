@@ -7,6 +7,7 @@ import app.meads.competition.Division;
 import app.meads.competition.DivisionStatus;
 import app.meads.entry.Entry;
 import app.meads.entry.EntryService;
+import app.meads.entry.EntryStatus;
 import app.meads.judging.CoiCheckService.CoiResult;
 import app.meads.judging.internal.CategoryJudgingConfigRepository;
 import app.meads.judging.internal.JudgingRepository;
@@ -97,11 +98,16 @@ class ScoresheetServiceTest {
     }
 
     private Entry mockEntry(UUID entryId, UUID userId) {
+        return mockEntry(entryId, userId, EntryStatus.RECEIVED);
+    }
+
+    private Entry mockEntry(UUID entryId, UUID userId, EntryStatus status) {
         var entry = mock(Entry.class);
         lenient().when(entry.getId()).thenReturn(entryId);
         lenient().when(entry.getUserId()).thenReturn(userId);
         lenient().when(entry.getDivisionId()).thenReturn(divisionId);
         lenient().when(entry.getFinalCategoryId()).thenReturn(divisionCategoryId);
+        lenient().when(entry.getStatus()).thenReturn(status);
         return entry;
     }
 
@@ -130,6 +136,23 @@ class ScoresheetServiceTest {
         service.createScoresheetsForTable(tableId);
 
         then(scoresheetRepository).should(org.mockito.Mockito.times(2)).save(any(Scoresheet.class));
+    }
+
+    @Test
+    void shouldSkipNonReceivedEntriesWhenCreatingScoresheets() {
+        var received = mockEntry(UUID.randomUUID(), UUID.randomUUID(), EntryStatus.RECEIVED);
+        var submitted = mockEntry(UUID.randomUUID(), UUID.randomUUID(), EntryStatus.SUBMITTED);
+        var withdrawn = mockEntry(UUID.randomUUID(), UUID.randomUUID(), EntryStatus.WITHDRAWN);
+        given(judgingTableRepository.findById(tableId)).willReturn(Optional.of(table));
+        given(entryService.findEntriesByFinalCategoryId(divisionCategoryId))
+                .willReturn(List.of(received, submitted, withdrawn));
+        given(scoresheetRepository.findByEntryId(any())).willReturn(Optional.empty());
+        given(scoresheetRepository.save(any(Scoresheet.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.createScoresheetsForTable(tableId);
+
+        then(scoresheetRepository).should(org.mockito.Mockito.times(1)).save(any(Scoresheet.class));
     }
 
     @Test

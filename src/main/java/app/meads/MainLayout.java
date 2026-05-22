@@ -30,6 +30,7 @@ public class MainLayout extends AppLayout {
     private final transient AuthenticationContext authenticationContext;
     private final CompetitionAdminChecker competitionAdminChecker;
     private final JudgeAssignmentChecker judgeAssignmentChecker;
+    private final StewardChecker stewardChecker;
     private final UserLocaleResolver userLocaleResolver;
     private final UserLanguageUpdater userLanguageUpdater;
     private final I18NProvider i18nProvider;
@@ -38,6 +39,7 @@ public class MainLayout extends AppLayout {
     public MainLayout(AuthenticationContext authenticationContext,
                        CompetitionAdminChecker competitionAdminChecker,
                        JudgeAssignmentChecker judgeAssignmentChecker,
+                       StewardChecker stewardChecker,
                        UserLocaleResolver userLocaleResolver,
                        UserLanguageUpdater userLanguageUpdater,
                        I18NProvider i18nProvider,
@@ -45,6 +47,7 @@ public class MainLayout extends AppLayout {
         this.authenticationContext = authenticationContext;
         this.competitionAdminChecker = competitionAdminChecker;
         this.judgeAssignmentChecker = judgeAssignmentChecker;
+        this.stewardChecker = stewardChecker;
         this.userLocaleResolver = userLocaleResolver;
         this.userLanguageUpdater = userLanguageUpdater;
         this.i18nProvider = i18nProvider;
@@ -128,6 +131,10 @@ public class MainLayout extends AppLayout {
             if (judgeAssignmentChecker.hasAnyJudgeAssignment(email)) {
                 nav.addItem(new SideNavItem(getTranslation("my-judging.nav.my-judging"),
                         "my-judging", VaadinIcon.GAVEL.create()));
+            }
+            if (stewardChecker.isStewardSomewhere(email)) {
+                nav.addItem(new SideNavItem(getTranslation("steward.title"),
+                        "my-stewarding", VaadinIcon.CLIPBOARD.create()));
             }
         }
 

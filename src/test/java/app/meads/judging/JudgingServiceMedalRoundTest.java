@@ -7,6 +7,7 @@ import app.meads.competition.DivisionCategory;
 import app.meads.competition.ScoringSystem;
 import app.meads.entry.Entry;
 import app.meads.entry.EntryService;
+import app.meads.entry.EntryStatus;
 import app.meads.judging.internal.BosPlacementRepository;
 import app.meads.judging.internal.CategoryJudgingConfigRepository;
 import app.meads.judging.internal.JudgingRepository;
@@ -246,6 +247,19 @@ class JudgingServiceMedalRoundTest {
     }
 
     @Test
+    void shouldFindJudgeUserIdsForTable() {
+        var table = new JudgingTable(judging.getId(), "T1", divisionCategoryId, null);
+        var judge1 = UUID.randomUUID();
+        var judge2 = UUID.randomUUID();
+        table.assignJudge(judge1);
+        table.assignJudge(judge2);
+        given(judgingTableRepository.findById(table.getId())).willReturn(Optional.of(table));
+
+        assertThat(service.findJudgeUserIdsForTable(table.getId()))
+                .containsExactlyInAnyOrder(judge1, judge2);
+    }
+
+    @Test
     void shouldFindMedalRoundEntriesForComparativeModeFilteringToAdvancedEntries() {
         var advancedEntryId = UUID.randomUUID();
         var notAdvancedEntryId = UUID.randomUUID();
@@ -256,9 +270,11 @@ class JudgingServiceMedalRoundTest {
         given(advancedEntry.getEntryCode()).willReturn("AMA-1");
         given(advancedEntry.getMeadName()).willReturn("Wildflower");
         given(advancedEntry.getUserId()).willReturn(entrantUserId);
+        given(advancedEntry.getStatus()).willReturn(EntryStatus.RECEIVED);
 
         var notAdvancedEntry = mock(Entry.class);
         given(notAdvancedEntry.getId()).willReturn(notAdvancedEntryId);
+        given(notAdvancedEntry.getStatus()).willReturn(EntryStatus.RECEIVED);
 
         given(entryService.findEntriesByFinalCategoryId(divisionCategoryId))
                 .willReturn(List.of(advancedEntry, notAdvancedEntry));
@@ -338,17 +354,32 @@ class JudgingServiceMedalRoundTest {
     private Entry mockEntryWithScoresheet(String entryCode, int total, boolean advanced) {
         var entryId = UUID.randomUUID();
         var entry = mock(Entry.class);
-        given(entry.getId()).willReturn(entryId);
+        lenient().when(entry.getId()).thenReturn(entryId);
         lenient().when(entry.getEntryCode()).thenReturn(entryCode);
         lenient().when(entry.getMeadName()).thenReturn(entryCode + " mead");
         lenient().when(entry.getUserId()).thenReturn(UUID.randomUUID());
+        lenient().when(entry.getStatus()).thenReturn(EntryStatus.RECEIVED);
         var sheet = mock(Scoresheet.class);
-        given(sheet.getStatus()).willReturn(ScoresheetStatus.SUBMITTED);
+        lenient().when(sheet.getStatus()).thenReturn(ScoresheetStatus.SUBMITTED);
         lenient().when(sheet.isAdvancedToMedalRound()).thenReturn(advanced);
         lenient().when(sheet.getTotalScore()).thenReturn(total);
-        given(scoresheetRepository.findByEntryId(entryId)).willReturn(Optional.of(sheet));
-        given(medalAwardRepository.findByEntryId(entryId)).willReturn(Optional.empty());
+        lenient().when(scoresheetRepository.findByEntryId(entryId)).thenReturn(Optional.of(sheet));
+        lenient().when(medalAwardRepository.findByEntryId(entryId)).thenReturn(Optional.empty());
         return entry;
+    }
+
+    @Test
+    void shouldExcludeNonReceivedEntriesFromMedalRoundEntries() {
+        var received = mockEntryWithScoresheet("AMA-1", 88, true);
+        var withdrawn = mockEntryWithScoresheet("AMA-2", 90, true);
+        lenient().when(withdrawn.getStatus()).thenReturn(EntryStatus.WITHDRAWN);
+        given(entryService.findEntriesByFinalCategoryId(divisionCategoryId))
+                .willReturn(List.of(received, withdrawn));
+
+        var rows = service.findMedalRoundEntries(divisionCategoryId, MedalRoundMode.COMPARATIVE);
+
+        assertThat(rows).hasSize(1);
+        assertThat(rows.get(0).entryId()).isEqualTo(received.getId());
     }
 
     @Test

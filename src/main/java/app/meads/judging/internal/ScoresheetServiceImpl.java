@@ -3,6 +3,7 @@ package app.meads.judging.internal;
 import app.meads.BusinessRuleException;
 import app.meads.competition.CompetitionService;
 import app.meads.entry.EntryService;
+import app.meads.entry.EntryStatus;
 import app.meads.judging.CategoryJudgingConfig;
 import app.meads.judging.CoiCheckService;
 import app.meads.judging.Judging;
@@ -72,6 +73,11 @@ public class ScoresheetServiceImpl implements ScoresheetService {
         requireNotFrozen(judging.getDivisionId());
         var entries = entryService.findEntriesByFinalCategoryId(table.getDivisionCategoryId());
         for (var entry : entries) {
+            // Only physically-present entries are judged — a bottle that never
+            // arrived (SUBMITTED) or was pulled (WITHDRAWN) gets no scoresheet.
+            if (entry.getStatus() != EntryStatus.RECEIVED) {
+                continue;
+            }
             if (scoresheetRepository.findByEntryId(entry.getId()).isEmpty()) {
                 scoresheetRepository.save(new Scoresheet(tableId, entry.getId()));
                 log.info("Created DRAFT scoresheet for entry {} at table {}", entry.getId(), tableId);

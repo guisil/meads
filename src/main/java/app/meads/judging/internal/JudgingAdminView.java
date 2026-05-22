@@ -139,10 +139,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
 
         judging = judgingService.ensureJudgingExists(division.getId());
 
-        removeAll();
-        add(createBreadcrumb());
-        add(createHeader());
-        add(createTabSheet());
+        beforeEnterRefresh();
     }
 
     private Nav createBreadcrumb() {
@@ -757,7 +754,19 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         removeAll();
         add(createBreadcrumb());
         add(createHeader());
+        long unassigned = entryService.countEntriesNeedingFinalCategory(division.getId());
+        if (unassigned > 0) {
+            add(createUnassignedWarning(unassigned));
+        }
         add(createTabSheet());
+    }
+
+    private Span createUnassignedWarning(long count) {
+        var warning = new Span(getTranslation("judging-admin.unassigned-warning", count));
+        warning.setId("judging-admin-unassigned-warning");
+        warning.getStyle().set("color", "var(--lumo-error-text-color)")
+                .set("font-weight", "600");
+        return warning;
     }
 
     private String formatTablesProgress(CategoryJudgingConfig config) {

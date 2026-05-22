@@ -387,6 +387,19 @@ public class EntryService {
         return entryRepository.findByDivisionId(divisionId);
     }
 
+    /**
+     * Counts entries that still need a judging (final) category — non-withdrawn,
+     * non-draft entries with no {@code finalCategoryId}. Surfaced as a warning in
+     * the judging admin view so no paid entry is silently left unjudged.
+     */
+    public long countEntriesNeedingFinalCategory(@NotNull UUID divisionId) {
+        return entryRepository.findByDivisionId(divisionId).stream()
+                .filter(e -> e.getFinalCategoryId() == null)
+                .filter(e -> e.getStatus() == EntryStatus.SUBMITTED
+                        || e.getStatus() == EntryStatus.RECEIVED)
+                .count();
+    }
+
     public List<Entry> findEntriesByDivisionAndUser(@NotNull UUID divisionId,
                                                       @NotNull UUID userId) {
         return entryRepository.findByDivisionIdAndUserId(divisionId, userId);

@@ -1739,4 +1739,24 @@ class EntryServiceTest {
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("error.auth.unauthorized");
     }
+
+    @Test
+    void shouldCountEntriesNeedingFinalCategory() {
+        var divisionId = UUID.randomUUID();
+        var needsReceived = mock(Entry.class);
+        given(needsReceived.getFinalCategoryId()).willReturn(null);
+        given(needsReceived.getStatus()).willReturn(EntryStatus.RECEIVED);
+        var needsSubmitted = mock(Entry.class);
+        given(needsSubmitted.getFinalCategoryId()).willReturn(null);
+        given(needsSubmitted.getStatus()).willReturn(EntryStatus.SUBMITTED);
+        var alreadyAssigned = mock(Entry.class);
+        given(alreadyAssigned.getFinalCategoryId()).willReturn(UUID.randomUUID());
+        var withdrawn = mock(Entry.class);
+        given(withdrawn.getFinalCategoryId()).willReturn(null);
+        given(withdrawn.getStatus()).willReturn(EntryStatus.WITHDRAWN);
+        given(entryRepository.findByDivisionId(divisionId))
+                .willReturn(List.of(needsReceived, needsSubmitted, alreadyAssigned, withdrawn));
+
+        assertThat(entryService.countEntriesNeedingFinalCategory(divisionId)).isEqualTo(2L);
+    }
 }

@@ -37,6 +37,7 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.spring.security.AuthenticationContext;
 import jakarta.annotation.security.PermitAll;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.util.StringUtils;
 
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -318,8 +319,46 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
     private VerticalLayout createEntryCard() {
         var card = new VerticalLayout();
         card.setPadding(false);
-        card.add(new Span(entry.getMeadName()));
+        card.setSpacing(false);
+        var meadName = new Span(entry.getMeadName());
+        meadName.getStyle().set("font-weight", "600");
+        card.add(meadName);
+        // Judges work from poured samples (coded glasses, not the labelled bottle),
+        // so the declared attributes they judge to style against must be on screen.
+        card.add(attributeLine("entries.view.category", categoryLabel()));
+        card.add(attributeLine("entries.view.sweetness",
+                getTranslation("entry.sweetness." + entry.getSweetness().name())));
+        card.add(attributeLine("entries.view.carbonation",
+                getTranslation("entry.carbonation." + entry.getCarbonation().name())));
+        card.add(attributeLine("entries.view.abv",
+                entry.getAbv() == null ? "—" : entry.getAbv().toPlainString() + "%"));
+        card.add(attributeLine("entries.view.honey", orDash(entry.getHoneyVarieties())));
+        if (StringUtils.hasText(entry.getOtherIngredients())) {
+            card.add(attributeLine("entries.view.other-ingredients", entry.getOtherIngredients()));
+        }
+        if (entry.isWoodAged()) {
+            card.add(attributeLine("entries.view.wood-details", orDash(entry.getWoodAgeingDetails())));
+        }
+        if (StringUtils.hasText(entry.getAdditionalInformation())) {
+            card.add(attributeLine("entries.view.additional-info", entry.getAdditionalInformation()));
+        }
         return card;
+    }
+
+    private Span attributeLine(String labelKey, String value) {
+        return new Span(getTranslation(labelKey) + ": " + value);
+    }
+
+    private String categoryLabel() {
+        if (entry.getFinalCategoryId() == null) {
+            return "—";
+        }
+        var category = competitionService.findDivisionCategoryById(entry.getFinalCategoryId());
+        return category.getCode() + " — " + category.getName();
+    }
+
+    private String orDash(String value) {
+        return StringUtils.hasText(value) ? value : "—";
     }
 
     private VerticalLayout createScoreFieldsSection() {

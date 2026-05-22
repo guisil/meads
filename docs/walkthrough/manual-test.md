@@ -1608,15 +1608,31 @@ testable. Steps below are admin-driven unless noted.
 
 ### 12.5 Assign final categories to entries
 
-For meaningful judging tests, a few entries must have `finalCategoryId` set to a JUDGING-scope category.
+For an entry to be judged it must (a) be in **RECEIVED** status — the bottle has
+physically arrived and been checked in — and (b) have `finalCategoryId` set to a
+JUDGING-scope category. Entries that are still SUBMITTED (bottle not arrived) or
+WITHDRAWN get **no scoresheet** when a table starts (see §12.6.4).
 
 *Navigate to Amadora → Entry Admin → Entries tab.*
 
-- [ ] Pick at least 2 entries in SUBMITTED or RECEIVED state.
-- [ ] Click the Edit (pencil) icon → confirm in the warning dialog.
-- [ ] **Expected:** The edit dialog now includes a "Final Category" Select (clearable, populated from JUDGING-scope categories).
+- [ ] Mark at least 2 entries as **RECEIVED** using the `→` advance arrows
+  (DRAFT → SUBMITTED → RECEIVED). Leave one entry SUBMITTED (not received) so you
+  can confirm it is excluded from judging.
+- [ ] For each RECEIVED entry: click the Edit (pencil) icon → confirm in the warning dialog.
+- [ ] **Expected:** The edit dialog includes a "Final Category" Select (clearable, populated from JUDGING-scope categories).
 - [ ] Pick a category (e.g. `M1A — Traditional Mead (Dry)`), Save.
 - [ ] **Expected:** Notification "Entry updated"; Final Category column shows the chosen value.
+- [ ] **Leave one RECEIVED entry without a final category** for the next check.
+
+#### 12.5.1 Unassigned-entry warning
+
+- [ ] Open Judging Admin (Manage Judging) while at least one SUBMITTED/RECEIVED
+  entry still has no final category.
+- [ ] **Expected:** A red warning line appears below the header — "{N} entries have
+  no judging category — assign one before they can be judged." It disappears once
+  every non-withdrawn entry has a final category. This stops a paid entry from
+  being silently left unjudged.
+- [ ] Assign the last entry's final category, reload Judging Admin → warning gone.
 
 ### 12.6 JudgingAdminView — Tables tab
 
@@ -1670,6 +1686,7 @@ For COI badges to appear, `judge@example.com` should already exist as a JUDGE in
 - [ ] **Expected:** Confirmation dialog: if entries with `finalCategoryId = M1A` exist, body says "All assigned judges will be notified. This creates one scoresheet per entry assigned to this category."; if no entries, body says "This table has no entries yet. Start anyway?".
 - [ ] Click Start.
 - [ ] **Expected:** Notification "Table started"; Status column changes from `NOT_STARTED` to `ROUND_1`; Scoresheets column now reads `DRAFT N · SUBMITTED 0` for some N ≥ 0.
+- [ ] **Expected:** `N` equals the count of **RECEIVED** entries assigned to this category — the SUBMITTED-but-not-received entry from §12.5 gets **no scoresheet** (its bottle never arrived). A WITHDRAWN entry is likewise skipped.
 - [ ] **Expected:** ▶ Start button becomes disabled (already started).
 - [ ] **Expected:** 🗑 Delete button is disabled with tooltip "Cannot delete a started table or one with assigned judges".
 - [ ] **Check Mailpit:** each assigned judge receives a "Judging table ready" email, subject "[MEADS] Judging table ready — {table}", heading "Your judging table is ready", body names the table, category, division and competition, CTA button "Log in to MEADS" (magic link). `JudgingNotificationListener` handles `TableStartedEvent`.
@@ -1796,7 +1813,11 @@ For this you need a *second* ROUND_1 table in the same JUDGING category. Create 
 
 - [ ] **Expected:** URL `competitions/.../divisions/.../scoresheets/<id>`.
 - [ ] **Expected:** H2 `Scoresheet — {entryCode}`.
-- [ ] **Expected:** A read-only entry header card showing the mead name.
+- [ ] **Expected:** A read-only entry card showing the mead name **and the declared
+  attributes the judge needs to judge to style** — category (code + name), sweetness,
+  carbonation, ABV, honey varieties, and (when present) other ingredients, wood
+  ageing details, and additional information. Judges work from poured coded samples,
+  not the labelled bottle, so this on-screen detail is essential.
 - [ ] **Expected:** A "Scores" section with five `NumberField`s, one per MJP field:
   - `Appearance` (max 12)
   - `Aroma/Bouquet` (max 30)
@@ -1950,19 +1971,48 @@ For this you need a *second* ROUND_1 table in the same JUDGING category. Create 
 - [ ] **Expected:** Error notification — `JudgingDivisionStatusRevertGuard` blocks the revert because `Judging.phase != NOT_STARTED` OR any JudgingTable exists. Message renders the `error.division.cannot-revert-has-judging` translation.
 - [ ] **Expected:** Status remains `JUDGING`.
 
-### 12.16 i18n sanity (judging surfaces only)
+### 12.16 StewardView (read-only steward hub)
+
+**Covers:** `StewardViewTest`, `CompetitionServiceTest` (`findCompetitionsBySteward`).
+
+*Pre-req: a user with the STEWARD role in CHIP 2026 — add one via CHIP 2026 →
+Participants → Add Participant, role STEWARD (e.g. `steward@example.com`).*
+
+- [ ] Log in as the steward (access code or magic link).
+- [ ] **Expected (sidebar):** A "My Stewarding" entry (clipboard icon) appears —
+  gated by `StewardChecker.isStewardSomewhere`. Only visible because the user holds
+  a STEWARD role somewhere.
+- [ ] Click "My Stewarding" (URL `/my-stewarding`).
+- [ ] **Expected:** H2 "My Stewarding". For each competition the user stewards, an
+  `H3` with the competition name; under it, each JUDGING-or-later division as an
+  `H4`, then one card per judging table.
+- [ ] **Expected (per table card):** table name + category (code + name) + status;
+  a "Judges: …" line (names, or "—" when none assigned); one `•` line per entry on
+  the table showing entry code + mead name.
+- [ ] **Expected:** The view is entirely **read-only** — no buttons, no edit actions.
+- [ ] **Expected:** A division with no tables shows "No judging tables yet."
+
+#### 12.16.1 Empty-state for a non-steward
+
+- [ ] Log in as a user with no STEWARD role (e.g. `entrant@example.com`).
+- [ ] **Expected (sidebar):** "My Stewarding" is *not* present.
+- [ ] Navigate directly to `/my-stewarding`.
+- [ ] **Expected:** H2 "My Stewarding" + an empty-state message ("You have no
+  stewarding assignments yet.").
+
+### 12.17 i18n sanity (judging surfaces only)
 
 *Switch UI language via the language switcher in the user menu (top-right).*
 
 - [ ] For each of `pt`, `es`, `it`, `pl`:
-  - Visit JudgingAdminView, TableView, ScoresheetView, MyJudgingView, MedalRoundView, BosView.
-  - **Expected:** No raw `error.…` or `judging-admin.…` keys leaking through. Header labels, tab names, column headers, dialog titles, button text, notifications all render in the chosen language.
+  - Visit JudgingAdminView, TableView, ScoresheetView, MyJudgingView, MedalRoundView, BosView, StewardView.
+  - **Expected:** No raw `error.…`, `judging-admin.…`, `medal-round.…` or `steward.…` keys leaking through. Header labels, tab names, column headers, dialog titles, button text, notifications all render in the chosen language.
   - **Expected:** Date/time fields use locale-aware format (DatePicker, NumberField step buttons localized).
   - **Expected:** All score-field labels use canonical English names regardless of UI locale (`Appearance`, `Aroma/Bouquet`, `Flavour and Body`, `Finish`, `Overall Impression`) — these are stored as i18n keys but the canonical English is what's used in `ScoreField.fieldName`.
 
-> The ES/IT/PL translations added in Phase 6.34 are draft-quality and intended for native-speaker review. Note any awkward phrasing or terminology disagreements for later correction.
+> The ES/IT/PL translations are draft-quality and intended for native-speaker review. Note any awkward phrasing or terminology disagreements for later correction.
 
-### 12.17 Restore Amadora state (optional cleanup)
+### 12.18 Restore Amadora state (optional cleanup)
 
 - [ ] If you want Amadora to remain testable for entry-side flows, you'll need to remove judging data first:
   - Reset BOS, reset all medal rounds, then delete all tables (each table needs to be NOT_STARTED with no assignments — uncheck judges via Assign Judges dialog, then delete).

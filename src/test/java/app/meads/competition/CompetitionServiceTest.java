@@ -1534,6 +1534,23 @@ class CompetitionServiceTest {
         assertThat(result).isEmpty();
     }
 
+    @Test
+    void shouldFindCompetitionsWhereUserIsSteward() {
+        var user = createRegularUser();
+        var comp = createCompetition();
+        var participant = new Participant(comp.getId(), user.getId());
+        given(participantRepository.findByUserId(user.getId()))
+                .willReturn(List.of(participant));
+        given(participantRoleRepository.existsByParticipantIdAndRole(
+                participant.getId(), CompetitionRole.STEWARD)).willReturn(true);
+        given(competitionRepository.findById(comp.getId()))
+                .willReturn(Optional.of(comp));
+
+        var result = competitionService.findCompetitionsBySteward(user.getId());
+
+        assertThat(result).containsExactly(comp);
+    }
+
     // --- findDivisionsByCompetition ---
 
     @Test

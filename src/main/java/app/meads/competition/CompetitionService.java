@@ -126,6 +126,16 @@ public class CompetitionService {
                 .toList();
     }
 
+    /** Competitions where the user holds the STEWARD role — backs the steward view. */
+    public List<Competition> findCompetitionsBySteward(@NotNull UUID userId) {
+        return participantRepository.findByUserId(userId).stream()
+                .filter(p -> participantRoleRepository.existsByParticipantIdAndRole(
+                        p.getId(), CompetitionRole.STEWARD))
+                .map(p -> competitionRepository.findById(p.getCompetitionId()))
+                .flatMap(Optional::stream)
+                .toList();
+    }
+
     public Competition updateCompetition(@NotNull UUID competitionId,
                                           @NotBlank String name,
                                           @NotBlank String shortName,

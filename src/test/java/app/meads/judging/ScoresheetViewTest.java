@@ -175,6 +175,7 @@ class ScoresheetViewTest {
                 meadName, category.getId(), Sweetness.DRY,
                 BigDecimal.valueOf(11.0), Carbonation.STILL,
                 "Wildflower", null, false, null, null);
+        entry.assignFinalCategory(category.getId());
         entry = entryRepository.save(entry);
 
         var sheet = new Scoresheet(table.getId(), entry.getId());
@@ -199,6 +200,25 @@ class ScoresheetViewTest {
         var spanTexts = _find(Span.class).stream().map(Span::getText).toList();
         assertThat(spanTexts.stream().anyMatch(t -> t != null && t.contains("Hiveheart Mead")))
                 .as("mead name").isTrue();
+    }
+
+    @Test
+    @WithMockUser(username = JUDGE_EMAIL, roles = "USER")
+    void shouldShowDeclaredEntryAttributesOnTheCard() {
+        var entrant = userRepository.save(new User(
+                "entrant-attr-" + UUID.randomUUID() + "@example.com",
+                "Entrant", UserStatus.ACTIVE, Role.USER));
+        var sheet = createScoresheetFor(entrant, "AMA-7", "Attr Mead");
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName()
+                + "/scoresheets/" + sheet.getId());
+
+        var spanTexts = _find(Span.class).stream()
+                .map(Span::getText).filter(t -> t != null).toList();
+        assertThat(spanTexts).anyMatch(t -> t.contains("Sweetness") && t.contains("Dry"));
+        assertThat(spanTexts).anyMatch(t -> t.contains("Carbonation") && t.contains("Still"));
+        assertThat(spanTexts).anyMatch(t -> t.contains("Honey") && t.contains("Wildflower"));
     }
 
     @Test

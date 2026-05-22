@@ -16,8 +16,10 @@ import app.meads.identity.User;
 import app.meads.identity.UserStatus;
 import app.meads.identity.internal.UserRepository;
 import app.meads.entry.Carbonation;
+import app.meads.entry.Entry;
 import app.meads.entry.EntryService;
 import app.meads.entry.Sweetness;
+import app.meads.entry.internal.EntryRepository;
 import app.meads.judging.internal.BosPlacementRepository;
 import app.meads.judging.internal.CategoryJudgingConfigRepository;
 import app.meads.judging.internal.JudgingAdminView;
@@ -35,6 +37,7 @@ import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.tabs.TabSheet;
 import com.vaadin.flow.component.textfield.TextField;
@@ -54,6 +57,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.annotation.DirtiesContext;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -109,6 +113,9 @@ class JudgingAdminViewTest {
 
     @Autowired
     EntryService entryService;
+
+    @Autowired
+    EntryRepository entryRepository;
 
     private Competition competition;
     private Division division;
@@ -352,6 +359,29 @@ class JudgingAdminViewTest {
         var refreshed = categoryJudgingConfigRepository.findByDivisionCategoryId(category.getId())
                 .orElseThrow();
         assertThat(refreshed.getMedalRoundMode()).isEqualTo(MedalRoundMode.SCORE_BASED);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldWarnWhenEntriesHaveNoJudgingCategory() {
+        advanceDivisionToJudging();
+        var regCategory = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Desc",
+                null, 1, CategoryScope.REGISTRATION));
+        var entrant = userRepository.save(new User(
+                "ja-unassigned-" + UUID.randomUUID() + "@example.com",
+                "Entrant", UserStatus.ACTIVE, Role.USER));
+        var entry = new Entry(division.getId(), entrant.getId(), 1, "AMA-1", "Mead",
+                regCategory.getId(), Sweetness.DRY, BigDecimal.valueOf(11.0), Carbonation.STILL,
+                "Honey", null, false, null, null);
+        entry.submit();
+        entryRepository.save(entry);
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var warning = _get(Span.class, spec -> spec.withId("judging-admin-unassigned-warning"));
+        assertThat(warning.getText()).contains("1");
     }
 
     @Test
