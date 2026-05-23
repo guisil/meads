@@ -198,7 +198,7 @@ class JudgingAdminViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldRenderHeaderAndThreeTabsWhenDivisionInJudgingStatus() {
+    void shouldRenderHeaderAndFourTabsWhenDivisionInJudgingStatus() {
         advanceDivisionToJudging();
 
         UI.getCurrent().navigate("competitions/" + competition.getShortName()
@@ -209,7 +209,8 @@ class JudgingAdminViewTest {
         assertThat(heading.getText()).contains("Judging Admin");
 
         var tabSheet = _get(TabSheet.class);
-        assertThat(tabSheet.getTabCount()).isEqualTo(3);
+        // Physical Tables, Tables, Medal Rounds, Best of Show
+        assertThat(tabSheet.getTabCount()).isEqualTo(4);
     }
 
     @Test
@@ -222,7 +223,7 @@ class JudgingAdminViewTest {
                 + "/divisions/" + division.getShortName() + "/judging-admin");
 
         var tabSheet = _get(TabSheet.class);
-        tabSheet.setSelectedIndex(0); // Tables tab
+        tabSheet.setSelectedIndex(1); // Tables tab (index shifted by Physical Tables tab)
 
         var addButton = _get(Button.class, spec -> spec.withText("Add Table"));
         assertThat(addButton).isNotNull();
@@ -236,7 +237,7 @@ class JudgingAdminViewTest {
         var headers = tablesGrid.getColumns().stream()
                 .map(c -> ((Grid.Column<?>) c).getHeaderText())
                 .toList();
-        assertThat(headers).containsExactly("Name", "Category", "Status",
+        assertThat(headers).containsExactly("Name", "Category", "Physical Table", "Status",
                 "Judges", "Scheduled", "Scoresheets", "Actions");
     }
 
@@ -322,7 +323,7 @@ class JudgingAdminViewTest {
                 + "/divisions/" + division.getShortName() + "/judging-admin");
 
         var tabSheet = _get(TabSheet.class);
-        tabSheet.setSelectedIndex(1); // Medal Rounds tab
+        tabSheet.setSelectedIndex(2); // Medal Rounds tab (index shifted)
 
         var grids = _find(Grid.class);
         var medalGrid = grids.stream()
@@ -539,8 +540,12 @@ class JudgingAdminViewTest {
         UI.getCurrent().navigate("competitions/" + competition.getShortName()
                 + "/divisions/" + division.getShortName() + "/judging-admin");
 
+        // Pre-create a physical table so the Add Round dialog can pick one.
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var physicalTable = judgingService.createPhysicalTable(division.getId(), "Table 1", admin.getId());
+
         var tabSheet = _get(TabSheet.class);
-        tabSheet.setSelectedIndex(0);
+        tabSheet.setSelectedIndex(1); // Tables tab (Physical Tables is now index 0)
 
         _click(_get(Button.class, spec -> spec.withText("Add Table")));
 
@@ -548,19 +553,24 @@ class JudgingAdminViewTest {
         assertThat(dialog.isOpened()).isTrue();
 
         var nameField = _get(TextField.class, spec -> spec.withId("add-table-name"));
-        nameField.setValue("Table 1");
+        nameField.setValue("Round 1");
 
         var categorySelect = _get(com.vaadin.flow.component.select.Select.class,
                 spec -> spec.withId("add-table-category"));
         categorySelect.setValue(category);
+
+        var physicalTableSelect = _get(com.vaadin.flow.component.select.Select.class,
+                spec -> spec.withId("add-table-physical-table"));
+        physicalTableSelect.setValue(physicalTable);
 
         _click(_get(Button.class, spec -> spec.withText("Save")));
 
         var judging = judgingService.ensureJudgingExists(division.getId());
         var tables = judgingService.findRoundsByJudgingId(judging.getId());
         assertThat(tables).hasSize(1);
-        assertThat(tables.get(0).getName()).isEqualTo("Table 1");
+        assertThat(tables.get(0).getName()).isEqualTo("Round 1");
         assertThat(tables.get(0).getDivisionCategoryId()).isEqualTo(category.getId());
+        assertThat(tables.get(0).getPhysicalTableId()).isEqualTo(physicalTable.getId());
     }
 
     @Test
@@ -572,7 +582,7 @@ class JudgingAdminViewTest {
                 + "/divisions/" + division.getShortName() + "/judging-admin");
 
         var tabSheet = _get(TabSheet.class);
-        tabSheet.setSelectedIndex(2); // BOS tab
+        tabSheet.setSelectedIndex(3); // BOS tab (index shifted)
 
         var spans = _find(com.vaadin.flow.component.html.Span.class);
         var hasDisabledMessage = spans.stream()
@@ -602,7 +612,7 @@ class JudgingAdminViewTest {
                 + "/divisions/" + division.getShortName() + "/judging-admin");
 
         var tabSheet = _get(TabSheet.class);
-        tabSheet.setSelectedIndex(2); // BOS tab
+        tabSheet.setSelectedIndex(3); // BOS tab (index shifted)
 
         var grids = _find(Grid.class);
         var placementsGrid = grids.stream()
@@ -630,7 +640,7 @@ class JudgingAdminViewTest {
                 + "/divisions/" + division.getShortName() + "/judging-admin");
 
         var tabSheet = _get(TabSheet.class);
-        tabSheet.setSelectedIndex(2);
+        tabSheet.setSelectedIndex(3); // BOS tab (index shifted by Physical Tables tab)
 
         var emptyMsg = _get(com.vaadin.flow.component.html.Span.class,
                 spec -> spec.withId("bos-candidates-empty"));
@@ -727,7 +737,7 @@ class JudgingAdminViewTest {
                 + "/divisions/" + division.getShortName() + "/judging-admin");
 
         var tabSheet = _get(TabSheet.class);
-        tabSheet.setSelectedIndex(2); // BOS tab
+        tabSheet.setSelectedIndex(3); // BOS tab (index shifted)
 
         var expectedHref = "competitions/" + competition.getShortName()
                 + "/divisions/" + division.getShortName() + "/bos";

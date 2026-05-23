@@ -189,10 +189,135 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
     private TabSheet createTabSheet() {
         var tabSheet = new TabSheet();
         tabSheet.setWidthFull();
+        tabSheet.add(getTranslation("judging-admin.tab.physical-tables"), createPhysicalTablesTab());
         tabSheet.add(getTranslation("judging-admin.tab.tables"), createTablesTab());
         tabSheet.add(getTranslation("judging-admin.tab.medal-rounds"), createMedalRoundsTab());
         tabSheet.add(getTranslation("judging-admin.tab.bos"), createBosTab());
         return tabSheet;
+    }
+
+    private Grid<app.meads.judging.PhysicalTable> physicalTablesGrid;
+
+    private VerticalLayout createPhysicalTablesTab() {
+        var tab = new VerticalLayout();
+        tab.setPadding(false);
+
+        var addButton = new Button(getTranslation("judging-admin.physical-tables.add"),
+                e -> openAddPhysicalTableDialog());
+        addButton.setId("add-physical-table-button");
+        addButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        tab.add(addButton);
+
+        physicalTablesGrid = new Grid<>(app.meads.judging.PhysicalTable.class, false);
+        physicalTablesGrid.setId("physical-tables-grid");
+        physicalTablesGrid.addColumn(app.meads.judging.PhysicalTable::getLabel)
+                .setHeader(getTranslation("judging-admin.physical-tables.column.label"));
+        physicalTablesGrid.addComponentColumn(this::physicalTableActions)
+                .setHeader(getTranslation("judging-admin.physical-tables.column.actions"));
+        refreshPhysicalTablesGrid();
+        tab.add(physicalTablesGrid);
+        return tab;
+    }
+
+    private void refreshPhysicalTablesGrid() {
+        if (physicalTablesGrid != null) {
+            physicalTablesGrid.setItems(judgingService.findPhysicalTablesByDivision(division.getId()));
+        }
+    }
+
+    private HorizontalLayout physicalTableActions(app.meads.judging.PhysicalTable pt) {
+        var layout = new HorizontalLayout();
+        layout.setPadding(false);
+        var editButton = new Button(new Icon(VaadinIcon.EDIT));
+        editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+        editButton.setTooltipText(getTranslation("judging-admin.physical-tables.action.edit"));
+        editButton.addClickListener(e -> openEditPhysicalTableDialog(pt));
+        var deleteButton = new Button(new Icon(VaadinIcon.TRASH));
+        deleteButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE, ButtonVariant.LUMO_ERROR);
+        deleteButton.setTooltipText(getTranslation("judging-admin.physical-tables.action.delete"));
+        deleteButton.addClickListener(e -> openDeletePhysicalTableDialog(pt));
+        layout.add(editButton, deleteButton);
+        return layout;
+    }
+
+    private void openAddPhysicalTableDialog() {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("judging-admin.physical-tables.add"));
+        var labelField = new TextField(getTranslation("judging-admin.physical-tables.label"));
+        labelField.setId("add-physical-table-label");
+        labelField.setMaxLength(50);
+        labelField.setWidthFull();
+        dialog.add(new VerticalLayout(labelField));
+        var saveBtn = new Button(getTranslation("button.save"), e -> {
+            try {
+                judgingService.createPhysicalTable(division.getId(), labelField.getValue(), currentUserId);
+                dialog.close();
+                refreshPhysicalTablesGrid();
+                Notification.show(getTranslation("judging-admin.physical-tables.added"))
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                e.getSource().setEnabled(true);
+            }
+        });
+        saveBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        saveBtn.setDisableOnClick(true);
+        var cancelBtn = new Button(getTranslation("button.cancel"), e -> dialog.close());
+        dialog.getFooter().add(cancelBtn, saveBtn);
+        dialog.open();
+    }
+
+    private void openEditPhysicalTableDialog(app.meads.judging.PhysicalTable pt) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("judging-admin.physical-tables.edit"));
+        var labelField = new TextField(getTranslation("judging-admin.physical-tables.label"));
+        labelField.setValue(pt.getLabel());
+        labelField.setMaxLength(50);
+        labelField.setWidthFull();
+        dialog.add(new VerticalLayout(labelField));
+        var saveBtn = new Button(getTranslation("button.save"), e -> {
+            try {
+                judgingService.updatePhysicalTableLabel(pt.getId(), labelField.getValue(), currentUserId);
+                dialog.close();
+                refreshPhysicalTablesGrid();
+                Notification.show(getTranslation("judging-admin.physical-tables.updated"))
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                e.getSource().setEnabled(true);
+            }
+        });
+        saveBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        saveBtn.setDisableOnClick(true);
+        var cancelBtn = new Button(getTranslation("button.cancel"), e -> dialog.close());
+        dialog.getFooter().add(cancelBtn, saveBtn);
+        dialog.open();
+    }
+
+    private void openDeletePhysicalTableDialog(app.meads.judging.PhysicalTable pt) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("judging-admin.physical-tables.delete.title", pt.getLabel()));
+        dialog.add(new Span(getTranslation("judging-admin.physical-tables.delete.body", pt.getLabel())));
+        var deleteBtn = new Button(getTranslation("button.delete"), e -> {
+            try {
+                judgingService.deletePhysicalTable(pt.getId(), currentUserId);
+                dialog.close();
+                refreshPhysicalTablesGrid();
+                Notification.show(getTranslation("judging-admin.physical-tables.deleted"))
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                e.getSource().setEnabled(true);
+            }
+        });
+        deleteBtn.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_PRIMARY);
+        deleteBtn.setDisableOnClick(true);
+        var cancelBtn = new Button(getTranslation("button.cancel"), e -> dialog.close());
+        dialog.getFooter().add(cancelBtn, deleteBtn);
+        dialog.open();
     }
 
     private VerticalLayout createTablesTab() {
@@ -210,6 +335,12 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
                 .setHeader(getTranslation("judging-admin.tables.column.name"));
         tablesGrid.addColumn(t -> formatCategory(t.getDivisionCategoryId()))
                 .setHeader(getTranslation("judging-admin.tables.column.category"));
+        tablesGrid.addColumn(t -> {
+                    if (t.getPhysicalTableId() == null) return "—";
+                    return judgingService.findPhysicalTableById(t.getPhysicalTableId())
+                            .map(app.meads.judging.PhysicalTable::getLabel).orElse("—");
+                })
+                .setHeader(getTranslation("judging-admin.tables.column.physical-table"));
         tablesGrid.addColumn(t -> t.getStatus().name())
                 .setHeader(getTranslation("judging-admin.tables.column.status"));
         tablesGrid.addColumn(t -> t.getAssignments().size())
@@ -275,10 +406,21 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         categorySelect.setItems(categories);
         categorySelect.setItemLabelGenerator(c -> c == null ? "" : c.getCode() + " — " + c.getName());
 
+        var physicalTableSelect = new Select<app.meads.judging.PhysicalTable>();
+        physicalTableSelect.setId("add-table-physical-table");
+        physicalTableSelect.setLabel(getTranslation("judging-admin.tables.dialog.physical-table"));
+        physicalTableSelect.setWidthFull();
+        var physicalTables = judgingService.findPhysicalTablesByDivision(division.getId());
+        physicalTableSelect.setItems(physicalTables);
+        physicalTableSelect.setItemLabelGenerator(pt -> pt == null ? "" : pt.getLabel());
+        if (physicalTables.isEmpty()) {
+            physicalTableSelect.setHelperText(getTranslation("judging-admin.tables.dialog.physical-table.empty"));
+        }
+
         var datePicker = new DatePicker(getTranslation("judging-admin.tables.dialog.scheduled"));
         datePicker.setWidthFull();
 
-        form.add(nameField, categorySelect, datePicker);
+        form.add(nameField, categorySelect, physicalTableSelect, datePicker);
         dialog.add(form);
 
         var saveButton = new Button(getTranslation("button.save"), e -> {
@@ -292,9 +434,15 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
                 categorySelect.setErrorMessage(getTranslation("judging-admin.tables.dialog.category.error"));
                 return;
             }
+            if (physicalTableSelect.getValue() == null) {
+                physicalTableSelect.setInvalid(true);
+                physicalTableSelect.setErrorMessage(getTranslation("judging-admin.tables.dialog.physical-table.error"));
+                return;
+            }
             try {
-                judgingService.createRound(judging.getId(), nameField.getValue().trim(),
+                var round = judgingService.createRound(judging.getId(), nameField.getValue().trim(),
                         categorySelect.getValue().getId(), datePicker.getValue(), currentUserId);
+                judgingService.assignRoundToPhysicalTable(round.getId(), physicalTableSelect.getValue().getId(), currentUserId);
                 dialog.close();
                 refreshTablesGrid();
                 Notification.show(getTranslation("judging-admin.tables.added"))
