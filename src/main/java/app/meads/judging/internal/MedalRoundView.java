@@ -131,7 +131,7 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         var user = userService.findById(currentUserId);
         isSystemAdmin = user.getRole() == Role.SYSTEM_ADMIN;
         boolean isDivisionAdmin = competitionService.isAuthorizedForDivision(division.getId(), currentUserId);
-        boolean isAssignedJudge = judgingService.findTablesByJudgeUserId(currentUserId).stream()
+        boolean isAssignedJudge = judgingService.findRoundsByJudgeUserId(currentUserId).stream()
                 .anyMatch(t -> t.getDivisionCategoryId().equals(divisionCategoryId));
 
         if (!isSystemAdmin && !isDivisionAdmin && !isAssignedJudge) {

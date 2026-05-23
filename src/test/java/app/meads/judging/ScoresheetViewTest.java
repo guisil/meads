@@ -167,7 +167,7 @@ class ScoresheetViewTest {
 
     private Scoresheet createScoresheetFor(User entrant, String entryCode, String meadName) {
         var judging = judgingService.ensureJudgingExists(division.getId());
-        var table = judgingService.createTable(judging.getId(), "Table A",
+        var table = judgingService.createRound(judging.getId(), "Table A",
                 category.getId(), null, admin.getId());
         judgingService.assignJudge(table.getId(), judge.getId(), admin.getId());
 

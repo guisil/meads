@@ -737,7 +737,7 @@ class DivisionDetailViewTest {
         _click(_get(Button.class, spec -> spec.withText("Save")));
 
         var refreshed = divisionRepository.findById(testDivision.getId()).orElseThrow();
-        assertThat(refreshed.getMinJudgesPerTable()).isEqualTo(3);
+        assertThat(refreshed.getMinJudgesPerRound()).isEqualTo(3);
     }
 
     @Test

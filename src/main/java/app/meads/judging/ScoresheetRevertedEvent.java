@@ -6,6 +6,6 @@ import java.util.UUID;
 public record ScoresheetRevertedEvent(
         UUID scoresheetId,
         UUID entryId,
-        UUID tableId,
+        UUID roundId,
         Instant revertedAt) {
 }

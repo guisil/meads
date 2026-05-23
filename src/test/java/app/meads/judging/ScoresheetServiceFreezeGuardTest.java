@@ -8,7 +8,7 @@ import app.meads.entry.Entry;
 import app.meads.entry.EntryService;
 import app.meads.judging.internal.CategoryJudgingConfigRepository;
 import app.meads.judging.internal.JudgingRepository;
-import app.meads.judging.internal.JudgingTableRepository;
+import app.meads.judging.internal.JudgingRoundRepository;
 import app.meads.judging.internal.ScoresheetRepository;
 import app.meads.judging.internal.ScoresheetServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,7 +35,7 @@ class ScoresheetServiceFreezeGuardTest {
     @InjectMocks ScoresheetServiceImpl service;
 
     @Mock ScoresheetRepository scoresheetRepository;
-    @Mock JudgingTableRepository judgingTableRepository;
+    @Mock JudgingRoundRepository judgingRoundRepository;
     @Mock CategoryJudgingConfigRepository categoryConfigRepository;
     @Mock JudgingRepository judgingRepository;
     @Mock EntryService entryService;
@@ -48,11 +48,11 @@ class ScoresheetServiceFreezeGuardTest {
     UUID adminUserId;
     UUID judgeUserId;
     UUID scoresheetId;
-    UUID tableId;
+    UUID roundId;
     UUID entryId;
     UUID divisionCategoryId;
     Judging judging;
-    JudgingTable table;
+    JudgingRound table;
     Scoresheet sheet;
 
     @BeforeEach
@@ -69,10 +69,10 @@ class ScoresheetServiceFreezeGuardTest {
         judging = new Judging(divisionId);
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(judgingRepository.findByDivisionId(divisionId)).willReturn(Optional.of(judging));
-        table = new JudgingTable(judging.getId(), "T1", divisionCategoryId, null);
-        tableId = table.getId();
-        given(judgingTableRepository.findById(tableId)).willReturn(Optional.of(table));
-        sheet = new Scoresheet(tableId, entryId);
+        table = new JudgingRound(judging.getId(), "T1", divisionCategoryId, null);
+        roundId = table.getId();
+        given(judgingRoundRepository.findById(roundId)).willReturn(Optional.of(table));
+        sheet = new Scoresheet(roundId, entryId);
         scoresheetId = sheet.getId();
         given(scoresheetRepository.findById(scoresheetId)).willReturn(Optional.of(sheet));
     }
@@ -85,7 +85,7 @@ class ScoresheetServiceFreezeGuardTest {
 
     @Test
     void shouldRejectCreateScoresheetsForTableWhenResultsPublished() {
-        assertFrozen(() -> service.createScoresheetsForTable(tableId));
+        assertFrozen(() -> service.createScoresheetsForTable(roundId));
     }
 
     @Test
@@ -130,9 +130,9 @@ class ScoresheetServiceFreezeGuardTest {
 
     @Test
     void shouldRejectMoveToTableWhenResultsPublished() {
-        var newTableId = UUID.randomUUID();
-        var newTable = new JudgingTable(judging.getId(), "T2", divisionCategoryId, null);
-        given(judgingTableRepository.findById(newTableId)).willReturn(Optional.of(newTable));
-        assertFrozen(() -> service.moveToTable(scoresheetId, newTableId, adminUserId));
+        var newRoundId = UUID.randomUUID();
+        var newTable = new JudgingRound(judging.getId(), "T2", divisionCategoryId, null);
+        given(judgingRoundRepository.findById(newRoundId)).willReturn(Optional.of(newTable));
+        assertFrozen(() -> service.moveToRound(scoresheetId, newRoundId, adminUserId));
     }
 }

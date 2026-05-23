@@ -60,8 +60,8 @@ public class Division {
     @Column(name = "bos_places", nullable = false)
     private int bosPlaces;
 
-    @Column(name = "min_judges_per_table", nullable = false)
-    private int minJudgesPerTable;
+    @Column(name = "min_judges_per_round", nullable = false)
+    private int minJudgesPerRound;
 
     private Instant updatedAt;
 
@@ -81,7 +81,7 @@ public class Division {
         this.registrationDeadline = registrationDeadline;
         this.registrationDeadlineTimezone = registrationDeadlineTimezone;
         this.bosPlaces = 1;
-        this.minJudgesPerTable = 2;
+        this.minJudgesPerRound = 2;
     }
 
     @PrePersist
@@ -149,10 +149,10 @@ public class Division {
         this.bosPlaces = bosPlaces;
     }
 
-    public void updateMinJudgesPerTable(int minJudgesPerTable) {
-        if (minJudgesPerTable < 1) {
+    public void updateMinJudgesPerRound(int minJudgesPerRound) {
+        if (minJudgesPerRound < 1) {
             throw new IllegalArgumentException(
-                    "Min judges per table must be >= 1, got: " + minJudgesPerTable);
+                    "Min judges per table must be >= 1, got: " + minJudgesPerRound);
         }
         if (status != DivisionStatus.DRAFT
                 && status != DivisionStatus.REGISTRATION_OPEN
@@ -160,7 +160,7 @@ public class Division {
             throw new IllegalStateException(
                     "Min judges per table can only be changed in DRAFT, REGISTRATION_OPEN, or REGISTRATION_CLOSED");
         }
-        this.minJudgesPerTable = minJudgesPerTable;
+        this.minJudgesPerRound = minJudgesPerRound;
     }
 
     public void updateDetails(String name, String shortName, ScoringSystem scoringSystem,

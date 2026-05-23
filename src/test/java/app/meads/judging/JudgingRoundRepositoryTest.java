@@ -14,7 +14,7 @@ import app.meads.identity.User;
 import app.meads.identity.UserStatus;
 import app.meads.identity.internal.UserRepository;
 import app.meads.judging.internal.JudgingRepository;
-import app.meads.judging.internal.JudgingTableRepository;
+import app.meads.judging.internal.JudgingRoundRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -30,13 +30,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
 @Transactional
-class JudgingTableRepositoryTest {
+class JudgingRoundRepositoryTest {
 
     @Autowired
     JudgingRepository judgingRepository;
 
     @Autowired
-    JudgingTableRepository judgingTableRepository;
+    JudgingRoundRepository judgingRoundRepository;
 
     @Autowired
     CompetitionRepository competitionRepository;
@@ -80,20 +80,20 @@ class JudgingTableRepositoryTest {
         var judge1 = createAndSaveJudge("judge1@test.com");
         var judge2 = createAndSaveJudge("judge2@test.com");
 
-        var table = new JudgingTable(judging.getId(), "Table A",
+        var table = new JudgingRound(judging.getId(), "Table A",
                 category.getId(), LocalDate.of(2026, 7, 1));
         table.assignJudge(judge1.getId());
         table.assignJudge(judge2.getId());
 
-        judgingTableRepository.save(table);
+        judgingRoundRepository.save(table);
 
-        var found = judgingTableRepository.findById(table.getId()).orElseThrow();
+        var found = judgingRoundRepository.findById(table.getId()).orElseThrow();
 
         assertThat(found.getJudgingId()).isEqualTo(judging.getId());
         assertThat(found.getName()).isEqualTo("Table A");
         assertThat(found.getDivisionCategoryId()).isEqualTo(category.getId());
         assertThat(found.getScheduledDate()).isEqualTo(LocalDate.of(2026, 7, 1));
-        assertThat(found.getStatus()).isEqualTo(JudgingTableStatus.NOT_STARTED);
+        assertThat(found.getStatus()).isEqualTo(JudgingRoundStatus.NOT_STARTED);
         assertThat(found.getCreatedAt()).isNotNull();
         assertThat(found.getAssignments()).hasSize(2);
         assertThat(found.getAssignments())
@@ -109,13 +109,13 @@ class JudgingTableRepositoryTest {
         var judging = createAndSaveJudging(division);
         var category = createAndSaveJudgingCategory(division);
 
-        judgingTableRepository.save(new JudgingTable(judging.getId(), "Table A", category.getId(), null));
-        judgingTableRepository.save(new JudgingTable(judging.getId(), "Table B", category.getId(), null));
+        judgingRoundRepository.save(new JudgingRound(judging.getId(), "Table A", category.getId(), null));
+        judgingRoundRepository.save(new JudgingRound(judging.getId(), "Table B", category.getId(), null));
 
-        var found = judgingTableRepository.findByJudgingId(judging.getId());
+        var found = judgingRoundRepository.findByJudgingId(judging.getId());
 
         assertThat(found).hasSize(2);
-        assertThat(found).extracting(JudgingTable::getName)
+        assertThat(found).extracting(JudgingRound::getName)
                 .containsExactlyInAnyOrder("Table A", "Table B");
     }
 
@@ -126,14 +126,14 @@ class JudgingTableRepositoryTest {
         var category = createAndSaveJudgingCategory(division);
         var judge = createAndSaveJudge("judge@test.com");
 
-        var table = new JudgingTable(judging.getId(), "Table A", category.getId(), null);
+        var table = new JudgingRound(judging.getId(), "Table A", category.getId(), null);
         table.assignJudge(judge.getId());
-        var saved = judgingTableRepository.save(table);
+        var saved = judgingRoundRepository.save(table);
 
         saved.removeJudge(judge.getId());
-        judgingTableRepository.save(saved);
+        judgingRoundRepository.save(saved);
 
-        var refound = judgingTableRepository.findById(saved.getId()).orElseThrow();
+        var refound = judgingRoundRepository.findById(saved.getId()).orElseThrow();
         assertThat(refound.getAssignments()).isEmpty();
     }
 
@@ -145,28 +145,28 @@ class JudgingTableRepositoryTest {
         var judge = createAndSaveJudge("judge@test.com");
         var otherJudge = createAndSaveJudge("other@test.com");
 
-        var tableA = new JudgingTable(judging.getId(), "Table A", category.getId(), null);
+        var tableA = new JudgingRound(judging.getId(), "Table A", category.getId(), null);
         tableA.assignJudge(judge.getId());
-        judgingTableRepository.save(tableA);
+        judgingRoundRepository.save(tableA);
 
-        var tableB = new JudgingTable(judging.getId(), "Table B", category.getId(), null);
+        var tableB = new JudgingRound(judging.getId(), "Table B", category.getId(), null);
         tableB.assignJudge(judge.getId());
         tableB.assignJudge(otherJudge.getId());
-        judgingTableRepository.save(tableB);
+        judgingRoundRepository.save(tableB);
 
-        var tableC = new JudgingTable(judging.getId(), "Table C", category.getId(), null);
+        var tableC = new JudgingRound(judging.getId(), "Table C", category.getId(), null);
         tableC.assignJudge(otherJudge.getId());
-        judgingTableRepository.save(tableC);
+        judgingRoundRepository.save(tableC);
 
-        var found = judgingTableRepository.findByJudgeUserId(judge.getId());
+        var found = judgingRoundRepository.findByJudgeUserId(judge.getId());
 
-        assertThat(found).extracting(JudgingTable::getName)
+        assertThat(found).extracting(JudgingRound::getName)
                 .containsExactlyInAnyOrder("Table A", "Table B");
     }
 
     @Test
     void shouldReturnEmptyForNoTables() {
-        var found = judgingTableRepository.findByJudgingId(UUID.randomUUID());
+        var found = judgingRoundRepository.findByJudgingId(UUID.randomUUID());
         assertThat(found).isEmpty();
     }
 }

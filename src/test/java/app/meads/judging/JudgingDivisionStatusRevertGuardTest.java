@@ -4,7 +4,7 @@ import app.meads.BusinessRuleException;
 import app.meads.competition.DivisionStatus;
 import app.meads.judging.internal.JudgingDivisionStatusRevertGuard;
 import app.meads.judging.internal.JudgingRepository;
-import app.meads.judging.internal.JudgingTableRepository;
+import app.meads.judging.internal.JudgingRoundRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,7 +29,7 @@ class JudgingDivisionStatusRevertGuardTest {
     JudgingRepository judgingRepository;
 
     @Mock
-    JudgingTableRepository judgingTableRepository;
+    JudgingRoundRepository judgingRoundRepository;
 
     UUID divisionId;
 
@@ -59,7 +59,7 @@ class JudgingDivisionStatusRevertGuardTest {
     void shouldNotBlockWhenJudgingExistsButPhaseNotStartedAndNoTables() {
         var judging = new Judging(divisionId);
         given(judgingRepository.findByDivisionId(divisionId)).willReturn(Optional.of(judging));
-        given(judgingTableRepository.existsByJudgingId(judging.getId())).willReturn(false);
+        given(judgingRoundRepository.existsByJudgingId(judging.getId())).willReturn(false);
 
         assertThatCode(() -> guard.checkRevertAllowed(divisionId,
                 DivisionStatus.JUDGING, DivisionStatus.REGISTRATION_CLOSED))
@@ -82,7 +82,7 @@ class JudgingDivisionStatusRevertGuardTest {
     void shouldBlockWhenJudgingTablesExist() {
         var judging = new Judging(divisionId);
         given(judgingRepository.findByDivisionId(divisionId)).willReturn(Optional.of(judging));
-        given(judgingTableRepository.existsByJudgingId(judging.getId())).willReturn(true);
+        given(judgingRoundRepository.existsByJudgingId(judging.getId())).willReturn(true);
 
         assertThatThrownBy(() -> guard.checkRevertAllowed(divisionId,
                 DivisionStatus.JUDGING, DivisionStatus.REGISTRATION_CLOSED))

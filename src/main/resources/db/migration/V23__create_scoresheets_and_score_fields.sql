@@ -1,6 +1,6 @@
 CREATE TABLE scoresheets (
     id                          UUID PRIMARY KEY,
-    table_id                    UUID NOT NULL REFERENCES judging_tables(id),
+    round_id                    UUID NOT NULL REFERENCES judging_rounds(id),
     entry_id                    UUID NOT NULL UNIQUE REFERENCES entries(id),
     filled_by_judge_user_id     UUID REFERENCES users(id),
     status                      VARCHAR(20) NOT NULL,
@@ -12,7 +12,7 @@ CREATE TABLE scoresheets (
     created_at                  TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at                  TIMESTAMP WITH TIME ZONE
 );
-CREATE INDEX idx_scoresheets_table_id ON scoresheets(table_id);
+CREATE INDEX idx_scoresheets_round_id ON scoresheets(round_id);
 
 CREATE TABLE score_fields (
     id              UUID PRIMARY KEY,

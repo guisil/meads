@@ -56,7 +56,7 @@ class CompetitionServiceJudgingCategoryTest {
     List<DivisionDeletionGuard> deletionGuards = new ArrayList<>();
     List<ParticipantRemovalCleanup> removalCleanups = new ArrayList<>();
     List<JudgingCategoryDeletionGuard> judgingCategoryDeletionGuards = new ArrayList<>();
-    List<MinJudgesPerTableLockGuard> minJudgesPerTableLockGuards = new ArrayList<>();
+    List<MinJudgesPerRoundLockGuard> minJudgesPerRoundLockGuards = new ArrayList<>();
 
     @BeforeEach
     void setUp() {
@@ -66,7 +66,7 @@ class CompetitionServiceJudgingCategoryTest {
                 divisionCategoryRepository, categoryRepository,
                 competitionDocumentRepository, userService,
                 eventPublisher, advanceGuards, revertGuards, deletionGuards, removalCleanups,
-                judgingCategoryDeletionGuards, minJudgesPerTableLockGuards);
+                judgingCategoryDeletionGuards, minJudgesPerRoundLockGuards);
     }
 
     private User createAdmin() {

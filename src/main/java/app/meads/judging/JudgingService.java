@@ -17,40 +17,40 @@ public interface JudgingService {
     Judging ensureJudgingExists(@NotNull UUID divisionId);
 
     // === Table CRUD ===
-    JudgingTable createTable(@NotNull UUID judgingId,
+    JudgingRound createRound(@NotNull UUID judgingId,
                              @NotBlank String name,
                              @NotNull UUID divisionCategoryId,
                              LocalDate scheduledDate,
                              @NotNull UUID adminUserId);
 
-    void updateTableName(@NotNull UUID tableId, @NotBlank String name, @NotNull UUID adminUserId);
+    void updateRoundName(@NotNull UUID roundId, @NotBlank String name, @NotNull UUID adminUserId);
 
-    void updateTableScheduledDate(@NotNull UUID tableId, LocalDate date, @NotNull UUID adminUserId);
+    void updateRoundScheduledDate(@NotNull UUID roundId, LocalDate date, @NotNull UUID adminUserId);
 
-    void deleteTable(@NotNull UUID tableId, @NotNull UUID adminUserId);
+    void deleteRound(@NotNull UUID roundId, @NotNull UUID adminUserId);
 
-    List<JudgingTable> findTablesByJudgingId(@NotNull UUID judgingId);
+    List<JudgingRound> findRoundsByJudgingId(@NotNull UUID judgingId);
 
-    java.util.Optional<JudgingTable> findTableById(@NotNull UUID tableId);
+    java.util.Optional<JudgingRound> findRoundById(@NotNull UUID roundId);
 
-    List<JudgingTable> findTablesByDivisionAndCategory(@NotNull UUID divisionId, @NotNull UUID divisionCategoryId);
+    List<JudgingRound> findRoundsByDivisionAndCategory(@NotNull UUID divisionId, @NotNull UUID divisionCategoryId);
 
-    List<JudgingTable> findTablesByJudgeUserId(@NotNull UUID judgeUserId);
+    List<JudgingRound> findRoundsByJudgeUserId(@NotNull UUID judgeUserId);
 
     boolean hasAnyJudgeAssignment(@NotNull UUID judgeUserId);
 
-    boolean isJudgeAssignedToTable(@NotNull UUID tableId, @NotNull UUID judgeUserId);
+    boolean isJudgeAssignedToRound(@NotNull UUID roundId, @NotNull UUID judgeUserId);
 
     /** Judge user IDs assigned to a table — loads the assignment collection in-transaction. */
-    List<UUID> findJudgeUserIdsForTable(@NotNull UUID tableId);
+    List<UUID> findJudgeUserIdsForRound(@NotNull UUID roundId);
 
     // === Judge assignment ===
-    void assignJudge(@NotNull UUID tableId, @NotNull UUID judgeUserId, @NotNull UUID adminUserId);
+    void assignJudge(@NotNull UUID roundId, @NotNull UUID judgeUserId, @NotNull UUID adminUserId);
 
-    void removeJudge(@NotNull UUID tableId, @NotNull UUID judgeUserId, @NotNull UUID adminUserId);
+    void removeJudge(@NotNull UUID roundId, @NotNull UUID judgeUserId, @NotNull UUID adminUserId);
 
     // === Table state transitions ===
-    void startTable(@NotNull UUID tableId, @NotNull UUID adminUserId);
+    void startRound(@NotNull UUID roundId, @NotNull UUID adminUserId);
 
     // === Category medal-round configuration ===
     CategoryJudgingConfig configureCategoryMedalRound(@NotNull UUID divisionCategoryId,

@@ -2,7 +2,7 @@ package app.meads.judging;
 
 import app.meads.judging.internal.JudgingMinJudgesLockGuard;
 import app.meads.judging.internal.JudgingRepository;
-import app.meads.judging.internal.JudgingTableRepository;
+import app.meads.judging.internal.JudgingRoundRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,7 +26,7 @@ class JudgingMinJudgesLockGuardTest {
     JudgingRepository judgingRepository;
 
     @Mock
-    JudgingTableRepository judgingTableRepository;
+    JudgingRoundRepository judgingRoundRepository;
 
     UUID divisionId;
 
@@ -46,7 +46,7 @@ class JudgingMinJudgesLockGuardTest {
     void shouldNotBeLockedWhenAllTablesNotStarted() {
         var judging = new Judging(divisionId);
         given(judgingRepository.findByDivisionId(divisionId)).willReturn(Optional.of(judging));
-        given(judgingTableRepository.existsStartedByJudgingId(judging.getId())).willReturn(false);
+        given(judgingRoundRepository.existsStartedByJudgingId(judging.getId())).willReturn(false);
 
         assertThat(guard.isLocked(divisionId)).isFalse();
     }
@@ -55,7 +55,7 @@ class JudgingMinJudgesLockGuardTest {
     void shouldBeLockedWhenAnyTableHasStarted() {
         var judging = new Judging(divisionId);
         given(judgingRepository.findByDivisionId(divisionId)).willReturn(Optional.of(judging));
-        given(judgingTableRepository.existsStartedByJudgingId(judging.getId())).willReturn(true);
+        given(judgingRoundRepository.existsStartedByJudgingId(judging.getId())).willReturn(true);
 
         assertThat(guard.isLocked(divisionId)).isTrue();
     }

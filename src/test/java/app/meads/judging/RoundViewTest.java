@@ -18,10 +18,10 @@ import app.meads.identity.User;
 import app.meads.identity.UserStatus;
 import app.meads.identity.internal.UserRepository;
 import app.meads.entry.EntryService;
-import app.meads.judging.internal.JudgingTableRepository;
+import app.meads.judging.internal.JudgingRoundRepository;
 import app.meads.judging.internal.MjpScoringFieldDefinition;
 import app.meads.judging.internal.ScoresheetRepository;
-import app.meads.judging.internal.TableView;
+import app.meads.judging.internal.RoundView;
 import com.github.mvysny.fakeservlet.FakeRequest;
 import com.github.mvysny.kaributesting.v10.MockVaadin;
 import com.github.mvysny.kaributesting.v10.Routes;
@@ -62,7 +62,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
 @DirtiesContext
-class TableViewTest {
+class RoundViewTest {
 
     private static final String ADMIN_EMAIL = "table-view-admin-test@example.com";
 
@@ -73,7 +73,7 @@ class TableViewTest {
     @Autowired DivisionCategoryRepository divisionCategoryRepository;
     @Autowired EntryRepository entryRepository;
     @Autowired EntryService entryService;
-    @Autowired JudgingTableRepository judgingTableRepository;
+    @Autowired JudgingRoundRepository judgingRoundRepository;
     @Autowired ScoresheetRepository scoresheetRepository;
     @Autowired JudgingService judgingService;
 
@@ -165,7 +165,7 @@ class TableViewTest {
                 null, 1, CategoryScope.JUDGING));
         var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
         var judging = judgingService.ensureJudgingExists(division.getId());
-        var table = judgingService.createTable(judging.getId(), "Table A",
+        var table = judgingService.createRound(judging.getId(), "Table A",
                 category.getId(), null, admin.getId());
 
         UI.getCurrent().navigate("competitions/" + competition.getShortName()
@@ -187,7 +187,7 @@ class TableViewTest {
                 null, 1, CategoryScope.JUDGING));
         var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
         var judging = judgingService.ensureJudgingExists(division.getId());
-        var table = judgingService.createTable(judging.getId(), "Table A",
+        var table = judgingService.createRound(judging.getId(), "Table A",
                 category.getId(), null, admin.getId());
 
         UI.getCurrent().navigate("competitions/" + competition.getShortName()
@@ -217,7 +217,7 @@ class TableViewTest {
                 null, 1, CategoryScope.JUDGING));
         var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
         var judging = judgingService.ensureJudgingExists(division.getId());
-        var table = judgingService.createTable(judging.getId(), "Table A",
+        var table = judgingService.createRound(judging.getId(), "Table A",
                 category.getId(), null, admin.getId());
 
         UI.getCurrent().navigate("competitions/" + competition.getShortName()
@@ -245,7 +245,7 @@ class TableViewTest {
                 "Entrant", UserStatus.ACTIVE, Role.USER));
         var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
         var judging = judgingService.ensureJudgingExists(division.getId());
-        var table = judgingService.createTable(judging.getId(), "Table A",
+        var table = judgingService.createRound(judging.getId(), "Table A",
                 category.getId(), null, admin.getId());
 
         var entry = new Entry(division.getId(), entrant.getId(), 1, "AMA-1",
@@ -265,7 +265,7 @@ class TableViewTest {
                 + "/divisions/" + division.getShortName()
                 + "/tables/" + table.getId());
 
-        var view = _get(TableView.class);
+        var view = _get(RoundView.class);
         view.openRevertDialog(savedSheet);
         _click(_get(Button.class, spec -> spec.withText("Revert")));
 
@@ -286,18 +286,18 @@ class TableViewTest {
                 "Entrant", UserStatus.ACTIVE, Role.USER));
         var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
         var judging = judgingService.ensureJudgingExists(division.getId());
-        var table1 = judgingService.createTable(judging.getId(), "Table A",
+        var table1 = judgingService.createRound(judging.getId(), "Table A",
                 category.getId(), null, admin.getId());
-        var table2 = judgingService.createTable(judging.getId(), "Table B",
+        var table2 = judgingService.createRound(judging.getId(), "Table B",
                 category.getId(), null, admin.getId());
 
         // Both tables must be ROUND_1 for move-target to be valid.
-        var t1 = judgingTableRepository.findById(table1.getId()).orElseThrow();
+        var t1 = judgingRoundRepository.findById(table1.getId()).orElseThrow();
         t1.startRound1();
-        judgingTableRepository.save(t1);
-        var t2 = judgingTableRepository.findById(table2.getId()).orElseThrow();
+        judgingRoundRepository.save(t1);
+        var t2 = judgingRoundRepository.findById(table2.getId()).orElseThrow();
         t2.startRound1();
-        judgingTableRepository.save(t2);
+        judgingRoundRepository.save(t2);
 
         var entry = new Entry(division.getId(), entrant.getId(), 1, "AMA-1",
                 "Test Mead", category.getId(), Sweetness.DRY,
@@ -313,18 +313,18 @@ class TableViewTest {
                 + "/divisions/" + division.getShortName()
                 + "/tables/" + table1.getId());
 
-        var view = _get(TableView.class);
+        var view = _get(RoundView.class);
         view.openMoveDialog(savedSheet);
 
-        var targetSelect = (Select<app.meads.judging.JudgingTable>) _get(
+        var targetSelect = (Select<app.meads.judging.JudgingRound>) _get(
                 Select.class, spec -> spec.withId("move-target-select"));
-        var t2Refreshed = judgingTableRepository.findById(table2.getId()).orElseThrow();
+        var t2Refreshed = judgingRoundRepository.findById(table2.getId()).orElseThrow();
         targetSelect.setValue(t2Refreshed);
 
         _click(_get(Button.class, spec -> spec.withText("Save")));
 
         var moved = scoresheetRepository.findById(savedSheet.getId()).orElseThrow();
-        assertThat(moved.getTableId()).isEqualTo(table2.getId());
+        assertThat(moved.getRoundId()).isEqualTo(table2.getId());
     }
 
     @Test
@@ -340,7 +340,7 @@ class TableViewTest {
                 "Entrant", UserStatus.ACTIVE, Role.USER));
         var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
         var judging = judgingService.ensureJudgingExists(division.getId());
-        var table = judgingService.createTable(judging.getId(), "Table A",
+        var table = judgingService.createRound(judging.getId(), "Table A",
                 category.getId(), null, admin.getId());
 
         var entry = new Entry(division.getId(), entrant.getId(), 1, "AMA-9",

@@ -115,7 +115,7 @@ class DivisionTest {
     void shouldDefaultMinJudgesPerTableToTwo() {
         var division = createDraftDivision();
 
-        assertThat(division.getMinJudgesPerTable()).isEqualTo(2);
+        assertThat(division.getMinJudgesPerRound()).isEqualTo(2);
     }
 
     @Test
@@ -173,9 +173,9 @@ class DivisionTest {
         division.advanceStatus();
         division.advanceStatus(); // REGISTRATION_CLOSED
 
-        division.updateMinJudgesPerTable(3);
+        division.updateMinJudgesPerRound(3);
 
-        assertThat(division.getMinJudgesPerTable()).isEqualTo(3);
+        assertThat(division.getMinJudgesPerRound()).isEqualTo(3);
     }
 
     @Test
@@ -185,7 +185,7 @@ class DivisionTest {
         division.advanceStatus();
         division.advanceStatus(); // JUDGING
 
-        assertThatThrownBy(() -> division.updateMinJudgesPerTable(3))
+        assertThatThrownBy(() -> division.updateMinJudgesPerRound(3))
                 .isInstanceOf(IllegalStateException.class);
     }
 
@@ -193,7 +193,7 @@ class DivisionTest {
     void shouldRejectNonPositiveMinJudgesPerTable() {
         var division = createDraftDivision();
 
-        assertThatThrownBy(() -> division.updateMinJudgesPerTable(0))
+        assertThatThrownBy(() -> division.updateMinJudgesPerRound(0))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

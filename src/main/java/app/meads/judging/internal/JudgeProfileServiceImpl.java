@@ -22,14 +22,14 @@ import java.util.UUID;
 public class JudgeProfileServiceImpl implements JudgeProfileService {
 
     private final JudgeProfileRepository judgeProfileRepository;
-    private final JudgingTableRepository judgingTableRepository;
+    private final JudgingRoundRepository judgingRoundRepository;
     private final UserService userService;
 
     JudgeProfileServiceImpl(JudgeProfileRepository judgeProfileRepository,
-                            JudgingTableRepository judgingTableRepository,
+                            JudgingRoundRepository judgingRoundRepository,
                             UserService userService) {
         this.judgeProfileRepository = judgeProfileRepository;
-        this.judgingTableRepository = judgingTableRepository;
+        this.judgingRoundRepository = judgingRoundRepository;
         this.userService = userService;
     }
 
@@ -76,7 +76,7 @@ public class JudgeProfileServiceImpl implements JudgeProfileService {
     @Override
     public void delete(UUID userId, UUID adminUserId) {
         requireSystemAdmin(adminUserId);
-        if (judgingTableRepository.existsAssignmentByJudgeUserId(userId)) {
+        if (judgingRoundRepository.existsAssignmentByJudgeUserId(userId)) {
             throw new BusinessRuleException("error.judge-profile.has-assignments");
         }
         judgeProfileRepository.findByUserId(userId).ifPresent(profile -> {

@@ -12,7 +12,7 @@ import app.meads.judging.internal.BosPlacementRepository;
 import app.meads.judging.internal.CategoryJudgingConfigRepository;
 import app.meads.judging.internal.JudgingRepository;
 import app.meads.judging.internal.JudgingServiceImpl;
-import app.meads.judging.internal.JudgingTableRepository;
+import app.meads.judging.internal.JudgingRoundRepository;
 import app.meads.judging.internal.MedalAwardRepository;
 import app.meads.judging.internal.ScoresheetRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,7 +44,7 @@ class JudgingServiceMedalRoundTest {
     JudgingServiceImpl service;
 
     @Mock JudgingRepository judgingRepository;
-    @Mock JudgingTableRepository judgingTableRepository;
+    @Mock JudgingRoundRepository judgingRoundRepository;
     @Mock ScoresheetRepository scoresheetRepository;
     @Mock CategoryJudgingConfigRepository categoryConfigRepository;
     @Mock MedalAwardRepository medalAwardRepository;
@@ -80,10 +80,10 @@ class JudgingServiceMedalRoundTest {
 
     @Test
     void shouldStartTableWhenSufficientJudges() {
-        var table = new JudgingTable(judging.getId(), "T1", divisionCategoryId, null);
+        var table = new JudgingRound(judging.getId(), "T1", divisionCategoryId, null);
         table.assignJudge(UUID.randomUUID());
         table.assignJudge(UUID.randomUUID());
-        given(judgingTableRepository.findById(table.getId())).willReturn(Optional.of(table));
+        given(judgingRoundRepository.findById(table.getId())).willReturn(Optional.of(table));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
         given(competitionService.findDivisionById(divisionId)).willReturn(division);
@@ -91,32 +91,32 @@ class JudgingServiceMedalRoundTest {
                 .willReturn(Optional.empty());
         given(categoryConfigRepository.save(any(CategoryJudgingConfig.class)))
                 .willAnswer(inv -> inv.getArgument(0));
-        given(judgingTableRepository.save(any(JudgingTable.class)))
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
                 .willAnswer(inv -> inv.getArgument(0));
         given(judgingRepository.save(any(Judging.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 
-        service.startTable(table.getId(), adminUserId);
+        service.startRound(table.getId(), adminUserId);
 
-        assertThat(table.getStatus()).isEqualTo(JudgingTableStatus.ROUND_1);
+        assertThat(table.getStatus()).isEqualTo(JudgingRoundStatus.ROUND_1);
         assertThat(judging.getPhase()).isEqualTo(JudgingPhase.ACTIVE);
         then(scoresheetService).should().createScoresheetsForTable(table.getId());
     }
 
     @Test
     void shouldRejectStartTableWhenInsufficientJudges() {
-        var table = new JudgingTable(judging.getId(), "T1", divisionCategoryId, null);
+        var table = new JudgingRound(judging.getId(), "T1", divisionCategoryId, null);
         table.assignJudge(UUID.randomUUID()); // only 1 judge, min is 2
-        given(judgingTableRepository.findById(table.getId())).willReturn(Optional.of(table));
+        given(judgingRoundRepository.findById(table.getId())).willReturn(Optional.of(table));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
         given(competitionService.findDivisionById(divisionId)).willReturn(division);
 
-        assertThatThrownBy(() -> service.startTable(table.getId(), adminUserId))
+        assertThatThrownBy(() -> service.startRound(table.getId(), adminUserId))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("error.judging-table.too-few-judges");
 
-        assertThat(table.getStatus()).isEqualTo(JudgingTableStatus.NOT_STARTED);
+        assertThat(table.getStatus()).isEqualTo(JudgingRoundStatus.NOT_STARTED);
         then(scoresheetService).should(never()).createScoresheetsForTable(any());
     }
 
@@ -248,14 +248,14 @@ class JudgingServiceMedalRoundTest {
 
     @Test
     void shouldFindJudgeUserIdsForTable() {
-        var table = new JudgingTable(judging.getId(), "T1", divisionCategoryId, null);
+        var table = new JudgingRound(judging.getId(), "T1", divisionCategoryId, null);
         var judge1 = UUID.randomUUID();
         var judge2 = UUID.randomUUID();
         table.assignJudge(judge1);
         table.assignJudge(judge2);
-        given(judgingTableRepository.findById(table.getId())).willReturn(Optional.of(table));
+        given(judgingRoundRepository.findById(table.getId())).willReturn(Optional.of(table));
 
-        assertThat(service.findJudgeUserIdsForTable(table.getId()))
+        assertThat(service.findJudgeUserIdsForRound(table.getId()))
                 .containsExactlyInAnyOrder(judge1, judge2);
     }
 

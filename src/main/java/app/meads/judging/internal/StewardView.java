@@ -7,7 +7,7 @@ import app.meads.competition.DivisionStatus;
 import app.meads.entry.EntryService;
 import app.meads.identity.UserService;
 import app.meads.judging.JudgingService;
-import app.meads.judging.JudgingTable;
+import app.meads.judging.JudgingRound;
 import app.meads.judging.ScoresheetService;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.H3;
@@ -86,7 +86,7 @@ public class StewardView extends VerticalLayout implements BeforeEnterObserver {
         block.add(new H4(division.getName()));
 
         var judging = judgingService.ensureJudgingExists(division.getId());
-        var tables = judgingService.findTablesByJudgingId(judging.getId());
+        var tables = judgingService.findRoundsByJudgingId(judging.getId());
         if (tables.isEmpty()) {
             block.add(new Span(getTranslation("steward.no-tables")));
             return block;
@@ -95,7 +95,7 @@ public class StewardView extends VerticalLayout implements BeforeEnterObserver {
         return block;
     }
 
-    private VerticalLayout createTableCard(JudgingTable table) {
+    private VerticalLayout createTableCard(JudgingRound table) {
         var card = new VerticalLayout();
         card.setPadding(false);
         card.setSpacing(false);
@@ -109,13 +109,13 @@ public class StewardView extends VerticalLayout implements BeforeEnterObserver {
         title.getStyle().set("font-weight", "600");
         card.add(title);
 
-        var judges = judgingService.findJudgeUserIdsForTable(table.getId()).stream()
+        var judges = judgingService.findJudgeUserIdsForRound(table.getId()).stream()
                 .map(id -> userService.findById(id).getName())
                 .collect(Collectors.joining(", "));
         card.add(new Span(getTranslation("steward.judges") + ": "
                 + (judges.isEmpty() ? "—" : judges)));
 
-        for (var sheet : scoresheetService.findByTableId(table.getId())) {
+        for (var sheet : scoresheetService.findByRoundId(table.getId())) {
             var entry = entryService.findEntryById(sheet.getEntryId());
             card.add(new Span("• " + entry.getEntryCode() + " — " + entry.getMeadName()));
         }

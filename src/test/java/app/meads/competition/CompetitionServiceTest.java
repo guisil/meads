@@ -80,7 +80,7 @@ class CompetitionServiceTest {
 
     List<JudgingCategoryDeletionGuard> judgingCategoryDeletionGuards = new ArrayList<>();
 
-    List<MinJudgesPerTableLockGuard> minJudgesPerTableLockGuards = new ArrayList<>();
+    List<MinJudgesPerRoundLockGuard> minJudgesPerRoundLockGuards = new ArrayList<>();
 
     @BeforeEach
     void setUp() {
@@ -90,7 +90,7 @@ class CompetitionServiceTest {
                 divisionCategoryRepository, categoryRepository,
                 competitionDocumentRepository, userService,
                 eventPublisher, advanceGuards, revertGuards, deletionGuards, removalCleanups,
-                judgingCategoryDeletionGuards, minJudgesPerTableLockGuards);
+                judgingCategoryDeletionGuards, minJudgesPerRoundLockGuards);
     }
 
     private Competition createCompetition() {
@@ -273,7 +273,7 @@ class CompetitionServiceTest {
         then(competitionRepository).should().save(competition);
     }
 
-    // --- updateDivisionBosPlaces / updateDivisionMinJudgesPerTable ---
+    // --- updateDivisionBosPlaces / updateDivisionMinJudgesPerRound ---
 
     private Division createDraftDivision(UUID competitionId) {
         return new Division(competitionId, "Amateur", "amateur",
@@ -315,18 +315,18 @@ class CompetitionServiceTest {
         var admin = createAdmin();
         var competition = createCompetition();
         var division = createDraftDivision(competition.getId());
-        var unlockedGuard = mock(MinJudgesPerTableLockGuard.class);
+        var unlockedGuard = mock(MinJudgesPerRoundLockGuard.class);
         given(unlockedGuard.isLocked(division.getId())).willReturn(false);
-        minJudgesPerTableLockGuards.add(unlockedGuard);
+        minJudgesPerRoundLockGuards.add(unlockedGuard);
         given(divisionRepository.findById(division.getId())).willReturn(Optional.of(division));
         given(userService.findById(admin.getId())).willReturn(admin);
         given(divisionRepository.save(any(Division.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 
-        var result = competitionService.updateDivisionMinJudgesPerTable(
+        var result = competitionService.updateDivisionMinJudgesPerRound(
                 division.getId(), 3, admin.getId());
 
-        assertThat(result.getMinJudgesPerTable()).isEqualTo(3);
+        assertThat(result.getMinJudgesPerRound()).isEqualTo(3);
     }
 
     @Test
@@ -334,13 +334,13 @@ class CompetitionServiceTest {
         var admin = createAdmin();
         var competition = createCompetition();
         var division = createDraftDivision(competition.getId());
-        var lockedGuard = mock(MinJudgesPerTableLockGuard.class);
+        var lockedGuard = mock(MinJudgesPerRoundLockGuard.class);
         given(lockedGuard.isLocked(division.getId())).willReturn(true);
-        minJudgesPerTableLockGuards.add(lockedGuard);
+        minJudgesPerRoundLockGuards.add(lockedGuard);
         given(divisionRepository.findById(division.getId())).willReturn(Optional.of(division));
         given(userService.findById(admin.getId())).willReturn(admin);
 
-        assertThatThrownBy(() -> competitionService.updateDivisionMinJudgesPerTable(
+        assertThatThrownBy(() -> competitionService.updateDivisionMinJudgesPerRound(
                 division.getId(), 3, admin.getId()))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("error.division.min-judges-locked");
@@ -351,24 +351,24 @@ class CompetitionServiceTest {
     @Test
     void shouldReportMinJudgesLockedWhenAnyGuardSaysSo() {
         var divisionId = UUID.randomUUID();
-        var unlocked = mock(MinJudgesPerTableLockGuard.class);
+        var unlocked = mock(MinJudgesPerRoundLockGuard.class);
         given(unlocked.isLocked(divisionId)).willReturn(false);
-        var locked = mock(MinJudgesPerTableLockGuard.class);
+        var locked = mock(MinJudgesPerRoundLockGuard.class);
         given(locked.isLocked(divisionId)).willReturn(true);
-        minJudgesPerTableLockGuards.add(unlocked);
-        minJudgesPerTableLockGuards.add(locked);
+        minJudgesPerRoundLockGuards.add(unlocked);
+        minJudgesPerRoundLockGuards.add(locked);
 
-        assertThat(competitionService.isMinJudgesPerTableLocked(divisionId)).isTrue();
+        assertThat(competitionService.isMinJudgesPerRoundLocked(divisionId)).isTrue();
     }
 
     @Test
     void shouldReportMinJudgesUnlockedWhenAllGuardsAgree() {
         var divisionId = UUID.randomUUID();
-        var unlocked = mock(MinJudgesPerTableLockGuard.class);
+        var unlocked = mock(MinJudgesPerRoundLockGuard.class);
         given(unlocked.isLocked(divisionId)).willReturn(false);
-        minJudgesPerTableLockGuards.add(unlocked);
+        minJudgesPerRoundLockGuards.add(unlocked);
 
-        assertThat(competitionService.isMinJudgesPerTableLocked(divisionId)).isFalse();
+        assertThat(competitionService.isMinJudgesPerRoundLocked(divisionId)).isFalse();
     }
 
     // --- updateCompetitionShippingDetails ---

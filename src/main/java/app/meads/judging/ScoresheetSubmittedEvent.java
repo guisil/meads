@@ -6,7 +6,7 @@ import java.util.UUID;
 public record ScoresheetSubmittedEvent(
         UUID scoresheetId,
         UUID entryId,
-        UUID tableId,
+        UUID roundId,
         int totalScore,
         Instant submittedAt) {
 }

@@ -16,9 +16,9 @@ public interface ScoresheetRepository extends JpaRepository<Scoresheet, UUID> {
 
     List<Scoresheet> findByEntryIdOrderBySubmittedAtAsc(UUID entryId);
 
-    List<Scoresheet> findByTableId(UUID tableId);
+    List<Scoresheet> findByRoundId(UUID roundId);
 
-    long countByTableIdAndStatus(UUID tableId, ScoresheetStatus status);
+    long countByRoundIdAndStatus(UUID roundId, ScoresheetStatus status);
 
     @Query("SELECT f FROM Scoresheet s JOIN s.fields f WHERE s.id = :scoresheetId")
     List<ScoreField> findFieldsByScoresheetId(UUID scoresheetId);

@@ -28,8 +28,8 @@ public class Scoresheet {
     @Id
     private UUID id;
 
-    @Column(name = "table_id", nullable = false)
-    private UUID tableId;
+    @Column(name = "round_id", nullable = false)
+    private UUID roundId;
 
     @Column(name = "entry_id", nullable = false, unique = true)
     private UUID entryId;
@@ -69,9 +69,9 @@ public class Scoresheet {
     protected Scoresheet() {
     }
 
-    public Scoresheet(UUID tableId, UUID entryId) {
+    public Scoresheet(UUID roundId, UUID entryId) {
         this.id = UUID.randomUUID();
-        this.tableId = tableId;
+        this.roundId = roundId;
         this.entryId = entryId;
         this.status = ScoresheetStatus.DRAFT;
         this.advancedToMedalRound = false;
@@ -137,9 +137,9 @@ public class Scoresheet {
         this.submittedAt = null;
     }
 
-    public void moveToTable(UUID newTableId) {
-        requireDraft("moveToTable");
-        this.tableId = newTableId;
+    public void moveToRound(UUID newRoundId) {
+        requireDraft("moveToRound");
+        this.roundId = newRoundId;
     }
 
     public void setCommentLanguage(String code) {

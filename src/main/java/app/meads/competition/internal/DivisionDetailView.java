@@ -656,13 +656,13 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
             bosPlacesField.setTooltipText(getTranslation("division-detail.settings.bos-places.locked"));
         }
 
-        boolean minJudgesLocked = competitionService.isMinJudgesPerTableLocked(divisionId);
+        boolean minJudgesLocked = competitionService.isMinJudgesPerRoundLocked(divisionId);
         var minJudgesField = new IntegerField(
                 getTranslation("division-detail.settings.min-judges"));
         minJudgesField.setId("min-judges-field");
         minJudgesField.setMin(1);
         minJudgesField.setStepButtonsVisible(true);
-        minJudgesField.setValue(division.getMinJudgesPerTable());
+        minJudgesField.setValue(division.getMinJudgesPerRound());
         minJudgesField.setHelperText(getTranslation("division-detail.settings.min-judges.help"));
         minJudgesField.setWidth("200px");
         minJudgesField.setReadOnly(minJudgesLocked);
@@ -712,7 +712,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                             divisionId, bosPlacesField.getValue(), getCurrentUserId());
                 }
                 if (!minJudgesLocked && minJudgesField.getValue() != null) {
-                    division = competitionService.updateDivisionMinJudgesPerTable(
+                    division = competitionService.updateDivisionMinJudgesPerRound(
                             divisionId, minJudgesField.getValue(), getCurrentUserId());
                 }
                 refreshBreadcrumbAndHeader();

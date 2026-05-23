@@ -8,7 +8,7 @@ import app.meads.identity.Role;
 import app.meads.identity.UserService;
 import app.meads.judging.CategoryJudgingConfig;
 import app.meads.judging.JudgingService;
-import app.meads.judging.JudgingTable;
+import app.meads.judging.JudgingRound;
 import app.meads.judging.ScoresheetService;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.H2;
@@ -63,7 +63,7 @@ public class MyJudgingView extends VerticalLayout implements BeforeEnterObserver
                 .flatMap(scoresheetService::findById)
                 .ifPresent(sheet -> add(createResumeBar(sheet)));
 
-        var tables = judgingService.findTablesByJudgeUserId(userId);
+        var tables = judgingService.findRoundsByJudgeUserId(userId);
         if (tables.isEmpty()) {
             add(createEmptyState());
         } else {
@@ -99,7 +99,7 @@ public class MyJudgingView extends VerticalLayout implements BeforeEnterObserver
     private VerticalLayout createResumeBar(app.meads.judging.Scoresheet sheet) {
         var bar = new VerticalLayout();
         bar.setPadding(false);
-        var table = judgingService.findTableById(sheet.getTableId()).orElseThrow();
+        var table = judgingService.findRoundById(sheet.getRoundId()).orElseThrow();
         var category = competitionService.findDivisionCategoryById(table.getDivisionCategoryId());
         var division = competitionService.findDivisionById(category.getDivisionId());
         var competition = competitionService.findCompetitionById(division.getCompetitionId());
@@ -111,7 +111,7 @@ public class MyJudgingView extends VerticalLayout implements BeforeEnterObserver
         return bar;
     }
 
-    private VerticalLayout createTablesSection(List<JudgingTable> tables) {
+    private VerticalLayout createTablesSection(List<JudgingRound> tables) {
         var section = new VerticalLayout();
         section.setPadding(false);
 
@@ -123,7 +123,7 @@ public class MyJudgingView extends VerticalLayout implements BeforeEnterObserver
             });
         }
 
-        var byCompetition = new LinkedHashMap<UUID, List<JudgingTable>>();
+        var byCompetition = new LinkedHashMap<UUID, List<JudgingRound>>();
         for (var table : tables) {
             var division = divisionByCategoryId.get(table.getDivisionCategoryId());
             byCompetition.computeIfAbsent(division.getCompetitionId(),

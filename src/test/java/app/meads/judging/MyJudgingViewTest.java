@@ -187,7 +187,7 @@ class MyJudgingViewTest {
                 division.getId(), null, "M1A", "Dry Mead", "Desc",
                 null, 1, CategoryScope.JUDGING));
         var judging = judgingService.ensureJudgingExists(division.getId());
-        var table = judgingService.createTable(judging.getId(), "Table 1",
+        var table = judgingService.createRound(judging.getId(), "Table 1",
                 category.getId(), null, admin.getId());
         judgingService.assignJudge(table.getId(), judge.getId(), admin.getId());
 
@@ -230,7 +230,7 @@ class MyJudgingViewTest {
                 division.getId(), null, "M1A", "Dry Mead", "Desc",
                 null, 1, CategoryScope.JUDGING));
         var judging = judgingService.ensureJudgingExists(division.getId());
-        var table = judgingService.createTable(judging.getId(), "Table 1",
+        var table = judgingService.createRound(judging.getId(), "Table 1",
                 category.getId(), null, admin.getId());
         judgingService.assignJudge(table.getId(), judge.getId(), admin.getId());
 
@@ -279,7 +279,7 @@ class MyJudgingViewTest {
                 division.getId(), null, "M2B", "Cyser", "Desc",
                 null, 1, CategoryScope.JUDGING));
         var judging = judgingService.ensureJudgingExists(division.getId());
-        var table = judgingService.createTable(judging.getId(), "Table 9",
+        var table = judgingService.createRound(judging.getId(), "Table 9",
                 category.getId(), null, admin.getId());
         judgingService.assignJudge(table.getId(), judge.getId(), admin.getId());
 

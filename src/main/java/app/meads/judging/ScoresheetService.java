@@ -11,7 +11,7 @@ import java.util.UUID;
  */
 public interface ScoresheetService {
 
-    void createScoresheetsForTable(@NotNull UUID tableId);
+    void createScoresheetsForTable(@NotNull UUID roundId);
 
     void ensureScoresheetForEntry(@NotNull UUID entryId);
 
@@ -28,7 +28,7 @@ public interface ScoresheetService {
 
     void revertToDraft(@NotNull UUID scoresheetId, @NotNull UUID adminUserId);
 
-    void moveToTable(@NotNull UUID scoresheetId, @NotNull UUID newTableId, @NotNull UUID adminUserId);
+    void moveToRound(@NotNull UUID scoresheetId, @NotNull UUID newRoundId, @NotNull UUID adminUserId);
 
     /**
      * Permanently removes a scoresheet from its table. Admin-only, blocked
@@ -39,9 +39,9 @@ public interface ScoresheetService {
      */
     void deleteScoresheet(@NotNull UUID scoresheetId, @NotNull UUID adminUserId);
 
-    long countByTableIdAndStatus(@NotNull UUID tableId, @NotNull ScoresheetStatus status);
+    long countByRoundIdAndStatus(@NotNull UUID roundId, @NotNull ScoresheetStatus status);
 
-    List<Scoresheet> findByTableId(@NotNull UUID tableId);
+    List<Scoresheet> findByRoundId(@NotNull UUID roundId);
 
     java.util.Optional<java.util.UUID> findNextDraftForJudge(@NotNull UUID judgeUserId);
 

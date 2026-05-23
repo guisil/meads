@@ -54,7 +54,7 @@ public class CompetitionService {
     private final List<DivisionDeletionGuard> deletionGuards;
     private final List<ParticipantRemovalCleanup> removalCleanups;
     private final List<JudgingCategoryDeletionGuard> judgingCategoryDeletionGuards;
-    private final List<MinJudgesPerTableLockGuard> minJudgesPerTableLockGuards;
+    private final List<MinJudgesPerRoundLockGuard> minJudgesPerRoundLockGuards;
 
     CompetitionService(CompetitionRepository competitionRepository,
                        DivisionRepository divisionRepository,
@@ -70,7 +70,7 @@ public class CompetitionService {
                        List<DivisionDeletionGuard> deletionGuards,
                        List<ParticipantRemovalCleanup> removalCleanups,
                        List<JudgingCategoryDeletionGuard> judgingCategoryDeletionGuards,
-                       List<MinJudgesPerTableLockGuard> minJudgesPerTableLockGuards) {
+                       List<MinJudgesPerRoundLockGuard> minJudgesPerRoundLockGuards) {
         this.competitionRepository = competitionRepository;
         this.divisionRepository = divisionRepository;
         this.participantRepository = participantRepository;
@@ -85,7 +85,7 @@ public class CompetitionService {
         this.deletionGuards = deletionGuards;
         this.removalCleanups = removalCleanups;
         this.judgingCategoryDeletionGuards = judgingCategoryDeletionGuards;
-        this.minJudgesPerTableLockGuards = minJudgesPerTableLockGuards;
+        this.minJudgesPerRoundLockGuards = minJudgesPerRoundLockGuards;
     }
 
     // --- Competition methods (were MeadEvent methods) ---
@@ -397,29 +397,29 @@ public class CompetitionService {
         return divisionRepository.save(division);
     }
 
-    public Division updateDivisionMinJudgesPerTable(@NotNull UUID divisionId,
-                                                     int minJudgesPerTable,
+    public Division updateDivisionMinJudgesPerRound(@NotNull UUID divisionId,
+                                                     int minJudgesPerRound,
                                                      @NotNull UUID requestingUserId) {
         var division = findDivisionById(divisionId);
         requireAuthorized(division.getCompetitionId(), requestingUserId);
-        if (isMinJudgesPerTableLocked(divisionId)) {
+        if (isMinJudgesPerRoundLocked(divisionId)) {
             throw new BusinessRuleException("error.division.min-judges-locked");
         }
         try {
-            division.updateMinJudgesPerTable(minJudgesPerTable);
+            division.updateMinJudgesPerRound(minJudgesPerRound);
         } catch (IllegalArgumentException e) {
             throw new BusinessRuleException("error.division.invalid-min-judges",
-                    String.valueOf(minJudgesPerTable));
+                    String.valueOf(minJudgesPerRound));
         } catch (IllegalStateException e) {
             throw new BusinessRuleException("error.division.min-judges-status-locked",
                     division.getStatus().getDisplayName());
         }
-        log.info("Updated minJudgesPerTable for division {} → {}", divisionId, minJudgesPerTable);
+        log.info("Updated minJudgesPerRound for division {} → {}", divisionId, minJudgesPerRound);
         return divisionRepository.save(division);
     }
 
-    public boolean isMinJudgesPerTableLocked(@NotNull UUID divisionId) {
-        return minJudgesPerTableLockGuards.stream()
+    public boolean isMinJudgesPerRoundLocked(@NotNull UUID divisionId) {
+        return minJudgesPerRoundLockGuards.stream()
                 .anyMatch(g -> g.isLocked(divisionId));
     }
 

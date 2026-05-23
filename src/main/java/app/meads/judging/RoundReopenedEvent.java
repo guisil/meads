@@ -3,9 +3,9 @@ package app.meads.judging;
 import java.time.Instant;
 import java.util.UUID;
 
-public record TableCompletedEvent(
-        UUID tableId,
+public record RoundReopenedEvent(
+        UUID roundId,
         UUID divisionCategoryId,
         UUID divisionId,
-        Instant completedAt) {
+        Instant reopenedAt) {
 }

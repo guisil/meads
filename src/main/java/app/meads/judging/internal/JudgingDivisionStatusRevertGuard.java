@@ -14,12 +14,12 @@ import java.util.UUID;
 public class JudgingDivisionStatusRevertGuard implements DivisionRevertGuard {
 
     private final JudgingRepository judgingRepository;
-    private final JudgingTableRepository judgingTableRepository;
+    private final JudgingRoundRepository judgingRoundRepository;
 
     JudgingDivisionStatusRevertGuard(JudgingRepository judgingRepository,
-                                      JudgingTableRepository judgingTableRepository) {
+                                      JudgingRoundRepository judgingRoundRepository) {
         this.judgingRepository = judgingRepository;
-        this.judgingTableRepository = judgingTableRepository;
+        this.judgingRoundRepository = judgingRoundRepository;
     }
 
     @Override
@@ -32,7 +32,7 @@ public class JudgingDivisionStatusRevertGuard implements DivisionRevertGuard {
             return;
         }
         boolean hasData = judging.getPhase() != JudgingPhase.NOT_STARTED
-                || judgingTableRepository.existsByJudgingId(judging.getId());
+                || judgingRoundRepository.existsByJudgingId(judging.getId());
         if (hasData) {
             log.warn("Blocked division revert to REGISTRATION_CLOSED: division {} has judging data",
                     divisionId);

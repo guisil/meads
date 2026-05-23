@@ -173,7 +173,7 @@ class StewardViewTest {
                 division.getId(), null, "M1A", "Dry Mead", "Desc", null, 1, CategoryScope.JUDGING));
         var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
         var judging = judgingService.ensureJudgingExists(division.getId());
-        var table = judgingService.createTable(judging.getId(), "Table A",
+        var table = judgingService.createRound(judging.getId(), "Table A",
                 category.getId(), null, admin.getId());
         var entrant = userRepository.save(new User(
                 "sv-entrant-" + UUID.randomUUID() + "@example.com",

@@ -8,16 +8,16 @@ import app.meads.judging.CategoryJudgingConfig;
 import app.meads.judging.CoiCheckService;
 import app.meads.judging.Judging;
 import app.meads.judging.JudgeProfileService;
-import app.meads.judging.JudgingTable;
-import app.meads.judging.JudgingTableStatus;
+import app.meads.judging.JudgingRound;
+import app.meads.judging.JudgingRoundStatus;
 import app.meads.judging.MedalRoundStatus;
 import app.meads.judging.Scoresheet;
 import app.meads.judging.ScoresheetRevertedEvent;
 import app.meads.judging.ScoresheetService;
 import app.meads.judging.ScoresheetStatus;
 import app.meads.judging.ScoresheetSubmittedEvent;
-import app.meads.judging.TableCompletedEvent;
-import app.meads.judging.TableReopenedEvent;
+import app.meads.judging.RoundCompletedEvent;
+import app.meads.judging.RoundReopenedEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -37,7 +37,7 @@ import java.util.UUID;
 public class ScoresheetServiceImpl implements ScoresheetService {
 
     private final ScoresheetRepository scoresheetRepository;
-    private final JudgingTableRepository judgingTableRepository;
+    private final JudgingRoundRepository judgingRoundRepository;
     private final CategoryJudgingConfigRepository categoryConfigRepository;
     private final JudgingRepository judgingRepository;
     private final EntryService entryService;
@@ -47,7 +47,7 @@ public class ScoresheetServiceImpl implements ScoresheetService {
     private final ApplicationEventPublisher eventPublisher;
 
     ScoresheetServiceImpl(ScoresheetRepository scoresheetRepository,
-                          JudgingTableRepository judgingTableRepository,
+                          JudgingRoundRepository judgingRoundRepository,
                           CategoryJudgingConfigRepository categoryConfigRepository,
                           JudgingRepository judgingRepository,
                           EntryService entryService,
@@ -56,7 +56,7 @@ public class ScoresheetServiceImpl implements ScoresheetService {
                           CoiCheckService coiCheckService,
                           ApplicationEventPublisher eventPublisher) {
         this.scoresheetRepository = scoresheetRepository;
-        this.judgingTableRepository = judgingTableRepository;
+        this.judgingRoundRepository = judgingRoundRepository;
         this.categoryConfigRepository = categoryConfigRepository;
         this.judgingRepository = judgingRepository;
         this.entryService = entryService;
@@ -67,8 +67,8 @@ public class ScoresheetServiceImpl implements ScoresheetService {
     }
 
     @Override
-    public void createScoresheetsForTable(UUID tableId) {
-        var table = requireTable(tableId);
+    public void createScoresheetsForTable(UUID roundId) {
+        var table = requireTable(roundId);
         var judging = requireJudging(table.getJudgingId());
         requireNotFrozen(judging.getDivisionId());
         var entries = entryService.findEntriesByFinalCategoryId(table.getDivisionCategoryId());
@@ -79,8 +79,8 @@ public class ScoresheetServiceImpl implements ScoresheetService {
                 continue;
             }
             if (scoresheetRepository.findByEntryId(entry.getId()).isEmpty()) {
-                scoresheetRepository.save(new Scoresheet(tableId, entry.getId()));
-                log.info("Created DRAFT scoresheet for entry {} at table {}", entry.getId(), tableId);
+                scoresheetRepository.save(new Scoresheet(roundId, entry.getId()));
+                log.info("Created DRAFT scoresheet for entry {} at table {}", entry.getId(), roundId);
             }
         }
     }
@@ -99,9 +99,9 @@ public class ScoresheetServiceImpl implements ScoresheetService {
         if (judging == null) {
             return;
         }
-        var matchingTable = judgingTableRepository.findByJudgingId(judging.getId()).stream()
+        var matchingTable = judgingRoundRepository.findByJudgingId(judging.getId()).stream()
                 .filter(t -> t.getDivisionCategoryId().equals(entry.getFinalCategoryId()))
-                .filter(t -> t.getStatus() == JudgingTableStatus.ROUND_1)
+                .filter(t -> t.getStatus() == JudgingRoundStatus.ROUND_1)
                 .findFirst()
                 .orElse(null);
         if (matchingTable == null) {
@@ -154,7 +154,7 @@ public class ScoresheetServiceImpl implements ScoresheetService {
         var sheet = requireScoresheet(scoresheetId);
         requireNotFrozenForSheet(sheet);
         enforceCoi(judgeUserId, sheet);
-        var table = requireTable(sheet.getTableId());
+        var table = requireTable(sheet.getRoundId());
         var configOpt = categoryConfigRepository.findByDivisionCategoryId(table.getDivisionCategoryId());
         if (configOpt.isPresent() && configOpt.get().getMedalRoundStatus() == MedalRoundStatus.ACTIVE) {
             throw new BusinessRuleException("error.scoresheet.medal-round-active");
@@ -167,7 +167,7 @@ public class ScoresheetServiceImpl implements ScoresheetService {
     public void setCommentLanguage(UUID scoresheetId, String languageCode,
                                     UUID judgeUserId) {
         var sheet = requireScoresheet(scoresheetId);
-        var table = requireTable(sheet.getTableId());
+        var table = requireTable(sheet.getRoundId());
         var judging = requireJudging(table.getJudgingId());
         var division = competitionService.findDivisionById(judging.getDivisionId());
         if (division.getStatus().isResultsFrozen()) {
@@ -210,19 +210,19 @@ public class ScoresheetServiceImpl implements ScoresheetService {
             throw new BusinessRuleException("error.scoresheet.incomplete", e.getMessage());
         }
         scoresheetRepository.save(sheet);
-        var table = requireTable(sheet.getTableId());
+        var table = requireTable(sheet.getRoundId());
         eventPublisher.publishEvent(new ScoresheetSubmittedEvent(
                 sheet.getId(), sheet.getEntryId(), table.getId(),
                 sheet.getTotalScore(), sheet.getSubmittedAt()));
         // Cascade table → category if all sheets at this table are SUBMITTED
-        var tableSheets = scoresheetRepository.findByTableId(table.getId());
+        var tableSheets = scoresheetRepository.findByRoundId(table.getId());
         boolean allSubmitted = tableSheets.stream()
                 .allMatch(s -> s.getStatus() == ScoresheetStatus.SUBMITTED);
-        if (allSubmitted && table.getStatus() == JudgingTableStatus.ROUND_1) {
+        if (allSubmitted && table.getStatus() == JudgingRoundStatus.ROUND_1) {
             table.markComplete();
-            judgingTableRepository.save(table);
+            judgingRoundRepository.save(table);
             var judging = requireJudging(table.getJudgingId());
-            eventPublisher.publishEvent(new TableCompletedEvent(
+            eventPublisher.publishEvent(new RoundCompletedEvent(
                     table.getId(), table.getDivisionCategoryId(),
                     judging.getDivisionId(), Instant.now()));
             cascadeMarkCategoryReadyIfAllTablesComplete(judging, table.getDivisionCategoryId());
@@ -233,7 +233,7 @@ public class ScoresheetServiceImpl implements ScoresheetService {
     @Override
     public void revertToDraft(UUID scoresheetId, UUID adminUserId) {
         var sheet = requireScoresheet(scoresheetId);
-        var table = requireTable(sheet.getTableId());
+        var table = requireTable(sheet.getRoundId());
         var judging = requireJudging(table.getJudgingId());
         if (!competitionService.isAuthorizedForDivision(judging.getDivisionId(), adminUserId)) {
             throw new BusinessRuleException("error.auth.unauthorized");
@@ -254,10 +254,10 @@ public class ScoresheetServiceImpl implements ScoresheetService {
         scoresheetRepository.save(sheet);
         eventPublisher.publishEvent(new ScoresheetRevertedEvent(
                 sheet.getId(), sheet.getEntryId(), table.getId(), Instant.now()));
-        if (table.getStatus() == JudgingTableStatus.COMPLETE) {
+        if (table.getStatus() == JudgingRoundStatus.COMPLETE) {
             table.reopenToRound1();
-            judgingTableRepository.save(table);
-            eventPublisher.publishEvent(new TableReopenedEvent(
+            judgingRoundRepository.save(table);
+            eventPublisher.publishEvent(new RoundReopenedEvent(
                     table.getId(), table.getDivisionCategoryId(),
                     judging.getDivisionId(), Instant.now()));
             // If category config was READY, retreat to PENDING
@@ -274,7 +274,7 @@ public class ScoresheetServiceImpl implements ScoresheetService {
     @Override
     public void deleteScoresheet(UUID scoresheetId, UUID adminUserId) {
         var sheet = requireScoresheet(scoresheetId);
-        var table = requireTable(sheet.getTableId());
+        var table = requireTable(sheet.getRoundId());
         var judging = requireJudging(table.getJudgingId());
         if (!competitionService.isAuthorizedForDivision(judging.getDivisionId(), adminUserId)) {
             throw new BusinessRuleException("error.auth.unauthorized");
@@ -290,10 +290,10 @@ public class ScoresheetServiceImpl implements ScoresheetService {
         scoresheetRepository.delete(sheet);
         // If deleting the last scoresheet (or a SUBMITTED one) leaves the table COMPLETE
         // without any SUBMITTED siblings, reopen it to ROUND_1 so admins see a sane state.
-        if (table.getStatus() == JudgingTableStatus.COMPLETE) {
+        if (table.getStatus() == JudgingRoundStatus.COMPLETE) {
             table.reopenToRound1();
-            judgingTableRepository.save(table);
-            eventPublisher.publishEvent(new TableReopenedEvent(
+            judgingRoundRepository.save(table);
+            eventPublisher.publishEvent(new RoundReopenedEvent(
                     table.getId(), table.getDivisionCategoryId(),
                     judging.getDivisionId(), Instant.now()));
             configOpt.ifPresent(config -> {
@@ -308,10 +308,10 @@ public class ScoresheetServiceImpl implements ScoresheetService {
     }
 
     @Override
-    public void moveToTable(UUID scoresheetId, UUID newTableId,
+    public void moveToRound(UUID scoresheetId, UUID newRoundId,
                             UUID adminUserId) {
         var sheet = requireScoresheet(scoresheetId);
-        var newTable = requireTable(newTableId);
+        var newTable = requireTable(newRoundId);
         var judging = requireJudging(newTable.getJudgingId());
         if (!competitionService.isAuthorizedForDivision(judging.getDivisionId(), adminUserId)) {
             throw new BusinessRuleException("error.auth.unauthorized");
@@ -323,23 +323,23 @@ public class ScoresheetServiceImpl implements ScoresheetService {
             throw new BusinessRuleException("error.scoresheet.category-mismatch");
         }
         try {
-            sheet.moveToTable(newTableId);
+            sheet.moveToRound(newRoundId);
         } catch (IllegalStateException e) {
             throw new BusinessRuleException("error.scoresheet.not-draft");
         }
         scoresheetRepository.save(sheet);
-        log.info("Moved scoresheet {} to table {}", sheet.getId(), newTableId);
+        log.info("Moved scoresheet {} to table {}", sheet.getId(), newRoundId);
     }
 
     // --- helpers ---
 
     private void cascadeMarkCategoryReadyIfAllTablesComplete(Judging judging,
                                                               UUID divisionCategoryId) {
-        var allTables = judgingTableRepository.findByJudgingId(judging.getId()).stream()
+        var allTables = judgingRoundRepository.findByJudgingId(judging.getId()).stream()
                 .filter(t -> t.getDivisionCategoryId().equals(divisionCategoryId))
                 .toList();
         boolean allComplete = !allTables.isEmpty() && allTables.stream()
-                .allMatch(t -> t.getStatus() == JudgingTableStatus.COMPLETE);
+                .allMatch(t -> t.getStatus() == JudgingRoundStatus.COMPLETE);
         if (!allComplete) {
             return;
         }
@@ -374,8 +374,8 @@ public class ScoresheetServiceImpl implements ScoresheetService {
                 .orElseThrow(() -> new BusinessRuleException("error.scoresheet.not-found"));
     }
 
-    private JudgingTable requireTable(UUID id) {
-        return judgingTableRepository.findById(id)
+    private JudgingRound requireTable(UUID id) {
+        return judgingRoundRepository.findById(id)
                 .orElseThrow(() -> new BusinessRuleException("error.judging-table.not-found"));
     }
 
@@ -391,20 +391,20 @@ public class ScoresheetServiceImpl implements ScoresheetService {
     }
 
     private void requireNotFrozenForSheet(Scoresheet sheet) {
-        var table = requireTable(sheet.getTableId());
+        var table = requireTable(sheet.getRoundId());
         var judging = requireJudging(table.getJudgingId());
         requireNotFrozen(judging.getDivisionId());
     }
 
     @Override
-    public long countByTableIdAndStatus(UUID tableId, ScoresheetStatus status) {
-        return scoresheetRepository.countByTableIdAndStatus(tableId, status);
+    public long countByRoundIdAndStatus(UUID roundId, ScoresheetStatus status) {
+        return scoresheetRepository.countByRoundIdAndStatus(roundId, status);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Scoresheet> findByTableId(UUID tableId) {
-        return scoresheetRepository.findByTableId(tableId);
+    public List<Scoresheet> findByRoundId(UUID roundId) {
+        return scoresheetRepository.findByRoundId(roundId);
     }
 
     @Override
@@ -422,7 +422,7 @@ public class ScoresheetServiceImpl implements ScoresheetService {
     @Override
     @Transactional(readOnly = true)
     public java.util.Optional<UUID> findNextDraftForJudge(UUID judgeUserId) {
-        var tables = judgingTableRepository.findByJudgeUserId(judgeUserId);
+        var tables = judgingRoundRepository.findByJudgeUserId(judgeUserId);
         return tables.stream()
                 .sorted((a, b) -> {
                     var ad = a.getScheduledDate();
@@ -435,7 +435,7 @@ public class ScoresheetServiceImpl implements ScoresheetService {
                     int dateCmp = ad.compareTo(bd);
                     return dateCmp != 0 ? dateCmp : a.getName().compareTo(b.getName());
                 })
-                .flatMap(t -> scoresheetRepository.findByTableId(t.getId()).stream())
+                .flatMap(t -> scoresheetRepository.findByRoundId(t.getId()).stream())
                 .filter(s -> s.getStatus() == ScoresheetStatus.DRAFT)
                 .sorted((a, b) -> a.getCreatedAt().compareTo(b.getCreatedAt()))
                 .map(Scoresheet::getId)

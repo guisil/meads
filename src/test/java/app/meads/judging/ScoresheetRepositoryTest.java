@@ -18,7 +18,7 @@ import app.meads.identity.User;
 import app.meads.identity.UserStatus;
 import app.meads.identity.internal.UserRepository;
 import app.meads.judging.internal.JudgingRepository;
-import app.meads.judging.internal.JudgingTableRepository;
+import app.meads.judging.internal.JudgingRoundRepository;
 import app.meads.judging.internal.ScoresheetRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,7 +41,7 @@ class ScoresheetRepositoryTest {
     JudgingRepository judgingRepository;
 
     @Autowired
-    JudgingTableRepository judgingTableRepository;
+    JudgingRoundRepository judgingRoundRepository;
 
     @Autowired
     ScoresheetRepository scoresheetRepository;
@@ -65,7 +65,7 @@ class ScoresheetRepositoryTest {
         Division division;
         DivisionCategory category;
         Judging judging;
-        JudgingTable table;
+        JudgingRound table;
         Entry entry;
     }
 
@@ -79,7 +79,7 @@ class ScoresheetRepositoryTest {
                 fx.division.getId(), null, "M1A", "Traditional Mead",
                 "desc", null, 1, CategoryScope.JUDGING));
         fx.judging = judgingRepository.save(new Judging(fx.division.getId()));
-        fx.table = judgingTableRepository.save(new JudgingTable(
+        fx.table = judgingRoundRepository.save(new JudgingRound(
                 fx.judging.getId(), "Table A", fx.category.getId(), null));
         var user = userRepository.save(new User("entrant@test.com", "Entrant",
                 UserStatus.ACTIVE, Role.USER));
@@ -99,7 +99,7 @@ class ScoresheetRepositoryTest {
 
         var found = scoresheetRepository.findById(scoresheet.getId()).orElseThrow();
 
-        assertThat(found.getTableId()).isEqualTo(fx.table.getId());
+        assertThat(found.getRoundId()).isEqualTo(fx.table.getId());
         assertThat(found.getEntryId()).isEqualTo(fx.entry.getId());
         assertThat(found.getStatus()).isEqualTo(ScoresheetStatus.DRAFT);
         assertThat(found.getTotalScore()).isNull();
@@ -141,7 +141,7 @@ class ScoresheetRepositoryTest {
 
         scoresheetRepository.save(new Scoresheet(fx.table.getId(), fx.entry.getId()));
 
-        var found = scoresheetRepository.findByTableId(fx.table.getId());
+        var found = scoresheetRepository.findByRoundId(fx.table.getId());
 
         assertThat(found).hasSize(1);
         assertThat(found.get(0).getEntryId()).isEqualTo(fx.entry.getId());

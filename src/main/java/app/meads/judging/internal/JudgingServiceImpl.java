@@ -8,8 +8,8 @@ import app.meads.judging.Judging;
 import app.meads.judging.JudgeProfileService;
 import app.meads.judging.JudgingPhase;
 import app.meads.judging.JudgingService;
-import app.meads.judging.JudgingTable;
-import app.meads.judging.JudgingTableStatus;
+import app.meads.judging.JudgingRound;
+import app.meads.judging.JudgingRoundStatus;
 import app.meads.judging.Medal;
 import app.meads.judging.MedalAward;
 import app.meads.judging.MedalRoundActivatedEvent;
@@ -28,7 +28,7 @@ import app.meads.judging.BosStartedEvent;
 import app.meads.judging.CoiCheckService;
 import app.meads.judging.ScoresheetService;
 import app.meads.judging.ScoresheetStatus;
-import app.meads.judging.TableStartedEvent;
+import app.meads.judging.RoundStartedEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -55,7 +55,7 @@ import java.util.stream.Collectors;
 public class JudgingServiceImpl implements JudgingService {
 
     private final JudgingRepository judgingRepository;
-    private final JudgingTableRepository judgingTableRepository;
+    private final JudgingRoundRepository judgingRoundRepository;
     private final ScoresheetRepository scoresheetRepository;
     private final CategoryJudgingConfigRepository categoryConfigRepository;
     private final MedalAwardRepository medalAwardRepository;
@@ -68,7 +68,7 @@ public class JudgingServiceImpl implements JudgingService {
     private final ApplicationEventPublisher eventPublisher;
 
     JudgingServiceImpl(JudgingRepository judgingRepository,
-                       JudgingTableRepository judgingTableRepository,
+                       JudgingRoundRepository judgingRoundRepository,
                        ScoresheetRepository scoresheetRepository,
                        CategoryJudgingConfigRepository categoryConfigRepository,
                        MedalAwardRepository medalAwardRepository,
@@ -80,7 +80,7 @@ public class JudgingServiceImpl implements JudgingService {
                        CoiCheckService coiCheckService,
                        ApplicationEventPublisher eventPublisher) {
         this.judgingRepository = judgingRepository;
-        this.judgingTableRepository = judgingTableRepository;
+        this.judgingRoundRepository = judgingRoundRepository;
         this.scoresheetRepository = scoresheetRepository;
         this.categoryConfigRepository = categoryConfigRepository;
         this.medalAwardRepository = medalAwardRepository;
@@ -105,7 +105,7 @@ public class JudgingServiceImpl implements JudgingService {
     }
 
     @Override
-    public JudgingTable createTable(UUID judgingId,
+    public JudgingRound createRound(UUID judgingId,
                                     String name,
                                     UUID divisionCategoryId,
                                     LocalDate scheduledDate,
@@ -113,63 +113,63 @@ public class JudgingServiceImpl implements JudgingService {
         var judging = requireJudging(judgingId);
         requireAuthorizedForJudging(judging, adminUserId);
         requireNotFrozen(judging.getDivisionId());
-        var table = new JudgingTable(judgingId, name, divisionCategoryId, scheduledDate);
-        var saved = judgingTableRepository.save(table);
-        log.info("Created JudgingTable {} (name={}, category={})",
+        var table = new JudgingRound(judgingId, name, divisionCategoryId, scheduledDate);
+        var saved = judgingRoundRepository.save(table);
+        log.info("Created JudgingRound {} (name={}, category={})",
                 saved.getId(), name, divisionCategoryId);
         return saved;
     }
 
     @Override
-    public void updateTableName(UUID tableId, String name,
+    public void updateRoundName(UUID roundId, String name,
                                 UUID adminUserId) {
-        var table = requireTable(tableId);
+        var table = requireTable(roundId);
         var judging = requireJudging(table.getJudgingId());
         requireAuthorizedForJudging(judging, adminUserId);
         requireNotFrozen(judging.getDivisionId());
         table.updateName(name);
-        judgingTableRepository.save(table);
-        log.debug("Updated table name {} → '{}'", tableId, name);
+        judgingRoundRepository.save(table);
+        log.debug("Updated table name {} → '{}'", roundId, name);
     }
 
     @Override
-    public void updateTableScheduledDate(UUID tableId, LocalDate date,
+    public void updateRoundScheduledDate(UUID roundId, LocalDate date,
                                           UUID adminUserId) {
-        var table = requireTable(tableId);
+        var table = requireTable(roundId);
         var judging = requireJudging(table.getJudgingId());
         requireAuthorizedForJudging(judging, adminUserId);
         requireNotFrozen(judging.getDivisionId());
         table.updateScheduledDate(date);
-        judgingTableRepository.save(table);
-        log.debug("Updated table {} scheduled date → {}", tableId, date);
+        judgingRoundRepository.save(table);
+        log.debug("Updated table {} scheduled date → {}", roundId, date);
     }
 
     @Override
-    public void deleteTable(UUID tableId, UUID adminUserId) {
-        var table = requireTable(tableId);
+    public void deleteRound(UUID roundId, UUID adminUserId) {
+        var table = requireTable(roundId);
         var judging = requireJudging(table.getJudgingId());
         requireAuthorizedForJudging(judging, adminUserId);
         requireNotFrozen(judging.getDivisionId());
-        if (table.getStatus() != JudgingTableStatus.NOT_STARTED) {
+        if (table.getStatus() != JudgingRoundStatus.NOT_STARTED) {
             throw new BusinessRuleException("error.judging-table.cannot-delete-started");
         }
         if (!table.getAssignments().isEmpty()) {
             throw new BusinessRuleException("error.judging-table.has-assignments");
         }
-        judgingTableRepository.delete(table);
-        log.info("Deleted JudgingTable {}", tableId);
+        judgingRoundRepository.delete(table);
+        log.info("Deleted JudgingRound {}", roundId);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<JudgingTable> findTablesByJudgingId(UUID judgingId) {
-        return judgingTableRepository.findByJudgingId(judgingId);
+    public List<JudgingRound> findRoundsByJudgingId(UUID judgingId) {
+        return judgingRoundRepository.findByJudgingId(judgingId);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<UUID> findJudgeUserIdsForTable(UUID tableId) {
-        return judgingTableRepository.findById(tableId)
+    public List<UUID> findJudgeUserIdsForRound(UUID roundId) {
+        return judgingRoundRepository.findById(roundId)
                 .map(t -> t.getAssignments().stream()
                         .map(JudgeAssignment::getJudgeUserId)
                         .toList())
@@ -178,15 +178,15 @@ public class JudgingServiceImpl implements JudgingService {
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<JudgingTable> findTableById(UUID tableId) {
-        return judgingTableRepository.findById(tableId);
+    public Optional<JudgingRound> findRoundById(UUID roundId) {
+        return judgingRoundRepository.findById(roundId);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<JudgingTable> findTablesByDivisionAndCategory(UUID divisionId, UUID divisionCategoryId) {
+    public List<JudgingRound> findRoundsByDivisionAndCategory(UUID divisionId, UUID divisionCategoryId) {
         return judgingRepository.findByDivisionId(divisionId)
-                .map(j -> judgingTableRepository.findByJudgingId(j.getId()).stream()
+                .map(j -> judgingRoundRepository.findByJudgingId(j.getId()).stream()
                         .filter(t -> t.getDivisionCategoryId().equals(divisionCategoryId))
                         .toList())
                 .orElse(List.of());
@@ -194,79 +194,79 @@ public class JudgingServiceImpl implements JudgingService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<JudgingTable> findTablesByJudgeUserId(UUID judgeUserId) {
-        return judgingTableRepository.findByJudgeUserId(judgeUserId);
+    public List<JudgingRound> findRoundsByJudgeUserId(UUID judgeUserId) {
+        return judgingRoundRepository.findByJudgeUserId(judgeUserId);
     }
 
     @Override
     @Transactional(readOnly = true)
     public boolean hasAnyJudgeAssignment(UUID judgeUserId) {
-        return judgingTableRepository.existsAssignmentByJudgeUserId(judgeUserId);
+        return judgingRoundRepository.existsAssignmentByJudgeUserId(judgeUserId);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public boolean isJudgeAssignedToTable(UUID tableId, UUID judgeUserId) {
-        return judgingTableRepository.existsAssignmentByTableIdAndJudgeUserId(tableId, judgeUserId);
+    public boolean isJudgeAssignedToRound(UUID roundId, UUID judgeUserId) {
+        return judgingRoundRepository.existsAssignmentByTableIdAndJudgeUserId(roundId, judgeUserId);
     }
 
     @Override
-    public void assignJudge(UUID tableId, UUID judgeUserId,
+    public void assignJudge(UUID roundId, UUID judgeUserId,
                             UUID adminUserId) {
-        var table = requireTable(tableId);
+        var table = requireTable(roundId);
         var judging = requireJudging(table.getJudgingId());
         requireAuthorizedForJudging(judging, adminUserId);
         requireNotFrozen(judging.getDivisionId());
         table.assignJudge(judgeUserId);
-        judgingTableRepository.save(table);
+        judgingRoundRepository.save(table);
         judgeProfileService.ensureProfileForJudge(judgeUserId);
-        log.info("Assigned judge {} to table {}", judgeUserId, tableId);
+        log.info("Assigned judge {} to table {}", judgeUserId, roundId);
     }
 
     @Override
-    public void removeJudge(UUID tableId, UUID judgeUserId,
+    public void removeJudge(UUID roundId, UUID judgeUserId,
                             UUID adminUserId) {
-        var table = requireTable(tableId);
+        var table = requireTable(roundId);
         var judging = requireJudging(table.getJudgingId());
         requireAuthorizedForJudging(judging, adminUserId);
         requireNotFrozen(judging.getDivisionId());
-        if (table.getStatus() == JudgingTableStatus.ROUND_1) {
+        if (table.getStatus() == JudgingRoundStatus.ROUND_1) {
             var division = competitionService.findDivisionById(judging.getDivisionId());
             int currentCount = table.getAssignments().size();
             boolean isAssigned = table.getAssignments().stream()
                     .anyMatch(a -> a.getJudgeUserId().equals(judgeUserId));
             int afterRemoval = isAssigned ? currentCount - 1 : currentCount;
-            if (afterRemoval < division.getMinJudgesPerTable()) {
+            if (afterRemoval < division.getMinJudgesPerRound()) {
                 throw new BusinessRuleException("error.judge-assignment.below-minimum",
-                        String.valueOf(division.getMinJudgesPerTable()));
+                        String.valueOf(division.getMinJudgesPerRound()));
             }
         }
         table.removeJudge(judgeUserId);
-        judgingTableRepository.save(table);
-        log.info("Removed judge {} from table {}", judgeUserId, tableId);
+        judgingRoundRepository.save(table);
+        log.info("Removed judge {} from table {}", judgeUserId, roundId);
     }
 
     // === Table state transitions ===
 
     @Override
-    public void startTable(UUID tableId, UUID adminUserId) {
-        var table = requireTable(tableId);
+    public void startRound(UUID roundId, UUID adminUserId) {
+        var table = requireTable(roundId);
         var judging = requireJudging(table.getJudgingId());
         requireAuthorizedForJudging(judging, adminUserId);
         var division = competitionService.findDivisionById(judging.getDivisionId());
         if (division.getStatus().isResultsFrozen()) {
             throw new BusinessRuleException("error.judging.results-published-frozen");
         }
-        if (table.getAssignments().size() < division.getMinJudgesPerTable()) {
+        if (table.getAssignments().size() < division.getMinJudgesPerRound()) {
             throw new BusinessRuleException("error.judging-table.too-few-judges",
-                    String.valueOf(division.getMinJudgesPerTable()));
+                    String.valueOf(division.getMinJudgesPerRound()));
         }
         try {
             table.startRound1();
         } catch (IllegalStateException e) {
             throw new BusinessRuleException("error.judging-table.cannot-start", e.getMessage());
         }
-        judgingTableRepository.save(table);
+        judgingRoundRepository.save(table);
         if (judging.getPhase() == JudgingPhase.NOT_STARTED) {
             judging.markActive();
             judgingRepository.save(judging);
@@ -275,11 +275,11 @@ public class JudgingServiceImpl implements JudgingService {
         categoryConfigRepository.findByDivisionCategoryId(table.getDivisionCategoryId())
                 .orElseGet(() -> categoryConfigRepository.save(
                         new CategoryJudgingConfig(table.getDivisionCategoryId())));
-        scoresheetService.createScoresheetsForTable(tableId);
-        eventPublisher.publishEvent(new TableStartedEvent(
+        scoresheetService.createScoresheetsForTable(roundId);
+        eventPublisher.publishEvent(new RoundStartedEvent(
                 table.getId(), table.getDivisionCategoryId(),
                 judging.getDivisionId(), Instant.now()));
-        log.info("Started table {} in division {}", tableId, judging.getDivisionId());
+        log.info("Started table {} in division {}", roundId, judging.getDivisionId());
     }
 
     // === Category medal-round configuration ===
@@ -416,9 +416,9 @@ public class JudgingServiceImpl implements JudgingService {
     @Override
     @Transactional(readOnly = true)
     public List<CategoryJudgingConfig> findActiveCategoryConfigsForJudge(UUID judgeUserId) {
-        var tables = judgingTableRepository.findByJudgeUserId(judgeUserId);
+        var tables = judgingRoundRepository.findByJudgeUserId(judgeUserId);
         return tables.stream()
-                .map(JudgingTable::getDivisionCategoryId)
+                .map(JudgingRound::getDivisionCategoryId)
                 .distinct()
                 .flatMap(catId -> categoryConfigRepository.findByDivisionCategoryId(catId).stream())
                 .filter(c -> c.getMedalRoundStatus() == MedalRoundStatus.ACTIVE)
@@ -740,14 +740,14 @@ public class JudgingServiceImpl implements JudgingService {
         // Walk gold→silver→bronze; stop cascade on first tie within a slot
         var sheetsByEntry = new HashMap<UUID, Integer>();
         // Find SUBMITTED scoresheets for entries advancedToMedalRound = true and finalCategoryId matches
-        var allTables = judgingTableRepository.findByJudgingId(
+        var allTables = judgingRoundRepository.findByJudgingId(
                 judgingRepository.findByDivisionId(divisionId)
                         .orElseThrow().getId()).stream()
                 .filter(t -> t.getDivisionCategoryId().equals(divisionCategoryId))
                 .toList();
         var allSheets = new ArrayList<app.meads.judging.Scoresheet>();
         for (var table : allTables) {
-            allSheets.addAll(scoresheetRepository.findByTableId(table.getId()));
+            allSheets.addAll(scoresheetRepository.findByRoundId(table.getId()));
         }
         for (var sheet : allSheets) {
             if (sheet.getStatus() == ScoresheetStatus.SUBMITTED
@@ -806,7 +806,7 @@ public class JudgingServiceImpl implements JudgingService {
             return;
         }
         // Otherwise must be a judge assigned to a table covering this category
-        var assignedTables = judgingTableRepository.findByJudgeUserId(userId);
+        var assignedTables = judgingRoundRepository.findByJudgeUserId(userId);
         boolean coversCategory = assignedTables.stream()
                 .anyMatch(t -> t.getDivisionCategoryId().equals(divisionCategoryId));
         if (!coversCategory) {
@@ -823,8 +823,8 @@ public class JudgingServiceImpl implements JudgingService {
                 .orElseThrow(() -> new BusinessRuleException("error.judging.not-found"));
     }
 
-    private JudgingTable requireTable(UUID tableId) {
-        return judgingTableRepository.findById(tableId)
+    private JudgingRound requireTable(UUID roundId) {
+        return judgingRoundRepository.findById(roundId)
                 .orElseThrow(() -> new BusinessRuleException("error.judging-table.not-found"));
     }
 

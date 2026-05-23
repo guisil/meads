@@ -24,9 +24,9 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name = "judging_tables")
+@Table(name = "judging_rounds")
 @Getter
-public class JudgingTable {
+public class JudgingRound {
 
     @Id
     private UUID id;
@@ -45,10 +45,10 @@ public class JudgingTable {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
-    private JudgingTableStatus status;
+    private JudgingRoundStatus status;
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
-    @JoinColumn(name = "judging_table_id", nullable = false)
+    @JoinColumn(name = "judging_round_id", nullable = false)
     @OrderBy("assignedAt ASC")
     private List<JudgeAssignment> assignments = new ArrayList<>();
 
@@ -58,16 +58,16 @@ public class JudgingTable {
     @Column(name = "updated_at")
     private Instant updatedAt;
 
-    protected JudgingTable() {
+    protected JudgingRound() {
     }
 
-    public JudgingTable(UUID judgingId, String name, UUID divisionCategoryId, LocalDate scheduledDate) {
+    public JudgingRound(UUID judgingId, String name, UUID divisionCategoryId, LocalDate scheduledDate) {
         this.id = UUID.randomUUID();
         this.judgingId = judgingId;
         this.name = name;
         this.divisionCategoryId = divisionCategoryId;
         this.scheduledDate = scheduledDate;
-        this.status = JudgingTableStatus.NOT_STARTED;
+        this.status = JudgingRoundStatus.NOT_STARTED;
     }
 
     public List<JudgeAssignment> getAssignments() {
@@ -96,24 +96,24 @@ public class JudgingTable {
     }
 
     public void startRound1() {
-        if (status != JudgingTableStatus.NOT_STARTED) {
+        if (status != JudgingRoundStatus.NOT_STARTED) {
             throw new IllegalStateException("Table can only start ROUND_1 from NOT_STARTED, current: " + status);
         }
-        this.status = JudgingTableStatus.ROUND_1;
+        this.status = JudgingRoundStatus.ROUND_1;
     }
 
     public void markComplete() {
-        if (status != JudgingTableStatus.ROUND_1) {
+        if (status != JudgingRoundStatus.ROUND_1) {
             throw new IllegalStateException("Table can only complete from ROUND_1, current: " + status);
         }
-        this.status = JudgingTableStatus.COMPLETE;
+        this.status = JudgingRoundStatus.COMPLETE;
     }
 
     public void reopenToRound1() {
-        if (status != JudgingTableStatus.COMPLETE) {
+        if (status != JudgingRoundStatus.COMPLETE) {
             throw new IllegalStateException("Table can only reopen from COMPLETE, current: " + status);
         }
-        this.status = JudgingTableStatus.ROUND_1;
+        this.status = JudgingRoundStatus.ROUND_1;
     }
 
     @PrePersist

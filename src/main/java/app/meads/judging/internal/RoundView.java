@@ -12,7 +12,7 @@ import app.meads.identity.User;
 import app.meads.identity.UserService;
 import app.meads.judging.Judging;
 import app.meads.judging.JudgingService;
-import app.meads.judging.JudgingTable;
+import app.meads.judging.JudgingRound;
 import app.meads.judging.MedalRoundStatus;
 import app.meads.judging.Scoresheet;
 import app.meads.judging.ScoresheetService;
@@ -50,9 +50,9 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-@Route(value = "competitions/:compShortName/divisions/:divShortName/tables/:tableId", layout = MainLayout.class)
+@Route(value = "competitions/:compShortName/divisions/:divShortName/tables/:roundId", layout = MainLayout.class)
 @PermitAll
-public class TableView extends VerticalLayout implements BeforeEnterObserver {
+public class RoundView extends VerticalLayout implements BeforeEnterObserver {
 
     private final CompetitionService competitionService;
     private final UserService userService;
@@ -63,7 +63,7 @@ public class TableView extends VerticalLayout implements BeforeEnterObserver {
 
     private Competition competition;
     private Division division;
-    private JudgingTable table;
+    private JudgingRound table;
     private String compShortName;
     private String divShortName;
     private UUID currentUserId;
@@ -77,7 +77,7 @@ public class TableView extends VerticalLayout implements BeforeEnterObserver {
     private Map<UUID, Entry> entriesById;
     private Map<UUID, User> usersById;
 
-    public TableView(CompetitionService competitionService,
+    public RoundView(CompetitionService competitionService,
                      UserService userService,
                      JudgingService judgingService,
                      ScoresheetService scoresheetService,
@@ -95,16 +95,16 @@ public class TableView extends VerticalLayout implements BeforeEnterObserver {
     public void beforeEnter(BeforeEnterEvent event) {
         compShortName = event.getRouteParameters().get("compShortName").orElse(null);
         divShortName = event.getRouteParameters().get("divShortName").orElse(null);
-        var tableIdParam = event.getRouteParameters().get("tableId").orElse(null);
+        var tableIdParam = event.getRouteParameters().get("roundId").orElse(null);
 
         if (compShortName == null || divShortName == null || tableIdParam == null) {
             event.forwardTo("");
             return;
         }
 
-        UUID tableId;
+        UUID roundId;
         try {
-            tableId = UUID.fromString(tableIdParam);
+            roundId = UUID.fromString(tableIdParam);
         } catch (IllegalArgumentException e) {
             event.forwardTo("");
             return;
@@ -118,7 +118,7 @@ public class TableView extends VerticalLayout implements BeforeEnterObserver {
             return;
         }
 
-        var maybeTable = judgingService.findTableById(tableId);
+        var maybeTable = judgingService.findRoundById(roundId);
         if (maybeTable.isEmpty()) {
             event.forwardTo("");
             return;
@@ -138,7 +138,7 @@ public class TableView extends VerticalLayout implements BeforeEnterObserver {
         var user = userService.findById(currentUserId);
         isSystemAdmin = user.getRole() == Role.SYSTEM_ADMIN;
         boolean isDivisionAdmin = competitionService.isAuthorizedForDivision(division.getId(), currentUserId);
-        boolean isAssignedJudge = judgingService.isJudgeAssignedToTable(table.getId(), currentUserId);
+        boolean isAssignedJudge = judgingService.isJudgeAssignedToRound(table.getId(), currentUserId);
 
         if (!isSystemAdmin && !isDivisionAdmin && !isAssignedJudge) {
             event.forwardTo("");
@@ -161,7 +161,7 @@ public class TableView extends VerticalLayout implements BeforeEnterObserver {
     }
 
     private void loadScoresheetData() {
-        allSheets = scoresheetService.findByTableId(table.getId());
+        allSheets = scoresheetService.findByRoundId(table.getId());
         entriesById = allSheets.stream()
                 .map(s -> entryService.findEntryById(s.getEntryId()))
                 .collect(Collectors.toMap(Entry::getId, e -> e, (a, b) -> a));
@@ -329,13 +329,13 @@ public class TableView extends VerticalLayout implements BeforeEnterObserver {
         var form = new VerticalLayout();
         form.setPadding(false);
 
-        var candidates = judgingService.findTablesByDivisionAndCategory(
+        var candidates = judgingService.findRoundsByDivisionAndCategory(
                         division.getId(), table.getDivisionCategoryId()).stream()
                 .filter(t -> !t.getId().equals(table.getId()))
-                .filter(t -> t.getStatus() == app.meads.judging.JudgingTableStatus.ROUND_1)
+                .filter(t -> t.getStatus() == app.meads.judging.JudgingRoundStatus.ROUND_1)
                 .toList();
 
-        var targetSelect = new Select<JudgingTable>();
+        var targetSelect = new Select<JudgingRound>();
         targetSelect.setId("move-target-select");
         targetSelect.setLabel(getTranslation("table.move.target.label"));
         targetSelect.setWidthFull();
@@ -358,7 +358,7 @@ public class TableView extends VerticalLayout implements BeforeEnterObserver {
                 return;
             }
             try {
-                scoresheetService.moveToTable(sheet.getId(), targetSelect.getValue().getId(), currentUserId);
+                scoresheetService.moveToRound(sheet.getId(), targetSelect.getValue().getId(), currentUserId);
                 dialog.close();
                 loadScoresheetData();
                 scoresheetsGrid.setItems(allSheets);

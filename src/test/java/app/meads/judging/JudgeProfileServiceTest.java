@@ -7,7 +7,7 @@ import app.meads.identity.UserService;
 import app.meads.identity.UserStatus;
 import app.meads.judging.internal.JudgeProfileRepository;
 import app.meads.judging.internal.JudgeProfileServiceImpl;
-import app.meads.judging.internal.JudgingTableRepository;
+import app.meads.judging.internal.JudgingRoundRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,7 +36,7 @@ class JudgeProfileServiceTest {
     JudgeProfileRepository judgeProfileRepository;
 
     @Mock
-    JudgingTableRepository judgingTableRepository;
+    JudgingRoundRepository judgingRoundRepository;
 
     @Mock
     UserService userService;
@@ -183,7 +183,7 @@ class JudgeProfileServiceTest {
     void shouldDeleteProfileWhenSystemAdminAndNoAssignments() {
         var existing = new JudgeProfile(judgeUserId);
         given(userService.findById(adminUserId)).willReturn(adminUser);
-        given(judgingTableRepository.existsAssignmentByJudgeUserId(judgeUserId)).willReturn(false);
+        given(judgingRoundRepository.existsAssignmentByJudgeUserId(judgeUserId)).willReturn(false);
         given(judgeProfileRepository.findByUserId(judgeUserId)).willReturn(Optional.of(existing));
 
         service.delete(judgeUserId, adminUserId);
@@ -205,7 +205,7 @@ class JudgeProfileServiceTest {
     @Test
     void shouldRejectDeleteWhenJudgeAssignmentReferencesUser() {
         given(userService.findById(adminUserId)).willReturn(adminUser);
-        given(judgingTableRepository.existsAssignmentByJudgeUserId(judgeUserId)).willReturn(true);
+        given(judgingRoundRepository.existsAssignmentByJudgeUserId(judgeUserId)).willReturn(true);
 
         assertThatThrownBy(() -> service.delete(judgeUserId, adminUserId))
                 .isInstanceOf(BusinessRuleException.class)
@@ -217,7 +217,7 @@ class JudgeProfileServiceTest {
     @Test
     void shouldNoOpDeleteWhenProfileAbsent() {
         given(userService.findById(adminUserId)).willReturn(adminUser);
-        given(judgingTableRepository.existsAssignmentByJudgeUserId(judgeUserId)).willReturn(false);
+        given(judgingRoundRepository.existsAssignmentByJudgeUserId(judgeUserId)).willReturn(false);
         given(judgeProfileRepository.findByUserId(judgeUserId)).willReturn(Optional.empty());
 
         service.delete(judgeUserId, adminUserId);

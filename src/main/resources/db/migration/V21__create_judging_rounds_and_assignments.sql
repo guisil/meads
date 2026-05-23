@@ -1,4 +1,4 @@
-CREATE TABLE judging_tables (
+CREATE TABLE judging_rounds (
     id                    UUID PRIMARY KEY,
     judging_id            UUID NOT NULL REFERENCES judgings(id),
     name                  VARCHAR(120) NOT NULL,
@@ -8,14 +8,14 @@ CREATE TABLE judging_tables (
     created_at            TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at            TIMESTAMP WITH TIME ZONE
 );
-CREATE INDEX idx_judging_tables_judging_id            ON judging_tables(judging_id);
-CREATE INDEX idx_judging_tables_division_category_id  ON judging_tables(division_category_id);
+CREATE INDEX idx_judging_rounds_judging_id            ON judging_rounds(judging_id);
+CREATE INDEX idx_judging_rounds_division_category_id  ON judging_rounds(division_category_id);
 
 CREATE TABLE judge_assignments (
     id                UUID PRIMARY KEY,
-    judging_table_id  UUID NOT NULL REFERENCES judging_tables(id) ON DELETE CASCADE,
+    judging_round_id  UUID NOT NULL REFERENCES judging_rounds(id) ON DELETE CASCADE,
     judge_user_id     UUID NOT NULL REFERENCES users(id),
     assigned_at       TIMESTAMP WITH TIME ZONE NOT NULL,
-    UNIQUE (judging_table_id, judge_user_id)
+    UNIQUE (judging_round_id, judge_user_id)
 );
 CREATE INDEX idx_judge_assignments_judge_user_id ON judge_assignments(judge_user_id);

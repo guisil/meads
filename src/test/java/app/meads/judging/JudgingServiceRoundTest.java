@@ -9,7 +9,7 @@ import app.meads.judging.internal.BosPlacementRepository;
 import app.meads.judging.internal.CategoryJudgingConfigRepository;
 import app.meads.judging.internal.JudgingRepository;
 import app.meads.judging.internal.JudgingServiceImpl;
-import app.meads.judging.internal.JudgingTableRepository;
+import app.meads.judging.internal.JudgingRoundRepository;
 import app.meads.judging.internal.MedalAwardRepository;
 import app.meads.judging.internal.ScoresheetRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,7 +35,7 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
-class JudgingServiceTableTest {
+class JudgingServiceRoundTest {
 
     @InjectMocks
     JudgingServiceImpl service;
@@ -44,7 +44,7 @@ class JudgingServiceTableTest {
     JudgingRepository judgingRepository;
 
     @Mock
-    JudgingTableRepository judgingTableRepository;
+    JudgingRoundRepository judgingRoundRepository;
 
     @Mock
     ScoresheetRepository scoresheetRepository;
@@ -123,15 +123,15 @@ class JudgingServiceTableTest {
         var judging = new Judging(divisionId);
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
-        given(judgingTableRepository.save(any(JudgingTable.class)))
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 
-        var table = service.createTable(judging.getId(), "Table 1",
+        var table = service.createRound(judging.getId(), "Table 1",
                 divisionCategoryId, LocalDate.of(2026, 7, 1), adminUserId);
 
         assertThat(table.getName()).isEqualTo("Table 1");
         assertThat(table.getDivisionCategoryId()).isEqualTo(divisionCategoryId);
-        assertThat(table.getStatus()).isEqualTo(JudgingTableStatus.NOT_STARTED);
+        assertThat(table.getStatus()).isEqualTo(JudgingRoundStatus.NOT_STARTED);
     }
 
     @Test
@@ -140,25 +140,25 @@ class JudgingServiceTableTest {
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(false);
 
-        assertThatThrownBy(() -> service.createTable(judging.getId(), "Table 1",
+        assertThatThrownBy(() -> service.createRound(judging.getId(), "Table 1",
                 divisionCategoryId, LocalDate.of(2026, 7, 1), adminUserId))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("error.auth.unauthorized");
 
-        then(judgingTableRepository).should(never()).save(any(JudgingTable.class));
+        then(judgingRoundRepository).should(never()).save(any(JudgingRound.class));
     }
 
     @Test
     void shouldUpdateTableNameWhenAuthorized() {
         var judging = new Judging(divisionId);
-        var table = new JudgingTable(judging.getId(), "Old Name", divisionCategoryId, null);
-        given(judgingTableRepository.findById(table.getId())).willReturn(Optional.of(table));
+        var table = new JudgingRound(judging.getId(), "Old Name", divisionCategoryId, null);
+        given(judgingRoundRepository.findById(table.getId())).willReturn(Optional.of(table));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
-        given(judgingTableRepository.save(any(JudgingTable.class)))
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 
-        service.updateTableName(table.getId(), "New Name", adminUserId);
+        service.updateRoundName(table.getId(), "New Name", adminUserId);
 
         assertThat(table.getName()).isEqualTo("New Name");
     }
@@ -166,14 +166,14 @@ class JudgingServiceTableTest {
     @Test
     void shouldUpdateTableScheduledDateWhenAuthorized() {
         var judging = new Judging(divisionId);
-        var table = new JudgingTable(judging.getId(), "Table 1", divisionCategoryId, null);
-        given(judgingTableRepository.findById(table.getId())).willReturn(Optional.of(table));
+        var table = new JudgingRound(judging.getId(), "Table 1", divisionCategoryId, null);
+        given(judgingRoundRepository.findById(table.getId())).willReturn(Optional.of(table));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
-        given(judgingTableRepository.save(any(JudgingTable.class)))
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 
-        service.updateTableScheduledDate(table.getId(), LocalDate.of(2026, 7, 5), adminUserId);
+        service.updateRoundScheduledDate(table.getId(), LocalDate.of(2026, 7, 5), adminUserId);
 
         assertThat(table.getScheduledDate()).isEqualTo(LocalDate.of(2026, 7, 5));
     }
@@ -181,42 +181,42 @@ class JudgingServiceTableTest {
     @Test
     void shouldDeleteTableWhenNotStartedAndNoAssignments() {
         var judging = new Judging(divisionId);
-        var table = new JudgingTable(judging.getId(), "Table 1", divisionCategoryId, null);
-        given(judgingTableRepository.findById(table.getId())).willReturn(Optional.of(table));
+        var table = new JudgingRound(judging.getId(), "Table 1", divisionCategoryId, null);
+        given(judgingRoundRepository.findById(table.getId())).willReturn(Optional.of(table));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
 
-        service.deleteTable(table.getId(), adminUserId);
+        service.deleteRound(table.getId(), adminUserId);
 
-        then(judgingTableRepository).should().delete(table);
+        then(judgingRoundRepository).should().delete(table);
     }
 
     @Test
     void shouldRejectDeleteTableWhenStatusNotNotStarted() {
         var judging = new Judging(divisionId);
-        var table = new JudgingTable(judging.getId(), "Table 1", divisionCategoryId, null);
+        var table = new JudgingRound(judging.getId(), "Table 1", divisionCategoryId, null);
         table.startRound1();
-        given(judgingTableRepository.findById(table.getId())).willReturn(Optional.of(table));
+        given(judgingRoundRepository.findById(table.getId())).willReturn(Optional.of(table));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
 
-        assertThatThrownBy(() -> service.deleteTable(table.getId(), adminUserId))
+        assertThatThrownBy(() -> service.deleteRound(table.getId(), adminUserId))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("error.judging-table.cannot-delete-started");
 
-        then(judgingTableRepository).should(never()).delete(any(JudgingTable.class));
+        then(judgingRoundRepository).should(never()).delete(any(JudgingRound.class));
     }
 
     @Test
     void shouldRejectDeleteTableWhenAssignmentsExist() {
         var judging = new Judging(divisionId);
-        var table = new JudgingTable(judging.getId(), "Table 1", divisionCategoryId, null);
+        var table = new JudgingRound(judging.getId(), "Table 1", divisionCategoryId, null);
         table.assignJudge(judgeUserId);
-        given(judgingTableRepository.findById(table.getId())).willReturn(Optional.of(table));
+        given(judgingRoundRepository.findById(table.getId())).willReturn(Optional.of(table));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
 
-        assertThatThrownBy(() -> service.deleteTable(table.getId(), adminUserId))
+        assertThatThrownBy(() -> service.deleteRound(table.getId(), adminUserId))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("error.judging-table.has-assignments");
     }
@@ -224,11 +224,11 @@ class JudgingServiceTableTest {
     @Test
     void shouldAssignJudgeAndEnsureProfile() {
         var judging = new Judging(divisionId);
-        var table = new JudgingTable(judging.getId(), "Table 1", divisionCategoryId, null);
-        given(judgingTableRepository.findById(table.getId())).willReturn(Optional.of(table));
+        var table = new JudgingRound(judging.getId(), "Table 1", divisionCategoryId, null);
+        given(judgingRoundRepository.findById(table.getId())).willReturn(Optional.of(table));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
-        given(judgingTableRepository.save(any(JudgingTable.class)))
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 
         service.assignJudge(table.getId(), judgeUserId, adminUserId);
@@ -241,12 +241,12 @@ class JudgingServiceTableTest {
     @Test
     void shouldBeIdempotentOnAssignJudge() {
         var judging = new Judging(divisionId);
-        var table = new JudgingTable(judging.getId(), "Table 1", divisionCategoryId, null);
+        var table = new JudgingRound(judging.getId(), "Table 1", divisionCategoryId, null);
         table.assignJudge(judgeUserId);
-        given(judgingTableRepository.findById(table.getId())).willReturn(Optional.of(table));
+        given(judgingRoundRepository.findById(table.getId())).willReturn(Optional.of(table));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
-        given(judgingTableRepository.save(any(JudgingTable.class)))
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 
         service.assignJudge(table.getId(), judgeUserId, adminUserId);
@@ -257,12 +257,12 @@ class JudgingServiceTableTest {
     @Test
     void shouldRemoveJudgeFromTableWhenNotStarted() {
         var judging = new Judging(divisionId);
-        var table = new JudgingTable(judging.getId(), "Table 1", divisionCategoryId, null);
+        var table = new JudgingRound(judging.getId(), "Table 1", divisionCategoryId, null);
         table.assignJudge(judgeUserId);
-        given(judgingTableRepository.findById(table.getId())).willReturn(Optional.of(table));
+        given(judgingRoundRepository.findById(table.getId())).willReturn(Optional.of(table));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
-        given(judgingTableRepository.save(any(JudgingTable.class)))
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 
         service.removeJudge(table.getId(), judgeUserId, adminUserId);
@@ -273,12 +273,12 @@ class JudgingServiceTableTest {
     @Test
     void shouldRejectRemoveJudgeWhenWouldDropBelowMinJudgesAndStarted() {
         var judging = new Judging(divisionId);
-        var table = new JudgingTable(judging.getId(), "Table 1", divisionCategoryId, null);
+        var table = new JudgingRound(judging.getId(), "Table 1", divisionCategoryId, null);
         var judge2 = UUID.randomUUID();
         table.assignJudge(judgeUserId);
         table.assignJudge(judge2);
         table.startRound1();
-        given(judgingTableRepository.findById(table.getId())).willReturn(Optional.of(table));
+        given(judgingRoundRepository.findById(table.getId())).willReturn(Optional.of(table));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
         given(competitionService.findDivisionById(divisionId)).willReturn(division);
@@ -293,16 +293,16 @@ class JudgingServiceTableTest {
     @Test
     void shouldAllowRemoveJudgeWhenStartedButStaysAboveMinimum() {
         var judging = new Judging(divisionId);
-        var table = new JudgingTable(judging.getId(), "Table 1", divisionCategoryId, null);
+        var table = new JudgingRound(judging.getId(), "Table 1", divisionCategoryId, null);
         table.assignJudge(judgeUserId);
         table.assignJudge(UUID.randomUUID());
         table.assignJudge(UUID.randomUUID());
         table.startRound1();
-        given(judgingTableRepository.findById(table.getId())).willReturn(Optional.of(table));
+        given(judgingRoundRepository.findById(table.getId())).willReturn(Optional.of(table));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
         given(competitionService.findDivisionById(divisionId)).willReturn(division);
-        given(judgingTableRepository.save(any(JudgingTable.class)))
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 
         service.removeJudge(table.getId(), judgeUserId, adminUserId);
@@ -313,12 +313,12 @@ class JudgingServiceTableTest {
     @Test
     void shouldFindTablesByJudging() {
         var judging = new Judging(divisionId);
-        var t1 = new JudgingTable(judging.getId(), "T1", divisionCategoryId, null);
-        var t2 = new JudgingTable(judging.getId(), "T2", divisionCategoryId, null);
-        given(judgingTableRepository.findByJudgingId(judging.getId()))
+        var t1 = new JudgingRound(judging.getId(), "T1", divisionCategoryId, null);
+        var t2 = new JudgingRound(judging.getId(), "T2", divisionCategoryId, null);
+        given(judgingRoundRepository.findByJudgingId(judging.getId()))
                 .willReturn(List.of(t1, t2));
 
-        var result = service.findTablesByJudgingId(judging.getId());
+        var result = service.findRoundsByJudgingId(judging.getId());
 
         assertThat(result).containsExactly(t1, t2);
     }

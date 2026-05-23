@@ -102,14 +102,14 @@ class AwardsModuleTest {
 
         // Run a minimal judging cycle to phase=COMPLETE
         var judging = judgingService.ensureJudgingExists(division.getId());
-        var table = judgingService.createTable(judging.getId(), "AM1 Panel",
+        var table = judgingService.createRound(judging.getId(), "AM1 Panel",
                 judgingCategory.getId(), null, admin.getId());
         judgingService.assignJudge(table.getId(), judge1.getId(), admin.getId());
         judgingService.assignJudge(table.getId(), judge2.getId(), admin.getId());
-        judgingService.startTable(table.getId(), admin.getId());
+        judgingService.startRound(table.getId(), admin.getId());
 
         // One scoresheet per entry is auto-created when the table starts.
-        var sheets = scoresheetService.findByTableId(table.getId());
+        var sheets = scoresheetService.findByRoundId(table.getId());
         assertThat(sheets).hasSize(1);
         fillAndSubmit(sheets.getFirst(), judge1.getId());
 

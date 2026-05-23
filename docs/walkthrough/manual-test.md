@@ -1557,13 +1557,13 @@ Or use a test division where the flag is already set.*
 
 ## 12. Judging Module
 
-**Covers:** `JudgingAdminViewTest`, `TableViewTest`, `ScoresheetViewTest`,
+**Covers:** `JudgingAdminViewTest`, `RoundViewTest`, `ScoresheetViewTest`,
 `MyJudgingViewTest`, `MedalRoundViewTest`, `BosViewTest`, `JudgingServiceTest`,
 `JudgingServiceMedalRoundTest`, `ScoresheetServiceTest`,
 `JudgeProfileServiceTest`, `MeaderyNameNormalizerTest`, `CoiCheckServiceTest`,
 `JudgingDivisionStatusRevertGuardTest`, `JudgingMinJudgesLockGuardTest`,
 `JudgingErrorKeyCoverageTest`, `JudgingNotificationListenerTest`. Plus the seven aggregate repository tests
-(`JudgingRepositoryTest`, `JudgingTableRepositoryTest`,
+(`JudgingRepositoryTest`, `JudgingRoundRepositoryTest`,
 `CategoryJudgingConfigRepositoryTest`, `ScoresheetRepositoryTest`,
 `MedalAwardRepositoryTest`, `BosPlacementRepositoryTest`,
 `JudgeProfileRepositoryTest`).
@@ -1860,7 +1860,7 @@ For COI badges to appear, `judge@example.com` should already exist as a JUDGE in
 For this you need a *second* ROUND_1 table in the same JUDGING category. Create one via JudgingAdminView if needed, then Start it (assigning ≥ minJudgesPerTable judges).
 
 - [ ] On a DRAFT row click Move.
-- [ ] **Expected:** Dialog with a `Select<JudgingTable>` (target tables filtered to ROUND_1 and same category, excluding current).
+- [ ] **Expected:** Dialog with a `Select<JudgingRound>` (target tables filtered to ROUND_1 and same category, excluding current).
 - [ ] If no candidate tables exist: **Expected** the empty-state message "No other ROUND_1 tables cover this category. Add a table first." and a disabled Save button.
 - [ ] Pick a target, click Save.
 - [ ] **Expected:** Notification "Moved scoresheet to {targetName}."; row disappears from this table's grid (reload to re-render).
@@ -2052,7 +2052,7 @@ matching ROUND_1 table for that entry's final category.
 
 - [ ] As `compadmin@example.com`, navigate to Amadora division detail.
 - [ ] Click "Revert Status" → confirm "Revert from Judging to Registration Closed?".
-- [ ] **Expected:** Error notification — `JudgingDivisionStatusRevertGuard` blocks the revert because `Judging.phase != NOT_STARTED` OR any JudgingTable exists. Message renders the `error.division.cannot-revert-has-judging` translation.
+- [ ] **Expected:** Error notification — `JudgingDivisionStatusRevertGuard` blocks the revert because `Judging.phase != NOT_STARTED` OR any JudgingRound exists. Message renders the `error.division.cannot-revert-has-judging` translation.
 - [ ] **Expected:** Status remains `JUDGING`.
 
 ### 12.16 StewardView (read-only steward hub)
@@ -2770,7 +2770,7 @@ curl -X PUT http://localhost:8080/api/webhooks/jumpseller/order-paid \
 | 8. Entry Admin | `DivisionEntryAdminViewTest`, `EntryServiceTest`, `ProductMappingRepositoryTest`, `JumpsellerOrderRepositoryTest` |
 | 9. Webhook | `JumpsellerWebhookControllerTest`, `WebhookServiceTest`, `JumpsellerOrderTest`, `JumpsellerOrderLineItemTest` |
 | 10–11. My Entries | `MyEntriesViewTest`, `EntryServiceTest`, `EntryTest`, `EntryCreditRepositoryTest`, `EntryRepositoryTest` |
-| 12. Judging Module | `JudgingAdminViewTest`, `TableViewTest`, `ScoresheetViewTest`, `MyJudgingViewTest`, `BosViewTest`, `JudgingServiceTest`, `ScoresheetServiceTest`, `JudgeProfileServiceTest`, `MeaderyNameNormalizerTest`, `CoiCheckServiceTest`, `JudgingDivisionStatusRevertGuardTest`, `JudgingMinJudgesLockGuardTest`, `JudgingErrorKeyCoverageTest`, `JudgingNotificationListenerTest`, `JudgingRepositoryTest`, `JudgingTableRepositoryTest`, `CategoryJudgingConfigRepositoryTest`, `ScoresheetRepositoryTest`, `MedalAwardRepositoryTest`, `BosPlacementRepositoryTest`, `JudgeProfileRepositoryTest` |
+| 12. Judging Module | `JudgingAdminViewTest`, `RoundViewTest`, `ScoresheetViewTest`, `MyJudgingViewTest`, `BosViewTest`, `JudgingServiceTest`, `ScoresheetServiceTest`, `JudgeProfileServiceTest`, `MeaderyNameNormalizerTest`, `CoiCheckServiceTest`, `JudgingDivisionStatusRevertGuardTest`, `JudgingMinJudgesLockGuardTest`, `JudgingErrorKeyCoverageTest`, `JudgingNotificationListenerTest`, `JudgingRepositoryTest`, `JudgingRoundRepositoryTest`, `CategoryJudgingConfigRepositoryTest`, `ScoresheetRepositoryTest`, `MedalAwardRepositoryTest`, `BosPlacementRepositoryTest`, `JudgeProfileRepositoryTest` |
 | 13. Awards Module | `AwardsServiceImplTest`, `AwardsPublicResultsViewTest`, `AwardsAdminViewTest`, `MyResultsViewTest`, `AwardsModuleTest`, `PublicationTest`, `PublicationRepositoryTest`, `JudgingServiceFreezeGuardTest`, `ScoresheetServiceFreezeGuardTest`, `ScoresheetPdfServiceTest` |
 | 14. Cross-cutting | `EntryServiceTest`, `DevDataInitializerTest`, `EntryModuleTest`, `CompetitionModuleTest`, `ModulithStructureTest` |
 | 15. Multi-Role | (exploratory; no dedicated automated tests — covered indirectly by service-level role-combination tests in `CompetitionServiceTest` and `EntryServiceTest`) |

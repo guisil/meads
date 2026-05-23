@@ -12,7 +12,7 @@ import app.meads.judging.internal.BosPlacementRepository;
 import app.meads.judging.internal.CategoryJudgingConfigRepository;
 import app.meads.judging.internal.JudgingRepository;
 import app.meads.judging.internal.JudgingServiceImpl;
-import app.meads.judging.internal.JudgingTableRepository;
+import app.meads.judging.internal.JudgingRoundRepository;
 import app.meads.judging.internal.MedalAwardRepository;
 import app.meads.judging.internal.ScoresheetRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,7 +44,7 @@ class JudgingServiceMedalsBosTest {
     JudgingServiceImpl service;
 
     @Mock JudgingRepository judgingRepository;
-    @Mock JudgingTableRepository judgingTableRepository;
+    @Mock JudgingRoundRepository judgingRoundRepository;
     @Mock ScoresheetRepository scoresheetRepository;
     @Mock CategoryJudgingConfigRepository categoryConfigRepository;
     @Mock MedalAwardRepository medalAwardRepository;

@@ -11,7 +11,7 @@ import app.meads.judging.internal.BosPlacementRepository;
 import app.meads.judging.internal.CategoryJudgingConfigRepository;
 import app.meads.judging.internal.JudgingRepository;
 import app.meads.judging.internal.JudgingServiceImpl;
-import app.meads.judging.internal.JudgingTableRepository;
+import app.meads.judging.internal.JudgingRoundRepository;
 import app.meads.judging.internal.MedalAwardRepository;
 import app.meads.judging.internal.ScoresheetRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,7 +39,7 @@ class JudgingServiceFreezeGuardTest {
     @InjectMocks JudgingServiceImpl service;
 
     @Mock JudgingRepository judgingRepository;
-    @Mock JudgingTableRepository judgingTableRepository;
+    @Mock JudgingRoundRepository judgingRoundRepository;
     @Mock ScoresheetRepository scoresheetRepository;
     @Mock CategoryJudgingConfigRepository categoryConfigRepository;
     @Mock MedalAwardRepository medalAwardRepository;
@@ -55,11 +55,11 @@ class JudgingServiceFreezeGuardTest {
     UUID adminUserId;
     UUID judgeUserId;
     UUID divisionCategoryId;
-    UUID tableId;
+    UUID roundId;
     UUID entryId;
     Division frozenDivision;
     Judging judging;
-    JudgingTable table;
+    JudgingRound table;
 
     @BeforeEach
     void setUp() {
@@ -75,9 +75,9 @@ class JudgingServiceFreezeGuardTest {
         judging = new Judging(divisionId);
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(judgingRepository.findByDivisionId(divisionId)).willReturn(Optional.of(judging));
-        table = new JudgingTable(judging.getId(), "T1", divisionCategoryId, null);
-        tableId = table.getId();
-        given(judgingTableRepository.findById(tableId)).willReturn(Optional.of(table));
+        table = new JudgingRound(judging.getId(), "T1", divisionCategoryId, null);
+        roundId = table.getId();
+        given(judgingRoundRepository.findById(roundId)).willReturn(Optional.of(table));
         var cat = mock(DivisionCategory.class);
         given(cat.getDivisionId()).willReturn(divisionId);
         given(competitionService.findDivisionCategoryById(divisionCategoryId)).willReturn(cat);
@@ -96,38 +96,38 @@ class JudgingServiceFreezeGuardTest {
 
     @Test
     void shouldRejectCreateTableWhenResultsPublished() {
-        assertFrozen(() -> service.createTable(judging.getId(), "Table 1",
+        assertFrozen(() -> service.createRound(judging.getId(), "Table 1",
                 divisionCategoryId, LocalDate.of(2026, 7, 1), adminUserId));
     }
 
     @Test
     void shouldRejectUpdateTableNameWhenResultsPublished() {
-        assertFrozen(() -> service.updateTableName(tableId, "New", adminUserId));
+        assertFrozen(() -> service.updateRoundName(roundId, "New", adminUserId));
     }
 
     @Test
     void shouldRejectUpdateTableScheduledDateWhenResultsPublished() {
-        assertFrozen(() -> service.updateTableScheduledDate(tableId, LocalDate.now(), adminUserId));
+        assertFrozen(() -> service.updateRoundScheduledDate(roundId, LocalDate.now(), adminUserId));
     }
 
     @Test
     void shouldRejectDeleteTableWhenResultsPublished() {
-        assertFrozen(() -> service.deleteTable(tableId, adminUserId));
+        assertFrozen(() -> service.deleteRound(roundId, adminUserId));
     }
 
     @Test
     void shouldRejectAssignJudgeWhenResultsPublished() {
-        assertFrozen(() -> service.assignJudge(tableId, judgeUserId, adminUserId));
+        assertFrozen(() -> service.assignJudge(roundId, judgeUserId, adminUserId));
     }
 
     @Test
     void shouldRejectRemoveJudgeWhenResultsPublished() {
-        assertFrozen(() -> service.removeJudge(tableId, judgeUserId, adminUserId));
+        assertFrozen(() -> service.removeJudge(roundId, judgeUserId, adminUserId));
     }
 
     @Test
     void shouldRejectStartTableWhenResultsPublished() {
-        assertFrozen(() -> service.startTable(tableId, adminUserId));
+        assertFrozen(() -> service.startRound(roundId, adminUserId));
     }
 
     @Test

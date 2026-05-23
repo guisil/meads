@@ -11,7 +11,7 @@ import app.meads.identity.Role;
 import app.meads.identity.UserService;
 import app.meads.judging.JudgeProfileService;
 import app.meads.judging.JudgingService;
-import app.meads.judging.JudgingTable;
+import app.meads.judging.JudgingRound;
 import app.meads.judging.ScoreField;
 import app.meads.judging.Scoresheet;
 import app.meads.judging.ScoresheetService;
@@ -61,7 +61,7 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
 
     private Competition competition;
     private Division division;
-    private JudgingTable table;
+    private JudgingRound table;
     private Scoresheet scoresheet;
     private Entry entry;
     private UUID currentUserId;
@@ -124,7 +124,7 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
         }
         scoresheet = maybeSheet.get();
 
-        var maybeTable = judgingService.findTableById(scoresheet.getTableId());
+        var maybeTable = judgingService.findRoundById(scoresheet.getRoundId());
         if (maybeTable.isEmpty()) {
             event.forwardTo("");
             return;
@@ -146,7 +146,7 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
         var user = userService.findById(currentUserId);
         boolean isSystemAdmin = user.getRole() == Role.SYSTEM_ADMIN;
         boolean isDivisionAdmin = competitionService.isAuthorizedForDivision(division.getId(), currentUserId);
-        boolean isAssignedJudge = judgingService.isJudgeAssignedToTable(table.getId(), currentUserId);
+        boolean isAssignedJudge = judgingService.isJudgeAssignedToRound(table.getId(), currentUserId);
 
         if (!isSystemAdmin && !isDivisionAdmin && !isAssignedJudge) {
             event.forwardTo("");

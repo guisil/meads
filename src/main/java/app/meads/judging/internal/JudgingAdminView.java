@@ -21,8 +21,8 @@ import app.meads.judging.JudgingPhase;
 import app.meads.judging.BosPlacement;
 import app.meads.judging.Judging;
 import app.meads.judging.JudgingService;
-import app.meads.judging.JudgingTable;
-import app.meads.judging.JudgingTableStatus;
+import app.meads.judging.JudgingRound;
+import app.meads.judging.JudgingRoundStatus;
 import app.meads.judging.MedalAward;
 import app.meads.judging.MedalRoundMode;
 import app.meads.judging.ScoresheetService;
@@ -82,7 +82,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
     private String divShortName;
     private UUID currentUserId;
 
-    private Grid<JudgingTable> tablesGrid;
+    private Grid<JudgingRound> tablesGrid;
 
     public JudgingAdminView(CompetitionService competitionService,
                             UserService userService,
@@ -204,9 +204,9 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         addButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         tab.add(addButton);
 
-        tablesGrid = new Grid<>(JudgingTable.class, false);
+        tablesGrid = new Grid<>(JudgingRound.class, false);
         tablesGrid.setId("tables-grid");
-        tablesGrid.addColumn(JudgingTable::getName)
+        tablesGrid.addColumn(JudgingRound::getName)
                 .setHeader(getTranslation("judging-admin.tables.column.name"));
         tablesGrid.addColumn(t -> formatCategory(t.getDivisionCategoryId()))
                 .setHeader(getTranslation("judging-admin.tables.column.category"));
@@ -229,12 +229,12 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
     }
 
     private void refreshTablesGrid() {
-        tablesGrid.setItems(judgingService.findTablesByJudgingId(judging.getId()));
+        tablesGrid.setItems(judgingService.findRoundsByJudgingId(judging.getId()));
     }
 
-    private String formatScoresheetCounts(JudgingTable table) {
-        long drafts = scoresheetService.countByTableIdAndStatus(table.getId(), ScoresheetStatus.DRAFT);
-        long submitted = scoresheetService.countByTableIdAndStatus(table.getId(), ScoresheetStatus.SUBMITTED);
+    private String formatScoresheetCounts(JudgingRound table) {
+        long drafts = scoresheetService.countByRoundIdAndStatus(table.getId(), ScoresheetStatus.DRAFT);
+        long submitted = scoresheetService.countByRoundIdAndStatus(table.getId(), ScoresheetStatus.SUBMITTED);
         if (drafts == 0 && submitted == 0) {
             return "—";
         }
@@ -293,7 +293,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
                 return;
             }
             try {
-                judgingService.createTable(judging.getId(), nameField.getValue().trim(),
+                judgingService.createRound(judging.getId(), nameField.getValue().trim(),
                         categorySelect.getValue().getId(), datePicker.getValue(), currentUserId);
                 dialog.close();
                 refreshTablesGrid();
@@ -313,7 +313,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         dialog.open();
     }
 
-    private HorizontalLayout createActionsCell(JudgingTable table) {
+    private HorizontalLayout createActionsCell(JudgingRound table) {
         var editButton = new Button(new Icon(VaadinIcon.EDIT));
         editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
         editButton.setTooltipText(getTranslation("judging-admin.tables.action.edit"));
@@ -321,7 +321,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
 
         var startButton = new Button(new Icon(VaadinIcon.PLAY));
         startButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-        startButton.setEnabled(table.getStatus() == JudgingTableStatus.NOT_STARTED);
+        startButton.setEnabled(table.getStatus() == JudgingRoundStatus.NOT_STARTED);
         startButton.setTooltipText(getTranslation("judging-admin.tables.action.start"));
         startButton.addClickListener(e -> openStartTableDialog(table));
 
@@ -332,7 +332,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
 
         var deleteButton = new Button(new Icon(VaadinIcon.TRASH));
         deleteButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-        boolean canDelete = table.getStatus() == JudgingTableStatus.NOT_STARTED
+        boolean canDelete = table.getStatus() == JudgingRoundStatus.NOT_STARTED
                 && table.getAssignments().isEmpty();
         deleteButton.setEnabled(canDelete);
         deleteButton.setTooltipText(canDelete
@@ -343,7 +343,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         return new HorizontalLayout(editButton, startButton, assignJudgesButton, deleteButton);
     }
 
-    public void openEditTableDialog(JudgingTable table) {
+    public void openEditTableDialog(JudgingRound table) {
         var dialog = new Dialog();
         dialog.setHeaderTitle(getTranslation("judging-admin.tables.action.edit"));
 
@@ -372,10 +372,10 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
             }
             try {
                 if (!nameField.getValue().trim().equals(table.getName())) {
-                    judgingService.updateTableName(table.getId(), nameField.getValue().trim(), currentUserId);
+                    judgingService.updateRoundName(table.getId(), nameField.getValue().trim(), currentUserId);
                 }
                 if (!java.util.Objects.equals(datePicker.getValue(), table.getScheduledDate())) {
-                    judgingService.updateTableScheduledDate(table.getId(), datePicker.getValue(), currentUserId);
+                    judgingService.updateRoundScheduledDate(table.getId(), datePicker.getValue(), currentUserId);
                 }
                 dialog.close();
                 refreshTablesGrid();
@@ -395,7 +395,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         dialog.open();
     }
 
-    public void openStartTableDialog(JudgingTable table) {
+    public void openStartTableDialog(JudgingRound table) {
         var dialog = new Dialog();
         dialog.setHeaderTitle(getTranslation("judging-admin.tables.action.start.confirm.title", table.getName()));
         boolean hasEntries = !entryService.findEntriesByFinalCategoryId(table.getDivisionCategoryId()).isEmpty();
@@ -406,7 +406,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
 
         var startButton = new Button(getTranslation("judging-admin.tables.action.start"), e -> {
             try {
-                judgingService.startTable(table.getId(), currentUserId);
+                judgingService.startRound(table.getId(), currentUserId);
                 dialog.close();
                 refreshTablesGrid();
                 Notification.show(getTranslation("judging-admin.tables.started"))
@@ -425,7 +425,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         dialog.open();
     }
 
-    public void openAssignJudgesDialog(JudgingTable table) {
+    public void openAssignJudgesDialog(JudgingRound table) {
         var dialog = new Dialog();
         dialog.setHeaderTitle(getTranslation("judging-admin.tables.action.assign-judges"));
         dialog.setWidth("700px");
@@ -506,14 +506,14 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         return layout;
     }
 
-    public void openDeleteTableDialog(JudgingTable table) {
+    public void openDeleteTableDialog(JudgingRound table) {
         var dialog = new Dialog();
         dialog.setHeaderTitle(getTranslation("judging-admin.tables.action.delete.confirm.title", table.getName()));
         dialog.add(new Span(getTranslation("judging-admin.tables.action.delete.confirm.body")));
 
         var deleteButton = new Button(getTranslation("button.delete"), e -> {
             try {
-                judgingService.deleteTable(table.getId(), currentUserId);
+                judgingService.deleteRound(table.getId(), currentUserId);
                 dialog.close();
                 refreshTablesGrid();
                 Notification.show(getTranslation("judging-admin.tables.deleted"))
@@ -770,11 +770,11 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
     }
 
     private String formatTablesProgress(CategoryJudgingConfig config) {
-        var tables = judgingService.findTablesByJudgingId(judging.getId()).stream()
+        var tables = judgingService.findRoundsByJudgingId(judging.getId()).stream()
                 .filter(t -> config.getDivisionCategoryId().equals(t.getDivisionCategoryId()))
                 .toList();
         long complete = tables.stream()
-                .filter(t -> t.getStatus() == JudgingTableStatus.COMPLETE)
+                .filter(t -> t.getStatus() == JudgingRoundStatus.COMPLETE)
                 .count();
         return complete + " / " + tables.size();
     }

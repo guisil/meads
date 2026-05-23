@@ -10,7 +10,7 @@ import app.meads.entry.EntryStatus;
 import app.meads.judging.CoiCheckService.CoiResult;
 import app.meads.judging.internal.CategoryJudgingConfigRepository;
 import app.meads.judging.internal.JudgingRepository;
-import app.meads.judging.internal.JudgingTableRepository;
+import app.meads.judging.internal.JudgingRoundRepository;
 import app.meads.judging.internal.MjpScoringFieldDefinition;
 import app.meads.judging.internal.ScoresheetRepository;
 import app.meads.judging.internal.ScoresheetServiceImpl;
@@ -46,7 +46,7 @@ class ScoresheetServiceTest {
     ScoresheetRepository scoresheetRepository;
 
     @Mock
-    JudgingTableRepository judgingTableRepository;
+    JudgingRoundRepository judgingRoundRepository;
 
     @Mock
     CategoryJudgingConfigRepository categoryConfigRepository;
@@ -71,11 +71,11 @@ class ScoresheetServiceTest {
 
     UUID divisionId;
     UUID divisionCategoryId;
-    UUID tableId;
+    UUID roundId;
     UUID judgeUserId;
     UUID adminUserId;
     UUID competitionId;
-    JudgingTable table;
+    JudgingRound table;
     Judging judging;
 
     @BeforeEach
@@ -86,12 +86,12 @@ class ScoresheetServiceTest {
         adminUserId = UUID.randomUUID();
         competitionId = UUID.randomUUID();
         judging = new Judging(divisionId);
-        table = new JudgingTable(judging.getId(), "T1", divisionCategoryId, LocalDate.of(2026, 7, 1));
-        tableId = table.getId();
+        table = new JudgingRound(judging.getId(), "T1", divisionCategoryId, LocalDate.of(2026, 7, 1));
+        roundId = table.getId();
         var nonFrozenDivision = mock(Division.class);
         lenient().when(nonFrozenDivision.getStatus()).thenReturn(DivisionStatus.JUDGING);
         lenient().when(competitionService.findDivisionById(any())).thenReturn(nonFrozenDivision);
-        lenient().when(judgingTableRepository.findById(tableId)).thenReturn(Optional.of(table));
+        lenient().when(judgingRoundRepository.findById(roundId)).thenReturn(Optional.of(table));
         lenient().when(judgingRepository.findById(judging.getId())).thenReturn(Optional.of(judging));
     }
 
@@ -111,27 +111,27 @@ class ScoresheetServiceTest {
 
     @Test
     void shouldCountScoresheetsByTableAndStatus() {
-        given(scoresheetRepository.countByTableIdAndStatus(tableId, ScoresheetStatus.DRAFT))
+        given(scoresheetRepository.countByRoundIdAndStatus(roundId, ScoresheetStatus.DRAFT))
                 .willReturn(3L);
-        given(scoresheetRepository.countByTableIdAndStatus(tableId, ScoresheetStatus.SUBMITTED))
+        given(scoresheetRepository.countByRoundIdAndStatus(roundId, ScoresheetStatus.SUBMITTED))
                 .willReturn(2L);
 
-        assertThat(service.countByTableIdAndStatus(tableId, ScoresheetStatus.DRAFT)).isEqualTo(3L);
-        assertThat(service.countByTableIdAndStatus(tableId, ScoresheetStatus.SUBMITTED)).isEqualTo(2L);
+        assertThat(service.countByRoundIdAndStatus(roundId, ScoresheetStatus.DRAFT)).isEqualTo(3L);
+        assertThat(service.countByRoundIdAndStatus(roundId, ScoresheetStatus.SUBMITTED)).isEqualTo(2L);
     }
 
     @Test
     void shouldCreateOneScoresheetPerEntryWithMatchingFinalCategory() {
         var e1 = mockEntry(UUID.randomUUID(), UUID.randomUUID());
         var e2 = mockEntry(UUID.randomUUID(), UUID.randomUUID());
-        given(judgingTableRepository.findById(tableId)).willReturn(Optional.of(table));
+        given(judgingRoundRepository.findById(roundId)).willReturn(Optional.of(table));
         given(entryService.findEntriesByFinalCategoryId(divisionCategoryId))
                 .willReturn(List.of(e1, e2));
         given(scoresheetRepository.findByEntryId(any())).willReturn(Optional.empty());
         given(scoresheetRepository.save(any(Scoresheet.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 
-        service.createScoresheetsForTable(tableId);
+        service.createScoresheetsForTable(roundId);
 
         then(scoresheetRepository).should(org.mockito.Mockito.times(2)).save(any(Scoresheet.class));
     }
@@ -141,14 +141,14 @@ class ScoresheetServiceTest {
         var received = mockEntry(UUID.randomUUID(), UUID.randomUUID(), EntryStatus.RECEIVED);
         var submitted = mockEntry(UUID.randomUUID(), UUID.randomUUID(), EntryStatus.SUBMITTED);
         var withdrawn = mockEntry(UUID.randomUUID(), UUID.randomUUID(), EntryStatus.WITHDRAWN);
-        given(judgingTableRepository.findById(tableId)).willReturn(Optional.of(table));
+        given(judgingRoundRepository.findById(roundId)).willReturn(Optional.of(table));
         given(entryService.findEntriesByFinalCategoryId(divisionCategoryId))
                 .willReturn(List.of(received, submitted, withdrawn));
         given(scoresheetRepository.findByEntryId(any())).willReturn(Optional.empty());
         given(scoresheetRepository.save(any(Scoresheet.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 
-        service.createScoresheetsForTable(tableId);
+        service.createScoresheetsForTable(roundId);
 
         then(scoresheetRepository).should(org.mockito.Mockito.times(1)).save(any(Scoresheet.class));
     }
@@ -156,13 +156,13 @@ class ScoresheetServiceTest {
     @Test
     void shouldSkipEntriesThatAlreadyHaveAScoresheet() {
         var e1 = mockEntry(UUID.randomUUID(), UUID.randomUUID());
-        var existing = new Scoresheet(tableId, e1.getId());
-        given(judgingTableRepository.findById(tableId)).willReturn(Optional.of(table));
+        var existing = new Scoresheet(roundId, e1.getId());
+        given(judgingRoundRepository.findById(roundId)).willReturn(Optional.of(table));
         given(entryService.findEntriesByFinalCategoryId(divisionCategoryId))
                 .willReturn(List.of(e1));
         given(scoresheetRepository.findByEntryId(e1.getId())).willReturn(Optional.of(existing));
 
-        service.createScoresheetsForTable(tableId);
+        service.createScoresheetsForTable(roundId);
 
         then(scoresheetRepository).should(never()).save(any(Scoresheet.class));
     }
@@ -170,7 +170,7 @@ class ScoresheetServiceTest {
     @Test
     void shouldUpdateScoreAndSetFilledByOnFirstCall() {
         var entryId = UUID.randomUUID();
-        var scoresheet = new Scoresheet(tableId, entryId);
+        var scoresheet = new Scoresheet(roundId, entryId);
         given(scoresheetRepository.findById(scoresheet.getId())).willReturn(Optional.of(scoresheet));
         given(coiCheckService.check(judgeUserId, entryId)).willReturn(CoiResult.clear());
         given(scoresheetRepository.save(any(Scoresheet.class)))
@@ -190,7 +190,7 @@ class ScoresheetServiceTest {
     @Test
     void shouldRejectUpdateScoreWhenHardCoiBlock() {
         var entryId = UUID.randomUUID();
-        var scoresheet = new Scoresheet(tableId, entryId);
+        var scoresheet = new Scoresheet(roundId, entryId);
         given(scoresheetRepository.findById(scoresheet.getId())).willReturn(Optional.of(scoresheet));
         given(coiCheckService.check(judgeUserId, entryId)).willReturn(CoiResult.blocking());
 
@@ -205,17 +205,17 @@ class ScoresheetServiceTest {
     @Test
     void shouldSubmitScoresheetWhenAllFieldsFilled() {
         var entryId = UUID.randomUUID();
-        var scoresheet = new Scoresheet(tableId, entryId);
+        var scoresheet = new Scoresheet(roundId, entryId);
         // Fill all 5 fields with max value
         for (var def : MjpScoringFieldDefinition.MJP_FIELDS) {
             scoresheet.updateScore(def.fieldName(), def.maxValue(), null);
         }
         scoresheet.setFilledBy(judgeUserId);
         given(scoresheetRepository.findById(scoresheet.getId())).willReturn(Optional.of(scoresheet));
-        given(judgingTableRepository.findById(tableId)).willReturn(Optional.of(table));
+        given(judgingRoundRepository.findById(roundId)).willReturn(Optional.of(table));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(coiCheckService.check(judgeUserId, entryId)).willReturn(CoiResult.clear());
-        given(scoresheetRepository.findByTableId(tableId))
+        given(scoresheetRepository.findByRoundId(roundId))
                 .willReturn(List.of(scoresheet)); // last DRAFT
         given(scoresheetRepository.save(any(Scoresheet.class)))
                 .willAnswer(inv -> inv.getArgument(0));
@@ -227,13 +227,13 @@ class ScoresheetServiceTest {
 
         assertThat(scoresheet.getStatus()).isEqualTo(ScoresheetStatus.SUBMITTED);
         assertThat(scoresheet.getTotalScore()).isEqualTo(100);
-        assertThat(table.getStatus()).isEqualTo(JudgingTableStatus.COMPLETE);
+        assertThat(table.getStatus()).isEqualTo(JudgingRoundStatus.COMPLETE);
     }
 
     @Test
     void shouldRejectSubmitWhenNotAllFieldsFilled() {
         var entryId = UUID.randomUUID();
-        var scoresheet = new Scoresheet(tableId, entryId);
+        var scoresheet = new Scoresheet(roundId, entryId);
         scoresheet.updateScore(MjpScoringFieldDefinition.APPEARANCE, 10, null);
         given(scoresheetRepository.findById(scoresheet.getId())).willReturn(Optional.of(scoresheet));
         given(coiCheckService.check(judgeUserId, entryId)).willReturn(CoiResult.clear());
@@ -246,13 +246,13 @@ class ScoresheetServiceTest {
     @Test
     void shouldRevertToDraftWhenAdmin() {
         var entryId = UUID.randomUUID();
-        var scoresheet = new Scoresheet(tableId, entryId);
+        var scoresheet = new Scoresheet(roundId, entryId);
         for (var def : MjpScoringFieldDefinition.MJP_FIELDS) {
             scoresheet.updateScore(def.fieldName(), def.maxValue(), null);
         }
         scoresheet.submit();
         given(scoresheetRepository.findById(scoresheet.getId())).willReturn(Optional.of(scoresheet));
-        given(judgingTableRepository.findById(tableId)).willReturn(Optional.of(table));
+        given(judgingRoundRepository.findById(roundId)).willReturn(Optional.of(table));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
         given(scoresheetRepository.save(any(Scoresheet.class)))
@@ -267,13 +267,13 @@ class ScoresheetServiceTest {
     @Test
     void shouldRejectRevertToDraftWhenNotAuthorized() {
         var entryId = UUID.randomUUID();
-        var scoresheet = new Scoresheet(tableId, entryId);
+        var scoresheet = new Scoresheet(roundId, entryId);
         for (var def : MjpScoringFieldDefinition.MJP_FIELDS) {
             scoresheet.updateScore(def.fieldName(), def.maxValue(), null);
         }
         scoresheet.submit();
         given(scoresheetRepository.findById(scoresheet.getId())).willReturn(Optional.of(scoresheet));
-        given(judgingTableRepository.findById(tableId)).willReturn(Optional.of(table));
+        given(judgingRoundRepository.findById(roundId)).willReturn(Optional.of(table));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(false);
 
@@ -285,36 +285,36 @@ class ScoresheetServiceTest {
     @Test
     void shouldMoveScoresheetToNewTableWhenCategoryMatches() {
         var entryId = UUID.randomUUID();
-        var scoresheet = new Scoresheet(tableId, entryId);
-        var newTable = new JudgingTable(judging.getId(), "T2", divisionCategoryId, null);
+        var scoresheet = new Scoresheet(roundId, entryId);
+        var newTable = new JudgingRound(judging.getId(), "T2", divisionCategoryId, null);
         var entry = mockEntry(entryId, UUID.randomUUID());
         given(scoresheetRepository.findById(scoresheet.getId())).willReturn(Optional.of(scoresheet));
-        given(judgingTableRepository.findById(newTable.getId())).willReturn(Optional.of(newTable));
+        given(judgingRoundRepository.findById(newTable.getId())).willReturn(Optional.of(newTable));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
         given(entryService.findEntryById(entryId)).willReturn(entry);
         given(scoresheetRepository.save(any(Scoresheet.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 
-        service.moveToTable(scoresheet.getId(), newTable.getId(), adminUserId);
+        service.moveToRound(scoresheet.getId(), newTable.getId(), adminUserId);
 
-        assertThat(scoresheet.getTableId()).isEqualTo(newTable.getId());
+        assertThat(scoresheet.getRoundId()).isEqualTo(newTable.getId());
     }
 
     @Test
     void shouldRejectMoveToTableWhenCategoryMismatch() {
         var entryId = UUID.randomUUID();
-        var scoresheet = new Scoresheet(tableId, entryId);
+        var scoresheet = new Scoresheet(roundId, entryId);
         var differentCategory = UUID.randomUUID();
-        var newTable = new JudgingTable(judging.getId(), "T2", differentCategory, null);
+        var newTable = new JudgingRound(judging.getId(), "T2", differentCategory, null);
         var entry = mockEntry(entryId, UUID.randomUUID());
         given(scoresheetRepository.findById(scoresheet.getId())).willReturn(Optional.of(scoresheet));
-        given(judgingTableRepository.findById(newTable.getId())).willReturn(Optional.of(newTable));
+        given(judgingRoundRepository.findById(newTable.getId())).willReturn(Optional.of(newTable));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
         given(entryService.findEntryById(entryId)).willReturn(entry);
 
-        assertThatThrownBy(() -> service.moveToTable(scoresheet.getId(), newTable.getId(), adminUserId))
+        assertThatThrownBy(() -> service.moveToRound(scoresheet.getId(), newTable.getId(), adminUserId))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("error.scoresheet.category-mismatch");
     }
@@ -322,10 +322,10 @@ class ScoresheetServiceTest {
     @Test
     void shouldSetCommentLanguageWhenValidIsoCode() {
         var entryId = UUID.randomUUID();
-        var scoresheet = new Scoresheet(tableId, entryId);
+        var scoresheet = new Scoresheet(roundId, entryId);
         var division = mock(app.meads.competition.Division.class);
         given(scoresheetRepository.findById(scoresheet.getId())).willReturn(Optional.of(scoresheet));
-        given(judgingTableRepository.findById(tableId)).willReturn(Optional.of(table));
+        given(judgingRoundRepository.findById(roundId)).willReturn(Optional.of(table));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(coiCheckService.check(judgeUserId, entryId)).willReturn(CoiResult.clear());
         given(competitionService.findDivisionById(divisionId)).willReturn(division);
@@ -342,10 +342,10 @@ class ScoresheetServiceTest {
     @Test
     void shouldRejectSetCommentLanguageWhenNotValidIsoCode() {
         var entryId = UUID.randomUUID();
-        var scoresheet = new Scoresheet(tableId, entryId);
+        var scoresheet = new Scoresheet(roundId, entryId);
         var division = mock(app.meads.competition.Division.class);
         given(scoresheetRepository.findById(scoresheet.getId())).willReturn(Optional.of(scoresheet));
-        given(judgingTableRepository.findById(tableId)).willReturn(Optional.of(table));
+        given(judgingRoundRepository.findById(roundId)).willReturn(Optional.of(table));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(coiCheckService.check(judgeUserId, entryId)).willReturn(CoiResult.clear());
         given(competitionService.findDivisionById(divisionId)).willReturn(division);

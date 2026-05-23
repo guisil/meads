@@ -24,7 +24,7 @@ import app.meads.judging.internal.BosPlacementRepository;
 import app.meads.judging.internal.CategoryJudgingConfigRepository;
 import app.meads.judging.internal.JudgingAdminView;
 import app.meads.judging.internal.JudgingRepository;
-import app.meads.judging.internal.JudgingTableRepository;
+import app.meads.judging.internal.JudgingRoundRepository;
 import app.meads.judging.internal.MedalAwardRepository;
 import com.github.mvysny.fakeservlet.FakeRequest;
 import com.github.mvysny.kaributesting.v10.MockVaadin;
@@ -97,7 +97,7 @@ class JudgingAdminViewTest {
     CompetitionService competitionService;
 
     @Autowired
-    JudgingTableRepository judgingTableRepository;
+    JudgingRoundRepository judgingRoundRepository;
 
     @Autowired
     CategoryJudgingConfigRepository categoryJudgingConfigRepository;
@@ -402,7 +402,7 @@ class JudgingAdminViewTest {
 
         var view = _get(JudgingAdminView.class);
         var judging = judgingService.ensureJudgingExists(division.getId());
-        var table = judgingService.createTable(judging.getId(), "Table 1",
+        var table = judgingService.createRound(judging.getId(), "Table 1",
                 category.getId(), null, admin.getId());
 
         view.openAssignJudgesDialog(table);
@@ -414,7 +414,7 @@ class JudgingAdminViewTest {
 
         _click(_get(Button.class, spec -> spec.withText("Save")));
 
-        assertThat(judgingTableRepository.countAssignmentsByTableId(table.getId())).isEqualTo(2);
+        assertThat(judgingRoundRepository.countAssignmentsByTableId(table.getId())).isEqualTo(2);
     }
 
     @Test
@@ -435,7 +435,7 @@ class JudgingAdminViewTest {
         var view = _get(JudgingAdminView.class);
         var judging = judgingService.ensureJudgingExists(division.getId());
         var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
-        var table = judgingService.createTable(judging.getId(), "Table 1",
+        var table = judgingService.createRound(judging.getId(), "Table 1",
                 category.getId(), null, admin.getId());
         judgingService.assignJudge(table.getId(), judge1.getId(), admin.getId());
         judgingService.assignJudge(table.getId(), judge2.getId(), admin.getId());
@@ -444,7 +444,7 @@ class JudgingAdminViewTest {
 
         _click(_get(Button.class, spec -> spec.withText("Start")));
 
-        var refreshed = judgingService.findTablesByJudgingId(judging.getId()).get(0);
+        var refreshed = judgingService.findRoundsByJudgingId(judging.getId()).get(0);
         assertThat(refreshed.getStatus().name()).isEqualTo("ROUND_1");
     }
 
@@ -462,13 +462,13 @@ class JudgingAdminViewTest {
         var view = _get(JudgingAdminView.class);
         var judging = judgingService.ensureJudgingExists(division.getId());
         var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
-        var table = judgingService.createTable(judging.getId(), "Empty Table",
+        var table = judgingService.createRound(judging.getId(), "Empty Table",
                 category.getId(), null, admin.getId());
 
         view.openStartTableDialog(table);
         _click(_get(Button.class, spec -> spec.withText("Start")));
 
-        var refreshed = judgingService.findTablesByJudgingId(judging.getId()).get(0);
+        var refreshed = judgingService.findRoundsByJudgingId(judging.getId()).get(0);
         assertThat(refreshed.getStatus().name()).isEqualTo("NOT_STARTED");
     }
 
@@ -485,14 +485,14 @@ class JudgingAdminViewTest {
         var view = _get(JudgingAdminView.class);
         var judging = judgingService.ensureJudgingExists(division.getId());
         var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
-        var table = judgingService.createTable(judging.getId(), "Doomed Table",
+        var table = judgingService.createRound(judging.getId(), "Doomed Table",
                 category.getId(), null, admin.getId());
 
         view.openDeleteTableDialog(table);
 
         _click(_get(Button.class, spec -> spec.withText("Delete")));
 
-        assertThat(judgingService.findTablesByJudgingId(judging.getId())).isEmpty();
+        assertThat(judgingService.findRoundsByJudgingId(judging.getId())).isEmpty();
     }
 
     @Test
@@ -508,7 +508,7 @@ class JudgingAdminViewTest {
         var view = _get(JudgingAdminView.class);
         var judging = judgingService.ensureJudgingExists(division.getId());
         var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
-        var table = judgingService.createTable(judging.getId(), "Original Name",
+        var table = judgingService.createRound(judging.getId(), "Original Name",
                 category.getId(), LocalDate.of(2026, 7, 1), admin.getId());
 
         view.openEditTableDialog(table);
@@ -520,7 +520,7 @@ class JudgingAdminViewTest {
 
         _click(_get(Button.class, spec -> spec.withText("Save")));
 
-        var refreshed = judgingService.findTablesByJudgingId(judging.getId()).get(0);
+        var refreshed = judgingService.findRoundsByJudgingId(judging.getId()).get(0);
         assertThat(refreshed.getName()).isEqualTo("Renamed Table");
         assertThat(refreshed.getScheduledDate()).isEqualTo(LocalDate.of(2026, 8, 15));
     }
@@ -555,7 +555,7 @@ class JudgingAdminViewTest {
         _click(_get(Button.class, spec -> spec.withText("Save")));
 
         var judging = judgingService.ensureJudgingExists(division.getId());
-        var tables = judgingService.findTablesByJudgingId(judging.getId());
+        var tables = judgingService.findRoundsByJudgingId(judging.getId());
         assertThat(tables).hasSize(1);
         assertThat(tables.get(0).getName()).isEqualTo("Table 1");
         assertThat(tables.get(0).getDivisionCategoryId()).isEqualTo(category.getId());

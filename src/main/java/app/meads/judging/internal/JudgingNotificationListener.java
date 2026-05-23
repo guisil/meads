@@ -8,7 +8,7 @@ import app.meads.identity.JwtMagicLinkService;
 import app.meads.identity.UserService;
 import app.meads.judging.MedalRoundActivatedEvent;
 import app.meads.judging.ScoresheetRevertedEvent;
-import app.meads.judging.TableStartedEvent;
+import app.meads.judging.RoundStartedEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
@@ -30,7 +30,7 @@ public class JudgingNotificationListener {
 
     private static final Duration LINK_VALIDITY = Duration.ofDays(7);
 
-    private final JudgingTableRepository judgingTableRepository;
+    private final JudgingRoundRepository judgingRoundRepository;
     private final ScoresheetRepository scoresheetRepository;
     private final CompetitionService competitionService;
     private final EntryService entryService;
@@ -38,14 +38,14 @@ public class JudgingNotificationListener {
     private final EmailService emailService;
     private final JwtMagicLinkService jwtMagicLinkService;
 
-    JudgingNotificationListener(JudgingTableRepository judgingTableRepository,
+    JudgingNotificationListener(JudgingRoundRepository judgingRoundRepository,
                                 ScoresheetRepository scoresheetRepository,
                                 CompetitionService competitionService,
                                 EntryService entryService,
                                 UserService userService,
                                 EmailService emailService,
                                 JwtMagicLinkService jwtMagicLinkService) {
-        this.judgingTableRepository = judgingTableRepository;
+        this.judgingRoundRepository = judgingRoundRepository;
         this.scoresheetRepository = scoresheetRepository;
         this.competitionService = competitionService;
         this.entryService = entryService;
@@ -55,10 +55,10 @@ public class JudgingNotificationListener {
     }
 
     @ApplicationModuleListener
-    public void on(TableStartedEvent event) {
-        var table = judgingTableRepository.findById(event.tableId()).orElse(null);
+    public void on(RoundStartedEvent event) {
+        var table = judgingRoundRepository.findById(event.roundId()).orElse(null);
         if (table == null) {
-            log.warn("TableStartedEvent for unknown table {} — no judges notified", event.tableId());
+            log.warn("RoundStartedEvent for unknown table {} — no judges notified", event.roundId());
             return;
         }
         var division = competitionService.findDivisionById(event.divisionId());
@@ -106,7 +106,7 @@ public class JudgingNotificationListener {
 
     @ApplicationModuleListener
     public void on(MedalRoundActivatedEvent event) {
-        var tables = judgingTableRepository.findByDivisionCategoryId(event.divisionCategoryId());
+        var tables = judgingRoundRepository.findByDivisionCategoryId(event.divisionCategoryId());
         var judgeUserIds = new LinkedHashSet<UUID>();
         for (var table : tables) {
             for (var assignment : table.getAssignments()) {

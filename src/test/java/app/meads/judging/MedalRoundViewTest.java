@@ -175,7 +175,7 @@ class MedalRoundViewTest {
         return category;
     }
 
-    private void submittedScoreBasedEntry(DivisionCategory category, JudgingTable table,
+    private void submittedScoreBasedEntry(DivisionCategory category, JudgingRound table,
                                           String code, int total) {
         var entrant = userRepository.save(new User(
                 "mr-sb-" + UUID.randomUUID() + "@example.com",
@@ -202,14 +202,14 @@ class MedalRoundViewTest {
         scoresheetRepository.save(sheet);
     }
 
-    private JudgingTable tableFor(DivisionCategory category) {
+    private JudgingRound tableFor(DivisionCategory category) {
         var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
         var judging = judgingService.ensureJudgingExists(division.getId());
-        return judgingService.createTable(judging.getId(), "Table A",
+        return judgingService.createRound(judging.getId(), "Table A",
                 category.getId(), null, admin.getId());
     }
 
-    private void advancedEntry(DivisionCategory category, JudgingTable table, String code) {
+    private void advancedEntry(DivisionCategory category, JudgingRound table, String code) {
         var entrant = userRepository.save(new User(
                 "mr-entrant-" + UUID.randomUUID() + "@example.com",
                 "Entrant", UserStatus.ACTIVE, Role.USER));
