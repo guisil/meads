@@ -438,7 +438,12 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
 
         var addEntryButton = new Button(getTranslation("entry-admin.entries.add"), e -> openAdminAddEntryConfirmDialog());
 
-        var toolbar = new HorizontalLayout(filterField, statusSelect, addEntryButton, downloadAllBtn);
+        var autoAssignBtn = new Button(getTranslation("entry-admin.entries.auto-assign-final-categories"),
+                e -> openAutoAssignFinalCategoriesDialog());
+        autoAssignBtn.setId("auto-assign-final-categories-button");
+        autoAssignBtn.setVisible(division.getStatus().allowsJudgingCategoryManagement());
+
+        var toolbar = new HorizontalLayout(filterField, statusSelect, addEntryButton, autoAssignBtn, downloadAllBtn);
         toolbar.setWidthFull();
         toolbar.setFlexGrow(1, filterField);
         toolbar.setDefaultVerticalComponentAlignment(Alignment.BASELINE);
@@ -663,6 +668,32 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
     private void refreshCreditsBalance() {
         int creditsBalance = entryService.getTotalCreditBalance(divisionId);
         totalCreditsLabel.setText(getTranslation("entry-admin.entries.summary.credits", creditsBalance));
+    }
+
+    private void openAutoAssignFinalCategoriesDialog() {
+        var confirm = new Dialog();
+        confirm.setId("auto-assign-final-categories-dialog");
+        confirm.setHeaderTitle(getTranslation("entry-admin.entries.auto-assign-final-categories.title"));
+        confirm.add(new Span(getTranslation("entry-admin.entries.auto-assign-final-categories.body")));
+        var proceedButton = new Button(getTranslation("entry-admin.entries.auto-assign-final-categories.confirm"), e -> {
+            try {
+                int assigned = entryService.assignFinalCategoriesByCode(divisionId, getCurrentUserId());
+                Notification.show(getTranslation(
+                        "entry-admin.entries.auto-assign-final-categories.success",
+                        assigned)).addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                confirm.close();
+                refreshEntriesGrid();
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                e.getSource().setEnabled(true);
+            }
+        });
+        proceedButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        proceedButton.setDisableOnClick(true);
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> confirm.close());
+        confirm.getFooter().add(cancelButton, proceedButton);
+        confirm.open();
     }
 
     private void openAdminAddEntryConfirmDialog() {

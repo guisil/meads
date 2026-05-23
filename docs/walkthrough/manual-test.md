@@ -1644,6 +1644,21 @@ entering judging.
 - [ ] **Expected:** Notification "Entry updated"; Final Category column shows the chosen value.
 - [ ] **Leave one RECEIVED entry without a final category** for the §12.5.1 guard rejection check.
 
+#### 12.5.0 Bulk auto-assign final categories (convenience)
+
+Once judging categories exist (`allowsJudgingCategoryManagement()`), the Entries
+tab toolbar shows an **"Auto-assign final categories"** button (id
+`auto-assign-final-categories-button`). It runs
+`EntryService.assignFinalCategoriesByCode`, which sets `finalCategoryId` on every
+SUBMITTED/RECEIVED entry that still has none, matching the entry's
+initialCategory **code** to a JUDGING-scope category with the same code.
+
+- [ ] On Amadora's Entry Admin → Entries tab, click **"Auto-assign final categories"**.
+- [ ] **Expected:** Confirmation dialog explains the scope (SUBMITTED/RECEIVED entries only; DRAFT and WITHDRAWN skipped; existing assignments untouched). Click **"Assign now"**.
+- [ ] **Expected:** Green notification "Assigned N final category/categories." with N = number actually modified.
+- [ ] **Expected:** The Final Category column populates for all eligible entries whose codes match.
+- [ ] Entries whose initial-category code has no matching JUDGING category remain unassigned and must be set manually via the Edit dialog.
+
 #### 12.5.1 Advance-to-judging guard rejection (entries missing final category)
 
 - [ ] Go back to Amadora division header. Click "Advance Status" → confirm.
@@ -1838,6 +1853,32 @@ For this you need a *second* ROUND_1 table in the same JUDGING category. Create 
 - [ ] If no candidate tables exist: **Expected** the empty-state message "No other ROUND_1 tables cover this category. Add a table first." and a disabled Save button.
 - [ ] Pick a target, click Save.
 - [ ] **Expected:** Notification "Moved scoresheet to {targetName}."; row disappears from this table's grid (reload to re-render).
+
+##### Delete scoresheet (cleanup before reverting entry status)
+
+Admins occasionally need to revert an entry's status (RECEIVED → SUBMITTED) or
+withdraw it after judging has begun (e.g., bottle pulled mid-competition because of
+a defect spotted later). The `EntryStatusRevertGuard` in the entry module rejects
+those status changes whenever a scoresheet exists for the entry, so admins must
+delete the scoresheet from its judging table first.
+
+- [ ] On any row, click 🗑 **Delete scoresheet** (tooltip "Delete scoresheet" — admin-only).
+- [ ] **Expected:** Confirmation dialog *"Delete scoresheet for {entryCode}?"* explaining the scoresheet (and any draft scores/comments) will be permanently removed; the entry stays at its current status.
+- [ ] Click **Delete**. **Expected:** notification "Deleted scoresheet for {entryCode}."; row disappears.
+- [ ] **Expected:** The delete button is disabled with the tooltip *"Cannot delete the scoresheet while the medal round is active or complete for this category."* once the category's medal round has started — same rule as Revert.
+- [ ] (Test the EntryService side) Back on Entry Admin, try to revert the same RECEIVED entry to SUBMITTED (`←` arrow). **Expected:** error notification *"Cannot change the entry's status: a scoresheet already exists on a judging table…"* if a scoresheet still exists; succeeds after deletion.
+
+##### Auto-create scoresheet when SUBMITTED → RECEIVED during JUDGING
+
+When an entry transitions to RECEIVED *during* JUDGING (e.g., the bottle arrived late
+and was checked in after the table started), the entry module fires an
+`EntryReceivedEvent` and `EntryReceivedScoresheetListener` (judging.internal) calls
+`ScoresheetService.ensureScoresheetForEntry` — a DRAFT scoresheet is created on the
+matching ROUND_1 table for that entry's final category.
+
+- [ ] On Entry Admin, pick a SUBMITTED entry whose final category matches a started table → click the `→` advance arrow to mark it RECEIVED.
+- [ ] **Expected:** Back on Manage Judging → Tables → that table, the new entry now has a DRAFT scoresheet (Scoresheets count incremented).
+- [ ] If no matching ROUND_1 table exists (different category, or table is COMPLETE), `ensureScoresheetForEntry` is a no-op — admin must create or move tables as needed.
 
 ### 12.11 ScoresheetView (judge form)
 

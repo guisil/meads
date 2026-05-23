@@ -271,7 +271,45 @@ public class TableView extends VerticalLayout implements BeforeEnterObserver {
             moveButton.addClickListener(e -> openMoveDialog(sheet));
             actions.add(moveButton);
         }
+        if (isAdmin) {
+            var deleteButton = new Button(new Icon(VaadinIcon.TRASH));
+            deleteButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE, ButtonVariant.LUMO_ERROR);
+            boolean medalRoundLocks = medalRoundLocksRevert(sheet);
+            deleteButton.setEnabled(!medalRoundLocks);
+            deleteButton.setTooltipText(medalRoundLocks
+                    ? getTranslation("table.delete.blocked.medal-round-active")
+                    : getTranslation("table.action.delete"));
+            deleteButton.addClickListener(e -> openDeleteScoresheetDialog(sheet));
+            actions.add(deleteButton);
+        }
         return actions;
+    }
+
+    private void openDeleteScoresheetDialog(Scoresheet sheet) {
+        var entry = entriesById.get(sheet.getEntryId());
+        var entryLabel = entry == null ? "" : entry.getEntryCode();
+        var dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("table.delete.dialog.title", entryLabel));
+        dialog.add(new Span(getTranslation("table.delete.dialog.body", entryLabel)));
+        var confirm = new Button(getTranslation("button.delete"), e -> {
+            try {
+                scoresheetService.deleteScoresheet(sheet.getId(), getCurrentUserId());
+                dialog.close();
+                loadScoresheetData();
+                scoresheetsGrid.setItems(allSheets);
+                Notification.show(getTranslation("table.delete.success", entryLabel))
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                e.getSource().setEnabled(true);
+            }
+        });
+        confirm.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_PRIMARY);
+        confirm.setDisableOnClick(true);
+        var cancel = new Button(getTranslation("button.cancel"), e -> dialog.close());
+        dialog.getFooter().add(cancel, confirm);
+        dialog.open();
     }
 
     private boolean medalRoundLocksRevert(Scoresheet sheet) {

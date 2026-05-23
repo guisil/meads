@@ -30,6 +30,15 @@ public interface ScoresheetService {
 
     void moveToTable(@NotNull UUID scoresheetId, @NotNull UUID newTableId, @NotNull UUID adminUserId);
 
+    /**
+     * Permanently removes a scoresheet from its table. Admin-only, blocked
+     * once the category's medal round is active or complete (mirrors the
+     * revert-to-draft rule). Used by admins who need to revert an entry's
+     * status (RECEIVED → SUBMITTED) or withdraw an entry that already has a
+     * scoresheet on a table.
+     */
+    void deleteScoresheet(@NotNull UUID scoresheetId, @NotNull UUID adminUserId);
+
     long countByTableIdAndStatus(@NotNull UUID tableId, @NotNull ScoresheetStatus status);
 
     List<Scoresheet> findByTableId(@NotNull UUID tableId);

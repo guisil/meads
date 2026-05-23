@@ -72,6 +72,9 @@ class EntryServiceTest {
     @Mock
     ApplicationEventPublisher eventPublisher;
 
+    @org.mockito.Spy
+    java.util.List<EntryStatusRevertGuard> statusRevertGuards = new java.util.ArrayList<>();
+
     private User createSystemAdmin() {
         return new User("admin@test.com", "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
     }
@@ -1738,6 +1741,63 @@ class EntryServiceTest {
                 entry.getId(), UUID.randomUUID(), regularUser.getId()))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("error.auth.unauthorized");
+    }
+
+    @Test
+    void shouldBulkAssignFinalCategoriesByMatchingCode() {
+        var competitionId = UUID.randomUUID();
+        var division = createRegistrationClosedDivision(competitionId);
+        var adminUser = createSystemAdmin();
+        var regM1A = new DivisionCategory(division.getId(), null,
+                "M1A", "Traditional Mead", "desc", null, 1, CategoryScope.REGISTRATION);
+        var regM2C = new DivisionCategory(division.getId(), null,
+                "M2C", "Berry Melomel", "desc", null, 2, CategoryScope.REGISTRATION);
+        var judM1A = new DivisionCategory(division.getId(), null,
+                "M1A", "Traditional Mead", "desc", null, 1, CategoryScope.JUDGING);
+        var judM2C = new DivisionCategory(division.getId(), null,
+                "M2C", "Berry Melomel", "desc", null, 2, CategoryScope.JUDGING);
+
+        var entry1 = new Entry(division.getId(), UUID.randomUUID(), 1, "AMA-1",
+                "Mead A", regM1A.getId(), Sweetness.DRY, new BigDecimal("12.0"),
+                Carbonation.STILL, "Wildflower honey", null, false, null, null);
+        entry1.submit(); // → SUBMITTED, no finalCategoryId
+        var entry2 = new Entry(division.getId(), UUID.randomUUID(), 2, "AMA-2",
+                "Mead B", regM2C.getId(), Sweetness.MEDIUM, new BigDecimal("12.0"),
+                Carbonation.STILL, "Acacia honey", null, false, null, null);
+        entry2.submit();
+        entry2.markReceived(); // → RECEIVED, no finalCategoryId
+        var entry3 = new Entry(division.getId(), UUID.randomUUID(), 3, "AMA-3",
+                "Draft Mead", regM1A.getId(), Sweetness.DRY, new BigDecimal("12.0"),
+                Carbonation.STILL, "Wildflower honey", null, false, null, null);
+        // stays DRAFT → should be skipped
+
+        given(userService.findById(adminUser.getId())).willReturn(adminUser);
+        given(competitionService.findJudgingCategories(division.getId()))
+                .willReturn(List.of(judM1A, judM2C));
+        given(competitionService.findRegistrationCategories(division.getId()))
+                .willReturn(List.of(regM1A, regM2C));
+        given(entryRepository.findByDivisionId(division.getId()))
+                .willReturn(List.of(entry1, entry2, entry3));
+        given(entryRepository.save(any(Entry.class))).willAnswer(inv -> inv.getArgument(0));
+
+        var assigned = entryService.assignFinalCategoriesByCode(division.getId(), adminUser.getId());
+
+        assertThat(assigned).isEqualTo(2);
+        assertThat(entry1.getFinalCategoryId()).isEqualTo(judM1A.getId());
+        assertThat(entry2.getFinalCategoryId()).isEqualTo(judM2C.getId());
+        assertThat(entry3.getFinalCategoryId()).isNull(); // DRAFT — not touched
+    }
+
+    @Test
+    void shouldReturnZeroFromBulkAssignWhenNoJudgingCategoriesExist() {
+        var competitionId = UUID.randomUUID();
+        var division = createRegistrationClosedDivision(competitionId);
+        var adminUser = createSystemAdmin();
+
+        given(userService.findById(adminUser.getId())).willReturn(adminUser);
+        given(competitionService.findJudgingCategories(division.getId())).willReturn(List.of());
+
+        assertThat(entryService.assignFinalCategoriesByCode(division.getId(), adminUser.getId())).isZero();
     }
 
     @Test

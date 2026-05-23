@@ -272,6 +272,42 @@ public class ScoresheetServiceImpl implements ScoresheetService {
     }
 
     @Override
+    public void deleteScoresheet(UUID scoresheetId, UUID adminUserId) {
+        var sheet = requireScoresheet(scoresheetId);
+        var table = requireTable(sheet.getTableId());
+        var judging = requireJudging(table.getJudgingId());
+        if (!competitionService.isAuthorizedForDivision(judging.getDivisionId(), adminUserId)) {
+            throw new BusinessRuleException("error.auth.unauthorized");
+        }
+        requireNotFrozen(judging.getDivisionId());
+        var configOpt = categoryConfigRepository.findByDivisionCategoryId(table.getDivisionCategoryId());
+        if (configOpt.isPresent()) {
+            var status = configOpt.get().getMedalRoundStatus();
+            if (status != MedalRoundStatus.PENDING && status != MedalRoundStatus.READY) {
+                throw new BusinessRuleException("error.scoresheet.cannot-delete-medal-active");
+            }
+        }
+        scoresheetRepository.delete(sheet);
+        // If deleting the last scoresheet (or a SUBMITTED one) leaves the table COMPLETE
+        // without any SUBMITTED siblings, reopen it to ROUND_1 so admins see a sane state.
+        if (table.getStatus() == JudgingTableStatus.COMPLETE) {
+            table.reopenToRound1();
+            judgingTableRepository.save(table);
+            eventPublisher.publishEvent(new TableReopenedEvent(
+                    table.getId(), table.getDivisionCategoryId(),
+                    judging.getDivisionId(), Instant.now()));
+            configOpt.ifPresent(config -> {
+                if (config.getMedalRoundStatus() == MedalRoundStatus.READY) {
+                    config.markPending();
+                    categoryConfigRepository.save(config);
+                }
+            });
+        }
+        log.info("Deleted scoresheet {} (entry {}, table {})",
+                sheet.getId(), sheet.getEntryId(), table.getId());
+    }
+
+    @Override
     public void moveToTable(UUID scoresheetId, UUID newTableId,
                             UUID adminUserId) {
         var sheet = requireScoresheet(scoresheetId);

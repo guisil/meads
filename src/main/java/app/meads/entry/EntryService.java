@@ -49,6 +49,7 @@ public class EntryService {
     private final CompetitionService competitionService;
     private final UserService userService;
     private final ApplicationEventPublisher eventPublisher;
+    private final List<EntryStatusRevertGuard> statusRevertGuards;
 
     EntryService(ProductMappingRepository productMappingRepository,
                  EntryCreditRepository creditRepository,
@@ -57,7 +58,8 @@ public class EntryService {
                  JumpsellerOrderLineItemRepository lineItemRepository,
                  CompetitionService competitionService,
                  UserService userService,
-                 ApplicationEventPublisher eventPublisher) {
+                 ApplicationEventPublisher eventPublisher,
+                 List<EntryStatusRevertGuard> statusRevertGuards) {
         this.productMappingRepository = productMappingRepository;
         this.creditRepository = creditRepository;
         this.entryRepository = entryRepository;
@@ -66,6 +68,7 @@ public class EntryService {
         this.competitionService = competitionService;
         this.userService = userService;
         this.eventPublisher = eventPublisher;
+        this.statusRevertGuards = statusRevertGuards;
     }
 
     // --- Product Mapping methods ---
@@ -330,6 +333,8 @@ public class EntryService {
         log.info("Advanced entry status to {}: #{} ({})", saved.getStatus(), saved.getEntryNumber(), entryId);
         if (saved.getStatus() == EntryStatus.SUBMITTED) {
             publishSubmissionEventIfComplete(saved.getDivisionId(), saved.getUserId());
+        } else if (saved.getStatus() == EntryStatus.RECEIVED) {
+            eventPublisher.publishEvent(new EntryReceivedEvent(saved.getId(), saved.getDivisionId()));
         }
         return saved;
     }
@@ -338,6 +343,7 @@ public class EntryService {
         var entry = entryRepository.findById(entryId)
                 .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
         requireAuthorizedForDivision(entry.getDivisionId(), requestingUserId);
+        statusRevertGuards.forEach(g -> g.checkRevertAllowed(entryId, entry.getDivisionId()));
         entry.revertStatus();
         log.info("Reverted entry status to {}: #{} ({})", entry.getStatus(), entry.getEntryNumber(), entryId);
         return entryRepository.save(entry);
@@ -348,14 +354,17 @@ public class EntryService {
                 .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
         requireAuthorizedForDivision(entry.getDivisionId(), requestingUserId);
         entry.markReceived();
-        log.info("Marked entry received: #{} ({})", entry.getEntryNumber(), entryId);
-        return entryRepository.save(entry);
+        var saved = entryRepository.save(entry);
+        log.info("Marked entry received: #{} ({})", saved.getEntryNumber(), entryId);
+        eventPublisher.publishEvent(new EntryReceivedEvent(saved.getId(), saved.getDivisionId()));
+        return saved;
     }
 
     public Entry withdrawEntry(@NotNull UUID entryId, @NotNull UUID requestingUserId) {
         var entry = entryRepository.findById(entryId)
                 .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
         requireAuthorizedForDivision(entry.getDivisionId(), requestingUserId);
+        statusRevertGuards.forEach(g -> g.checkRevertAllowed(entryId, entry.getDivisionId()));
         entry.withdraw();
         log.info("Withdrew entry: #{} ({})", entry.getEntryNumber(), entryId);
         return entryRepository.save(entry);
@@ -437,6 +446,45 @@ public class EntryService {
         entry.assignFinalCategory(finalCategoryId);
         log.debug("Assigned final category {} to entry {}", finalCategoryId, entryId);
         return entryRepository.save(entry);
+    }
+
+    /**
+     * Assigns a final category to every SUBMITTED/RECEIVED entry that has none,
+     * by matching the entry's initial-category code against a JUDGING-scope
+     * category with the same code in the same division. Returns the number of
+     * entries actually modified.
+     */
+    public int assignFinalCategoriesByCode(@NotNull UUID divisionId,
+                                            @NotNull UUID requestingUserId) {
+        requireAuthorizedForDivision(divisionId, requestingUserId);
+        var judgingByCode = competitionService.findJudgingCategories(divisionId).stream()
+                .collect(Collectors.toMap(DivisionCategory::getCode, DivisionCategory::getId));
+        if (judgingByCode.isEmpty()) {
+            return 0;
+        }
+        var registrationCodeById = competitionService.findRegistrationCategories(divisionId).stream()
+                .collect(Collectors.toMap(DivisionCategory::getId, DivisionCategory::getCode));
+        var candidates = entryRepository.findByDivisionId(divisionId).stream()
+                .filter(e -> e.getFinalCategoryId() == null)
+                .filter(e -> e.getStatus() == EntryStatus.SUBMITTED
+                        || e.getStatus() == EntryStatus.RECEIVED)
+                .toList();
+        int assigned = 0;
+        for (var entry : candidates) {
+            var code = registrationCodeById.get(entry.getInitialCategoryId());
+            if (code == null) {
+                continue;
+            }
+            var judgingId = judgingByCode.get(code);
+            if (judgingId == null) {
+                continue;
+            }
+            entry.assignFinalCategory(judgingId);
+            entryRepository.save(entry);
+            assigned++;
+        }
+        log.info("Bulk-assigned final categories to {} entries in division {}", assigned, divisionId);
+        return assigned;
     }
 
     public long countActiveEntries(@NotNull UUID divisionId, @NotNull UUID userId) {
