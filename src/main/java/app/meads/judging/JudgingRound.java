@@ -148,9 +148,23 @@ public class JudgingRound {
         assignments.removeIf(a -> a.getJudgeUserId().equals(judgeUserId));
     }
 
-    public void start() {
+    public void markReady() {
         if (status != JudgingRoundStatus.PENDING) {
-            throw new IllegalStateException("Round can only start from PENDING, current: " + status);
+            throw new IllegalStateException("Round can only become READY from PENDING, current: " + status);
+        }
+        this.status = JudgingRoundStatus.READY;
+    }
+
+    public void markPending() {
+        if (status != JudgingRoundStatus.READY) {
+            throw new IllegalStateException("Round can only revert to PENDING from READY, current: " + status);
+        }
+        this.status = JudgingRoundStatus.PENDING;
+    }
+
+    public void start() {
+        if (status != JudgingRoundStatus.PENDING && status != JudgingRoundStatus.READY) {
+            throw new IllegalStateException("Round can only start from PENDING or READY, current: " + status);
         }
         this.status = JudgingRoundStatus.ACTIVE;
     }
