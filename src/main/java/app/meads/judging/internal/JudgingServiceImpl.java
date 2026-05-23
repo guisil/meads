@@ -177,7 +177,7 @@ public class JudgingServiceImpl implements JudgingService {
             throw new BusinessRuleException("error.auth.unauthorized");
         }
         requireNotFrozen(judging.getDivisionId());
-        if (round.getStatus() != JudgingRoundStatus.NOT_STARTED) {
+        if (round.getStatus() != JudgingRoundStatus.PENDING) {
             throw new BusinessRuleException("error.round.cannot-reassign-physical-table-after-start");
         }
         var table = physicalTableRepository.findById(physicalTableId)
@@ -268,7 +268,7 @@ public class JudgingServiceImpl implements JudgingService {
         var judging = requireJudging(table.getJudgingId());
         requireAuthorizedForJudging(judging, adminUserId);
         requireNotFrozen(judging.getDivisionId());
-        if (table.getStatus() != JudgingRoundStatus.NOT_STARTED) {
+        if (table.getStatus() != JudgingRoundStatus.PENDING) {
             throw new BusinessRuleException("error.judging-table.cannot-delete-started");
         }
         if (!table.getAssignments().isEmpty()) {
@@ -339,10 +339,10 @@ public class JudgingServiceImpl implements JudgingService {
         // another active round elsewhere. (Pre-planning assignments to
         // NOT_STARTED rounds is fine — the conflict check fires again at
         // startRound time.)
-        if (table.getStatus() == JudgingRoundStatus.ROUND_1) {
+        if (table.getStatus() == JudgingRoundStatus.ACTIVE) {
             boolean conflict = judgingRoundRepository.findAll().stream()
                     .filter(r -> !r.getId().equals(roundId))
-                    .filter(r -> r.getStatus() == JudgingRoundStatus.ROUND_1)
+                    .filter(r -> r.getStatus() == JudgingRoundStatus.ACTIVE)
                     .anyMatch(r -> r.getAssignments().stream()
                             .anyMatch(a -> a.getJudgeUserId().equals(judgeUserId)));
             if (conflict) {
@@ -363,7 +363,7 @@ public class JudgingServiceImpl implements JudgingService {
         var judging = requireJudging(table.getJudgingId());
         requireAuthorizedForJudging(judging, adminUserId);
         requireNotFrozen(judging.getDivisionId());
-        if (table.getStatus() == JudgingRoundStatus.ROUND_1) {
+        if (table.getStatus() == JudgingRoundStatus.ACTIVE) {
             var division = competitionService.findDivisionById(judging.getDivisionId());
             int currentCount = table.getAssignments().size();
             boolean isAssigned = table.getAssignments().stream()
@@ -397,7 +397,7 @@ public class JudgingServiceImpl implements JudgingService {
         boolean physicalTableBusy = judgingRoundRepository.findByJudgingId(judging.getId()).stream()
                 .filter(r -> !r.getId().equals(roundId))
                 .filter(r -> table.getPhysicalTableId().equals(r.getPhysicalTableId()))
-                .anyMatch(r -> r.getStatus() == JudgingRoundStatus.ROUND_1);
+                .anyMatch(r -> r.getStatus() == JudgingRoundStatus.ACTIVE);
         if (physicalTableBusy) {
             throw new BusinessRuleException("error.round.physical-table-busy");
         }
@@ -408,7 +408,7 @@ public class JudgingServiceImpl implements JudgingService {
         // Judge active-conflict check: no assigned judge can be on another active round.
         var allActiveRounds = judgingRoundRepository.findAll().stream()
                 .filter(r -> !r.getId().equals(roundId))
-                .filter(r -> r.getStatus() == JudgingRoundStatus.ROUND_1)
+                .filter(r -> r.getStatus() == JudgingRoundStatus.ACTIVE)
                 .toList();
         for (var assignment : table.getAssignments()) {
             var conflict = allActiveRounds.stream()
@@ -420,7 +420,7 @@ public class JudgingServiceImpl implements JudgingService {
             }
         }
         try {
-            table.startRound1();
+            table.start();
         } catch (IllegalStateException e) {
             throw new BusinessRuleException("error.judging-table.cannot-start", e.getMessage());
         }

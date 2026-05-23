@@ -131,7 +131,7 @@ class JudgingServiceRoundTest {
 
         assertThat(table.getName()).isEqualTo("Table 1");
         assertThat(table.getDivisionCategoryId()).isEqualTo(divisionCategoryId);
-        assertThat(table.getStatus()).isEqualTo(JudgingRoundStatus.NOT_STARTED);
+        assertThat(table.getStatus()).isEqualTo(JudgingRoundStatus.PENDING);
     }
 
     @Test
@@ -195,7 +195,7 @@ class JudgingServiceRoundTest {
     void shouldRejectDeleteTableWhenStatusNotNotStarted() {
         var judging = new Judging(divisionId);
         var table = new JudgingRound(judging.getId(), "Table 1", divisionCategoryId, null);
-        table.startRound1();
+        table.start();
         given(judgingRoundRepository.findById(table.getId())).willReturn(Optional.of(table));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
@@ -277,7 +277,7 @@ class JudgingServiceRoundTest {
         var judge2 = UUID.randomUUID();
         table.assignJudge(judgeUserId);
         table.assignJudge(judge2);
-        table.startRound1();
+        table.start();
         given(judgingRoundRepository.findById(table.getId())).willReturn(Optional.of(table));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
@@ -297,7 +297,7 @@ class JudgingServiceRoundTest {
         table.assignJudge(judgeUserId);
         table.assignJudge(UUID.randomUUID());
         table.assignJudge(UUID.randomUUID());
-        table.startRound1();
+        table.start();
         given(judgingRoundRepository.findById(table.getId())).willReturn(Optional.of(table));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);

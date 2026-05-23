@@ -293,10 +293,10 @@ class RoundViewTest {
 
         // Both tables must be ROUND_1 for move-target to be valid.
         var t1 = judgingRoundRepository.findById(table1.getId()).orElseThrow();
-        t1.startRound1();
+        t1.start();
         judgingRoundRepository.save(t1);
         var t2 = judgingRoundRepository.findById(table2.getId()).orElseThrow();
-        t2.startRound1();
+        t2.start();
         judgingRoundRepository.save(t2);
 
         var entry = new Entry(division.getId(), entrant.getId(), 1, "AMA-1",

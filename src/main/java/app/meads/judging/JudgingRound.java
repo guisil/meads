@@ -96,7 +96,7 @@ public class JudgingRound {
         this.scheduledDate = scheduledDate;
         this.type = RoundType.SCORING;
         this.medalMode = null;
-        this.status = JudgingRoundStatus.NOT_STARTED;
+        this.status = JudgingRoundStatus.PENDING;
     }
 
     public void assignToPhysicalTable(UUID physicalTableId) {
@@ -104,8 +104,8 @@ public class JudgingRound {
     }
 
     public void convertToMedalRound(MedalRoundMode mode) {
-        if (status != JudgingRoundStatus.NOT_STARTED) {
-            throw new IllegalStateException("Can only convert to medal round while NOT_STARTED, current: " + status);
+        if (status != JudgingRoundStatus.PENDING) {
+            throw new IllegalStateException("Can only convert to medal round while PENDING, current: " + status);
         }
         this.type = RoundType.MEDAL;
         this.medalMode = mode;
@@ -148,25 +148,25 @@ public class JudgingRound {
         assignments.removeIf(a -> a.getJudgeUserId().equals(judgeUserId));
     }
 
-    public void startRound1() {
-        if (status != JudgingRoundStatus.NOT_STARTED) {
-            throw new IllegalStateException("Table can only start ROUND_1 from NOT_STARTED, current: " + status);
+    public void start() {
+        if (status != JudgingRoundStatus.PENDING) {
+            throw new IllegalStateException("Round can only start from PENDING, current: " + status);
         }
-        this.status = JudgingRoundStatus.ROUND_1;
+        this.status = JudgingRoundStatus.ACTIVE;
     }
 
     public void markComplete() {
-        if (status != JudgingRoundStatus.ROUND_1) {
-            throw new IllegalStateException("Table can only complete from ROUND_1, current: " + status);
+        if (status != JudgingRoundStatus.ACTIVE) {
+            throw new IllegalStateException("Round can only complete from ACTIVE, current: " + status);
         }
         this.status = JudgingRoundStatus.COMPLETE;
     }
 
-    public void reopenToRound1() {
+    public void reopen() {
         if (status != JudgingRoundStatus.COMPLETE) {
-            throw new IllegalStateException("Table can only reopen from COMPLETE, current: " + status);
+            throw new IllegalStateException("Round can only reopen from COMPLETE, current: " + status);
         }
-        this.status = JudgingRoundStatus.ROUND_1;
+        this.status = JudgingRoundStatus.ACTIVE;
     }
 
     @PrePersist

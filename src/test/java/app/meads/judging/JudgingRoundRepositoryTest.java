@@ -110,7 +110,7 @@ class JudgingRoundRepositoryTest {
         assertThat(found.getName()).isEqualTo("Table A");
         assertThat(found.getDivisionCategoryId()).isEqualTo(category.getId());
         assertThat(found.getScheduledDate()).isEqualTo(LocalDate.of(2026, 7, 1));
-        assertThat(found.getStatus()).isEqualTo(JudgingRoundStatus.NOT_STARTED);
+        assertThat(found.getStatus()).isEqualTo(JudgingRoundStatus.PENDING);
         assertThat(found.getCreatedAt()).isNotNull();
         assertThat(found.getAssignments()).hasSize(2);
         assertThat(found.getAssignments())

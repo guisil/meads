@@ -188,7 +188,7 @@ class JudgingServicePhysicalTableTest {
     void shouldRejectAssignRoundToPhysicalTableAfterRoundStarted() {
         var pt = new PhysicalTable(divisionId, "Table 1");
         var round = new JudgingRound(judging.getId(), "R1", UUID.randomUUID(), null);
-        round.startRound1(); // now ROUND_1
+        round.start(); // now ACTIVE
         given(judgingRoundRepository.findById(round.getId())).willReturn(Optional.of(round));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
@@ -230,14 +230,14 @@ class JudgingServicePhysicalTableTest {
         assertThatThrownBy(() -> service.startRound(round.getId(), adminUserId))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("error.round.physical-table-required");
-        assertThat(round.getStatus()).isEqualTo(JudgingRoundStatus.NOT_STARTED);
+        assertThat(round.getStatus()).isEqualTo(JudgingRoundStatus.PENDING);
     }
 
     @Test
     void shouldRejectStartRoundWhenPhysicalTableIsBusyWithAnotherActiveRound() {
         var ptId = UUID.randomUUID();
         var otherRound = new JudgingRound(judging.getId(), ptId, "R-Other", UUID.randomUUID(), null);
-        otherRound.startRound1(); // already ACTIVE at the same physical table
+        otherRound.start(); // already ACTIVE at the same physical table
         var newRound = new JudgingRound(judging.getId(), ptId, "R-New", UUID.randomUUID(), null);
         newRound.assignJudge(UUID.randomUUID());
         newRound.assignJudge(UUID.randomUUID());
@@ -260,7 +260,7 @@ class JudgingServicePhysicalTableTest {
         var conflictingJudgeId = UUID.randomUUID();
         var otherActiveRound = new JudgingRound(judging.getId(), ptIdA, "R-Other", UUID.randomUUID(), null);
         otherActiveRound.assignJudge(conflictingJudgeId);
-        otherActiveRound.startRound1();
+        otherActiveRound.start();
         var newRound = new JudgingRound(judging.getId(), ptIdB, "R-New", UUID.randomUUID(), null);
         newRound.assignJudge(conflictingJudgeId);
         newRound.assignJudge(UUID.randomUUID());
@@ -283,10 +283,10 @@ class JudgingServicePhysicalTableTest {
         var existingActiveRound = new JudgingRound(judging.getId(), UUID.randomUUID(), "R-Existing",
                 UUID.randomUUID(), null);
         existingActiveRound.assignJudge(conflictingJudgeId);
-        existingActiveRound.startRound1();
+        existingActiveRound.start();
         var activeRound = new JudgingRound(judging.getId(), UUID.randomUUID(), "R-Active",
                 UUID.randomUUID(), null);
-        activeRound.startRound1(); // already ROUND_1 — assignJudge enforces conflict here
+        activeRound.start(); // already ACTIVE — assignJudge enforces conflict here
         given(judgingRoundRepository.findById(activeRound.getId())).willReturn(Optional.of(activeRound));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
@@ -307,7 +307,7 @@ class JudgingServicePhysicalTableTest {
         var existingActiveRound = new JudgingRound(judging.getId(), UUID.randomUUID(), "R-Existing",
                 UUID.randomUUID(), null);
         existingActiveRound.assignJudge(conflictingJudgeId);
-        existingActiveRound.startRound1();
+        existingActiveRound.start();
         var futureRound = new JudgingRound(judging.getId(), UUID.randomUUID(), "R-Future",
                 UUID.randomUUID(), null);
         given(judgingRoundRepository.findById(futureRound.getId())).willReturn(Optional.of(futureRound));

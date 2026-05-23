@@ -592,7 +592,7 @@ class JudgingAdminViewTest {
         _click(_get(Button.class, spec -> spec.withText("Start")));
 
         var refreshed = judgingService.findRoundsByJudgingId(judging.getId()).get(0);
-        assertThat(refreshed.getStatus().name()).isEqualTo("ROUND_1");
+        assertThat(refreshed.getStatus().name()).isEqualTo("ACTIVE");
     }
 
     @Test
@@ -616,7 +616,7 @@ class JudgingAdminViewTest {
         _click(_get(Button.class, spec -> spec.withText("Start")));
 
         var refreshed = judgingService.findRoundsByJudgingId(judging.getId()).get(0);
-        assertThat(refreshed.getStatus().name()).isEqualTo("NOT_STARTED");
+        assertThat(refreshed.getStatus().name()).isEqualTo("PENDING");
     }
 
     @Test

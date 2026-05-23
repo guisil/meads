@@ -101,7 +101,7 @@ public class ScoresheetServiceImpl implements ScoresheetService {
         }
         var matchingTable = judgingRoundRepository.findByJudgingId(judging.getId()).stream()
                 .filter(t -> t.getDivisionCategoryId().equals(entry.getFinalCategoryId()))
-                .filter(t -> t.getStatus() == JudgingRoundStatus.ROUND_1)
+                .filter(t -> t.getStatus() == JudgingRoundStatus.ACTIVE)
                 .findFirst()
                 .orElse(null);
         if (matchingTable == null) {
@@ -218,7 +218,7 @@ public class ScoresheetServiceImpl implements ScoresheetService {
         var tableSheets = scoresheetRepository.findByRoundId(table.getId());
         boolean allSubmitted = tableSheets.stream()
                 .allMatch(s -> s.getStatus() == ScoresheetStatus.SUBMITTED);
-        if (allSubmitted && table.getStatus() == JudgingRoundStatus.ROUND_1) {
+        if (allSubmitted && table.getStatus() == JudgingRoundStatus.ACTIVE) {
             table.markComplete();
             judgingRoundRepository.save(table);
             var judging = requireJudging(table.getJudgingId());
@@ -255,7 +255,7 @@ public class ScoresheetServiceImpl implements ScoresheetService {
         eventPublisher.publishEvent(new ScoresheetRevertedEvent(
                 sheet.getId(), sheet.getEntryId(), table.getId(), Instant.now()));
         if (table.getStatus() == JudgingRoundStatus.COMPLETE) {
-            table.reopenToRound1();
+            table.reopen();
             judgingRoundRepository.save(table);
             eventPublisher.publishEvent(new RoundReopenedEvent(
                     table.getId(), table.getDivisionCategoryId(),
@@ -291,7 +291,7 @@ public class ScoresheetServiceImpl implements ScoresheetService {
         // If deleting the last scoresheet (or a SUBMITTED one) leaves the table COMPLETE
         // without any SUBMITTED siblings, reopen it to ROUND_1 so admins see a sane state.
         if (table.getStatus() == JudgingRoundStatus.COMPLETE) {
-            table.reopenToRound1();
+            table.reopen();
             judgingRoundRepository.save(table);
             eventPublisher.publishEvent(new RoundReopenedEvent(
                     table.getId(), table.getDivisionCategoryId(),

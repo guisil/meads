@@ -221,7 +221,7 @@ class ScoresheetServiceTest {
                 .willAnswer(inv -> inv.getArgument(0));
 
         // Pre-mark table started
-        table.startRound1();
+        table.start();
 
         service.submit(scoresheet.getId(), judgeUserId);
 

@@ -101,7 +101,7 @@ class JudgingServiceMedalRoundTest {
 
         service.startRound(table.getId(), adminUserId);
 
-        assertThat(table.getStatus()).isEqualTo(JudgingRoundStatus.ROUND_1);
+        assertThat(table.getStatus()).isEqualTo(JudgingRoundStatus.ACTIVE);
         assertThat(judging.getPhase()).isEqualTo(JudgingPhase.ACTIVE);
         then(scoresheetService).should().createScoresheetsForTable(table.getId());
     }
@@ -121,7 +121,7 @@ class JudgingServiceMedalRoundTest {
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("error.judging-table.too-few-judges");
 
-        assertThat(table.getStatus()).isEqualTo(JudgingRoundStatus.NOT_STARTED);
+        assertThat(table.getStatus()).isEqualTo(JudgingRoundStatus.PENDING);
         then(scoresheetService).should(never()).createScoresheetsForTable(any());
     }
 

@@ -332,7 +332,7 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
         var candidates = judgingService.findRoundsByDivisionAndCategory(
                         division.getId(), table.getDivisionCategoryId()).stream()
                 .filter(t -> !t.getId().equals(table.getId()))
-                .filter(t -> t.getStatus() == app.meads.judging.JudgingRoundStatus.ROUND_1)
+                .filter(t -> t.getStatus() == app.meads.judging.JudgingRoundStatus.ACTIVE)
                 .toList();
 
         var targetSelect = new Select<JudgingRound>();

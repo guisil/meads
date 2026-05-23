@@ -24,7 +24,7 @@ public interface JudgingRoundRepository extends JpaRepository<JudgingRound, UUID
 
     boolean existsByJudgingId(UUID judgingId);
 
-    @Query("SELECT COUNT(t) > 0 FROM JudgingRound t WHERE t.judgingId = :judgingId AND t.status <> app.meads.judging.JudgingRoundStatus.NOT_STARTED")
+    @Query("SELECT COUNT(t) > 0 FROM JudgingRound t WHERE t.judgingId = :judgingId AND t.status <> app.meads.judging.JudgingRoundStatus.PENDING AND t.status <> app.meads.judging.JudgingRoundStatus.READY")
     boolean existsStartedByJudgingId(UUID judgingId);
 
     @Query("SELECT COUNT(a) FROM JudgingRound t JOIN t.assignments a WHERE t.id = :roundId")

@@ -472,7 +472,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
 
         var startButton = new Button(new Icon(VaadinIcon.PLAY));
         startButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-        startButton.setEnabled(table.getStatus() == JudgingRoundStatus.NOT_STARTED);
+        startButton.setEnabled(table.getStatus() == JudgingRoundStatus.PENDING);
         startButton.setTooltipText(getTranslation("judging-admin.tables.action.start"));
         startButton.addClickListener(e -> openStartTableDialog(table));
 
@@ -483,7 +483,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
 
         var deleteButton = new Button(new Icon(VaadinIcon.TRASH));
         deleteButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-        boolean canDelete = table.getStatus() == JudgingRoundStatus.NOT_STARTED
+        boolean canDelete = table.getStatus() == JudgingRoundStatus.PENDING
                 && table.getAssignments().isEmpty();
         deleteButton.setEnabled(canDelete);
         deleteButton.setTooltipText(canDelete
