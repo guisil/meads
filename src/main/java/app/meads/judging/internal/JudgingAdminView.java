@@ -240,7 +240,8 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         return layout;
     }
 
-    private void openAddPhysicalTableDialog() {
+    /** Package-public for tests — exercised via the +Add toolbar button in normal use. */
+    public void openAddPhysicalTableDialog() {
         var dialog = new Dialog();
         dialog.setHeaderTitle(getTranslation("judging-admin.physical-tables.add"));
         var labelField = new TextField(getTranslation("judging-admin.physical-tables.label"));
@@ -268,7 +269,8 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         dialog.open();
     }
 
-    private void openEditPhysicalTableDialog(app.meads.judging.PhysicalTable pt) {
+    /** Package-public for tests — wired to the per-row Edit action button. */
+    public void openEditPhysicalTableDialog(app.meads.judging.PhysicalTable pt) {
         var dialog = new Dialog();
         dialog.setHeaderTitle(getTranslation("judging-admin.physical-tables.edit"));
         var labelField = new TextField(getTranslation("judging-admin.physical-tables.label"));
@@ -296,7 +298,8 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         dialog.open();
     }
 
-    private void openDeletePhysicalTableDialog(app.meads.judging.PhysicalTable pt) {
+    /** Package-public for tests — wired to the per-row Delete action button. */
+    public void openDeletePhysicalTableDialog(app.meads.judging.PhysicalTable pt) {
         var dialog = new Dialog();
         dialog.setHeaderTitle(getTranslation("judging-admin.physical-tables.delete.title", pt.getLabel()));
         dialog.add(new Span(getTranslation("judging-admin.physical-tables.delete.body", pt.getLabel())));

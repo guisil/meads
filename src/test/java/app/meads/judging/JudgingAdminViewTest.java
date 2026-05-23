@@ -339,6 +339,125 @@ class JudgingAdminViewTest {
         assertThat(headers).containsExactly("Category", "Mode", "Physical Table", "Status", "Tables", "Awards", "Actions");
     }
 
+    // === Physical Tables tab UI tests ===
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldRenderPhysicalTablesGridAndAddButtonOnDefaultTab() {
+        advanceDivisionToJudging();
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var addButton = _get(Button.class, spec -> spec.withId("add-physical-table-button"));
+        assertThat(addButton.getText()).contains("Add Physical Table");
+
+        var grid = _get(Grid.class, spec -> spec.withId("physical-tables-grid"));
+        assertThat(grid).isNotNull();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldAddPhysicalTableViaDialog() {
+        advanceDivisionToJudging();
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        _click(_get(Button.class, spec -> spec.withId("add-physical-table-button")));
+
+        var labelField = _get(TextField.class, spec -> spec.withId("add-physical-table-label"));
+        labelField.setValue("Table 7");
+        _click(_get(Button.class, spec -> spec.withText("Save")));
+
+        var tables = judgingService.findPhysicalTablesByDivision(division.getId());
+        assertThat(tables).extracting(app.meads.judging.PhysicalTable::getLabel).contains("Table 7");
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldShowErrorWhenAddingDuplicatePhysicalTableViaDialog() {
+        advanceDivisionToJudging();
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        judgingService.createPhysicalTable(division.getId(), "Table 1", admin.getId());
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        _click(_get(Button.class, spec -> spec.withId("add-physical-table-button")));
+        _get(TextField.class, spec -> spec.withId("add-physical-table-label")).setValue("Table 1");
+        _click(_get(Button.class, spec -> spec.withText("Save")));
+
+        var notification = _get(Notification.class);
+        assertThat(notification.getElement().getProperty("text")).contains("already exists");
+        // Only the seeded one is in the DB; the duplicate save was rejected.
+        assertThat(judgingService.findPhysicalTablesByDivision(division.getId())).hasSize(1);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldUpdatePhysicalTableLabelViaEditDialog() {
+        advanceDivisionToJudging();
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var pt = judgingService.createPhysicalTable(division.getId(), "Table 1", admin.getId());
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+        var view = _get(JudgingAdminView.class);
+        view.openEditPhysicalTableDialog(pt);
+
+        var labelFields = _find(TextField.class);
+        var labelField = labelFields.stream()
+                .filter(f -> "Table 1".equals(f.getValue()))
+                .findFirst().orElseThrow();
+        labelField.setValue("Renamed Table");
+        _click(_get(Button.class, spec -> spec.withText("Save")));
+
+        var refreshed = judgingService.findPhysicalTableById(pt.getId()).orElseThrow();
+        assertThat(refreshed.getLabel()).isEqualTo("Renamed Table");
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldDeleteUnusedPhysicalTableViaDeleteDialog() {
+        advanceDivisionToJudging();
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var pt = judgingService.createPhysicalTable(division.getId(), "Disposable", admin.getId());
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+        var view = _get(JudgingAdminView.class);
+        view.openDeletePhysicalTableDialog(pt);
+
+        _click(_get(Button.class, spec -> spec.withText("Delete")));
+
+        assertThat(judgingService.findPhysicalTableById(pt.getId())).isEmpty();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldShowErrorWhenDeletingPhysicalTableInUseByRound() {
+        advanceDivisionToJudging();
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Desc",
+                null, 1, CategoryScope.JUDGING));
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var pt = judgingService.createPhysicalTable(division.getId(), "Table 1", admin.getId());
+        var judging = judgingService.ensureJudgingExists(division.getId());
+        var round = judgingService.createRound(judging.getId(), "R1",
+                category.getId(), null, admin.getId());
+        judgingService.assignRoundToPhysicalTable(round.getId(), pt.getId(), admin.getId());
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+        var view = _get(JudgingAdminView.class);
+        view.openDeletePhysicalTableDialog(pt);
+
+        _click(_get(Button.class, spec -> spec.withText("Delete")));
+
+        var notification = _get(Notification.class);
+        assertThat(notification.getElement().getProperty("text")).contains("in use by");
+        assertThat(judgingService.findPhysicalTableById(pt.getId())).isPresent();
+    }
+
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldAssignAndClearPhysicalTableForMedalRoundViaService() {
