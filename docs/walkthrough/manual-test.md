@@ -1617,26 +1617,44 @@ physically arrived and been checked in — and (b) have `finalCategoryId` set to
 JUDGING-scope category. Entries that are still SUBMITTED (bottle not arrived) or
 WITHDRAWN get **no scoresheet** when a table starts (see §12.6.4).
 
+The new `EntryFinalCategoryAdvanceGuard` (entry.internal) blocks the
+`REGISTRATION_CLOSED → JUDGING` advance whenever any SUBMITTED or RECEIVED entry in
+the division still has no `finalCategoryId` — admins must assign them all before
+entering judging.
+
 *Navigate to Amadora → Entry Admin → Entries tab.*
 
 - [ ] Mark at least 2 entries as **RECEIVED** using the `→` advance arrows
   (DRAFT → SUBMITTED → RECEIVED). Leave one entry SUBMITTED (not received) so you
   can confirm it is excluded from judging.
-- [ ] For each RECEIVED entry: click the Edit (pencil) icon → confirm in the warning dialog.
+- [ ] For each RECEIVED **and** SUBMITTED entry that you want judged: click the Edit
+  (pencil) icon → confirm in the warning dialog.
 - [ ] **Expected:** The edit dialog includes a "Final Category" Select (clearable, populated from JUDGING-scope categories).
 - [ ] Pick a category (e.g. `M1A — Traditional Mead (Dry)`), Save.
 - [ ] **Expected:** Notification "Entry updated"; Final Category column shows the chosen value.
-- [ ] **Leave one RECEIVED entry without a final category** for the next check.
+- [ ] **Leave one RECEIVED entry without a final category** for the §12.5.1 guard rejection check.
 
-#### 12.5.1 Unassigned-entry warning
+#### 12.5.1 Advance-to-judging guard rejection (entries missing final category)
 
-- [ ] Open Judging Admin (Manage Judging) while at least one SUBMITTED/RECEIVED
-  entry still has no final category.
-- [ ] **Expected:** A red warning line appears below the header — "{N} entries have
-  no judging category — assign one before they can be judged." It disappears once
-  every non-withdrawn entry has a final category. This stops a paid entry from
-  being silently left unjudged.
-- [ ] Assign the last entry's final category, reload Judging Admin → warning gone.
+- [ ] Go back to Amadora division header. Click "Advance Status" → confirm.
+- [ ] **Expected:** Error notification — `EntryFinalCategoryAdvanceGuard` blocks
+  because at least one SUBMITTED/RECEIVED entry has no final category. Message
+  names the count: *"Cannot start judging: {N} submitted or received entry/entries
+  still have no final category. Assign them in the Entry Admin view first."* (key
+  `error.division.cannot-start-judging-entries-without-final-category`).
+- [ ] **Expected:** Status stays at `REGISTRATION_CLOSED`.
+- [ ] Return to Entry Admin → assign the last entry's final category.
+- [ ] Click "Advance Status" again → confirm.
+- [ ] **Expected:** Status now updates to `JUDGING`.
+
+#### 12.5.2 Defense-in-depth — the JudgingAdminView warning
+
+The `JudgingAdminView` "{N} entries have no judging category…" warning still
+exists for defense-in-depth (e.g., if a final category gets cleared during JUDGING,
+or you bypass the guard by `assignFinalCategory(null)` later). It should normally
+show 0 here.
+
+- [ ] On Judging Admin, confirm no red warning line appears below the header.
 
 ### 12.6 JudgingAdminView — Tables tab
 
