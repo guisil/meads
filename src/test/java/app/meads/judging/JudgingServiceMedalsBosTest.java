@@ -389,4 +389,22 @@ class JudgingServiceMedalsBosTest {
         assertThat(award.getConfirmedBy()).isEqualTo(adminUserId);
         assertThat(award.getConfirmedAt()).isNotNull();
     }
+
+    @Test
+    void shouldRecordMedalAsConfirmed() {
+        var entry = mockEntry();
+        given(entryService.findEntryById(entryId)).willReturn(entry);
+        given(coiCheckService.check(adminUserId, entryId)).willReturn(CoiResult.clear());
+        given(categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId))
+                .willReturn(Optional.of(activeConfig()));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(medalAwardRepository.findByEntryId(entryId)).willReturn(Optional.empty());
+        given(medalAwardRepository.save(any(MedalAward.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var award = service.recordMedal(entryId, Medal.GOLD, adminUserId);
+
+        assertThat(award.isConfirmed()).isTrue();
+        assertThat(award.getConfirmedBy()).isEqualTo(adminUserId);
+    }
 }

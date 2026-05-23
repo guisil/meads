@@ -739,6 +739,7 @@ public class JudgingServiceImpl implements JudgingService {
             award = new MedalAward(entryId, entry.getDivisionId(), finalCategoryId,
                     medal, judgeUserId);
         }
+        award.confirm(judgeUserId);
         var saved = medalAwardRepository.save(award);
         log.info("Recorded medal {} for entry {} by judge {}", medal, entryId, judgeUserId);
         return saved;
