@@ -44,6 +44,16 @@ public interface JudgingService {
                              LocalDate scheduledDate,
                              @NotNull UUID adminUserId);
 
+    /**
+     * Creates a medal-typed {@link JudgingRound} for the given category. The
+     * {@link MedalRoundMode} is sourced from the category's {@link
+     * CategoryJudgingConfig#getMedalRoundMode()} — that config must already
+     * exist (e.g. from prior {@code configureCategoryMedalRound}).
+     */
+    JudgingRound createMedalRound(@NotNull UUID judgingId,
+                                  @NotNull UUID divisionCategoryId,
+                                  @NotNull UUID adminUserId);
+
     void updateRoundName(@NotNull UUID roundId, @NotBlank String name, @NotNull UUID adminUserId);
 
     void updateRoundScheduledDate(@NotNull UUID roundId, LocalDate date, @NotNull UUID adminUserId);

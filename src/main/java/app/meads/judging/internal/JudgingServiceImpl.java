@@ -239,6 +239,23 @@ public class JudgingServiceImpl implements JudgingService {
     }
 
     @Override
+    public JudgingRound createMedalRound(UUID judgingId,
+                                          UUID divisionCategoryId,
+                                          UUID adminUserId) {
+        var judging = requireJudging(judgingId);
+        requireAuthorizedForJudging(judging, adminUserId);
+        requireNotFrozen(judging.getDivisionId());
+        var config = categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId)
+                .orElseThrow(() -> new BusinessRuleException("error.medal-round.category-not-configured"));
+        var round = new JudgingRound(judgingId, "Medal — " + divisionCategoryId, divisionCategoryId, null);
+        round.convertToMedalRound(config.getMedalRoundMode());
+        var saved = judgingRoundRepository.save(round);
+        log.info("Created medal JudgingRound {} (category={}, mode={})",
+                saved.getId(), divisionCategoryId, config.getMedalRoundMode());
+        return saved;
+    }
+
+    @Override
     public void updateRoundName(UUID roundId, String name,
                                 UUID adminUserId) {
         var table = requireTable(roundId);

@@ -126,6 +126,25 @@ class JudgingServiceMedalRoundTest {
     }
 
     @Test
+    void shouldCreateMedalRoundWithModeFromCategoryConfig() {
+        var config = new CategoryJudgingConfig(divisionCategoryId, MedalRoundMode.SCORE_BASED);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId))
+                .willReturn(Optional.of(config));
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var round = service.createMedalRound(judging.getId(), divisionCategoryId, adminUserId);
+
+        assertThat(round.getType()).isEqualTo(RoundType.MEDAL);
+        assertThat(round.getMedalMode()).isEqualTo(MedalRoundMode.SCORE_BASED);
+        assertThat(round.getDivisionCategoryId()).isEqualTo(divisionCategoryId);
+        assertThat(round.getJudgingId()).isEqualTo(judging.getId());
+        assertThat(round.getStatus()).isEqualTo(JudgingRoundStatus.PENDING);
+    }
+
+    @Test
     void shouldConfigureCategoryMedalRoundCreatingNew() {
         given(competitionService.findDivisionCategoryById(divisionCategoryId)).willReturn(category);
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
