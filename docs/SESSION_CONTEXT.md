@@ -291,6 +291,22 @@ dropdowns. No point doing them on UI that's about to be replaced.
 7. **Flat tabs: Rounds + Results + BOS** on `JudgingAdminView`. Rounds has a Type filter
    (All / Scoring / Medal). Row click drills into existing per-round views.
 
+**Task #3 partially done (2026-05-24).** New public service API surface
+added — callers still on the old CategoryJudgingConfig-based medal-round
+flow. **1151 tests passing (+9 since task #2 close).** Five new commits
+on `feature/judging-module` past v0.4.0 expansion:
+- `10c9ca5` Pure rename `NOT_STARTED → PENDING`, `ROUND_1 → ACTIVE`
+  (fast cycle; no behavior change; `READY` added dormant).
+- `c29a5e7` `JudgingRound` READY transitions (`markReady`, `markPending`,
+  `start()` now accepts READY) — three RED→GREEN→REFACTOR cycles + two
+  rejection-path backfills. Pure unit tests in new `JudgingRoundTest.java`.
+- `9a47808` `JudgingService.createMedalRound(judgingId, divisionCategoryId,
+  adminUserId)` — creates a `JudgingRound` of `type = MEDAL`, sourcing the
+  mode from the category's `CategoryJudgingConfig`. Coexists with old
+  flow. New EN/ES/IT/PL/PT key `error.medal-round.category-not-configured`.
+- `d0cac89` `assignEntryToRound` + `unassignEntryFromRound` +
+  `confirmMedalAward` (each its own TDD cycle).
+
 **Task #2 (expansion phase) COMPLETE (2026-05-24).** Additive-only schema +
 entity changes — 1142 tests passing (+7 new). All existing behavior preserved;
 new fields ready for task #3 to migrate service/view callers onto.
@@ -310,14 +326,26 @@ What landed:
 - **Tests** — JudgingRoundRepositoryTest +5, MedalAwardRepositoryTest +2.
 
 **Next session — first actions:**
-1. Start Task #3 — the contraction + service refactor (the breaking-changes
-   half). In order: (a) rename JudgingRoundStatus values (NOT_STARTED→PENDING,
-   ROUND_1→ACTIVE, add READY) + update V21 status seed values + cascade through
-   ~20 services/views/tests; (b) slim CategoryJudgingConfig — drop
-   medalRoundStatus + physicalTableId in V22, rename medalRoundMode→mode;
-   (c) drop V29's ALTER TABLE category_judging_configs ADD COLUMN
-   physical_table_id; (d) JudgingService refactor — createMedalRound,
-   assignEntryToRound, confirmMedalAwards, etc.
+1. Continue task #3 (caller migration). The new service API exists but
+   nothing calls it yet. In order:
+   (a) Wire `JudgingService.createMedalRound` into the admin flow — likely
+       a new "Create Medal Round" button on `JudgingAdminView` Medal Rounds
+       tab (or replace the current per-category-config setup entirely).
+   (b) Migrate `MedalRoundView` to read status from a `JudgingRound` of
+       `type = MEDAL` instead of `CategoryJudgingConfig.medalRoundStatus`.
+   (c) Migrate `ScoresheetServiceImpl.cascadeMarkCategoryReadyIfAllTablesComplete`
+       to use the medal `JudgingRound` instead of `CategoryJudgingConfig`.
+       For SCORE_BASED auto-fill: have it write `MedalAward.confirmed = false`.
+   (d) Migrate scoresheet creation to use `round.entries` instead of the
+       current "derived from RECEIVED entries with finalCategoryId" rule
+       (`ScoresheetService.createScoresheetsForTable`).
+   (e) Once no caller reads `CategoryJudgingConfig.medalRoundStatus` or
+       `.physicalTableId`, drop those columns in V22 (in-place) and the
+       V29 ALTER for `physical_table_id`. Rename `medal_round_mode → mode`.
+   (f) Delete now-unused `JudgingService` medal-round methods:
+       `startMedalRound / completeMedalRound / reopenMedalRound /
+       resetMedalRound / assignMedalRoundToPhysicalTable`. Replace with
+       round-id-keyed methods that work on `JudgingRound`.
 
 **Tasks set up in this session** (with dependencies):
 - #1 Update redesign-doc with resolved decisions — **COMPLETE**
