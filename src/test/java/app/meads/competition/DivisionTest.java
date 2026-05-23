@@ -138,10 +138,22 @@ class DivisionTest {
     }
 
     @Test
-    void shouldRejectBosPlacesChangeAfterRegistrationOpen() {
+    void shouldUpdateBosPlacesInRegistrationClosed() {
         var division = createDraftDivision();
         division.advanceStatus();
         division.advanceStatus(); // REGISTRATION_CLOSED
+
+        division.updateBosPlaces(3);
+
+        assertThat(division.getBosPlaces()).isEqualTo(3);
+    }
+
+    @Test
+    void shouldRejectBosPlacesChangeAfterJudgingStarts() {
+        var division = createDraftDivision();
+        division.advanceStatus();
+        division.advanceStatus();
+        division.advanceStatus(); // JUDGING
 
         assertThatThrownBy(() -> division.updateBosPlaces(2))
                 .isInstanceOf(IllegalStateException.class);

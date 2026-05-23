@@ -621,7 +621,7 @@ class DivisionDetailViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldLockBosPlacesFieldWhenRegistrationClosed() {
+    void shouldKeepBosPlacesFieldEditableInRegistrationClosed() {
         testDivision.advanceStatus(); // → REGISTRATION_OPEN
         testDivision.advanceStatus(); // → REGISTRATION_CLOSED
         divisionRepository.save(testDivision);
@@ -631,6 +631,25 @@ class DivisionDetailViewTest {
 
         var tabSheet = _get(TabSheet.class);
         tabSheet.setSelectedIndex(2); // Settings (index shifts when judging categories tab added)
+
+        var bosField = _get(com.vaadin.flow.component.textfield.IntegerField.class,
+                spec -> spec.withId("bos-places-field"));
+        assertThat(bosField.isReadOnly()).isFalse();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldLockBosPlacesFieldWhenJudging() {
+        testDivision.advanceStatus(); // → REGISTRATION_OPEN
+        testDivision.advanceStatus(); // → REGISTRATION_CLOSED
+        testDivision.advanceStatus(); // → JUDGING
+        divisionRepository.save(testDivision);
+
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName()
+                + "/divisions/" + testDivision.getShortName());
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(2); // Settings
 
         var bosField = _get(com.vaadin.flow.component.textfield.IntegerField.class,
                 spec -> spec.withId("bos-places-field"));

@@ -1576,12 +1576,14 @@ testable. Steps below are admin-driven unless noted.
 - [ ] **Expected:** A "Judging" sub-section appears at the bottom of Settings with two `IntegerField`s:
   - **BOS places** (defaults to 1, helper text "Number of Best of Show placements awarded for this division.")
   - **Minimum judges per table** (defaults to 2, helper text "Hard minimum enforced when starting a judging table.")
-- [ ] **Expected:** "BOS places" is `setReadOnly(true)` (locked because status is past REGISTRATION_OPEN). Tooltip on hover explains the lock.
-- [ ] **Expected:** "Minimum judges per table" is editable (not locked yet — no table started). The cross-module `MinJudgesPerTableLockGuard` only locks it once a table has `status != NOT_STARTED`.
+- [ ] **Expected:** Both fields are editable at REGISTRATION_CLOSED — judging hasn't started yet so neither lock applies. BOS places locks at JUDGING (`Division.updateBosPlaces` rejects when `status.ordinal() >= JUDGING.ordinal()`); minimum judges locks once a table has `status != NOT_STARTED` (cross-module `MinJudgesPerTableLockGuard`).
+- [ ] Change "BOS places" from 1 to 3, click "Save".
+- [ ] **Expected:** Notification "Settings saved successfully".
+- [ ] Refresh — value persists at 3.
 - [ ] Change "Minimum judges per table" from 2 to 3, click "Save".
 - [ ] **Expected:** Notification "Settings saved successfully".
 - [ ] Refresh — value persists at 3.
-- [ ] Change back to 2 and save.
+- [ ] Change minimum judges back to 2 and save. (Leave BOS places at 3 for the rest of §12 — Amadora awards 3 BOS placements.)
 
 ### 12.3 Competition Settings — comment languages
 

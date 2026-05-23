@@ -142,9 +142,9 @@ public class Division {
         if (bosPlaces < 1) {
             throw new IllegalArgumentException("BOS places must be >= 1, got: " + bosPlaces);
         }
-        if (status != DivisionStatus.DRAFT && status != DivisionStatus.REGISTRATION_OPEN) {
+        if (status.ordinal() >= DivisionStatus.JUDGING.ordinal()) {
             throw new IllegalStateException(
-                    "BOS places can only be changed in DRAFT or REGISTRATION_OPEN status");
+                    "BOS places can only be changed before judging starts");
         }
         this.bosPlaces = bosPlaces;
     }

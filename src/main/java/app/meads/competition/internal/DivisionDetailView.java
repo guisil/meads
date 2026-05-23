@@ -642,8 +642,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         var judgingSection = new Span(getTranslation("division-detail.settings.judging.section"));
         judgingSection.addClassName("field-label");
 
-        boolean canEditBosPlaces = isDraft
-                || division.getStatus() == DivisionStatus.REGISTRATION_OPEN;
+        boolean canEditBosPlaces = division.getStatus().ordinal() < DivisionStatus.JUDGING.ordinal();
         var bosPlacesField = new IntegerField(
                 getTranslation("division-detail.settings.bos-places"));
         bosPlacesField.setId("bos-places-field");
