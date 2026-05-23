@@ -139,4 +139,36 @@ class MedalAwardRepositoryTest {
         var byCategory = medalAwardRepository.findByFinalCategoryId(fx.category.getId());
         assertThat(byCategory).hasSize(1);
     }
+
+    @Test
+    void shouldDefaultConfirmedToFalse() {
+        var fx = createFixtures("c1");
+
+        var award = new MedalAward(fx.entry.getId(), fx.division.getId(),
+                fx.category.getId(), Medal.GOLD, fx.judge.getId());
+        medalAwardRepository.save(award);
+
+        var found = medalAwardRepository.findByEntryId(fx.entry.getId()).orElseThrow();
+        assertThat(found.isConfirmed()).isFalse();
+        assertThat(found.getConfirmedAt()).isNull();
+        assertThat(found.getConfirmedBy()).isNull();
+    }
+
+    @Test
+    void shouldConfirmMedalAward() {
+        var fx = createFixtures("c2");
+
+        var award = new MedalAward(fx.entry.getId(), fx.division.getId(),
+                fx.category.getId(), Medal.GOLD, fx.judge.getId());
+        medalAwardRepository.save(award);
+
+        var loaded = medalAwardRepository.findByEntryId(fx.entry.getId()).orElseThrow();
+        loaded.confirm(fx.judge.getId());
+        medalAwardRepository.save(loaded);
+
+        var found = medalAwardRepository.findByEntryId(fx.entry.getId()).orElseThrow();
+        assertThat(found.isConfirmed()).isTrue();
+        assertThat(found.getConfirmedAt()).isNotNull();
+        assertThat(found.getConfirmedBy()).isEqualTo(fx.judge.getId());
+    }
 }

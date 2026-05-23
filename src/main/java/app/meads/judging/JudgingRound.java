@@ -2,7 +2,9 @@ package app.meads.judging;
 
 import app.meads.judging.internal.JudgeAssignment;
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -20,7 +22,9 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -43,6 +47,14 @@ public class JudgingRound {
     @Column(name = "physical_table_id")
     private UUID physicalTableId;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type", nullable = false, length = 20)
+    private RoundType type;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "medal_mode", length = 20)
+    private MedalRoundMode medalMode;
+
     @Column(name = "scheduled_date")
     private LocalDate scheduledDate;
 
@@ -54,6 +66,12 @@ public class JudgingRound {
     @JoinColumn(name = "judging_round_id", nullable = false)
     @OrderBy("assignedAt ASC")
     private List<JudgeAssignment> assignments = new ArrayList<>();
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "judging_round_entries",
+                     joinColumns = @JoinColumn(name = "judging_round_id"))
+    @Column(name = "entry_id", nullable = false)
+    private Set<UUID> entries = new HashSet<>();
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
@@ -76,6 +94,8 @@ public class JudgingRound {
         this.name = name;
         this.divisionCategoryId = divisionCategoryId;
         this.scheduledDate = scheduledDate;
+        this.type = RoundType.SCORING;
+        this.medalMode = null;
         this.status = JudgingRoundStatus.NOT_STARTED;
     }
 
@@ -83,8 +103,28 @@ public class JudgingRound {
         this.physicalTableId = physicalTableId;
     }
 
+    public void convertToMedalRound(MedalRoundMode mode) {
+        if (status != JudgingRoundStatus.NOT_STARTED) {
+            throw new IllegalStateException("Can only convert to medal round while NOT_STARTED, current: " + status);
+        }
+        this.type = RoundType.MEDAL;
+        this.medalMode = mode;
+    }
+
     public List<JudgeAssignment> getAssignments() {
         return Collections.unmodifiableList(assignments);
+    }
+
+    public Set<UUID> getEntries() {
+        return Collections.unmodifiableSet(entries);
+    }
+
+    public void assignEntry(UUID entryId) {
+        entries.add(entryId);
+    }
+
+    public void unassignEntry(UUID entryId) {
+        entries.remove(entryId);
     }
 
     public void updateName(String name) {

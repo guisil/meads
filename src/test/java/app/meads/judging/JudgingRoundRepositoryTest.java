@@ -9,6 +9,10 @@ import app.meads.competition.ScoringSystem;
 import app.meads.competition.internal.CompetitionRepository;
 import app.meads.competition.internal.DivisionCategoryRepository;
 import app.meads.competition.internal.DivisionRepository;
+import app.meads.entry.Carbonation;
+import app.meads.entry.Entry;
+import app.meads.entry.Sweetness;
+import app.meads.entry.internal.EntryRepository;
 import app.meads.identity.Role;
 import app.meads.identity.User;
 import app.meads.identity.UserStatus;
@@ -21,6 +25,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -49,6 +54,18 @@ class JudgingRoundRepositoryTest {
 
     @Autowired
     UserRepository userRepository;
+
+    @Autowired
+    EntryRepository entryRepository;
+
+    private Entry createAndSaveEntry(Division division, DivisionCategory category, String suffix, int n) {
+        var entrant = userRepository.save(new User("entrant-" + suffix + "@test.com",
+                "Entrant", UserStatus.ACTIVE, Role.USER));
+        return entryRepository.save(new Entry(division.getId(), entrant.getId(), n,
+                "ENT-" + suffix.toUpperCase() + "-" + n,
+                "My Mead", category.getId(), Sweetness.DRY, new BigDecimal("12.5"), Carbonation.STILL,
+                "Wildflower honey", null, false, null, null));
+    }
 
     private Division createAndSaveDivision() {
         var competition = competitionRepository.save(new Competition("Test Competition", "test-competition",
@@ -168,5 +185,82 @@ class JudgingRoundRepositoryTest {
     void shouldReturnEmptyForNoTables() {
         var found = judgingRoundRepository.findByJudgingId(UUID.randomUUID());
         assertThat(found).isEmpty();
+    }
+
+    @Test
+    void shouldDefaultRoundTypeToScoringAndMedalModeToNull() {
+        var division = createAndSaveDivision();
+        var judging = createAndSaveJudging(division);
+        var category = createAndSaveJudgingCategory(division);
+
+        var round = new JudgingRound(judging.getId(), "Table A", category.getId(), null);
+        judgingRoundRepository.save(round);
+
+        var found = judgingRoundRepository.findById(round.getId()).orElseThrow();
+        assertThat(found.getType()).isEqualTo(RoundType.SCORING);
+        assertThat(found.getMedalMode()).isNull();
+    }
+
+    @Test
+    void shouldPersistMedalRoundWithMedalMode() {
+        var division = createAndSaveDivision();
+        var judging = createAndSaveJudging(division);
+        var category = createAndSaveJudgingCategory(division);
+
+        var round = new JudgingRound(judging.getId(), "Medal — Traditional", category.getId(), null);
+        round.convertToMedalRound(MedalRoundMode.SCORE_BASED);
+        judgingRoundRepository.save(round);
+
+        var found = judgingRoundRepository.findById(round.getId()).orElseThrow();
+        assertThat(found.getType()).isEqualTo(RoundType.MEDAL);
+        assertThat(found.getMedalMode()).isEqualTo(MedalRoundMode.SCORE_BASED);
+    }
+
+    @Test
+    void shouldDefaultEntriesToEmptySet() {
+        var division = createAndSaveDivision();
+        var judging = createAndSaveJudging(division);
+        var category = createAndSaveJudgingCategory(division);
+
+        var round = judgingRoundRepository.save(
+                new JudgingRound(judging.getId(), "Table A", category.getId(), null));
+
+        var found = judgingRoundRepository.findById(round.getId()).orElseThrow();
+        assertThat(found.getEntries()).isEmpty();
+    }
+
+    @Test
+    void shouldAssignAndPersistEntries() {
+        var division = createAndSaveDivision();
+        var judging = createAndSaveJudging(division);
+        var category = createAndSaveJudgingCategory(division);
+        var entry1 = createAndSaveEntry(division, category, "e1", 1);
+        var entry2 = createAndSaveEntry(division, category, "e2", 2);
+
+        var round = new JudgingRound(judging.getId(), "Table A", category.getId(), null);
+        round.assignEntry(entry1.getId());
+        round.assignEntry(entry2.getId());
+        judgingRoundRepository.save(round);
+
+        var found = judgingRoundRepository.findById(round.getId()).orElseThrow();
+        assertThat(found.getEntries()).containsExactlyInAnyOrder(entry1.getId(), entry2.getId());
+    }
+
+    @Test
+    void shouldUnassignEntry() {
+        var division = createAndSaveDivision();
+        var judging = createAndSaveJudging(division);
+        var category = createAndSaveJudgingCategory(division);
+        var entry = createAndSaveEntry(division, category, "u", 1);
+
+        var round = new JudgingRound(judging.getId(), "Table A", category.getId(), null);
+        round.assignEntry(entry.getId());
+        var saved = judgingRoundRepository.save(round);
+
+        saved.unassignEntry(entry.getId());
+        judgingRoundRepository.save(saved);
+
+        var found = judgingRoundRepository.findById(saved.getId()).orElseThrow();
+        assertThat(found.getEntries()).isEmpty();
     }
 }

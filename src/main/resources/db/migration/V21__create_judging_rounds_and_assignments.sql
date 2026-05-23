@@ -3,6 +3,8 @@ CREATE TABLE judging_rounds (
     judging_id            UUID NOT NULL REFERENCES judgings(id),
     name                  VARCHAR(120) NOT NULL,
     division_category_id  UUID NOT NULL REFERENCES division_categories(id),
+    type                  VARCHAR(20) NOT NULL DEFAULT 'SCORING',
+    medal_mode            VARCHAR(20),
     scheduled_date        DATE,
     status                VARCHAR(20) NOT NULL,
     created_at            TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -19,3 +21,12 @@ CREATE TABLE judge_assignments (
     UNIQUE (judging_round_id, judge_user_id)
 );
 CREATE INDEX idx_judge_assignments_judge_user_id ON judge_assignments(judge_user_id);
+
+-- Entries assigned to a scoring round. UNIQUE(entry_id) enforces the 1:1
+-- "an entry sits on at most one round" invariant from the round-model redesign.
+CREATE TABLE judging_round_entries (
+    judging_round_id  UUID NOT NULL REFERENCES judging_rounds(id) ON DELETE CASCADE,
+    entry_id          UUID NOT NULL UNIQUE REFERENCES entries(id),
+    PRIMARY KEY (judging_round_id, entry_id)
+);
+CREATE INDEX idx_judging_round_entries_entry_id ON judging_round_entries(entry_id);

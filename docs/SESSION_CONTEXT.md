@@ -291,16 +291,38 @@ dropdowns. No point doing them on UI that's about to be replaced.
 7. **Flat tabs: Rounds + Results + BOS** on `JudgingAdminView`. Rounds has a Type filter
    (All / Scoring / Medal). Row click drills into existing per-round views.
 
+**Task #2 (expansion phase) COMPLETE (2026-05-24).** Additive-only schema +
+entity changes — 1142 tests passing (+7 new). All existing behavior preserved;
+new fields ready for task #3 to migrate service/view callers onto.
+
+What landed:
+- **V21** `judging_rounds`: added `type VARCHAR(20) NOT NULL DEFAULT 'SCORING'`
+  + `medal_mode VARCHAR(20)` (nullable). New table `judging_round_entries`
+  (judging_round_id, entry_id, UNIQUE(entry_id) — enforces 1:1).
+- **V24** `medal_awards`: added `confirmed BOOLEAN NOT NULL DEFAULT FALSE` +
+  `confirmed_at TIMESTAMPTZ` + `confirmed_by UUID REFERENCES users(id)`.
+- **Entities** — `JudgingRound`: new `type: RoundType` (default SCORING),
+  `medalMode: MedalRoundMode` (nullable), `entries: Set<UUID>` via
+  @ElementCollection, new methods `convertToMedalRound(mode)`,
+  `assignEntry(uuid)`, `unassignEntry(uuid)`. `MedalAward`: new
+  `confirmed/confirmedAt/confirmedBy` + `confirm(adminUserId)` method.
+- **New enum** `RoundType` (SCORING, MEDAL) in `app.meads.judging`.
+- **Tests** — JudgingRoundRepositoryTest +5, MedalAwardRepositoryTest +2.
+
 **Next session — first actions:**
-1. Verify Task #1 (redesign-doc update) is committed.
-2. Start Task #2 (schema migration) — in-place edits to V21/V22/V24/V29. Pre-deployment
-   branch, so editing existing migrations is allowed per the redesign doc §2.
-3. TDD all the way through Tasks #3-#7 per the user's no-confirmation-gates preference.
+1. Start Task #3 — the contraction + service refactor (the breaking-changes
+   half). In order: (a) rename JudgingRoundStatus values (NOT_STARTED→PENDING,
+   ROUND_1→ACTIVE, add READY) + update V21 status seed values + cascade through
+   ~20 services/views/tests; (b) slim CategoryJudgingConfig — drop
+   medalRoundStatus + physicalTableId in V22, rename medalRoundMode→mode;
+   (c) drop V29's ALTER TABLE category_judging_configs ADD COLUMN
+   physical_table_id; (d) JudgingService refactor — createMedalRound,
+   assignEntryToRound, confirmMedalAwards, etc.
 
 **Tasks set up in this session** (with dependencies):
 - #1 Update redesign-doc with resolved decisions — **COMPLETE**
-- #2 Schema migration (in-place V21/V22/V24/V29) — blocked-by #1, ready
-- #3 Entity + service refactor — blocked-by #2
+- #2 Schema migration expansion phase — **COMPLETE**
+- #3 Entity + service refactor + contraction phase — ready
 - #4 UI restructure (Rounds + Results + BOS tabs) — blocked-by #3
 - #5 Dev seed updates — blocked-by #3
 - #6 Walkthrough rewrite §12.6-§12.8 — blocked-by #4

@@ -40,6 +40,15 @@ public class MedalAward {
     @Column(name = "awarded_by", nullable = false)
     private UUID awardedBy;
 
+    @Column(name = "confirmed", nullable = false)
+    private boolean confirmed;
+
+    @Column(name = "confirmed_at")
+    private Instant confirmedAt;
+
+    @Column(name = "confirmed_by")
+    private UUID confirmedBy;
+
     @Column(name = "updated_at")
     private Instant updatedAt;
 
@@ -53,11 +62,18 @@ public class MedalAward {
         this.finalCategoryId = finalCategoryId;
         this.medal = medal;
         this.awardedBy = awardedBy;
+        this.confirmed = false;
     }
 
     public void updateMedal(Medal newValue, UUID awardedBy) {
         this.medal = newValue;
         this.awardedBy = awardedBy;
+    }
+
+    public void confirm(UUID adminUserId) {
+        this.confirmed = true;
+        this.confirmedAt = Instant.now();
+        this.confirmedBy = adminUserId;
     }
 
     @PrePersist
