@@ -219,7 +219,15 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
                 + config.getMedalRoundStatus().name());
         statusLine.setId("medal-round-status-line");
 
-        var header = new VerticalLayout(titleRow, statusLine);
+        var physicalTableLabel = config.getPhysicalTableId() == null
+                ? getTranslation("medal-round.physical-table.unassigned")
+                : judgingService.findPhysicalTableById(config.getPhysicalTableId())
+                        .map(app.meads.judging.PhysicalTable::getLabel)
+                        .orElse(getTranslation("medal-round.physical-table.unassigned"));
+        var physicalTableLine = new Span(getTranslation("medal-round.physical-table") + ": " + physicalTableLabel);
+        physicalTableLine.setId("medal-round-physical-table-line");
+
+        var header = new VerticalLayout(titleRow, statusLine, physicalTableLine);
         header.setPadding(false);
         header.setSpacing(false);
 

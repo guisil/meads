@@ -264,6 +264,19 @@ class MedalRoundViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldShowPhysicalTableLineInHeader() {
+        var category = activeMedalRoundCategory();
+
+        navigateToMedalRound(category);
+
+        var line = _get(com.vaadin.flow.component.html.Span.class,
+                spec -> spec.withId("medal-round-physical-table-line"));
+        // No physical table is assigned by default — should show the unassigned placeholder.
+        assertThat(line.getText()).contains("Physical Table").contains("Not assigned");
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldListAdvancedEntriesInComparativeMode() {
         var category = activeMedalRoundCategory();
         var table = tableFor(category);

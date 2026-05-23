@@ -697,6 +697,8 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
                 .setHeader(getTranslation("judging-admin.medal-rounds.column.category"));
         grid.addComponentColumn(this::createModeCell)
                 .setHeader(getTranslation("judging-admin.medal-rounds.column.mode"));
+        grid.addComponentColumn(this::createMedalRoundPhysicalTableCell)
+                .setHeader(getTranslation("judging-admin.medal-rounds.column.physical-table"));
         grid.addColumn(c -> c.getMedalRoundStatus().name())
                 .setHeader(getTranslation("judging-admin.medal-rounds.column.status"));
         grid.addColumn(this::formatTablesProgress)
@@ -720,6 +722,43 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         select.addValueChangeListener(e -> {
             if (e.getValue() != null && e.getValue() != config.getMedalRoundMode()) {
                 changeMedalRoundMode(config, e.getValue());
+            }
+        });
+        return select;
+    }
+
+    private Select<app.meads.judging.PhysicalTable> createMedalRoundPhysicalTableCell(CategoryJudgingConfig config) {
+        var select = new Select<app.meads.judging.PhysicalTable>();
+        var physicalTables = judgingService.findPhysicalTablesByDivision(division.getId());
+        select.setItems(physicalTables);
+        select.setItemLabelGenerator(pt -> pt == null ? "" : pt.getLabel());
+        select.setEmptySelectionAllowed(true);
+        select.setEmptySelectionCaption(getTranslation("judging-admin.medal-rounds.physical-table.unassigned"));
+        if (config.getPhysicalTableId() != null) {
+            physicalTables.stream()
+                    .filter(pt -> pt.getId().equals(config.getPhysicalTableId()))
+                    .findFirst()
+                    .ifPresent(select::setValue);
+        }
+        var status = config.getMedalRoundStatus();
+        // Allowed while PENDING/READY; locked once ACTIVE/COMPLETE (mirrors Mode column).
+        select.setEnabled(status == MedalRoundStatus.PENDING || status == MedalRoundStatus.READY);
+        select.addValueChangeListener(e -> {
+            var newId = e.getValue() == null ? null : e.getValue().getId();
+            var oldId = config.getPhysicalTableId();
+            if (java.util.Objects.equals(newId, oldId)) {
+                return;
+            }
+            try {
+                judgingService.assignMedalRoundToPhysicalTable(
+                        config.getDivisionCategoryId(), newId, currentUserId);
+                config.assignToPhysicalTable(newId);
+                Notification.show(getTranslation("judging-admin.medal-rounds.physical-table.updated"))
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                refreshMedalRoundsTab();
             }
         });
         return select;
