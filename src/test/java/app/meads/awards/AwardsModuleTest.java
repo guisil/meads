@@ -2,19 +2,28 @@ package app.meads.awards;
 
 import app.meads.BusinessRuleException;
 import app.meads.TestcontainersConfiguration;
+import app.meads.competition.CompetitionRole;
 import app.meads.competition.CompetitionService;
 import app.meads.competition.ScoringSystem;
+import app.meads.entry.Carbonation;
+import app.meads.entry.EntryService;
+import app.meads.entry.Sweetness;
 import app.meads.identity.Role;
 import app.meads.identity.UserService;
 import app.meads.identity.UserStatus;
+import app.meads.judging.JudgingService;
+import app.meads.judging.Scoresheet;
+import app.meads.judging.ScoresheetService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
 import org.springframework.modulith.test.ApplicationModuleTest;
 import org.springframework.modulith.test.PublishedEvents;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -25,6 +34,9 @@ class AwardsModuleTest {
 
     @Autowired AwardsService awardsService;
     @Autowired CompetitionService competitionService;
+    @Autowired JudgingService judgingService;
+    @Autowired ScoresheetService scoresheetService;
+    @Autowired EntryService entryService;
     @Autowired UserService userService;
 
     @Test
@@ -37,6 +49,16 @@ class AwardsModuleTest {
         var admin = userService.createUser(
                 "awards-mod-admin@test.com", "Awards Admin",
                 UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
+        var entrant = userService.createUser(
+                "awards-mod-entrant@test.com", "Entrant",
+                UserStatus.ACTIVE, Role.USER);
+        var judge1 = userService.createUser(
+                "awards-mod-judge1@test.com", "Judge One",
+                UserStatus.ACTIVE, Role.USER);
+        var judge2 = userService.createUser(
+                "awards-mod-judge2@test.com", "Judge Two",
+                UserStatus.ACTIVE, Role.USER);
+
         var competition = competitionService.createCompetition(
                 "Awards Module Test", "awards-mod-test",
                 LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30),
@@ -46,48 +68,99 @@ class AwardsModuleTest {
                 ScoringSystem.MJP,
                 LocalDateTime.of(2026, 12, 31, 23, 59), "UTC", admin.getId());
 
-        // Advance DRAFT → DELIBERATION (4 advances)
-        for (int i = 0; i < 4; i++) {
-            competitionService.advanceDivisionStatus(division.getId(), admin.getId());
-        }
+        competitionService.addParticipantByEmail(competition.getId(), judge1.getEmail(),
+                CompetitionRole.JUDGE, admin.getId());
+        competitionService.addParticipantByEmail(competition.getId(), judge2.getEmail(),
+                CompetitionRole.JUDGE, admin.getId());
 
-        // Publish: status moves to RESULTS_PUBLISHED + Publication v1 created
+        var registrationCategory = competitionService.addCustomCategory(
+                division.getId(), "AM1", "Amateur One", "desc", null, admin.getId());
+
+        // DRAFT → REGISTRATION_OPEN
+        competitionService.advanceDivisionStatus(division.getId(), admin.getId());
+
+        // Credit + entry for entrant
+        entryService.addCredits(division.getId(), entrant.getEmail(), 1, admin.getId());
+        var entry = entryService.createEntry(division.getId(), entrant.getId(),
+                "Test Mead", registrationCategory.getId(),
+                Sweetness.DRY, new BigDecimal("12.0"), Carbonation.STILL,
+                "Wildflower", null, false, null, null);
+        // DRAFT → SUBMITTED (entrant submits own entry) → RECEIVED (admin)
+        entryService.submitEntry(entry.getId(), entrant.getId());
+        entryService.advanceEntryStatus(entry.getId(), admin.getId());
+
+        // REGISTRATION_OPEN → REGISTRATION_CLOSED
+        competitionService.advanceDivisionStatus(division.getId(), admin.getId());
+
+        // Initialize judging categories + assign final category
+        competitionService.initializeJudgingCategories(division.getId(), admin.getId());
+        var judgingCategory = competitionService.findJudgingCategories(division.getId()).getFirst();
+        entryService.assignFinalCategory(entry.getId(), judgingCategory.getId(), admin.getId());
+
+        // REGISTRATION_CLOSED → JUDGING
+        competitionService.advanceDivisionStatus(division.getId(), admin.getId());
+
+        // Run a minimal judging cycle to phase=COMPLETE
+        var judging = judgingService.ensureJudgingExists(division.getId());
+        var table = judgingService.createTable(judging.getId(), "AM1 Panel",
+                judgingCategory.getId(), null, admin.getId());
+        judgingService.assignJudge(table.getId(), judge1.getId(), admin.getId());
+        judgingService.assignJudge(table.getId(), judge2.getId(), admin.getId());
+        judgingService.startTable(table.getId(), admin.getId());
+
+        // One scoresheet per entry is auto-created when the table starts.
+        var sheets = scoresheetService.findByTableId(table.getId());
+        assertThat(sheets).hasSize(1);
+        fillAndSubmit(sheets.getFirst(), judge1.getId());
+
+        judgingService.startMedalRound(judgingCategory.getId(), admin.getId());
+        judgingService.completeMedalRound(judgingCategory.getId(), admin.getId());
+        judgingService.startBos(division.getId(), admin.getId());
+        judgingService.completeBos(division.getId(), admin.getId());
+
+        // JUDGING → DELIBERATION
+        competitionService.advanceDivisionStatus(division.getId(), admin.getId());
+
+        // Publish: DELIBERATION → RESULTS_PUBLISHED + Publication v1
         var publication1 = awardsService.publish(division.getId(), admin.getId());
         assertThat(publication1.getVersion()).isEqualTo(1);
         assertThat(publication1.isInitial()).isTrue();
         assertThat(events.ofType(ResultsPublishedEvent.class)).hasSize(1);
 
-        // Latest publication retrievable
-        assertThat(awardsService.getLatestPublication(division.getId()))
-                .isPresent()
-                .get()
-                .extracting(Publication::getVersion).isEqualTo(1);
-
-        // Second publish rejected (already published)
+        // Second publish rejected
         assertThatThrownBy(() -> awardsService.publish(division.getId(), admin.getId()))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("error.awards");
 
-        // Revert publication via CompetitionService
+        // Revert publication: RESULTS_PUBLISHED → DELIBERATION; v1 stays in audit log
         competitionService.revertDivisionStatus(division.getId(), admin.getId());
-
-        // Status reverted; publication v1 still in audit log
         assertThat(competitionService.findDivisionById(division.getId()).getStatus().name())
                 .isEqualTo("DELIBERATION");
         assertThat(awardsService.getPublicationHistory(division.getId())).hasSize(1);
 
-        // Advance back to RESULTS_PUBLISHED for republish (advance: DELIBERATION → RESULTS_PUBLISHED)
-        competitionService.advanceDivisionStatus(division.getId(), admin.getId());
+        // Manual advance from DELIBERATION is blocked — must use publish/republish
+        assertThatThrownBy(() -> competitionService.advanceDivisionStatus(division.getId(), admin.getId()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.division.use-publish-results-instead");
 
-        // Republish creates v2
+        // Republish: creates v2 and advances DELIBERATION → RESULTS_PUBLISHED internally
         var publication2 = awardsService.republish(division.getId(),
                 "Corrected silver medal in M1A — judge re-scored after spreadsheet error.",
                 admin.getId());
         assertThat(publication2.getVersion()).isEqualTo(2);
         assertThat(publication2.isInitial()).isFalse();
         assertThat(events.ofType(ResultsRepublishedEvent.class)).hasSize(1);
-
-        // History now has 2 entries
+        assertThat(competitionService.findDivisionById(division.getId()).getStatus().name())
+                .isEqualTo("RESULTS_PUBLISHED");
         assertThat(awardsService.getPublicationHistory(division.getId())).hasSize(2);
+    }
+
+    private void fillAndSubmit(Scoresheet sheet, UUID judgeUserId) {
+        scoresheetService.updateScore(sheet.getId(), "Appearance", 10, null, judgeUserId);
+        scoresheetService.updateScore(sheet.getId(), "Aroma/Bouquet", 25, null, judgeUserId);
+        scoresheetService.updateScore(sheet.getId(), "Flavour and Body", 27, null, judgeUserId);
+        scoresheetService.updateScore(sheet.getId(), "Finish", 11, null, judgeUserId);
+        scoresheetService.updateScore(sheet.getId(), "Overall Impression", 10, null, judgeUserId);
+        scoresheetService.submit(sheet.getId(), judgeUserId);
     }
 }

@@ -1,6 +1,7 @@
 package app.meads.awards.internal;
 
 import app.meads.TestcontainersConfiguration;
+import app.meads.awards.Publication;
 import app.meads.competition.Competition;
 import app.meads.competition.Division;
 import app.meads.competition.ScoringSystem;
@@ -52,6 +53,7 @@ class AwardsAdminViewTest {
     @Autowired CompetitionRepository competitionRepository;
     @Autowired DivisionRepository divisionRepository;
     @Autowired UserRepository userRepository;
+    @Autowired PublicationRepository publicationRepository;
 
     private Competition competition;
     private Division division;
@@ -141,7 +143,7 @@ class AwardsAdminViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldShowPublishButtonWhenStatusDeliberation() {
+    void shouldShowPublishButtonWhenStatusDeliberationAndNoPublicationYet() {
         advanceToDeliberation();
 
         UI.getCurrent().navigate("competitions/" + competition.getShortName()
@@ -156,16 +158,34 @@ class AwardsAdminViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldShowRepublishAnnounceRevertWhenStatusPublished() {
+    void shouldShowRepublishButtonWhenStatusDeliberationAndPriorPublicationExists() {
+        advanceToDeliberation();
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        publicationRepository.save(new Publication(division.getId(), admin.getId()));
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/results-admin");
+
+        var republish = _get(Button.class, spec -> spec.withId("awards-republish-button"));
+        assertThat(republish.getText()).containsIgnoringCase("publish");
+        assertThat(_find(Button.class).stream()
+                .anyMatch(b -> "awards-publish-button".equals(b.getId().orElse(""))))
+                .isFalse();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldShowAnnounceAndRevertWhenStatusPublished() {
         advanceToPublished();
 
         UI.getCurrent().navigate("competitions/" + competition.getShortName()
                 + "/divisions/" + division.getShortName() + "/results-admin");
 
-        assertThat(_find(Button.class).stream()
+        var buttonIds = _find(Button.class).stream()
                 .map(b -> b.getId().orElse(""))
-                .toList())
-                .contains("awards-republish-button", "awards-announce-button", "awards-revert-button");
+                .toList();
+        assertThat(buttonIds).contains("awards-announce-button", "awards-revert-button");
+        assertThat(buttonIds).doesNotContain("awards-republish-button", "awards-publish-button");
     }
 
     @Test

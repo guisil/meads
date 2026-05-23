@@ -138,19 +138,23 @@ public class AwardsAdminView extends VerticalLayout implements BeforeEnterObserv
         actions.setId("awards-admin-actions");
 
         if (division.getStatus() == DivisionStatus.DELIBERATION) {
-            var publishBtn = new Button(getTranslation("awards.admin.publish"),
-                    e -> openPublishDialog());
-            publishBtn.setId("awards-publish-button");
-            publishBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-            publishBtn.setDisableOnClick(true);
-            actions.add(publishBtn);
+            var hasPublication = awardsService.getLatestPublication(division.getId()).isPresent();
+            if (hasPublication) {
+                var republishBtn = new Button(getTranslation("awards.admin.republish"),
+                        e -> openRepublishDialog());
+                republishBtn.setId("awards-republish-button");
+                republishBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+                republishBtn.setDisableOnClick(true);
+                actions.add(republishBtn);
+            } else {
+                var publishBtn = new Button(getTranslation("awards.admin.publish"),
+                        e -> openPublishDialog());
+                publishBtn.setId("awards-publish-button");
+                publishBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+                publishBtn.setDisableOnClick(true);
+                actions.add(publishBtn);
+            }
         } else if (division.getStatus() == DivisionStatus.RESULTS_PUBLISHED) {
-            var republishBtn = new Button(getTranslation("awards.admin.republish"),
-                    e -> openRepublishDialog());
-            republishBtn.setId("awards-republish-button");
-            republishBtn.setDisableOnClick(true);
-            actions.add(republishBtn);
-
             var announceBtn = new Button(getTranslation("awards.admin.send-announcement"),
                     e -> openAnnouncementDialog());
             announceBtn.setId("awards-announce-button");

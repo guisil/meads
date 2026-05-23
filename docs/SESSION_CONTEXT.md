@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `feature/judging-module` at `0.4.0-SNAPSHOT` — **Awards module COMPLETE** (2026-05-12, all 13 tasks done). Judging Phase 6 views also complete. **Judging event listeners complete (2026-05-20)** — `JudgingNotificationListener` emails judges on table start / scoresheet revert / medal-round activation; the judging module is now functionally complete. Architecture: `Publication` audit-trail aggregate + freeze-in-place via `DivisionStatus.isResultsFrozen()` guard on every judging mutator. Decoupled publish/republish/announcement: only `sendAnnouncement` triggers emails. Per the plan's open question, chose option B for entrant-facing scoresheet drill-in (new `MyResultsView` + `MyScoresheetView` in awards module + banner-link from `MyEntriesView`) to keep dependency direction unidirectional (awards → entry). **Merged main 2026-05-16** to pick up the v0.3.0 bug fixes (credits-grid refresh, webhook post-registration guard, judging-category parent-delete guard), MFA email reset flow, codebase-wide inline-FQN cleanup + CLAUDE.md rule, and i18n cleanup (sidebar nav, Final Category, dialog buttons). Post-merge: caught up ES/IT/PL with the 14 new keys that main only added to EN/PT. **Merged main again 2026-05-19** to pick up the v0.3.0 release commits + 6 mid-walkthrough fixes (MFA verify Enter shortcut, Final Category picker disabled until init, primary-category dropdowns filtered to REGISTRATION scope, leaf-only judging categories in Final Category picker, Categories tab + parent select filter to REGISTRATION, entrant updateEntry enforces entry limits on category change). **Merged main again 2026-05-20** to pick up v0.3.1 (country names localized to the current UI language — `app.meads.CountryDisplay`) and then **v0.3.2** (European Portuguese country names — `pt` pinned to `pt-PT`; CI moved off the deprecated Node 20 runtime; Vaadin 25.1.5 / OpenPDF 3.0.4 bumps).
-**Tests:** 1098 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-22 after `MedalRoundView` + the judging-workflow audit fixes (+22 tests vs. the 1076 v0.3.2-merge baseline).
+**Tests:** 1112 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-23 after the `DivisionAdvanceGuard` family + `AwardsService.republish` refactor (+14 tests vs. the 1098 audit-fixes baseline).
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -232,29 +232,36 @@ docs/
 
 ## What's Next
 
-### CURRENT (2026-05-22): judging module hardened → walkthrough → v0.4.0 release
+### CURRENT (2026-05-23): status-advance guards → resume walkthrough → v0.4.0
 
-Two rounds of work landed on `feature/judging-module` on 2026-05-22 — both fully
-documented in the completed-priorities log below:
-1. **`MedalRoundView`** — a pre-walkthrough audit found the medal-awarding UI had
-   never been built (despite the Phase 6 log claiming a "medal-round form" existed):
-   `recordMedal`/`updateMedal`/`deleteMedalAward` had zero view callers, COMPARATIVE
-   rounds (the default) could not award a medal at all. Built in 7 TDD cycles.
-2. **Judging-workflow audit fixes** — a domain-aware audit (grounded in
-   `docs/reference/chip-competition-rules.md`) fixed four gaps: only RECEIVED entries
-   are judged; `JudgingAdminView` warns about entries with no judging category; the
-   judge's scoresheet now shows the declared attributes (judges work from coded
-   samples, not the bottle); new read-only `StewardView` (`/my-stewarding`).
+A mid-walkthrough finding on §12.1: `CompetitionService.advanceDivisionStatus`
+had **zero precondition checks**, so an admin could advance straight to JUDGING
+without initializing judging categories, or to DELIBERATION before BOS was
+finalized, etc. Symmetric with `DivisionRevertGuard`, but the advance side never
+existed. Built today (2026-05-23):
 
-The judging module is now functionally complete and domain-correct. 1098 tests.
+1. **`DivisionAdvanceGuard` interface** + wiring in `CompetitionService.advanceDivisionStatus` (mirrors `DivisionRevertGuard`).
+2. **`RegistrationCategoryAdvanceGuard`** (competition.internal) — blocks DRAFT → REGISTRATION_OPEN when no REGISTRATION categories.
+3. **`JudgingCategoryAdvanceGuard`** (competition.internal) — blocks REGISTRATION_CLOSED → JUDGING when judging categories not initialized.
+4. **`JudgingCompleteAdvanceGuard`** (judging.internal) — blocks JUDGING → DELIBERATION when `Judging.phase != COMPLETE`.
+5. **`BlockManualPublishAdvanceGuard`** (awards.internal) — blocks manual DELIBERATION → RESULTS_PUBLISHED so admins must go through `AwardsService.publish/republish`.
+6. **`CompetitionService.publishDivision(divisionId, adminUserId)`** — new awards-only method that bypasses advance guards to do the DELIBERATION → RESULTS_PUBLISHED transition (called by `AwardsService.publish` and `republish`).
+7. **`AwardsService.republish` now requires DELIBERATION** (was RESULTS_PUBLISHED) and advances the status itself — removes the §13.8 "manual re-advance hack".
+8. **AwardsAdminView**: at DELIBERATION shows Publish-or-Re-publish (depending on Publication history); at RESULTS_PUBLISHED shows Announce + Revert only (no in-place Re-publish — must revert first).
+9. 6 new error keys in 5 locales (EN/PT/ES/IT/PL).
+10. Walkthrough §12.1, §6's Advance step, §13.1, §13.7, §13.8 updated.
+
+**1112 tests passing.**
 
 Remaining work before merge to `main`:
-1. **Manual walkthrough** of `docs/walkthrough/manual-test.md` against a running app
-   — focus on §12 (Judging, incl. §12.12 MedalRoundView, §12.16 StewardView, the
-   RECEIVED-gate at §12.5–§12.6.4, the rich scoresheet card §12.11, the 3
-   judge-notification emails) and §13 (Awards). Fix anything that surfaces.
-2. **Merge `feature/judging-module` → `main`** and release **v0.4.0** (release
-   process in `docs/plans/deployment-checklist.md`).
+1. **Resume manual walkthrough** of `docs/walkthrough/manual-test.md` from
+   §12.1 against the now-guarded flow — focus on §12 (Judging, incl. §12.12
+   MedalRoundView, §12.16 StewardView, the RECEIVED-gate at §12.5–§12.6.4, the
+   rich scoresheet card §12.11, the 3 judge-notification emails) and §13
+   (Awards, incl. the new §13.1.1/§13.1.3 guard-rejection steps and the
+   simplified §13.8 re-publish flow). Fix anything that surfaces.
+2. **Code review** + merge `feature/judging-module` → `main` + release **v0.4.0**
+   (release process in `docs/plans/deployment-checklist.md`).
 3. Deferred items below (auto-close, MFA recovery codes, category constraints) stay
    deferred — post-v0.4.0.
 

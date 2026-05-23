@@ -88,7 +88,7 @@ public class AwardsServiceImpl implements AwardsService {
             throw new BusinessRuleException("error.awards.already-published");
         }
         var publication = publicationRepository.save(new Publication(divisionId, adminUserId));
-        competitionService.advanceDivisionStatus(divisionId, adminUserId);
+        competitionService.publishDivision(divisionId, adminUserId);
         eventPublisher.publishEvent(new ResultsPublishedEvent(
                 divisionId, publication.getId(), publication.getVersion(),
                 publication.getPublishedAt(), publication.getPublishedBy()));
@@ -104,7 +104,7 @@ public class AwardsServiceImpl implements AwardsService {
             throw new BusinessRuleException("error.awards.unauthorized");
         }
         var division = competitionService.findDivisionById(divisionId);
-        if (division.getStatus() != DivisionStatus.RESULTS_PUBLISHED) {
+        if (division.getStatus() != DivisionStatus.DELIBERATION) {
             throw new BusinessRuleException("error.awards.republish-wrong-status");
         }
         var trimmed = justification.trim();
@@ -118,6 +118,7 @@ public class AwardsServiceImpl implements AwardsService {
                 .orElseThrow(() -> new BusinessRuleException("error.awards.no-prior-publication"));
         var publication = publicationRepository.save(
                 Publication.republish(divisionId, previous.getVersion(), trimmed, adminUserId));
+        competitionService.publishDivision(divisionId, adminUserId);
         eventPublisher.publishEvent(new ResultsRepublishedEvent(
                 divisionId, publication.getId(), publication.getVersion(),
                 publication.getPublishedAt(), publication.getPublishedBy(), trimmed));

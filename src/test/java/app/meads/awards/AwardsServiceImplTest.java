@@ -59,7 +59,7 @@ class AwardsServiceImplTest {
 
         assertThat(publication.getVersion()).isEqualTo(1);
         assertThat(publication.isInitial()).isTrue();
-        then(competitionService).should().advanceDivisionStatus(divisionId, adminUserId);
+        then(competitionService).should().publishDivision(divisionId, adminUserId);
         var captor = ArgumentCaptor.forClass(ResultsPublishedEvent.class);
         then(eventPublisher).should().publishEvent(captor.capture());
         assertThat(captor.getValue().divisionId()).isEqualTo(divisionId);
@@ -115,7 +115,7 @@ class AwardsServiceImplTest {
         var divisionId = UUID.randomUUID();
         var adminUserId = UUID.randomUUID();
         var division = mock(Division.class);
-        given(division.getStatus()).willReturn(DivisionStatus.RESULTS_PUBLISHED);
+        given(division.getStatus()).willReturn(DivisionStatus.DELIBERATION);
         given(competitionService.findDivisionById(divisionId)).willReturn(division);
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
         var existing = new Publication(divisionId, adminUserId);
@@ -130,6 +130,7 @@ class AwardsServiceImplTest {
         assertThat(publication.getVersion()).isEqualTo(2);
         assertThat(publication.isInitial()).isFalse();
         assertThat(publication.getJustification()).contains("Fixed gold medal");
+        then(competitionService).should().publishDivision(divisionId, adminUserId);
 
         var captor = ArgumentCaptor.forClass(ResultsRepublishedEvent.class);
         then(eventPublisher).should().publishEvent(captor.capture());
@@ -137,12 +138,12 @@ class AwardsServiceImplTest {
     }
 
     @Test
-    void shouldRejectRepublishWhenStatusNotPublished() {
+    void shouldRejectRepublishWhenStatusNotDeliberation() {
         var service = createService();
         var divisionId = UUID.randomUUID();
         var adminUserId = UUID.randomUUID();
         var division = mock(Division.class);
-        given(division.getStatus()).willReturn(DivisionStatus.DELIBERATION);
+        given(division.getStatus()).willReturn(DivisionStatus.RESULTS_PUBLISHED);
         given(competitionService.findDivisionById(divisionId)).willReturn(division);
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
 
@@ -157,7 +158,7 @@ class AwardsServiceImplTest {
         var divisionId = UUID.randomUUID();
         var adminUserId = UUID.randomUUID();
         var division = mock(Division.class);
-        given(division.getStatus()).willReturn(DivisionStatus.RESULTS_PUBLISHED);
+        given(division.getStatus()).willReturn(DivisionStatus.DELIBERATION);
         given(competitionService.findDivisionById(divisionId)).willReturn(division);
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
 
@@ -172,7 +173,7 @@ class AwardsServiceImplTest {
         var divisionId = UUID.randomUUID();
         var adminUserId = UUID.randomUUID();
         var division = mock(Division.class);
-        given(division.getStatus()).willReturn(DivisionStatus.RESULTS_PUBLISHED);
+        given(division.getStatus()).willReturn(DivisionStatus.DELIBERATION);
         given(competitionService.findDivisionById(divisionId)).willReturn(division);
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
 

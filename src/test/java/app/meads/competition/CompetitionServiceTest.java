@@ -70,6 +70,8 @@ class CompetitionServiceTest {
     @Mock
     ApplicationEventPublisher eventPublisher;
 
+    List<DivisionAdvanceGuard> advanceGuards = new ArrayList<>();
+
     List<DivisionRevertGuard> revertGuards = new ArrayList<>();
 
     List<DivisionDeletionGuard> deletionGuards = new ArrayList<>();
@@ -87,7 +89,7 @@ class CompetitionServiceTest {
                 participantRepository, participantRoleRepository,
                 divisionCategoryRepository, categoryRepository,
                 competitionDocumentRepository, userService,
-                eventPublisher, revertGuards, deletionGuards, removalCleanups,
+                eventPublisher, advanceGuards, revertGuards, deletionGuards, removalCleanups,
                 judgingCategoryDeletionGuards, minJudgesPerTableLockGuards);
     }
 
@@ -695,6 +697,31 @@ class CompetitionServiceTest {
 
         assertThat(result.getStatus()).isEqualTo(DivisionStatus.REGISTRATION_OPEN);
         then(eventPublisher).should().publishEvent(any(DivisionStatusAdvancedEvent.class));
+    }
+
+    @Test
+    void shouldRejectAdvanceWhenGuardBlocks() {
+        var guard = mock(DivisionAdvanceGuard.class);
+        advanceGuards.add(guard);
+
+        var admin = createAdmin();
+        var division = new Division(UUID.randomUUID(),
+                "Home", "home", ScoringSystem.MJP,
+                LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
+        given(divisionRepository.findById(division.getId()))
+                .willReturn(Optional.of(division));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        willThrow(new BusinessRuleException("error.test.guard-blocked"))
+                .given(guard).checkAdvanceAllowed(division.getId(),
+                        DivisionStatus.DRAFT, DivisionStatus.REGISTRATION_OPEN);
+
+        assertThatThrownBy(() -> competitionService.advanceDivisionStatus(
+                division.getId(), admin.getId()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.test.guard-blocked");
+
+        then(divisionRepository).should(never()).save(any());
+        then(eventPublisher).should(never()).publishEvent(any());
     }
 
     // --- revertDivisionStatus ---

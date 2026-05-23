@@ -51,6 +51,7 @@ class CompetitionServiceJudgingCategoryTest {
     @Mock UserService userService;
     @Mock ApplicationEventPublisher eventPublisher;
 
+    List<DivisionAdvanceGuard> advanceGuards = new ArrayList<>();
     List<DivisionRevertGuard> revertGuards = new ArrayList<>();
     List<DivisionDeletionGuard> deletionGuards = new ArrayList<>();
     List<ParticipantRemovalCleanup> removalCleanups = new ArrayList<>();
@@ -64,7 +65,7 @@ class CompetitionServiceJudgingCategoryTest {
                 participantRepository, participantRoleRepository,
                 divisionCategoryRepository, categoryRepository,
                 competitionDocumentRepository, userService,
-                eventPublisher, revertGuards, deletionGuards, removalCleanups,
+                eventPublisher, advanceGuards, revertGuards, deletionGuards, removalCleanups,
                 judgingCategoryDeletionGuards, minJudgesPerTableLockGuards);
     }
 

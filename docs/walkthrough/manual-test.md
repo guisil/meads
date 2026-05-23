@@ -645,12 +645,14 @@ Pre-requisite: enable MFA on `admin@example.com` first (see "MFA setup" above).
 
 ### Advance division status
 
-- [ ] Find `Test Division` (status: Draft)
+- [ ] Find `Test Division` (status: Draft, no categories yet)
 - [ ] Click the forward icon button (tooltip: "Advance Status")
 - [ ] **Expected:** Confirmation dialog: "Advance division 'Test Division' from Draft to Registration Open?"
 - [ ] Click "Advance"
-- [ ] **Expected:** Notification "Status advanced successfully" (green)
-- [ ] **Expected:** Status badge changes to "Registration Open"
+- [ ] **Expected:** Error notification — `RegistrationCategoryAdvanceGuard` blocks the advance because no REGISTRATION categories exist. Message: *"Cannot open registration: add at least one registration category first"* (key `error.division.cannot-open-registration-without-categories`).
+- [ ] Navigate into the division → Categories tab → add at least one catalog or custom category (covered in §7).
+- [ ] Return to the Divisions grid and retry "Advance Status".
+- [ ] **Expected:** Notification "Status advanced successfully" (green); status badge changes to "Registration Open".
 
 ### Delete division -- success (no entries/credits/products)
 
@@ -1550,7 +1552,7 @@ The judging flow advances Amadora to JUDGING for the duration of this section
 and can be reverted afterwards if you want the entry-side flows to remain
 testable. Steps below are admin-driven unless noted.
 
-### 12.1 Prerequisites — advance Amadora to JUDGING
+### 12.1 Prerequisites — advance Amadora to REGISTRATION_CLOSED
 
 *Log in as `compadmin@example.com`.*
 
@@ -1558,10 +1560,14 @@ testable. Steps below are admin-driven unless noted.
 - [ ] **Verify:** Current status is `REGISTRATION_OPEN`.
 - [ ] Click "Advance Status" → confirm "Advance from Registration Open to Registration Closed?".
 - [ ] **Expected:** Status badge updates to `REGISTRATION_CLOSED`.
-- [ ] Click "Advance Status" → confirm "Advance from Registration Closed to Judging?".
-- [ ] **Expected:** Status badge updates to `JUDGING`.
 - [ ] **Expected:** A new "Judging Categories" tab appears between "Categories" and "Settings".
-- [ ] **Expected:** A "Manage Judging" button now shows in the division header (alongside "Manage Entries").
+
+#### 12.1.1 Advance-to-judging guard (no judging categories yet)
+
+- [ ] Click "Advance Status" → confirm "Advance from Registration Closed to Judging?".
+- [ ] **Expected:** Error notification — `JudgingCategoryAdvanceGuard` blocks because judging categories haven't been initialized yet. Message: *"Cannot start judging: initialize judging categories first"* (key `error.division.cannot-start-judging-without-categories`).
+- [ ] **Expected:** Status stays at `REGISTRATION_CLOSED`.
+- [ ] Leave the division at `REGISTRATION_CLOSED` — §12.4 initializes the judging categories, then §12.4.x advances to JUDGING.
 
 ### 12.2 Division Settings — judging fields
 
@@ -1605,6 +1611,12 @@ testable. Steps below are admin-driven unless noted.
 - [ ] **Expected:** Row removed.
 - [ ] **Try:** Add a judging category with the same code as an existing one (e.g. `M1A`).
 - [ ] **Expected:** Allowed — `UNIQUE(division_id, code, scope)` permits the same code in different scopes.
+
+#### 12.4.2 Now advance to JUDGING
+
+- [ ] Click "Advance Status" → confirm "Advance from Registration Closed to Judging?".
+- [ ] **Expected:** Status badge updates to `JUDGING` (the `JudgingCategoryAdvanceGuard` is satisfied now that judging categories exist).
+- [ ] **Expected:** A "Manage Judging" button now shows in the division header (alongside "Manage Entries").
 
 ### 12.5 Assign final categories to entries
 
@@ -2046,13 +2058,39 @@ Steps below are admin-driven unless noted.
 *Log in as `compadmin@example.com`.*
 
 - [ ] Navigate to CHIP 2026 → Amadora.
-- [ ] **Verify:** Current status is `JUDGING`. (If `REGISTRATION_CLOSED`, advance once.)
+- [ ] **Verify:** Current status is `JUDGING`.
+
+#### 13.1.1 Advance-to-deliberation guard (judging not yet COMPLETE)
+
+- [ ] **Precondition:** §12.13.4 BOS has not been finalized yet (or §12 was reset). `Judging.phase` is `BOS` or earlier.
 - [ ] In the division header, click "Advance Status" → confirm
   "Advance from Judging to Deliberation?".
+- [ ] **Expected:** Error notification — `JudgingCompleteAdvanceGuard` blocks
+  because `Judging.phase != COMPLETE`. Message: *"Cannot move to DELIBERATION
+  while judging is in progress. Finalize Best of Show first."* (key
+  `error.division.cannot-deliberate-judging-incomplete`).
+- [ ] **Expected:** Status stays at `JUDGING`.
+- [ ] Complete §12.13.4 (Finalize BOS) — `Judging.phase` flips to `COMPLETE`.
+
+#### 13.1.2 Advance to DELIBERATION (judging COMPLETE)
+
+- [ ] Click "Advance Status" again → confirm.
 - [ ] **Expected:** Status badge updates to `DELIBERATION`.
 - [ ] Navigate to Manage Judging.
 - [ ] **Expected:** A new "Manage Results" button appears in the JudgingAdminView
   header (between the title and the tabs).
+
+#### 13.1.3 Manual advance to RESULTS_PUBLISHED is blocked
+
+- [ ] Back on the Amadora division detail, click "Advance Status" → confirm
+  "Advance from Deliberation to Results Published?".
+- [ ] **Expected:** Error notification — `BlockManualPublishAdvanceGuard`
+  rejects the manual advance. Message: *"Use 'Publish results' in the Results
+  admin view instead of the manual status advance"* (key
+  `error.division.use-publish-results-instead`).
+- [ ] **Expected:** Status stays at `DELIBERATION`. The only way to reach
+  `RESULTS_PUBLISHED` is through `AwardsService.publish()` (§13.2) or
+  `republish()` (§13.8), both of which create a Publication audit row.
 
 ### 13.2 Publish — first publication
 
@@ -2164,8 +2202,10 @@ Steps below are admin-driven unless noted.
 
 *Navigate to Manage Results.*
 
-- [ ] **Expected:** Three buttons in the actions row: "Re-publish",
-  "Send announcement" (primary), "Revert publication" (error variant).
+- [ ] **Expected:** Two buttons in the actions row: "Send announcement"
+  (primary), "Revert publication" (error variant). (At RESULTS_PUBLISHED there
+  is no "Re-publish" button — re-publishing requires reverting first so the
+  judging data unfreezes for edits.)
 - [ ] Click "Revert publication".
 - [ ] **Expected:** Dialog with body explaining roll-back to DELIBERATION,
   audit-log preservation. Below the body, a TextField "Type REVERT to confirm".
@@ -2184,23 +2224,17 @@ Steps below are admin-driven unless noted.
 
 ### 13.8 Edit judging data + re-publish
 
-*Navigate back to Manage Judging → Medal Rounds tab.*
+*Stay on Manage Results — status is now `DELIBERATION`.*
 
+- [ ] **Expected:** The actions row now shows a single "Re-publish" primary
+  button (because a prior Publication exists, the view shows "Re-publish"
+  instead of "Publish results" at DELIBERATION).
+- [ ] Navigate to Manage Judging → Medal Rounds tab.
 - [ ] Pick a medal in some category and change its value (e.g., SILVER →
   BRONZE on one entry) via the per-category edit dialog.
 - [ ] **Expected:** Save succeeds (no frozen notification — data is editable
   again in DELIBERATION).
-- [ ] In the division header, click "Advance Status" → confirm "Advance from
-  Deliberation to Results Published?". (Note: this DOES NOT create a
-  Publication record — the explicit awards flow does that.)
-- [ ] **Actually**, instead of advancing manually, the correct flow is to use
-  the awards re-publish path which expects the division to already be at
-  `RESULTS_PUBLISHED`. So first advance manually back to RESULTS_PUBLISHED via
-  the division header. *(Implementation note: an admin who wants a "second
-  publication" must re-advance manually; awards.republish requires the status
-  to already be RESULTS_PUBLISHED.)*
-- [ ] Navigate to Manage Results.
-- [ ] Click "Re-publish".
+- [ ] Navigate to Manage Results → click "Re-publish".
 - [ ] **Expected:** Dialog with title "Re-publish results" and a TextArea
   labeled "Justification (required)" with helper text about the 20-char
   minimum.
@@ -2212,6 +2246,9 @@ Steps below are admin-driven unless noted.
   after spreadsheet error.` and click "Re-publish".
 - [ ] **Expected:** Green success notification "Results re-published
   successfully. You may now send an announcement."; page reloads.
+- [ ] **Expected:** Status flips to `RESULTS_PUBLISHED` (republish advances
+  the status itself via `CompetitionService.publishDivision` — no separate
+  manual advance needed).
 - [ ] **Expected:** Publication history now has two rows (version 1 and
   version 2 with the justification populated).
 - [ ] **Expected:** No email sent (verify Mailpit empty).

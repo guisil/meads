@@ -49,6 +49,7 @@ public class CompetitionService {
     private final UserService userService;
     private final ApplicationEventPublisher eventPublisher;
     private final CompetitionDocumentRepository competitionDocumentRepository;
+    private final List<DivisionAdvanceGuard> advanceGuards;
     private final List<DivisionRevertGuard> revertGuards;
     private final List<DivisionDeletionGuard> deletionGuards;
     private final List<ParticipantRemovalCleanup> removalCleanups;
@@ -64,6 +65,7 @@ public class CompetitionService {
                        CompetitionDocumentRepository competitionDocumentRepository,
                        UserService userService,
                        ApplicationEventPublisher eventPublisher,
+                       List<DivisionAdvanceGuard> advanceGuards,
                        List<DivisionRevertGuard> revertGuards,
                        List<DivisionDeletionGuard> deletionGuards,
                        List<ParticipantRemovalCleanup> removalCleanups,
@@ -78,6 +80,7 @@ public class CompetitionService {
         this.competitionDocumentRepository = competitionDocumentRepository;
         this.userService = userService;
         this.eventPublisher = eventPublisher;
+        this.advanceGuards = advanceGuards;
         this.revertGuards = revertGuards;
         this.deletionGuards = deletionGuards;
         this.removalCleanups = removalCleanups;
@@ -272,9 +275,38 @@ public class CompetitionService {
                 .orElseThrow(() -> new BusinessRuleException("error.division.not-found"));
         requireAuthorized(division.getCompetitionId(), requestingUserId);
         var previousStatus = division.getStatus();
+        var targetStatus = previousStatus.next()
+                .orElseThrow(() -> new BusinessRuleException("error.division.cannot-advance-past-results-published"));
+        advanceGuards.forEach(guard ->
+                guard.checkAdvanceAllowed(divisionId, previousStatus, targetStatus));
         division.advanceStatus();
         var saved = divisionRepository.save(division);
         log.info("Advanced division status: {} ({} → {})", divisionId, previousStatus, saved.getStatus());
+        eventPublisher.publishEvent(new DivisionStatusAdvancedEvent(
+                divisionId, previousStatus, saved.getStatus()));
+        return saved;
+    }
+
+    /**
+     * Advances a division from DELIBERATION to RESULTS_PUBLISHED on behalf of the awards module.
+     * Bypasses {@link DivisionAdvanceGuard}s (which intentionally block manual advance to
+     * RESULTS_PUBLISHED so admins must go through {@code AwardsService.publish()} /
+     * {@code republish()}, which create a {@code Publication} audit row).
+     * <p>
+     * Only {@code AwardsService} should call this method.
+     */
+    public Division publishDivision(@NotNull UUID divisionId,
+                                     @NotNull UUID requestingUserId) {
+        var division = divisionRepository.findById(divisionId)
+                .orElseThrow(() -> new BusinessRuleException("error.division.not-found"));
+        requireAuthorized(division.getCompetitionId(), requestingUserId);
+        var previousStatus = division.getStatus();
+        if (previousStatus != DivisionStatus.DELIBERATION) {
+            throw new BusinessRuleException("error.division.publish-wrong-status");
+        }
+        division.advanceStatus();
+        var saved = divisionRepository.save(division);
+        log.info("Published division (DELIBERATION → RESULTS_PUBLISHED): {}", divisionId);
         eventPublisher.publishEvent(new DivisionStatusAdvancedEvent(
                 divisionId, previousStatus, saved.getStatus()));
         return saved;
