@@ -232,7 +232,54 @@ docs/
 
 ## What's Next
 
-### CURRENT (2026-05-23): status-advance guards → resume walkthrough → v0.4.0
+### CURRENT (2026-05-24): v0.4.0 paused — round-model redesign needed
+
+During the §12.6 walkthrough on the (now-refactored) JudgingRound +
+PhysicalTable model, the user identified **four blocking design gaps**
+that the current model can't accommodate cleanly:
+
+1. **SCORE_BASED medal rounds should auto-assign with admin confirmation** —
+   not just pre-populate, and not fully auto-finalize. Ties still need manual
+   resolution.
+2. **Judges on medal rounds** — independent of who judged the scoring round.
+   Today there's no explicit judge collection on medal rounds.
+3. **Per-round entry assignment** — a category can be split across multiple
+   scoring rounds (different judges + tables). Today scoresheets are derived
+   from "all RECEIVED entries with finalCategoryId = round.divisionCategoryId",
+   so splitting is impossible.
+4. **UI tab restructure** — "Rounds" tab for operations (both scoring + medal
+   rounds), "Results" tab for the COMPLETE summary. Replaces the current
+   Tables / Medal Rounds split.
+
+These are real-world judging needs the user wants in v0.4.0, not v0.5.0 — the
+user is not in a hurry to ship; they want the model right before merging.
+
+**Plan:** `docs/plans/2026-05-24-round-model-redesign.md` (full design — read
+this first in the next session). Estimated 3-5 focused sessions to implement:
+schema + model + service + UI + walkthrough + tests + 5-locale i18n.
+
+**Quick wins still pending** (folded into the redesign work, no separate
+shipping): rename "Tables" tab, resizable/sortable columns, leaf-only category
+dropdowns. No point doing them on UI that's about to be replaced.
+
+**Where the code is at:**
+- All earlier in-session work is committed and tested (1135 tests passing,
+  full audit log of what shipped is in the "Earlier on 2026-05-23" section
+  below).
+- `feature/judging-module` is at `0.4.0-SNAPSHOT`.
+- Dev seed (with V29 + physical tables) works; walkthrough §12.1-§12.5 is
+  validated against the current model.
+- **§12.6 walkthrough paused** — the design gaps surfaced when the user got
+  to the Tables and Medal Rounds tabs.
+
+**Next session — first actions:**
+1. Read `docs/plans/2026-05-24-round-model-redesign.md` end-to-end.
+2. Resolve the open questions in that doc's "Plan" section §1 (with the user).
+3. Start implementation per the phasing in §1-§8 of the plan.
+
+---
+
+### Earlier on 2026-05-23: status-advance guards (committed, in scope of v0.4.0)
 
 A mid-walkthrough finding on §12.1: `CompetitionService.advanceDivisionStatus`
 had **zero precondition checks**, so an admin could advance straight to JUDGING
