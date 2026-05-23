@@ -762,6 +762,7 @@ public class JudgingServiceImpl implements JudgingService {
         }
         requireAuthorizedForMedalAction(award.getDivisionId(), award.getFinalCategoryId(), judgeUserId);
         award.updateMedal(newValue, judgeUserId);
+        award.confirm(judgeUserId);
         medalAwardRepository.save(award);
         log.info("Updated medal {} → {} by judge {}", medalAwardId, newValue, judgeUserId);
     }

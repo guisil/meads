@@ -166,6 +166,25 @@ class JudgingServiceMedalsBosTest {
     }
 
     @Test
+    void shouldMarkUpdateMedalAsConfirmed() {
+        var existing = new MedalAward(entryId, divisionId, divisionCategoryId,
+                Medal.SILVER, adminUserId);
+        given(medalAwardRepository.findById(existing.getId())).willReturn(Optional.of(existing));
+        given(coiCheckService.check(adminUserId, entryId)).willReturn(CoiResult.clear());
+        given(categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId))
+                .willReturn(Optional.of(activeConfig()));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(medalAwardRepository.save(any(MedalAward.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.updateMedal(existing.getId(), Medal.GOLD, adminUserId);
+
+        assertThat(existing.getMedal()).isEqualTo(Medal.GOLD);
+        assertThat(existing.isConfirmed()).isTrue();
+        assertThat(existing.getConfirmedBy()).isEqualTo(adminUserId);
+    }
+
+    @Test
     void shouldDeleteMedalAwardWhenAdmin() {
         var existing = new MedalAward(entryId, divisionId, divisionCategoryId,
                 Medal.GOLD, adminUserId);
