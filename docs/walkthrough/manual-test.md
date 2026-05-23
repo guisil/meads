@@ -1790,9 +1790,10 @@ For COI badges to appear, `judge@example.com` should already exist as a JUDGE in
 
 *Click "Medal Rounds" tab.*
 
-- [ ] **Expected:** Empty-state message if no JUDGING-scope categories exist, otherwise a `Grid<CategoryJudgingConfig>` with columns: Category, Mode, Status, Tables, Awards, Actions.
-- [ ] **Expected:** Each JUDGING category appears with a lazily-created default config: Mode = `COMPARATIVE`, Status = `PENDING`, Tables = `0 / 1 COMPLETE` for M1A, Awards = `G:0 S:0 B:0 W:0`.
+- [ ] **Expected:** Empty-state message if no JUDGING-scope categories exist, otherwise a `Grid<CategoryJudgingConfig>` with columns: Category, Mode, **Physical Table**, Status, Tables, Awards, Actions.
+- [ ] **Expected:** Each JUDGING category appears with a lazily-created default config: Mode = `COMPARATIVE`, Physical Table = `— Not assigned —`, Status = `PENDING`, Tables = `0 / 1 COMPLETE` for M1A, Awards = `G:0 S:0 B:0 W:0`.
 - [ ] **Expected:** The **Mode** column is a dropdown (`Select<MedalRoundMode>`) — change M1A to `SCORE_BASED` and back; a "Medal round mode updated" notification confirms each change. It is editable only while status is `PENDING` or `READY` (disabled once `ACTIVE`).
+- [ ] **Expected:** The **Physical Table** column is a clearable `Select<PhysicalTable>` (sourced from the division's physical tables, with an empty-selection `— Not assigned —`). Pick `Table 1` on M1A → notification "Medal round physical table updated." Open `MedalRoundView` for M1A (Actions → "Open medal round →") and confirm the header now shows `Physical Table: Table 1`. Clear the assignment (pick `— Not assigned —`) → notification + MedalRoundView header reverts to `Physical Table: — Not assigned —`. The Select is editable only while status is `PENDING` or `READY`.
 - [ ] **Expected:** The **Actions** column ends with an "Open medal round →" link that navigates to `MedalRoundView` for that category (see §12.12).
 
 #### 12.7.1 Start medal round (cannot start until tables complete)
