@@ -1699,19 +1699,33 @@ show 0 here.
 - [ ] **Expected:** URL is `/competitions/chip-2026/divisions/amadora/judging-admin`.
 - [ ] **Expected:** Breadcrumb: `My Competitions / CHIP 2026 / Amadora / Judging Admin`.
 - [ ] **Expected:** H2 header `CHIP 2026 — Amadora — Judging Admin` with competition logo.
-- [ ] **Expected:** TabSheet with three tabs: `Tables`, `Medal Rounds`, `Best of Show`. Default = Tables.
+- [ ] **Expected:** TabSheet with **four** tabs: `Physical Tables`, `Tables`, `Medal Rounds`, `Best of Show`. Default = Physical Tables.
 
-#### 12.6.1 Add a table
+#### 12.6.0 Physical Tables tab
+
+A physical table is a fixed station within the division ("Table 1", "Table 2"). Multiple rounds can run at the same physical table over time, but only one round can be **active** there simultaneously. The dev seed pre-creates 3 physical tables for Amadora and 5 for Profissional — admins can add more.
+
+- [ ] On the Physical Tables tab, **Expected**: grid with columns Label, Actions. Shows the seeded `Table 1` / `Table 2` / `Table 3` for Amadora.
+- [ ] Click **"+ Add Physical Table"** → enter label `Test Table` → Save → notification "Physical table added"; row appears.
+- [ ] Edit the new row → change to `Test Table A` → Save → notification.
+- [ ] **Try** to add another with label `Test Table A` → **Expected**: error "A physical table named 'Test Table A' already exists in this division."
+- [ ] Delete `Test Table A` → confirm → notification "Physical table deleted".
+
+#### 12.6.1 Add a round (now requires a physical table)
+
+*Switch to the **Tables** tab.*
 
 - [ ] Click "+ Add Table".
-- [ ] **Expected:** Dialog with `Name` text field, `Category` Select (filtered to JUDGING-scope categories), `Scheduled` date picker.
+- [ ] **Expected:** Dialog with `Name` text field, `Category` Select (filtered to JUDGING-scope categories), **`Physical Table` Select** (populated from the Physical Tables tab), `Scheduled` date picker.
 - [ ] Leave Name blank → click Save.
 - [ ] **Expected:** Inline error "Name is required" on the field.
 - [ ] Enter Name = `M1A Panel`, leave Category empty → click Save.
 - [ ] **Expected:** Inline error "Category is required".
-- [ ] Pick Category = `M1A — Traditional Mead (Dry)`, set Scheduled = today + 7 days → Save.
+- [ ] Pick Category = `M1A — Traditional Mead (Dry)`, leave Physical Table empty → click Save.
+- [ ] **Expected:** Inline error "Physical table is required."
+- [ ] Pick Physical Table = `Table 1`, set Scheduled = today + 7 days → Save.
 - [ ] **Expected:** Notification "Table added"; row appears in the grid.
-- [ ] **Expected:** Grid columns: Name, Category (code — name), Status, Judges (count), Scheduled (locale-aware date), Scoresheets (— when empty), Actions.
+- [ ] **Expected:** Grid columns: Name, Category (code — name), **Physical Table** (label or "—"), Status, Judges (count), Scheduled (locale-aware date), Scoresheets (— when empty), Actions.
 
 #### 12.6.2 Edit table
 
@@ -1744,6 +1758,8 @@ For COI badges to appear, `judge@example.com` should already exist as a JUDGE in
 - [ ] **Expected:** Confirmation dialog: if entries with `finalCategoryId = M1A` exist, body says "All assigned judges will be notified. This creates one scoresheet per entry assigned to this category."; if no entries, body says "This table has no entries yet. Start anyway?".
 - [ ] Click Start.
 - [ ] **Expected:** Notification "Table started"; Status column changes from `NOT_STARTED` to `ROUND_1`; Scoresheets column now reads `DRAFT N · SUBMITTED 0` for some N ≥ 0.
+- [ ] (Try starting a *second* round at the same physical table — Add Round → pick a different category, same Physical Table `Table 1`, assign 2 judges → Start. **Expected**: error "This physical table already has an active round…")
+- [ ] (Try assigning one of `M1A Panel`'s judges to a new round at a *different* physical table, then start that new round. **Expected**: error "One or more assigned judges … are already on another active round.")
 - [ ] **Expected:** `N` equals the count of **RECEIVED** entries assigned to this category — the SUBMITTED-but-not-received entry from §12.5 gets **no scoresheet** (its bottle never arrived). A WITHDRAWN entry is likewise skipped.
 - [ ] **Expected:** ▶ Start button becomes disabled (already started).
 - [ ] **Expected:** 🗑 Delete button is disabled with tooltip "Cannot delete a started table or one with assigned judges".

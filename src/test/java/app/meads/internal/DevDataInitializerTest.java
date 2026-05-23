@@ -27,6 +27,7 @@ class DevDataInitializerTest {
     @Autowired WebhookService webhookService;
     @Autowired UserService userService;
     @Autowired JudgeProfileService judgeProfileService;
+    @Autowired app.meads.judging.JudgingService judgingService;
 
     @Test
     void shouldSeedDevDataOnStartup() {
@@ -109,7 +110,7 @@ class DevDataInitializerTest {
     void shouldBeIdempotent() {
         // DevDataInitializer already ran on startup.
         // Running it again should not create duplicate data.
-        var initializer = new DevDataInitializer(userService, competitionService, entryService, webhookService, judgeProfileService);
+        var initializer = new DevDataInitializer(userService, competitionService, entryService, webhookService, judgeProfileService, judgingService);
         initializer.initializeDevData();
 
         var competitions = competitionService.findAllCompetitions();

@@ -5,6 +5,7 @@ import app.meads.entry.*;
 import app.meads.identity.UserService;
 import app.meads.judging.Certification;
 import app.meads.judging.JudgeProfileService;
+import app.meads.judging.JudgingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -31,17 +32,20 @@ class DevDataInitializer {
     private final EntryService entryService;
     private final WebhookService webhookService;
     private final JudgeProfileService judgeProfileService;
+    private final JudgingService judgingService;
 
     DevDataInitializer(UserService userService,
                        CompetitionService competitionService,
                        EntryService entryService,
                        WebhookService webhookService,
-                       JudgeProfileService judgeProfileService) {
+                       JudgeProfileService judgeProfileService,
+                       JudgingService judgingService) {
         this.userService = userService;
         this.competitionService = competitionService;
         this.entryService = entryService;
         this.webhookService = webhookService;
         this.judgeProfileService = judgeProfileService;
+        this.judgingService = judgingService;
     }
 
     @Order(2)
@@ -294,6 +298,13 @@ class DevDataInitializer {
 
         log.info("CHIP Amadora ready: 11 entries (3 DRAFT, 2 SUBMITTED, 5 RECEIVED, 1 WITHDRAWN)");
 
+        // 13. Physical tables for both Amadora and Profissional, so the admin
+        //     can immediately wire rounds to them.
+        judgingService.createPhysicalTable(amadora.getId(), "Table 1", compAdminId);
+        judgingService.createPhysicalTable(amadora.getId(), "Table 2", compAdminId);
+        judgingService.createPhysicalTable(amadora.getId(), "Table 3", compAdminId);
+        log.info("Amadora: created 3 physical tables");
+
         // 13. Profissional: pre-stage to JUDGING with 20 RECEIVED entries assigned to
         //     judging categories, so an admin can jump straight into §12.6+ without
         //     repeating the registration flow.
@@ -404,6 +415,14 @@ class DevDataInitializer {
 
         competitionService.advanceDivisionStatus(profissional.getId(), compAdminId);
         log.info("Profissional → JUDGING (ready for §12.6+ walkthrough)");
+
+        // Physical tables for Profissional (5 to cover 5 judging categories in parallel).
+        judgingService.createPhysicalTable(profissional.getId(), "Table 1", compAdminId);
+        judgingService.createPhysicalTable(profissional.getId(), "Table 2", compAdminId);
+        judgingService.createPhysicalTable(profissional.getId(), "Table 3", compAdminId);
+        judgingService.createPhysicalTable(profissional.getId(), "Table 4", compAdminId);
+        judgingService.createPhysicalTable(profissional.getId(), "Table 5", compAdminId);
+        log.info("Profissional: created 5 physical tables");
     }
 
     private void seedJudgeProfile(String email, java.util.Set<Certification> certifications,
