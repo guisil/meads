@@ -435,8 +435,10 @@ class JudgingAdminViewTest {
         var view = _get(JudgingAdminView.class);
         var judging = judgingService.ensureJudgingExists(division.getId());
         var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
-        var table = judgingService.createRound(judging.getId(), "Table 1",
+        var pt = judgingService.createPhysicalTable(division.getId(), "Table 1", admin.getId());
+        var table = judgingService.createRound(judging.getId(), "Round 1",
                 category.getId(), null, admin.getId());
+        judgingService.assignRoundToPhysicalTable(table.getId(), pt.getId(), admin.getId());
         judgingService.assignJudge(table.getId(), judge1.getId(), admin.getId());
         judgingService.assignJudge(table.getId(), judge2.getId(), admin.getId());
 

@@ -102,8 +102,10 @@ class AwardsModuleTest {
 
         // Run a minimal judging cycle to phase=COMPLETE
         var judging = judgingService.ensureJudgingExists(division.getId());
-        var table = judgingService.createRound(judging.getId(), "AM1 Panel",
+        var physicalTable = judgingService.createPhysicalTable(division.getId(), "Table 1", admin.getId());
+        var table = judgingService.createRound(judging.getId(), "AM1 Round 1",
                 judgingCategory.getId(), null, admin.getId());
+        judgingService.assignRoundToPhysicalTable(table.getId(), physicalTable.getId(), admin.getId());
         judgingService.assignJudge(table.getId(), judge1.getId(), admin.getId());
         judgingService.assignJudge(table.getId(), judge2.getId(), admin.getId());
         judgingService.startRound(table.getId(), admin.getId());

@@ -80,9 +80,12 @@ class JudgingServiceMedalRoundTest {
 
     @Test
     void shouldStartTableWhenSufficientJudges() {
-        var table = new JudgingRound(judging.getId(), "T1", divisionCategoryId, null);
+        var physicalTableId = UUID.randomUUID();
+        var table = new JudgingRound(judging.getId(), physicalTableId, "T1", divisionCategoryId, null);
         table.assignJudge(UUID.randomUUID());
         table.assignJudge(UUID.randomUUID());
+        given(judgingRoundRepository.findByJudgingId(judging.getId())).willReturn(java.util.List.of(table));
+        given(judgingRoundRepository.findAll()).willReturn(java.util.List.of(table));
         given(judgingRoundRepository.findById(table.getId())).willReturn(Optional.of(table));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
@@ -105,8 +108,10 @@ class JudgingServiceMedalRoundTest {
 
     @Test
     void shouldRejectStartTableWhenInsufficientJudges() {
-        var table = new JudgingRound(judging.getId(), "T1", divisionCategoryId, null);
+        var physicalTableId = UUID.randomUUID();
+        var table = new JudgingRound(judging.getId(), physicalTableId, "T1", divisionCategoryId, null);
         table.assignJudge(UUID.randomUUID()); // only 1 judge, min is 2
+        given(judgingRoundRepository.findByJudgingId(judging.getId())).willReturn(java.util.List.of(table));
         given(judgingRoundRepository.findById(table.getId())).willReturn(Optional.of(table));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);

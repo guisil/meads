@@ -335,6 +335,21 @@ public class JudgingServiceImpl implements JudgingService {
         var judging = requireJudging(table.getJudgingId());
         requireAuthorizedForJudging(judging, adminUserId);
         requireNotFrozen(judging.getDivisionId());
+        // Assigning to an already-active round, the new judge must not be on
+        // another active round elsewhere. (Pre-planning assignments to
+        // NOT_STARTED rounds is fine — the conflict check fires again at
+        // startRound time.)
+        if (table.getStatus() == JudgingRoundStatus.ROUND_1) {
+            boolean conflict = judgingRoundRepository.findAll().stream()
+                    .filter(r -> !r.getId().equals(roundId))
+                    .filter(r -> r.getStatus() == JudgingRoundStatus.ROUND_1)
+                    .anyMatch(r -> r.getAssignments().stream()
+                            .anyMatch(a -> a.getJudgeUserId().equals(judgeUserId)));
+            if (conflict) {
+                throw new BusinessRuleException("error.round.judge-active-conflict",
+                        judgeUserId.toString());
+            }
+        }
         table.assignJudge(judgeUserId);
         judgingRoundRepository.save(table);
         judgeProfileService.ensureProfileForJudge(judgeUserId);
@@ -375,9 +390,34 @@ public class JudgingServiceImpl implements JudgingService {
         if (division.getStatus().isResultsFrozen()) {
             throw new BusinessRuleException("error.judging.results-published-frozen");
         }
+        if (table.getPhysicalTableId() == null) {
+            throw new BusinessRuleException("error.round.physical-table-required");
+        }
+        // Physical-table-busy check: no other active round at the same physical table.
+        boolean physicalTableBusy = judgingRoundRepository.findByJudgingId(judging.getId()).stream()
+                .filter(r -> !r.getId().equals(roundId))
+                .filter(r -> table.getPhysicalTableId().equals(r.getPhysicalTableId()))
+                .anyMatch(r -> r.getStatus() == JudgingRoundStatus.ROUND_1);
+        if (physicalTableBusy) {
+            throw new BusinessRuleException("error.round.physical-table-busy");
+        }
         if (table.getAssignments().size() < division.getMinJudgesPerRound()) {
             throw new BusinessRuleException("error.judging-table.too-few-judges",
                     String.valueOf(division.getMinJudgesPerRound()));
+        }
+        // Judge active-conflict check: no assigned judge can be on another active round.
+        var allActiveRounds = judgingRoundRepository.findAll().stream()
+                .filter(r -> !r.getId().equals(roundId))
+                .filter(r -> r.getStatus() == JudgingRoundStatus.ROUND_1)
+                .toList();
+        for (var assignment : table.getAssignments()) {
+            var conflict = allActiveRounds.stream()
+                    .anyMatch(r -> r.getAssignments().stream()
+                            .anyMatch(a -> a.getJudgeUserId().equals(assignment.getJudgeUserId())));
+            if (conflict) {
+                throw new BusinessRuleException("error.round.judge-active-conflict",
+                        assignment.getJudgeUserId().toString());
+            }
         }
         try {
             table.startRound1();
