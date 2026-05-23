@@ -1261,6 +1261,25 @@ move to `LoginForm` for other reasons or if Bitwarden softens the threshold.
 - bitwarden/clients PR #17400 — `apps/browser/src/autofill/overlay/inline-menu/content/autofill-inline-menu-content.service.ts`
 - community.bitwarden.com thread 92519 ("This page is interfering with the Bitwarden experience")
 
+### Priority 11: Translate the MJP catalog categories (deferred, low priority)
+The MJP catalog (`Category` rows seeded in `V7__create_categories_table_and_seed_mjp.sql`)
+stores category `name` and `description` as English strings. The admin sees those English
+names directly when picking from the catalog in `DivisionDetailView`'s Add Category dialog
+(Catalog tab), and they propagate to per-division `DivisionCategory.name/description` on
+selection. So even with the UI switched to PT/ES/IT/PL, the category strings stay English.
+
+Scope when picked up:
+- ~32 MJP categories (M1, M1A–M1F, M2, M2A–M2E, M3, M3A–M3B, M4, M4A, M4C, M4E, M4S, M5, M5A–M5E)
+  × (name + description) × 5 locales ≈ 300 strings.
+- Cleanest approach: i18n keys keyed by category code (e.g., `category.M1A.name`,
+  `category.M1A.description`) rendered via `getTranslation()` at display time. Keeps the DB
+  schema unchanged.
+- On "Add catalog category", the admin sees the localized name in the picker; the row
+  cloned into `division_categories` carries the localized strings at-clone-time. (Future
+  refinement: keep `DivisionCategory` codes only and look up names via the same i18n keys.)
+- Note: custom (admin-added) division categories stay free-text — i18n only applies to
+  catalog rows.
+
 ### Priority 10: Statistics / metrics view (deferred, low priority)
 A view — or a section within an existing admin view — surfacing aggregate competition
 metrics suitable for presentations, reports, and award ceremonies. Candidate metrics:
