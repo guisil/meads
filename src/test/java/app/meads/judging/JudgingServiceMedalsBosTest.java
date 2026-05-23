@@ -350,6 +350,7 @@ class JudgingServiceMedalsBosTest {
         var bronzeId = UUID.randomUUID();
         var gold = new MedalAward(goldId, divisionId, divisionCategoryId,
                 Medal.GOLD, adminUserId);
+        gold.confirm(adminUserId);
         var silver = new MedalAward(silverId, divisionId, divisionCategoryId,
                 Medal.SILVER, adminUserId);
         var bronze = new MedalAward(bronzeId, divisionId, divisionCategoryId,
@@ -361,6 +362,25 @@ class JudgingServiceMedalsBosTest {
         var golds = service.findGoldMedalAwardsForDivision(divisionId, adminUserId);
 
         assertThat(golds).extracting(MedalAward::getMedal).containsExactly(Medal.GOLD);
+    }
+
+    @Test
+    void shouldExcludeUnconfirmedGoldAwardsForBosCandidates() {
+        var confirmedGoldId = UUID.randomUUID();
+        var unconfirmedGoldId = UUID.randomUUID();
+        var confirmed = new MedalAward(confirmedGoldId, divisionId, divisionCategoryId,
+                Medal.GOLD, adminUserId);
+        confirmed.confirm(adminUserId);
+        var unconfirmed = new MedalAward(unconfirmedGoldId, divisionId, divisionCategoryId,
+                Medal.GOLD, adminUserId);
+        // unconfirmed stays confirmed=false (auto-fill semantics)
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(medalAwardRepository.findByDivisionId(divisionId))
+                .willReturn(List.of(confirmed, unconfirmed));
+
+        var golds = service.findGoldMedalAwardsForDivision(divisionId, adminUserId);
+
+        assertThat(golds).extracting(MedalAward::getEntryId).containsExactly(confirmedGoldId);
     }
 
     @Test

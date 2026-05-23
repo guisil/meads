@@ -571,6 +571,7 @@ public class JudgingServiceImpl implements JudgingService {
         requireAuthorizedForDivision(divisionId, adminUserId);
         return medalAwardRepository.findByDivisionId(divisionId).stream()
                 .filter(a -> a.getMedal() == Medal.GOLD)
+                .filter(MedalAward::isConfirmed)
                 .toList();
     }
 

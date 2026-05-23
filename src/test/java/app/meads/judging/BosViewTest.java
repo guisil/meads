@@ -222,6 +222,7 @@ class BosViewTest {
 
         var medalAward = new app.meads.judging.MedalAward(entry.getId(), division.getId(),
                 category.getId(), app.meads.judging.Medal.GOLD, admin.getId());
+        medalAward.confirm(admin.getId());
         medalAwardRepository.save(medalAward);
 
         UI.getCurrent().navigate("competitions/" + competition.getShortName()
@@ -252,9 +253,11 @@ class BosViewTest {
                 "Wildflower", null, false, null, null);
         entry.assignFinalCategory(category.getId());
         entry = entryRepository.save(entry);
-        medalAwardRepository.save(new app.meads.judging.MedalAward(
+        var setupGold = new app.meads.judging.MedalAward(
                 entry.getId(), division.getId(), category.getId(),
-                app.meads.judging.Medal.GOLD, admin.getId()));
+                app.meads.judging.Medal.GOLD, admin.getId());
+        setupGold.confirm(admin.getId());
+        medalAwardRepository.save(setupGold);
 
         UI.getCurrent().navigate("competitions/" + competition.getShortName()
                 + "/divisions/" + division.getShortName() + "/bos");
@@ -291,9 +294,11 @@ class BosViewTest {
                 "Wildflower", null, false, null, null);
         entry.assignFinalCategory(category.getId());
         entry = entryRepository.save(entry);
-        medalAwardRepository.save(new app.meads.judging.MedalAward(
+        var goldAward = new app.meads.judging.MedalAward(
                 entry.getId(), division.getId(), category.getId(),
-                app.meads.judging.Medal.GOLD, admin.getId()));
+                app.meads.judging.Medal.GOLD, admin.getId());
+        goldAward.confirm(admin.getId());
+        medalAwardRepository.save(goldAward);
         var placement = judgingService.recordBosPlacement(division.getId(),
                 entry.getId(), 1, admin.getId());
 
