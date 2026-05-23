@@ -36,14 +36,18 @@ including dev user magic links sent by `DevUserInitializer` at startup.
 | `judge@example.com` | Dev Judge | USER | ACTIVE | Magic link (see Mailpit) |
 | `steward@example.com` | Dev Steward | USER | ACTIVE | Magic link (see Mailpit) |
 | `entrant@example.com` | Dev Entrant | USER | ACTIVE | Magic link (see Mailpit) |
+| `proentrant1@example.com` | Pro Entrant 1 | USER | ACTIVE | Magic link (see Mailpit) |
+| `proentrant2@example.com` | Pro Entrant 2 | USER | ACTIVE | Magic link (see Mailpit) |
+| `proentrant3@example.com` | Pro Entrant 3 | USER | ACTIVE | Magic link (see Mailpit) |
+| `proentrant4@example.com` | Pro Entrant 4 | USER | ACTIVE | Magic link (see Mailpit) |
 
 ### Seeded competition data (CHIP 2026)
 
 - **Competition:** CHIP 2026 (June 11-14, 2026, Amarante, Portugal)
-- **Divisions:** Amadora (Amateur) and Profissional (Commercial) -- both REGISTRATION_OPEN, MJP scoring
+- **Divisions:** Amadora (Amateur, REGISTRATION_OPEN) and Profissional (Commercial, **pre-staged at JUDGING** so an admin can jump straight into §12.6+ without the registration ramp-up)
 - **Entry limits:** 3 per subcategory, 5 per main category (both divisions)
 - **Entry prefixes:** Amadora = "AMA", Profissional = "PRO"
-- **Categories:** Full MJP catalog minus M4B and M4D
+- **Categories:** Full MJP catalog minus M4B and M4D (Profissional also has JUDGING-scope categories cloned from REGISTRATION)
 - **Participants:**
   - `compadmin@example.com` -- ADMIN
   - `judge@example.com` -- JUDGE (has access code)
@@ -52,9 +56,15 @@ including dev user magic links sent by `DevUserInitializer` at startup.
   - `entrant@example.com` -- ENTRANT (3 credits in Amadora)
   - `buyer1@example.com` -- ENTRANT (2 credits in Amadora, added via webhook)
   - `buyer2@example.com` -- ENTRANT (3 credits in Profissional, added via webhook)
+  - `proentrant1..4@example.com` -- ENTRANT (5 credits each in Profissional, all credits used)
 - **Product mappings:** CHIP-AMA (Amadora, product ID 1001), CHIP-PRO (Profissional, product ID 1002)
-- **Entries for `user@example.com`:** Wildflower Traditional (SUBMITTED, M1A), Blueberry Bliss (SUBMITTED, M2C), Oak-Aged Bochet (DRAFT, M1A)
-- **Entries for `entrant@example.com`:** Lavender Metheglin (DRAFT, M3B)
+- **Amadora entries (10 total — 3 DRAFT, 2 SUBMITTED, 4 RECEIVED, 1 WITHDRAWN):**
+  - `user@example.com` (5): Wildflower Traditional (DRAFT, M1A), Blueberry Bliss (SUBMITTED, M2C), Oak-Aged Bochet (DRAFT, M1A), Honey Reserve (RECEIVED, M1B), Strawberry Fields (RECEIVED, M2C)
+  - `entrant@example.com` (3): Lavender Metheglin (DRAFT, M3B), Rosemary & Sage (SUBMITTED, M3B), Mountain Honey (RECEIVED, M1B)
+  - `buyer1@example.com` (2, admin-added): Apple Mead (RECEIVED, M4A), Sunset Mead (WITHDRAWN, M1A)
+- **Profissional entries (20 total — all RECEIVED with final categories assigned, division at JUDGING):**
+  - Split across `proentrant1..4@example.com` (5 each)
+  - Final categories cover M1A (5), M1B (4), M2A (4), M2C (4), M3B (3) — enough density for medal rounds + Best of Show
 - **Webhook orders:**
   - JS-1001: buyer1@example.com (Maria Silva), 2x CHIP-AMA → 2 credits in Amadora, buyer added as ENTRANT
   - JS-1002: buyer2@example.com (João Santos), 3x CHIP-PRO → 3 credits in Profissional, buyer added as ENTRANT

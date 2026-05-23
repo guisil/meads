@@ -71,6 +71,16 @@ class DevDataInitializer {
         var entrant = userService.findByEmail("entrant@example.com");
         userService.updateProfile(entrant.getId(), entrant.getName(), null, "DE", null);
 
+        // Pro entrants need a meadery name set — Profissional has meaderyNameRequired=true.
+        userService.updateProfile(userService.findByEmail("proentrant1@example.com").getId(),
+                "Pro Entrant 1", "Hidroméis do Douro", "PT", "pt");
+        userService.updateProfile(userService.findByEmail("proentrant2@example.com").getId(),
+                "Pro Entrant 2", "Honey Lab Lisboa", "PT", "pt");
+        userService.updateProfile(userService.findByEmail("proentrant3@example.com").getId(),
+                "Pro Entrant 3", "Mead House Madrid", "ES", "es");
+        userService.updateProfile(userService.findByEmail("proentrant4@example.com").getId(),
+                "Pro Entrant 4", "Cantina del Miele", "IT", "it");
+
         log.info("Set meadery names and countries for dev users");
     }
 
@@ -154,52 +164,54 @@ class DevDataInitializer {
         entryService.addCredits(amadora.getId(), "entrant@example.com", 3, compAdminId);
         log.info("Added credits: user@example.com=5, entrant@example.com=3");
 
-        // 10. Create entries
-        var categories = competitionService.findDivisionCategories(amadora.getId());
-        var m1a = findCategoryByCode(categories, "M1A"); // Traditional Mead
-        var m2c = findCategoryByCode(categories, "M2C"); // Berry Melomel
-        var m3b = findCategoryByCode(categories, "M3B"); // Metheglin
+        // 10. Create entries for Amadora — 10 entries with status variety so the
+        //     judging walkthrough has enough data to populate medal rounds.
+        var amadoraCategories = competitionService.findDivisionCategories(amadora.getId());
+        var amaM1A = findCategoryByCode(amadoraCategories, "M1A"); // Traditional Mead (Dry)
+        var amaM1B = findCategoryByCode(amadoraCategories, "M1B"); // Traditional Mead (Medium)
+        var amaM2C = findCategoryByCode(amadoraCategories, "M2C"); // Berry Melomel
+        var amaM3B = findCategoryByCode(amadoraCategories, "M3B"); // Metheglin
+        var amaM4A = findCategoryByCode(amadoraCategories, "M4A"); // Cyser
 
-        // Entry 1 for user@example.com: Traditional Mead (DRAFT)
-        entryService.createEntry(
-                amadora.getId(), devUser.getId(),
-                "Wildflower Traditional",
-                m1a.getId(),
-                Sweetness.DRY,  BigDecimal.valueOf(12.5), Carbonation.STILL,
-                "Wildflower honey",
-                null, false, null, null);
+        // user@example.com (5 credits): 5 entries — mix of DRAFT, SUBMITTED, RECEIVED
+        createEntrantEntry(amadora, devUser, "Wildflower Traditional", amaM1A,
+                Sweetness.DRY, 12.5, Carbonation.STILL, "Wildflower honey", null, false, null);
+        // → leave as DRAFT
 
-        // Entry 2 for user@example.com: Berry Melomel — submit it
-        entryService.createEntry(
-                amadora.getId(), devUser.getId(),
-                "Blueberry Bliss",
-                m2c.getId(),
-                Sweetness.MEDIUM,  BigDecimal.valueOf(13.0), Carbonation.STILL,
-                "Acacia honey",
-                "Fresh blueberries", false, null, null);
-        entryService.submitAllDrafts(amadora.getId(), devUser.getId());
+        var blueberryBliss = createEntrantEntry(amadora, devUser, "Blueberry Bliss", amaM2C,
+                Sweetness.MEDIUM, 13.0, Carbonation.STILL, "Acacia honey", "Fresh blueberries", false, null);
+        entryService.submitEntry(blueberryBliss.getId(), devUser.getId()); // → SUBMITTED
 
-        // Entry 3 for user@example.com: another draft after submitting
-        entryService.createEntry(
-                amadora.getId(), devUser.getId(),
-                "Oak-Aged Bochet",
-                m1a.getId(),
-                Sweetness.SWEET,  BigDecimal.valueOf(16.0), Carbonation.STILL,
-                "Caramelized wildflower honey",
-                null, true, "French oak, 6 months", null);
+        createEntrantEntry(amadora, devUser, "Oak-Aged Bochet", amaM1A,
+                Sweetness.SWEET, 16.0, Carbonation.STILL, "Caramelized wildflower honey",
+                null, true, "French oak, 6 months");
+        // → leave as DRAFT
 
-        // Entry 1 for entrant@example.com: Metheglin (DRAFT)
-        entryService.createEntry(
-                amadora.getId(), devEntrant.getId(),
-                "Lavender Metheglin",
-                m3b.getId(),
-                Sweetness.MEDIUM,  BigDecimal.valueOf(11.5), Carbonation.PETILLANT,
-                "Lavender honey",
-                "Lavender, chamomile", false, null, null);
+        var honeyReserve = createEntrantEntry(amadora, devUser, "Honey Reserve", amaM1B,
+                Sweetness.MEDIUM, 12.0, Carbonation.STILL, "Heather honey", null, false, null);
+        advanceToReceived(honeyReserve, devUser, compAdminId);
 
-        log.info("Created entries for CHIP Amadora");
+        var strawberryFields = createEntrantEntry(amadora, devUser, "Strawberry Fields", amaM2C,
+                Sweetness.MEDIUM, 11.0, Carbonation.PETILLANT, "Wildflower honey", "Strawberry pulp", false, null);
+        advanceToReceived(strawberryFields, devUser, compAdminId);
 
-        // 11. Create example orders via webhook processing
+        // entrant@example.com (3 credits): 3 entries
+        createEntrantEntry(amadora, devEntrant, "Lavender Metheglin", amaM3B,
+                Sweetness.MEDIUM, 11.5, Carbonation.PETILLANT, "Lavender honey",
+                "Lavender, chamomile", false, null);
+        // → leave as DRAFT
+
+        var rosemarySage = createEntrantEntry(amadora, devEntrant, "Rosemary & Sage", amaM3B,
+                Sweetness.DRY, 12.5, Carbonation.STILL, "Acacia honey", "Rosemary, sage", false, null);
+        entryService.submitEntry(rosemarySage.getId(), devEntrant.getId()); // → SUBMITTED
+
+        var mountainHoney = createEntrantEntry(amadora, devEntrant, "Mountain Honey", amaM1B,
+                Sweetness.MEDIUM, 13.5, Carbonation.STILL, "Mountain wildflower honey", null, false, null);
+        advanceToReceived(mountainHoney, devEntrant, compAdminId);
+
+        log.info("Created 8 entrant-submitted entries for CHIP Amadora");
+
+        // 11. Webhook orders — buyer1 (2 credits Amadora) + buyer2 (3 credits Profissional)
         webhookService.processOrderPaid(buildOrderPayload(
                 "JS-1001", "buyer1@example.com", "Maria Silva",
                 "1001", "CHIP-AMA", "CHIP Amadora Entry", 2, "PT"));
@@ -207,6 +219,162 @@ class DevDataInitializer {
                 "JS-1002", "buyer2@example.com", "João Santos",
                 "1002", "CHIP-PRO", "CHIP Profissional Entry", 3, "BR"));
         log.info("Created example webhook orders");
+
+        // 12. Admin-add 2 entries for buyer1 in Amadora — one RECEIVED, one WITHDRAWN
+        var appleMead = entryService.adminCreateEntry(amadora.getId(), "buyer1@example.com",
+                "Apple Mead", amaM4A.getId(),
+                Sweetness.DRY, BigDecimal.valueOf(7.5), Carbonation.STILL,
+                "Wildflower honey", "Apple cider", false, null, null, compAdminId);
+        // adminCreateEntry returns a DRAFT — admin advances DRAFT → SUBMITTED → RECEIVED.
+        entryService.advanceEntryStatus(appleMead.getId(), compAdminId);
+        entryService.advanceEntryStatus(appleMead.getId(), compAdminId);
+
+        var sunsetMead = entryService.adminCreateEntry(amadora.getId(), "buyer1@example.com",
+                "Sunset Mead", amaM1A.getId(),
+                Sweetness.SWEET, BigDecimal.valueOf(14.0), Carbonation.STILL,
+                "Orange blossom honey", null, false, null, null, compAdminId);
+        entryService.withdrawEntry(sunsetMead.getId(), compAdminId);
+
+        log.info("Created 2 admin-added entries for buyer1 (1 RECEIVED, 1 WITHDRAWN)");
+        log.info("CHIP Amadora ready: 10 entries (3 DRAFT, 2 SUBMITTED, 4 RECEIVED, 1 WITHDRAWN)");
+
+        // 13. Profissional: pre-stage to JUDGING with 20 RECEIVED entries assigned to
+        //     judging categories, so an admin can jump straight into §12.6+ without
+        //     repeating the registration flow.
+        seedProfissionalForJudging(profissional, compAdminId);
+    }
+
+    private void seedProfissionalForJudging(Division profissional, UUID compAdminId) {
+        var pro1 = userService.findByEmail("proentrant1@example.com");
+        var pro2 = userService.findByEmail("proentrant2@example.com");
+        var pro3 = userService.findByEmail("proentrant3@example.com");
+        var pro4 = userService.findByEmail("proentrant4@example.com");
+
+        // Each pro entrant gets 5 credits → 5 entries → 20 total.
+        entryService.addCredits(profissional.getId(), pro1.getEmail(), 5, compAdminId);
+        entryService.addCredits(profissional.getId(), pro2.getEmail(), 5, compAdminId);
+        entryService.addCredits(profissional.getId(), pro3.getEmail(), 5, compAdminId);
+        entryService.addCredits(profissional.getId(), pro4.getEmail(), 5, compAdminId);
+
+        var profCategories = competitionService.findDivisionCategories(profissional.getId());
+        var proM1A = findCategoryByCode(profCategories, "M1A");
+        var proM1B = findCategoryByCode(profCategories, "M1B");
+        var proM2A = findCategoryByCode(profCategories, "M2A");
+        var proM2C = findCategoryByCode(profCategories, "M2C");
+        var proM3B = findCategoryByCode(profCategories, "M3B");
+
+        // 5 categories × varied counts = 20 entries (within per-user 3/5/10 limits).
+        // proentrant1: 1 per category
+        createReceivedProEntry(profissional, pro1, compAdminId, "Quinta do Mel Tradicional", proM1A,
+                Sweetness.DRY, 13.0, Carbonation.STILL, "Rosemary honey");
+        createReceivedProEntry(profissional, pro1, compAdminId, "Reserva Antiga", proM1B,
+                Sweetness.MEDIUM, 12.5, Carbonation.STILL, "Heather honey");
+        createReceivedProEntry(profissional, pro1, compAdminId, "Maçã Selvagem", proM2A,
+                Sweetness.MEDIUM, 10.5, Carbonation.STILL, "Wildflower honey");
+        createReceivedProEntry(profissional, pro1, compAdminId, "Frutos Vermelhos", proM2C,
+                Sweetness.MEDIUM, 12.0, Carbonation.STILL, "Acacia honey");
+        createReceivedProEntry(profissional, pro1, compAdminId, "Ervas Aromáticas", proM3B,
+                Sweetness.DRY, 11.5, Carbonation.STILL, "Rosemary honey");
+
+        // proentrant2: 1 per category
+        createReceivedProEntry(profissional, pro2, compAdminId, "Honey Lab Classic", proM1A,
+                Sweetness.DRY, 12.0, Carbonation.STILL, "Orange blossom honey");
+        createReceivedProEntry(profissional, pro2, compAdminId, "Lisboa Reserva", proM1B,
+                Sweetness.MEDIUM, 13.0, Carbonation.STILL, "Eucalyptus honey");
+        createReceivedProEntry(profissional, pro2, compAdminId, "Pera Atlântica", proM2A,
+                Sweetness.MEDIUM, 11.0, Carbonation.PETILLANT, "Wildflower honey");
+        createReceivedProEntry(profissional, pro2, compAdminId, "Cerejas em Flor", proM2C,
+                Sweetness.MEDIUM, 12.5, Carbonation.STILL, "Acacia honey");
+        createReceivedProEntry(profissional, pro2, compAdminId, "Cardamomo & Mel", proM3B,
+                Sweetness.MEDIUM, 12.0, Carbonation.STILL, "Wildflower honey");
+
+        // proentrant3: 1 per category
+        createReceivedProEntry(profissional, pro3, compAdminId, "Madrid Tradicional", proM1A,
+                Sweetness.DRY, 13.5, Carbonation.STILL, "Sunflower honey");
+        createReceivedProEntry(profissional, pro3, compAdminId, "Solera de Miel", proM1B,
+                Sweetness.MEDIUM, 14.0, Carbonation.STILL, "Wildflower honey");
+        createReceivedProEntry(profissional, pro3, compAdminId, "Manzana de la Sierra", proM2A,
+                Sweetness.DRY, 9.5, Carbonation.STILL, "Wildflower honey");
+        createReceivedProEntry(profissional, pro3, compAdminId, "Fresas Andaluzas", proM2C,
+                Sweetness.MEDIUM, 11.5, Carbonation.STILL, "Acacia honey");
+        createReceivedProEntry(profissional, pro3, compAdminId, "Romero y Tomillo", proM3B,
+                Sweetness.DRY, 12.5, Carbonation.STILL, "Rosemary honey");
+
+        // proentrant4: 2 in M1A + 1 each in M1B / M2A / M2C (no M3B)
+        createReceivedProEntry(profissional, pro4, compAdminId, "Miele Toscano", proM1A,
+                Sweetness.DRY, 12.0, Carbonation.STILL, "Chestnut honey");
+        createReceivedProEntry(profissional, pro4, compAdminId, "Cantina Riserva", proM1A,
+                Sweetness.MEDIUM, 13.5, Carbonation.STILL, "Acacia honey");
+        createReceivedProEntry(profissional, pro4, compAdminId, "Tradizione di Famiglia", proM1B,
+                Sweetness.MEDIUM, 12.5, Carbonation.STILL, "Wildflower honey");
+        createReceivedProEntry(profissional, pro4, compAdminId, "Mela d'Inverno", proM2A,
+                Sweetness.MEDIUM, 10.0, Carbonation.STILL, "Wildflower honey");
+        createReceivedProEntry(profissional, pro4, compAdminId, "Lampone & Mirtillo", proM2C,
+                Sweetness.SWEET, 13.0, Carbonation.STILL, "Acacia honey");
+
+        log.info("CHIP Profissional: created 20 RECEIVED entries across 4 pro entrants");
+
+        // Advance Profissional through to JUDGING:
+        // REGISTRATION_OPEN → REGISTRATION_CLOSED → (init judging cats + assign final cats) → JUDGING
+        competitionService.advanceDivisionStatus(profissional.getId(), compAdminId);
+        log.info("Profissional → REGISTRATION_CLOSED");
+
+        competitionService.initializeJudgingCategories(profissional.getId(), compAdminId);
+        log.info("Profissional: initialized judging categories");
+
+        // Map JUDGING-scope category by code, then assign each entry's finalCategoryId
+        // to its same-coded JUDGING category. This satisfies the
+        // EntryFinalCategoryAdvanceGuard.
+        var judgingCategories = competitionService.findJudgingCategories(profissional.getId());
+        var registrationToJudging = new java.util.HashMap<UUID, UUID>();
+        var byJudgingCode = new java.util.HashMap<String, UUID>();
+        for (var jc : judgingCategories) {
+            byJudgingCode.put(jc.getCode(), jc.getId());
+        }
+        for (var rc : profCategories) {
+            var judgingId = byJudgingCode.get(rc.getCode());
+            if (judgingId != null) {
+                registrationToJudging.put(rc.getId(), judgingId);
+            }
+        }
+        var profEntries = entryService.findEntriesByDivision(profissional.getId());
+        for (var entry : profEntries) {
+            var judgingId = registrationToJudging.get(entry.getInitialCategoryId());
+            if (judgingId != null) {
+                entryService.assignFinalCategory(entry.getId(), judgingId, compAdminId);
+            }
+        }
+        log.info("Profissional: assigned final categories to all 20 entries");
+
+        competitionService.advanceDivisionStatus(profissional.getId(), compAdminId);
+        log.info("Profissional → JUDGING (ready for §12.6+ walkthrough)");
+    }
+
+    private Entry createEntrantEntry(Division division, app.meads.identity.User entrant,
+                                      String meadName, DivisionCategory category,
+                                      Sweetness sweetness, double abv, Carbonation carbonation,
+                                      String honey, String otherIngredients,
+                                      boolean woodAged, String woodAgeingDetails) {
+        return entryService.createEntry(
+                division.getId(), entrant.getId(), meadName, category.getId(),
+                sweetness, BigDecimal.valueOf(abv), carbonation, honey,
+                otherIngredients, woodAged, woodAgeingDetails, null);
+    }
+
+    private void advanceToReceived(Entry entry, app.meads.identity.User owner, UUID adminId) {
+        entryService.submitEntry(entry.getId(), owner.getId());
+        entryService.advanceEntryStatus(entry.getId(), adminId);
+    }
+
+    private void createReceivedProEntry(Division division, app.meads.identity.User entrant,
+                                         UUID adminId, String meadName, DivisionCategory category,
+                                         Sweetness sweetness, double abv, Carbonation carbonation,
+                                         String honey) {
+        var entry = entryService.createEntry(
+                division.getId(), entrant.getId(), meadName, category.getId(),
+                sweetness, BigDecimal.valueOf(abv), carbonation, honey,
+                null, false, null, null);
+        advanceToReceived(entry, entrant, adminId);
     }
 
     private String buildOrderPayload(String orderId, String email, String fullName,

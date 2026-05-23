@@ -39,6 +39,12 @@ class DevUserInitializer {
         createDevUserIfAbsent("judge@example.com", "Dev Judge", Role.USER, UserStatus.ACTIVE, null);
         createDevUserIfAbsent("steward@example.com", "Dev Steward", Role.USER, UserStatus.ACTIVE, null);
         createDevUserIfAbsent("entrant@example.com", "Dev Entrant", Role.USER, UserStatus.ACTIVE, null);
+        // Pro division entrants — used by the Profissional pre-staged seed so the
+        // judging walkthrough has 20 entries across 4 entrants.
+        createDevUserIfAbsent("proentrant1@example.com", "Pro Entrant 1", Role.USER, UserStatus.ACTIVE, null);
+        createDevUserIfAbsent("proentrant2@example.com", "Pro Entrant 2", Role.USER, UserStatus.ACTIVE, null);
+        createDevUserIfAbsent("proentrant3@example.com", "Pro Entrant 3", Role.USER, UserStatus.ACTIVE, null);
+        createDevUserIfAbsent("proentrant4@example.com", "Pro Entrant 4", Role.USER, UserStatus.ACTIVE, null);
     }
 
     private void createDevUserIfAbsent(String email, String name, Role role, UserStatus status, String password) {

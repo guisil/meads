@@ -62,14 +62,26 @@ class DevDataInitializerTest {
         assertThat(entryService.getCreditBalance(amadora.getId(), devUser.getId())).isEqualTo(5);
         assertThat(entryService.getCreditBalance(amadora.getId(), devEntrant.getId())).isEqualTo(3);
 
-        // Entries
+        // Amadora entries — 5 from user + 3 from entrant + 2 admin-added for buyer1 = 10
         var userEntries = entryService.findEntriesByDivisionAndUser(
                 amadora.getId(), devUser.getId());
-        assertThat(userEntries).hasSize(3);
+        assertThat(userEntries).hasSize(5);
 
         var entrantEntries = entryService.findEntriesByDivisionAndUser(
                 amadora.getId(), devEntrant.getId());
-        assertThat(entrantEntries).hasSize(1);
+        assertThat(entrantEntries).hasSize(3);
+
+        // Profissional — pre-staged at JUDGING with 20 RECEIVED entries
+        var profissional = chipDivisions.stream()
+                .filter(d -> "Profissional".equals(d.getName()))
+                .findFirst().orElseThrow();
+        assertThat(profissional.getStatus()).isEqualTo(DivisionStatus.JUDGING);
+        var profEntries = entryService.findEntriesByDivision(profissional.getId());
+        assertThat(profEntries).hasSize(20);
+        assertThat(profEntries).allSatisfy(e -> {
+            assertThat(e.getStatus().name()).isEqualTo("RECEIVED");
+            assertThat(e.getFinalCategoryId()).isNotNull();
+        });
 
         // Test Competition 2026
         var testComp = competitions.stream()
