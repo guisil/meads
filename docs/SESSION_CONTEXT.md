@@ -272,10 +272,40 @@ dropdowns. No point doing them on UI that's about to be replaced.
 - **§12.6 walkthrough paused** — the design gaps surfaced when the user got
   to the Tables and Medal Rounds tabs.
 
+**Design now resolved (2026-05-24, second session).** See the redesign doc's
+"Resolved decisions" section for the source of truth. Summary:
+
+1. **Entry-to-round: 1:1.** `UNIQUE(entry_id)` on the new `judging_round_entries` table.
+2. **JudgingRound unified.** `type: SCORING | MEDAL` + nullable `medalMode` on the same
+   entity. Judges + physical table + entries on `JudgingRound` for both types. `judge_assignments`
+   already polymorphic via `judging_round_id` — no schema change to that table.
+3. **Unified status: `PENDING → READY → ACTIVE → COMPLETE`** (renamed from NOT_STARTED).
+   Service auto-transitions PENDING → READY when preconditions are met. Admin triggers `start()`
+   and (on MEDAL+SCORE_BASED) auto-fill + `confirmMedalAwards()`.
+4. **CategoryJudgingConfig slimmed.** Keeps only `divisionCategoryId` + `mode`. Status and
+   physical table move onto `JudgingRound`.
+5. **One medal round per category** (consolidates entries from all scoring rounds in the
+   category). Medal-round judges independent.
+6. **MedalAward.confirmed boolean** + `confirmedBy` + `confirmedAt`. Auto-fill writes
+   `confirmed=false`; results/BOS eligibility filters to `confirmed=true`.
+7. **Flat tabs: Rounds + Results + BOS** on `JudgingAdminView`. Rounds has a Type filter
+   (All / Scoring / Medal). Row click drills into existing per-round views.
+
 **Next session — first actions:**
-1. Read `docs/plans/2026-05-24-round-model-redesign.md` end-to-end.
-2. Resolve the open questions in that doc's "Plan" section §1 (with the user).
-3. Start implementation per the phasing in §1-§8 of the plan.
+1. Verify Task #1 (redesign-doc update) is committed.
+2. Start Task #2 (schema migration) — in-place edits to V21/V22/V24/V29. Pre-deployment
+   branch, so editing existing migrations is allowed per the redesign doc §2.
+3. TDD all the way through Tasks #3-#7 per the user's no-confirmation-gates preference.
+
+**Tasks set up in this session** (with dependencies):
+- #1 Update redesign-doc with resolved decisions — **COMPLETE**
+- #2 Schema migration (in-place V21/V22/V24/V29) — blocked-by #1, ready
+- #3 Entity + service refactor — blocked-by #2
+- #4 UI restructure (Rounds + Results + BOS tabs) — blocked-by #3
+- #5 Dev seed updates — blocked-by #3
+- #6 Walkthrough rewrite §12.6-§12.8 — blocked-by #4
+- #7 i18n (5 locales) — blocked-by #4
+- #8 Resume walkthrough + ship v0.4.0 — blocked-by #5/#6/#7
 
 ---
 

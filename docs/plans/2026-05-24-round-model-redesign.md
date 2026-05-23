@@ -1,8 +1,29 @@
 # Round-model redesign — plan
 
-**Status:** Design only (not yet implemented). Captured 2026-05-24 during the §12.6 walkthrough on `feature/judging-module`. v0.4.0 ship is **paused** pending this work — these are not nice-to-haves; they're real blockers found while walking through judging operations on the current model.
+**Status:** Design resolved (2026-05-24), implementation pending. Captured during the §12.6 walkthrough on `feature/judging-module`. v0.4.0 ship is **paused** pending this work — these are not nice-to-haves; they're real blockers found while walking through judging operations on the current model.
 
-**Why this is here:** During the walkthrough, the admin (the user) reached the JudgingAdminView Tables / Medal Rounds tabs and identified four model + UI gaps. We agreed to capture everything in a design doc rather than try to ship more refactors in the same session. Next session starts from this doc.
+**Why this is here:** During the walkthrough, the admin (the user) reached the JudgingAdminView Tables / Medal Rounds tabs and identified four model + UI gaps. We agreed to capture everything in a design doc rather than try to ship more refactors in the same session. The open questions were resolved in the next session; "Resolved decisions" below is now the source of truth.
+
+---
+
+## Resolved decisions (2026-05-24, next session)
+
+The §1 open questions are closed. These are the chosen paths — read these before reading the historical "Problems" + "Sub-design notes" sections below, which keep the alternates we considered.
+
+1. **Entry-to-round cardinality: 1:1.** An entry belongs to exactly one scoring round at a time. Enforced by `UNIQUE(entry_id)` on the new `judging_round_entries` join table. Re-judging would require explicitly moving the entry (and discarding/reassigning its scoresheet).
+2. **JudgingRound unified for scoring + medal.** No separate medal-round entity. `JudgingRound.type: RoundType (SCORING | MEDAL)`. Judges, physical table, and entries live on `JudgingRound` for both types. `medalMode` (SCORE_BASED / COMPARATIVE) is a nullable column on `JudgingRound`, populated only for `type = MEDAL`. The existing `judge_assignments` table is reused as-is (`judging_round_id` is already a single FK; polymorphism comes for free since both types are `JudgingRound` rows).
+3. **Unified status enum: `PENDING → READY → ACTIVE → COMPLETE`** on `JudgingRound`.
+    - `PENDING` = created but preconditions not yet met (scoring: needs judges/table/entries; medal: scoring rounds in the category not all COMPLETE yet, or — for SCORE_BASED — auto-fill produced ties needing manual resolution).
+    - `READY` = preconditions met, admin can `start()`.
+    - `ACTIVE` = started, work in progress (scoresheets being filled / medal awards being awarded).
+    - `COMPLETE` = finished.
+    - Service computes the PENDING → READY transition automatically when preconditions become satisfied; admin doesn't toggle it.
+4. **CategoryJudgingConfig stays, slimmed down.** Keeps only `divisionCategoryId` + `mode` (the default medal mode picked at category init time). Status, physical table, judges all move off onto `JudgingRound`. The actual medal round becomes a `JudgingRound` (type=MEDAL) that inherits its initial `medalMode` from the matching `CategoryJudgingConfig`.
+5. **Medal aggregation: one medal round per category (consolidates).** When a category is split across multiple scoring rounds with different judge panels, all those entries flow into a single medal round. Medal-round judges are independent of scoring judges (could be head judges, could be the union of scoring panels — admin chooses).
+6. **MedalAward.confirmed boolean (+ confirmedBy + confirmedAt).** Auto-fill on SCORE_BASED writes `confirmed=false` rows. Results / BOS eligibility queries filter to `confirmed=true`. Admin (or assigned medal-round judge) clicks "Confirm" on `MedalRoundView` to flip the flag. Ties or admin overrides keep the rows unconfirmed until manually resolved.
+7. **Flat tab layout: Rounds + Results + BOS.** Three sibling tabs on `JudgingAdminView`. Rounds tab has a **Type filter** ComboBox (All / Scoring / Medal) and lists all rounds with a Type column; row click drills into the existing per-round views (`TableView` / `MedalRoundView`). Results tab summarizes COMPLETE rounds with outcome data (scoresheet counts, medals awarded). BOS tab unchanged.
+
+These decisions supersede anything in the "Sub-design notes" below that proposed alternatives.
 
 ---
 
@@ -146,22 +167,28 @@ These should land **in the redesign work** (no point doing them on the soon-to-b
 
 ## Plan (for the next session)
 
-Rough phasing — refine before execution:
+Phasing — refine before execution. §1 is now closed (see "Resolved decisions" above).
 
-1. **Design pass + open-question discussion** with the user. Resolve:
-   - Auto-assign confirmation: new sub-status vs. boolean flag vs. distinct "ProposedMedalAward" entity.
-   - Polymorphic JudgeAssignment vs. parallel medal_round_judge_assignments table.
-   - Per-round entry assignment cardinality: 1:1 entry-to-round, or can an entry be on multiple scoring rounds (re-judging)?
-   - Tab restructure: master-detail vs. flat Rounds + Results?
-2. **DB migration(s)** — V30+ for new entities/columns. Pre-deployment branch, so in-place edits to V21-V29 are still allowed if cleaner.
-3. **Model + service changes** — JudgingRound entries + medal-round judges + auto-assign-with-confirmation flow. Validation extensions (judge-active-conflict now spans medal rounds too).
-4. **UI restructure** — Rounds tab + Results tab. Add-Round dialog gains Type selector + per-type fields + entry multi-select.
-5. **Dev seed updates** — pre-stage Profissional rounds with entry assignments + medal-round judges so the walkthrough exercises everything.
+1. ✅ **Design pass + open-question discussion** — resolved 2026-05-24. See "Resolved decisions" section above.
+2. **DB migration** — pre-deployment branch, so in-place edits to V21–V29 are allowed and cleaner. Concrete changes:
+   - **V21** (`judging_rounds` + `judge_assignments`): add `type VARCHAR(20) NOT NULL` (default 'SCORING' for back-compat), add `medal_mode VARCHAR(20)` (nullable, MEDAL only). Status enum values change: `NOT_STARTED` → `PENDING`, `ROUND_1` → `ACTIVE`, `COMPLETE` → `COMPLETE` (unchanged); add `READY` as a new value. `judge_assignments` stays as-is — `judging_round_id` already covers both types.
+   - **V21 new table** `judging_round_entries(id UUID PK, judging_round_id UUID NOT NULL FK ON DELETE CASCADE, entry_id UUID NOT NULL FK, assigned_at TIMESTAMPTZ NOT NULL, UNIQUE(judging_round_id, entry_id), UNIQUE(entry_id))`. The `UNIQUE(entry_id)` enforces 1:1.
+   - **V22** (`category_judging_configs`): drop `medal_round_status`, drop `physical_table_id`, rename `medal_round_mode` → `mode`. Schema becomes: `id`, `division_category_id` (UNIQUE), `mode`, timestamps. Drop the medal-round-status code path entirely.
+   - **V24** (`medal_awards`): add `confirmed BOOLEAN NOT NULL DEFAULT FALSE`, `confirmed_at TIMESTAMPTZ NULL`, `confirmed_by UUID NULL REFERENCES users(id)`.
+   - **V29** (`physical_tables`): drop `ALTER TABLE category_judging_configs ADD COLUMN physical_table_id` (that column moves logically onto `judging_rounds`, which already has it via V29's other ALTER).
+3. **Model + service changes** —
+   - `JudgingRound` entity: add `type`, `medalMode`, `entries: Set<UUID>` (managed via new service methods).
+   - `RoundStatus` enum (renames `JudgingRound.Status`): `PENDING → READY → ACTIVE → COMPLETE`. Service computes PENDING→READY automatically; admin only triggers `start()` and (on MEDAL+SCORE_BASED) auto-fill + `confirmMedalAwards()`.
+   - `CategoryJudgingConfig`: drop `medalRoundStatus`, drop `physicalTableId`, keep `mode`.
+   - `MedalAward`: add `confirmed`, `confirmedBy`, `confirmedAt` + domain method `confirm(adminUserId)`.
+   - `JudgingService`: rename methods (`createScoringRound` / `createMedalRound`), add `assignEntryToRound` / `unassignEntryFromRound`, add `confirmMedalAwards(roundId, adminUserId)`. Judge-active-conflict check unions both round types (since `judge_assignments` already does). `findRoundsByDivision` returns both types; callers filter as needed.
+4. **UI restructure** — `JudgingAdminView` Rounds tab + Results tab + BOS tab (BOS unchanged). Add-Round dialog gains Type selector + per-type fields + entry multi-select (scoring) or auto-derived entries (medal). MedalRoundView gains a Confirm flow when `MedalAward.confirmed=false` rows exist. Quick wins (resizable/sortable columns, leaf-only category dropdowns via `findLeafJudgingCategories`) shipped here.
+5. **Dev seed updates** — pre-stage Profissional rounds with split-category assignments + medal-round judges so the walkthrough exercises everything.
 6. **Walkthrough rewrite** — §12.6/§12.7/§12.8 restructured around Rounds/Results/BOS.
-7. **i18n** — 5 locales as usual.
+7. **i18n** — 5 locales as usual (EN/ES/IT/PL/PT).
 8. **Tests** — TDD throughout per the user's preference; CRUD + rejection paths for new service methods, UI tests for dialogs + tab rendering.
 
-Likely 3-5 focused sessions depending on how many open questions surface during implementation.
+Likely 3-5 focused sessions for implementation.
 
 ---
 
