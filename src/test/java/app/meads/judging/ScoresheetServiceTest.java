@@ -1,7 +1,6 @@
 package app.meads.judging;
 
 import app.meads.BusinessRuleException;
-import app.meads.competition.Competition;
 import app.meads.competition.CompetitionService;
 import app.meads.competition.Division;
 import app.meads.competition.DivisionStatus;
@@ -26,7 +25,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -322,10 +320,9 @@ class ScoresheetServiceTest {
     }
 
     @Test
-    void shouldSetCommentLanguageWhenInCompetitionList() {
+    void shouldSetCommentLanguageWhenValidIsoCode() {
         var entryId = UUID.randomUUID();
         var scoresheet = new Scoresheet(tableId, entryId);
-        var competition = mock(Competition.class);
         var division = mock(app.meads.competition.Division.class);
         given(scoresheetRepository.findById(scoresheet.getId())).willReturn(Optional.of(scoresheet));
         given(judgingTableRepository.findById(tableId)).willReturn(Optional.of(table));
@@ -333,10 +330,6 @@ class ScoresheetServiceTest {
         given(coiCheckService.check(judgeUserId, entryId)).willReturn(CoiResult.clear());
         given(competitionService.findDivisionById(divisionId)).willReturn(division);
         given(division.getStatus()).willReturn(DivisionStatus.JUDGING);
-        given(division.getCompetitionId()).willReturn(competitionId);
-        given(competitionService.findCompetitionById(competitionId)).willReturn(competition);
-        given(competition.getCommentLanguages()).willReturn(Set.of("en", "pt"));
-        given(judgeProfileService.findByUserId(judgeUserId)).willReturn(Optional.empty());
         given(scoresheetRepository.save(any(Scoresheet.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 
@@ -347,10 +340,9 @@ class ScoresheetServiceTest {
     }
 
     @Test
-    void shouldRejectSetCommentLanguageWhenNotInAllowedList() {
+    void shouldRejectSetCommentLanguageWhenNotValidIsoCode() {
         var entryId = UUID.randomUUID();
         var scoresheet = new Scoresheet(tableId, entryId);
-        var competition = mock(Competition.class);
         var division = mock(app.meads.competition.Division.class);
         given(scoresheetRepository.findById(scoresheet.getId())).willReturn(Optional.of(scoresheet));
         given(judgingTableRepository.findById(tableId)).willReturn(Optional.of(table));
@@ -358,12 +350,8 @@ class ScoresheetServiceTest {
         given(coiCheckService.check(judgeUserId, entryId)).willReturn(CoiResult.clear());
         given(competitionService.findDivisionById(divisionId)).willReturn(division);
         given(division.getStatus()).willReturn(DivisionStatus.JUDGING);
-        given(division.getCompetitionId()).willReturn(competitionId);
-        given(competitionService.findCompetitionById(competitionId)).willReturn(competition);
-        given(competition.getCommentLanguages()).willReturn(Set.of("en"));
-        given(judgeProfileService.findByUserId(judgeUserId)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.setCommentLanguage(scoresheet.getId(), "pt", judgeUserId))
+        assertThatThrownBy(() -> service.setCommentLanguage(scoresheet.getId(), "xx-not-iso", judgeUserId))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("error.scoresheet.language-not-allowed");
     }

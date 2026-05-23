@@ -1585,16 +1585,6 @@ testable. Steps below are admin-driven unless noted.
 - [ ] Refresh — value persists at 3.
 - [ ] Change minimum judges back to 2 and save. (Leave BOS places at 3 for the rest of §12 — Amadora awards 3 BOS placements.)
 
-### 12.3 Competition Settings — comment languages
-
-*Navigate to CHIP 2026 detail → Settings tab.*
-
-- [ ] **Expected:** A "Judging" sub-section with a `MultiSelectComboBox<String>` labelled "Comment languages for scoresheets".
-- [ ] **Expected:** The list contains all supported language codes (`en`, `es`, `it`, `pl`, `pt`) sorted by display name in the current UI locale.
-- [ ] Select `en` and `pt`, click "Save".
-- [ ] **Expected:** Notification "Competition updated successfully".
-- [ ] Refresh — selection persists.
-
 ### 12.4 Initialize judging categories
 
 *Back on Amadora division detail → Judging Categories tab (now the default tab for status ≥ REGISTRATION_CLOSED).*
@@ -1841,7 +1831,7 @@ For this you need a *second* ROUND_1 table in the same JUDGING category. Create 
   Each `NumberField` has `min=0`, `max=<field max>`, and `ValueChangeMode.EAGER`.
 - [ ] **Expected:** A "Current total: N / 100" Span (id `scoresheet-total`) below the score fields. It updates live as you change values.
 - [ ] **Expected:** An "Overall comments" `TextArea` (`maxLength=2000`).
-- [ ] **Expected:** A "Comment language" `ComboBox` sourced from competition.commentLanguages (∪ judge.preferredCommentLanguage if set). Items sorted by display name in the UI locale.
+- [ ] **Expected:** A "Comment language" `ComboBox` listing all ISO 639-1 languages, sorted by display name in the UI locale. The default value is the judge's `preferredCommentLanguage` from their profile (if set); otherwise blank. Judges are free to pick any language — no per-competition restriction.
 - [ ] **Expected:** An "Advance to medal round" `Checkbox`.
 - [ ] **Expected:** Two buttons: "Save Draft" (always enabled) and "Submit" (enabled only when all 5 score fields are non-null).
 

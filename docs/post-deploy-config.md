@@ -17,8 +17,6 @@ local testing and production.
   (Amadora awards 3 Best of Show placements).
 - [ ] **Settings → Judging → Minimum judges per table**: confirm `2` (or
   adjust to the actual panel size used at CHIP).
-- [ ] **Competition Settings → Comment languages for scoresheets**: pick the
-  language set judges will write comments in (e.g. `en`, `pt`).
 - [ ] **Initialize Judging Categories** once the Amadora division advances to
   `REGISTRATION_CLOSED`. (Required — the new
   `JudgingCategoryAdvanceGuard` blocks `REGISTRATION_CLOSED → JUDGING`
@@ -27,7 +25,7 @@ local testing and production.
 ### CHIP 2026 — Profissional division
 
 - [ ] Same Judging settings review as Amadora — set BOS places, min judges,
-  comment languages, then initialize judging categories at the right time.
+  then initialize judging categories at the right time.
 
 ### Real judges / stewards
 

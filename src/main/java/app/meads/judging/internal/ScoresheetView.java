@@ -209,27 +209,25 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
     private ComboBox<String> createCommentLanguageField() {
         commentLanguageCombo = new ComboBox<>(getTranslation("scoresheet.comment-language.label"));
         commentLanguageCombo.setId("comment-language");
-        Set<String> options = new LinkedHashSet<>();
-        if (competition.getCommentLanguages() != null) {
-            options.addAll(competition.getCommentLanguages());
-        }
-        var judgeProfile = judgeProfileService.findByUserId(currentUserId);
-        judgeProfile.map(p -> p.getPreferredCommentLanguage())
-                .filter(java.util.Objects::nonNull)
-                .ifPresent(options::add);
-        commentLanguageCombo.setItems(options.stream()
+        commentLanguageCombo.setItems(java.util.Arrays.stream(java.util.Locale.getISOLanguages())
                 .sorted(java.util.Comparator.comparing(code -> displayLanguageName(code), String.CASE_INSENSITIVE_ORDER))
                 .toList());
         commentLanguageCombo.setItemLabelGenerator(this::displayLanguageName);
-        if (scoresheet.getCommentLanguage() != null) {
-            commentLanguageCombo.setValue(scoresheet.getCommentLanguage());
+        String defaultLanguage = scoresheet.getCommentLanguage();
+        if (defaultLanguage == null) {
+            defaultLanguage = judgeProfileService.findByUserId(currentUserId)
+                    .map(p -> p.getPreferredCommentLanguage())
+                    .orElse(null);
+        }
+        if (defaultLanguage != null) {
+            commentLanguageCombo.setValue(defaultLanguage);
         }
         return commentLanguageCombo;
     }
 
     private String displayLanguageName(String code) {
         if (code == null) return "";
-        return new java.util.Locale(code).getDisplayLanguage(getLocale());
+        return java.util.Locale.of(code).getDisplayLanguage(getLocale());
     }
 
     private Checkbox createAdvanceCheckbox() {

@@ -286,18 +286,11 @@ class ScoresheetViewTest {
     @Test
     @WithMockUser(username = JUDGE_EMAIL, roles = "USER")
     @SuppressWarnings("unchecked")
-    void shouldExposeCommentLanguageComboBoxSourcedFromCompetitionLanguages() {
+    void shouldExposeCommentLanguageComboBoxWithAllIsoLanguages() {
         var entrant = userRepository.save(new User(
                 "entrant-ss-lang-" + UUID.randomUUID() + "@example.com",
                 "Entrant", UserStatus.ACTIVE, Role.USER));
         var sheet = createScoresheetFor(entrant, "AMA-4", "Honey Storm");
-
-        // Configure the competition's comment languages.
-        var admin = userRepository.findAll().stream()
-                .filter(u -> u.getRole() == Role.SYSTEM_ADMIN)
-                .findFirst().orElseThrow();
-        competitionService.updateCommentLanguages(competition.getId(),
-                java.util.Set.of("en", "pt"), admin.getId());
 
         UI.getCurrent().navigate("competitions/" + competition.getShortName()
                 + "/divisions/" + division.getShortName()
@@ -305,7 +298,9 @@ class ScoresheetViewTest {
 
         var combo = (ComboBox<String>) _get(ComboBox.class, spec -> spec.withId("comment-language"));
         var items = combo.getListDataView().getItems().toList();
-        assertThat(items).containsExactlyInAnyOrder("en", "pt");
+        // Source is all ISO 639-1 codes — no per-competition restriction.
+        assertThat(items).contains("en", "pt", "es", "it", "pl", "fr", "de", "ja");
+        assertThat(items).hasSizeGreaterThan(100);
     }
 
     @Test

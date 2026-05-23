@@ -181,21 +181,6 @@ public class CompetitionService {
         return competitionRepository.save(competition);
     }
 
-    public Competition updateCommentLanguages(@NotNull UUID competitionId,
-                                              @NotNull Set<String> languageCodes,
-                                              @NotNull UUID requestingUserId) {
-        var competition = competitionRepository.findById(competitionId)
-                .orElseThrow(() -> new BusinessRuleException("error.competition.not-found"));
-        requireAuthorized(competitionId, requestingUserId);
-        try {
-            competition.updateCommentLanguages(languageCodes);
-        } catch (IllegalArgumentException e) {
-            throw new BusinessRuleException("error.competition.invalid-language-code", e.getMessage());
-        }
-        log.info("Updated comment languages for competition {}: {}", competitionId, languageCodes);
-        return competitionRepository.save(competition);
-    }
-
     public Competition updateCompetitionShippingDetails(@NotNull UUID competitionId,
                                                            String shippingAddress,
                                                            String phoneNumber,

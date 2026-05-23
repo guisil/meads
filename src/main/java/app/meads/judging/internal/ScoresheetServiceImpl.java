@@ -174,12 +174,7 @@ public class ScoresheetServiceImpl implements ScoresheetService {
             throw new BusinessRuleException("error.judging.results-published-frozen");
         }
         enforceCoi(judgeUserId, sheet);
-        var competition = competitionService.findCompetitionById(division.getCompetitionId());
-        var allowed = new HashSet<>(competition.getCommentLanguages());
-        judgeProfileService.findByUserId(judgeUserId)
-                .map(p -> p.getPreferredCommentLanguage())
-                .ifPresent(code -> { if (code != null) allowed.add(code); });
-        if (!allowed.contains(languageCode)) {
+        if (!isValidIsoLanguageCode(languageCode)) {
             throw new BusinessRuleException("error.scoresheet.language-not-allowed", languageCode);
         }
         try {
@@ -189,6 +184,13 @@ public class ScoresheetServiceImpl implements ScoresheetService {
         }
         scoresheetRepository.save(sheet);
         judgeProfileService.updatePreferredCommentLanguage(judgeUserId, languageCode);
+    }
+
+    private static final java.util.Set<String> ISO_LANGUAGE_CODES =
+            java.util.Set.of(java.util.Locale.getISOLanguages());
+
+    private static boolean isValidIsoLanguageCode(String code) {
+        return code != null && ISO_LANGUAGE_CODES.contains(code);
     }
 
     @Override
