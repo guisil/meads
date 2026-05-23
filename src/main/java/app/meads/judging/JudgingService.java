@@ -16,7 +16,28 @@ public interface JudgingService {
     // === Lazy bootstrap ===
     Judging ensureJudgingExists(@NotNull UUID divisionId);
 
-    // === Table CRUD ===
+    // === Physical tables ===
+    PhysicalTable createPhysicalTable(@NotNull UUID divisionId, @NotBlank String label,
+                                       @NotNull UUID adminUserId);
+
+    void updatePhysicalTableLabel(@NotNull UUID physicalTableId, @NotBlank String label,
+                                    @NotNull UUID adminUserId);
+
+    void deletePhysicalTable(@NotNull UUID physicalTableId, @NotNull UUID adminUserId);
+
+    List<PhysicalTable> findPhysicalTablesByDivision(@NotNull UUID divisionId);
+
+    java.util.Optional<PhysicalTable> findPhysicalTableById(@NotNull UUID physicalTableId);
+
+    /** Assign or change the physical table for a round. Allowed only while the round is NOT_STARTED. */
+    void assignRoundToPhysicalTable(@NotNull UUID roundId, @NotNull UUID physicalTableId,
+                                     @NotNull UUID adminUserId);
+
+    /** Assign or clear (null) the physical table for a category's medal round. */
+    void assignMedalRoundToPhysicalTable(@NotNull UUID divisionCategoryId, UUID physicalTableId,
+                                          @NotNull UUID adminUserId);
+
+    // === Round CRUD ===
     JudgingRound createRound(@NotNull UUID judgingId,
                              @NotBlank String name,
                              @NotNull UUID divisionCategoryId,

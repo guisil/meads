@@ -56,6 +56,7 @@ public class JudgingServiceImpl implements JudgingService {
 
     private final JudgingRepository judgingRepository;
     private final JudgingRoundRepository judgingRoundRepository;
+    private final PhysicalTableRepository physicalTableRepository;
     private final ScoresheetRepository scoresheetRepository;
     private final CategoryJudgingConfigRepository categoryConfigRepository;
     private final MedalAwardRepository medalAwardRepository;
@@ -69,6 +70,7 @@ public class JudgingServiceImpl implements JudgingService {
 
     JudgingServiceImpl(JudgingRepository judgingRepository,
                        JudgingRoundRepository judgingRoundRepository,
+                       PhysicalTableRepository physicalTableRepository,
                        ScoresheetRepository scoresheetRepository,
                        CategoryJudgingConfigRepository categoryConfigRepository,
                        MedalAwardRepository medalAwardRepository,
@@ -81,6 +83,7 @@ public class JudgingServiceImpl implements JudgingService {
                        ApplicationEventPublisher eventPublisher) {
         this.judgingRepository = judgingRepository;
         this.judgingRoundRepository = judgingRoundRepository;
+        this.physicalTableRepository = physicalTableRepository;
         this.scoresheetRepository = scoresheetRepository;
         this.categoryConfigRepository = categoryConfigRepository;
         this.medalAwardRepository = medalAwardRepository;
@@ -91,6 +94,121 @@ public class JudgingServiceImpl implements JudgingService {
         this.entryService = entryService;
         this.coiCheckService = coiCheckService;
         this.eventPublisher = eventPublisher;
+    }
+
+    @Override
+    public app.meads.judging.PhysicalTable createPhysicalTable(UUID divisionId, String label, UUID adminUserId) {
+        if (!competitionService.isAuthorizedForDivision(divisionId, adminUserId)) {
+            throw new BusinessRuleException("error.auth.unauthorized");
+        }
+        requireNotFrozen(divisionId);
+        var trimmed = label == null ? "" : label.trim();
+        if (trimmed.isEmpty()) {
+            throw new BusinessRuleException("error.physical-table.label-required");
+        }
+        if (physicalTableRepository.existsByDivisionIdAndLabel(divisionId, trimmed)) {
+            throw new BusinessRuleException("error.physical-table.label-duplicate", trimmed);
+        }
+        var saved = physicalTableRepository.save(new app.meads.judging.PhysicalTable(divisionId, trimmed));
+        log.info("Created PhysicalTable '{}' for division {}", trimmed, divisionId);
+        return saved;
+    }
+
+    @Override
+    public void updatePhysicalTableLabel(UUID physicalTableId, String label, UUID adminUserId) {
+        var table = physicalTableRepository.findById(physicalTableId)
+                .orElseThrow(() -> new BusinessRuleException("error.physical-table.not-found"));
+        if (!competitionService.isAuthorizedForDivision(table.getDivisionId(), adminUserId)) {
+            throw new BusinessRuleException("error.auth.unauthorized");
+        }
+        requireNotFrozen(table.getDivisionId());
+        var trimmed = label == null ? "" : label.trim();
+        if (trimmed.isEmpty()) {
+            throw new BusinessRuleException("error.physical-table.label-required");
+        }
+        if (!table.getLabel().equals(trimmed)
+                && physicalTableRepository.existsByDivisionIdAndLabel(table.getDivisionId(), trimmed)) {
+            throw new BusinessRuleException("error.physical-table.label-duplicate", trimmed);
+        }
+        table.updateLabel(trimmed);
+        physicalTableRepository.save(table);
+        log.info("Renamed PhysicalTable {} to '{}'", physicalTableId, trimmed);
+    }
+
+    @Override
+    public void deletePhysicalTable(UUID physicalTableId, UUID adminUserId) {
+        var table = physicalTableRepository.findById(physicalTableId)
+                .orElseThrow(() -> new BusinessRuleException("error.physical-table.not-found"));
+        if (!competitionService.isAuthorizedForDivision(table.getDivisionId(), adminUserId)) {
+            throw new BusinessRuleException("error.auth.unauthorized");
+        }
+        requireNotFrozen(table.getDivisionId());
+        boolean inUseByRound = judgingRoundRepository.findAll().stream()
+                .anyMatch(r -> physicalTableId.equals(r.getPhysicalTableId()));
+        if (inUseByRound) {
+            throw new BusinessRuleException("error.physical-table.in-use-by-round");
+        }
+        boolean inUseByMedalRound = categoryConfigRepository.findAll().stream()
+                .anyMatch(c -> physicalTableId.equals(c.getPhysicalTableId()));
+        if (inUseByMedalRound) {
+            throw new BusinessRuleException("error.physical-table.in-use-by-medal-round");
+        }
+        physicalTableRepository.delete(table);
+        log.info("Deleted PhysicalTable {}", physicalTableId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<app.meads.judging.PhysicalTable> findPhysicalTablesByDivision(UUID divisionId) {
+        return physicalTableRepository.findByDivisionIdOrderByLabel(divisionId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<app.meads.judging.PhysicalTable> findPhysicalTableById(UUID physicalTableId) {
+        return physicalTableRepository.findById(physicalTableId);
+    }
+
+    @Override
+    public void assignRoundToPhysicalTable(UUID roundId, UUID physicalTableId, UUID adminUserId) {
+        var round = requireTable(roundId);
+        var judging = requireJudging(round.getJudgingId());
+        if (!competitionService.isAuthorizedForDivision(judging.getDivisionId(), adminUserId)) {
+            throw new BusinessRuleException("error.auth.unauthorized");
+        }
+        requireNotFrozen(judging.getDivisionId());
+        if (round.getStatus() != JudgingRoundStatus.NOT_STARTED) {
+            throw new BusinessRuleException("error.round.cannot-reassign-physical-table-after-start");
+        }
+        var table = physicalTableRepository.findById(physicalTableId)
+                .orElseThrow(() -> new BusinessRuleException("error.physical-table.not-found"));
+        if (!table.getDivisionId().equals(judging.getDivisionId())) {
+            throw new BusinessRuleException("error.physical-table.wrong-division");
+        }
+        round.assignToPhysicalTable(physicalTableId);
+        judgingRoundRepository.save(round);
+        log.info("Assigned round {} to physical table {}", roundId, physicalTableId);
+    }
+
+    @Override
+    public void assignMedalRoundToPhysicalTable(UUID divisionCategoryId, UUID physicalTableId, UUID adminUserId) {
+        var divisionId = resolveDivisionIdFromCategory(divisionCategoryId);
+        if (!competitionService.isAuthorizedForDivision(divisionId, adminUserId)) {
+            throw new BusinessRuleException("error.auth.unauthorized");
+        }
+        requireNotFrozen(divisionId);
+        var config = categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId)
+                .orElseGet(() -> categoryConfigRepository.save(new CategoryJudgingConfig(divisionCategoryId)));
+        if (physicalTableId != null) {
+            var table = physicalTableRepository.findById(physicalTableId)
+                    .orElseThrow(() -> new BusinessRuleException("error.physical-table.not-found"));
+            if (!table.getDivisionId().equals(divisionId)) {
+                throw new BusinessRuleException("error.physical-table.wrong-division");
+            }
+        }
+        config.assignToPhysicalTable(physicalTableId);
+        categoryConfigRepository.save(config);
+        log.info("Assigned medal round for category {} to physical table {}", divisionCategoryId, physicalTableId);
     }
 
     @Override

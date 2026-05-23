@@ -40,6 +40,9 @@ public class JudgingRound {
     @Column(name = "division_category_id", nullable = false)
     private UUID divisionCategoryId;
 
+    @Column(name = "physical_table_id")
+    private UUID physicalTableId;
+
     @Column(name = "scheduled_date")
     private LocalDate scheduledDate;
 
@@ -62,12 +65,22 @@ public class JudgingRound {
     }
 
     public JudgingRound(UUID judgingId, String name, UUID divisionCategoryId, LocalDate scheduledDate) {
+        this(judgingId, null, name, divisionCategoryId, scheduledDate);
+    }
+
+    public JudgingRound(UUID judgingId, UUID physicalTableId, String name,
+                         UUID divisionCategoryId, LocalDate scheduledDate) {
         this.id = UUID.randomUUID();
         this.judgingId = judgingId;
+        this.physicalTableId = physicalTableId;
         this.name = name;
         this.divisionCategoryId = divisionCategoryId;
         this.scheduledDate = scheduledDate;
         this.status = JudgingRoundStatus.NOT_STARTED;
+    }
+
+    public void assignToPhysicalTable(UUID physicalTableId) {
+        this.physicalTableId = physicalTableId;
     }
 
     public List<JudgeAssignment> getAssignments() {

@@ -33,6 +33,9 @@ public class CategoryJudgingConfig {
     @Column(name = "medal_round_status", nullable = false, length = 20)
     private MedalRoundStatus medalRoundStatus;
 
+    @Column(name = "physical_table_id")
+    private UUID physicalTableId;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -51,6 +54,10 @@ public class CategoryJudgingConfig {
         this.divisionCategoryId = divisionCategoryId;
         this.medalRoundMode = mode;
         this.medalRoundStatus = MedalRoundStatus.PENDING;
+    }
+
+    public void assignToPhysicalTable(UUID physicalTableId) {
+        this.physicalTableId = physicalTableId;
     }
 
     public void updateMode(MedalRoundMode mode) {
