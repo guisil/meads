@@ -34,6 +34,11 @@ including dev user magic links sent by `DevUserInitializer` at startup.
 | `user@example.com` | Dev User | USER | ACTIVE | Magic link (see Mailpit) |
 | `pending@example.com` | Pending User | USER | PENDING | Magic link (see Mailpit) |
 | `judge@example.com` | Dev Judge | USER | ACTIVE | Magic link (see Mailpit) |
+| `judge2@example.com` | Dev Judge 2 | USER | ACTIVE | Magic link (see Mailpit) |
+| `judge3@example.com` | Dev Judge 3 | USER | ACTIVE | Magic link (see Mailpit) |
+| `judge4@example.com` | Dev Judge 4 | USER | ACTIVE | Magic link (see Mailpit) |
+| `judge5@example.com` | Dev Judge 5 | USER | ACTIVE | Magic link (see Mailpit) |
+| `judge6@example.com` | Dev Judge 6 | USER | ACTIVE | Magic link (see Mailpit) |
 | `steward@example.com` | Dev Steward | USER | ACTIVE | Magic link (see Mailpit) |
 | `entrant@example.com` | Dev Entrant | USER | ACTIVE | Magic link (see Mailpit) |
 | `proentrant1@example.com` | Pro Entrant 1 | USER | ACTIVE | Magic link (see Mailpit) |
@@ -50,18 +55,24 @@ including dev user magic links sent by `DevUserInitializer` at startup.
 - **Categories:** Full MJP catalog minus M4B and M4D (Profissional also has JUDGING-scope categories cloned from REGISTRATION)
 - **Participants:**
   - `compadmin@example.com` -- ADMIN
-  - `judge@example.com` -- JUDGE (has access code)
+  - `judge@example.com` -- JUDGE (has access code; MJP cert, preferred language `pt`)
+  - `judge2@example.com` -- JUDGE (meadery name "Hidroméis do Minho" — matches `user@example.com`'s meadery, **triggers soft-COI** badge on `user@`'s entries in §12.6.3)
+  - `judge3@example.com` -- JUDGE + ENTRANT (1 RECEIVED entry "Judge's Secret Mead" in Amadora M1A — **triggers hard-COI** block in §12.6.3 + §12.11.3)
+  - `judge4@example.com` -- JUDGE (MJP + BJCP certs, preferred `es`)
+  - `judge5@example.com` -- JUDGE (OTHER cert, "WSET Level 3", preferred `it`)
+  - `judge6@example.com` -- JUDGE (no profile certs, preferred `en`)
   - `steward@example.com` -- STEWARD (has access code)
-  - `user@example.com` -- ENTRANT (5 credits in Amadora)
+  - `user@example.com` -- ENTRANT (5 credits in Amadora, meadery "Hidroméis do Minho")
   - `entrant@example.com` -- ENTRANT (3 credits in Amadora)
   - `buyer1@example.com` -- ENTRANT (2 credits in Amadora, added via webhook)
   - `buyer2@example.com` -- ENTRANT (3 credits in Profissional, added via webhook)
   - `proentrant1..4@example.com` -- ENTRANT (5 credits each in Profissional, all credits used)
 - **Product mappings:** CHIP-AMA (Amadora, product ID 1001), CHIP-PRO (Profissional, product ID 1002)
-- **Amadora entries (10 total — 3 DRAFT, 2 SUBMITTED, 4 RECEIVED, 1 WITHDRAWN):**
+- **Amadora entries (11 total — 3 DRAFT, 2 SUBMITTED, 5 RECEIVED, 1 WITHDRAWN):**
   - `user@example.com` (5): Wildflower Traditional (DRAFT, M1A), Blueberry Bliss (SUBMITTED, M2C), Oak-Aged Bochet (DRAFT, M1A), Honey Reserve (RECEIVED, M1B), Strawberry Fields (RECEIVED, M2C)
   - `entrant@example.com` (3): Lavender Metheglin (DRAFT, M3B), Rosemary & Sage (SUBMITTED, M3B), Mountain Honey (RECEIVED, M1B)
   - `buyer1@example.com` (2, admin-added): Apple Mead (RECEIVED, M4A), Sunset Mead (WITHDRAWN, M1A)
+  - `judge3@example.com` (1, admin-added): Judge's Secret Mead (RECEIVED, M1A) — hard-COI seed
 - **Profissional entries (20 total — all RECEIVED with final categories assigned, division at JUDGING):**
   - Split across `proentrant1..4@example.com` (5 each)
   - Final categories cover M1A (5), M1B (4), M2A (4), M2C (4), M3B (3) — enough density for medal rounds + Best of Show

@@ -6,6 +6,7 @@ import app.meads.competition.DivisionStatus;
 import app.meads.entry.EntryService;
 import app.meads.entry.WebhookService;
 import app.meads.identity.UserService;
+import app.meads.judging.JudgeProfileService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -25,6 +26,7 @@ class DevDataInitializerTest {
     @Autowired EntryService entryService;
     @Autowired WebhookService webhookService;
     @Autowired UserService userService;
+    @Autowired JudgeProfileService judgeProfileService;
 
     @Test
     void shouldSeedDevDataOnStartup() {
@@ -62,7 +64,8 @@ class DevDataInitializerTest {
         assertThat(entryService.getCreditBalance(amadora.getId(), devUser.getId())).isEqualTo(5);
         assertThat(entryService.getCreditBalance(amadora.getId(), devEntrant.getId())).isEqualTo(3);
 
-        // Amadora entries — 5 from user + 3 from entrant + 2 admin-added for buyer1 = 10
+        // Amadora entries — 5 from user + 3 from entrant + 2 admin-added for buyer1
+        //   + 1 hard-COI entry for judge3 = 11
         var userEntries = entryService.findEntriesByDivisionAndUser(
                 amadora.getId(), devUser.getId());
         assertThat(userEntries).hasSize(5);
@@ -70,6 +73,15 @@ class DevDataInitializerTest {
         var entrantEntries = entryService.findEntriesByDivisionAndUser(
                 amadora.getId(), devEntrant.getId());
         assertThat(entrantEntries).hasSize(3);
+
+        var allAmadora = entryService.findEntriesByDivision(amadora.getId());
+        assertThat(allAmadora).hasSize(11);
+
+        // 6 JUDGE participants in CHIP 2026
+        var judgeParticipants = competitionService.findRolesByCompetition(chip.getId()).stream()
+                .filter(r -> r.getRole() == app.meads.competition.CompetitionRole.JUDGE)
+                .count();
+        assertThat(judgeParticipants).isEqualTo(6L);
 
         // Profissional — pre-staged at JUDGING with 20 RECEIVED entries
         var profissional = chipDivisions.stream()
@@ -97,7 +109,7 @@ class DevDataInitializerTest {
     void shouldBeIdempotent() {
         // DevDataInitializer already ran on startup.
         // Running it again should not create duplicate data.
-        var initializer = new DevDataInitializer(userService, competitionService, entryService, webhookService);
+        var initializer = new DevDataInitializer(userService, competitionService, entryService, webhookService, judgeProfileService);
         initializer.initializeDevData();
 
         var competitions = competitionService.findAllCompetitions();

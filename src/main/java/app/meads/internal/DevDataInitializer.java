@@ -3,6 +3,8 @@ package app.meads.internal;
 import app.meads.competition.*;
 import app.meads.entry.*;
 import app.meads.identity.UserService;
+import app.meads.judging.Certification;
+import app.meads.judging.JudgeProfileService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -28,15 +30,18 @@ class DevDataInitializer {
     private final CompetitionService competitionService;
     private final EntryService entryService;
     private final WebhookService webhookService;
+    private final JudgeProfileService judgeProfileService;
 
     DevDataInitializer(UserService userService,
                        CompetitionService competitionService,
                        EntryService entryService,
-                       WebhookService webhookService) {
+                       WebhookService webhookService,
+                       JudgeProfileService judgeProfileService) {
         this.userService = userService;
         this.competitionService = competitionService;
         this.entryService = entryService;
         this.webhookService = webhookService;
+        this.judgeProfileService = judgeProfileService;
     }
 
     @Order(2)
@@ -66,10 +71,27 @@ class DevDataInitializer {
         userService.updateProfile(compAdmin.getId(), compAdmin.getName(), "Hidroméis do Minho", "PT", "pt");
 
         var devUser = userService.findByEmail("user@example.com");
-        userService.updateProfile(devUser.getId(), devUser.getName(), null, "GB", null);
+        // user@'s meadery deliberately matches judge2's "Hidroméis do Minho" so the
+        // soft-COI badge fires in §12.6.3 (Assign Judges) on user@'s Amadora entries.
+        userService.updateProfile(devUser.getId(), devUser.getName(), "Hidroméis do Minho", "GB", null);
 
         var entrant = userService.findByEmail("entrant@example.com");
         userService.updateProfile(entrant.getId(), entrant.getName(), null, "DE", null);
+
+        // Judges — varied meadery names + countries + preferred languages so §12.6.3,
+        // §12.11, and §12.14 can be exercised against realistic profiles.
+        userService.updateProfile(userService.findByEmail("judge@example.com").getId(),
+                "Dev Judge", null, "PT", "pt");
+        userService.updateProfile(userService.findByEmail("judge2@example.com").getId(),
+                "Dev Judge 2", "Hidroméis do Minho", "PT", "pt");
+        userService.updateProfile(userService.findByEmail("judge3@example.com").getId(),
+                "Dev Judge 3", "Pereira & Pereira (private)", "PT", "pt");
+        userService.updateProfile(userService.findByEmail("judge4@example.com").getId(),
+                "Dev Judge 4", null, "ES", "es");
+        userService.updateProfile(userService.findByEmail("judge5@example.com").getId(),
+                "Dev Judge 5", null, "IT", "it");
+        userService.updateProfile(userService.findByEmail("judge6@example.com").getId(),
+                "Dev Judge 6", null, "GB", "en");
 
         // Pro entrants need a meadery name set — Profissional has meaderyNameRequired=true.
         userService.updateProfile(userService.findByEmail("proentrant1@example.com").getId(),
@@ -145,8 +167,28 @@ class DevDataInitializer {
         competitionService.addParticipantByEmail(
                 chip.getId(), "judge@example.com", CompetitionRole.JUDGE, compAdminId);
         competitionService.addParticipantByEmail(
+                chip.getId(), "judge2@example.com", CompetitionRole.JUDGE, compAdminId);
+        competitionService.addParticipantByEmail(
+                chip.getId(), "judge3@example.com", CompetitionRole.JUDGE, compAdminId);
+        competitionService.addParticipantByEmail(
+                chip.getId(), "judge4@example.com", CompetitionRole.JUDGE, compAdminId);
+        competitionService.addParticipantByEmail(
+                chip.getId(), "judge5@example.com", CompetitionRole.JUDGE, compAdminId);
+        competitionService.addParticipantByEmail(
+                chip.getId(), "judge6@example.com", CompetitionRole.JUDGE, compAdminId);
+        competitionService.addParticipantByEmail(
                 chip.getId(), "steward@example.com", CompetitionRole.STEWARD, compAdminId);
-        log.info("Added participants to CHIP 2026");
+        log.info("Added participants to CHIP 2026 (6 judges, 1 steward, 1 comp admin)");
+
+        // 7b. JudgeProfile records — certifications + qualification details for §12.14.
+        //     createOrUpdate requires self-or-SYSTEM_ADMIN, so pass the system admin id.
+        seedJudgeProfile("judge@example.com", java.util.Set.of(Certification.MJP), "Judging since 2018", sysAdminId);
+        seedJudgeProfile("judge2@example.com", java.util.Set.of(Certification.MJP), "Active in Iberian competitions", sysAdminId);
+        seedJudgeProfile("judge3@example.com", java.util.Set.of(Certification.BJCP), "BJCP Recognized", sysAdminId);
+        seedJudgeProfile("judge4@example.com", java.util.Set.of(Certification.MJP, Certification.BJCP), null, sysAdminId);
+        seedJudgeProfile("judge5@example.com", java.util.Set.of(Certification.OTHER), "WSET Level 3 (Wine)", sysAdminId);
+        seedJudgeProfile("judge6@example.com", java.util.Set.of(), null, sysAdminId);
+        log.info("Created JudgeProfile records for all 6 CHIP judges");
 
         // 8. Create product mappings
         entryService.createProductMapping(
@@ -236,7 +278,21 @@ class DevDataInitializer {
         entryService.withdrawEntry(sunsetMead.getId(), compAdminId);
 
         log.info("Created 2 admin-added entries for buyer1 (1 RECEIVED, 1 WITHDRAWN)");
-        log.info("CHIP Amadora ready: 10 entries (3 DRAFT, 2 SUBMITTED, 4 RECEIVED, 1 WITHDRAWN)");
+
+        // 12b. Hard-COI seed: judge3 is also an entrant with a RECEIVED entry in M1A.
+        // When admin assigns judges to an M1A table, judge3 shows a red "Self-entry"
+        // badge (§12.6.3); judge3 navigating to their own scoresheet is forwarded
+        // away (§12.11.3).
+        entryService.addCredits(amadora.getId(), "judge3@example.com", 1, compAdminId);
+        var judge3Mead = entryService.adminCreateEntry(amadora.getId(), "judge3@example.com",
+                "Judge's Secret Mead", amaM1A.getId(),
+                Sweetness.DRY, BigDecimal.valueOf(12.0), Carbonation.STILL,
+                "Wildflower honey", null, false, null, null, compAdminId);
+        entryService.advanceEntryStatus(judge3Mead.getId(), compAdminId); // SUBMITTED
+        entryService.advanceEntryStatus(judge3Mead.getId(), compAdminId); // RECEIVED
+        log.info("Created hard-COI entry for judge3 in Amadora M1A");
+
+        log.info("CHIP Amadora ready: 11 entries (3 DRAFT, 2 SUBMITTED, 5 RECEIVED, 1 WITHDRAWN)");
 
         // 13. Profissional: pre-stage to JUDGING with 20 RECEIVED entries assigned to
         //     judging categories, so an admin can jump straight into §12.6+ without
@@ -348,6 +404,18 @@ class DevDataInitializer {
 
         competitionService.advanceDivisionStatus(profissional.getId(), compAdminId);
         log.info("Profissional → JUDGING (ready for §12.6+ walkthrough)");
+    }
+
+    private void seedJudgeProfile(String email, java.util.Set<Certification> certifications,
+                                    String qualificationDetails, UUID adminId) {
+        var judge = userService.findByEmail(email);
+        judgeProfileService.createOrUpdate(judge.getId(), certifications,
+                qualificationDetails, adminId);
+        // Also set the preferred comment language from the user's profile language
+        // so ScoresheetView defaults match what the judge prefers.
+        if (judge.getPreferredLanguage() != null) {
+            judgeProfileService.updatePreferredCommentLanguage(judge.getId(), judge.getPreferredLanguage());
+        }
     }
 
     private Entry createEntrantEntry(Division division, app.meads.identity.User entrant,

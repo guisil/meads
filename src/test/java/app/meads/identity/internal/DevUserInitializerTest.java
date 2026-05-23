@@ -40,7 +40,7 @@ class DevUserInitializerTest {
         devUserInitializer.initializeDevUsers();
 
         var captor = ArgumentCaptor.forClass(User.class);
-        then(userRepository).should(times(11)).save(captor.capture());
+        then(userRepository).should(times(16)).save(captor.capture());
         List<User> savedUsers = captor.getAllValues();
 
         // Admin user
@@ -94,6 +94,11 @@ class DevUserInitializerTest {
         given(userRepository.existsByEmail("proentrant2@example.com")).willReturn(true);
         given(userRepository.existsByEmail("proentrant3@example.com")).willReturn(true);
         given(userRepository.existsByEmail("proentrant4@example.com")).willReturn(true);
+        given(userRepository.existsByEmail("judge2@example.com")).willReturn(true);
+        given(userRepository.existsByEmail("judge3@example.com")).willReturn(true);
+        given(userRepository.existsByEmail("judge4@example.com")).willReturn(true);
+        given(userRepository.existsByEmail("judge5@example.com")).willReturn(true);
+        given(userRepository.existsByEmail("judge6@example.com")).willReturn(true);
 
         devUserInitializer.initializeDevUsers();
 
