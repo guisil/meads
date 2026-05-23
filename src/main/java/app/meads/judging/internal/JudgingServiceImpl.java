@@ -239,6 +239,28 @@ public class JudgingServiceImpl implements JudgingService {
     }
 
     @Override
+    public void assignEntryToRound(UUID roundId, UUID entryId, UUID adminUserId) {
+        var round = requireTable(roundId);
+        var judging = requireJudging(round.getJudgingId());
+        requireAuthorizedForJudging(judging, adminUserId);
+        requireNotFrozen(judging.getDivisionId());
+        round.assignEntry(entryId);
+        judgingRoundRepository.save(round);
+        log.info("Assigned entry {} to round {}", entryId, roundId);
+    }
+
+    @Override
+    public void unassignEntryFromRound(UUID roundId, UUID entryId, UUID adminUserId) {
+        var round = requireTable(roundId);
+        var judging = requireJudging(round.getJudgingId());
+        requireAuthorizedForJudging(judging, adminUserId);
+        requireNotFrozen(judging.getDivisionId());
+        round.unassignEntry(entryId);
+        judgingRoundRepository.save(round);
+        log.info("Unassigned entry {} from round {}", entryId, roundId);
+    }
+
+    @Override
     public JudgingRound createMedalRound(UUID judgingId,
                                           UUID divisionCategoryId,
                                           UUID adminUserId) {
@@ -741,6 +763,17 @@ public class JudgingServiceImpl implements JudgingService {
         award.updateMedal(newValue, judgeUserId);
         medalAwardRepository.save(award);
         log.info("Updated medal {} → {} by judge {}", medalAwardId, newValue, judgeUserId);
+    }
+
+    @Override
+    public void confirmMedalAward(UUID medalAwardId, UUID adminUserId) {
+        var award = medalAwardRepository.findById(medalAwardId)
+                .orElseThrow(() -> new BusinessRuleException("error.medal.not-found"));
+        requireNotFrozen(award.getDivisionId());
+        requireAuthorizedForDivision(award.getDivisionId(), adminUserId);
+        award.confirm(adminUserId);
+        medalAwardRepository.save(award);
+        log.info("Confirmed medal award {} by {}", medalAwardId, adminUserId);
     }
 
     @Override

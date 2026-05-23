@@ -322,4 +322,37 @@ class JudgingServiceRoundTest {
 
         assertThat(result).containsExactly(t1, t2);
     }
+
+    @Test
+    void shouldAssignEntryToRound() {
+        var judging = new Judging(divisionId);
+        var round = new JudgingRound(judging.getId(), "T1", divisionCategoryId, null);
+        var entryId = UUID.randomUUID();
+        given(judgingRoundRepository.findById(round.getId())).willReturn(Optional.of(round));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.assignEntryToRound(round.getId(), entryId, adminUserId);
+
+        assertThat(round.getEntries()).contains(entryId);
+    }
+
+    @Test
+    void shouldUnassignEntryFromRound() {
+        var judging = new Judging(divisionId);
+        var round = new JudgingRound(judging.getId(), "T1", divisionCategoryId, null);
+        var entryId = UUID.randomUUID();
+        round.assignEntry(entryId);
+        given(judgingRoundRepository.findById(round.getId())).willReturn(Optional.of(round));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.unassignEntryFromRound(round.getId(), entryId, adminUserId);
+
+        assertThat(round.getEntries()).doesNotContain(entryId);
+    }
 }

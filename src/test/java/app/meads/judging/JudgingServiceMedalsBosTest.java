@@ -374,4 +374,19 @@ class JudgingServiceMedalsBosTest {
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("error.auth.unauthorized");
     }
+
+    @Test
+    void shouldConfirmMedalAward() {
+        var award = new MedalAward(entryId, divisionId, divisionCategoryId, Medal.GOLD, adminUserId);
+        given(medalAwardRepository.findById(award.getId())).willReturn(Optional.of(award));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(medalAwardRepository.save(any(MedalAward.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.confirmMedalAward(award.getId(), adminUserId);
+
+        assertThat(award.isConfirmed()).isTrue();
+        assertThat(award.getConfirmedBy()).isEqualTo(adminUserId);
+        assertThat(award.getConfirmedAt()).isNotNull();
+    }
 }

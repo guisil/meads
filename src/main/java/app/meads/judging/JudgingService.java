@@ -75,6 +75,16 @@ public interface JudgingService {
     /** Judge user IDs assigned to a table — loads the assignment collection in-transaction. */
     List<UUID> findJudgeUserIdsForRound(@NotNull UUID roundId);
 
+    // === Entry assignment ===
+    /**
+     * Assigns an entry to a round (1:1 — an entry can sit on at most one round
+     * at a time; uniqueness is enforced at the DB by {@code judging_round_entries.entry_id}).
+     */
+    void assignEntryToRound(@NotNull UUID roundId, @NotNull UUID entryId, @NotNull UUID adminUserId);
+
+    /** Removes an entry from a round. No-op if the entry isn't currently assigned to this round. */
+    void unassignEntryFromRound(@NotNull UUID roundId, @NotNull UUID entryId, @NotNull UUID adminUserId);
+
     // === Judge assignment ===
     void assignJudge(@NotNull UUID roundId, @NotNull UUID judgeUserId, @NotNull UUID adminUserId);
 
@@ -137,6 +147,13 @@ public interface JudgingService {
     void updateMedal(@NotNull UUID medalAwardId, Medal newValue, @NotNull UUID judgeUserId);
 
     void deleteMedalAward(@NotNull UUID medalAwardId, @NotNull UUID judgeUserId);
+
+    /**
+     * Marks a medal award as confirmed. Auto-fill on SCORE_BASED medal rounds
+     * writes {@code confirmed = false} rows; the admin / medal-round judge
+     * confirms each row to unlock results + BOS eligibility.
+     */
+    void confirmMedalAward(@NotNull UUID medalAwardId, @NotNull UUID adminUserId);
 
     // === BOS lifecycle ===
     void startBos(@NotNull UUID divisionId, @NotNull UUID adminUserId);
