@@ -677,6 +677,37 @@ class DivisionDetailViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldSaveBosPlacesSuccessfullyWhenStatusIsRegistrationClosed() {
+        // Reproduces a bug where saving settings at REGISTRATION_CLOSED showed
+        // "settings cannot be changed in the current state" because the view
+        // unconditionally re-sent the existing deadline value to
+        // CompetitionService.updateDivisionDeadline, which rejects past
+        // REGISTRATION_OPEN. The BOS-places save itself succeeded.
+        testDivision.advanceStatus(); // → REGISTRATION_OPEN
+        testDivision.advanceStatus(); // → REGISTRATION_CLOSED
+        divisionRepository.save(testDivision);
+
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName()
+                + "/divisions/" + testDivision.getShortName());
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(2); // Settings (Judging Categories tab is index 1 here)
+
+        var bosField = _get(com.vaadin.flow.component.textfield.IntegerField.class,
+                spec -> spec.withId("bos-places-field"));
+        bosField.setValue(3);
+
+        _click(_get(Button.class, spec -> spec.withText("Save")));
+
+        var notification = _get(com.vaadin.flow.component.notification.Notification.class);
+        assertThat(notification.getElement().getProperty("text"))
+                .doesNotContain("cannot be changed");
+        var refreshed = divisionRepository.findById(testDivision.getId()).orElseThrow();
+        assertThat(refreshed.getBosPlaces()).isEqualTo(3);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldDisplayMinJudgesPerTableIntegerFieldInSettingsTab() {
         UI.getCurrent().navigate("competitions/" + testCompetition.getShortName()
                 + "/divisions/" + testDivision.getShortName());

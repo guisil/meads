@@ -702,7 +702,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                     competitionService.updateDivisionMeaderyNameRequired(
                             divisionId, meaderyRequiredCheckbox.getValue(), getCurrentUserId());
                 }
-                if (deadlinePicker.getValue() != null && timezoneCombo.getValue() != null) {
+                if (canEditDeadline && deadlinePicker.getValue() != null && timezoneCombo.getValue() != null) {
                     competitionService.updateDivisionDeadline(
                             divisionId, deadlinePicker.getValue(),
                             timezoneCombo.getValue(), getCurrentUserId());
