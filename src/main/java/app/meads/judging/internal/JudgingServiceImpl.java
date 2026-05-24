@@ -20,6 +20,7 @@ import app.meads.judging.MedalRoundScorePreview;
 import app.meads.judging.MedalRoundReopenedEvent;
 import app.meads.judging.MedalRoundResetEvent;
 import app.meads.judging.MedalRoundStatus;
+import app.meads.judging.RoundType;
 import app.meads.judging.BosCompletedEvent;
 import app.meads.judging.BosPlacement;
 import app.meads.judging.BosReopenedEvent;
@@ -440,7 +441,9 @@ public class JudgingServiceImpl implements JudgingService {
         if (physicalTableBusy) {
             throw new BusinessRuleException("error.round.physical-table-busy");
         }
-        if (table.getAssignments().size() < division.getMinJudgesPerRound()) {
+        // Scoring rounds need a full judging panel; medal rounds may use fewer.
+        if (table.getType() == RoundType.SCORING
+                && table.getAssignments().size() < division.getMinJudgesPerRound()) {
             throw new BusinessRuleException("error.judging-table.too-few-judges",
                     String.valueOf(division.getMinJudgesPerRound()));
         }
@@ -463,27 +466,31 @@ public class JudgingServiceImpl implements JudgingService {
         } catch (IllegalStateException e) {
             throw new BusinessRuleException("error.judging-table.cannot-start", e.getMessage());
         }
-        // Auto-populate round.entries from the category's entries when admin
-        // didn't explicitly assign any — preserves the pre-split-category default
-        // ("all entries in the category are judged here") while making
-        // round.entries the source of truth from now on.
-        if (table.getEntries().isEmpty()) {
-            entryService.findEntriesByFinalCategoryId(table.getDivisionCategoryId())
-                    .forEach(entry -> table.assignEntry(entry.getId()));
+        if (table.getType() == RoundType.SCORING) {
+            // Auto-populate round.entries from the category's entries when admin
+            // didn't explicitly assign any — preserves the pre-split-category default
+            // ("all entries in the category are judged here") while making
+            // round.entries the source of truth from now on.
+            if (table.getEntries().isEmpty()) {
+                entryService.findEntriesByFinalCategoryId(table.getDivisionCategoryId())
+                        .forEach(entry -> table.assignEntry(entry.getId()));
+            }
         }
         judgingRoundRepository.save(table);
         if (judging.getPhase() == JudgingPhase.NOT_STARTED) {
             judging.markActive();
             judgingRepository.save(judging);
         }
-        // Ensure CategoryJudgingConfig exists (default COMPARATIVE) for the table's category
-        categoryConfigRepository.findByDivisionCategoryId(table.getDivisionCategoryId())
-                .orElseGet(() -> categoryConfigRepository.save(
-                        new CategoryJudgingConfig(table.getDivisionCategoryId())));
-        scoresheetService.createScoresheetsForTable(roundId);
-        eventPublisher.publishEvent(new RoundStartedEvent(
-                table.getId(), table.getDivisionCategoryId(),
-                judging.getDivisionId(), Instant.now()));
+        if (table.getType() == RoundType.SCORING) {
+            // Ensure CategoryJudgingConfig exists (default COMPARATIVE) for the table's category
+            categoryConfigRepository.findByDivisionCategoryId(table.getDivisionCategoryId())
+                    .orElseGet(() -> categoryConfigRepository.save(
+                            new CategoryJudgingConfig(table.getDivisionCategoryId())));
+            scoresheetService.createScoresheetsForTable(roundId);
+            eventPublisher.publishEvent(new RoundStartedEvent(
+                    table.getId(), table.getDivisionCategoryId(),
+                    judging.getDivisionId(), Instant.now()));
+        }
         log.info("Started table {} in division {}", roundId, judging.getDivisionId());
     }
 

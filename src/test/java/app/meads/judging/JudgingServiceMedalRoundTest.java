@@ -141,6 +141,31 @@ class JudgingServiceMedalRoundTest {
     }
 
     @Test
+    void shouldStartMedalTypedRoundWithoutCreatingScoresheetsOrEnforcingMinJudges() {
+        var physicalTableId = UUID.randomUUID();
+        var medalRound = new JudgingRound(judging.getId(), physicalTableId, "Medal",
+                divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.COMPARATIVE);
+        medalRound.assignJudge(UUID.randomUUID()); // only 1 judge — would fail for SCORING
+        given(judgingRoundRepository.findByJudgingId(judging.getId())).willReturn(List.of(medalRound));
+        given(judgingRoundRepository.findAll()).willReturn(List.of(medalRound));
+        given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(judgingRepository.save(any(Judging.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.startRound(medalRound.getId(), adminUserId);
+
+        assertThat(medalRound.getStatus()).isEqualTo(JudgingRoundStatus.ACTIVE);
+        then(scoresheetService).should(never()).createScoresheetsForTable(any());
+        then(entryService).should(never()).findEntriesByFinalCategoryId(any());
+    }
+
+    @Test
     void shouldNotOverwriteExplicitlyAssignedRoundEntriesWhenStartingRound() {
         var physicalTableId = UUID.randomUUID();
         var table = new JudgingRound(judging.getId(), physicalTableId, "T1", divisionCategoryId, null);
