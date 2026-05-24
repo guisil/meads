@@ -232,31 +232,53 @@ docs/
 
 ## What's Next
 
-### CURRENT (2026-05-24, end-of-day): Walkthrough resumption — §12.9 (MyJudgingView)
+### CURRENT (2026-05-24, end-of-day): Walkthrough PAUSED at §12.6.9 — five deferred items must land first
 
-The §12.6–§12.8 walkthrough is complete (Amadora @ JUDGING with M1A Panel A ACTIVE; Profissional @ JUDGING with split-category M1A + pre-staged M1B medal round per dev seed). Next session picks up at **§12.9 MyJudgingView (judge hub)**.
+The §12.6.0–§12.6.8 walkthrough is complete on this session. **NEXT SESSION**: do not resume the walkthrough until the five deferred items below are landed. The user explicitly requested context-clear before starting, so SESSION_CONTEXT.md (this file) + CLAUDE.md + the codebase + git log are the only sources of truth available.
 
-**State on disk (commit `3c17e36`, 1169 tests passing):**
-- `feature/judging-module` post the cycle-9 + walkthrough-polish commits. All pushed.
-- v0.4.0 still on-branch — not yet merged to main.
+**State on disk** (`feature/judging-module`, 1178 tests passing, top commit `f7c58f2`):
+- Today's session added seven commits past `dc3f0e3` (the SESSION_CONTEXT update from the prior session):
+  - `2f52b6c` Edit entry dialog: Final Category next to Initial Category.
+  - `bad2897` Block hard-COI judge assignment at service + UI (`error.coi.assign-hard-block` × 5 locales; selection listener reverts hard-COI ticks).
+  - `546fbec` Round-start dialog: close on error + finish Table → Round rename for the start flow (5 locales).
+  - `925f19a` `JudgingService.revertScoringRound` — ACTIVE scoring round → READY, deletes draft scoresheets, blocked when any SUBMITTED. New `ScoresheetService.deleteAllForRound`. ↶ Revert button on Rounds tab. 8 i18n keys × 5 locales.
+  - `693c3cf` Rounds-tab action reorder: edit / assign-judges / assign-entries / start / revert / delete / open.
+  - `64790e8` Entry assign/unassign through READY + ACTIVE (was PENDING-only). On ACTIVE the service creates/deletes scoresheets accordingly; SUBMITTED blocks remove with `error.entry.cannot-unassign-submitted`; COMPLETE blocks both with `error.entry.cannot-change-on-complete-round`. 2 new keys × 5 locales.
+  - `f7c58f2` Finish Table → Round rename for delete-round dialog + edit notification (4 keys × 5 locales).
+- All seven are LOCAL ONLY. Not pushed. If resuming on another machine, push first.
 
-**Cycle 9 deltas not yet UI-tested in walkthrough:**
-- MedalRoundView header mode + physical-table editable selects at PENDING/READY (§12.12.0.1).
-- MedalRoundView Assign Judges enabled through ACTIVE (§12.12.0.2).
-- New error keys `error.round.no-entries-assigned`, `error.medal-round.already-exists`, `error.round.name-duplicate` (live in 5 locales) — verify they render correctly in PT/ES/IT/PL when hit.
+**Walkthrough position:** Amadora at JUDGING with `M1A Panel A` ACTIVE (2 judges, entries assigned, scoresheets created). Profissional at JUDGING with split-category M1A + pre-staged M1B medal round (per dev seed). Amadora has a pre-staged `Medal — M1B` medal round added by hand in §12.6.8. Next walkthrough step would have been **§12.6.9 (Type filter)** → §12.6.10 (Open drill-ins) → §12.7 → §12.8 → §12.9 (MyJudgingView).
 
-**Walkthrough polish landed today (3 commits past cycle 9):**
-- `b53c3a3` JudgingAdmin polish: "Tables" tab rename, all grids resizable/sortable/auto-grow, leaf-only category dropdown in Add Round, validation re-enables Save, judge-active-conflict uses judge name not UUID, dev seed soft-COI fix (user@'s country = PT).
-- `8ed8c9a` Medal-round naming (code not UUID) + one-per-category uniqueness + round-name uniqueness + Delete button on medal rows.
-- `3c17e36` BOS Start tooltip wrap (Span helper) + Results-tab Type filter.
+---
 
-**Walkthrough resumption checklist (next session):**
-1. App is running locally (user manages it — see [[feedback_dev_server_user_managed]]). Mailpit at `localhost:8025`.
-2. Log out as `compadmin@example.com`; log in as **`judge3@example.com`** or **`judge4@example.com`** (those are the two assigned to Amadora M1A Panel A from §12.6.3).
-3. Follow §12.9 (judge hub) → §12.10 (RoundView) → §12.11 (ScoresheetView) → §12.12 (MedalRoundView — incl. cycle-9 selects + ACTIVE judge reassignment) → §12.13 (BosView) → §12.14 (JudgeProfile) → §12.15 (revert guard) → §12.16 (StewardView) → §12.17 (i18n sanity) → §12.18 (cleanup). Then §13 Awards.
-4. Documented gap (§12.6.8): pre-staged medal rounds have empty entries grid until scoring completes; manual entry-pool override deferred unless it becomes a blocker.
+### DO BEFORE RESUMING WALKTHROUGH — five deferred items (next session)
 
-The historical priority log + the original "v0.4.0 PAUSED — round-model redesign" section below is now FULLY COMPLETE; v0.4.0 is on-branch, awaiting full walkthrough + code review + merge + release.
+The user wants these landed before the walkthrough continues. Each one has a fully-scoped task entry (see TaskList). Order them as you see fit, but they're roughly listed by dependency.
+
+1. **Allow judging management at REGISTRATION_CLOSED** (task #23) — admins should be able to set up rounds / judges / entries / categories at REGISTRATION_CLOSED, with `startRound` (and the other run-time mutators) the only ops gated to JUDGING+. Reorder §12.5 / §12.6 in the walkthrough so setup happens at REGISTRATION_CLOSED, then advance to JUDGING, then start.
+
+2. **Cross-division shared tables flag** (task #21) — `competition.sharedTables` boolean (default `true` for new competitions). When `true`, physical tables live at competition scope and busy-check spans all divisions. When `false`, keep current per-division behavior. Also add the regression test for the cross-division judge conflict (already works via `findAll()` at JudgingServiceImpl L436/L531, just needs a test).
+
+3. **Medal-round redesign** (task #24) — cascade auto-creation needs to be idempotent with manual creation; entry auto-population should also write into `round.entries` (not just be a derived read-model); medal-round entries must be editable from `MedalRoundView` (Assign Entries dialog mirroring scoring rounds); enforce one-medal-round-per-category across both paths.
+
+4. **Scoresheet improvements** (task #25):
+   - Per-item comment text area (5 items per MJP sheet; `score_fields.comment` column already exists — just expose it).
+   - Default `comment language` Select = judge's `User.preferredLanguage`.
+   - Hide `meadName` from judges (privacy). Show only entry number/category. Admin views keep the name visible.
+
+5. **i18n cleanup sweep** (task #20) — non-EN locales still have stale "mesa física" / "mesa de evaluación" / "tavolo" / "stół" in ~10 keys (e.g. `division-detail.settings.min-judges.locked`, `error.judging-table.not-found`, `medal-round.action.start.no-table`, `email.judging-table-ready.*`, `error.entry.revert-blocked-scoresheet-exists`). Bring them in line with the EN "Table"/"Round" terminology.
+
+**After all five land**, resume the walkthrough at the appropriate step. Walkthrough §12.6 ordering will need refresh per item #1; §12.11 will need a refresh per item #4; §12.6.8 / §12.12 (medal rounds) will need a refresh per item #3.
+
+---
+
+### Walkthrough resumption checklist (only AFTER the five deferred items above)
+
+1. App running locally (user manages it — [[feedback_dev_server_user_managed]]). Mailpit at `localhost:8025`.
+2. DB state: re-seed fresh (the user prefers a clean wipe; see [[feedback_dev_server_user_managed]] and the start of this session's transcript). After re-seed, walk §12.1 through §12.6.8 again to land at the same position the walkthrough was paused, since the deferred items will have changed the §12.5/§12.6 flow.
+3. Then proceed §12.6.9 → §12.6.10 → §12.7 → §12.8 → §12.9 (MyJudgingView — log in as **`judge3@example.com`** or **`judge4@example.com`**) → §12.10 → §12.11 → §12.12 → §12.13 → §12.14 → §12.15 → §12.16 → §12.17 → §12.18. Then §13 Awards.
+
+The historical priority log + the original "v0.4.0 PAUSED — round-model redesign" section below is FULLY COMPLETE; v0.4.0 is on-branch, awaiting full walkthrough + code review + merge + release.
 
 ---
 
