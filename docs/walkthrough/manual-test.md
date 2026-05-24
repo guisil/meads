@@ -1622,8 +1622,8 @@ testable. Steps below are admin-driven unless noted.
 - [ ] **Expected:** Row appears in the JUDGING grid.
 - [ ] Click the Remove (X) icon on `X9A` → confirm.
 - [ ] **Expected:** Row removed.
-- [ ] **Try:** Add a judging category with the same code as an existing one (e.g. `M1A`).
-- [ ] **Expected:** Allowed — `UNIQUE(division_id, code, scope)` permits the same code in different scopes.
+- [ ] **Try:** Add a judging category with a code that already exists in the JUDGING grid (e.g. `M1A`).
+- [ ] **Expected:** **Rejected** — `UNIQUE(division_id, code, scope)` blocks duplicates *within* a scope. The fact that `M1A` already exists in both REGISTRATION and JUDGING (cloned by Initialize) is the proof that the constraint allows the same code across *different* scopes.
 
 #### 12.4.2 Now advance to JUDGING
 
@@ -1699,13 +1699,13 @@ show 0 here.
 - [ ] **Expected:** URL is `/competitions/chip-2026/divisions/amadora/judging-admin`.
 - [ ] **Expected:** Breadcrumb: `My Competitions / CHIP 2026 / Amadora / Judging Admin`.
 - [ ] **Expected:** H2 header `CHIP 2026 — Amadora — Judging Admin` with competition logo.
-- [ ] **Expected:** TabSheet with **four** tabs in this order: `Physical Tables`, `Rounds`, `Results`, `Best of Show`. Default selection = Physical Tables.
+- [ ] **Expected:** TabSheet with **four** tabs in this order: `Tables`, `Rounds`, `Results`, `Best of Show`. Default selection = Tables. (The tab is labelled "Tables" but the i18n key, grid id, and route segments are still `physical-tables*` for backward compatibility.)
 
-#### 12.6.0 Physical Tables tab
+#### 12.6.0 Tables tab
 
 A physical table is a fixed station within the division ("Table 1", "Table 2"). Multiple rounds can run at the same physical table over time, but only one round can be **active** there simultaneously. The dev seed pre-creates 3 physical tables for Amadora and 5 for Profissional — admins can add more.
 
-- [ ] On the Physical Tables tab, **Expected**: grid with columns Label, Actions. Shows the seeded `Table 1` / `Table 2` / `Table 3` for Amadora.
+- [ ] On the Tables tab, **Expected**: grid with columns Label, Actions. Actions column sits at the right (auto-width, flex-grow 0). Grid auto-sizes its height to fit all rows. All columns are sortable + resizable. Shows the seeded `Table 1` / `Table 2` / `Table 3` for Amadora.
 - [ ] Click **"+ Add Physical Table"** → enter label `Test Table` → Save → notification "Physical table added"; row appears.
 - [ ] Edit the new row → change to `Test Table A` → Save → notification.
 - [ ] **Try** to add another with label `Test Table A` → **Expected**: error "A physical table named 'Test Table A' already exists in this division."
@@ -1718,7 +1718,7 @@ A physical table is a fixed station within the division ("Table 1", "Table 2"). 
 - [ ] **Expected:** Toolbar with a **Type filter** ComboBox (options: All / Scoring / Medal; default All) and a **"+ Add Round"** button.
 - [ ] **Expected:** Grid columns: Type (Scoring/Medal), Name, Category (`code — name`), Physical Table (label or "—"), Status, Judges (count), Scheduled (locale-aware date), Actions.
 - [ ] Click "+ Add Round".
-- [ ] **Expected:** Dialog with Type Select (default `SCORING`), Name text field, Category Select (filtered to JUDGING-scope categories), Physical Table Select (populated from the Physical Tables tab), Scheduled date picker.
+- [ ] **Expected:** Dialog with Type Select (default `SCORING`), Name text field, Category Select (filtered to JUDGING-scope categories), Physical Table Select (populated from the Tables tab), Scheduled date picker.
 - [ ] Leave Type = `SCORING`, leave Name blank → Save.
 - [ ] **Expected:** Inline error "Name is required" on the field.
 - [ ] Enter Name = `M1A Panel`, leave Category empty → Save.
@@ -1737,17 +1737,13 @@ A physical table is a fixed station within the division ("Table 1", "Table 2"). 
 
 #### 12.6.3 Assign judges (with COI badges)
 
-For COI badges to appear, `judge@example.com` should already exist as a JUDGE in CHIP 2026 (seeded). Optionally add a second judge so you can see multi-selection.
+The dev seed already pre-stages **6 judges** (`judge@`, `judge2@`, …, `judge6@`) as JUDGE participants in CHIP 2026, all with JudgeProfiles + assorted certifications. It also pre-stages a soft-COI: `judge@` + `judge2@` share meadery `Hidroméis do Minho`, matching one of `user@`'s Amadora entries. So no setup needed for the COI badges — just open the dialog.
 
-- [ ] As `admin@example.com` (SYSTEM_ADMIN), navigate to Users and create `judge2@example.com` (USER, ACTIVE).
-- [ ] As `compadmin@example.com`, navigate to CHIP 2026 → Participants → "Add Participant" → email `judge2@example.com`, role JUDGE.
-- [ ] **Optional:** To exercise the soft-COI warning, set `judge@example.com`'s meadery name (via Profile) to match one of the entrants' meadery names (e.g. set both to "Hiveheart Meadery").
-- [ ] **Optional:** To exercise the hard-COI warning, add credits to `judge@example.com` in Amadora, then submit an entry as `judge@example.com` and assign its final category to `M1A`.
-- [ ] Back on Judging Admin → Rounds tab → click 👥 Assign Judges on the scoring row.
-- [ ] **Expected:** Dialog with a multi-select `Grid<User>` titled `assign-judges-grid`. Columns: Name, Meadery, Country, Conflict of Interest.
-- [ ] **Expected:** If `judge@example.com` has a submitted entry in the table's category, a red "Self-entry — cannot judge" badge appears.
-- [ ] **Expected:** If `judge@example.com`'s meadery matches an entry's entrant meadery, an orange "Similar meadery to entry #N" badge appears.
-- [ ] Select both judges, click Save.
+- [ ] On Judging Admin → Rounds tab → click 👥 Assign Judges on the scoring row.
+- [ ] **Expected:** Dialog with a multi-select `Grid<User>` titled `assign-judges-grid`. Columns: Name, Meadery, Country, Conflict of Interest. All 6 seeded judges visible.
+- [ ] **Expected (soft COI):** rows for `judge@` and `judge2@` show an orange **"Similar meadery to entry #N"** badge for `user@`'s M1A entry.
+- [ ] **Expected (hard COI):** if any seeded judge happens to have a self-entry in M1A, a red **"Self-entry — cannot judge"** badge appears. (Not in the default seed — to exercise this manually you'd add credits to a judge + submit + assign final category M1A.)
+- [ ] Select 2 judges (e.g. `judge3@` + `judge4@` — they have no COI on M1A), click Save.
 - [ ] **Expected:** Notification "Judge assignments updated"; row's `Judges` count shows `2`.
 - [ ] **Try:** Open dialog again and uncheck both judges → Save.
 - [ ] **Expected:** Notification; count goes back to 0.
@@ -1755,8 +1751,12 @@ For COI badges to appear, `judge@example.com` should already exist as a JUDGE in
 
 #### 12.6.4 Start a scoring round
 
-- [ ] Click ▶ Start on the scoring row.
-- [ ] **Expected:** Confirmation dialog: if entries with `finalCategoryId = M1A` exist, body explains scoresheet creation; if no entries, body says "This round has no entries yet. Start anyway?".
+Scoring rounds require an **explicit entry assignment** before they can start. Use the 📦 Assign Entries button on the row to pick the entries this round will judge (typically all RECEIVED entries with `finalCategoryId = M1A`, but split-category scenarios have a subset — see §12.6.7.1). The earlier "all entries with matching final category" auto-populate fallback was removed in cycle 9 — admin must opt in.
+
+- [ ] Click 📦 **Assign Entries** on the row → multi-select grid → pick at least 1 entry → Save → notification *"Entry assignments updated"*.
+- [ ] (Try) Click ▶ **Start** without first assigning entries on a new round → **Expected:** error *"Assign at least one entry to this round before starting it. Use the Assign Entries button."*
+- [ ] Click ▶ Start on the round (with entries assigned).
+- [ ] **Expected:** Confirmation dialog body explains scoresheet creation.
 - [ ] Click Start.
 - [ ] **Expected:** Notification "Round started"; Status column changes from `PENDING` to `ACTIVE`.
 - [ ] (Try starting a *second* scoring round at the same physical table — Add Round → pick a different category, same Physical Table `Table 1`, assign 2 judges → Start. **Expected**: error "This physical table already has an active round…")

@@ -281,7 +281,7 @@ class MedalRoundViewTest {
         var line = _get(com.vaadin.flow.component.html.Span.class,
                 spec -> spec.withId("medal-round-physical-table-line"));
         // No physical table is assigned by default — should show the unassigned placeholder.
-        assertThat(line.getText()).contains("Physical Table").contains("Not assigned");
+        assertThat(line.getText()).contains("Table").contains("Not assigned");
     }
 
     @Test

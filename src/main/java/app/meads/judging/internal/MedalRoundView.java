@@ -558,12 +558,16 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         var judgesGrid = new com.vaadin.flow.component.grid.Grid<>(app.meads.identity.User.class, false);
         judgesGrid.setId("medal-round-assign-judges-grid");
         judgesGrid.setSelectionMode(com.vaadin.flow.component.grid.Grid.SelectionMode.MULTI);
+        judgesGrid.setAllRowsVisible(true);
         judgesGrid.addColumn(app.meads.identity.User::getName)
-                .setHeader(getTranslation("judging-admin.tables.assign.column.name"));
+                .setHeader(getTranslation("judging-admin.tables.assign.column.name"))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
         judgesGrid.addColumn(u -> u.getMeaderyName() == null ? "" : u.getMeaderyName())
-                .setHeader(getTranslation("judging-admin.tables.assign.column.meadery"));
+                .setHeader(getTranslation("judging-admin.tables.assign.column.meadery"))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
         judgesGrid.addColumn(u -> u.getCountry() == null ? "" : u.getCountry())
-                .setHeader(getTranslation("judging-admin.tables.assign.column.country"));
+                .setHeader(getTranslation("judging-admin.tables.assign.column.country"))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
         judgesGrid.setItems(availableJudges);
         availableJudges.stream()
                 .filter(j -> currentlyAssigned.contains(j.getId()))

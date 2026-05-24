@@ -199,7 +199,32 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         tabSheet.add(getTranslation("judging-admin.tab.rounds"), createRoundsTab());
         tabSheet.add(getTranslation("judging-admin.tab.results"), createResultsTab());
         tabSheet.add(getTranslation("judging-admin.tab.bos"), createBosTab());
+        tabSheet.setSelectedIndex(computeDefaultTabIndex());
         return tabSheet;
+    }
+
+    /**
+     * Default tab depends on division state, so the admin lands on the most-
+     * useful tab on each visit:
+     * <ul>
+     *   <li>No physical tables yet → Tables (set them up first).</li>
+     *   <li>Tables exist + all rounds COMPLETE → Results (review final outcomes).</li>
+     *   <li>Otherwise → Rounds (the workhorse tab during judging).</li>
+     * </ul>
+     * BOS is never the default — admin reaches it deliberately once deliberation
+     * begins.
+     */
+    private int computeDefaultTabIndex() {
+        var physicalTables = judgingService.findPhysicalTablesByDivision(division.getId());
+        if (physicalTables.isEmpty()) {
+            return 0; // Tables
+        }
+        var rounds = judgingService.findRoundsByJudgingId(judging.getId());
+        if (!rounds.isEmpty()
+                && rounds.stream().allMatch(r -> r.getStatus() == JudgingRoundStatus.COMPLETE)) {
+            return 2; // Results
+        }
+        return 1; // Rounds
     }
 
     private Grid<app.meads.judging.PhysicalTable> physicalTablesGrid;
@@ -216,10 +241,13 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
 
         physicalTablesGrid = new Grid<>(app.meads.judging.PhysicalTable.class, false);
         physicalTablesGrid.setId("physical-tables-grid");
+        physicalTablesGrid.setAllRowsVisible(true);
         physicalTablesGrid.addColumn(app.meads.judging.PhysicalTable::getLabel)
-                .setHeader(getTranslation("judging-admin.physical-tables.column.label"));
+                .setHeader(getTranslation("judging-admin.physical-tables.column.label"))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
         physicalTablesGrid.addComponentColumn(this::physicalTableActions)
-                .setHeader(getTranslation("judging-admin.physical-tables.column.actions"));
+                .setHeader(getTranslation("judging-admin.physical-tables.column.actions"))
+                .setResizable(true).setAutoWidth(true).setFlexGrow(0);
         refreshPhysicalTablesGrid();
         tab.add(physicalTablesGrid);
         return tab;
@@ -428,7 +456,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
     public void openAssignJudgesDialog(JudgingRound table) {
         var dialog = new Dialog();
         dialog.setHeaderTitle(getTranslation("judging-admin.tables.action.assign-judges"));
-        dialog.setWidth("700px");
+        dialog.setWidth("900px");
 
         var availableJudges = competitionService.findUsersByRoleInCompetition(
                 competition.getId(), CompetitionRole.JUDGE);
@@ -440,14 +468,21 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         var judgesGrid = new Grid<User>(User.class, false);
         judgesGrid.setId("assign-judges-grid");
         judgesGrid.setSelectionMode(Grid.SelectionMode.MULTI);
+        judgesGrid.setAllRowsVisible(true);
         judgesGrid.addColumn(User::getName)
-                .setHeader(getTranslation("judging-admin.tables.assign.column.name"));
+                .setHeader(getTranslation("judging-admin.tables.assign.column.name"))
+                .setResizable(true).setSortable(true).setAutoWidth(true).setFlexGrow(0);
         judgesGrid.addColumn(u -> u.getMeaderyName() == null ? "" : u.getMeaderyName())
-                .setHeader(getTranslation("judging-admin.tables.assign.column.meadery"));
+                .setHeader(getTranslation("judging-admin.tables.assign.column.meadery"))
+                .setResizable(true).setSortable(true).setAutoWidth(true).setFlexGrow(0);
         judgesGrid.addColumn(u -> u.getCountry() == null ? "" : u.getCountry())
-                .setHeader(getTranslation("judging-admin.tables.assign.column.country"));
+                .setHeader(getTranslation("judging-admin.tables.assign.column.country"))
+                .setResizable(true).setSortable(true).setAutoWidth(true).setFlexGrow(0);
+        // COI column carries the longest text — let it absorb all remaining width
+        // instead of equal-sharing with the data columns.
         judgesGrid.addComponentColumn(judge -> coiChips(judge, entriesInCategory))
-                .setHeader(getTranslation("judging-admin.tables.assign.column.coi"));
+                .setHeader(getTranslation("judging-admin.tables.assign.column.coi"))
+                .setResizable(true).setFlexGrow(1);
         judgesGrid.setItems(availableJudges);
         availableJudges.stream()
                 .filter(j -> currentlyAssigned.contains(j.getId()))
@@ -525,13 +560,16 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         var entriesGrid = new Grid<>(app.meads.entry.Entry.class, false);
         entriesGrid.setId("assign-entries-grid");
         entriesGrid.setSelectionMode(Grid.SelectionMode.MULTI);
+        entriesGrid.setAllRowsVisible(true);
         entriesGrid.addColumn(e -> e.getEntryCode() + " — " + e.getMeadName())
-                .setHeader(getTranslation("judging-admin.tables.assign-entries.column.entry"));
+                .setHeader(getTranslation("judging-admin.tables.assign-entries.column.entry"))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
         entriesGrid.addColumn(e -> {
                     var owner = userService.findById(e.getUserId());
                     return owner.getMeaderyName() == null ? "" : owner.getMeaderyName();
                 })
-                .setHeader(getTranslation("judging-admin.tables.assign-entries.column.meadery"));
+                .setHeader(getTranslation("judging-admin.tables.assign-entries.column.meadery"))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
         entriesGrid.addColumn(e -> {
                     var assignedRound = currentAssignment.get(e.getId());
                     if (assignedRound == null) {
@@ -539,7 +577,8 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
                     }
                     return assignedRound.getName();
                 })
-                .setHeader(getTranslation("judging-admin.tables.assign-entries.column.current-round"));
+                .setHeader(getTranslation("judging-admin.tables.assign-entries.column.current-round"))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
         entriesGrid.setItems(allEntries);
         allEntries.stream()
                 .filter(e -> round.getEntries().contains(e.getId()))
@@ -585,6 +624,10 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
     private HorizontalLayout coiChips(User judge, List<Entry> entries) {
         var layout = new HorizontalLayout();
         layout.setSpacing(false);
+        // Wrap so multiple badges stack vertically within the cell instead of
+        // overflowing horizontally. Grid will still horizontally scroll if a
+        // single badge is wider than the column allocation.
+        layout.getStyle().set("flex-wrap", "wrap").set("gap", "var(--lumo-space-xs)");
         for (var entry : entries) {
             var coi = coiCheckService.check(judge.getId(), entry.getId());
             if (coi.hardBlock()) {
@@ -670,28 +713,37 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
 
         roundsGrid = new Grid<>(JudgingRound.class, false);
         roundsGrid.setId("rounds-grid");
+        roundsGrid.setAllRowsVisible(true);
         roundsGrid.addColumn(r -> roundTypeLabel(r.getType()))
-                .setHeader(getTranslation("judging-admin.rounds.column.type"));
+                .setHeader(getTranslation("judging-admin.rounds.column.type"))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
         roundsGrid.addColumn(JudgingRound::getName)
-                .setHeader(getTranslation("judging-admin.rounds.column.name"));
+                .setHeader(getTranslation("judging-admin.rounds.column.name"))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
         roundsGrid.addColumn(r -> formatCategory(r.getDivisionCategoryId()))
-                .setHeader(getTranslation("judging-admin.rounds.column.category"));
+                .setHeader(getTranslation("judging-admin.rounds.column.category"))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
         roundsGrid.addColumn(r -> {
                     if (r.getPhysicalTableId() == null) return "—";
                     return judgingService.findPhysicalTableById(r.getPhysicalTableId())
                             .map(app.meads.judging.PhysicalTable::getLabel).orElse("—");
                 })
-                .setHeader(getTranslation("judging-admin.rounds.column.physical-table"));
+                .setHeader(getTranslation("judging-admin.rounds.column.physical-table"))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
         roundsGrid.addColumn(r -> r.getStatus().name())
-                .setHeader(getTranslation("judging-admin.rounds.column.status"));
+                .setHeader(getTranslation("judging-admin.rounds.column.status"))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
         roundsGrid.addColumn(r -> r.getAssignments().size())
-                .setHeader(getTranslation("judging-admin.rounds.column.judges"));
+                .setHeader(getTranslation("judging-admin.rounds.column.judges"))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
         roundsGrid.addColumn(r -> r.getScheduledDate() == null ? ""
                         : r.getScheduledDate().format(DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT)
                                 .withLocale(getLocale())))
-                .setHeader(getTranslation("judging-admin.rounds.column.scheduled"));
+                .setHeader(getTranslation("judging-admin.rounds.column.scheduled"))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
         roundsGrid.addComponentColumn(this::createRoundsActionsCell)
-                .setHeader(getTranslation("judging-admin.rounds.column.actions"));
+                .setHeader(getTranslation("judging-admin.rounds.column.actions"))
+                .setResizable(true).setAutoWidth(true).setFlexGrow(0);
 
         refreshRoundsGrid();
         tab.add(roundsGrid);
@@ -758,7 +810,8 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         categorySelect.setId("add-round-category");
         categorySelect.setLabel(getTranslation("judging-admin.tables.dialog.category"));
         categorySelect.setWidthFull();
-        var categories = competitionService.findJudgingCategories(division.getId());
+        // Only leaf JUDGING categories — parents (e.g. M1) can't host scoresheets/medals.
+        var categories = competitionService.findLeafJudgingCategories(division.getId());
         categorySelect.setItems(categories);
         categorySelect.setItemLabelGenerator(c -> c == null ? "" : c.getCode() + " — " + c.getName());
 
@@ -782,23 +835,29 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         // MEDAL rounds derive their name from the category and don't need an admin-entered name.
         typeSelect.addValueChangeListener(e -> nameField.setVisible(e.getValue() == RoundType.SCORING));
 
-        var saveButton = new Button(getTranslation("button.save"), e -> {
+        var saveButton = new Button(getTranslation("button.save"));
+        saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        saveButton.setDisableOnClick(true);
+        saveButton.addClickListener(e -> {
             var type = typeSelect.getValue();
             if (type == RoundType.SCORING) {
                 if (nameField.getValue() == null || nameField.getValue().isBlank()) {
                     nameField.setInvalid(true);
                     nameField.setErrorMessage(getTranslation("judging-admin.tables.dialog.name.error"));
+                    saveButton.setEnabled(true);
                     return;
                 }
             }
             if (categorySelect.getValue() == null) {
                 categorySelect.setInvalid(true);
                 categorySelect.setErrorMessage(getTranslation("judging-admin.tables.dialog.category.error"));
+                saveButton.setEnabled(true);
                 return;
             }
             if (physicalTableSelect.getValue() == null) {
                 physicalTableSelect.setInvalid(true);
                 physicalTableSelect.setErrorMessage(getTranslation("judging-admin.tables.dialog.physical-table.error"));
+                saveButton.setEnabled(true);
                 return;
             }
             try {
@@ -819,10 +878,9 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
             } catch (BusinessRuleException ex) {
                 Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
                         .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                saveButton.setEnabled(true);
             }
         });
-        saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        saveButton.setDisableOnClick(true);
 
         var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
 
@@ -840,22 +898,29 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
 
         var resultsGrid = new Grid<>(JudgingRound.class, false);
         resultsGrid.setId("results-grid");
+        resultsGrid.setAllRowsVisible(true);
         resultsGrid.addColumn(r -> roundTypeLabel(r.getType()))
-                .setHeader(getTranslation("judging-admin.rounds.column.type"));
+                .setHeader(getTranslation("judging-admin.rounds.column.type"))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
         resultsGrid.addColumn(JudgingRound::getName)
-                .setHeader(getTranslation("judging-admin.rounds.column.name"));
+                .setHeader(getTranslation("judging-admin.rounds.column.name"))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
         resultsGrid.addColumn(r -> formatCategory(r.getDivisionCategoryId()))
-                .setHeader(getTranslation("judging-admin.rounds.column.category"));
+                .setHeader(getTranslation("judging-admin.rounds.column.category"))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
         resultsGrid.addColumn(r -> {
                     if (r.getPhysicalTableId() == null) return "—";
                     return judgingService.findPhysicalTableById(r.getPhysicalTableId())
                             .map(app.meads.judging.PhysicalTable::getLabel).orElse("—");
                 })
-                .setHeader(getTranslation("judging-admin.rounds.column.physical-table"));
+                .setHeader(getTranslation("judging-admin.rounds.column.physical-table"))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
         resultsGrid.addColumn(this::formatRoundOutcome)
-                .setHeader(getTranslation("judging-admin.results.column.outcome"));
+                .setHeader(getTranslation("judging-admin.results.column.outcome"))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
         resultsGrid.addComponentColumn(this::createRoundsActionsCell)
-                .setHeader(getTranslation("judging-admin.rounds.column.actions"));
+                .setHeader(getTranslation("judging-admin.rounds.column.actions"))
+                .setResizable(true).setAutoWidth(true).setFlexGrow(0);
         resultsGrid.setItems(completeRounds);
 
         if (completeRounds.isEmpty()) {
@@ -900,39 +965,54 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         editButton.setTooltipText(getTranslation("judging-admin.tables.action.edit"));
         editButton.addClickListener(e -> openEditTableDialog(round));
 
+        boolean startEnabled = round.getStatus() == JudgingRoundStatus.PENDING
+                || round.getStatus() == JudgingRoundStatus.READY;
         var startButton = new Button(new Icon(VaadinIcon.PLAY));
         startButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-        startButton.setEnabled(round.getStatus() == JudgingRoundStatus.PENDING
-                || round.getStatus() == JudgingRoundStatus.READY);
-        startButton.setTooltipText(getTranslation("judging-admin.tables.action.start"));
+        startButton.setEnabled(startEnabled);
         startButton.addClickListener(e -> openStartTableDialog(round));
+        var startWrapper = wrapWithTooltip(startButton, startEnabled
+                ? getTranslation("judging-admin.tables.action.start")
+                : getTranslation("judging-admin.tables.action.start.disabled"));
 
         var assignJudgesButton = new Button(new Icon(VaadinIcon.USERS));
         assignJudgesButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
         assignJudgesButton.setTooltipText(getTranslation("judging-admin.tables.action.assign-judges"));
         assignJudgesButton.addClickListener(e -> openAssignJudgesDialog(round));
 
+        boolean entryAssignmentAllowed = round.getStatus() == JudgingRoundStatus.PENDING;
         var assignEntriesButton = new Button(new Icon(VaadinIcon.PACKAGE));
         assignEntriesButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-        boolean entryAssignmentAllowed = round.getStatus() == JudgingRoundStatus.PENDING;
         assignEntriesButton.setEnabled(entryAssignmentAllowed);
-        assignEntriesButton.setTooltipText(entryAssignmentAllowed
+        assignEntriesButton.addClickListener(e -> openAssignEntriesDialog(round));
+        var assignEntriesWrapper = wrapWithTooltip(assignEntriesButton, entryAssignmentAllowed
                 ? getTranslation("judging-admin.tables.action.assign-entries")
                 : getTranslation("judging-admin.tables.assign-entries.disabled-tooltip"));
-        assignEntriesButton.addClickListener(e -> openAssignEntriesDialog(round));
 
-        var deleteButton = new Button(new Icon(VaadinIcon.TRASH));
-        deleteButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
         boolean canDelete = round.getStatus() == JudgingRoundStatus.PENDING
                 && round.getAssignments().isEmpty();
+        var deleteButton = new Button(new Icon(VaadinIcon.TRASH));
+        deleteButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
         deleteButton.setEnabled(canDelete);
-        deleteButton.setTooltipText(canDelete
+        deleteButton.addClickListener(e -> openDeleteTableDialog(round));
+        var deleteWrapper = wrapWithTooltip(deleteButton, canDelete
                 ? getTranslation("judging-admin.tables.action.delete")
                 : getTranslation("judging-admin.tables.action.delete.blocked"));
-        deleteButton.addClickListener(e -> openDeleteTableDialog(round));
 
-        return new HorizontalLayout(editButton, startButton, assignJudgesButton,
-                assignEntriesButton, deleteButton, openButton);
+        return new HorizontalLayout(editButton, startWrapper, assignJudgesButton,
+                assignEntriesWrapper, deleteWrapper, openButton);
+    }
+
+    /**
+     * Vaadin disabled buttons don't fire pointer events, so their own tooltip
+     * never shows. Wrapping the button in a Span and attaching the tooltip to
+     * the wrapper makes it work whether the button is enabled or not. Same
+     * pattern used in DivisionEntryAdminView for registration-closed buttons.
+     */
+    private Span wrapWithTooltip(Button button, String tooltip) {
+        var wrapper = new Span(button);
+        com.vaadin.flow.component.shared.Tooltip.forComponent(wrapper).setText(tooltip);
+        return wrapper;
     }
 
     private VerticalLayout createBosTab() {
@@ -1031,12 +1111,16 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
 
         var candidatesGrid = new Grid<MedalAward>(MedalAward.class, false);
         candidatesGrid.setId("bos-candidates-grid");
+        candidatesGrid.setAllRowsVisible(true);
         candidatesGrid.addColumn(this::formatEntryCode)
-                .setHeader(getTranslation("judging-admin.bos.candidates.column.entry"));
+                .setHeader(getTranslation("judging-admin.bos.candidates.column.entry"))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
         candidatesGrid.addColumn(this::formatEntryMeadName)
-                .setHeader(getTranslation("judging-admin.bos.candidates.column.mead-name"));
+                .setHeader(getTranslation("judging-admin.bos.candidates.column.mead-name"))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
         candidatesGrid.addColumn(a -> formatCategory(a.getFinalCategoryId()))
-                .setHeader(getTranslation("judging-admin.bos.candidates.column.category"));
+                .setHeader(getTranslation("judging-admin.bos.candidates.column.category"))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
         candidatesGrid.setItems(goldAwards);
         section.add(candidatesGrid);
         return section;
@@ -1076,16 +1160,22 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
 
         var placementsGrid = new Grid<BosPlacementRow>(BosPlacementRow.class, false);
         placementsGrid.setId("bos-placements-grid");
+        placementsGrid.setAllRowsVisible(true);
         placementsGrid.addColumn(BosPlacementRow::place)
-                .setHeader(getTranslation("judging-admin.bos.placements.column.place"));
+                .setHeader(getTranslation("judging-admin.bos.placements.column.place"))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
         placementsGrid.addColumn(this::formatPlacementEntry)
-                .setHeader(getTranslation("judging-admin.bos.placements.column.entry"));
+                .setHeader(getTranslation("judging-admin.bos.placements.column.entry"))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
         placementsGrid.addColumn(this::formatPlacementCategory)
-                .setHeader(getTranslation("judging-admin.bos.placements.column.category"));
+                .setHeader(getTranslation("judging-admin.bos.placements.column.category"))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
         placementsGrid.addColumn(this::formatPlacementAwardedBy)
-                .setHeader(getTranslation("judging-admin.bos.placements.column.awarded-by"));
+                .setHeader(getTranslation("judging-admin.bos.placements.column.awarded-by"))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
         placementsGrid.addComponentColumn(this::createPlacementActionsCell)
-                .setHeader(getTranslation("judging-admin.bos.placements.column.actions"));
+                .setHeader(getTranslation("judging-admin.bos.placements.column.actions"))
+                .setResizable(true).setAutoWidth(true).setFlexGrow(0);
         placementsGrid.setItems(rows);
         section.add(placementsGrid);
         return section;

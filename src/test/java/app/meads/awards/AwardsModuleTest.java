@@ -109,6 +109,7 @@ class AwardsModuleTest {
         judgingService.assignRoundToPhysicalTable(table.getId(), physicalTable.getId(), admin.getId());
         judgingService.assignJudge(table.getId(), judge1.getId(), admin.getId());
         judgingService.assignJudge(table.getId(), judge2.getId(), admin.getId());
+        judgingService.assignEntryToRound(table.getId(), entry.getId(), admin.getId());
         judgingService.startRound(table.getId(), admin.getId());
 
         // One scoresheet per entry is auto-created when the table starts.

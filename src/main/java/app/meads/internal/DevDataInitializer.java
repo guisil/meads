@@ -76,9 +76,11 @@ class DevDataInitializer {
         userService.updateProfile(compAdmin.getId(), compAdmin.getName(), "Hidroméis do Minho", "PT", "pt");
 
         var devUser = userService.findByEmail("user@example.com");
-        // user@'s meadery deliberately matches judge2's "Hidroméis do Minho" so the
-        // soft-COI badge fires in §12.6.3 (Assign Judges) on user@'s Amadora entries.
-        userService.updateProfile(devUser.getId(), devUser.getName(), "Hidroméis do Minho", "GB", null);
+        // user@'s meadery + country deliberately match judge2's "Hidroméis do Minho" /
+        // PT so the soft-COI badge fires in §12.6.3 (Assign Judges) on user@'s Amadora
+        // entries. (MeaderyNameNormalizer.areSimilar bails when both countries are set
+        // and differ — same country is required for soft-COI to trigger.)
+        userService.updateProfile(devUser.getId(), devUser.getName(), "Hidroméis do Minho", "PT", null);
 
         var entrant = userService.findByEmail("entrant@example.com");
         userService.updateProfile(entrant.getId(), entrant.getName(), null, "DE", null);

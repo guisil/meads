@@ -251,7 +251,7 @@ class JudgingAdminViewTest {
                 .map(c -> ((Grid.Column<?>) c).getHeaderText())
                 .toList();
         assertThat(headers).containsExactly("Type", "Name", "Category",
-                "Physical Table", "Outcome", "Actions");
+                "Table", "Outcome", "Actions");
 
         var rendered = resultsGrid.getGenericDataView().getItems().toList();
         assertThat(rendered).hasSize(1);
@@ -283,7 +283,7 @@ class JudgingAdminViewTest {
                 .map(c -> ((Grid.Column<?>) c).getHeaderText())
                 .toList();
         assertThat(headers).containsExactly("Type", "Name", "Category",
-                "Physical Table", "Status", "Judges", "Scheduled", "Actions");
+                "Table", "Status", "Judges", "Scheduled", "Actions");
 
         var typeFilter = _get(com.vaadin.flow.component.combobox.ComboBox.class,
                 spec -> spec.withId("rounds-type-filter"));
@@ -300,7 +300,7 @@ class JudgingAdminViewTest {
                 + "/divisions/" + division.getShortName() + "/judging-admin");
 
         var addButton = _get(Button.class, spec -> spec.withId("add-physical-table-button"));
-        assertThat(addButton.getText()).contains("Add Physical Table");
+        assertThat(addButton.getText()).contains("Add Table");
 
         var grid = _get(Grid.class, spec -> spec.withId("physical-tables-grid"));
         assertThat(grid).isNotNull();
@@ -333,7 +333,10 @@ class JudgingAdminViewTest {
         UI.getCurrent().navigate("competitions/" + competition.getShortName()
                 + "/divisions/" + division.getShortName() + "/judging-admin");
 
-        _click(_get(Button.class, spec -> spec.withId("add-physical-table-button")));
+        // With a physical table already present + no rounds, the default tab
+        // is Rounds — open the dialog directly via the view method rather than
+        // depending on the Tables-tab button being in DOM.
+        _get(JudgingAdminView.class).openAddPhysicalTableDialog();
         _get(TextField.class, spec -> spec.withId("add-physical-table-label")).setValue("Table 1");
         _click(_get(Button.class, spec -> spec.withText("Save")));
 
@@ -489,6 +492,17 @@ class JudgingAdminViewTest {
         judgingService.assignRoundToPhysicalTable(table.getId(), pt.getId(), admin.getId());
         judgingService.assignJudge(table.getId(), judge1.getId(), admin.getId());
         judgingService.assignJudge(table.getId(), judge2.getId(), admin.getId());
+        // Scoring rounds require at least one explicit entry assignment before starting.
+        var entrant = userRepository.save(new User(
+                "start-table-entrant-" + UUID.randomUUID() + "@example.com",
+                "Entrant", UserStatus.ACTIVE, Role.USER));
+        var entry = new Entry(division.getId(), entrant.getId(), 1, "AMA-1", "Mead",
+                category.getId(), Sweetness.DRY, BigDecimal.valueOf(11.0), Carbonation.STILL,
+                "Honey", null, false, null, null);
+        entry.submit();
+        entry.markReceived();
+        entryRepository.save(entry);
+        judgingService.assignEntryToRound(table.getId(), entry.getId(), admin.getId());
 
         view.openStartTableDialog(table);
 

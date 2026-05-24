@@ -84,6 +84,7 @@ class JudgingServiceMedalRoundTest {
         var table = new JudgingRound(judging.getId(), physicalTableId, "T1", divisionCategoryId, null);
         table.assignJudge(UUID.randomUUID());
         table.assignJudge(UUID.randomUUID());
+        table.assignEntry(UUID.randomUUID());
         given(judgingRoundRepository.findByJudgingId(judging.getId())).willReturn(java.util.List.of(table));
         given(judgingRoundRepository.findAll()).willReturn(java.util.List.of(table));
         given(judgingRoundRepository.findById(table.getId())).willReturn(Optional.of(table));
@@ -107,37 +108,29 @@ class JudgingServiceMedalRoundTest {
     }
 
     @Test
-    void shouldAutoPopulateRoundEntriesFromCategoryWhenStartingRoundWithNoExplicitEntries() {
+    void shouldRejectStartScoringRoundWhenNoEntriesAssigned() {
+        // Scoring rounds must have an explicit entry assignment before they
+        // can be started. The earlier auto-populate-from-category fallback
+        // was a back-compat shim during the JudgingTable → JudgingRound
+        // redesign; with the Assign Entries dialog live, admins are expected
+        // to set this explicitly.
         var physicalTableId = UUID.randomUUID();
         var table = new JudgingRound(judging.getId(), physicalTableId, "T1", divisionCategoryId, null);
         table.assignJudge(UUID.randomUUID());
         table.assignJudge(UUID.randomUUID());
-        var e1Id = UUID.randomUUID();
-        var e2Id = UUID.randomUUID();
-        var e1 = mock(Entry.class);
-        lenient().when(e1.getId()).thenReturn(e1Id);
-        var e2 = mock(Entry.class);
-        lenient().when(e2.getId()).thenReturn(e2Id);
         given(judgingRoundRepository.findByJudgingId(judging.getId())).willReturn(List.of(table));
         given(judgingRoundRepository.findAll()).willReturn(List.of(table));
         given(judgingRoundRepository.findById(table.getId())).willReturn(Optional.of(table));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
         given(competitionService.findDivisionById(divisionId)).willReturn(division);
-        given(categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId))
-                .willReturn(Optional.empty());
-        given(categoryConfigRepository.save(any(CategoryJudgingConfig.class)))
-                .willAnswer(inv -> inv.getArgument(0));
-        given(judgingRoundRepository.save(any(JudgingRound.class)))
-                .willAnswer(inv -> inv.getArgument(0));
-        given(judgingRepository.save(any(Judging.class)))
-                .willAnswer(inv -> inv.getArgument(0));
-        given(entryService.findEntriesByFinalCategoryId(divisionCategoryId))
-                .willReturn(List.of(e1, e2));
 
-        service.startRound(table.getId(), adminUserId);
+        assertThatThrownBy(() -> service.startRound(table.getId(), adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.round.no-entries-assigned");
 
-        assertThat(table.getEntries()).containsExactlyInAnyOrder(e1Id, e2Id);
+        assertThat(table.getStatus()).isEqualTo(JudgingRoundStatus.PENDING);
+        then(scoresheetService).should(never()).createScoresheetsForTable(any());
     }
 
     @Test

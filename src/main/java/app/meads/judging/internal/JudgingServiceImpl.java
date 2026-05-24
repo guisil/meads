@@ -61,6 +61,7 @@ public class JudgingServiceImpl implements JudgingService {
     private final CategoryJudgingConfigRepository categoryConfigRepository;
     private final MedalAwardRepository medalAwardRepository;
     private final CompetitionService competitionService;
+    private final app.meads.identity.UserService userService;
     private final JudgeProfileService judgeProfileService;
     private final ScoresheetService scoresheetService;
     private final BosPlacementRepository bosPlacementRepository;
@@ -75,6 +76,7 @@ public class JudgingServiceImpl implements JudgingService {
                        CategoryJudgingConfigRepository categoryConfigRepository,
                        MedalAwardRepository medalAwardRepository,
                        CompetitionService competitionService,
+                       app.meads.identity.UserService userService,
                        JudgeProfileService judgeProfileService,
                        ScoresheetService scoresheetService,
                        BosPlacementRepository bosPlacementRepository,
@@ -88,12 +90,22 @@ public class JudgingServiceImpl implements JudgingService {
         this.categoryConfigRepository = categoryConfigRepository;
         this.medalAwardRepository = medalAwardRepository;
         this.competitionService = competitionService;
+        this.userService = userService;
         this.judgeProfileService = judgeProfileService;
         this.scoresheetService = scoresheetService;
         this.bosPlacementRepository = bosPlacementRepository;
         this.entryService = entryService;
         this.coiCheckService = coiCheckService;
         this.eventPublisher = eventPublisher;
+    }
+
+    private String judgeNameForError(UUID judgeUserId) {
+        try {
+            var user = userService.findById(judgeUserId);
+            return user.getName();
+        } catch (Exception ex) {
+            return judgeUserId.toString();
+        }
     }
 
     @Override
@@ -393,7 +405,7 @@ public class JudgingServiceImpl implements JudgingService {
                             .anyMatch(a -> a.getJudgeUserId().equals(judgeUserId)));
             if (conflict) {
                 throw new BusinessRuleException("error.round.judge-active-conflict",
-                        judgeUserId.toString());
+                        judgeNameForError(judgeUserId));
             }
         }
         table.assignJudge(judgeUserId);
@@ -468,23 +480,20 @@ public class JudgingServiceImpl implements JudgingService {
                             .anyMatch(a -> a.getJudgeUserId().equals(assignment.getJudgeUserId())));
             if (conflict) {
                 throw new BusinessRuleException("error.round.judge-active-conflict",
-                        assignment.getJudgeUserId().toString());
+                        judgeNameForError(assignment.getJudgeUserId()));
             }
+        }
+        // Scoring rounds must have an explicit entry assignment before starting —
+        // the Assign Entries dialog is the canonical way to set this. (Medal
+        // rounds source their entries from the scoring rounds' results, not
+        // from round.entries, so this check doesn't apply to them.)
+        if (table.getType() == RoundType.SCORING && table.getEntries().isEmpty()) {
+            throw new BusinessRuleException("error.round.no-entries-assigned");
         }
         try {
             table.start();
         } catch (IllegalStateException e) {
             throw new BusinessRuleException("error.judging-table.cannot-start", e.getMessage());
-        }
-        if (table.getType() == RoundType.SCORING) {
-            // Auto-populate round.entries from the category's entries when admin
-            // didn't explicitly assign any — preserves the pre-split-category default
-            // ("all entries in the category are judged here") while making
-            // round.entries the source of truth from now on.
-            if (table.getEntries().isEmpty()) {
-                entryService.findEntriesByFinalCategoryId(table.getDivisionCategoryId())
-                        .forEach(entry -> table.assignEntry(entry.getId()));
-            }
         }
         judgingRoundRepository.save(table);
         if (judging.getPhase() == JudgingPhase.NOT_STARTED) {
