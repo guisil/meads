@@ -15,7 +15,7 @@ Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 **Branch:** `feature/judging-module` at `0.4.0-SNAPSHOT` — **Awards module COMPLETE** (2026-05-12, all 13 tasks done). Judging Phase 6 views also complete. **Judging event listeners complete (2026-05-20)** — `JudgingNotificationListener` emails judges on table start / scoresheet revert / medal-round activation; the judging module is now functionally complete. Architecture: `Publication` audit-trail aggregate + freeze-in-place via `DivisionStatus.isResultsFrozen()` guard on every judging mutator. Decoupled publish/republish/announcement: only `sendAnnouncement` triggers emails. Per the plan's open question, chose option B for entrant-facing scoresheet drill-in (new `MyResultsView` + `MyScoresheetView` in awards module + banner-link from `MyEntriesView`) to keep dependency direction unidirectional (awards → entry). **Merged main 2026-05-16** to pick up the v0.3.0 bug fixes (credits-grid refresh, webhook post-registration guard, judging-category parent-delete guard), MFA email reset flow, codebase-wide inline-FQN cleanup + CLAUDE.md rule, and i18n cleanup (sidebar nav, Final Category, dialog buttons). Post-merge: caught up ES/IT/PL with the 14 new keys that main only added to EN/PT. **Merged main again 2026-05-19** to pick up the v0.3.0 release commits + 6 mid-walkthrough fixes (MFA verify Enter shortcut, Final Category picker disabled until init, primary-category dropdowns filtered to REGISTRATION scope, leaf-only judging categories in Final Category picker, Categories tab + parent select filter to REGISTRATION, entrant updateEntry enforces entry limits on category change). **Merged main again 2026-05-20** to pick up v0.3.1 (country names localized to the current UI language — `app.meads.CountryDisplay`) and then **v0.3.2** (European Portuguese country names — `pt` pinned to `pt-PT`; CI moved off the deprecated Node 20 runtime; Vaadin 25.1.5 / OpenPDF 3.0.4 bumps).
-**Tests:** 1154 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-24 after cycles 6a–c (UI restructure to Physical Tables/Rounds/Results/BOS) and cycle 7 (MedalRoundView migration + V22 contraction deleting legacy CJC.medalRoundStatus + physicalTableId + 5 legacy service methods + MedalRoundStatus enum). Earlier 2026-05-23 verified at 1161 after the **JudgingTable → JudgingRound rename + new PhysicalTable entity (per-division)** refactor: V21–V27 SQL renamed in-place + V29 adds `physical_tables` + nullable `physical_table_id` FKs; new `PhysicalTable` entity / repo / 6 service methods (create/edit/delete/findByDivision/findById/assignRoundToPhysicalTable + assignMedalRoundToPhysicalTable); validations at `startRound` (round must have a physical table; physical table not busy with another ROUND_1; no assigned judge on another active round) and at `assignJudge` (same judge-conflict check when adding to a ROUND_1 round); new "Physical Tables" tab in `JudgingAdminView` + Add-Round dialog requires picking a physical table; medal-round physical-table assignment surfaced as a per-row Select in JudgingAdminView Medal Rounds tab + MedalRoundView header; dev seed creates 3 physical tables for Amadora + 5 for Profissional. `JudgingServicePhysicalTableTest` (15 tests) covers all CRUD + validation rejection paths; `JudgingAdminViewTest` (+6 UI tests) covers Physical Tables tab dialogs (add happy/duplicate-error, edit happy, delete happy/in-use-error, grid+button rendering). Also earlier in the session: `DivisionAdvanceGuard` family + `EntryFinalCategoryAdvanceGuard`, `AwardsService.republish` refactor, BOS-places lock at JUDGING, comment-languages restriction removed (ISO 639-1), Amadora 11 entries + 6 judges + soft/hard COI seed, `assignFinalCategoriesByCode` bulk button, `EntryReceivedEvent`/listener for late-RECEIVED scoresheet sync, `EntryStatusRevertGuard` + `JudgingScoresheetEntryRevertGuard`, LazyInit fix on `JudgingRound.assignments`.
+**Tests:** 1155 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-24 after cycles 6a–c (UI restructure to Physical Tables/Rounds/Results/BOS) + cycle 7 (MedalRoundView migration + V22 contraction deleting legacy CJC.medalRoundStatus + physicalTableId + 5 legacy service methods + MedalRoundStatus enum) + cycle 8 (Start button on MedalRoundView with SCORE_BASED auto-fill, walkthrough §12.6–§12.8 + §12.12 rewrite, Assign Entries dialog on the Rounds tab + Assign Judges button on MedalRoundView, dev seed split-category demo for Profissional M1A + pre-staged medal round with independent judges for M1B). Earlier 2026-05-23 verified at 1161 after the **JudgingTable → JudgingRound rename + new PhysicalTable entity (per-division)** refactor: V21–V27 SQL renamed in-place + V29 adds `physical_tables` + nullable `physical_table_id` FKs; new `PhysicalTable` entity / repo / 6 service methods (create/edit/delete/findByDivision/findById/assignRoundToPhysicalTable + assignMedalRoundToPhysicalTable); validations at `startRound` (round must have a physical table; physical table not busy with another ROUND_1; no assigned judge on another active round) and at `assignJudge` (same judge-conflict check when adding to a ROUND_1 round); new "Physical Tables" tab in `JudgingAdminView` + Add-Round dialog requires picking a physical table; medal-round physical-table assignment surfaced as a per-row Select in JudgingAdminView Medal Rounds tab + MedalRoundView header; dev seed creates 3 physical tables for Amadora + 5 for Profissional. `JudgingServicePhysicalTableTest` (15 tests) covers all CRUD + validation rejection paths; `JudgingAdminViewTest` (+6 UI tests) covers Physical Tables tab dialogs (add happy/duplicate-error, edit happy, delete happy/in-use-error, grid+button rendering). Also earlier in the session: `DivisionAdvanceGuard` family + `EntryFinalCategoryAdvanceGuard`, `AwardsService.republish` refactor, BOS-places lock at JUDGING, comment-languages restriction removed (ISO 639-1), Amadora 11 entries + 6 judges + soft/hard COI seed, `assignFinalCategoriesByCode` bulk button, `EntryReceivedEvent`/listener for late-RECEIVED scoresheet sync, `EntryStatusRevertGuard` + `JudgingScoresheetEntryRevertGuard`, LazyInit fix on `JudgingRound.assignments`.
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -594,27 +594,54 @@ What landed:
      MedalAwards) needs to re-emerge — either on `startRound` for MEDAL
      type or in the READY-marking cascade.
 
-**Open gap to address during §12.6 walkthrough:**
-- **No "Start" UI for medal rounds.** After cycle 6c, medal rounds reach
-  READY (via cascade when scoring completes) but neither MedalRoundView
-  nor the Rounds tab has a button to transition READY → ACTIVE. Without
-  it, judges can't award medals. To add: a "Start" button on MedalRoundView
-  visible at READY status, wired to `startRound(roundId)` (already
-  polymorphic on type). Add SCORE_BASED auto-fill at the same time
-  (see new gap above).
+**Open gap to address during §12.6 walkthrough:** ~~No "Start" UI for medal
+rounds.~~ ✅ **DONE 2026-05-24 (cycle 8, commit `56b00d1`).** MedalRoundView
+now has a Start button visible at READY (admin-only, disabled with explanatory
+tooltip when no physical table is assigned). SCORE_BASED auto-fill is wired
+back into `startRound` for MEDAL type — pre-populates top-3 medals as
+`confirmed=false` MedalAwards, stopping the cascade on ties within a slot.
+
+**Cycle 8 work (2026-05-24) — third batch:**
+- **Commit `56b00d1`** — Start button on MedalRoundView + SCORE_BASED auto-fill
+  in `startRound` for MEDAL type (private helper `autoPopulateMedalsByScore`
+  re-introduced, mirrors the version deleted in cycle 7). 5 new i18n keys
+  in EN/PT/ES/IT/PL. 1 new test (`shouldStartReadyMedalRoundWhenAdminConfirms`).
+  1154 → 1155.
+- **Commit `32c201a`** — walkthrough rewrite §12.6 (Rounds tab),
+  §12.7 (Results tab), §12.8 (BOS), §12.12 (MedalRoundView gets §12.12.0
+  for Open at READY + Start). Stale `ROUND_1` → `ACTIVE`, "Tables grid"
+  → "Rounds grid", "Medal Rounds tab" → "Rounds tab → filter Medal"
+  fixes elsewhere. Docs only.
+- **Commit `cbd6eec`** — Assign Entries dialog on JudgingAdminView Rounds
+  tab (📦 button per SCORING row at PENDING; multi-select grid;
+  enforces 1:1 with helpful `error.entry.already-on-round` error)
+  + Assign Judges button on MedalRoundView (visible at PENDING/READY;
+  same dialog pattern as scoring rounds). 11 new i18n keys.
+- **Commit `047abe3`** — DevDataInitializer.seedProfissionalForJudging
+  now pre-creates 2 split scoring rounds for Profissional M1A (Panel A:
+  judges 1+2, Table 1, 2 entries; Panel B: judges 4+5, Table 2,
+  3 entries) and a PENDING medal round for M1B with independent judges
+  (1+2+6, Table 4). Walkthrough §12.6.7.1 + §12.12.0.1 walk through
+  the seeded scenarios.
+
+**Remaining gaps (not blockers for v0.4.0):**
+- No physical-table or mode picker on MedalRoundView header for medal rounds.
+  Admin must pre-stage via Rounds tab → Add Round → MEDAL, or change the
+  mode via `configureCategoryMedalRound` service call before the scoring
+  cascade fires. Documented as a known gap in §12.12.0 + §12.12.2.
+- Reassigning medal-round judges after a medal round transitions to ACTIVE
+  / COMPLETE is not yet supported in the UI (Assign Judges button disabled
+  beyond READY). Documented in §12.12.0.1.
 
 **Tasks set up across this session** (with dependencies):
 - #1 Update redesign-doc with resolved decisions — **COMPLETE**
 - #2 Schema migration expansion phase — **COMPLETE**
-- #3 Entity + service refactor + contraction phase — **COMPLETE**
-  (V22 contraction done in cycle 7)
+- #3 Entity + service refactor + contraction phase — **COMPLETE** (V22 contraction in cycle 7)
 - #4 UI restructure (Rounds + Results + BOS tabs) — **COMPLETE** (cycles 6a-c)
-- #5 Dev seed updates — **not started**
-- #6 Walkthrough rewrite §12.6-§12.8 — **not started**, will surface the
-  Start-medal-round gap
-- #7 i18n (5 locales) — done as we go (`error.medal-round.not-a-medal-round`
-  + `error.medal-round.not-found` added in cycle 7)
-- #8 Resume walkthrough + ship v0.4.0 — blocked-by #5/#6 + Start UI
+- #5 Dev seed updates — **COMPLETE** (cycle 8 — split-category M1A + medal-round judges)
+- #6 Walkthrough rewrite §12.6-§12.8 — **COMPLETE** (cycle 8) + §12.6.7.1 + §12.12.0/0.1 added for new UIs
+- #7 i18n (5 locales) — done as we go (cycle 7 added 2 keys; cycle 8 added 16 keys for Start dialog + Assign Entries dialog + Assign Judges medal button + error.entry.already-on-round)
+- #8 Resume walkthrough + ship v0.4.0 — **READY** to run the full walkthrough end-to-end
 
 The task list is in the harness's tracker; `TaskList` will show current state.
 
