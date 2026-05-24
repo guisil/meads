@@ -292,20 +292,55 @@ dropdowns. No point doing them on UI that's about to be replaced.
    (All / Scoring / Medal). Row click drills into existing per-round views.
 
 **Task #3 partially done (2026-05-24).** New public service API surface
-added — callers still on the old CategoryJudgingConfig-based medal-round
-flow. **1151 tests passing (+9 since task #2 close).** Five new commits
-on `feature/judging-module` past v0.4.0 expansion:
+added; the `confirmed` flag has end-to-end coherent semantics across the
+BOS flow but the bulk of caller migration to JudgingRound (type=MEDAL)
+is still ahead. **1155 tests passing (+13 since task #2 close).** Nine
+new commits on `feature/judging-module` past v0.4.0 expansion:
+
+*Entity + state machine:*
 - `10c9ca5` Pure rename `NOT_STARTED → PENDING`, `ROUND_1 → ACTIVE`
-  (fast cycle; no behavior change; `READY` added dormant).
+  (fast cycle; no behavior change; `READY` added dormant in the enum).
 - `c29a5e7` `JudgingRound` READY transitions (`markReady`, `markPending`,
   `start()` now accepts READY) — three RED→GREEN→REFACTOR cycles + two
   rejection-path backfills. Pure unit tests in new `JudgingRoundTest.java`.
+  Domain methods present; service-side auto-PENDING→READY based on
+  preconditions is **not yet wired**.
+
+*New service surface (additive — coexists with the old CategoryJudgingConfig flow):*
 - `9a47808` `JudgingService.createMedalRound(judgingId, divisionCategoryId,
   adminUserId)` — creates a `JudgingRound` of `type = MEDAL`, sourcing the
-  mode from the category's `CategoryJudgingConfig`. Coexists with old
-  flow. New EN/ES/IT/PL/PT key `error.medal-round.category-not-configured`.
+  mode from the category's `CategoryJudgingConfig`. New EN/ES/IT/PL/PT
+  key `error.medal-round.category-not-configured`.
 - `d0cac89` `assignEntryToRound` + `unassignEntryFromRound` +
-  `confirmMedalAward` (each its own TDD cycle).
+  `confirmMedalAward` (each its own TDD cycle). **No callers yet.**
+
+*MedalAward.confirmed semantics live in the data path:*
+- `98cb8ca` `recordMedal` flips `confirmed=true` (manual = confirmed).
+- `7ded4dc` `updateMedal` does the same.
+- Auto-fill (SCORE_BASED cascade in `ScoresheetServiceImpl`) creates via
+  `new MedalAward(...)` directly, leaving `confirmed=false`. This is the
+  manual-vs-auto split the redesign decision #6 calls for.
+
+*BOS now consumes the `confirmed` flag (first downstream usage):*
+- `591e7ee` `findGoldMedalAwardsForDivision` filters to `confirmed=true`
+  (BOS candidates read path).
+- `23cbde6` `recordBosPlacement` requires `confirmed=true` gold (BOS write
+  path). New EN/ES/IT/PL/PT key `error.bos.gold-not-confirmed`.
+
+**Where the OLD flow still lives** (these are the unfinished bits):
+- `CategoryJudgingConfig.medalRoundStatus` is still the medal-round
+  status of record. Read by JudgingAdminView Medal Rounds tab + MedalRoundView
+  + ScoresheetServiceImpl's cascade + `startMedalRound`/`completeMedalRound`/
+  `reopenMedalRound`/`resetMedalRound` service methods.
+- `CategoryJudgingConfig.physicalTableId` still holds the medal-round
+  physical table.
+- Scoresheets still derived from "RECEIVED entries with finalCategoryId =
+  round.divisionCategoryId" in `createScoresheetsForTable` — `round.entries`
+  is unused. The 1:1 invariant is enforced at the DB but no code writes to
+  the table yet.
+- `startRound` is scoring-specific (requires physical table + min judges +
+  creates scoresheets + publishes RoundStartedEvent). It would misbehave
+  on a MEDAL-typed round — but no caller currently does that.
 
 **Task #2 (expansion phase) COMPLETE (2026-05-24).** Additive-only schema +
 entity changes — 1142 tests passing (+7 new). All existing behavior preserved;
@@ -325,37 +360,73 @@ What landed:
 - **New enum** `RoundType` (SCORING, MEDAL) in `app.meads.judging`.
 - **Tests** — JudgingRoundRepositoryTest +5, MedalAwardRepositoryTest +2.
 
-**Next session — first actions:**
-1. Continue task #3 (caller migration). The new service API exists but
-   nothing calls it yet. In order:
-   (a) Wire `JudgingService.createMedalRound` into the admin flow — likely
-       a new "Create Medal Round" button on `JudgingAdminView` Medal Rounds
-       tab (or replace the current per-category-config setup entirely).
-   (b) Migrate `MedalRoundView` to read status from a `JudgingRound` of
-       `type = MEDAL` instead of `CategoryJudgingConfig.medalRoundStatus`.
-   (c) Migrate `ScoresheetServiceImpl.cascadeMarkCategoryReadyIfAllTablesComplete`
-       to use the medal `JudgingRound` instead of `CategoryJudgingConfig`.
-       For SCORE_BASED auto-fill: have it write `MedalAward.confirmed = false`.
-   (d) Migrate scoresheet creation to use `round.entries` instead of the
-       current "derived from RECEIVED entries with finalCategoryId" rule
-       (`ScoresheetService.createScoresheetsForTable`).
-   (e) Once no caller reads `CategoryJudgingConfig.medalRoundStatus` or
-       `.physicalTableId`, drop those columns in V22 (in-place) and the
-       V29 ALTER for `physical_table_id`. Rename `medal_round_mode → mode`.
-   (f) Delete now-unused `JudgingService` medal-round methods:
-       `startMedalRound / completeMedalRound / reopenMedalRound /
-       resetMedalRound / assignMedalRoundToPhysicalTable`. Replace with
-       round-id-keyed methods that work on `JudgingRound`.
+**Next session — first actions (in priority order):**
 
-**Tasks set up in this session** (with dependencies):
+1. **Read** `docs/plans/2026-05-24-round-model-redesign.md` (full design)
+   + this SESSION_CONTEXT.md, then verify state:
+   - `git log --oneline -15` should show 11 redesign-related commits
+     on top of `b3ade6e Pause v0.4.0` — last commit `23cbde6`.
+   - `mvn test -Dsurefire.useFile=false 2>&1 | tail -10` should report
+     **1155 tests passing**.
+   - `feature/judging-module` is at `0.4.0-SNAPSHOT`.
+
+2. **Pick the next cycle.** The remaining caller-migration pieces in
+   recommended order (each is its own TDD cycle, expect ~30-45 min each):
+   
+   *Service-layer changes that don't need UI changes yet:*
+   - **Scoresheet creation switching to `round.entries`** — modify
+     `ScoresheetService.createScoresheetsForTable` to use `round.entries`
+     when non-empty; fall back to "derive from RECEIVED + finalCategoryId"
+     when empty (back-compat). Then update `JudgingService.startRound` to
+     auto-populate `round.entries` from the derived set when the round
+     hasn't had entries explicitly assigned. This is the foundation of
+     split-category support.
+   - **`startRound` polymorphism on round type** — when `round.type =
+     MEDAL`, skip the scoresheet creation path + don't enforce
+     `minJudgesPerRound` (medal rounds may use fewer judges); maybe
+     publish a different event (or none). Currently startRound is
+     SCORING-only by behavior.
+   - **Auto-fill writes to the medal `JudgingRound`** — `cascadeMark...`
+     in `ScoresheetServiceImpl` currently mutates
+     `CategoryJudgingConfig.medalRoundStatus`. Switch to operate on a
+     medal `JudgingRound` (when present): mark it READY when all scoring
+     rounds in the category COMPLETE; run auto-fill if SCORE_BASED.
+   
+   *UI changes (these unlock task #4 territory):*
+   - **Wire `createMedalRound` into JudgingAdminView** — add a "Create
+     Medal Round" affordance that calls the service.
+   - **Migrate MedalRoundView** to read status from the medal
+     `JudgingRound` instead of `CategoryJudgingConfig.medalRoundStatus`.
+
+   *Contraction (only after all callers migrated):*
+   - **V22 in-place edit** — drop `medal_round_status` and
+     `physical_table_id` columns from `category_judging_configs`; rename
+     `medal_round_mode` → `mode`.
+   - **V29 edit** — drop the `ALTER TABLE category_judging_configs ADD
+     COLUMN physical_table_id` line (column gone from V22 now).
+   - **Delete now-unused service methods**: `startMedalRound /
+     completeMedalRound / reopenMedalRound / resetMedalRound /
+     assignMedalRoundToPhysicalTable`. Their replacements operate on
+     `JudgingRound` IDs.
+
+3. **Task #4 (UI restructure)** kicks in once the service layer can
+   support both round types cleanly. The flat Rounds + Results + BOS
+   tab layout is described in the redesign doc §1 and decision #7.
+
+**Tasks set up across this session** (with dependencies):
 - #1 Update redesign-doc with resolved decisions — **COMPLETE**
 - #2 Schema migration expansion phase — **COMPLETE**
-- #3 Entity + service refactor + contraction phase — ready
+- #3 Entity + service refactor + contraction phase — **partially done**
+  (entity state machine + new service surface + MedalAward.confirmed
+  semantics + BOS uses it; scoresheet creation + startRound polymorphism +
+  cascade migration + V22 contraction still to do)
 - #4 UI restructure (Rounds + Results + BOS tabs) — blocked-by #3
 - #5 Dev seed updates — blocked-by #3
 - #6 Walkthrough rewrite §12.6-§12.8 — blocked-by #4
 - #7 i18n (5 locales) — blocked-by #4
 - #8 Resume walkthrough + ship v0.4.0 — blocked-by #5/#6/#7
+
+The task list is in the harness's tracker; `TaskList` will show current state.
 
 ---
 

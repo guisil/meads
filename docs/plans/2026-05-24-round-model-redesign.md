@@ -170,25 +170,30 @@ These should land **in the redesign work** (no point doing them on the soon-to-b
 Phasing — refine before execution. §1 is now closed (see "Resolved decisions" above).
 
 1. ✅ **Design pass + open-question discussion** — resolved 2026-05-24. See "Resolved decisions" section above.
-2. **DB migration** — pre-deployment branch, so in-place edits to V21–V29 are allowed and cleaner. Concrete changes:
-   - **V21** (`judging_rounds` + `judge_assignments`): add `type VARCHAR(20) NOT NULL` (default 'SCORING' for back-compat), add `medal_mode VARCHAR(20)` (nullable, MEDAL only). Status enum values change: `NOT_STARTED` → `PENDING`, `ROUND_1` → `ACTIVE`, `COMPLETE` → `COMPLETE` (unchanged); add `READY` as a new value. `judge_assignments` stays as-is — `judging_round_id` already covers both types.
-   - **V21 new table** `judging_round_entries(id UUID PK, judging_round_id UUID NOT NULL FK ON DELETE CASCADE, entry_id UUID NOT NULL FK, assigned_at TIMESTAMPTZ NOT NULL, UNIQUE(judging_round_id, entry_id), UNIQUE(entry_id))`. The `UNIQUE(entry_id)` enforces 1:1.
-   - **V22** (`category_judging_configs`): drop `medal_round_status`, drop `physical_table_id`, rename `medal_round_mode` → `mode`. Schema becomes: `id`, `division_category_id` (UNIQUE), `mode`, timestamps. Drop the medal-round-status code path entirely.
-   - **V24** (`medal_awards`): add `confirmed BOOLEAN NOT NULL DEFAULT FALSE`, `confirmed_at TIMESTAMPTZ NULL`, `confirmed_by UUID NULL REFERENCES users(id)`.
-   - **V29** (`physical_tables`): drop `ALTER TABLE category_judging_configs ADD COLUMN physical_table_id` (that column moves logically onto `judging_rounds`, which already has it via V29's other ALTER).
-3. **Model + service changes** —
-   - `JudgingRound` entity: add `type`, `medalMode`, `entries: Set<UUID>` (managed via new service methods).
-   - `RoundStatus` enum (renames `JudgingRound.Status`): `PENDING → READY → ACTIVE → COMPLETE`. Service computes PENDING→READY automatically; admin only triggers `start()` and (on MEDAL+SCORE_BASED) auto-fill + `confirmMedalAwards()`.
-   - `CategoryJudgingConfig`: drop `medalRoundStatus`, drop `physicalTableId`, keep `mode`.
-   - `MedalAward`: add `confirmed`, `confirmedBy`, `confirmedAt` + domain method `confirm(adminUserId)`.
-   - `JudgingService`: rename methods (`createScoringRound` / `createMedalRound`), add `assignEntryToRound` / `unassignEntryFromRound`, add `confirmMedalAwards(roundId, adminUserId)`. Judge-active-conflict check unions both round types (since `judge_assignments` already does). `findRoundsByDivision` returns both types; callers filter as needed.
-4. **UI restructure** — `JudgingAdminView` Rounds tab + Results tab + BOS tab (BOS unchanged). Add-Round dialog gains Type selector + per-type fields + entry multi-select (scoring) or auto-derived entries (medal). MedalRoundView gains a Confirm flow when `MedalAward.confirmed=false` rows exist. Quick wins (resizable/sortable columns, leaf-only category dropdowns via `findLeafJudgingCategories`) shipped here.
-5. **Dev seed updates** — pre-stage Profissional rounds with split-category assignments + medal-round judges so the walkthrough exercises everything.
-6. **Walkthrough rewrite** — §12.6/§12.7/§12.8 restructured around Rounds/Results/BOS.
-7. **i18n** — 5 locales as usual (EN/ES/IT/PL/PT).
-8. **Tests** — TDD throughout per the user's preference; CRUD + rejection paths for new service methods, UI tests for dialogs + tab rendering.
+2. ✅ **DB migration — expansion side done.**
+   - ✅ **V21**: added `type VARCHAR(20) NOT NULL DEFAULT 'SCORING'`, `medal_mode VARCHAR(20)` nullable, new table `judging_round_entries(judging_round_id, entry_id)` with `UNIQUE(entry_id)`. Status enum *names* renamed in-place (`NOT_STARTED → PENDING`, `ROUND_1 → ACTIVE`, `READY` added dormant). The `id` / `assigned_at` columns from the original spec were dropped in favor of an `@ElementCollection` mapping; the redesign principle (1:1 via UNIQUE) is preserved.
+   - ⏳ **V22**: NOT YET done. Still has `medal_round_status`, `physical_table_id`, `medal_round_mode`. Contraction happens once no caller reads those fields.
+   - ✅ **V24**: added `confirmed BOOLEAN NOT NULL DEFAULT FALSE`, `confirmed_at TIMESTAMPTZ`, `confirmed_by UUID REFERENCES users(id)`.
+   - ⏳ **V29**: NOT YET done. Still adds `category_judging_configs.physical_table_id`. Drop happens with the V22 contraction.
+3. **Model + service changes — partially done.**
+   - ✅ `JudgingRound`: `type` + `medalMode` + `entries: Set<UUID>` + `convertToMedalRound(mode)` + `assignEntry/unassignEntry` + `markReady`/`markPending` + `start()` accepts PENDING or READY.
+   - ✅ `JudgingRoundStatus`: renamed enum values; new `READY` value in place.
+   - ⏳ `CategoryJudgingConfig`: still has all three old fields. **Not yet slimmed.**
+   - ✅ `MedalAward`: `confirmed` + `confirmedBy/At` + `confirm(adminUserId)` domain method.
+   - ✅ `JudgingService` *additions*: `createMedalRound`, `assignEntryToRound`, `unassignEntryFromRound`, `confirmMedalAward`. **No callers yet.**
+   - ⏳ Service-side auto-PENDING→READY based on preconditions: **not yet wired**.
+   - ⏳ Cascade migration (`cascadeMarkCategoryReadyIfAllTablesComplete`) to operate on medal `JudgingRound`: **not yet done**. Currently still mutates `CategoryJudgingConfig.medalRoundStatus`.
+   - ⏳ Scoresheet creation switching from "derived from category" to use `round.entries`: **not yet done**.
+   - ⏳ `startRound` polymorphism on round type: **not yet done**. Currently scoring-specific by behavior; would misbehave on MEDAL round (but no caller does that).
+   - ⏳ Delete `startMedalRound / completeMedalRound / reopenMedalRound / resetMedalRound / assignMedalRoundToPhysicalTable`: **deferred until callers migrated**.
+   - ✅ `MedalAward.confirmed` flag wired into BOS read (`findGoldMedalAwardsForDivision` filters confirmed=true) and BOS write (`recordBosPlacement` requires confirmed=true). Manual `recordMedal`/`updateMedal` flip confirmed=true; auto-fill stays confirmed=false.
+4. ⏳ **UI restructure** — `JudgingAdminView` Rounds + Results + BOS tabs. Add-Round dialog with Type selector. MedalRoundView confirm flow. **Not started.**
+5. ⏳ **Dev seed updates** — split-category + medal-round judges. **Not started.**
+6. ⏳ **Walkthrough rewrite** — §12.6/§12.7/§12.8. **Not started.**
+7. **i18n** — 5 locales for new error keys done as we go. Two new keys so far (`error.medal-round.category-not-configured`, `error.bos.gold-not-confirmed`). More will land with future cycles.
+8. ✅ **Tests** — TDD throughout. 1135 → 1155 (+20 net) since start of redesign. No regressions; full suite green at every commit.
 
-Likely 3-5 focused sessions for implementation.
+Likely 2-4 more focused sessions for the remaining items.
 
 ---
 
