@@ -218,6 +218,20 @@ public class JudgingServiceImpl implements JudgingService {
         var judging = requireJudging(round.getJudgingId());
         requireAuthorizedForJudging(judging, adminUserId);
         requireNotFrozen(judging.getDivisionId());
+        if (round.getType() == RoundType.SCORING) {
+            // Enforce 1:1 entry-to-scoring-round (redesign decision #1, also DB
+            // UNIQUE on judging_round_entries.entry_id). Throw a helpful error
+            // before the DB constraint fires.
+            var existingAssignment = judgingRoundRepository.findByJudgingId(judging.getId()).stream()
+                    .filter(r -> r.getType() == RoundType.SCORING)
+                    .filter(r -> !r.getId().equals(roundId))
+                    .filter(r -> r.getEntries().contains(entryId))
+                    .findFirst();
+            if (existingAssignment.isPresent()) {
+                throw new BusinessRuleException("error.entry.already-on-round",
+                        existingAssignment.get().getName());
+            }
+        }
         round.assignEntry(entryId);
         judgingRoundRepository.save(round);
         log.info("Assigned entry {} to round {}", entryId, roundId);

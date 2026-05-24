@@ -488,6 +488,100 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         dialog.open();
     }
 
+    /**
+     * Per-round entry assignment dialog. Lets the admin pick which RECEIVED
+     * entries (filtered to the round's category) belong to this scoring round.
+     * Enforces 1:1 — an entry on another scoring round can't also be selected
+     * here without first being unassigned. Available only at PENDING — once
+     * the round starts, entries are locked.
+     */
+    public void openAssignEntriesDialog(JudgingRound round) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("judging-admin.tables.assign-entries.dialog.title", round.getName()));
+        dialog.setWidth("780px");
+
+        var allEntries = entryService.findEntriesByFinalCategoryId(round.getDivisionCategoryId()).stream()
+                .filter(e -> e.getStatus() == app.meads.entry.EntryStatus.RECEIVED)
+                .toList();
+
+        var roundsInDivision = judgingService.findRoundsByJudgingId(judging.getId()).stream()
+                .filter(r -> r.getType() == RoundType.SCORING)
+                .toList();
+        var currentAssignment = new java.util.HashMap<UUID, JudgingRound>();
+        for (var r : roundsInDivision) {
+            for (var entryId : r.getEntries()) {
+                currentAssignment.put(entryId, r);
+            }
+        }
+
+        var content = new VerticalLayout();
+        content.setPadding(false);
+        content.add(new Span(getTranslation("judging-admin.tables.assign-entries.helper")));
+
+        if (allEntries.isEmpty()) {
+            content.add(new Span(getTranslation("judging-admin.tables.assign-entries.empty")));
+        }
+
+        var entriesGrid = new Grid<>(app.meads.entry.Entry.class, false);
+        entriesGrid.setId("assign-entries-grid");
+        entriesGrid.setSelectionMode(Grid.SelectionMode.MULTI);
+        entriesGrid.addColumn(e -> e.getEntryCode() + " — " + e.getMeadName())
+                .setHeader(getTranslation("judging-admin.tables.assign-entries.column.entry"));
+        entriesGrid.addColumn(e -> {
+                    var owner = userService.findById(e.getUserId());
+                    return owner.getMeaderyName() == null ? "" : owner.getMeaderyName();
+                })
+                .setHeader(getTranslation("judging-admin.tables.assign-entries.column.meadery"));
+        entriesGrid.addColumn(e -> {
+                    var assignedRound = currentAssignment.get(e.getId());
+                    if (assignedRound == null) {
+                        return getTranslation("judging-admin.tables.assign-entries.current-round.unassigned");
+                    }
+                    return assignedRound.getName();
+                })
+                .setHeader(getTranslation("judging-admin.tables.assign-entries.column.current-round"));
+        entriesGrid.setItems(allEntries);
+        allEntries.stream()
+                .filter(e -> round.getEntries().contains(e.getId()))
+                .forEach(e -> entriesGrid.asMultiSelect().select(e));
+
+        content.add(entriesGrid);
+        dialog.add(content);
+
+        var saveButton = new Button(getTranslation("button.save"), e -> {
+            var selected = entriesGrid.asMultiSelect().getSelectedItems().stream()
+                    .map(app.meads.entry.Entry::getId)
+                    .collect(Collectors.toSet());
+            var current = round.getEntries();
+            try {
+                for (var entryId : selected) {
+                    if (!current.contains(entryId)) {
+                        judgingService.assignEntryToRound(round.getId(), entryId, currentUserId);
+                    }
+                }
+                for (var entryId : current) {
+                    if (!selected.contains(entryId)) {
+                        judgingService.unassignEntryFromRound(round.getId(), entryId, currentUserId);
+                    }
+                }
+                dialog.close();
+                refreshRoundsGrid();
+                Notification.show(getTranslation("judging-admin.tables.assign-entries.saved"))
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+        saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        saveButton.setDisableOnClick(true);
+
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
+
+        dialog.getFooter().add(cancelButton, saveButton);
+        dialog.open();
+    }
+
     private HorizontalLayout coiChips(User judge, List<Entry> entries) {
         var layout = new HorizontalLayout();
         layout.setSpacing(false);
@@ -818,6 +912,15 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         assignJudgesButton.setTooltipText(getTranslation("judging-admin.tables.action.assign-judges"));
         assignJudgesButton.addClickListener(e -> openAssignJudgesDialog(round));
 
+        var assignEntriesButton = new Button(new Icon(VaadinIcon.PACKAGE));
+        assignEntriesButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+        boolean entryAssignmentAllowed = round.getStatus() == JudgingRoundStatus.PENDING;
+        assignEntriesButton.setEnabled(entryAssignmentAllowed);
+        assignEntriesButton.setTooltipText(entryAssignmentAllowed
+                ? getTranslation("judging-admin.tables.action.assign-entries")
+                : getTranslation("judging-admin.tables.assign-entries.disabled-tooltip"));
+        assignEntriesButton.addClickListener(e -> openAssignEntriesDialog(round));
+
         var deleteButton = new Button(new Icon(VaadinIcon.TRASH));
         deleteButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
         boolean canDelete = round.getStatus() == JudgingRoundStatus.PENDING
@@ -828,7 +931,8 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
                 : getTranslation("judging-admin.tables.action.delete.blocked"));
         deleteButton.addClickListener(e -> openDeleteTableDialog(round));
 
-        return new HorizontalLayout(editButton, startButton, assignJudgesButton, deleteButton, openButton);
+        return new HorizontalLayout(editButton, startButton, assignJudgesButton,
+                assignEntriesButton, deleteButton, openButton);
     }
 
     private VerticalLayout createBosTab() {

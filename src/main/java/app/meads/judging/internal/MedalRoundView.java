@@ -247,6 +247,14 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         boolean judgingActive = judgingService.ensureJudgingExists(division.getId())
                 .getPhase() == JudgingPhase.ACTIVE;
 
+        var assignJudgesButton = new Button(getTranslation("medal-round.action.assign-judges"));
+        assignJudgesButton.setId("medal-round-assign-judges");
+        assignJudgesButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        // Judges can be reassigned while PENDING / READY (before the round is started).
+        assignJudgesButton.setEnabled(medalRound != null
+                && (status == JudgingRoundStatus.PENDING || status == JudgingRoundStatus.READY));
+        assignJudgesButton.addClickListener(e -> openAssignJudgesDialog());
+
         var startButton = new Button(getTranslation("medal-round.action.start"));
         startButton.setId("medal-round-start");
         startButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
@@ -276,7 +284,8 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         finalizeButton.setEnabled(status == JudgingRoundStatus.ACTIVE);
         finalizeButton.addClickListener(e -> openFinalizeDialog());
 
-        var actions = new HorizontalLayout(startButton, resetButton, reopenButton, finalizeButton);
+        var actions = new HorizontalLayout(assignJudgesButton, startButton,
+                resetButton, reopenButton, finalizeButton);
         actions.setDefaultVerticalComponentAlignment(Alignment.CENTER);
         return actions;
     }
@@ -431,6 +440,70 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
                 ? "competitions/" + compShortName + "/divisions/" + divShortName + "/judging-admin"
                 : "my-judging";
         return new Anchor(target, getTranslation("medal-round.action.back"));
+    }
+
+    /**
+     * Per-medal-round judge picker. Medal-round judges are independent of the
+     * scoring judges for the same category (redesign decision #5) — could be
+     * the same panel, could be different (e.g. head judges only). Editable
+     * only at PENDING / READY (before the round transitions to ACTIVE).
+     */
+    public void openAssignJudgesDialog() {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("medal-round.action.assign-judges"));
+        dialog.setWidth("640px");
+
+        var availableJudges = competitionService.findUsersByRoleInCompetition(
+                competition.getId(), app.meads.competition.CompetitionRole.JUDGE);
+        var currentlyAssigned = judgingService.findJudgeUserIdsForRound(medalRound.getId())
+                .stream().collect(java.util.stream.Collectors.toSet());
+
+        var judgesGrid = new com.vaadin.flow.component.grid.Grid<>(app.meads.identity.User.class, false);
+        judgesGrid.setId("medal-round-assign-judges-grid");
+        judgesGrid.setSelectionMode(com.vaadin.flow.component.grid.Grid.SelectionMode.MULTI);
+        judgesGrid.addColumn(app.meads.identity.User::getName)
+                .setHeader(getTranslation("judging-admin.tables.assign.column.name"));
+        judgesGrid.addColumn(u -> u.getMeaderyName() == null ? "" : u.getMeaderyName())
+                .setHeader(getTranslation("judging-admin.tables.assign.column.meadery"));
+        judgesGrid.addColumn(u -> u.getCountry() == null ? "" : u.getCountry())
+                .setHeader(getTranslation("judging-admin.tables.assign.column.country"));
+        judgesGrid.setItems(availableJudges);
+        availableJudges.stream()
+                .filter(j -> currentlyAssigned.contains(j.getId()))
+                .forEach(j -> judgesGrid.asMultiSelect().select(j));
+
+        dialog.add(judgesGrid);
+
+        var save = new Button(getTranslation("button.save"), e -> {
+            var selected = judgesGrid.asMultiSelect().getSelectedItems().stream()
+                    .map(app.meads.identity.User::getId)
+                    .collect(java.util.stream.Collectors.toSet());
+            try {
+                for (var judgeId : selected) {
+                    if (!currentlyAssigned.contains(judgeId)) {
+                        judgingService.assignJudge(medalRound.getId(), judgeId, currentUserId);
+                    }
+                }
+                for (var judgeId : currentlyAssigned) {
+                    if (!selected.contains(judgeId)) {
+                        judgingService.removeJudge(medalRound.getId(), judgeId, currentUserId);
+                    }
+                }
+                dialog.close();
+                reload();
+                Notification.show(getTranslation("judging-admin.tables.assign.saved"))
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+        save.setId("medal-round-assign-judges-save");
+        save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        save.setDisableOnClick(true);
+        var cancel = new Button(getTranslation("button.cancel"), e -> dialog.close());
+        dialog.getFooter().add(cancel, save);
+        dialog.open();
     }
 
     public void openFinalizeDialog() {
