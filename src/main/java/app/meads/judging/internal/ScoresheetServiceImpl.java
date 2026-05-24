@@ -11,6 +11,7 @@ import app.meads.judging.JudgeProfileService;
 import app.meads.judging.JudgingRound;
 import app.meads.judging.JudgingRoundStatus;
 import app.meads.judging.MedalRoundStatus;
+import app.meads.judging.RoundType;
 import app.meads.judging.Scoresheet;
 import app.meads.judging.ScoresheetRevertedEvent;
 import app.meads.judging.ScoresheetService;
@@ -337,14 +338,28 @@ public class ScoresheetServiceImpl implements ScoresheetService {
 
     private void cascadeMarkCategoryReadyIfAllTablesComplete(Judging judging,
                                                               UUID divisionCategoryId) {
-        var allTables = judgingRoundRepository.findByJudgingId(judging.getId()).stream()
+        var roundsInCategory = judgingRoundRepository.findByJudgingId(judging.getId()).stream()
                 .filter(t -> t.getDivisionCategoryId().equals(divisionCategoryId))
                 .toList();
-        boolean allComplete = !allTables.isEmpty() && allTables.stream()
+        var scoringRounds = roundsInCategory.stream()
+                .filter(r -> r.getType() == RoundType.SCORING)
+                .toList();
+        boolean allScoringComplete = !scoringRounds.isEmpty() && scoringRounds.stream()
                 .allMatch(t -> t.getStatus() == JudgingRoundStatus.COMPLETE);
-        if (!allComplete) {
+        if (!allScoringComplete) {
             return;
         }
+        // New flow: mark the medal JudgingRound (type=MEDAL) READY if one exists.
+        roundsInCategory.stream()
+                .filter(r -> r.getType() == RoundType.MEDAL)
+                .filter(r -> r.getStatus() == JudgingRoundStatus.PENDING)
+                .forEach(medalRound -> {
+                    medalRound.markReady();
+                    judgingRoundRepository.save(medalRound);
+                });
+        // Legacy flow: still drive CategoryJudgingConfig.medalRoundStatus so the
+        // existing MedalRoundView / JudgingAdminView Medal Rounds tab keep
+        // working until they migrate to the medal JudgingRound (cycle #4).
         var config = categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId)
                 .orElseGet(() -> categoryConfigRepository.save(new CategoryJudgingConfig(divisionCategoryId)));
         if (config.getMedalRoundStatus() == MedalRoundStatus.PENDING) {

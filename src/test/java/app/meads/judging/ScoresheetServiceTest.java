@@ -8,6 +8,8 @@ import app.meads.entry.Entry;
 import app.meads.entry.EntryService;
 import app.meads.entry.EntryStatus;
 import app.meads.judging.CoiCheckService.CoiResult;
+import app.meads.judging.CategoryJudgingConfig;
+import app.meads.judging.MedalRoundMode;
 import app.meads.judging.internal.CategoryJudgingConfigRepository;
 import app.meads.judging.internal.JudgingRepository;
 import app.meads.judging.internal.JudgingRoundRepository;
@@ -361,6 +363,39 @@ class ScoresheetServiceTest {
 
         assertThat(scoresheet.getCommentLanguage()).isEqualTo("pt");
         then(judgeProfileService).should().updatePreferredCommentLanguage(judgeUserId, "pt");
+    }
+
+    @Test
+    void shouldMarkMedalJudgingRoundReadyWhenAllScoringRoundsInCategoryComplete() {
+        var entryId = UUID.randomUUID();
+        var scoresheet = new Scoresheet(roundId, entryId);
+        for (var def : MjpScoringFieldDefinition.MJP_FIELDS) {
+            scoresheet.updateScore(def.fieldName(), def.maxValue(), null);
+        }
+        scoresheet.setFilledBy(judgeUserId);
+        var medalRound = new JudgingRound(judging.getId(), UUID.randomUUID(), "Medal",
+                divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.COMPARATIVE);
+        given(scoresheetRepository.findById(scoresheet.getId())).willReturn(Optional.of(scoresheet));
+        given(judgingRoundRepository.findById(roundId)).willReturn(Optional.of(table));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(coiCheckService.check(judgeUserId, entryId)).willReturn(CoiResult.clear());
+        given(scoresheetRepository.findByRoundId(roundId)).willReturn(List.of(scoresheet));
+        given(judgingRoundRepository.findByJudgingId(judging.getId()))
+                .willReturn(List.of(table, medalRound));
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(scoresheetRepository.save(any(Scoresheet.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId))
+                .willReturn(Optional.of(new CategoryJudgingConfig(divisionCategoryId)));
+
+        table.start();
+
+        service.submit(scoresheet.getId(), judgeUserId);
+
+        assertThat(table.getStatus()).isEqualTo(JudgingRoundStatus.COMPLETE);
+        assertThat(medalRound.getStatus()).isEqualTo(JudgingRoundStatus.READY);
     }
 
     @Test
