@@ -349,19 +349,29 @@ public class ScoresheetServiceImpl implements ScoresheetService {
         if (!allScoringComplete) {
             return;
         }
-        // New flow: mark the medal JudgingRound (type=MEDAL) READY if one exists.
-        roundsInCategory.stream()
+        // Ensure CategoryJudgingConfig exists (default mode if not configured).
+        var config = categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId)
+                .orElseGet(() -> categoryConfigRepository.save(new CategoryJudgingConfig(divisionCategoryId)));
+        // New flow: ensure a medal JudgingRound (type=MEDAL) exists for the
+        // category, then mark it READY. Auto-creating here means the medal
+        // round always exists by the time scoring completes — no separate
+        // admin step required for the minimal-touch migration.
+        var medalRound = roundsInCategory.stream()
                 .filter(r -> r.getType() == RoundType.MEDAL)
-                .filter(r -> r.getStatus() == JudgingRoundStatus.PENDING)
-                .forEach(medalRound -> {
-                    medalRound.markReady();
-                    judgingRoundRepository.save(medalRound);
+                .findFirst()
+                .orElseGet(() -> {
+                    var newMedalRound = new JudgingRound(judging.getId(),
+                            "Medal — " + divisionCategoryId, divisionCategoryId, null);
+                    newMedalRound.convertToMedalRound(config.getMedalRoundMode());
+                    return judgingRoundRepository.save(newMedalRound);
                 });
+        if (medalRound.getStatus() == JudgingRoundStatus.PENDING) {
+            medalRound.markReady();
+            judgingRoundRepository.save(medalRound);
+        }
         // Legacy flow: still drive CategoryJudgingConfig.medalRoundStatus so the
         // existing MedalRoundView / JudgingAdminView Medal Rounds tab keep
         // working until they migrate to the medal JudgingRound (cycle #4).
-        var config = categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId)
-                .orElseGet(() -> categoryConfigRepository.save(new CategoryJudgingConfig(divisionCategoryId)));
         if (config.getMedalRoundStatus() == MedalRoundStatus.PENDING) {
             config.markReady();
             categoryConfigRepository.save(config);

@@ -187,11 +187,11 @@ Phasing — refine before execution. §1 is now closed (see "Resolved decisions"
    - ✅ `startRound` polymorphism on round type: `startRound` branches on `round.type`. MEDAL path skips min-judges enforcement, category-entry auto-population, scoresheet creation, CategoryJudgingConfig ensure, and `RoundStartedEvent` publication. Shared validations (auth, frozen, physical table, judge-active-conflict) still apply to both types. Done 2026-05-24.
    - ⏳ Delete `startMedalRound / completeMedalRound / reopenMedalRound / resetMedalRound / assignMedalRoundToPhysicalTable`: **deferred until callers migrated**.
    - ✅ `MedalAward.confirmed` flag wired into BOS read (`findGoldMedalAwardsForDivision` filters confirmed=true) and BOS write (`recordBosPlacement` requires confirmed=true). Manual `recordMedal`/`updateMedal` flip confirmed=true; auto-fill stays confirmed=false.
-4. ⏳ **UI restructure** — `JudgingAdminView` Rounds + Results + BOS tabs. Add-Round dialog with Type selector. MedalRoundView confirm flow. **Not started.**
+4. ⏳ **UI restructure** — `JudgingAdminView` Rounds + Results + BOS tabs. Add-Round dialog with Type selector. MedalRoundView confirm flow. **Not started.** Note: the cascade-side wiring of `createMedalRound` is already done (auto-creates medal `JudgingRound` if missing); the explicit UI affordance is no longer needed.
 5. ⏳ **Dev seed updates** — split-category + medal-round judges. **Not started.**
 6. ⏳ **Walkthrough rewrite** — §12.6/§12.7/§12.8. **Not started.**
 7. **i18n** — 5 locales for new error keys done as we go. Two new keys so far (`error.medal-round.category-not-configured`, `error.bos.gold-not-confirmed`). More will land with future cycles.
-8. ✅ **Tests** — TDD throughout. 1135 → 1160 (+25 net) since start of redesign. No regressions; full suite green at every commit.
+8. ✅ **Tests** — TDD throughout. 1135 → 1161 (+26 net) since start of redesign. No regressions; full suite green at every commit.
 
 Likely 2-4 more focused sessions for the remaining items.
 

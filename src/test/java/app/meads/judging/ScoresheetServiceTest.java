@@ -366,6 +366,44 @@ class ScoresheetServiceTest {
     }
 
     @Test
+    void shouldAutoCreateMedalJudgingRoundIfMissingWhenCascadeFires() {
+        var entryId = UUID.randomUUID();
+        var scoresheet = new Scoresheet(roundId, entryId);
+        for (var def : MjpScoringFieldDefinition.MJP_FIELDS) {
+            scoresheet.updateScore(def.fieldName(), def.maxValue(), null);
+        }
+        scoresheet.setFilledBy(judgeUserId);
+        // No medal JudgingRound exists yet — only the scoring table.
+        var config = new CategoryJudgingConfig(divisionCategoryId, MedalRoundMode.SCORE_BASED);
+        given(scoresheetRepository.findById(scoresheet.getId())).willReturn(Optional.of(scoresheet));
+        given(judgingRoundRepository.findById(roundId)).willReturn(Optional.of(table));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(coiCheckService.check(judgeUserId, entryId)).willReturn(CoiResult.clear());
+        given(scoresheetRepository.findByRoundId(roundId)).willReturn(List.of(scoresheet));
+        given(judgingRoundRepository.findByJudgingId(judging.getId())).willReturn(List.of(table));
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(scoresheetRepository.save(any(Scoresheet.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId))
+                .willReturn(Optional.of(config));
+
+        table.start();
+
+        service.submit(scoresheet.getId(), judgeUserId);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(JudgingRound.class);
+        then(judgingRoundRepository).should(org.mockito.Mockito.atLeastOnce()).save(captor.capture());
+        var medalRound = captor.getAllValues().stream()
+                .filter(r -> r.getType() == app.meads.judging.RoundType.MEDAL)
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("No medal JudgingRound created"));
+        assertThat(medalRound.getDivisionCategoryId()).isEqualTo(divisionCategoryId);
+        assertThat(medalRound.getMedalMode()).isEqualTo(MedalRoundMode.SCORE_BASED);
+        assertThat(medalRound.getStatus()).isEqualTo(JudgingRoundStatus.READY);
+    }
+
+    @Test
     void shouldMarkMedalJudgingRoundReadyWhenAllScoringRoundsInCategoryComplete() {
         var entryId = UUID.randomUUID();
         var scoresheet = new Scoresheet(roundId, entryId);
