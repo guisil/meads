@@ -25,7 +25,6 @@ import app.meads.judging.JudgingRound;
 import app.meads.judging.JudgingRoundStatus;
 import app.meads.judging.RoundType;
 import app.meads.judging.MedalAward;
-import app.meads.judging.MedalRoundMode;
 import app.meads.judging.ScoresheetService;
 import app.meads.judging.ScoresheetStatus;
 import com.vaadin.flow.component.button.Button;
@@ -84,7 +83,6 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
     private String divShortName;
     private UUID currentUserId;
 
-    private Grid<JudgingRound> tablesGrid;
     private Grid<JudgingRound> roundsGrid;
     private ComboBox<RoundTypeFilter> roundsTypeFilter;
 
@@ -199,11 +197,9 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         var tabSheet = new TabSheet();
         tabSheet.setWidthFull();
         tabSheet.add(getTranslation("judging-admin.tab.physical-tables"), createPhysicalTablesTab());
-        tabSheet.add(getTranslation("judging-admin.tab.tables"), createTablesTab());
-        tabSheet.add(getTranslation("judging-admin.tab.medal-rounds"), createMedalRoundsTab());
-        tabSheet.add(getTranslation("judging-admin.tab.bos"), createBosTab());
         tabSheet.add(getTranslation("judging-admin.tab.rounds"), createRoundsTab());
         tabSheet.add(getTranslation("judging-admin.tab.results"), createResultsTab());
+        tabSheet.add(getTranslation("judging-admin.tab.bos"), createBosTab());
         return tabSheet;
     }
 
@@ -334,58 +330,6 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         dialog.open();
     }
 
-    private VerticalLayout createTablesTab() {
-        var tab = new VerticalLayout();
-        tab.setPadding(false);
-
-        var addButton = new Button(getTranslation("judging-admin.tables.add"),
-                e -> openAddTableDialog());
-        addButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        tab.add(addButton);
-
-        tablesGrid = new Grid<>(JudgingRound.class, false);
-        tablesGrid.setId("tables-grid");
-        tablesGrid.addColumn(JudgingRound::getName)
-                .setHeader(getTranslation("judging-admin.tables.column.name"));
-        tablesGrid.addColumn(t -> formatCategory(t.getDivisionCategoryId()))
-                .setHeader(getTranslation("judging-admin.tables.column.category"));
-        tablesGrid.addColumn(t -> {
-                    if (t.getPhysicalTableId() == null) return "—";
-                    return judgingService.findPhysicalTableById(t.getPhysicalTableId())
-                            .map(app.meads.judging.PhysicalTable::getLabel).orElse("—");
-                })
-                .setHeader(getTranslation("judging-admin.tables.column.physical-table"));
-        tablesGrid.addColumn(t -> t.getStatus().name())
-                .setHeader(getTranslation("judging-admin.tables.column.status"));
-        tablesGrid.addColumn(t -> t.getAssignments().size())
-                .setHeader(getTranslation("judging-admin.tables.column.judges"));
-        tablesGrid.addColumn(t -> t.getScheduledDate() == null ? ""
-                        : t.getScheduledDate().format(DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT)
-                                .withLocale(getLocale())))
-                .setHeader(getTranslation("judging-admin.tables.column.scheduled"));
-        tablesGrid.addColumn(this::formatScoresheetCounts)
-                .setHeader(getTranslation("judging-admin.tables.column.scoresheets"));
-        tablesGrid.addComponentColumn(this::createActionsCell)
-                .setHeader(getTranslation("judging-admin.tables.column.actions"));
-
-        refreshTablesGrid();
-        tab.add(tablesGrid);
-        return tab;
-    }
-
-    private void refreshTablesGrid() {
-        tablesGrid.setItems(judgingService.findRoundsByJudgingId(judging.getId()));
-    }
-
-    private String formatScoresheetCounts(JudgingRound table) {
-        long drafts = scoresheetService.countByRoundIdAndStatus(table.getId(), ScoresheetStatus.DRAFT);
-        long submitted = scoresheetService.countByRoundIdAndStatus(table.getId(), ScoresheetStatus.SUBMITTED);
-        if (drafts == 0 && submitted == 0) {
-            return "—";
-        }
-        return getTranslation("judging-admin.tables.scoresheets.format", drafts, submitted);
-    }
-
     private String formatCategory(UUID divisionCategoryId) {
         if (divisionCategoryId == null) {
             return "";
@@ -398,111 +342,6 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
     private Map<UUID, DivisionCategory> categoriesById() {
         return competitionService.findJudgingCategories(division.getId()).stream()
                 .collect(Collectors.toMap(DivisionCategory::getId, c -> c));
-    }
-
-    private void openAddTableDialog() {
-        var dialog = new Dialog();
-        dialog.setHeaderTitle(getTranslation("judging-admin.tables.add"));
-
-        var form = new VerticalLayout();
-        form.setPadding(false);
-
-        var nameField = new TextField(getTranslation("judging-admin.tables.dialog.name"));
-        nameField.setId("add-table-name");
-        nameField.setWidthFull();
-        nameField.setMaxLength(120);
-
-        var categorySelect = new Select<DivisionCategory>();
-        categorySelect.setId("add-table-category");
-        categorySelect.setLabel(getTranslation("judging-admin.tables.dialog.category"));
-        categorySelect.setWidthFull();
-        var categories = competitionService.findJudgingCategories(division.getId());
-        categorySelect.setItems(categories);
-        categorySelect.setItemLabelGenerator(c -> c == null ? "" : c.getCode() + " — " + c.getName());
-
-        var physicalTableSelect = new Select<app.meads.judging.PhysicalTable>();
-        physicalTableSelect.setId("add-table-physical-table");
-        physicalTableSelect.setLabel(getTranslation("judging-admin.tables.dialog.physical-table"));
-        physicalTableSelect.setWidthFull();
-        var physicalTables = judgingService.findPhysicalTablesByDivision(division.getId());
-        physicalTableSelect.setItems(physicalTables);
-        physicalTableSelect.setItemLabelGenerator(pt -> pt == null ? "" : pt.getLabel());
-        if (physicalTables.isEmpty()) {
-            physicalTableSelect.setHelperText(getTranslation("judging-admin.tables.dialog.physical-table.empty"));
-        }
-
-        var datePicker = new DatePicker(getTranslation("judging-admin.tables.dialog.scheduled"));
-        datePicker.setWidthFull();
-
-        form.add(nameField, categorySelect, physicalTableSelect, datePicker);
-        dialog.add(form);
-
-        var saveButton = new Button(getTranslation("button.save"), e -> {
-            if (nameField.getValue() == null || nameField.getValue().isBlank()) {
-                nameField.setInvalid(true);
-                nameField.setErrorMessage(getTranslation("judging-admin.tables.dialog.name.error"));
-                return;
-            }
-            if (categorySelect.getValue() == null) {
-                categorySelect.setInvalid(true);
-                categorySelect.setErrorMessage(getTranslation("judging-admin.tables.dialog.category.error"));
-                return;
-            }
-            if (physicalTableSelect.getValue() == null) {
-                physicalTableSelect.setInvalid(true);
-                physicalTableSelect.setErrorMessage(getTranslation("judging-admin.tables.dialog.physical-table.error"));
-                return;
-            }
-            try {
-                var round = judgingService.createRound(judging.getId(), nameField.getValue().trim(),
-                        categorySelect.getValue().getId(), datePicker.getValue(), currentUserId);
-                judgingService.assignRoundToPhysicalTable(round.getId(), physicalTableSelect.getValue().getId(), currentUserId);
-                dialog.close();
-                refreshTablesGrid();
-                Notification.show(getTranslation("judging-admin.tables.added"))
-                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-            } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
-            }
-        });
-        saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        saveButton.setDisableOnClick(true);
-
-        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
-
-        dialog.getFooter().add(cancelButton, saveButton);
-        dialog.open();
-    }
-
-    private HorizontalLayout createActionsCell(JudgingRound table) {
-        var editButton = new Button(new Icon(VaadinIcon.EDIT));
-        editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-        editButton.setTooltipText(getTranslation("judging-admin.tables.action.edit"));
-        editButton.addClickListener(e -> openEditTableDialog(table));
-
-        var startButton = new Button(new Icon(VaadinIcon.PLAY));
-        startButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-        startButton.setEnabled(table.getStatus() == JudgingRoundStatus.PENDING);
-        startButton.setTooltipText(getTranslation("judging-admin.tables.action.start"));
-        startButton.addClickListener(e -> openStartTableDialog(table));
-
-        var assignJudgesButton = new Button(new Icon(VaadinIcon.USERS));
-        assignJudgesButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-        assignJudgesButton.setTooltipText(getTranslation("judging-admin.tables.action.assign-judges"));
-        assignJudgesButton.addClickListener(e -> openAssignJudgesDialog(table));
-
-        var deleteButton = new Button(new Icon(VaadinIcon.TRASH));
-        deleteButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-        boolean canDelete = table.getStatus() == JudgingRoundStatus.PENDING
-                && table.getAssignments().isEmpty();
-        deleteButton.setEnabled(canDelete);
-        deleteButton.setTooltipText(canDelete
-                ? getTranslation("judging-admin.tables.action.delete")
-                : getTranslation("judging-admin.tables.action.delete.blocked"));
-        deleteButton.addClickListener(e -> openDeleteTableDialog(table));
-
-        return new HorizontalLayout(editButton, startButton, assignJudgesButton, deleteButton);
     }
 
     public void openEditTableDialog(JudgingRound table) {
@@ -540,7 +379,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
                     judgingService.updateRoundScheduledDate(table.getId(), datePicker.getValue(), currentUserId);
                 }
                 dialog.close();
-                refreshTablesGrid();
+                refreshRoundsGrid();
                 Notification.show(getTranslation("judging-admin.tables.updated"))
                         .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
             } catch (BusinessRuleException ex) {
@@ -570,7 +409,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
             try {
                 judgingService.startRound(table.getId(), currentUserId);
                 dialog.close();
-                refreshTablesGrid();
+                refreshRoundsGrid();
                 Notification.show(getTranslation("judging-admin.tables.started"))
                         .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
             } catch (BusinessRuleException ex) {
@@ -633,7 +472,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
                     }
                 }
                 dialog.close();
-                refreshTablesGrid();
+                refreshRoundsGrid();
                 Notification.show(getTranslation("judging-admin.tables.assign.saved"))
                         .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
             } catch (BusinessRuleException ex) {
@@ -677,7 +516,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
             try {
                 judgingService.deleteRound(table.getId(), currentUserId);
                 dialog.close();
-                refreshTablesGrid();
+                refreshRoundsGrid();
                 Notification.show(getTranslation("judging-admin.tables.deleted"))
                         .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
             } catch (BusinessRuleException ex) {
@@ -692,263 +531,6 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
 
         dialog.getFooter().add(cancelButton, deleteButton);
         dialog.open();
-    }
-
-    private VerticalLayout createMedalRoundsTab() {
-        var tab = new VerticalLayout();
-        tab.setPadding(false);
-
-        var configs = judgingService.findCategoryConfigsForDivision(division.getId(), currentUserId);
-
-        if (configs.isEmpty()) {
-            tab.add(new Span(getTranslation("judging-admin.medal-rounds.empty")));
-            return tab;
-        }
-
-        var grid = new Grid<CategoryJudgingConfig>(CategoryJudgingConfig.class, false);
-        grid.setId("medal-rounds-grid");
-        grid.addColumn(c -> formatCategory(c.getDivisionCategoryId()))
-                .setHeader(getTranslation("judging-admin.medal-rounds.column.category"));
-        grid.addComponentColumn(this::createModeCell)
-                .setHeader(getTranslation("judging-admin.medal-rounds.column.mode"));
-        grid.addComponentColumn(this::createMedalRoundPhysicalTableCell)
-                .setHeader(getTranslation("judging-admin.medal-rounds.column.physical-table"));
-        grid.addColumn(c -> c.getMedalRoundStatus().name())
-                .setHeader(getTranslation("judging-admin.medal-rounds.column.status"));
-        grid.addColumn(this::formatTablesProgress)
-                .setHeader(getTranslation("judging-admin.medal-rounds.column.tables"));
-        grid.addColumn(this::formatAwardsCounts)
-                .setHeader(getTranslation("judging-admin.medal-rounds.column.awards"));
-        grid.addComponentColumn(this::createMedalRoundActionsCell)
-                .setHeader(getTranslation("judging-admin.medal-rounds.column.actions"));
-        grid.setItems(configs);
-        tab.add(grid);
-        return tab;
-    }
-
-    private Select<MedalRoundMode> createModeCell(CategoryJudgingConfig config) {
-        var select = new Select<MedalRoundMode>();
-        select.setItems(MedalRoundMode.values());
-        select.setItemLabelGenerator(Enum::name);
-        select.setValue(config.getMedalRoundMode());
-        var status = config.getMedalRoundStatus();
-        select.setEnabled(status == MedalRoundStatus.PENDING || status == MedalRoundStatus.READY);
-        select.addValueChangeListener(e -> {
-            if (e.getValue() != null && e.getValue() != config.getMedalRoundMode()) {
-                changeMedalRoundMode(config, e.getValue());
-            }
-        });
-        return select;
-    }
-
-    private Select<app.meads.judging.PhysicalTable> createMedalRoundPhysicalTableCell(CategoryJudgingConfig config) {
-        var select = new Select<app.meads.judging.PhysicalTable>();
-        var physicalTables = judgingService.findPhysicalTablesByDivision(division.getId());
-        select.setItems(physicalTables);
-        select.setItemLabelGenerator(pt -> pt == null ? "" : pt.getLabel());
-        select.setEmptySelectionAllowed(true);
-        select.setEmptySelectionCaption(getTranslation("judging-admin.medal-rounds.physical-table.unassigned"));
-        if (config.getPhysicalTableId() != null) {
-            physicalTables.stream()
-                    .filter(pt -> pt.getId().equals(config.getPhysicalTableId()))
-                    .findFirst()
-                    .ifPresent(select::setValue);
-        }
-        var status = config.getMedalRoundStatus();
-        // Allowed while PENDING/READY; locked once ACTIVE/COMPLETE (mirrors Mode column).
-        select.setEnabled(status == MedalRoundStatus.PENDING || status == MedalRoundStatus.READY);
-        select.addValueChangeListener(e -> {
-            var newId = e.getValue() == null ? null : e.getValue().getId();
-            var oldId = config.getPhysicalTableId();
-            if (java.util.Objects.equals(newId, oldId)) {
-                return;
-            }
-            try {
-                judgingService.assignMedalRoundToPhysicalTable(
-                        config.getDivisionCategoryId(), newId, currentUserId);
-                config.assignToPhysicalTable(newId);
-                Notification.show(getTranslation("judging-admin.medal-rounds.physical-table.updated"))
-                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-            } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
-                refreshMedalRoundsTab();
-            }
-        });
-        return select;
-    }
-
-    /** Sets the per-category medal-round mode; allowed only before the round starts. */
-    public void changeMedalRoundMode(CategoryJudgingConfig config, MedalRoundMode mode) {
-        try {
-            judgingService.configureCategoryMedalRound(
-                    config.getDivisionCategoryId(), mode, currentUserId);
-            refreshMedalRoundsTab();
-            Notification.show(getTranslation("judging-admin.medal-rounds.mode-updated"))
-                    .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-        } catch (BusinessRuleException ex) {
-            Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
-                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
-        }
-    }
-
-    private String formatAwardsCounts(CategoryJudgingConfig config) {
-        var awards = judgingService.findMedalAwardsForCategory(config.getDivisionCategoryId());
-        long gold = awards.stream().filter(a -> a.getMedal() == Medal.GOLD).count();
-        long silver = awards.stream().filter(a -> a.getMedal() == Medal.SILVER).count();
-        long bronze = awards.stream().filter(a -> a.getMedal() == Medal.BRONZE).count();
-        long withheld = awards.stream().filter(a -> a.getMedal() == null).count();
-        return "G:" + gold + " S:" + silver + " B:" + bronze + " W:" + withheld;
-    }
-
-    private HorizontalLayout createMedalRoundActionsCell(CategoryJudgingConfig config) {
-        var status = config.getMedalRoundStatus();
-        boolean judgingActive = judging.getPhase() == JudgingPhase.ACTIVE;
-
-        var startButton = new Button(new Icon(VaadinIcon.PLAY));
-        startButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-        startButton.setEnabled(status == MedalRoundStatus.READY);
-        startButton.setTooltipText(getTranslation("judging-admin.medal-rounds.action.start"));
-        startButton.addClickListener(e -> openStartMedalRoundDialog(config));
-
-        var finalizeButton = new Button(new Icon(VaadinIcon.CHECK));
-        finalizeButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-        finalizeButton.setEnabled(status == MedalRoundStatus.ACTIVE);
-        finalizeButton.setTooltipText(getTranslation("judging-admin.medal-rounds.action.finalize"));
-        finalizeButton.addClickListener(e -> openFinalizeMedalRoundDialog(config));
-
-        var reopenButton = new Button(new Icon(VaadinIcon.REFRESH));
-        reopenButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-        reopenButton.setEnabled(status == MedalRoundStatus.COMPLETE && judgingActive);
-        reopenButton.setTooltipText(getTranslation("judging-admin.medal-rounds.action.reopen"));
-        reopenButton.addClickListener(e -> openReopenMedalRoundDialog(config));
-
-        var resetButton = new Button(new Icon(VaadinIcon.TRASH));
-        resetButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-        resetButton.setEnabled(status == MedalRoundStatus.ACTIVE && judgingActive);
-        resetButton.setTooltipText(getTranslation("judging-admin.medal-rounds.action.reset"));
-        resetButton.addClickListener(e -> openResetMedalRoundDialog(config));
-
-        var openLink = new Anchor("competitions/" + compShortName + "/divisions/" + divShortName
-                + "/medal-rounds/" + config.getDivisionCategoryId(),
-                getTranslation("judging-admin.medal-rounds.action.open"));
-        openLink.getElement().getStyle().set("align-self", "center");
-
-        var cell = new HorizontalLayout(startButton, finalizeButton, reopenButton, resetButton, openLink);
-        cell.setDefaultVerticalComponentAlignment(Alignment.CENTER);
-        return cell;
-    }
-
-    public void openStartMedalRoundDialog(CategoryJudgingConfig config) {
-        var dialog = new Dialog();
-        dialog.setHeaderTitle(getTranslation("judging-admin.medal-rounds.action.start.confirm.title",
-                formatCategory(config.getDivisionCategoryId())));
-        var confirmButton = new Button(getTranslation("judging-admin.medal-rounds.action.start"), e -> {
-            try {
-                judgingService.startMedalRound(config.getDivisionCategoryId(), currentUserId);
-                dialog.close();
-                refreshMedalRoundsTab();
-                Notification.show(getTranslation("judging-admin.medal-rounds.started"))
-                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-            } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
-            }
-        });
-        confirmButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        confirmButton.setDisableOnClick(true);
-        var cancel = new Button(getTranslation("button.cancel"), e -> dialog.close());
-        dialog.getFooter().add(cancel, confirmButton);
-        dialog.open();
-    }
-
-    public void openFinalizeMedalRoundDialog(CategoryJudgingConfig config) {
-        var dialog = new Dialog();
-        dialog.setHeaderTitle(getTranslation("judging-admin.medal-rounds.action.finalize.confirm.title",
-                formatCategory(config.getDivisionCategoryId())));
-        dialog.add(new Span(getTranslation("judging-admin.medal-rounds.action.finalize.confirm.body")));
-        var confirmButton = new Button(getTranslation("judging-admin.medal-rounds.action.finalize"), e -> {
-            try {
-                judgingService.completeMedalRound(config.getDivisionCategoryId(), currentUserId);
-                dialog.close();
-                refreshMedalRoundsTab();
-                Notification.show(getTranslation("judging-admin.medal-rounds.finalized"))
-                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-            } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
-            }
-        });
-        confirmButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        confirmButton.setDisableOnClick(true);
-        var cancel = new Button(getTranslation("button.cancel"), e -> dialog.close());
-        dialog.getFooter().add(cancel, confirmButton);
-        dialog.open();
-    }
-
-    public void openReopenMedalRoundDialog(CategoryJudgingConfig config) {
-        var dialog = new Dialog();
-        dialog.setHeaderTitle(getTranslation("judging-admin.medal-rounds.action.reopen.confirm.title",
-                formatCategory(config.getDivisionCategoryId())));
-        var confirmButton = new Button(getTranslation("judging-admin.medal-rounds.action.reopen"), e -> {
-            try {
-                judgingService.reopenMedalRound(config.getDivisionCategoryId(), currentUserId);
-                dialog.close();
-                refreshMedalRoundsTab();
-                Notification.show(getTranslation("judging-admin.medal-rounds.reopened"))
-                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-            } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
-            }
-        });
-        confirmButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        confirmButton.setDisableOnClick(true);
-        var cancel = new Button(getTranslation("button.cancel"), e -> dialog.close());
-        dialog.getFooter().add(cancel, confirmButton);
-        dialog.open();
-    }
-
-    public void openResetMedalRoundDialog(CategoryJudgingConfig config) {
-        var dialog = new Dialog();
-        dialog.setHeaderTitle(getTranslation("judging-admin.medal-rounds.action.reset.confirm.title",
-                formatCategory(config.getDivisionCategoryId())));
-        var awards = judgingService.findMedalAwardsForCategory(config.getDivisionCategoryId());
-        dialog.add(new Span(getTranslation("judging-admin.medal-rounds.action.reset.confirm.body",
-                awards.size())));
-        var confirmField = new TextField(getTranslation("judging-admin.medal-rounds.action.reset.confirm.label"));
-        confirmField.setId("reset-confirm-field");
-        confirmField.setWidthFull();
-        dialog.add(confirmField);
-
-        var resetButton = new Button(getTranslation("judging-admin.medal-rounds.action.reset"));
-        resetButton.addClickListener(e -> {
-            if (!"RESET".equals(confirmField.getValue())) {
-                confirmField.setInvalid(true);
-                confirmField.setErrorMessage(
-                        getTranslation("judging-admin.medal-rounds.action.reset.confirm.error"));
-                return;
-            }
-            try {
-                judgingService.resetMedalRound(config.getDivisionCategoryId(), currentUserId);
-                dialog.close();
-                refreshMedalRoundsTab();
-                Notification.show(getTranslation("judging-admin.medal-rounds.reset"))
-                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-            } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
-            }
-        });
-        resetButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
-        var cancel = new Button(getTranslation("button.cancel"), e -> dialog.close());
-        dialog.getFooter().add(cancel, resetButton);
-        dialog.open();
-    }
-
-    private void refreshMedalRoundsTab() {
-        // Simplest approach: rerender whole view to refresh tab bodies and cross-tab state
-        beforeEnterRefresh();
     }
 
     private void beforeEnterRefresh() {
@@ -970,19 +552,18 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         return warning;
     }
 
-    private String formatTablesProgress(CategoryJudgingConfig config) {
-        var tables = judgingService.findRoundsByJudgingId(judging.getId()).stream()
-                .filter(t -> config.getDivisionCategoryId().equals(t.getDivisionCategoryId()))
-                .toList();
-        long complete = tables.stream()
-                .filter(t -> t.getStatus() == JudgingRoundStatus.COMPLETE)
-                .count();
-        return complete + " / " + tables.size();
-    }
-
     private VerticalLayout createRoundsTab() {
         var tab = new VerticalLayout();
         tab.setPadding(false);
+
+        var topRow = new HorizontalLayout();
+        topRow.setDefaultVerticalComponentAlignment(Alignment.END);
+
+        var addButton = new Button(getTranslation("judging-admin.rounds.add"),
+                e -> openAddRoundDialog());
+        addButton.setId("add-round-button");
+        addButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        topRow.add(addButton);
 
         roundsTypeFilter = new ComboBox<>(getTranslation("judging-admin.rounds.type-filter.label"));
         roundsTypeFilter.setId("rounds-type-filter");
@@ -990,7 +571,9 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         roundsTypeFilter.setItemLabelGenerator(this::roundTypeFilterLabel);
         roundsTypeFilter.setValue(RoundTypeFilter.ALL);
         roundsTypeFilter.addValueChangeListener(e -> refreshRoundsGrid());
-        tab.add(roundsTypeFilter);
+        topRow.add(roundsTypeFilter);
+
+        tab.add(topRow);
 
         roundsGrid = new Grid<>(JudgingRound.class, false);
         roundsGrid.setId("rounds-grid");
@@ -1057,6 +640,103 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         };
     }
 
+    /** Package-public for tests — opened by the "+ Add Round" toolbar button on the Rounds tab. */
+    public void openAddRoundDialog() {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("judging-admin.rounds.add"));
+
+        var form = new VerticalLayout();
+        form.setPadding(false);
+
+        var typeSelect = new Select<RoundType>();
+        typeSelect.setId("add-round-type");
+        typeSelect.setLabel(getTranslation("judging-admin.rounds.column.type"));
+        typeSelect.setItems(RoundType.values());
+        typeSelect.setItemLabelGenerator(this::roundTypeLabel);
+        typeSelect.setValue(RoundType.SCORING);
+        typeSelect.setWidthFull();
+
+        var nameField = new TextField(getTranslation("judging-admin.tables.dialog.name"));
+        nameField.setId("add-round-name");
+        nameField.setWidthFull();
+        nameField.setMaxLength(120);
+
+        var categorySelect = new Select<DivisionCategory>();
+        categorySelect.setId("add-round-category");
+        categorySelect.setLabel(getTranslation("judging-admin.tables.dialog.category"));
+        categorySelect.setWidthFull();
+        var categories = competitionService.findJudgingCategories(division.getId());
+        categorySelect.setItems(categories);
+        categorySelect.setItemLabelGenerator(c -> c == null ? "" : c.getCode() + " — " + c.getName());
+
+        var physicalTableSelect = new Select<app.meads.judging.PhysicalTable>();
+        physicalTableSelect.setId("add-round-physical-table");
+        physicalTableSelect.setLabel(getTranslation("judging-admin.tables.dialog.physical-table"));
+        physicalTableSelect.setWidthFull();
+        var physicalTables = judgingService.findPhysicalTablesByDivision(division.getId());
+        physicalTableSelect.setItems(physicalTables);
+        physicalTableSelect.setItemLabelGenerator(pt -> pt == null ? "" : pt.getLabel());
+        if (physicalTables.isEmpty()) {
+            physicalTableSelect.setHelperText(getTranslation("judging-admin.tables.dialog.physical-table.empty"));
+        }
+
+        var datePicker = new DatePicker(getTranslation("judging-admin.tables.dialog.scheduled"));
+        datePicker.setWidthFull();
+
+        form.add(typeSelect, nameField, categorySelect, physicalTableSelect, datePicker);
+        dialog.add(form);
+
+        // MEDAL rounds derive their name from the category and don't need an admin-entered name.
+        typeSelect.addValueChangeListener(e -> nameField.setVisible(e.getValue() == RoundType.SCORING));
+
+        var saveButton = new Button(getTranslation("button.save"), e -> {
+            var type = typeSelect.getValue();
+            if (type == RoundType.SCORING) {
+                if (nameField.getValue() == null || nameField.getValue().isBlank()) {
+                    nameField.setInvalid(true);
+                    nameField.setErrorMessage(getTranslation("judging-admin.tables.dialog.name.error"));
+                    return;
+                }
+            }
+            if (categorySelect.getValue() == null) {
+                categorySelect.setInvalid(true);
+                categorySelect.setErrorMessage(getTranslation("judging-admin.tables.dialog.category.error"));
+                return;
+            }
+            if (physicalTableSelect.getValue() == null) {
+                physicalTableSelect.setInvalid(true);
+                physicalTableSelect.setErrorMessage(getTranslation("judging-admin.tables.dialog.physical-table.error"));
+                return;
+            }
+            try {
+                JudgingRound created;
+                if (type == RoundType.MEDAL) {
+                    created = judgingService.createMedalRound(judging.getId(),
+                            categorySelect.getValue().getId(), currentUserId);
+                } else {
+                    created = judgingService.createRound(judging.getId(), nameField.getValue().trim(),
+                            categorySelect.getValue().getId(), datePicker.getValue(), currentUserId);
+                }
+                judgingService.assignRoundToPhysicalTable(created.getId(),
+                        physicalTableSelect.getValue().getId(), currentUserId);
+                dialog.close();
+                refreshRoundsGrid();
+                Notification.show(getTranslation("judging-admin.rounds.added"))
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+        saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        saveButton.setDisableOnClick(true);
+
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
+
+        dialog.getFooter().add(cancelButton, saveButton);
+        dialog.open();
+    }
+
     private VerticalLayout createResultsTab() {
         var tab = new VerticalLayout();
         tab.setPadding(false);
@@ -1117,7 +797,39 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
                         + "/tables/" + round.getId();
             com.vaadin.flow.component.UI.getCurrent().navigate(url);
         });
-        return new HorizontalLayout(openButton);
+
+        if (round.getType() == RoundType.MEDAL) {
+            return new HorizontalLayout(openButton);
+        }
+
+        var editButton = new Button(new Icon(VaadinIcon.EDIT));
+        editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+        editButton.setTooltipText(getTranslation("judging-admin.tables.action.edit"));
+        editButton.addClickListener(e -> openEditTableDialog(round));
+
+        var startButton = new Button(new Icon(VaadinIcon.PLAY));
+        startButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+        startButton.setEnabled(round.getStatus() == JudgingRoundStatus.PENDING
+                || round.getStatus() == JudgingRoundStatus.READY);
+        startButton.setTooltipText(getTranslation("judging-admin.tables.action.start"));
+        startButton.addClickListener(e -> openStartTableDialog(round));
+
+        var assignJudgesButton = new Button(new Icon(VaadinIcon.USERS));
+        assignJudgesButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+        assignJudgesButton.setTooltipText(getTranslation("judging-admin.tables.action.assign-judges"));
+        assignJudgesButton.addClickListener(e -> openAssignJudgesDialog(round));
+
+        var deleteButton = new Button(new Icon(VaadinIcon.TRASH));
+        deleteButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+        boolean canDelete = round.getStatus() == JudgingRoundStatus.PENDING
+                && round.getAssignments().isEmpty();
+        deleteButton.setEnabled(canDelete);
+        deleteButton.setTooltipText(canDelete
+                ? getTranslation("judging-admin.tables.action.delete")
+                : getTranslation("judging-admin.tables.action.delete.blocked"));
+        deleteButton.addClickListener(e -> openDeleteTableDialog(round));
+
+        return new HorizontalLayout(editButton, startButton, assignJudgesButton, deleteButton, openButton);
     }
 
     private VerticalLayout createBosTab() {

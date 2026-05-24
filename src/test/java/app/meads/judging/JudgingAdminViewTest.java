@@ -209,10 +209,8 @@ class JudgingAdminViewTest {
         assertThat(heading.getText()).contains("Judging Admin");
 
         var tabSheet = _get(TabSheet.class);
-        // Physical Tables, Tables, Medal Rounds, Best of Show, Rounds, Results
-        // (Rounds + Results are appended in cycle 6a/6b; old Tables + Medal
-        // Rounds tabs will be removed in cycle 6c, restoring count to 4.)
-        assertThat(tabSheet.getTabCount()).isEqualTo(6);
+        // Final tab layout after cycle 6c: Physical Tables / Rounds / Results / Best of Show.
+        assertThat(tabSheet.getTabCount()).isEqualTo(4);
     }
 
     @Test
@@ -241,7 +239,7 @@ class JudgingAdminViewTest {
                 + "/divisions/" + division.getShortName() + "/judging-admin");
 
         var tabSheet = _get(TabSheet.class);
-        tabSheet.setSelectedIndex(5); // Results tab (appended after Rounds in cycle 6b)
+        tabSheet.setSelectedIndex(2); // Results tab (after cycle 6c renumbering)
 
         var grids = _find(Grid.class);
         var resultsGrid = grids.stream()
@@ -273,7 +271,7 @@ class JudgingAdminViewTest {
                 + "/divisions/" + division.getShortName() + "/judging-admin");
 
         var tabSheet = _get(TabSheet.class);
-        tabSheet.setSelectedIndex(4); // Rounds tab (appended after BOS in cycle 6a)
+        tabSheet.setSelectedIndex(1); // Rounds tab (after cycle 6c renumbering)
 
         var grids = _find(Grid.class);
         var roundsGrid = grids.stream()
@@ -290,132 +288,6 @@ class JudgingAdminViewTest {
         var typeFilter = _get(com.vaadin.flow.component.combobox.ComboBox.class,
                 spec -> spec.withId("rounds-type-filter"));
         assertThat(typeFilter).isNotNull();
-    }
-
-    @Test
-    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    @SuppressWarnings("unchecked")
-    void shouldRenderTablesGridAndAddTableButtonOnTablesTab() {
-        advanceDivisionToJudging();
-
-        UI.getCurrent().navigate("competitions/" + competition.getShortName()
-                + "/divisions/" + division.getShortName() + "/judging-admin");
-
-        var tabSheet = _get(TabSheet.class);
-        tabSheet.setSelectedIndex(1); // Tables tab (index shifted by Physical Tables tab)
-
-        var addButton = _get(Button.class, spec -> spec.withText("Add Table"));
-        assertThat(addButton).isNotNull();
-
-        var grids = _find(Grid.class);
-        var tablesGrid = grids.stream()
-                .filter(g -> "tables-grid".equals(g.getId().orElse(null)))
-                .findFirst()
-                .orElseThrow(() -> new AssertionError("Tables grid not found"));
-
-        var headers = tablesGrid.getColumns().stream()
-                .map(c -> ((Grid.Column<?>) c).getHeaderText())
-                .toList();
-        assertThat(headers).containsExactly("Name", "Category", "Physical Table", "Status",
-                "Judges", "Scheduled", "Scoresheets", "Actions");
-    }
-
-    @Test
-    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldStartMedalRoundWhenStartDialogConfirmed() {
-        advanceDivisionToJudging();
-        var category = divisionCategoryRepository.save(new DivisionCategory(
-                division.getId(), null, "M1A", "Dry Mead", "Desc",
-                null, 1, CategoryScope.JUDGING));
-
-        UI.getCurrent().navigate("competitions/" + competition.getShortName()
-                + "/divisions/" + division.getShortName() + "/judging-admin");
-
-        // The view's render lazily created a default-COMPARATIVE PENDING config; advance it to READY.
-        var config = categoryJudgingConfigRepository.findByDivisionCategoryId(category.getId())
-                .orElseThrow();
-        config.markReady();
-        config = categoryJudgingConfigRepository.save(config);
-
-        var view = _get(JudgingAdminView.class);
-        view.openStartMedalRoundDialog(config);
-        _click(_get(Button.class, spec -> spec.withText("Start")));
-
-        var refreshed = categoryJudgingConfigRepository.findByDivisionCategoryId(category.getId())
-                .orElseThrow();
-        assertThat(refreshed.getMedalRoundStatus()).isEqualTo(MedalRoundStatus.ACTIVE);
-    }
-
-    @Test
-    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldBlockResetMedalRoundUntilTypingResetExactly() {
-        advanceDivisionToJudging();
-        var category = divisionCategoryRepository.save(new DivisionCategory(
-                division.getId(), null, "M1A", "Dry Mead", "Desc",
-                null, 1, CategoryScope.JUDGING));
-
-        UI.getCurrent().navigate("competitions/" + competition.getShortName()
-                + "/divisions/" + division.getShortName() + "/judging-admin");
-
-        // Reset requires Judging.phase=ACTIVE.
-        var judging = judgingRepository.findByDivisionId(division.getId()).orElseThrow();
-        judging.markActive();
-        judgingRepository.save(judging);
-
-        var config = categoryJudgingConfigRepository.findByDivisionCategoryId(category.getId())
-                .orElseThrow();
-        config.markReady();
-        config.startMedalRound();
-        config = categoryJudgingConfigRepository.save(config);
-
-        var view = _get(JudgingAdminView.class);
-        view.openResetMedalRoundDialog(config);
-
-        // Click Reset without typing — should NOT call service (status stays ACTIVE).
-        _click(_get(Button.class, spec -> spec.withText("Reset")));
-        var stillActive = categoryJudgingConfigRepository.findByDivisionCategoryId(category.getId())
-                .orElseThrow();
-        assertThat(stillActive.getMedalRoundStatus()).isEqualTo(MedalRoundStatus.ACTIVE);
-
-        // Type RESET and click — now resets to READY.
-        var confirmField = _get(TextField.class, spec -> spec.withId("reset-confirm-field"));
-        confirmField.setValue("RESET");
-        _click(_get(Button.class, spec -> spec.withText("Reset")));
-        var afterReset = categoryJudgingConfigRepository.findByDivisionCategoryId(category.getId())
-                .orElseThrow();
-        assertThat(afterReset.getMedalRoundStatus()).isEqualTo(MedalRoundStatus.READY);
-    }
-
-    @Test
-    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    @SuppressWarnings("unchecked")
-    void shouldRenderMedalRoundsGridWithCategoryConfigs() {
-        advanceDivisionToJudging();
-        divisionCategoryRepository.save(new DivisionCategory(
-                division.getId(), null, "M1A", "Dry Mead", "Desc",
-                null, 1, CategoryScope.JUDGING));
-        divisionCategoryRepository.save(new DivisionCategory(
-                division.getId(), null, "M1B", "Medium Mead", "Desc",
-                null, 2, CategoryScope.JUDGING));
-
-        UI.getCurrent().navigate("competitions/" + competition.getShortName()
-                + "/divisions/" + division.getShortName() + "/judging-admin");
-
-        var tabSheet = _get(TabSheet.class);
-        tabSheet.setSelectedIndex(2); // Medal Rounds tab (index shifted)
-
-        var grids = _find(Grid.class);
-        var medalGrid = grids.stream()
-                .filter(g -> "medal-rounds-grid".equals(g.getId().orElse(null)))
-                .findFirst()
-                .orElseThrow(() -> new AssertionError("Medal rounds grid not found"));
-        var rows = medalGrid.getGenericDataView().getItems().toList();
-        assertThat(rows).hasSize(2);
-
-        var headers = medalGrid.getColumns().stream()
-                .map(c -> ((Grid.Column<?>) c).getHeaderText())
-                .toList();
-        assertThat(headers).containsExactly("Category", "Mode", "Physical Table", "Status", "Tables", "Awards", "Actions");
     }
 
     // === Physical Tables tab UI tests ===
@@ -560,29 +432,6 @@ class JudgingAdminViewTest {
         judgingService.assignMedalRoundToPhysicalTable(category.getId(), null, admin.getId());
         var cleared = categoryJudgingConfigRepository.findByDivisionCategoryId(category.getId()).orElseThrow();
         assertThat(cleared.getPhysicalTableId()).isNull();
-    }
-
-    @Test
-    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldChangeMedalRoundModeWhenAdminSelectsNewMode() {
-        advanceDivisionToJudging();
-        var category = divisionCategoryRepository.save(new DivisionCategory(
-                division.getId(), null, "M1A", "Dry Mead", "Desc",
-                null, 1, CategoryScope.JUDGING));
-
-        UI.getCurrent().navigate("competitions/" + competition.getShortName()
-                + "/divisions/" + division.getShortName() + "/judging-admin");
-
-        var config = categoryJudgingConfigRepository.findByDivisionCategoryId(category.getId())
-                .orElseThrow();
-        assertThat(config.getMedalRoundMode()).isEqualTo(MedalRoundMode.COMPARATIVE);
-
-        var view = _get(JudgingAdminView.class);
-        view.changeMedalRoundMode(config, MedalRoundMode.SCORE_BASED);
-
-        var refreshed = categoryJudgingConfigRepository.findByDivisionCategoryId(category.getId())
-                .orElseThrow();
-        assertThat(refreshed.getMedalRoundMode()).isEqualTo(MedalRoundMode.SCORE_BASED);
     }
 
     @Test
@@ -754,7 +603,7 @@ class JudgingAdminViewTest {
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     @SuppressWarnings("unchecked")
-    void shouldCreateTableWhenAddTableDialogSaved() {
+    void shouldCreateScoringRoundWhenAddRoundDialogSaved() {
         advanceDivisionToJudging();
         var category = divisionCategoryRepository.save(new DivisionCategory(
                 division.getId(), null, "M1A", "Dry Mead", "Dry mead category",
@@ -768,22 +617,22 @@ class JudgingAdminViewTest {
         var physicalTable = judgingService.createPhysicalTable(division.getId(), "Table 1", admin.getId());
 
         var tabSheet = _get(TabSheet.class);
-        tabSheet.setSelectedIndex(1); // Tables tab (Physical Tables is now index 0)
+        tabSheet.setSelectedIndex(1); // Rounds tab
 
-        _click(_get(Button.class, spec -> spec.withText("Add Table")));
+        _click(_get(Button.class, spec -> spec.withId("add-round-button")));
 
         var dialog = _get(Dialog.class);
         assertThat(dialog.isOpened()).isTrue();
 
-        var nameField = _get(TextField.class, spec -> spec.withId("add-table-name"));
+        var nameField = _get(TextField.class, spec -> spec.withId("add-round-name"));
         nameField.setValue("Round 1");
 
         var categorySelect = _get(com.vaadin.flow.component.select.Select.class,
-                spec -> spec.withId("add-table-category"));
+                spec -> spec.withId("add-round-category"));
         categorySelect.setValue(category);
 
         var physicalTableSelect = _get(com.vaadin.flow.component.select.Select.class,
-                spec -> spec.withId("add-table-physical-table"));
+                spec -> spec.withId("add-round-physical-table"));
         physicalTableSelect.setValue(physicalTable);
 
         _click(_get(Button.class, spec -> spec.withText("Save")));

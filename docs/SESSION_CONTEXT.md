@@ -412,7 +412,8 @@ What landed:
      on top of `b3ade6e Pause v0.4.0`, including the cycle-6a commit
      `… Cycle 6a: Add Rounds tab to JudgingAdminView`.
    - `mvn test -Dsurefire.useFile=false 2>&1 | tail -10` should report
-     **1162 tests passing** (was 1161 before cycle 6a).
+     **1158 tests passing** (was 1161 before cycle 6 series; net -3
+     across 6a/6b/6c due to obsolete-test deletion in 6c).
    - `feature/judging-module` is at `0.4.0-SNAPSHOT`. Branch is in
      sync with `origin/feature/judging-module`.
 
@@ -508,27 +509,66 @@ What landed:
    count assertion updated 5 → 6 (will revert to 4 in cycle 6c).
    **1163 tests passing** (+1).
 
-   **What cycle #6c needs to do:**
-   - Migrate `MedalRoundView` to read status from medal `JudgingRound`
-     (with backing-data sync on `startMedalRound`/etc. as part of the
-     migration, OR new service methods that take `JudgingRound` ID).
-   - Delete the **Tables tab** (index 1) and **Medal Rounds tab**
-     (index 2) — functionality moves to the Rounds tab + per-round
-     views. The new tab order becomes Physical Tables / Rounds /
-     Results / BOS (indices 0–3).
-   - Fix the ~15-20 view tests that depend on the old tab indices.
-     Several tests on JudgingAdminViewTest hardcode
-     `setSelectedIndex(1)` / `setSelectedIndex(2)` / `setSelectedIndex(3)`
-     — those need to be renumbered to point at the surviving tabs
-     (or removed where they were testing soon-to-be-deleted features
-     that have moved to other places).
-   - Drop the V22 column contraction (medal_round_status,
-     physical_table_id, rename medal_round_mode → mode) from
-     `category_judging_configs` once `MedalRoundView` no longer reads
-     them.
-   - Delete unused service methods: `startMedalRound`,
+   **Cycle 6c progress (2026-05-24):** ✅ **DONE.** Tab restructure
+   complete. Final tab layout is now **Physical Tables (0) / Rounds (1) /
+   Results (2) / BOS (3)** — 4 tabs. Changes:
+   - **Add Round button + per-row SCORING actions moved to Rounds tab.**
+     New `add-round-button` opens an `openAddRoundDialog()` with a Type
+     selector (SCORING/MEDAL). SCORING path uses
+     `judgingService.createRound`; MEDAL path uses `createMedalRound`
+     (which sources mode from `CategoryJudgingConfig.medalRoundMode`).
+     Per-row actions on the Rounds tab: SCORING rounds get
+     Edit/Start/Assign-Judges/Delete/Open buttons; MEDAL rounds get
+     just an Open button (full management lives in MedalRoundView).
+   - **Deleted from JudgingAdminView**: `createTablesTab`,
+     `refreshTablesGrid`, `tablesGrid` field, `formatScoresheetCounts`,
+     `openAddTableDialog`, `createActionsCell`, `createMedalRoundsTab`,
+     `createModeCell`, `createMedalRoundPhysicalTableCell`,
+     `changeMedalRoundMode`, `formatAwardsCounts`,
+     `createMedalRoundActionsCell`, `openStartMedalRoundDialog`,
+     `openFinalizeMedalRoundDialog`, `openReopenMedalRoundDialog`,
+     `openResetMedalRoundDialog`, `refreshMedalRoundsTab`,
+     `formatTablesProgress`. Two `tabSheet.add(...)` lines removed.
+     Import of `MedalRoundMode` removed (no longer needed).
+   - **5 obsolete tests deleted**: `shouldRenderTablesGridAndAddTableButtonOnTablesTab`,
+     `shouldStartMedalRoundWhenStartDialogConfirmed`,
+     `shouldBlockResetMedalRoundUntilTypingResetExactly`,
+     `shouldRenderMedalRoundsGridWithCategoryConfigs`,
+     `shouldChangeMedalRoundModeWhenAdminSelectsNewMode`. Their coverage
+     is preserved in `JudgingServiceMedalRoundTest` (service) +
+     `MedalRoundViewTest` (UI).
+   - **`shouldCreateTableWhenAddTableDialogSaved`** renamed to
+     `shouldCreateScoringRoundWhenAddRoundDialogSaved` and updated to
+     use the new Rounds tab + Add Round dialog (`add-round-button`,
+     `add-round-name`, `add-round-category`, `add-round-physical-table`).
+   - **Tab index assertions** updated: tab count `6 → 4`;
+     `setSelectedIndex(5)` (Results) → 2; `setSelectedIndex(4)`
+     (Rounds) → 1; BOS tests at index 3 unchanged. All other tests
+     pass without modification.
+   - **i18n keys**: `judging-admin.rounds.add` (+ `Add Round` label)
+     and `judging-admin.rounds.added` (success notification) added in
+     EN/PT/ES/IT/PL.
+   - **1158 tests passing** (was 1163, -5 from obsolete-test deletion).
+
+   **DEFERRED to a follow-up cleanup cycle** (post-walkthrough):
+   - **MedalRoundView internal migration** to read status from medal
+     `JudgingRound` instead of `CategoryJudgingConfig.medalRoundStatus`.
+     The cascade still auto-creates the medal JudgingRound (READY state)
+     but MedalRoundView still reads/writes `CategoryJudgingConfig` for
+     status display + start/finalize/reopen/reset operations. This is
+     not user-visible — the JudgingRound exists in the DB and is
+     status-synced via the cascade. Full migration would require
+     dual-write on `startMedalRound`/`completeMedalRound`/`reopenMedalRound`/
+     `resetMedalRound` service methods + MedalRoundView read path
+     change.
+   - **V22 column contraction**: drop `medal_round_status`,
+     `physical_table_id` from `category_judging_configs`; rename
+     `medal_round_mode` → `mode`. Blocked by MedalRoundView migration.
+   - **Delete unused service methods**: `startMedalRound`,
      `completeMedalRound`, `reopenMedalRound`, `resetMedalRound`,
-     `assignMedalRoundToPhysicalTable`.
+     `assignMedalRoundToPhysicalTable`. Blocked by MedalRoundView
+     migration. Their replacements operate on `JudgingRound` IDs
+     (`startRound` already exists for both types).
 
 **Tasks set up across this session** (with dependencies):
 - #1 Update redesign-doc with resolved decisions — **COMPLETE**
