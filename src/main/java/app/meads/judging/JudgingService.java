@@ -33,10 +33,6 @@ public interface JudgingService {
     void assignRoundToPhysicalTable(@NotNull UUID roundId, @NotNull UUID physicalTableId,
                                      @NotNull UUID adminUserId);
 
-    /** Assign or clear (null) the physical table for a category's medal round. */
-    void assignMedalRoundToPhysicalTable(@NotNull UUID divisionCategoryId, UUID physicalTableId,
-                                          @NotNull UUID adminUserId);
-
     // === Round CRUD ===
     JudgingRound createRound(@NotNull UUID judgingId,
                              @NotBlank String name,
@@ -112,11 +108,8 @@ public interface JudgingService {
     java.util.Optional<JudgingRound> findMedalRoundByCategoryId(@NotNull UUID divisionCategoryId);
 
     /**
-     * Effective medal-round status for a category. Prefers the medal
-     * {@link JudgingRound}'s status; falls back to the legacy
-     * {@link CategoryJudgingConfig#getMedalRoundStatus()} during the migration
-     * (some test setups still mutate the config directly). Returns empty if
-     * neither is configured.
+     * Medal-round status for a category, sourced from the medal
+     * {@link JudgingRound}. Returns empty when no medal round exists yet.
      */
     java.util.Optional<JudgingRoundStatus> getEffectiveMedalRoundStatus(@NotNull UUID divisionCategoryId);
 
@@ -149,24 +142,13 @@ public interface JudgingService {
     java.util.Optional<BosPlacement> findBosPlacementByEntryId(@NotNull UUID entryId);
 
     // === Medal round transitions ===
-    void startMedalRound(@NotNull UUID divisionCategoryId, @NotNull UUID adminUserId);
-
-    void completeMedalRound(@NotNull UUID divisionCategoryId, @NotNull UUID adminUserId);
-
-    void reopenMedalRound(@NotNull UUID divisionCategoryId, @NotNull UUID adminUserId);
-
-    void resetMedalRound(@NotNull UUID divisionCategoryId, @NotNull UUID adminUserId);
 
     /**
-     * Round-id variants of the medal-round transitions. Operate directly on
-     * the medal {@link JudgingRound} rather than going through the legacy
-     * {@link CategoryJudgingConfig}. New-model API; the
-     * {@code *MedalRound(divisionCategoryId, ...)} methods above are kept
-     * during the migration window and will be deleted once all callers move
-     * to these {@code *ById} variants.
+     * Marks a medal {@link JudgingRound} COMPLETE. Admin-triggered Finalize.
      */
     void completeMedalRoundById(@NotNull UUID roundId, @NotNull UUID adminUserId);
 
+    /** Reopens a COMPLETE medal round back to ACTIVE. */
     void reopenMedalRoundById(@NotNull UUID roundId, @NotNull UUID adminUserId);
 
     /**

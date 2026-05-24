@@ -63,7 +63,6 @@ class CategoryJudgingConfigRepositoryTest {
         assertThat(found).isPresent();
         assertThat(found.get().getDivisionCategoryId()).isEqualTo(category.getId());
         assertThat(found.get().getMedalRoundMode()).isEqualTo(MedalRoundMode.COMPARATIVE);
-        assertThat(found.get().getMedalRoundStatus()).isEqualTo(MedalRoundStatus.PENDING);
         assertThat(found.get().getCreatedAt()).isNotNull();
         assertThat(found.get().getUpdatedAt()).isNull();
     }

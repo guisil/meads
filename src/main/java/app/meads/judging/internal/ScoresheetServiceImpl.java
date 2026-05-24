@@ -10,7 +10,6 @@ import app.meads.judging.Judging;
 import app.meads.judging.JudgeProfileService;
 import app.meads.judging.JudgingRound;
 import app.meads.judging.JudgingRoundStatus;
-import app.meads.judging.MedalRoundStatus;
 import app.meads.judging.RoundType;
 import app.meads.judging.Scoresheet;
 import app.meads.judging.ScoresheetRevertedEvent;
@@ -353,13 +352,6 @@ public class ScoresheetServiceImpl implements ScoresheetService {
             medalRound.markReady();
             judgingRoundRepository.save(medalRound);
         }
-        // Legacy flow: still drive CategoryJudgingConfig.medalRoundStatus so the
-        // existing MedalRoundView / JudgingAdminView Medal Rounds tab keep
-        // working until they migrate to the medal JudgingRound (cycle #4).
-        if (config.getMedalRoundStatus() == MedalRoundStatus.PENDING) {
-            config.markReady();
-            categoryConfigRepository.save(config);
-        }
     }
 
     private String resolveDefaultCommentLanguage(UUID judgeUserId, Scoresheet sheet) {
@@ -402,46 +394,29 @@ public class ScoresheetServiceImpl implements ScoresheetService {
     }
 
     /**
-     * Effective medal-round status for a category. Prefers the medal
-     * {@link JudgingRound}'s status; falls back to the legacy
-     * {@link CategoryJudgingConfig#getMedalRoundStatus()} for backward
-     * compatibility with test setups that mutate the config directly.
-     * Returns {@code null} when neither is configured.
+     * Effective medal-round status for a category, sourced from the medal
+     * {@link JudgingRound}. Returns {@code null} when no medal round exists.
      */
     private JudgingRoundStatus effectiveMedalRoundStatus(UUID divisionCategoryId) {
-        var medalRound = judgingRoundRepository
-                .findFirstByDivisionCategoryIdAndType(divisionCategoryId, RoundType.MEDAL);
-        if (medalRound.isPresent()) {
-            return medalRound.get().getStatus();
-        }
-        return categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId)
-                .map(c -> switch (c.getMedalRoundStatus()) {
-                    case PENDING -> JudgingRoundStatus.PENDING;
-                    case READY -> JudgingRoundStatus.READY;
-                    case ACTIVE -> JudgingRoundStatus.ACTIVE;
-                    case COMPLETE -> JudgingRoundStatus.COMPLETE;
-                })
+        return judgingRoundRepository
+                .findFirstByDivisionCategoryIdAndType(divisionCategoryId, RoundType.MEDAL)
+                .map(JudgingRound::getStatus)
                 .orElse(null);
     }
 
     /**
      * Used after a table reopens from COMPLETE: if the category's medal round
      * was READY (i.e., waiting on this table's completion), drop it back to
-     * PENDING. Dual-writes legacy CJC.medalRoundStatus during the migration.
+     * PENDING.
      */
     private void retreatMedalRoundFromReady(UUID divisionCategoryId) {
-        var medalRound = judgingRoundRepository
-                .findFirstByDivisionCategoryIdAndType(divisionCategoryId, RoundType.MEDAL);
-        if (medalRound.isPresent() && medalRound.get().getStatus() == JudgingRoundStatus.READY) {
-            medalRound.get().markPending();
-            judgingRoundRepository.save(medalRound.get());
-        }
-        categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId).ifPresent(config -> {
-            if (config.getMedalRoundStatus() == MedalRoundStatus.READY) {
-                config.markPending();
-                categoryConfigRepository.save(config);
-            }
-        });
+        judgingRoundRepository
+                .findFirstByDivisionCategoryIdAndType(divisionCategoryId, RoundType.MEDAL)
+                .filter(r -> r.getStatus() == JudgingRoundStatus.READY)
+                .ifPresent(r -> {
+                    r.markPending();
+                    judgingRoundRepository.save(r);
+                });
     }
 
     private void requireNotFrozenForSheet(Scoresheet sheet) {

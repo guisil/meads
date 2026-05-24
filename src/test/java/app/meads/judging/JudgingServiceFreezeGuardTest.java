@@ -137,35 +137,36 @@ class JudgingServiceFreezeGuardTest {
     }
 
     @Test
-    void shouldRejectStartMedalRoundWhenResultsPublished() {
-        var config = mock(CategoryJudgingConfig.class);
-        given(categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId))
-                .willReturn(Optional.of(config));
-        assertFrozen(() -> service.startMedalRound(divisionCategoryId, adminUserId));
+    void shouldRejectCompleteMedalRoundByIdWhenResultsPublished() {
+        var medalRoundId = UUID.randomUUID();
+        var medalRound = mock(JudgingRound.class);
+        given(medalRound.getType()).willReturn(RoundType.MEDAL);
+        given(medalRound.getJudgingId()).willReturn(judging.getId());
+        given(judgingRoundRepository.findById(medalRoundId)).willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        assertFrozen(() -> service.completeMedalRoundById(medalRoundId, adminUserId));
     }
 
     @Test
-    void shouldRejectCompleteMedalRoundWhenResultsPublished() {
-        var config = mock(CategoryJudgingConfig.class);
-        given(categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId))
-                .willReturn(Optional.of(config));
-        assertFrozen(() -> service.completeMedalRound(divisionCategoryId, adminUserId));
+    void shouldRejectReopenMedalRoundByIdWhenResultsPublished() {
+        var medalRoundId = UUID.randomUUID();
+        var medalRound = mock(JudgingRound.class);
+        given(medalRound.getType()).willReturn(RoundType.MEDAL);
+        given(medalRound.getJudgingId()).willReturn(judging.getId());
+        given(judgingRoundRepository.findById(medalRoundId)).willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        assertFrozen(() -> service.reopenMedalRoundById(medalRoundId, adminUserId));
     }
 
     @Test
-    void shouldRejectReopenMedalRoundWhenResultsPublished() {
-        var config = mock(CategoryJudgingConfig.class);
-        given(categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId))
-                .willReturn(Optional.of(config));
-        assertFrozen(() -> service.reopenMedalRound(divisionCategoryId, adminUserId));
-    }
-
-    @Test
-    void shouldRejectResetMedalRoundWhenResultsPublished() {
-        var config = mock(CategoryJudgingConfig.class);
-        given(categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId))
-                .willReturn(Optional.of(config));
-        assertFrozen(() -> service.resetMedalRound(divisionCategoryId, adminUserId));
+    void shouldRejectResetMedalRoundByIdWhenResultsPublished() {
+        var medalRoundId = UUID.randomUUID();
+        var medalRound = mock(JudgingRound.class);
+        given(medalRound.getType()).willReturn(RoundType.MEDAL);
+        given(medalRound.getJudgingId()).willReturn(judging.getId());
+        given(judgingRoundRepository.findById(medalRoundId)).willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        assertFrozen(() -> service.resetMedalRoundById(medalRoundId, adminUserId));
     }
 
     @Test

@@ -38,6 +38,7 @@ class AwardsModuleTest {
     @Autowired ScoresheetService scoresheetService;
     @Autowired EntryService entryService;
     @Autowired UserService userService;
+    @Autowired app.meads.judging.internal.JudgingRoundRepository judgingRoundRepository;
 
     @Test
     void shouldBootstrapAwardsModule() {
@@ -115,8 +116,15 @@ class AwardsModuleTest {
         assertThat(sheets).hasSize(1);
         fillAndSubmit(sheets.getFirst(), judge1.getId());
 
-        judgingService.startMedalRound(judgingCategory.getId(), admin.getId());
-        judgingService.completeMedalRound(judgingCategory.getId(), admin.getId());
+        // Cascade auto-created a medal JudgingRound at READY when the scoring
+        // round COMPLETEd. Drive it through ACTIVE → COMPLETE for this test.
+        var medalRound = judgingService.findMedalRoundByCategoryId(judgingCategory.getId())
+                .orElseThrow(() -> new AssertionError("Cascade didn't create a medal round"));
+        // Bring READY → ACTIVE manually (no service method for this yet — admin
+        // would normally trigger via a future Start button in MedalRoundView).
+        medalRound.start();
+        judgingRoundRepository.save(medalRound);
+        judgingService.completeMedalRoundById(medalRound.getId(), admin.getId());
         judgingService.startBos(division.getId(), admin.getId());
         judgingService.completeBos(division.getId(), admin.getId());
 

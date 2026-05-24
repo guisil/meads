@@ -91,11 +91,38 @@ class JudgingServiceMedalsBosTest {
         return entry;
     }
 
-    private CategoryJudgingConfig activeConfig() {
-        var config = new CategoryJudgingConfig(divisionCategoryId, MedalRoundMode.COMPARATIVE);
-        config.markReady();
-        config.startMedalRound();
-        return config;
+    /** Stubs an ACTIVE medal JudgingRound for the test's divisionCategoryId. */
+    private void givenActiveMedalRoundForCategory() {
+        var medalRound = new JudgingRound(judging.getId(), "Medal", divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.COMPARATIVE);
+        medalRound.markReady();
+        medalRound.start();
+        given(judgingRoundRepository
+                .findFirstByDivisionCategoryIdAndType(divisionCategoryId, RoundType.MEDAL))
+                .willReturn(Optional.of(medalRound));
+    }
+
+    /** Stubs an ACTIVE medal JudgingRound for an arbitrary category id. */
+    private void givenActiveMedalRoundForCategory(UUID catId) {
+        var medalRound = new JudgingRound(judging.getId(), "Medal", catId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.COMPARATIVE);
+        medalRound.markReady();
+        medalRound.start();
+        given(judgingRoundRepository
+                .findFirstByDivisionCategoryIdAndType(catId, RoundType.MEDAL))
+                .willReturn(Optional.of(medalRound));
+    }
+
+    /** Stubs a COMPLETE medal JudgingRound for the given category id. */
+    private void givenCompleteMedalRoundForCategory(UUID catId) {
+        var medalRound = new JudgingRound(judging.getId(), "Medal", catId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.COMPARATIVE);
+        medalRound.markReady();
+        medalRound.start();
+        medalRound.markComplete();
+        given(judgingRoundRepository
+                .findFirstByDivisionCategoryIdAndType(catId, RoundType.MEDAL))
+                .willReturn(Optional.of(medalRound));
     }
 
     // === Medals ===
@@ -105,8 +132,7 @@ class JudgingServiceMedalsBosTest {
         var entry = mockEntry();
         given(entryService.findEntryById(entryId)).willReturn(entry);
         given(coiCheckService.check(adminUserId, entryId)).willReturn(CoiResult.clear());
-        given(categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId))
-                .willReturn(Optional.of(activeConfig()));
+        givenActiveMedalRoundForCategory();
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
         given(medalAwardRepository.findByEntryId(entryId)).willReturn(Optional.empty());
         given(medalAwardRepository.save(any(MedalAward.class)))
@@ -135,11 +161,13 @@ class JudgingServiceMedalsBosTest {
     @Test
     void shouldRejectRecordMedalWhenMedalRoundNotActive() {
         var entry = mockEntry();
-        var pendingConfig = new CategoryJudgingConfig(divisionCategoryId, MedalRoundMode.COMPARATIVE);
+        var pendingMedalRound = new JudgingRound(judging.getId(), "Medal", divisionCategoryId, null);
+        pendingMedalRound.convertToMedalRound(MedalRoundMode.COMPARATIVE);
         given(entryService.findEntryById(entryId)).willReturn(entry);
         given(coiCheckService.check(adminUserId, entryId)).willReturn(CoiResult.clear());
-        given(categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId))
-                .willReturn(Optional.of(pendingConfig));
+        given(judgingRoundRepository
+                .findFirstByDivisionCategoryIdAndType(divisionCategoryId, RoundType.MEDAL))
+                .willReturn(Optional.of(pendingMedalRound));
 
         assertThatThrownBy(() -> service.recordMedal(entryId, Medal.GOLD, adminUserId))
                 .isInstanceOf(BusinessRuleException.class)
@@ -153,8 +181,7 @@ class JudgingServiceMedalsBosTest {
                 Medal.SILVER, adminUserId);
         given(entryService.findEntryById(entryId)).willReturn(entry);
         given(coiCheckService.check(adminUserId, entryId)).willReturn(CoiResult.clear());
-        given(categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId))
-                .willReturn(Optional.of(activeConfig()));
+        givenActiveMedalRoundForCategory();
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
         given(medalAwardRepository.findByEntryId(entryId)).willReturn(Optional.of(existing));
         given(medalAwardRepository.save(any(MedalAward.class)))
@@ -171,8 +198,7 @@ class JudgingServiceMedalsBosTest {
                 Medal.SILVER, adminUserId);
         given(medalAwardRepository.findById(existing.getId())).willReturn(Optional.of(existing));
         given(coiCheckService.check(adminUserId, entryId)).willReturn(CoiResult.clear());
-        given(categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId))
-                .willReturn(Optional.of(activeConfig()));
+        givenActiveMedalRoundForCategory();
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
         given(medalAwardRepository.save(any(MedalAward.class)))
                 .willAnswer(inv -> inv.getArgument(0));
@@ -189,8 +215,7 @@ class JudgingServiceMedalsBosTest {
         var existing = new MedalAward(entryId, divisionId, divisionCategoryId,
                 Medal.GOLD, adminUserId);
         given(medalAwardRepository.findById(existing.getId())).willReturn(Optional.of(existing));
-        given(categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId))
-                .willReturn(Optional.of(activeConfig()));
+        givenActiveMedalRoundForCategory();
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
 
         service.deleteMedalAward(existing.getId(), adminUserId);
@@ -203,16 +228,11 @@ class JudgingServiceMedalsBosTest {
     @Test
     void shouldStartBosWhenAllCategoriesComplete() {
         judging.markActive();
-        var completeConfig = new CategoryJudgingConfig(category.getId(), MedalRoundMode.COMPARATIVE);
-        completeConfig.markReady();
-        completeConfig.startMedalRound();
-        completeConfig.completeMedalRound();
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
         given(judgingRepository.findByDivisionId(divisionId)).willReturn(Optional.of(judging));
         given(competitionService.findDivisionCategories(divisionId))
                 .willReturn(List.of(category));
-        given(categoryConfigRepository.findByDivisionCategoryId(category.getId()))
-                .willReturn(Optional.of(completeConfig));
+        givenCompleteMedalRoundForCategory(category.getId());
         given(judgingRepository.save(any(Judging.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 
@@ -224,13 +244,15 @@ class JudgingServiceMedalsBosTest {
     @Test
     void shouldRejectStartBosWhenAnyCategoryIncomplete() {
         judging.markActive();
-        var pendingConfig = new CategoryJudgingConfig(category.getId(), MedalRoundMode.COMPARATIVE);
+        var pendingMedalRound = new JudgingRound(judging.getId(), "Medal", category.getId(), null);
+        pendingMedalRound.convertToMedalRound(MedalRoundMode.COMPARATIVE);
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
         given(judgingRepository.findByDivisionId(divisionId)).willReturn(Optional.of(judging));
         given(competitionService.findDivisionCategories(divisionId))
                 .willReturn(List.of(category));
-        given(categoryConfigRepository.findByDivisionCategoryId(category.getId()))
-                .willReturn(Optional.of(pendingConfig));
+        given(judgingRoundRepository
+                .findFirstByDivisionCategoryIdAndType(category.getId(), RoundType.MEDAL))
+                .willReturn(Optional.of(pendingMedalRound));
 
         assertThatThrownBy(() -> service.startBos(divisionId, adminUserId))
                 .isInstanceOf(BusinessRuleException.class)
@@ -452,8 +474,7 @@ class JudgingServiceMedalsBosTest {
         var entry = mockEntry();
         given(entryService.findEntryById(entryId)).willReturn(entry);
         given(coiCheckService.check(adminUserId, entryId)).willReturn(CoiResult.clear());
-        given(categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId))
-                .willReturn(Optional.of(activeConfig()));
+        givenActiveMedalRoundForCategory();
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
         given(medalAwardRepository.findByEntryId(entryId)).willReturn(Optional.empty());
         given(medalAwardRepository.save(any(MedalAward.class)))

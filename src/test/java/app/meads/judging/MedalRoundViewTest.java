@@ -19,6 +19,7 @@ import app.meads.identity.User;
 import app.meads.identity.UserStatus;
 import app.meads.identity.internal.UserRepository;
 import app.meads.judging.internal.CategoryJudgingConfigRepository;
+import app.meads.judging.internal.JudgingRoundRepository;
 import app.meads.judging.internal.MedalAwardRepository;
 import app.meads.judging.internal.MedalRoundView;
 import app.meads.judging.internal.MjpScoringFieldDefinition;
@@ -75,6 +76,7 @@ class MedalRoundViewTest {
     @Autowired EntryRepository entryRepository;
     @Autowired EntryService entryService;
     @Autowired CategoryJudgingConfigRepository categoryConfigRepository;
+    @Autowired JudgingRoundRepository judgingRoundRepository;
     @Autowired ScoresheetRepository scoresheetRepository;
     @Autowired MedalAwardRepository medalAwardRepository;
     @Autowired JudgingService judgingService;
@@ -169,9 +171,14 @@ class MedalRoundViewTest {
         var category = divisionCategoryRepository.save(new DivisionCategory(
                 division.getId(), null, "M1A", "Dry Mead", "Desc", null, 1, CategoryScope.JUDGING));
         var config = new CategoryJudgingConfig(category.getId(), mode);
-        config.markReady();
-        config.startMedalRound();
         categoryConfigRepository.save(config);
+        var judging = judgingService.ensureJudgingExists(division.getId());
+        var medalRound = new JudgingRound(judging.getId(), "Medal",
+                category.getId(), null);
+        medalRound.convertToMedalRound(mode);
+        medalRound.markReady();
+        medalRound.start();
+        judgingRoundRepository.save(medalRound);
         return category;
     }
 
@@ -369,7 +376,7 @@ class MedalRoundViewTest {
         view.openFinalizeDialog();
         _click(_get(Button.class, spec -> spec.withId("medal-round-finalize-confirm")));
 
-        var config = categoryConfigRepository.findByDivisionCategoryId(category.getId()).orElseThrow();
-        assertThat(config.getMedalRoundStatus()).isEqualTo(MedalRoundStatus.COMPLETE);
+        var medalRound = judgingService.findMedalRoundByCategoryId(category.getId()).orElseThrow();
+        assertThat(medalRound.getStatus()).isEqualTo(JudgingRoundStatus.COMPLETE);
     }
 }

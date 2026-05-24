@@ -12,12 +12,8 @@ CREATE TABLE physical_tables (
 );
 CREATE INDEX idx_physical_tables_division_id ON physical_tables(division_id);
 
--- Each round is hosted by a physical table. Nullable in DB; service enforces
--- not-null on createRound so existing seeded/test data without a physical
--- table doesn't break the migration.
+-- Each round (scoring or medal) is hosted by a physical table. Nullable in
+-- DB; service enforces not-null on createRound so existing seeded/test data
+-- without a physical table doesn't break the migration.
 ALTER TABLE judging_rounds
-    ADD COLUMN physical_table_id UUID REFERENCES physical_tables(id);
-
--- Each medal round is optionally hosted by a physical table. Nullable.
-ALTER TABLE category_judging_configs
     ADD COLUMN physical_table_id UUID REFERENCES physical_tables(id);

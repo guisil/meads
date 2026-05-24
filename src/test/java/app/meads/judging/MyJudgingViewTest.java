@@ -71,6 +71,7 @@ class MyJudgingViewTest {
     @Autowired DivisionCategoryRepository divisionCategoryRepository;
     @Autowired EntryRepository entryRepository;
     @Autowired CategoryJudgingConfigRepository categoryJudgingConfigRepository;
+    @Autowired app.meads.judging.internal.JudgingRoundRepository judgingRoundRepository;
     @Autowired ScoresheetRepository scoresheetRepository;
     @Autowired CompetitionService competitionService;
     @Autowired JudgingService judgingService;
@@ -283,11 +284,14 @@ class MyJudgingViewTest {
                 category.getId(), null, admin.getId());
         judgingService.assignJudge(table.getId(), judge.getId(), admin.getId());
 
-        // Construct an ACTIVE CategoryJudgingConfig for this category.
+        // Set up an ACTIVE medal JudgingRound for this category.
         var config = new app.meads.judging.CategoryJudgingConfig(category.getId());
-        config.markReady();
-        config.startMedalRound();
         categoryJudgingConfigRepository.save(config);
+        var medalRound = new JudgingRound(judging.getId(), "Medal", category.getId(), null);
+        medalRound.convertToMedalRound(MedalRoundMode.COMPARATIVE);
+        medalRound.markReady();
+        medalRound.start();
+        judgingRoundRepository.save(medalRound);
 
         UI.getCurrent().navigate("my-judging");
 

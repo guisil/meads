@@ -264,59 +264,41 @@ class JudgingServiceMedalRoundTest {
     }
 
     @Test
-    void shouldStartMedalRoundFromReady() {
-        var config = new CategoryJudgingConfig(divisionCategoryId, MedalRoundMode.COMPARATIVE);
-        config.markReady();
-        given(categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId))
-                .willReturn(Optional.of(config));
-        given(competitionService.findDivisionCategoryById(divisionCategoryId)).willReturn(category);
+    void shouldCompleteMedalRoundByIdFromActive() {
+        var medalRound = new JudgingRound(judging.getId(), "Medal", divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.COMPARATIVE);
+        medalRound.markReady();
+        medalRound.start();
+        given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
-        given(categoryConfigRepository.save(any(CategoryJudgingConfig.class)))
-                .willAnswer(inv -> inv.getArgument(0));
 
-        service.startMedalRound(divisionCategoryId, adminUserId);
+        service.completeMedalRoundById(medalRound.getId(), adminUserId);
 
-        assertThat(config.getMedalRoundStatus()).isEqualTo(MedalRoundStatus.ACTIVE);
+        assertThat(medalRound.getStatus()).isEqualTo(JudgingRoundStatus.COMPLETE);
+        then(judgingRoundRepository).should().save(medalRound);
     }
 
     @Test
-    void shouldCompleteMedalRoundFromActive() {
-        var config = new CategoryJudgingConfig(divisionCategoryId, MedalRoundMode.COMPARATIVE);
-        config.markReady();
-        config.startMedalRound();
-        given(categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId))
-                .willReturn(Optional.of(config));
-        given(competitionService.findDivisionCategoryById(divisionCategoryId)).willReturn(category);
-        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
-        given(categoryConfigRepository.save(any(CategoryJudgingConfig.class)))
-                .willAnswer(inv -> inv.getArgument(0));
-
-        service.completeMedalRound(divisionCategoryId, adminUserId);
-
-        assertThat(config.getMedalRoundStatus()).isEqualTo(MedalRoundStatus.COMPLETE);
-    }
-
-    @Test
-    void shouldResetMedalRoundAndDeleteAwards() {
-        var config = new CategoryJudgingConfig(divisionCategoryId, MedalRoundMode.COMPARATIVE);
-        config.markReady();
-        config.startMedalRound();
+    void shouldResetMedalRoundByIdAndDeleteAwards() {
+        var medalRound = new JudgingRound(judging.getId(), "Medal", divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.COMPARATIVE);
+        medalRound.markReady();
+        medalRound.start();
         judging.markActive();
         var award1 = new MedalAward(UUID.randomUUID(), divisionId, divisionCategoryId,
                 Medal.GOLD, adminUserId);
-        given(categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId))
-                .willReturn(Optional.of(config));
-        given(competitionService.findDivisionCategoryById(divisionCategoryId)).willReturn(category);
+        given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
-        given(judgingRepository.findByDivisionId(divisionId)).willReturn(Optional.of(judging));
         given(medalAwardRepository.findByFinalCategoryId(divisionCategoryId))
                 .willReturn(List.of(award1));
-        given(categoryConfigRepository.save(any(CategoryJudgingConfig.class)))
-                .willAnswer(inv -> inv.getArgument(0));
 
-        service.resetMedalRound(divisionCategoryId, adminUserId);
+        service.resetMedalRoundById(medalRound.getId(), adminUserId);
 
-        assertThat(config.getMedalRoundStatus()).isEqualTo(MedalRoundStatus.READY);
+        assertThat(medalRound.getStatus()).isEqualTo(JudgingRoundStatus.READY);
         then(medalAwardRepository).should().deleteAll(List.of(award1));
     }
 
@@ -495,20 +477,20 @@ class JudgingServiceMedalRoundTest {
     }
 
     @Test
-    void shouldRejectReopenMedalRoundWhenJudgingNotActive() {
-        var config = new CategoryJudgingConfig(divisionCategoryId, MedalRoundMode.COMPARATIVE);
-        config.markReady();
-        config.startMedalRound();
-        config.completeMedalRound();
+    void shouldRejectReopenMedalRoundByIdWhenJudgingNotActive() {
+        var medalRound = new JudgingRound(judging.getId(), "Medal", divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.COMPARATIVE);
+        medalRound.markReady();
+        medalRound.start();
+        medalRound.markComplete();
         judging.markActive();
         judging.startBos(); // phase = BOS, not ACTIVE
-        given(categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId))
-                .willReturn(Optional.of(config));
-        given(competitionService.findDivisionCategoryById(divisionCategoryId)).willReturn(category);
+        given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
-        given(judgingRepository.findByDivisionId(divisionId)).willReturn(Optional.of(judging));
 
-        assertThatThrownBy(() -> service.reopenMedalRound(divisionCategoryId, adminUserId))
+        assertThatThrownBy(() -> service.reopenMedalRoundById(medalRound.getId(), adminUserId))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("error.medal-round.judging-not-active");
     }

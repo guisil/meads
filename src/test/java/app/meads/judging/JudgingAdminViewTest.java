@@ -411,31 +411,6 @@ class JudgingAdminViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldAssignAndClearPhysicalTableForMedalRoundViaService() {
-        // The Select<PhysicalTable> on the Medal Rounds grid lives inside an
-        // addComponentColumn cell — Karibu can't reach lazily-rendered grid
-        // components (project memory). Cover the same behaviour at the service
-        // level, since the view's listener just delegates here.
-        advanceDivisionToJudging();
-        var category = divisionCategoryRepository.save(new DivisionCategory(
-                division.getId(), null, "M1A", "Dry Mead", "Desc",
-                null, 1, CategoryScope.JUDGING));
-        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
-        var pt = judgingService.createPhysicalTable(division.getId(), "Medal Table", admin.getId());
-
-        // Assign
-        judgingService.assignMedalRoundToPhysicalTable(category.getId(), pt.getId(), admin.getId());
-        var assigned = categoryJudgingConfigRepository.findByDivisionCategoryId(category.getId()).orElseThrow();
-        assertThat(assigned.getPhysicalTableId()).isEqualTo(pt.getId());
-
-        // Clear (null is allowed — the Select's empty selection)
-        judgingService.assignMedalRoundToPhysicalTable(category.getId(), null, admin.getId());
-        var cleared = categoryJudgingConfigRepository.findByDivisionCategoryId(category.getId()).orElseThrow();
-        assertThat(cleared.getPhysicalTableId()).isNull();
-    }
-
-    @Test
-    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldWarnWhenEntriesHaveNoJudgingCategory() {
         advanceDivisionToJudging();
         var regCategory = divisionCategoryRepository.save(new DivisionCategory(

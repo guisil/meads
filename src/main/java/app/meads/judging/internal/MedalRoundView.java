@@ -401,11 +401,7 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         dialog.add(new Span(getTranslation("medal-round.finalize.confirm.body")));
         var confirm = new Button(getTranslation("medal-round.action.finalize"), e -> {
             try {
-                if (medalRound != null) {
-                    judgingService.completeMedalRoundById(medalRound.getId(), currentUserId);
-                } else {
-                    judgingService.completeMedalRound(config.getDivisionCategoryId(), currentUserId);
-                }
+                judgingService.completeMedalRoundById(medalRound.getId(), currentUserId);
                 dialog.close();
                 reload();
                 Notification.show(getTranslation("medal-round.finalized"))
@@ -429,11 +425,7 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         dialog.add(new Span(getTranslation("medal-round.reopen.confirm.body")));
         var confirm = new Button(getTranslation("medal-round.action.reopen"), e -> {
             try {
-                if (medalRound != null) {
-                    judgingService.reopenMedalRoundById(medalRound.getId(), currentUserId);
-                } else {
-                    judgingService.reopenMedalRound(config.getDivisionCategoryId(), currentUserId);
-                }
+                judgingService.reopenMedalRoundById(medalRound.getId(), currentUserId);
                 dialog.close();
                 reload();
                 Notification.show(getTranslation("medal-round.reopened"))
@@ -467,11 +459,7 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
                 return;
             }
             try {
-                if (medalRound != null) {
-                    judgingService.resetMedalRoundById(medalRound.getId(), currentUserId);
-                } else {
-                    judgingService.resetMedalRound(config.getDivisionCategoryId(), currentUserId);
-                }
+                judgingService.resetMedalRoundById(medalRound.getId(), currentUserId);
                 dialog.close();
                 reload();
                 Notification.show(getTranslation("medal-round.reset.done"))
@@ -493,10 +481,10 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
     }
 
     /**
-     * Effective medal mode: prefer the medal {@link JudgingRound}'s mode when
-     * present, otherwise fall back to the legacy {@code CategoryJudgingConfig}
-     * field. Pending cleanup once all callers have migrated to writing through
-     * {@code JudgingRound}.
+     * Effective medal mode: prefer the medal {@link JudgingRound}'s mode;
+     * fall back to the category-level mode in {@link CategoryJudgingConfig}
+     * when a medal round hasn't been created yet (no entries for the category
+     * have been judged).
      */
     private MedalRoundMode currentMode() {
         if (medalRound != null && medalRound.getMedalMode() != null) {
@@ -506,22 +494,11 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
     }
 
     private JudgingRoundStatus currentStatus() {
-        if (medalRound != null) {
-            return medalRound.getStatus();
-        }
-        return switch (config.getMedalRoundStatus()) {
-            case PENDING -> JudgingRoundStatus.PENDING;
-            case READY -> JudgingRoundStatus.READY;
-            case ACTIVE -> JudgingRoundStatus.ACTIVE;
-            case COMPLETE -> JudgingRoundStatus.COMPLETE;
-        };
+        return medalRound != null ? medalRound.getStatus() : JudgingRoundStatus.PENDING;
     }
 
     private UUID currentPhysicalTableId() {
-        if (medalRound != null && medalRound.getPhysicalTableId() != null) {
-            return medalRound.getPhysicalTableId();
-        }
-        return config.getPhysicalTableId();
+        return medalRound != null ? medalRound.getPhysicalTableId() : null;
     }
 
     private UUID getCurrentUserId() {

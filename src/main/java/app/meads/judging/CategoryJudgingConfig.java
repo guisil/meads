@@ -11,7 +11,6 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 
 import java.time.Instant;
-import java.util.EnumSet;
 import java.util.UUID;
 
 @Entity
@@ -28,13 +27,6 @@ public class CategoryJudgingConfig {
     @Enumerated(EnumType.STRING)
     @Column(name = "medal_round_mode", nullable = false, length = 20)
     private MedalRoundMode medalRoundMode;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "medal_round_status", nullable = false, length = 20)
-    private MedalRoundStatus medalRoundStatus;
-
-    @Column(name = "physical_table_id")
-    private UUID physicalTableId;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
@@ -53,60 +45,10 @@ public class CategoryJudgingConfig {
         this.id = UUID.randomUUID();
         this.divisionCategoryId = divisionCategoryId;
         this.medalRoundMode = mode;
-        this.medalRoundStatus = MedalRoundStatus.PENDING;
-    }
-
-    public void assignToPhysicalTable(UUID physicalTableId) {
-        this.physicalTableId = physicalTableId;
     }
 
     public void updateMode(MedalRoundMode mode) {
-        if (!EnumSet.of(MedalRoundStatus.PENDING, MedalRoundStatus.READY).contains(medalRoundStatus)) {
-            throw new IllegalStateException("Mode can only change while PENDING or READY, current: " + medalRoundStatus);
-        }
         this.medalRoundMode = mode;
-    }
-
-    public void markReady() {
-        if (medalRoundStatus != MedalRoundStatus.PENDING) {
-            throw new IllegalStateException("Can only mark READY from PENDING, current: " + medalRoundStatus);
-        }
-        this.medalRoundStatus = MedalRoundStatus.READY;
-    }
-
-    public void markPending() {
-        if (medalRoundStatus != MedalRoundStatus.READY) {
-            throw new IllegalStateException("Can only revert to PENDING from READY, current: " + medalRoundStatus);
-        }
-        this.medalRoundStatus = MedalRoundStatus.PENDING;
-    }
-
-    public void startMedalRound() {
-        if (medalRoundStatus != MedalRoundStatus.READY) {
-            throw new IllegalStateException("Can only start medal round from READY, current: " + medalRoundStatus);
-        }
-        this.medalRoundStatus = MedalRoundStatus.ACTIVE;
-    }
-
-    public void completeMedalRound() {
-        if (medalRoundStatus != MedalRoundStatus.ACTIVE) {
-            throw new IllegalStateException("Can only complete medal round from ACTIVE, current: " + medalRoundStatus);
-        }
-        this.medalRoundStatus = MedalRoundStatus.COMPLETE;
-    }
-
-    public void reopenMedalRound() {
-        if (medalRoundStatus != MedalRoundStatus.COMPLETE) {
-            throw new IllegalStateException("Can only reopen medal round from COMPLETE, current: " + medalRoundStatus);
-        }
-        this.medalRoundStatus = MedalRoundStatus.ACTIVE;
-    }
-
-    public void resetMedalRound() {
-        if (medalRoundStatus != MedalRoundStatus.ACTIVE) {
-            throw new IllegalStateException("Can only reset medal round from ACTIVE, current: " + medalRoundStatus);
-        }
-        this.medalRoundStatus = MedalRoundStatus.READY;
     }
 
     @PrePersist

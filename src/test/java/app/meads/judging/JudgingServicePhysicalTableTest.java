@@ -154,29 +154,12 @@ class JudgingServicePhysicalTableTest {
     }
 
     @Test
-    void shouldRejectDeletePhysicalTableWhenInUseByMedalRound() {
-        var pt = new PhysicalTable(divisionId, "Table 1");
-        var config = new app.meads.judging.CategoryJudgingConfig(UUID.randomUUID());
-        config.assignToPhysicalTable(pt.getId());
-        given(physicalTableRepository.findById(pt.getId())).willReturn(Optional.of(pt));
-        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
-        given(competitionService.findDivisionById(divisionId)).willReturn(division);
-        given(judgingRoundRepository.findAll()).willReturn(List.of());
-        given(categoryConfigRepository.findAll()).willReturn(List.of(config));
-
-        assertThatThrownBy(() -> service.deletePhysicalTable(pt.getId(), adminUserId))
-                .isInstanceOf(BusinessRuleException.class)
-                .hasMessageContaining("error.physical-table.in-use-by-medal-round");
-    }
-
-    @Test
     void shouldDeletePhysicalTableWhenNotInUse() {
         var pt = new PhysicalTable(divisionId, "Table 1");
         given(physicalTableRepository.findById(pt.getId())).willReturn(Optional.of(pt));
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
         given(competitionService.findDivisionById(divisionId)).willReturn(division);
         given(judgingRoundRepository.findAll()).willReturn(List.of());
-        given(categoryConfigRepository.findAll()).willReturn(List.of());
 
         assertThatNoException().isThrownBy(() -> service.deletePhysicalTable(pt.getId(), adminUserId));
         then(physicalTableRepository).should().delete(pt);

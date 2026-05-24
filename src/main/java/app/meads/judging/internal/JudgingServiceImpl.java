@@ -148,11 +148,6 @@ public class JudgingServiceImpl implements JudgingService {
         if (inUseByRound) {
             throw new BusinessRuleException("error.physical-table.in-use-by-round");
         }
-        boolean inUseByMedalRound = categoryConfigRepository.findAll().stream()
-                .anyMatch(c -> physicalTableId.equals(c.getPhysicalTableId()));
-        if (inUseByMedalRound) {
-            throw new BusinessRuleException("error.physical-table.in-use-by-medal-round");
-        }
         physicalTableRepository.delete(table);
         log.info("Deleted PhysicalTable {}", physicalTableId);
     }
@@ -188,34 +183,6 @@ public class JudgingServiceImpl implements JudgingService {
         round.assignToPhysicalTable(physicalTableId);
         judgingRoundRepository.save(round);
         log.info("Assigned round {} to physical table {}", roundId, physicalTableId);
-    }
-
-    @Override
-    public void assignMedalRoundToPhysicalTable(UUID divisionCategoryId, UUID physicalTableId, UUID adminUserId) {
-        var divisionId = resolveDivisionIdFromCategory(divisionCategoryId);
-        if (!competitionService.isAuthorizedForDivision(divisionId, adminUserId)) {
-            throw new BusinessRuleException("error.auth.unauthorized");
-        }
-        requireNotFrozen(divisionId);
-        var config = categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId)
-                .orElseGet(() -> categoryConfigRepository.save(new CategoryJudgingConfig(divisionCategoryId)));
-        if (physicalTableId != null) {
-            var table = physicalTableRepository.findById(physicalTableId)
-                    .orElseThrow(() -> new BusinessRuleException("error.physical-table.not-found"));
-            if (!table.getDivisionId().equals(divisionId)) {
-                throw new BusinessRuleException("error.physical-table.wrong-division");
-            }
-        }
-        config.assignToPhysicalTable(physicalTableId);
-        categoryConfigRepository.save(config);
-        var judging = judgingRepository.findByDivisionId(divisionId).orElse(null);
-        if (judging != null) {
-            var medalRound = findOrCreateMedalRound(judging.getId(), divisionCategoryId,
-                    config.getMedalRoundMode());
-            medalRound.assignToPhysicalTable(physicalTableId);
-            judgingRoundRepository.save(medalRound);
-        }
-        log.info("Assigned medal round for category {} to physical table {}", divisionCategoryId, physicalTableId);
     }
 
     @Override
@@ -516,11 +483,7 @@ public class JudgingServiceImpl implements JudgingService {
         CategoryJudgingConfig config;
         if (existing.isPresent()) {
             config = existing.get();
-            try {
-                config.updateMode(mode);
-            } catch (IllegalStateException e) {
-                throw new BusinessRuleException("error.category-config.mode-locked", e.getMessage());
-            }
+            config.updateMode(mode);
         } else {
             config = new CategoryJudgingConfig(divisionCategoryId, mode);
         }
@@ -646,102 +609,7 @@ public class JudgingServiceImpl implements JudgingService {
                 .toList();
     }
 
-    // === Medal round transitions ===
-
-    @Override
-    public void startMedalRound(UUID divisionCategoryId, UUID adminUserId) {
-        var config = requireConfig(divisionCategoryId);
-        var divisionId = resolveDivisionIdFromCategory(divisionCategoryId);
-        requireAuthorizedForDivision(divisionId, adminUserId);
-        requireNotFrozen(divisionId);
-        try {
-            config.startMedalRound();
-        } catch (IllegalStateException e) {
-            throw new BusinessRuleException("error.medal-round.cannot-start", e.getMessage());
-        }
-        if (config.getMedalRoundMode() == MedalRoundMode.SCORE_BASED) {
-            autoPopulateMedalsByScore(divisionCategoryId, divisionId, adminUserId);
-        }
-        categoryConfigRepository.save(config);
-        syncMedalRoundStatus(divisionId, divisionCategoryId, config.getMedalRoundMode(),
-                JudgingRoundStatus.ACTIVE);
-        eventPublisher.publishEvent(new MedalRoundActivatedEvent(
-                divisionCategoryId, divisionId, config.getMedalRoundMode(), Instant.now()));
-        log.info("Started medal round for category {} (mode={})",
-                divisionCategoryId, config.getMedalRoundMode());
-    }
-
-    @Override
-    public void completeMedalRound(UUID divisionCategoryId, UUID adminUserId) {
-        var config = requireConfig(divisionCategoryId);
-        var divisionId = resolveDivisionIdFromCategory(divisionCategoryId);
-        requireAuthorizedForDivision(divisionId, adminUserId);
-        requireNotFrozen(divisionId);
-        try {
-            config.completeMedalRound();
-        } catch (IllegalStateException e) {
-            throw new BusinessRuleException("error.medal-round.cannot-complete", e.getMessage());
-        }
-        categoryConfigRepository.save(config);
-        syncMedalRoundStatus(divisionId, divisionCategoryId, config.getMedalRoundMode(),
-                JudgingRoundStatus.COMPLETE);
-        eventPublisher.publishEvent(new MedalRoundCompletedEvent(
-                divisionCategoryId, divisionId, Instant.now()));
-        log.info("Completed medal round for category {}", divisionCategoryId);
-    }
-
-    @Override
-    public void reopenMedalRound(UUID divisionCategoryId, UUID adminUserId) {
-        var config = requireConfig(divisionCategoryId);
-        var divisionId = resolveDivisionIdFromCategory(divisionCategoryId);
-        requireAuthorizedForDivision(divisionId, adminUserId);
-        requireNotFrozen(divisionId);
-        var judging = judgingRepository.findByDivisionId(divisionId)
-                .orElseThrow(() -> new BusinessRuleException("error.judging.not-found"));
-        if (judging.getPhase() != JudgingPhase.ACTIVE) {
-            throw new BusinessRuleException("error.medal-round.judging-not-active");
-        }
-        try {
-            config.reopenMedalRound();
-        } catch (IllegalStateException e) {
-            throw new BusinessRuleException("error.medal-round.cannot-reopen", e.getMessage());
-        }
-        categoryConfigRepository.save(config);
-        syncMedalRoundStatus(divisionId, divisionCategoryId, config.getMedalRoundMode(),
-                JudgingRoundStatus.ACTIVE);
-        eventPublisher.publishEvent(new MedalRoundReopenedEvent(
-                divisionCategoryId, divisionId, Instant.now()));
-        log.info("Reopened medal round for category {}", divisionCategoryId);
-    }
-
-    @Override
-    public void resetMedalRound(UUID divisionCategoryId, UUID adminUserId) {
-        var config = requireConfig(divisionCategoryId);
-        var divisionId = resolveDivisionIdFromCategory(divisionCategoryId);
-        requireAuthorizedForDivision(divisionId, adminUserId);
-        requireNotFrozen(divisionId);
-        var judging = judgingRepository.findByDivisionId(divisionId)
-                .orElseThrow(() -> new BusinessRuleException("error.judging.not-found"));
-        if (judging.getPhase() != JudgingPhase.ACTIVE) {
-            throw new BusinessRuleException("error.medal-round.judging-not-active");
-        }
-        var awards = medalAwardRepository.findByFinalCategoryId(divisionCategoryId);
-        int wiped = awards.size();
-        medalAwardRepository.deleteAll(awards);
-        try {
-            config.resetMedalRound();
-        } catch (IllegalStateException e) {
-            throw new BusinessRuleException("error.medal-round.cannot-reset", e.getMessage());
-        }
-        categoryConfigRepository.save(config);
-        syncMedalRoundStatus(divisionId, divisionCategoryId, config.getMedalRoundMode(),
-                JudgingRoundStatus.READY);
-        eventPublisher.publishEvent(new MedalRoundResetEvent(
-                divisionCategoryId, divisionId, wiped, Instant.now()));
-        log.info("Reset medal round for category {} (wiped {} awards)", divisionCategoryId, wiped);
-    }
-
-    // === Medal round transitions (round-id variants — new model API) ===
+    // === Medal round transitions (operate on the medal JudgingRound) ===
 
     @Override
     public void completeMedalRoundById(UUID roundId, UUID adminUserId) {
@@ -813,58 +681,6 @@ public class JudgingServiceImpl implements JudgingService {
         return round;
     }
 
-    /**
-     * Mirrors a legacy CategoryJudgingConfig medal-round status transition onto
-     * the medal {@link JudgingRound} (auto-creating one if missing). Transitional
-     * scaffolding while MedalRoundView reads from the JudgingRound but writes
-     * still flow through the legacy {@code startMedalRound}/etc. methods.
-     */
-    private void syncMedalRoundStatus(UUID divisionId, UUID divisionCategoryId,
-                                      MedalRoundMode mode, JudgingRoundStatus targetStatus) {
-        var judging = judgingRepository.findByDivisionId(divisionId).orElse(null);
-        if (judging == null) {
-            return;
-        }
-        var medalRound = findOrCreateMedalRound(judging.getId(), divisionCategoryId, mode);
-        var current = medalRound.getStatus();
-        if (current == targetStatus) {
-            return;
-        }
-        switch (targetStatus) {
-            case READY -> {
-                if (current == JudgingRoundStatus.PENDING) medalRound.markReady();
-                else if (current == JudgingRoundStatus.ACTIVE) medalRound.resetToReady();
-            }
-            case ACTIVE -> {
-                if (current == JudgingRoundStatus.PENDING || current == JudgingRoundStatus.READY) {
-                    medalRound.start();
-                } else if (current == JudgingRoundStatus.COMPLETE) {
-                    medalRound.reopen();
-                }
-            }
-            case COMPLETE -> {
-                if (current == JudgingRoundStatus.ACTIVE) medalRound.markComplete();
-            }
-            case PENDING -> {
-                if (current == JudgingRoundStatus.READY) medalRound.markPending();
-            }
-        }
-        judgingRoundRepository.save(medalRound);
-    }
-
-    private JudgingRound findOrCreateMedalRound(UUID judgingId, UUID divisionCategoryId,
-                                                MedalRoundMode mode) {
-        return judgingRoundRepository
-                .findFirstByDivisionCategoryIdAndType(divisionCategoryId, RoundType.MEDAL)
-                .orElseGet(() -> {
-                    var round = new JudgingRound(judgingId,
-                            "Medal — " + divisionCategoryId, divisionCategoryId, null);
-                    round.convertToMedalRound(mode);
-                    var saved = judgingRoundRepository.save(round);
-                    return saved != null ? saved : round;
-                });
-    }
-
     @Override
     @Transactional(readOnly = true)
     public Optional<JudgingRound> findMedalRoundByCategoryId(UUID divisionCategoryId) {
@@ -878,15 +694,11 @@ public class JudgingServiceImpl implements JudgingService {
         return effectiveMedalRoundStatusInternal(divisionCategoryId);
     }
 
-    /**
-     * Throws when the category's medal round is not ACTIVE. Uses the unified
-     * status read so the guard works whether the JudgingRound is the source
-     * of truth or the legacy CategoryJudgingConfig is.
-     */
+    /** Throws when the category's medal round is not ACTIVE. */
     private void requireMedalRoundActive(UUID divisionCategoryId) {
         var status = effectiveMedalRoundStatusInternal(divisionCategoryId);
         if (status.isEmpty()) {
-            throw new BusinessRuleException("error.category-config.not-found");
+            throw new BusinessRuleException("error.medal-round.not-found");
         }
         if (status.get() != JudgingRoundStatus.ACTIVE) {
             throw new BusinessRuleException("error.medal-round.not-active");
@@ -895,18 +707,9 @@ public class JudgingServiceImpl implements JudgingService {
 
     /** Internal call site for in-class use (bypasses Spring proxy / @Transactional). */
     private Optional<JudgingRoundStatus> effectiveMedalRoundStatusInternal(UUID divisionCategoryId) {
-        var medalRound = judgingRoundRepository
-                .findFirstByDivisionCategoryIdAndType(divisionCategoryId, RoundType.MEDAL);
-        if (medalRound.isPresent()) {
-            return Optional.of(medalRound.get().getStatus());
-        }
-        return categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId)
-                .map(c -> switch (c.getMedalRoundStatus()) {
-                    case PENDING -> JudgingRoundStatus.PENDING;
-                    case READY -> JudgingRoundStatus.READY;
-                    case ACTIVE -> JudgingRoundStatus.ACTIVE;
-                    case COMPLETE -> JudgingRoundStatus.COMPLETE;
-                });
+        return judgingRoundRepository
+                .findFirstByDivisionCategoryIdAndType(divisionCategoryId, RoundType.MEDAL)
+                .map(JudgingRound::getStatus);
     }
 
     // === Medal awards ===
@@ -1134,60 +937,7 @@ public class JudgingServiceImpl implements JudgingService {
         log.info("Deleted BOS placement {}", placementId);
     }
 
-    // --- score-based auto-population (§2.D D10) ---
-
-    private void autoPopulateMedalsByScore(UUID divisionCategoryId, UUID divisionId,
-                                            UUID adminUserId) {
-        // Walk gold→silver→bronze; stop cascade on first tie within a slot
-        var sheetsByEntry = new HashMap<UUID, Integer>();
-        // Find SUBMITTED scoresheets for entries advancedToMedalRound = true and finalCategoryId matches
-        var allTables = judgingRoundRepository.findByJudgingId(
-                judgingRepository.findByDivisionId(divisionId)
-                        .orElseThrow().getId()).stream()
-                .filter(t -> t.getDivisionCategoryId().equals(divisionCategoryId))
-                .toList();
-        var allSheets = new ArrayList<app.meads.judging.Scoresheet>();
-        for (var table : allTables) {
-            allSheets.addAll(scoresheetRepository.findByRoundId(table.getId()));
-        }
-        for (var sheet : allSheets) {
-            if (sheet.getStatus() == ScoresheetStatus.SUBMITTED
-                    && sheet.isAdvancedToMedalRound()
-                    && sheet.getTotalScore() != null) {
-                sheetsByEntry.merge(sheet.getEntryId(), sheet.getTotalScore(), Integer::max);
-            }
-        }
-        var ranked = sheetsByEntry.entrySet().stream()
-                .sorted(Map.Entry.<UUID, Integer>comparingByValue().reversed())
-                .toList();
-        var medalsToAssign = List.of(Medal.GOLD, Medal.SILVER, Medal.BRONZE);
-        int rankIdx = 0;
-        for (Medal medal : medalsToAssign) {
-            if (rankIdx >= ranked.size()) break;
-            var slot = ranked.get(rankIdx);
-            int slotScore = slot.getValue();
-            // Tie check: stop cascade if multiple entries share this score
-            long tieCount = ranked.subList(rankIdx, ranked.size()).stream()
-                    .takeWhile(e -> e.getValue() == slotScore)
-                    .count();
-            if (tieCount > 1) {
-                break;
-            }
-            var existing = medalAwardRepository.findByEntryId(slot.getKey());
-            if (existing.isEmpty()) {
-                medalAwardRepository.save(new MedalAward(
-                        slot.getKey(), divisionId, divisionCategoryId, medal, adminUserId));
-            }
-            rankIdx++;
-        }
-    }
-
     // --- helpers ---
-
-    private CategoryJudgingConfig requireConfig(UUID divisionCategoryId) {
-        return categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId)
-                .orElseThrow(() -> new BusinessRuleException("error.category-config.not-found"));
-    }
 
     private void requireAuthorizedForDivision(UUID divisionId, UUID userId) {
         if (!competitionService.isAuthorizedForDivision(divisionId, userId)) {
