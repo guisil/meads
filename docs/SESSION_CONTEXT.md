@@ -408,11 +408,12 @@ What landed:
 
 1. **Read** `docs/plans/2026-05-24-round-model-redesign.md` (full design)
    + this SESSION_CONTEXT.md, then verify state:
-   - `git log --oneline -15` should show 12 redesign-related commits
-     on top of `b3ade6e Pause v0.4.0`.
+   - `git log --oneline -20` should show 15 redesign-related commits
+     on top of `b3ade6e Pause v0.4.0`. Last commit `f03d240`.
    - `mvn test -Dsurefire.useFile=false 2>&1 | tail -10` should report
-     **1158 tests passing**.
-   - `feature/judging-module` is at `0.4.0-SNAPSHOT`.
+     **1161 tests passing**.
+   - `feature/judging-module` is at `0.4.0-SNAPSHOT`. Branch is in
+     sync with `origin/feature/judging-module`.
 
 2. **Pick the next cycle.** The remaining caller-migration pieces in
    recommended order (each is its own TDD cycle, expect ~30-45 min each):
@@ -462,19 +463,41 @@ What landed:
      assignMedalRoundToPhysicalTable`. Their replacements operate on
      `JudgingRound` IDs.
 
-3. **Task #4 (UI restructure)** kicks in once the service layer can
-   support both round types cleanly. The flat Rounds + Results + BOS
-   tab layout is described in the redesign doc §1 and decision #7.
+3. **Task #4 (UI restructure)** is the next major chunk. Service layer
+   now supports both round types cleanly — medal `JudgingRound`s exist
+   in the DB (auto-created by cascade) but no UI surfaces them.
+   The flat Rounds + Results + BOS tab layout is in the redesign doc
+   §1 + decision #7.
+
+   **What cycle #6 (UI restructure) needs to do:**
+   - Replace `JudgingAdminView`'s **Tables tab** with a **Rounds tab**
+     showing all rounds (both scoring + medal) with a Type column and
+     Type filter (All / Scoring / Medal). Row click drills into
+     existing per-round views.
+   - Delete the **Medal Rounds tab** (functionality moves to Rounds tab +
+     MedalRoundView). Note: this will break ~15-20 view tests that
+     depend on tab indices — plan for that.
+   - Add a **Results tab** summarizing COMPLETE rounds with outcome data
+     (scoresheet counts for scoring, awarded medals for medal).
+   - Migrate `MedalRoundView` to read status from medal `JudgingRound`
+     (with backing-data sync on `startMedalRound`/etc. as part of the
+     migration, OR new service methods that take `JudgingRound` ID).
+   - **Open design question**: what to do with the existing **Physical
+     Tables tab**? Redesign doc decision #7 only names Rounds + Results +
+     BOS, but Physical Tables management still needs to live somewhere.
+     Discuss before starting — leaving Physical Tables as a 4th tab is
+     a reasonable default if not addressed.
 
 **Tasks set up across this session** (with dependencies):
 - #1 Update redesign-doc with resolved decisions — **COMPLETE**
 - #2 Schema migration expansion phase — **COMPLETE**
-- #3 Entity + service refactor + contraction phase — **partially done**
+- #3 Entity + service refactor + contraction phase — **mostly done**
   (entity state machine + new service surface + MedalAward.confirmed
-  semantics + BOS uses it; scoresheet creation + startRound polymorphism +
-  cascade migration + V22 contraction still to do)
-- #4 UI restructure (Rounds + Results + BOS tabs) — blocked-by #3
-- #5 Dev seed updates — blocked-by #3
+  semantics + BOS uses it + scoresheet creation + startRound polymorphism +
+  cascade migration including auto-create — all DONE. V22 contraction
+  still to do as part of #5.)
+- #4 UI restructure (Rounds + Results + BOS tabs) — **READY** (#3 done)
+- #5 Dev seed updates — blocked-by #3 (now ready)
 - #6 Walkthrough rewrite §12.6-§12.8 — blocked-by #4
 - #7 i18n (5 locales) — blocked-by #4
 - #8 Resume walkthrough + ship v0.4.0 — blocked-by #5/#6/#7
