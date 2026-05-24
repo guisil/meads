@@ -1071,8 +1071,8 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
                 ? getTranslation("judging-admin.tables.action.revert")
                 : getTranslation("judging-admin.tables.action.revert.blocked"));
 
-        return new HorizontalLayout(editButton, startWrapper, assignJudgesButton,
-                assignEntriesWrapper, revertWrapper, deleteWrapper, openButton);
+        return new HorizontalLayout(editButton, assignJudgesButton, assignEntriesWrapper,
+                startWrapper, revertWrapper, deleteWrapper, openButton);
     }
 
     public void openRevertRoundDialog(JudgingRound round) {
