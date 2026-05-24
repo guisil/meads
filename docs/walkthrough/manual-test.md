@@ -103,7 +103,7 @@ CTA button, fallback URL, and optional contact footer.
 | Admin manually adds credits | [MEADS] Entry credits received — {division} | Entry Credits Received | View My Entries | Yes (if competition has contactEmail) |
 | Entrant submits entries | [MEADS] Entries submitted — {division} | Entries Submitted | View My Entries | No |
 | Order requires manual review | [MEADS] Order requires review — {competition} | Order Requires Review | (none) | No |
-| Judging table started (to each assigned judge) | [MEADS] Judging table ready — {table} | Your judging table is ready | Log in to MEADS | No |
+| Judging round started (to each assigned judge) | [MEADS] Judging round ready — {round} | Your judging round is ready | Log in to MEADS | No |
 | Submitted scoresheet reopened by an admin (to the judge who filled it) | [MEADS] Scoresheet reopened — {entry code} | A scoresheet needs your attention | Log in to MEADS | No |
 | Medal round activated (to each judge covering that category) | [MEADS] Medal round ready — {category} | A medal round is ready | Log in to MEADS | No |
 
@@ -1596,12 +1596,12 @@ testable. Steps below are admin-driven unless noted.
 
 - [ ] **Expected:** A "Judging" sub-section appears at the bottom of Settings with two `IntegerField`s:
   - **BOS places** (defaults to 1, helper text "Number of Best of Show placements awarded for this division.")
-  - **Minimum judges per table** (defaults to 2, helper text "Hard minimum enforced when starting a judging table.")
+  - **Minimum judges per round** (defaults to 2, helper text "Hard minimum enforced when starting a round.")
 - [ ] **Expected:** Both fields are editable at REGISTRATION_CLOSED — judging hasn't started yet so neither lock applies. BOS places locks at JUDGING (`Division.updateBosPlaces` rejects when `status.ordinal() >= JUDGING.ordinal()`); minimum judges locks once a round has `status != PENDING` (cross-module `MinJudgesPerTableLockGuard`).
 - [ ] Change "BOS places" from 1 to 3, click "Save".
 - [ ] **Expected:** Notification "Settings saved successfully".
 - [ ] Refresh — value persists at 3.
-- [ ] Change "Minimum judges per table" from 2 to 3, click "Save".
+- [ ] Change "Minimum judges per round" from 2 to 3, click "Save".
 - [ ] **Expected:** Notification "Settings saved successfully".
 - [ ] Refresh — value persists at 3.
 - [ ] Change minimum judges back to 2 and save. (Leave BOS places at 3 for the rest of §12 — Amadora awards 3 BOS placements.)
@@ -1787,7 +1787,7 @@ medal-round setup) is fine at REG_CLOSED.
 - [ ] **Expected:** A scoresheet is auto-created per **RECEIVED** entry in the round's category — SUBMITTED-but-not-received and WITHDRAWN entries are skipped.
 - [ ] **Expected:** ▶ Start button becomes disabled (already started).
 - [ ] **Expected:** 🗑 Delete button is disabled with tooltip "Cannot delete a started round or one with assigned judges".
-- [ ] **Check Mailpit:** each assigned judge receives a "Judging table ready" email, subject "[MEADS] Judging table ready — {round}", heading "Your judging table is ready", body names the round, category, division and competition, CTA button "Log in to MEADS" (magic link). `JudgingNotificationListener` handles `RoundStartedEvent`.
+- [ ] **Check Mailpit:** each assigned judge receives a "Judging round ready" email, subject "[MEADS] Judging round ready — {round}", heading "Your judging round is ready", body names the round, category, division and competition, CTA button "Log in to MEADS" (magic link). `JudgingNotificationListener` handles `RoundStartedEvent`.
 
 #### 12.6.4.1 Revert an ACTIVE scoring round (mistake correction)
 
@@ -1951,13 +1951,13 @@ Admins occasionally need to revert an entry's status (RECEIVED → SUBMITTED) or
 withdraw it after judging has begun (e.g., bottle pulled mid-competition because of
 a defect spotted later). The `EntryStatusRevertGuard` in the entry module rejects
 those status changes whenever a scoresheet exists for the entry, so admins must
-delete the scoresheet from its judging table first.
+delete the scoresheet from its round first.
 
 - [ ] On any row, click 🗑 **Delete scoresheet** (tooltip "Delete scoresheet" — admin-only).
 - [ ] **Expected:** Confirmation dialog *"Delete scoresheet for {entryCode}?"* explaining the scoresheet (and any draft scores/comments) will be permanently removed; the entry stays at its current status.
 - [ ] Click **Delete**. **Expected:** notification "Deleted scoresheet for {entryCode}."; row disappears.
 - [ ] **Expected:** The delete button is disabled with the tooltip *"Cannot delete the scoresheet while the medal round is active or complete for this category."* once the category's medal round has started — same rule as Revert.
-- [ ] (Test the EntryService side) Back on Entry Admin, try to revert the same RECEIVED entry to SUBMITTED (`←` arrow). **Expected:** error notification *"Cannot change the entry's status: a scoresheet already exists on a judging table…"* if a scoresheet still exists; succeeds after deletion.
+- [ ] (Test the EntryService side) Back on Entry Admin, try to revert the same RECEIVED entry to SUBMITTED (`←` arrow). **Expected:** error notification *"Cannot change the entry's status: a scoresheet already exists on a round…"* if a scoresheet still exists; succeeds after deletion.
 
 ##### Late RECEIVED during JUDGING (manual assignment)
 
@@ -2183,12 +2183,12 @@ Participants → Add Participant, role STEWARD (e.g. `steward@example.com`).*
 - [ ] Click "My Stewarding" (URL `/my-stewarding`).
 - [ ] **Expected:** H2 "My Stewarding". For each competition the user stewards, an
   `H3` with the competition name; under it, each JUDGING-or-later division as an
-  `H4`, then one card per judging table.
-- [ ] **Expected (per table card):** table name + category (code + name) + status;
+  `H4`, then one card per round.
+- [ ] **Expected (per round card):** round name + category (code + name) + status;
   a "Judges: …" line (names, or "—" when none assigned); one `•` line per entry on
-  the table showing entry code + mead name.
+  the round showing entry code + mead name.
 - [ ] **Expected:** The view is entirely **read-only** — no buttons, no edit actions.
-- [ ] **Expected:** A division with no tables shows "No judging tables yet."
+- [ ] **Expected:** A division with no rounds shows "No rounds yet."
 
 #### 12.16.1 Empty-state for a non-steward
 
