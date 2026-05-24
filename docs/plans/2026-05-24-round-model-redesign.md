@@ -116,7 +116,7 @@ Behavior:
 - When admin creates a round, the dialog asks for entries. Default: all entries in the round's category that aren't already assigned to another round. Admin can deselect.
 - When admin starts a round, scoresheets are created from the round's explicit entry set (not derived).
 - An entry can be assigned to at most one scoring round at a time (uniqueness constraint at the service level).
-- If admin marks an entry as RECEIVED after a round started: the entry is unassigned by default; admin manually assigns it to a round (similar to current `EntryReceivedEvent` → `ensureScoresheetForEntry` but now requires explicit assignment).
+- If admin marks an entry as RECEIVED after a round started: the entry is unassigned by default; admin manually assigns it to a round of their choice via Rounds → Assign Entries (`JudgingService.assignEntryToRound`), which writes `round.entries` and creates the DRAFT scoresheet when the round is ACTIVE SCORING.
 
 Open questions:
 - What about medal round entries? Probably all entries that earned at least one Round 1 scoresheet (= all entries that participated in scoring rounds for the category, regardless of which scoring round they were on).

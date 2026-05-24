@@ -333,8 +333,6 @@ public class EntryService {
         log.info("Advanced entry status to {}: #{} ({})", saved.getStatus(), saved.getEntryNumber(), entryId);
         if (saved.getStatus() == EntryStatus.SUBMITTED) {
             publishSubmissionEventIfComplete(saved.getDivisionId(), saved.getUserId());
-        } else if (saved.getStatus() == EntryStatus.RECEIVED) {
-            eventPublisher.publishEvent(new EntryReceivedEvent(saved.getId(), saved.getDivisionId()));
         }
         return saved;
     }
@@ -356,7 +354,6 @@ public class EntryService {
         entry.markReceived();
         var saved = entryRepository.save(entry);
         log.info("Marked entry received: #{} ({})", saved.getEntryNumber(), entryId);
-        eventPublisher.publishEvent(new EntryReceivedEvent(saved.getId(), saved.getDivisionId()));
         return saved;
     }
 

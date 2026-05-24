@@ -1937,17 +1937,18 @@ delete the scoresheet from its judging table first.
 - [ ] **Expected:** The delete button is disabled with the tooltip *"Cannot delete the scoresheet while the medal round is active or complete for this category."* once the category's medal round has started — same rule as Revert.
 - [ ] (Test the EntryService side) Back on Entry Admin, try to revert the same RECEIVED entry to SUBMITTED (`←` arrow). **Expected:** error notification *"Cannot change the entry's status: a scoresheet already exists on a judging table…"* if a scoresheet still exists; succeeds after deletion.
 
-##### Auto-create scoresheet when SUBMITTED → RECEIVED during JUDGING
+##### Late RECEIVED during JUDGING (manual assignment)
 
 When an entry transitions to RECEIVED *during* JUDGING (e.g., the bottle arrived late
-and was checked in after the round started), the entry module fires an
-`EntryReceivedEvent` and `EntryReceivedScoresheetListener` (judging.internal) calls
-`ScoresheetService.ensureScoresheetForEntry` — a DRAFT scoresheet is created on the
-matching ACTIVE scoring round for that entry's final category.
+and was checked in after the round started), no scoresheet is created automatically.
+The admin marks the entry RECEIVED, assigns its final category if needed, then uses
+Manage Judging → Rounds tab → **Assign Entries** on the chosen round to add it. That
+flow writes `round.entries` and (for ACTIVE scoring rounds) creates the DRAFT
+scoresheet via `JudgingService.assignEntryToRound`.
 
-- [ ] On Entry Admin, pick a SUBMITTED entry whose final category matches a started round → click the `→` advance arrow to mark it RECEIVED.
-- [ ] **Expected:** Back on Manage Judging → Rounds tab → click Open on that round → the new entry now has a DRAFT scoresheet (visible in RoundView's scoresheets grid).
-- [ ] If no matching ACTIVE scoring round exists (different category, or round is COMPLETE), `ensureScoresheetForEntry` is a no-op — admin must create or move rounds as needed.
+- [ ] On Entry Admin, pick a SUBMITTED entry → click the `→` advance arrow to mark it RECEIVED. **Expected:** status becomes RECEIVED; no scoresheet is created yet.
+- [ ] If the entry has no final category, assign one (Final Category column on Entry Admin).
+- [ ] Manage Judging → Rounds → **Assign Entries** on the round of your choice → tick the entry → save. **Expected:** the entry now appears in the round's entries; if the round is ACTIVE and SCORING, a DRAFT scoresheet is visible in RoundView's scoresheets grid.
 
 ### 12.11 ScoresheetView (judge form)
 
