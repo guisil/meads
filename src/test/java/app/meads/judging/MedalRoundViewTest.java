@@ -19,6 +19,7 @@ import app.meads.identity.User;
 import app.meads.identity.UserStatus;
 import app.meads.identity.internal.UserRepository;
 import app.meads.judging.internal.CategoryJudgingConfigRepository;
+import app.meads.judging.internal.JudgingRepository;
 import app.meads.judging.internal.JudgingRoundRepository;
 import app.meads.judging.internal.MedalAwardRepository;
 import app.meads.judging.internal.MedalRoundView;
@@ -76,6 +77,7 @@ class MedalRoundViewTest {
     @Autowired EntryRepository entryRepository;
     @Autowired EntryService entryService;
     @Autowired CategoryJudgingConfigRepository categoryConfigRepository;
+    @Autowired JudgingRepository judgingRepository;
     @Autowired JudgingRoundRepository judgingRoundRepository;
     @Autowired ScoresheetRepository scoresheetRepository;
     @Autowired MedalAwardRepository medalAwardRepository;
@@ -378,5 +380,48 @@ class MedalRoundViewTest {
 
         var medalRound = judgingService.findMedalRoundByCategoryId(category.getId()).orElseThrow();
         assertThat(medalRound.getStatus()).isEqualTo(JudgingRoundStatus.COMPLETE);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldStartReadyMedalRoundWhenAdminConfirms() {
+        var category = readyMedalRoundCategory();
+
+        navigateToMedalRound(category);
+
+        var view = _get(MedalRoundView.class);
+        view.openStartDialog();
+        _click(_get(Button.class, spec -> spec.withId("medal-round-start-confirm")));
+
+        var medalRound = judgingService.findMedalRoundByCategoryId(category.getId()).orElseThrow();
+        assertThat(medalRound.getStatus()).isEqualTo(JudgingRoundStatus.ACTIVE);
+    }
+
+    /**
+     * Sets up a medal round at READY with a physical table assigned — the
+     * preconditions the Start button requires. Mirrors {@link #categoryWithActiveConfig}
+     * but stops at READY.
+     */
+    private DivisionCategory readyMedalRoundCategory() {
+        division.advanceStatus(); // REGISTRATION_OPEN
+        division.advanceStatus(); // REGISTRATION_CLOSED
+        division.advanceStatus(); // JUDGING
+        division = divisionRepository.save(division);
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Desc", null, 1, CategoryScope.JUDGING));
+        var config = new CategoryJudgingConfig(category.getId(), MedalRoundMode.COMPARATIVE);
+        categoryConfigRepository.save(config);
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var judging = judgingService.ensureJudgingExists(division.getId());
+        judging.markActive();
+        judgingRepository.save(judging);
+        var physicalTable = judgingService.createPhysicalTable(division.getId(),
+                "Medal Table", admin.getId());
+        var medalRound = new JudgingRound(judging.getId(), physicalTable.getId(),
+                "Medal", category.getId(), null);
+        medalRound.convertToMedalRound(MedalRoundMode.COMPARATIVE);
+        medalRound.markReady();
+        judgingRoundRepository.save(medalRound);
+        return category;
     }
 }

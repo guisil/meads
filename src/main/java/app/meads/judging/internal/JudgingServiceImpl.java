@@ -463,8 +463,70 @@ public class JudgingServiceImpl implements JudgingService {
             eventPublisher.publishEvent(new RoundStartedEvent(
                     table.getId(), table.getDivisionCategoryId(),
                     judging.getDivisionId(), Instant.now()));
+        } else {
+            // Medal round just transitioned to ACTIVE. For SCORE_BASED mode,
+            // pre-populate the top-3 medals (confirmed=false) from Round 1
+            // totals; admin/judges then review + confirm or override.
+            if (table.getMedalMode() == MedalRoundMode.SCORE_BASED) {
+                autoPopulateMedalsByScore(table.getDivisionCategoryId(),
+                        judging.getDivisionId(), adminUserId);
+            }
+            eventPublisher.publishEvent(new MedalRoundActivatedEvent(
+                    table.getDivisionCategoryId(), judging.getDivisionId(),
+                    table.getMedalMode(), Instant.now()));
         }
-        log.info("Started table {} in division {}", roundId, judging.getDivisionId());
+        log.info("Started {} round {} in division {}",
+                table.getType(), roundId, judging.getDivisionId());
+    }
+
+    /**
+     * SCORE_BASED auto-fill (§2.D D10): walk gold→silver→bronze; stop the
+     * cascade on the first tie within a slot. Auto-filled MedalAwards are
+     * written with {@code confirmed = false} so they don't propagate to
+     * results or BOS until the admin reviews them. Manual {@code recordMedal}
+     * or {@code updateMedal} flip {@code confirmed = true}.
+     */
+    private void autoPopulateMedalsByScore(UUID divisionCategoryId, UUID divisionId,
+                                            UUID adminUserId) {
+        var sheetsByEntry = new HashMap<UUID, Integer>();
+        var allTables = judgingRoundRepository.findByJudgingId(
+                judgingRepository.findByDivisionId(divisionId)
+                        .orElseThrow().getId()).stream()
+                .filter(t -> t.getDivisionCategoryId().equals(divisionCategoryId))
+                .filter(t -> t.getType() == RoundType.SCORING)
+                .toList();
+        var allSheets = new ArrayList<app.meads.judging.Scoresheet>();
+        for (var t : allTables) {
+            allSheets.addAll(scoresheetRepository.findByRoundId(t.getId()));
+        }
+        for (var sheet : allSheets) {
+            if (sheet.getStatus() == ScoresheetStatus.SUBMITTED
+                    && sheet.isAdvancedToMedalRound()
+                    && sheet.getTotalScore() != null) {
+                sheetsByEntry.merge(sheet.getEntryId(), sheet.getTotalScore(), Integer::max);
+            }
+        }
+        var ranked = sheetsByEntry.entrySet().stream()
+                .sorted(Map.Entry.<UUID, Integer>comparingByValue().reversed())
+                .toList();
+        var medalsToAssign = List.of(Medal.GOLD, Medal.SILVER, Medal.BRONZE);
+        int rankIdx = 0;
+        for (Medal medal : medalsToAssign) {
+            if (rankIdx >= ranked.size()) break;
+            var slot = ranked.get(rankIdx);
+            int slotScore = slot.getValue();
+            long tieCount = ranked.subList(rankIdx, ranked.size()).stream()
+                    .takeWhile(e -> e.getValue() == slotScore)
+                    .count();
+            if (tieCount > 1) {
+                break;
+            }
+            if (medalAwardRepository.findByEntryId(slot.getKey()).isEmpty()) {
+                medalAwardRepository.save(new MedalAward(
+                        slot.getKey(), divisionId, divisionCategoryId, medal, adminUserId));
+            }
+            rankIdx++;
+        }
     }
 
     // === Category medal-round configuration ===

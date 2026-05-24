@@ -247,6 +247,17 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         boolean judgingActive = judgingService.ensureJudgingExists(division.getId())
                 .getPhase() == JudgingPhase.ACTIVE;
 
+        var startButton = new Button(getTranslation("medal-round.action.start"));
+        startButton.setId("medal-round-start");
+        startButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        startButton.setEnabled(status == JudgingRoundStatus.READY && judgingActive
+                && medalRound != null && medalRound.getPhysicalTableId() != null);
+        if (status == JudgingRoundStatus.READY
+                && (medalRound == null || medalRound.getPhysicalTableId() == null)) {
+            startButton.setTooltipText(getTranslation("medal-round.action.start.no-table"));
+        }
+        startButton.addClickListener(e -> openStartDialog());
+
         var resetButton = new Button(getTranslation("medal-round.action.reset"));
         resetButton.setId("medal-round-reset");
         resetButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
@@ -265,9 +276,36 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         finalizeButton.setEnabled(status == JudgingRoundStatus.ACTIVE);
         finalizeButton.addClickListener(e -> openFinalizeDialog());
 
-        var actions = new HorizontalLayout(resetButton, reopenButton, finalizeButton);
+        var actions = new HorizontalLayout(startButton, resetButton, reopenButton, finalizeButton);
         actions.setDefaultVerticalComponentAlignment(Alignment.CENTER);
         return actions;
+    }
+
+    public void openStartDialog() {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("medal-round.start.confirm.title", categoryLabel()));
+        var body = currentMode() == MedalRoundMode.SCORE_BASED
+                ? getTranslation("medal-round.start.confirm.body.score-based")
+                : getTranslation("medal-round.start.confirm.body.comparative");
+        dialog.add(new Span(body));
+        var confirm = new Button(getTranslation("medal-round.action.start"), e -> {
+            try {
+                judgingService.startRound(medalRound.getId(), currentUserId);
+                dialog.close();
+                reload();
+                Notification.show(getTranslation("medal-round.started"))
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+        confirm.setId("medal-round-start-confirm");
+        confirm.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        confirm.setDisableOnClick(true);
+        var cancel = new Button(getTranslation("button.cancel"), e -> dialog.close());
+        dialog.getFooter().add(cancel, confirm);
+        dialog.open();
     }
 
     private Grid<MedalRoundEntryRow> createGrid() {
