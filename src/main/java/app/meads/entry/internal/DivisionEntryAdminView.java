@@ -1047,9 +1047,9 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                     .ifPresent(finalCategorySelect::setValue);
         }
 
-        layout.add(meadNameField, categorySelect, sweetness, strengthField, abv, carbonation,
-                honeyVarieties, otherIngredients, woodAged, woodAgeingDetails, additionalInfo,
-                finalCategorySelect);
+        layout.add(meadNameField, categorySelect, finalCategorySelect, sweetness, strengthField,
+                abv, carbonation, honeyVarieties, otherIngredients, woodAged, woodAgeingDetails,
+                additionalInfo);
         dialog.add(layout);
 
         var saveButton = new Button(getTranslation("button.save"), e -> {
