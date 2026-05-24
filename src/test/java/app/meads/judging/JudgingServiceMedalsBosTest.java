@@ -278,6 +278,7 @@ class JudgingServiceMedalsBosTest {
         judging.startBos();
         var goldAward = new MedalAward(entryId, divisionId, divisionCategoryId,
                 Medal.GOLD, adminUserId);
+        goldAward.confirm(adminUserId);
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
         given(judgingRepository.findByDivisionId(divisionId)).willReturn(Optional.of(judging));
         given(competitionService.findDivisionById(divisionId)).willReturn(division);
@@ -290,6 +291,23 @@ class JudgingServiceMedalsBosTest {
 
         assertThat(placement.getPlace()).isEqualTo(1);
         assertThat(placement.getEntryId()).isEqualTo(entryId);
+    }
+
+    @Test
+    void shouldRejectRecordBosPlacementWhenGoldUnconfirmed() {
+        judging.markActive();
+        judging.startBos();
+        var unconfirmedGold = new MedalAward(entryId, divisionId, divisionCategoryId,
+                Medal.GOLD, adminUserId);
+        // intentionally not confirmed
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(judgingRepository.findByDivisionId(divisionId)).willReturn(Optional.of(judging));
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(medalAwardRepository.findByEntryId(entryId)).willReturn(Optional.of(unconfirmedGold));
+
+        assertThatThrownBy(() -> service.recordBosPlacement(divisionId, entryId, 1, adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.bos.gold-not-confirmed");
     }
 
     @Test

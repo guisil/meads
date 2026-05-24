@@ -897,6 +897,9 @@ public class JudgingServiceImpl implements JudgingService {
         if (medal.isEmpty() || medal.get().getMedal() != Medal.GOLD) {
             throw new BusinessRuleException("error.bos.entry-not-gold");
         }
+        if (!medal.get().isConfirmed()) {
+            throw new BusinessRuleException("error.bos.gold-not-confirmed");
+        }
         var existingAtEntry = bosPlacementRepository.findByEntryId(entryId);
         BosPlacement placement;
         if (existingAtEntry.isPresent()) {
