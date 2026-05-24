@@ -432,6 +432,14 @@ public class ScoresheetServiceImpl implements ScoresheetService {
     }
 
     @Override
+    public void deleteAllForRound(UUID roundId) {
+        var sheets = scoresheetRepository.findByRoundId(roundId);
+        if (!sheets.isEmpty()) {
+            scoresheetRepository.deleteAll(sheets);
+        }
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<Scoresheet> findByRoundId(UUID roundId) {
         return scoresheetRepository.findByRoundId(roundId);

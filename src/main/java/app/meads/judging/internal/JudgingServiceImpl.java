@@ -479,6 +479,29 @@ public class JudgingServiceImpl implements JudgingService {
     // === Table state transitions ===
 
     @Override
+    public void revertScoringRound(UUID roundId, UUID adminUserId) {
+        var round = requireTable(roundId);
+        var judging = requireJudging(round.getJudgingId());
+        requireAuthorizedForJudging(judging, adminUserId);
+        requireNotFrozen(judging.getDivisionId());
+        if (round.getType() != RoundType.SCORING) {
+            throw new BusinessRuleException("error.round.revert-scoring-only");
+        }
+        if (round.getStatus() != JudgingRoundStatus.ACTIVE) {
+            throw new BusinessRuleException("error.round.revert-only-active");
+        }
+        long submitted = scoresheetService.countByRoundIdAndStatus(roundId, ScoresheetStatus.SUBMITTED);
+        if (submitted > 0) {
+            throw new BusinessRuleException("error.round.cannot-revert-submitted-scoresheets",
+                    String.valueOf(submitted));
+        }
+        scoresheetService.deleteAllForRound(roundId);
+        round.revertToReady();
+        judgingRoundRepository.save(round);
+        log.info("Reverted scoring round {} ACTIVE → READY (admin={})", roundId, adminUserId);
+    }
+
+    @Override
     public void startRound(UUID roundId, UUID adminUserId) {
         var table = requireTable(roundId);
         var judging = requireJudging(table.getJudgingId());

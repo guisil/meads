@@ -41,6 +41,14 @@ public interface ScoresheetService {
 
     long countByRoundIdAndStatus(@NotNull UUID roundId, @NotNull ScoresheetStatus status);
 
+    /**
+     * Bulk-deletes every scoresheet attached to the given round. Used by
+     * {@code JudgingService.revertScoringRound} when an admin reverts an
+     * ACTIVE scoring round back to READY; the caller has already verified
+     * no SUBMITTED scoresheets exist on the round.
+     */
+    void deleteAllForRound(@NotNull UUID roundId);
+
     List<Scoresheet> findByRoundId(@NotNull UUID roundId);
 
     java.util.Optional<java.util.UUID> findNextDraftForJudge(@NotNull UUID judgeUserId);

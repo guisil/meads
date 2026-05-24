@@ -1767,6 +1767,17 @@ Scoring rounds require an **explicit entry assignment** before they can start. U
 - [ ] **Expected:** 🗑 Delete button is disabled with tooltip "Cannot delete a started round or one with assigned judges".
 - [ ] **Check Mailpit:** each assigned judge receives a "Judging table ready" email, subject "[MEADS] Judging table ready — {round}", heading "Your judging table is ready", body names the round, category, division and competition, CTA button "Log in to MEADS" (magic link). `JudgingNotificationListener` handles `RoundStartedEvent`.
 
+#### 12.6.4.1 Revert an ACTIVE scoring round (mistake correction)
+
+An ACTIVE scoring row exposes a ↶ **Revert** button (between Assign Entries and Delete). It returns the round to `READY` and deletes every draft scoresheet, so the admin can fix a mistake (wrong table started, wrong entries assigned, wrong judges) and start again. It is blocked as soon as any judge has submitted a scoresheet (key `error.round.cannot-revert-submitted-scoresheets`) — submitted scoresheets carry committed judging work that revert would destroy.
+
+- [ ] On the ACTIVE `M1A Panel A` row, **Expected:** ↶ Revert button is enabled (tooltip: *"Revert"*); PENDING/READY/COMPLETE rows show the button disabled (tooltip: *"Only ACTIVE rounds can be reverted."*).
+- [ ] Click ↶ **Revert** → confirmation dialog *"Revert round M1A Panel A?"*, body warns it returns the round to READY + deletes drafts + only for mistake correction.
+- [ ] Click **Revert** to confirm.
+- [ ] **Expected:** Notification *"Round reverted"*; row's Status flips `ACTIVE` → `READY`; draft scoresheets are gone (verify on Round drill-in if curious).
+- [ ] ▶ Start the round again to put it back into ACTIVE for the rest of §12.6 — entries/judges/table are still assigned, so it starts straight away.
+- [ ] **(Optional — verify the submitted-scoresheets guard.)** Skip this for now and revisit after §12.10–§12.11: once you have at least one SUBMITTED scoresheet on a round, try ↶ Revert. **Expected:** error *"Cannot revert: {N} scoresheet(s) have already been submitted. Revert those scoresheets to draft first if you really need to roll back."*
+
 #### 12.6.5 minJudgesPerRound lock — verify settings tab
 
 - [ ] Navigate back to Amadora division detail → Settings.

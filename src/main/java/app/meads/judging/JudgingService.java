@@ -89,6 +89,14 @@ public interface JudgingService {
     // === Table state transitions ===
     void startRound(@NotNull UUID roundId, @NotNull UUID adminUserId);
 
+    /**
+     * Reverts an ACTIVE scoring round back to READY and deletes all of its
+     * scoresheets. Rejected if any scoresheet on the round has been SUBMITTED —
+     * SUBMITTED scoresheets carry committed judging work that revert would
+     * destroy. Medal rounds use {@link #resetMedalRoundById} instead.
+     */
+    void revertScoringRound(@NotNull UUID roundId, @NotNull UUID adminUserId);
+
     // === Category medal-round configuration ===
     CategoryJudgingConfig configureCategoryMedalRound(@NotNull UUID divisionCategoryId,
                                                        @NotNull MedalRoundMode mode,

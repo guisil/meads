@@ -338,6 +338,76 @@ class JudgingServiceRoundTest {
     }
 
     @Test
+    void shouldRevertActiveScoringRoundToReadyAndDeleteDraftScoresheets() {
+        var judging = new Judging(divisionId);
+        var round = new JudgingRound(judging.getId(), "T1", divisionCategoryId, null);
+        round.assignJudge(judgeUserId);
+        round.start();
+        given(judgingRoundRepository.findById(round.getId())).willReturn(Optional.of(round));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(scoresheetService.countByRoundIdAndStatus(round.getId(), ScoresheetStatus.SUBMITTED))
+                .willReturn(0L);
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.revertScoringRound(round.getId(), adminUserId);
+
+        assertThat(round.getStatus()).isEqualTo(JudgingRoundStatus.READY);
+        then(scoresheetService).should().deleteAllForRound(round.getId());
+    }
+
+    @Test
+    void shouldRejectRevertScoringRoundWhenSubmittedScoresheetsExist() {
+        var judging = new Judging(divisionId);
+        var round = new JudgingRound(judging.getId(), "T1", divisionCategoryId, null);
+        round.assignJudge(judgeUserId);
+        round.start();
+        given(judgingRoundRepository.findById(round.getId())).willReturn(Optional.of(round));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(scoresheetService.countByRoundIdAndStatus(round.getId(), ScoresheetStatus.SUBMITTED))
+                .willReturn(2L);
+
+        assertThatThrownBy(() -> service.revertScoringRound(round.getId(), adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.round.cannot-revert-submitted-scoresheets");
+
+        assertThat(round.getStatus()).isEqualTo(JudgingRoundStatus.ACTIVE);
+        then(scoresheetService).should(never()).deleteAllForRound(any());
+    }
+
+    @Test
+    void shouldRejectRevertScoringRoundWhenNotActive() {
+        var judging = new Judging(divisionId);
+        var round = new JudgingRound(judging.getId(), "T1", divisionCategoryId, null);
+        // status stays PENDING
+        given(judgingRoundRepository.findById(round.getId())).willReturn(Optional.of(round));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+
+        assertThatThrownBy(() -> service.revertScoringRound(round.getId(), adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.round.revert-only-active");
+    }
+
+    @Test
+    void shouldRejectRevertScoringRoundWhenRoundIsMedalType() {
+        var judging = new Judging(divisionId);
+        var round = new JudgingRound(judging.getId(), "M1", divisionCategoryId, null);
+        round.convertToMedalRound(MedalRoundMode.COMPARATIVE);
+        round.markReady();
+        round.start();
+        given(judgingRoundRepository.findById(round.getId())).willReturn(Optional.of(round));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+
+        assertThatThrownBy(() -> service.revertScoringRound(round.getId(), adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.round.revert-scoring-only");
+    }
+
+    @Test
     void shouldFindTablesByJudging() {
         var judging = new Judging(divisionId);
         var t1 = new JudgingRound(judging.getId(), "T1", divisionCategoryId, null);

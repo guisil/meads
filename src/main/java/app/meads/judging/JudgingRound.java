@@ -172,6 +172,13 @@ public class JudgingRound {
         this.status = JudgingRoundStatus.PENDING;
     }
 
+    public void revertToReady() {
+        if (status != JudgingRoundStatus.ACTIVE) {
+            throw new IllegalStateException("Round can only revert to READY from ACTIVE, current: " + status);
+        }
+        this.status = JudgingRoundStatus.READY;
+    }
+
     public void start() {
         if (status != JudgingRoundStatus.PENDING && status != JudgingRoundStatus.READY) {
             throw new IllegalStateException("Round can only start from PENDING or READY, current: " + status);

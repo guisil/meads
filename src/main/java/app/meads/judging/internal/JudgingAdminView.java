@@ -1062,8 +1062,44 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
                 ? getTranslation("judging-admin.tables.action.delete")
                 : getTranslation("judging-admin.tables.action.delete.blocked"));
 
+        boolean canRevert = round.getStatus() == JudgingRoundStatus.ACTIVE;
+        var revertButton = new Button(new Icon(VaadinIcon.BACKWARDS));
+        revertButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+        revertButton.setEnabled(canRevert);
+        revertButton.addClickListener(e -> openRevertRoundDialog(round));
+        var revertWrapper = wrapWithTooltip(revertButton, canRevert
+                ? getTranslation("judging-admin.tables.action.revert")
+                : getTranslation("judging-admin.tables.action.revert.blocked"));
+
         return new HorizontalLayout(editButton, startWrapper, assignJudgesButton,
-                assignEntriesWrapper, deleteWrapper, openButton);
+                assignEntriesWrapper, revertWrapper, deleteWrapper, openButton);
+    }
+
+    public void openRevertRoundDialog(JudgingRound round) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("judging-admin.tables.action.revert.confirm.title",
+                round.getName()));
+        dialog.add(new Span(getTranslation("judging-admin.tables.action.revert.confirm.body")));
+
+        var confirmButton = new Button(getTranslation("judging-admin.tables.action.revert"), e -> {
+            try {
+                judgingService.revertScoringRound(round.getId(), currentUserId);
+                refreshRoundsGrid();
+                Notification.show(getTranslation("judging-admin.tables.reverted"))
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            } finally {
+                dialog.close();
+            }
+        });
+        confirmButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
+        confirmButton.setDisableOnClick(true);
+
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
+        dialog.getFooter().add(cancelButton, confirmButton);
+        dialog.open();
     }
 
     /**
