@@ -141,7 +141,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
             return;
         }
 
-        if (division.getStatus().ordinal() < DivisionStatus.JUDGING.ordinal()) {
+        if (division.getStatus().ordinal() < DivisionStatus.REGISTRATION_CLOSED.ordinal()) {
             event.forwardTo("competitions/" + compShortName + "/divisions/" + divShortName);
             return;
         }

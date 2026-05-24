@@ -190,10 +190,32 @@ class JudgingAdminViewTest {
         division = divisionRepository.save(division);
     }
 
+    private void advanceDivisionToRegistrationClosed() {
+        division.advanceStatus(); // DRAFT → REGISTRATION_OPEN
+        division.advanceStatus(); // → REGISTRATION_CLOSED
+        division = divisionRepository.save(division);
+    }
+
     @AfterEach
     void tearDown() {
         MockVaadin.tearDown();
         SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldRenderViewAtRegistrationClosedSoAdminsCanSetUpBeforeJudgingStarts() {
+        // Admins set up rounds / judges / entries at REGISTRATION_CLOSED, then
+        // advance the division to JUDGING and start the rounds.
+        advanceDivisionToRegistrationClosed();
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var heading = _get(H2.class);
+        assertThat(heading.getText()).contains("Judging Admin");
+        var tabSheet = _get(TabSheet.class);
+        assertThat(tabSheet.getTabCount()).isEqualTo(4);
     }
 
     @Test

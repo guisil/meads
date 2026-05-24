@@ -1625,11 +1625,17 @@ testable. Steps below are admin-driven unless noted.
 - [ ] **Try:** Add a judging category with a code that already exists in the JUDGING grid (e.g. `M1A`).
 - [ ] **Expected:** **Rejected** — `UNIQUE(division_id, code, scope)` blocks duplicates *within* a scope. The fact that `M1A` already exists in both REGISTRATION and JUDGING (cloned by Initialize) is the proof that the constraint allows the same code across *different* scopes.
 
-#### 12.4.2 Now advance to JUDGING
+#### 12.4.2 Stay at REGISTRATION_CLOSED — judging setup happens here
 
-- [ ] Click "Advance Status" → confirm "Advance from Registration Closed to Judging?".
-- [ ] **Expected:** Status badge updates to `JUDGING` (the `JudgingCategoryAdvanceGuard` is satisfied now that judging categories exist).
-- [ ] **Expected:** A "Manage Judging" button now shows in the division header (alongside "Manage Entries").
+`JudgingAdminView` is accessible starting at `REGISTRATION_CLOSED`. Admins set up
+rounds, judges, entries, and judging-category configs at REG_CLOSED, then advance
+the division to `JUDGING` only when they're ready to actually start judging. The
+`startRound` service method requires `>= JUDGING` (key
+`error.round.cannot-start-before-judging`) — that's the only setup op gated to
+JUDGING+; everything else on the Judging Admin view works at REG_CLOSED.
+
+- [ ] Confirm Amadora is still at `REGISTRATION_CLOSED` — **do not** click Advance yet.
+- [ ] **Expected:** A "Manage Judging" button is visible in the division header (alongside "Manage Entries"). This is new — pre-cycle 10 the button only appeared at JUDGING+. (Confirms the lowered gate; full setup walk follows in §12.6.)
 
 ### 12.5 Assign final categories to entries
 
@@ -1680,8 +1686,9 @@ initialCategory **code** to a JUDGING-scope category with the same code.
   `error.division.cannot-start-judging-entries-without-final-category`).
 - [ ] **Expected:** Status stays at `REGISTRATION_CLOSED`.
 - [ ] Return to Entry Admin → assign the last entry's final category.
-- [ ] Click "Advance Status" again → confirm.
-- [ ] **Expected:** Status now updates to `JUDGING`.
+- [ ] **Do not advance to JUDGING yet** — the next step (§12.6) sets up rounds at
+  REGISTRATION_CLOSED. We advance to JUDGING in §12.6.4 right before starting the
+  first round.
 
 #### 12.5.2 Defense-in-depth — the JudgingAdminView warning
 
@@ -1694,7 +1701,9 @@ show 0 here.
 
 ### 12.6 JudgingAdminView — Rounds tab
 
-*Click "Manage Judging" on Amadora division detail.*
+*Amadora is still at `REGISTRATION_CLOSED`. Click "Manage Judging" on Amadora
+division detail. (This button is visible from REGISTRATION_CLOSED onwards — see
+§12.4.2.)*
 
 - [ ] **Expected:** URL is `/competitions/chip-2026/divisions/amadora/judging-admin`.
 - [ ] **Expected:** Breadcrumb: `My Competitions / CHIP 2026 / Amadora / Judging Admin`.
@@ -1756,6 +1765,19 @@ Scoring rounds require an **explicit entry assignment** before they can start. U
 
 - [ ] Click 📦 **Assign Entries** on the row → multi-select grid → pick at least 1 entry → Save → notification *"Entry assignments updated"*.
 - [ ] (Try) Click ▶ **Start** without first assigning entries on a new round → **Expected:** error *"Assign at least one entry to this round before starting it. Use the Assign Entries button."*
+
+##### 12.6.4.0 Start is gated to JUDGING — advance Amadora now
+
+Amadora is still at `REGISTRATION_CLOSED`. `startRound` is the one judging op that
+requires `DivisionStatus >= JUDGING`; everything else (rounds, judges, entries,
+medal-round setup) is fine at REG_CLOSED.
+
+- [ ] (Try) Click ▶ **Start** on a round with entries assigned while still at REG_CLOSED.
+- [ ] **Expected:** Error notification *"Advance the division to Judging before starting rounds. Setup is allowed at Registration Closed; starting is not."* (key `error.round.cannot-start-before-judging`). Status stays `PENDING`.
+- [ ] Navigate back to the Amadora division header (open in a new tab or use the breadcrumb) → click "Advance Status" → confirm "Advance from Registration Closed to Judging?".
+- [ ] **Expected:** Status badge updates to `JUDGING` (both the `JudgingCategoryAdvanceGuard` and `EntryFinalCategoryAdvanceGuard` are satisfied — judging categories exist (§12.4) and every SUBMITTED/RECEIVED entry has a final category (§12.5)).
+- [ ] Return to the Judging Admin view → continue below.
+
 - [ ] Click ▶ Start on the round (with entries assigned).
 - [ ] **Expected:** Confirmation dialog body explains scoresheet creation.
 - [ ] Click Start.

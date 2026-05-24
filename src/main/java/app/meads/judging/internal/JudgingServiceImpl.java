@@ -2,6 +2,7 @@ package app.meads.judging.internal;
 
 import app.meads.BusinessRuleException;
 import app.meads.competition.CompetitionService;
+import app.meads.competition.DivisionStatus;
 import app.meads.entry.EntryStatus;
 import app.meads.judging.CategoryJudgingConfig;
 import app.meads.judging.Judging;
@@ -534,6 +535,9 @@ public class JudgingServiceImpl implements JudgingService {
         var division = competitionService.findDivisionById(judging.getDivisionId());
         if (division.getStatus().isResultsFrozen()) {
             throw new BusinessRuleException("error.judging.results-published-frozen");
+        }
+        if (division.getStatus().ordinal() < DivisionStatus.JUDGING.ordinal()) {
+            throw new BusinessRuleException("error.round.cannot-start-before-judging");
         }
         if (table.getPhysicalTableId() == null) {
             throw new BusinessRuleException("error.round.physical-table-required");

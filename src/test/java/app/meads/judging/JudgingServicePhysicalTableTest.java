@@ -73,6 +73,9 @@ class JudgingServicePhysicalTableTest {
                 ScoringSystem.MJP,
                 LocalDateTime.of(2026, 6, 1, 23, 59),
                 "Europe/Lisbon");
+        division.advanceStatus(); // DRAFT → REGISTRATION_OPEN
+        division.advanceStatus(); // REGISTRATION_OPEN → REGISTRATION_CLOSED
+        division.advanceStatus(); // REGISTRATION_CLOSED → JUDGING (startRound requires this)
         judging = new Judging(divisionId);
     }
 
@@ -219,6 +222,32 @@ class JudgingServicePhysicalTableTest {
     }
 
     // === startRound validations (Batch 3) ===
+
+    @Test
+    void shouldRejectStartRoundWhenDivisionNotYetInJudging() {
+        // Admins can set up rounds at REGISTRATION_CLOSED, but they can't actually
+        // *start* one until the division has been advanced to JUDGING.
+        var regClosedDivision = new Division(UUID.randomUUID(), "Amateur", "amateur",
+                ScoringSystem.MJP,
+                LocalDateTime.of(2026, 6, 1, 23, 59),
+                "Europe/Lisbon");
+        regClosedDivision.advanceStatus(); // DRAFT → REGISTRATION_OPEN
+        regClosedDivision.advanceStatus(); // REGISTRATION_OPEN → REGISTRATION_CLOSED
+        var round = new JudgingRound(judging.getId(), UUID.randomUUID(), "R1",
+                UUID.randomUUID(), null);
+        round.assignJudge(UUID.randomUUID());
+        round.assignJudge(UUID.randomUUID());
+        round.assignEntry(UUID.randomUUID());
+        given(judgingRoundRepository.findById(round.getId())).willReturn(Optional.of(round));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(competitionService.findDivisionById(divisionId)).willReturn(regClosedDivision);
+
+        assertThatThrownBy(() -> service.startRound(round.getId(), adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.round.cannot-start-before-judging");
+        assertThat(round.getStatus()).isEqualTo(JudgingRoundStatus.PENDING);
+    }
 
     @Test
     void shouldRejectStartRoundWithoutPhysicalTable() {

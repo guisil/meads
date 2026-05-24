@@ -72,6 +72,9 @@ class JudgingServiceMedalRoundTest {
                 ScoringSystem.MJP,
                 LocalDateTime.of(2026, 6, 1, 23, 59),
                 "Europe/Lisbon");
+        division.advanceStatus(); // DRAFT → REGISTRATION_OPEN
+        division.advanceStatus(); // REGISTRATION_OPEN → REGISTRATION_CLOSED
+        division.advanceStatus(); // REGISTRATION_CLOSED → JUDGING (startRound requires this)
         category = new DivisionCategory(divisionId, null, "M1A", "Dry Trad",
                 "Description", null, 0);
         judging = new Judging(divisionId);
