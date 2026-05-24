@@ -111,6 +111,16 @@ public class JudgingRound {
         this.medalMode = mode;
     }
 
+    public void updateMedalMode(MedalRoundMode mode) {
+        if (type != RoundType.MEDAL) {
+            throw new IllegalStateException("Can only update medal mode on a MEDAL round, current type: SCORING");
+        }
+        if (status != JudgingRoundStatus.PENDING && status != JudgingRoundStatus.READY) {
+            throw new IllegalStateException("Can only update medal mode while PENDING or READY, current: " + status);
+        }
+        this.medalMode = mode;
+    }
+
     public List<JudgeAssignment> getAssignments() {
         return Collections.unmodifiableList(assignments);
     }

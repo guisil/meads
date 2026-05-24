@@ -168,6 +168,26 @@ class JudgingServicePhysicalTableTest {
     // === assignRoundToPhysicalTable ===
 
     @Test
+    void shouldAllowAssignRoundToPhysicalTableWhileReady() {
+        // Cascade-auto-created medal rounds become READY without a physical
+        // table — admins must be able to assign one before starting.
+        var pt = new PhysicalTable(divisionId, "Table 1");
+        var round = new JudgingRound(judging.getId(), "Medal", UUID.randomUUID(), null);
+        round.convertToMedalRound(MedalRoundMode.COMPARATIVE);
+        round.markReady();
+        given(judgingRoundRepository.findById(round.getId())).willReturn(Optional.of(round));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(physicalTableRepository.findById(pt.getId())).willReturn(Optional.of(pt));
+
+        service.assignRoundToPhysicalTable(round.getId(), pt.getId(), adminUserId);
+
+        assertThat(round.getPhysicalTableId()).isEqualTo(pt.getId());
+        then(judgingRoundRepository).should().save(round);
+    }
+
+    @Test
     void shouldRejectAssignRoundToPhysicalTableAfterRoundStarted() {
         var pt = new PhysicalTable(divisionId, "Table 1");
         var round = new JudgingRound(judging.getId(), "R1", UUID.randomUUID(), null);

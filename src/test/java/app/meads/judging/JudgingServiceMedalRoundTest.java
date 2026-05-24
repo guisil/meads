@@ -264,6 +264,102 @@ class JudgingServiceMedalRoundTest {
     }
 
     @Test
+    void shouldUpdateMedalRoundModeOnPendingRound() {
+        var medalRound = new JudgingRound(judging.getId(), "Medal", divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.COMPARATIVE);
+        given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+
+        service.updateMedalRoundMode(medalRound.getId(), MedalRoundMode.SCORE_BASED, adminUserId);
+
+        assertThat(medalRound.getMedalMode()).isEqualTo(MedalRoundMode.SCORE_BASED);
+        then(judgingRoundRepository).should().save(medalRound);
+    }
+
+    @Test
+    void shouldUpdateMedalRoundModeOnReadyRound() {
+        var medalRound = new JudgingRound(judging.getId(), "Medal", divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.COMPARATIVE);
+        medalRound.markReady();
+        given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+
+        service.updateMedalRoundMode(medalRound.getId(), MedalRoundMode.SCORE_BASED, adminUserId);
+
+        assertThat(medalRound.getMedalMode()).isEqualTo(MedalRoundMode.SCORE_BASED);
+    }
+
+    @Test
+    void shouldRejectUpdateMedalRoundModeOnActiveRound() {
+        var medalRound = new JudgingRound(judging.getId(), "Medal", divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.COMPARATIVE);
+        medalRound.markReady();
+        medalRound.start();
+        given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+
+        assertThatThrownBy(() -> service.updateMedalRoundMode(medalRound.getId(),
+                MedalRoundMode.SCORE_BASED, adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.medal-round.mode-locked-after-start");
+        assertThat(medalRound.getMedalMode()).isEqualTo(MedalRoundMode.COMPARATIVE);
+    }
+
+    @Test
+    void shouldRejectUpdateMedalRoundModeOnScoringRound() {
+        var scoringRound = new JudgingRound(judging.getId(), "Scoring", divisionCategoryId, null);
+        given(judgingRoundRepository.findById(scoringRound.getId())).willReturn(Optional.of(scoringRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+
+        assertThatThrownBy(() -> service.updateMedalRoundMode(scoringRound.getId(),
+                MedalRoundMode.SCORE_BASED, adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.medal-round.mode-not-applicable");
+    }
+
+    @Test
+    void shouldRejectUpdateMedalRoundModeWhenUnauthorized() {
+        var medalRound = new JudgingRound(judging.getId(), "Medal", divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.COMPARATIVE);
+        given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(false);
+
+        assertThatThrownBy(() -> service.updateMedalRoundMode(medalRound.getId(),
+                MedalRoundMode.SCORE_BASED, adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.auth.unauthorized");
+    }
+
+    @Test
+    void shouldAllowRemoveJudgeOnActiveMedalRoundBypassingMinJudges() {
+        // Medal rounds may have fewer judges than scoring rounds (often just
+        // head judges). The min-judges check on removeJudge applies only to
+        // SCORING; for MEDAL the admin must be able to drop below the
+        // scoring-round minimum (even to zero, which is a different shape of
+        // panel, not a real-world conflict).
+        var medalRound = new JudgingRound(judging.getId(), "Medal", divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.COMPARATIVE);
+        var judge1 = UUID.randomUUID();
+        medalRound.assignJudge(judge1);
+        medalRound.markReady();
+        medalRound.start();
+        given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.removeJudge(medalRound.getId(), judge1, adminUserId);
+
+        assertThat(medalRound.getAssignments()).isEmpty();
+    }
+
+    @Test
     void shouldCompleteMedalRoundByIdFromActive() {
         var medalRound = new JudgingRound(judging.getId(), "Medal", divisionCategoryId, null);
         medalRound.convertToMedalRound(MedalRoundMode.COMPARATIVE);

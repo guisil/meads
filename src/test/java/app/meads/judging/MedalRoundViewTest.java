@@ -424,4 +424,96 @@ class MedalRoundViewTest {
         judgingRoundRepository.save(medalRound);
         return category;
     }
+
+    /**
+     * Sets up a medal round at READY with NO physical table — simulates the
+     * cascade-auto-created medal round. Admin needs to assign a physical table
+     * before the round can be started.
+     */
+    private DivisionCategory readyMedalRoundNoPhysicalTable() {
+        division.advanceStatus(); // REGISTRATION_OPEN
+        division.advanceStatus(); // REGISTRATION_CLOSED
+        division.advanceStatus(); // JUDGING
+        division = divisionRepository.save(division);
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Desc", null, 1, CategoryScope.JUDGING));
+        var config = new CategoryJudgingConfig(category.getId(), MedalRoundMode.COMPARATIVE);
+        categoryConfigRepository.save(config);
+        var judging = judgingService.ensureJudgingExists(division.getId());
+        judging.markActive();
+        judgingRepository.save(judging);
+        var medalRound = new JudgingRound(judging.getId(), "Medal",
+                category.getId(), null);
+        medalRound.convertToMedalRound(MedalRoundMode.COMPARATIVE);
+        medalRound.markReady();
+        judgingRoundRepository.save(medalRound);
+        return category;
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldAllowAdminToChangeMedalRoundModeWhileReady() {
+        var category = readyMedalRoundNoPhysicalTable();
+
+        navigateToMedalRound(category);
+
+        var modeSelect = _get(com.vaadin.flow.component.select.Select.class,
+                spec -> spec.withId("medal-round-mode-select"));
+        @SuppressWarnings("unchecked")
+        var select = (com.vaadin.flow.component.select.Select<MedalRoundMode>) modeSelect;
+        select.setValue(MedalRoundMode.SCORE_BASED);
+
+        var medalRound = judgingService.findMedalRoundByCategoryId(category.getId()).orElseThrow();
+        assertThat(medalRound.getMedalMode()).isEqualTo(MedalRoundMode.SCORE_BASED);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldAllowAdminToAssignPhysicalTableWhileReady() {
+        var category = readyMedalRoundNoPhysicalTable();
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var physicalTable = judgingService.createPhysicalTable(division.getId(),
+                "Medal Table", admin.getId());
+
+        navigateToMedalRound(category);
+
+        var ptSelect = _get(com.vaadin.flow.component.select.Select.class,
+                spec -> spec.withId("medal-round-physical-table-select"));
+        @SuppressWarnings("unchecked")
+        var select = (com.vaadin.flow.component.select.Select<PhysicalTable>) ptSelect;
+        select.setValue(physicalTable);
+
+        var medalRound = judgingService.findMedalRoundByCategoryId(category.getId()).orElseThrow();
+        assertThat(medalRound.getPhysicalTableId()).isEqualTo(physicalTable.getId());
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldEnableAssignJudgesButtonWhileMedalRoundActive() {
+        // Mid-deliberation, admin may discover the panel needs adjusting (a
+        // judge dropped out, or a head-judge was missed). Allowed while ACTIVE;
+        // only locked once the medal round is COMPLETE.
+        var category = activeMedalRoundCategory();
+
+        navigateToMedalRound(category);
+
+        var assignJudges = _get(Button.class, spec -> spec.withId("medal-round-assign-judges"));
+        assertThat(assignJudges.isEnabled()).isTrue();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldNotShowEditableModeAndPhysicalTableSelectsWhenMedalRoundActive() {
+        var category = activeMedalRoundCategory();
+
+        navigateToMedalRound(category);
+
+        // ACTIVE medal rounds: header shows read-only status/PT info, no editable selects.
+        assertThat(com.github.mvysny.kaributesting.v10.LocatorJ._find(
+                com.vaadin.flow.component.select.Select.class,
+                spec -> spec.withId("medal-round-mode-select"))).isEmpty();
+        assertThat(com.github.mvysny.kaributesting.v10.LocatorJ._find(
+                com.vaadin.flow.component.select.Select.class,
+                spec -> spec.withId("medal-round-physical-table-select"))).isEmpty();
+    }
 }

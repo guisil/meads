@@ -108,6 +108,16 @@ public interface JudgingService {
     java.util.Optional<JudgingRound> findMedalRoundByCategoryId(@NotNull UUID divisionCategoryId);
 
     /**
+     * Updates the mode (COMPARATIVE / SCORE_BASED) of an existing medal
+     * {@link JudgingRound}. Editable while PENDING or READY; rejected once the
+     * round is ACTIVE. The category-level {@link CategoryJudgingConfig} is the
+     * pre-creation default; this method changes the round's own mode after it
+     * exists (e.g. cascade-auto-created rounds inheriting COMPARATIVE).
+     */
+    void updateMedalRoundMode(@NotNull UUID roundId, @NotNull MedalRoundMode mode,
+                              @NotNull UUID adminUserId);
+
+    /**
      * Medal-round status for a category, sourced from the medal
      * {@link JudgingRound}. Returns empty when no medal round exists yet.
      */

@@ -1988,17 +1988,24 @@ matching ACTIVE scoring round for that entry's final category.
 
 The scoring-completion cascade auto-creates a medal `JudgingRound` (type = MEDAL) and marks it READY once every scoring round in the category reaches COMPLETE. From there an admin opens MedalRoundView and clicks **Start** to transition READY → ACTIVE.
 
-*Pre-req: M1A's scoring round (`M1A Panel A` from §12.6) is COMPLETE — finish the scoresheets in §12.10–12.11 first. The cascade will have auto-created a medal `JudgingRound` for M1A. Assign a physical table to it from the Rounds tab (Add Round → MEDAL, or — if the cascade already created one — click Open then check the header).*
+*Pre-req: M1A's scoring round (`M1A Panel A` from §12.6) is COMPLETE — finish the scoresheets in §12.10–12.11 first. The cascade will have auto-created a medal `JudgingRound` for M1A with no physical table assigned and inherited mode `COMPARATIVE` from the category config.*
 
 #### 12.12.0 Open MedalRoundView at READY status
 
 - [ ] As `compadmin@example.com`, navigate to JudgingAdmin → Rounds tab → set Type filter to `Medal` → click Open on the M1A row.
 - [ ] **Expected:** URL `competitions/.../divisions/.../medal-rounds/<divisionCategoryId>`.
-- [ ] **Expected:** Header shows category code + name, mode line (`Mode: COMPARATIVE`), status line (`Status: READY`), physical table line (`Physical Table: Table 1` or `— Not assigned —`).
-- [ ] **Expected:** Admin button row: `Assign Judges`, `Start` (enabled), `Reset` (disabled — only at ACTIVE), `Reopen` (disabled — only at COMPLETE), `Finalize` (disabled — only at ACTIVE).
-- [ ] **If no physical table assigned:** Start button is **disabled** with tooltip "Assign a physical table to this medal round before starting." Use Rounds tab → Add Round → MEDAL (or the cascade-created row's Open button → … there's currently no per-row physical-table assignment from MedalRoundView; pre-stage via Add Round). *(Known gap — to be addressed in a follow-up.)*
+- [ ] **Expected:** Header shows category code + name. At PENDING/READY the header carries **two editable Selects** plus a status badge: `Mode` (Comparative / Score-based), `Physical Table` (any PhysicalTable defined for the division), and `Status: READY`. Once the round starts (ACTIVE/COMPLETE) the Selects are replaced with read-only `Mode: …` / `Physical Table: …` lines.
+- [ ] **Expected:** Admin button row: `Assign Judges`, `Start`, `Reset` (disabled — only at ACTIVE), `Reopen` (disabled — only at COMPLETE), `Finalize` (disabled — only at ACTIVE).
+- [ ] **If no physical table assigned:** Start button is **disabled** with tooltip "Assign a physical table to this medal round before starting." Pick one from the Physical Table Select in the header — Start becomes enabled the moment the assignment lands.
 
-#### 12.12.0.1 Assign Judges to the medal round
+#### 12.12.0.1 Change mode + physical table on a cascade-auto-created medal round
+
+- [ ] On the M1A medal round (READY, no PT, mode COMPARATIVE), open the **Physical Table** Select in the header → pick `Table 1` → notification "Physical table updated" → page reloads → Start button becomes enabled.
+- [ ] Open the **Mode** Select → switch to `Score-based` → notification "Medal-round mode updated" → header reflects the change. (Service-side, `JudgingRound.medalMode` is now `SCORE_BASED`; the SCORE_BASED auto-fill on Start will use this.)
+- [ ] Switch the Mode back to `Comparative` for the rest of the walkthrough.
+- [ ] **Expected:** Once you Start the medal round (next sections), the Selects vanish from the header — mode and physical table are locked beyond READY. Error if you tried to PATCH them anyway: `error.medal-round.mode-locked-after-start` / `error.round.cannot-reassign-physical-table-after-start`.
+
+#### 12.12.0.2 Assign Judges to the medal round
 
 Medal-round judges are **independent** of scoring-round judges for the same category (redesign decision #5) — could be the same panel, could be different (head judges only). The Profissional M1B medal round is pre-seeded with judges 1+2+6 to demonstrate this — judge6 isn't on any M1B scoring panel.
 
@@ -2007,7 +2014,7 @@ Medal-round judges are **independent** of scoring-round judges for the same cate
 - [ ] Click **Assign Judges**.
 - [ ] **Expected:** Dialog "Assign Judges" with a multi-select grid (columns: Name, Meadery, Country). Judges 1, 2, and 6 are pre-checked.
 - [ ] Uncheck judge6, check judge3 → Save → notification "Judge assignments updated"; dialog closes; page reloads.
-- [ ] **Expected:** Assign Judges button is disabled with no tooltip once the medal round status becomes ACTIVE (or COMPLETE). For now (PENDING/READY) it stays enabled — try opening it again to verify the change persisted.
+- [ ] **Expected:** Assign Judges button stays enabled through PENDING → READY → ACTIVE — mid-deliberation panel adjustments are allowed. Only disabled at COMPLETE. Removing a judge mid-ACTIVE does not undo any medals they already awarded (those carry their own `awardedBy`); it just stops further awards from that judge. The min-judges-per-round check (which applies to scoring rounds) is **skipped for medal rounds** — you can drop a medal-round panel even to zero if needed.
 
 #### 12.12.1 Start medal round — COMPARATIVE mode
 
@@ -2028,7 +2035,7 @@ Medal-round judges are **independent** of scoring-round judges for the same cate
 
 #### 12.12.2 SCORE_BASED mode — auto-fill on Start
 
-To set up: from JudgingAdmin → Rounds tab → set Type filter to `Medal` → click Open on a READY medal row whose mode you want to switch. Currently there's no UI to change the medal mode on the medal `JudgingRound` after creation. Use `configureCategoryMedalRound` via shell (or pre-stage the category mode before scoring completes — TODO: add a Mode dropdown to MedalRoundView header).
+To set up: from JudgingAdmin → Rounds tab → set Type filter to `Medal` → click Open on a READY medal row. Switch the **Mode** Select in the header to `Score-based` (see §12.12.0.1) before clicking Start.
 
 - [ ] (Once SCORE_BASED preconditions are met) Click **Start** on a SCORE_BASED medal round.
 - [ ] **Expected:** Confirmation dialog body reads "Score-based medals will be auto-populated from Round 1 totals (gold/silver/bronze, stopping on ties). Auto-filled medals are unconfirmed until you review them."

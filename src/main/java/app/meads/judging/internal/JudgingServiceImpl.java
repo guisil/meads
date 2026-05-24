@@ -172,7 +172,8 @@ public class JudgingServiceImpl implements JudgingService {
             throw new BusinessRuleException("error.auth.unauthorized");
         }
         requireNotFrozen(judging.getDivisionId());
-        if (round.getStatus() != JudgingRoundStatus.PENDING) {
+        if (round.getStatus() != JudgingRoundStatus.PENDING
+                && round.getStatus() != JudgingRoundStatus.READY) {
             throw new BusinessRuleException("error.round.cannot-reassign-physical-table-after-start");
         }
         var table = physicalTableRepository.findById(physicalTableId)
@@ -263,6 +264,24 @@ public class JudgingServiceImpl implements JudgingService {
         log.info("Created medal JudgingRound {} (category={}, mode={})",
                 saved.getId(), divisionCategoryId, config.getMedalRoundMode());
         return saved;
+    }
+
+    @Override
+    public void updateMedalRoundMode(UUID roundId, MedalRoundMode mode, UUID adminUserId) {
+        var round = requireTable(roundId);
+        var judging = requireJudging(round.getJudgingId());
+        requireAuthorizedForJudging(judging, adminUserId);
+        requireNotFrozen(judging.getDivisionId());
+        if (round.getType() != RoundType.MEDAL) {
+            throw new BusinessRuleException("error.medal-round.mode-not-applicable");
+        }
+        if (round.getStatus() != JudgingRoundStatus.PENDING
+                && round.getStatus() != JudgingRoundStatus.READY) {
+            throw new BusinessRuleException("error.medal-round.mode-locked-after-start");
+        }
+        round.updateMedalMode(mode);
+        judgingRoundRepository.save(round);
+        log.info("Updated medal round {} mode → {}", roundId, mode);
     }
 
     @Override
@@ -390,7 +409,11 @@ public class JudgingServiceImpl implements JudgingService {
         var judging = requireJudging(table.getJudgingId());
         requireAuthorizedForJudging(judging, adminUserId);
         requireNotFrozen(judging.getDivisionId());
-        if (table.getStatus() == JudgingRoundStatus.ACTIVE) {
+        // Medal rounds skip the min-judges check — they often run with a
+        // different (often smaller) panel than scoring rounds, and the
+        // scoring-round minimum doesn't apply.
+        if (table.getStatus() == JudgingRoundStatus.ACTIVE
+                && table.getType() != RoundType.MEDAL) {
             var division = competitionService.findDivisionById(judging.getDivisionId());
             int currentCount = table.getAssignments().size();
             boolean isAssigned = table.getAssignments().stream()

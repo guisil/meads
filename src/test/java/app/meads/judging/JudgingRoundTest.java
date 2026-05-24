@@ -59,4 +59,40 @@ class JudgingRoundTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("PENDING");
     }
+
+    @Test
+    void shouldUpdateMedalModeWhilePendingOrReady() {
+        var round = new JudgingRound(UUID.randomUUID(), "T", UUID.randomUUID(), null);
+        round.convertToMedalRound(MedalRoundMode.COMPARATIVE);
+        assertThat(round.getMedalMode()).isEqualTo(MedalRoundMode.COMPARATIVE);
+
+        round.updateMedalMode(MedalRoundMode.SCORE_BASED);
+        assertThat(round.getMedalMode()).isEqualTo(MedalRoundMode.SCORE_BASED);
+
+        round.markReady();
+        round.updateMedalMode(MedalRoundMode.COMPARATIVE);
+        assertThat(round.getMedalMode()).isEqualTo(MedalRoundMode.COMPARATIVE);
+    }
+
+    @Test
+    void shouldRejectUpdateMedalModeOnScoringRound() {
+        var round = new JudgingRound(UUID.randomUUID(), "T", UUID.randomUUID(), null);
+
+        assertThatThrownBy(() -> round.updateMedalMode(MedalRoundMode.SCORE_BASED))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("SCORING");
+    }
+
+    @Test
+    void shouldRejectUpdateMedalModeWhenActive() {
+        var round = new JudgingRound(UUID.randomUUID(), "T", UUID.randomUUID(), null);
+        round.convertToMedalRound(MedalRoundMode.COMPARATIVE);
+        round.markReady();
+        round.start();
+        assertThat(round.getStatus()).isEqualTo(JudgingRoundStatus.ACTIVE);
+
+        assertThatThrownBy(() -> round.updateMedalMode(MedalRoundMode.SCORE_BASED))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("ACTIVE");
+    }
 }
