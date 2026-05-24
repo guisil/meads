@@ -494,10 +494,19 @@ What landed:
    to assert 5 tabs (will revert to 4 in cycle 6c). **1162 tests
    passing** (was 1161, +1).
 
-   **What cycle #6b needs to do:** Add a **Results tab** at index 5
-   summarizing COMPLETE rounds with outcome data (scoresheet counts
-   for scoring rounds; medals awarded for medal rounds). New i18n
-   keys in 5 locales. View test.
+   **Cycle 6b progress (2026-05-24):** ✅ **DONE.** New "Results" tab
+   appended at index 5 (after Rounds, temporarily). `results-grid` shows
+   only COMPLETE rounds, with 6 columns: Type / Name / Category /
+   Physical Table / Outcome / Actions. Outcome cell type-aware: SCORING
+   shows "{n} scoresheets submitted"; MEDAL shows G:n S:n B:n W:n. Empty
+   state caption "No completed rounds yet." when no round is COMPLETE.
+   New i18n keys `judging-admin.tab.results`,
+   `judging-admin.results.column.outcome`,
+   `judging-admin.results.outcome.scoresheets`,
+   `judging-admin.results.empty` in EN/PT/ES/IT/PL. 1 new view test
+   `shouldRenderResultsGridShowingCompleteRoundsOnly`; existing tab
+   count assertion updated 5 → 6 (will revert to 4 in cycle 6c).
+   **1163 tests passing** (+1).
 
    **What cycle #6c needs to do:**
    - Migrate `MedalRoundView` to read status from medal `JudgingRound`

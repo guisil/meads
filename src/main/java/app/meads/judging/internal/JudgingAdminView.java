@@ -203,6 +203,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         tabSheet.add(getTranslation("judging-admin.tab.medal-rounds"), createMedalRoundsTab());
         tabSheet.add(getTranslation("judging-admin.tab.bos"), createBosTab());
         tabSheet.add(getTranslation("judging-admin.tab.rounds"), createRoundsTab());
+        tabSheet.add(getTranslation("judging-admin.tab.results"), createResultsTab());
         return tabSheet;
     }
 
@@ -1054,6 +1055,54 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
             case SCORING -> getTranslation("judging-admin.rounds.type.scoring");
             case MEDAL -> getTranslation("judging-admin.rounds.type.medal");
         };
+    }
+
+    private VerticalLayout createResultsTab() {
+        var tab = new VerticalLayout();
+        tab.setPadding(false);
+
+        var completeRounds = judgingService.findRoundsByJudgingId(judging.getId()).stream()
+                .filter(r -> r.getStatus() == JudgingRoundStatus.COMPLETE)
+                .toList();
+
+        var resultsGrid = new Grid<>(JudgingRound.class, false);
+        resultsGrid.setId("results-grid");
+        resultsGrid.addColumn(r -> roundTypeLabel(r.getType()))
+                .setHeader(getTranslation("judging-admin.rounds.column.type"));
+        resultsGrid.addColumn(JudgingRound::getName)
+                .setHeader(getTranslation("judging-admin.rounds.column.name"));
+        resultsGrid.addColumn(r -> formatCategory(r.getDivisionCategoryId()))
+                .setHeader(getTranslation("judging-admin.rounds.column.category"));
+        resultsGrid.addColumn(r -> {
+                    if (r.getPhysicalTableId() == null) return "—";
+                    return judgingService.findPhysicalTableById(r.getPhysicalTableId())
+                            .map(app.meads.judging.PhysicalTable::getLabel).orElse("—");
+                })
+                .setHeader(getTranslation("judging-admin.rounds.column.physical-table"));
+        resultsGrid.addColumn(this::formatRoundOutcome)
+                .setHeader(getTranslation("judging-admin.results.column.outcome"));
+        resultsGrid.addComponentColumn(this::createRoundsActionsCell)
+                .setHeader(getTranslation("judging-admin.rounds.column.actions"));
+        resultsGrid.setItems(completeRounds);
+
+        if (completeRounds.isEmpty()) {
+            tab.add(new Span(getTranslation("judging-admin.results.empty")));
+        }
+        tab.add(resultsGrid);
+        return tab;
+    }
+
+    private String formatRoundOutcome(JudgingRound round) {
+        if (round.getType() == RoundType.MEDAL) {
+            var awards = judgingService.findMedalAwardsForCategory(round.getDivisionCategoryId());
+            long gold = awards.stream().filter(a -> a.getMedal() == Medal.GOLD).count();
+            long silver = awards.stream().filter(a -> a.getMedal() == Medal.SILVER).count();
+            long bronze = awards.stream().filter(a -> a.getMedal() == Medal.BRONZE).count();
+            long withheld = awards.stream().filter(a -> a.getMedal() == null).count();
+            return "G:" + gold + " S:" + silver + " B:" + bronze + " W:" + withheld;
+        }
+        long submitted = scoresheetService.countByRoundIdAndStatus(round.getId(), ScoresheetStatus.SUBMITTED);
+        return getTranslation("judging-admin.results.outcome.scoresheets", submitted);
     }
 
     private HorizontalLayout createRoundsActionsCell(JudgingRound round) {

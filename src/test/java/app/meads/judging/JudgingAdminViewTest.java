@@ -209,10 +209,55 @@ class JudgingAdminViewTest {
         assertThat(heading.getText()).contains("Judging Admin");
 
         var tabSheet = _get(TabSheet.class);
-        // Physical Tables, Tables, Medal Rounds, Best of Show, Rounds
-        // (Rounds is appended in cycle 6a; old Tables + Medal Rounds tabs
-        // will be removed in cycle 6c, restoring count to 4.)
-        assertThat(tabSheet.getTabCount()).isEqualTo(5);
+        // Physical Tables, Tables, Medal Rounds, Best of Show, Rounds, Results
+        // (Rounds + Results are appended in cycle 6a/6b; old Tables + Medal
+        // Rounds tabs will be removed in cycle 6c, restoring count to 4.)
+        assertThat(tabSheet.getTabCount()).isEqualTo(6);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    @SuppressWarnings("unchecked")
+    void shouldRenderResultsGridShowingCompleteRoundsOnly() {
+        advanceDivisionToJudging();
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Desc",
+                null, 1, CategoryScope.JUDGING));
+
+        var judging = judgingService.ensureJudgingExists(division.getId());
+
+        var completeRound = new JudgingRound(judging.getId(), "Complete Round",
+                category.getId(), LocalDate.of(2026, 7, 1));
+        completeRound.markReady();
+        completeRound.start();
+        completeRound.markComplete();
+        judgingRoundRepository.save(completeRound);
+
+        var pendingRound = new JudgingRound(judging.getId(), "Pending Round",
+                category.getId(), LocalDate.of(2026, 7, 2));
+        judgingRoundRepository.save(pendingRound);
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(5); // Results tab (appended after Rounds in cycle 6b)
+
+        var grids = _find(Grid.class);
+        var resultsGrid = grids.stream()
+                .filter(g -> "results-grid".equals(g.getId().orElse(null)))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Results grid not found"));
+
+        var headers = resultsGrid.getColumns().stream()
+                .map(c -> ((Grid.Column<?>) c).getHeaderText())
+                .toList();
+        assertThat(headers).containsExactly("Type", "Name", "Category",
+                "Physical Table", "Outcome", "Actions");
+
+        var rendered = resultsGrid.getGenericDataView().getItems().toList();
+        assertThat(rendered).hasSize(1);
+        assertThat(((JudgingRound) rendered.get(0)).getName()).isEqualTo("Complete Round");
     }
 
     @Test
