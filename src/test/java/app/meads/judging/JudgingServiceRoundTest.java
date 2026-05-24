@@ -4,6 +4,7 @@ import app.meads.BusinessRuleException;
 import app.meads.competition.CompetitionService;
 import app.meads.competition.Division;
 import app.meads.competition.ScoringSystem;
+import app.meads.entry.Entry;
 import app.meads.entry.EntryService;
 import app.meads.judging.internal.BosPlacementRepository;
 import app.meads.judging.internal.CategoryJudgingConfigRepository;
@@ -32,6 +33,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
@@ -236,6 +238,31 @@ class JudgingServiceRoundTest {
         assertThat(table.getAssignments()).hasSize(1);
         assertThat(table.getAssignments().get(0).getJudgeUserId()).isEqualTo(judgeUserId);
         then(judgeProfileService).should().ensureProfileForJudge(judgeUserId);
+    }
+
+    @Test
+    void shouldRejectAssignJudgeWhenJudgeOwnsEntryInRoundCategory() {
+        var judging = new Judging(divisionId);
+        var table = new JudgingRound(judging.getId(), "Table 1", divisionCategoryId, null);
+        var conflictingEntry = mock(Entry.class);
+        var conflictingEntryId = UUID.randomUUID();
+        given(conflictingEntry.getId()).willReturn(conflictingEntryId);
+        given(conflictingEntry.getEntryNumber()).willReturn(7);
+        given(judgingRoundRepository.findById(table.getId())).willReturn(Optional.of(table));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(entryService.findEntriesByFinalCategoryId(divisionCategoryId))
+                .willReturn(List.of(conflictingEntry));
+        given(coiCheckService.check(judgeUserId, conflictingEntryId))
+                .willReturn(CoiCheckService.CoiResult.blocking());
+
+        assertThatThrownBy(() -> service.assignJudge(table.getId(), judgeUserId, adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.coi.assign-hard-block");
+
+        assertThat(table.getAssignments()).isEmpty();
+        then(judgeProfileService).should(never()).ensureProfileForJudge(any());
+        then(judgingRoundRepository).should(never()).save(any(JudgingRound.class));
     }
 
     @Test

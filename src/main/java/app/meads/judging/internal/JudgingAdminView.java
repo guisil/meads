@@ -491,6 +491,18 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
                 .filter(j -> currentlyAssigned.contains(j.getId()))
                 .forEach(j -> judgesGrid.asMultiSelect().select(j));
 
+        judgesGrid.asMultiSelect().addSelectionListener(event -> {
+            for (var judge : event.getAddedSelection()) {
+                findFirstHardCoiEntry(judge, entriesInCategory).ifPresent(entry -> {
+                    judgesGrid.asMultiSelect().deselect(judge);
+                    Notification.show(getTranslation("error.coi.assign-hard-block",
+                                    judge.getName(),
+                                    String.valueOf(entry.getEntryNumber())))
+                            .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                });
+            }
+        });
+
         dialog.add(judgesGrid);
 
         var saveButton = new Button(getTranslation("button.save"), e -> {
@@ -622,6 +634,12 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
 
         dialog.getFooter().add(cancelButton, saveButton);
         dialog.open();
+    }
+
+    private java.util.Optional<Entry> findFirstHardCoiEntry(User judge, List<Entry> entries) {
+        return entries.stream()
+                .filter(e -> coiCheckService.check(judge.getId(), e.getId()).hardBlock())
+                .findFirst();
     }
 
     private HorizontalLayout coiChips(User judge, List<Entry> entries) {

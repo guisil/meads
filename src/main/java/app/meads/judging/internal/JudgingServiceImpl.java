@@ -417,6 +417,17 @@ public class JudgingServiceImpl implements JudgingService {
         var judging = requireJudging(table.getJudgingId());
         requireAuthorizedForJudging(judging, adminUserId);
         requireNotFrozen(judging.getDivisionId());
+        // Hard-COI guard: a judge who owns any entry in this round's category
+        // cannot be assigned. The UI dialog prevents the selection, but this
+        // service-level check is the source of truth.
+        var conflictingEntry = entryService.findEntriesByFinalCategoryId(table.getDivisionCategoryId()).stream()
+                .filter(e -> coiCheckService.check(judgeUserId, e.getId()).hardBlock())
+                .findFirst();
+        if (conflictingEntry.isPresent()) {
+            throw new BusinessRuleException("error.coi.assign-hard-block",
+                    judgeNameForError(judgeUserId),
+                    String.valueOf(conflictingEntry.get().getEntryNumber()));
+        }
         // Assigning to an already-active round, the new judge must not be on
         // another active round elsewhere. (Pre-planning assignments to
         // NOT_STARTED rounds is fine — the conflict check fires again at

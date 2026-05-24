@@ -1699,39 +1699,40 @@ show 0 here.
 - [ ] **Expected:** URL is `/competitions/chip-2026/divisions/amadora/judging-admin`.
 - [ ] **Expected:** Breadcrumb: `My Competitions / CHIP 2026 / Amadora / Judging Admin`.
 - [ ] **Expected:** H2 header `CHIP 2026 — Amadora — Judging Admin` with competition logo.
-- [ ] **Expected:** TabSheet with **four** tabs in this order: `Tables`, `Rounds`, `Results`, `Best of Show`. Default selection = Tables. (The tab is labelled "Tables" but the i18n key, grid id, and route segments are still `physical-tables*` for backward compatibility.)
+- [ ] **Expected:** TabSheet with **four** tabs in this order: `Tables`, `Rounds`, `Results`, `Best of Show`. (The tab is labelled "Tables" but the underlying entity, i18n keys, grid id, and route segments are still `physical-tables*`.)
+- [ ] **Expected default tab:** `computeDefaultTabIndex()` picks the tab based on state — *no tables yet* → Tables; *all rounds COMPLETE* → Results; otherwise → **Rounds**. Since the dev seed pre-creates 3 tables for Amadora, the default here is **Rounds**. Click the **Tables** tab to walk §12.6.0.
 
 #### 12.6.0 Tables tab
 
-A physical table is a fixed station within the division ("Table 1", "Table 2"). Multiple rounds can run at the same physical table over time, but only one round can be **active** there simultaneously. The dev seed pre-creates 3 physical tables for Amadora and 5 for Profissional — admins can add more.
+A table is a fixed station within the division ("Table 1", "Table 2"). Multiple rounds can run at the same table over time, but only one round can be **active** there simultaneously. The dev seed pre-creates 3 tables for Amadora and 5 for Profissional — admins can add more.
 
 - [ ] On the Tables tab, **Expected**: grid with columns Label, Actions. Actions column sits at the right (auto-width, flex-grow 0). Grid auto-sizes its height to fit all rows. All columns are sortable + resizable. Shows the seeded `Table 1` / `Table 2` / `Table 3` for Amadora.
-- [ ] Click **"+ Add Physical Table"** → enter label `Test Table` → Save → notification "Physical table added"; row appears.
-- [ ] Edit the new row → change to `Test Table A` → Save → notification.
-- [ ] **Try** to add another with label `Test Table A` → **Expected**: error "A physical table named 'Test Table A' already exists in this division."
-- [ ] Delete `Test Table A` → confirm → notification "Physical table deleted".
+- [ ] Click **"+ Add Table"** → enter label `Test Table` → Save → notification "Table added"; row appears.
+- [ ] Edit the new row → change to `Test Table A` → Save → notification "Table updated".
+- [ ] **Try** to add another with label `Test Table A` → **Expected**: error "A table named 'Test Table A' already exists in this division." (key `error.physical-table.label-duplicate`).
+- [ ] Delete `Test Table A` → confirm → notification "Table deleted".
 
 #### 12.6.1 Add a scoring round
 
 *Switch to the **Rounds** tab.*
 
 - [ ] **Expected:** Toolbar with a **Type filter** ComboBox (options: All / Scoring / Medal; default All) and a **"+ Add Round"** button.
-- [ ] **Expected:** Grid columns: Type (Scoring/Medal), Name, Category (`code — name`), Physical Table (label or "—"), Status, Judges (count), Scheduled (locale-aware date), Actions.
+- [ ] **Expected:** Grid columns: Type (Scoring/Medal), Name, Category (`code — name`), Table (label or "—"), Status, Judges (count), Scheduled (locale-aware date), Actions.
 - [ ] Click "+ Add Round".
-- [ ] **Expected:** Dialog with Type Select (default `SCORING`), Name text field, Category Select (filtered to JUDGING-scope categories), Physical Table Select (populated from the Tables tab), Scheduled date picker.
+- [ ] **Expected:** Dialog with Type Select (default `SCORING`), Name text field, Category Select (filtered to JUDGING-scope categories), Table Select (populated from the Tables tab), Scheduled date picker.
 - [ ] Leave Type = `SCORING`, leave Name blank → Save.
 - [ ] **Expected:** Inline error "Name is required" on the field.
 - [ ] Enter Name = `M1A Panel`, leave Category empty → Save.
 - [ ] **Expected:** Inline error "Category is required".
-- [ ] Pick Category = `M1A — Traditional Mead (Dry)`, leave Physical Table empty → Save.
-- [ ] **Expected:** Inline error "Physical table is required."
-- [ ] Pick Physical Table = `Table 1`, set Scheduled = today + 7 days → Save.
+- [ ] Pick Category = `M1A — Traditional Mead (Dry)`, leave Table empty → Save.
+- [ ] **Expected:** Inline error "Table is required."
+- [ ] Pick Table = `Table 1`, set Scheduled = today + 7 days → Save.
 - [ ] **Expected:** Notification "Round added"; row appears in the grid with Type = `Scoring`, Status = `PENDING`.
 
 #### 12.6.2 Edit a scoring round
 
 - [ ] Click ✏ Edit on the new row.
-- [ ] **Expected:** Dialog with Name and Scheduled (Category and Physical Table are not editable after creation).
+- [ ] **Expected:** Dialog with Name and Scheduled (Category and Table are not editable after creation).
 - [ ] Change name to `M1A Panel A`, Save.
 - [ ] **Expected:** Notification "Round updated"; grid reflects new name.
 
@@ -1742,7 +1743,7 @@ The dev seed already pre-stages **6 judges** (`judge@`, `judge2@`, …, `judge6@
 - [ ] On Judging Admin → Rounds tab → click 👥 Assign Judges on the scoring row.
 - [ ] **Expected:** Dialog with a multi-select `Grid<User>` titled `assign-judges-grid`. Columns: Name, Meadery, Country, Conflict of Interest. All 6 seeded judges visible.
 - [ ] **Expected (soft COI):** rows for `judge@` and `judge2@` show an orange **"Similar meadery to entry #N"** badge for `user@`'s M1A entry.
-- [ ] **Expected (hard COI):** if any seeded judge happens to have a self-entry in M1A, a red **"Self-entry — cannot judge"** badge appears. (Not in the default seed — to exercise this manually you'd add credits to a judge + submit + assign final category M1A.)
+- [ ] **Expected (hard COI):** if any seeded judge happens to have a self-entry in M1A, a red **"Self-entry — cannot judge"** badge appears. (Not in the default seed — to exercise this manually you'd add credits to a judge + submit + assign final category M1A.) Attempting to tick the hard-COI row reverts the selection and shows error *"Judge "{name}" cannot be assigned: they own entry #{N} in this category."* (key `error.coi.assign-hard-block`). The service rejects the same way as a defense-in-depth check if the UI is bypassed.
 - [ ] Select 2 judges (e.g. `judge3@` + `judge4@` — they have no COI on M1A), click Save.
 - [ ] **Expected:** Notification "Judge assignments updated"; row's `Judges` count shows `2`.
 - [ ] **Try:** Open dialog again and uncheck both judges → Save.
@@ -1759,8 +1760,8 @@ Scoring rounds require an **explicit entry assignment** before they can start. U
 - [ ] **Expected:** Confirmation dialog body explains scoresheet creation.
 - [ ] Click Start.
 - [ ] **Expected:** Notification "Round started"; Status column changes from `PENDING` to `ACTIVE`.
-- [ ] (Try starting a *second* scoring round at the same physical table — Add Round → pick a different category, same Physical Table `Table 1`, assign 2 judges → Start. **Expected**: error "This physical table already has an active round…")
-- [ ] (Try assigning one of `M1A Panel`'s judges to a new round at a *different* physical table, then start that new round. **Expected**: error "One or more assigned judges … are already on another active round.")
+- [ ] (Try starting a *second* scoring round at the same table — Add Round → pick a different category, same Table `Table 1`, assign 2 judges → Start. **Expected**: error "This table already has an active round…")
+- [ ] (Try assigning one of `M1A Panel`'s judges to a new round at a *different* table, then start that new round. **Expected**: error "One or more assigned judges … are already on another active round.")
 - [ ] **Expected:** A scoresheet is auto-created per **RECEIVED** entry in the round's category — SUBMITTED-but-not-received and WITHDRAWN entries are skipped.
 - [ ] **Expected:** ▶ Start button becomes disabled (already started).
 - [ ] **Expected:** 🗑 Delete button is disabled with tooltip "Cannot delete a started round or one with assigned judges".
@@ -1782,7 +1783,7 @@ Scoring rounds require an **explicit entry assignment** before they can start. U
 
 #### 12.6.7 Delete a not-started, no-judges scoring round (negative + positive)
 
-- [ ] Add a second scoring round (`Throwaway`, category `M2A — Pome Fruit Melomel`, Physical Table `Table 2`, no Scheduled).
+- [ ] Add a second scoring round (`Throwaway`, category `M2A — Pome Fruit Melomel`, Table `Table 2`, no Scheduled).
 - [ ] **Expected:** New row, Status = `PENDING`.
 - [ ] Click 🗑 Delete → confirm.
 - [ ] **Expected:** Notification "Round deleted"; row removed.
@@ -1792,7 +1793,7 @@ Scoring rounds require an **explicit entry assignment** before they can start. U
 Each scoring round in the new model explicitly owns the set of entries it judges. Entries are 1:1 with scoring rounds — an entry can't be on two rounds at once. The walkthrough uses Profissional (pre-staged at JUDGING) which the seed has split M1A into two scoring rounds.
 
 - [ ] Switch to the Profissional division: navigate to CHIP 2026 → Divisions → Profissional → "Manage Judging" → Rounds tab.
-- [ ] **Expected (from dev seed):** Two PENDING scoring rounds for M1A: `M1A Panel A` (Physical Table 1, 2 judges, 2 entries assigned) and `M1A Panel B` (Physical Table 2, 2 judges, 3 entries assigned). Plus one PENDING medal round for M1B (Table 4, 3 judges).
+- [ ] **Expected (from dev seed):** Two PENDING scoring rounds for M1A: `M1A Panel A` (Table 1, 2 judges, 2 entries assigned) and `M1A Panel B` (Table 2, 2 judges, 3 entries assigned). Plus one PENDING medal round for M1B (Table 4, 3 judges).
 - [ ] Click 📦 Assign Entries on the `M1A Panel A` row.
 - [ ] **Expected:** Dialog titled "Assign entries to M1A Panel A" with helper text explaining 1:1 constraint, plus a multi-select grid with columns Entry / Meadery / Current round.
 - [ ] **Expected:** The 5 RECEIVED M1A entries are listed. The 2 pre-assigned to Panel A are pre-selected; the 3 on Panel B show `Current round: M1A Panel B`.
@@ -1805,11 +1806,11 @@ Each scoring round in the new model explicitly owns the set of entries it judges
 
 #### 12.6.8 Add a medal round
 
-Medal rounds are auto-created by the scoring-completion cascade — when every scoring round in a category reaches COMPLETE, a medal `JudgingRound` (type=MEDAL) appears in the grid at status `READY`. You can also add one explicitly via the Add Round dialog if you want to pre-stage with a custom physical table or before any scoring rounds finish.
+Medal rounds are auto-created by the scoring-completion cascade — when every scoring round in a category reaches COMPLETE, a medal `JudgingRound` (type=MEDAL) appears in the grid at status `READY`. You can also add one explicitly via the Add Round dialog if you want to pre-stage with a custom table or before any scoring rounds finish.
 
 - [ ] Click "+ Add Round" → switch Type to `MEDAL`.
 - [ ] **Expected:** Name field disappears (medal rounds are auto-named `Medal — {category code}`, e.g. `Medal — M1B`).
-- [ ] Pick Category = `M1B — Traditional Mead (Semi-Sweet)`, Physical Table = `Table 2`, Save.
+- [ ] Pick Category = `M1B — Traditional Mead (Semi-Sweet)`, Table = `Table 2`, Save.
 - [ ] **Expected:** Notification "Round added"; new row with Type = `Medal`, Status = `PENDING`, Name = `Medal — M1B`.
 - [ ] **Try** to add a second medal round for the same category → **Expected:** error *"A medal round for this category already exists. Only one medal round per category is allowed."* (One medal round per category — redesign decision #5.)
 - [ ] **Expected:** The Actions column for a medal row shows a 🗑 Delete button + Open. Delete is enabled only while PENDING with no judges and no medal awards (tooltip explains when disabled). Full management (judges, mode, physical-table reassignment, start/finalize/reset) lives in `MedalRoundView`.
@@ -1834,7 +1835,7 @@ The Results tab is a read-only summary of every round that has reached COMPLETE 
 
 - [ ] **Expected (initially):** Empty-state caption "No completed rounds yet." (no scoring rounds are COMPLETE — the Round 1 cascade fires only after every scoresheet in the round is SUBMITTED).
 - [ ] After completing scoresheets in §12.10–12.11 (M1A Panel A goes COMPLETE), come back to the Results tab.
-- [ ] **Expected:** Grid columns: Type, Name, Category, Physical Table, Outcome, Actions.
+- [ ] **Expected:** Grid columns: Type, Name, Category, Table, Outcome, Actions.
 - [ ] **Expected:** The COMPLETE scoring row shows Outcome = `{N} scoresheets submitted` where N = the count of submitted scoresheets at the round.
 - [ ] After a medal round goes COMPLETE (§12.12), come back here.
 - [ ] **Expected:** The COMPLETE medal row shows Outcome = `G:{n} S:{n} B:{n} W:{n}` (Gold/Silver/Bronze/Withheld counts).
@@ -1990,29 +1991,29 @@ matching ACTIVE scoring round for that entry's final category.
 
 The scoring-completion cascade auto-creates a medal `JudgingRound` (type = MEDAL) and marks it READY once every scoring round in the category reaches COMPLETE. From there an admin opens MedalRoundView and clicks **Start** to transition READY → ACTIVE.
 
-*Pre-req: M1A's scoring round (`M1A Panel A` from §12.6) is COMPLETE — finish the scoresheets in §12.10–12.11 first. The cascade will have auto-created a medal `JudgingRound` for M1A with no physical table assigned and inherited mode `COMPARATIVE` from the category config.*
+*Pre-req: M1A's scoring round (`M1A Panel A` from §12.6) is COMPLETE — finish the scoresheets in §12.10–12.11 first. The cascade will have auto-created a medal `JudgingRound` for M1A with no table assigned and inherited mode `COMPARATIVE` from the category config.*
 
 #### 12.12.0 Open MedalRoundView at READY status
 
 - [ ] As `compadmin@example.com`, navigate to JudgingAdmin → Rounds tab → set Type filter to `Medal` → click Open on the M1A row.
 - [ ] **Expected:** URL `competitions/.../divisions/.../medal-rounds/<divisionCategoryId>`.
-- [ ] **Expected:** Header shows category code + name. At PENDING/READY the header carries **two editable Selects** plus a status badge: `Mode` (Comparative / Score-based), `Physical Table` (any PhysicalTable defined for the division), and `Status: READY`. Once the round starts (ACTIVE/COMPLETE) the Selects are replaced with read-only `Mode: …` / `Physical Table: …` lines.
+- [ ] **Expected:** Header shows category code + name. At PENDING/READY the header carries **two editable Selects** plus a status badge: `Mode` (Comparative / Score-based), `Table` (any PhysicalTable defined for the division), and `Status: READY`. Once the round starts (ACTIVE/COMPLETE) the Selects are replaced with read-only `Mode: …` / `Table: …` lines.
 - [ ] **Expected:** Admin button row: `Assign Judges`, `Start`, `Reset` (disabled — only at ACTIVE), `Reopen` (disabled — only at COMPLETE), `Finalize` (disabled — only at ACTIVE).
-- [ ] **If no physical table assigned:** Start button is **disabled** with tooltip "Assign a physical table to this medal round before starting." Pick one from the Physical Table Select in the header — Start becomes enabled the moment the assignment lands.
+- [ ] **If no table assigned:** Start button is **disabled** with tooltip "Assign a table to this medal round before starting." Pick one from the Table Select in the header — Start becomes enabled the moment the assignment lands.
 
-#### 12.12.0.1 Change mode + physical table on a cascade-auto-created medal round
+#### 12.12.0.1 Change mode + table on a cascade-auto-created medal round
 
-- [ ] On the M1A medal round (READY, no PT, mode COMPARATIVE), open the **Physical Table** Select in the header → pick `Table 1` → notification "Physical table updated" → page reloads → Start button becomes enabled.
+- [ ] On the M1A medal round (READY, no PT, mode COMPARATIVE), open the **Table** Select in the header → pick `Table 1` → notification "Table updated" → page reloads → Start button becomes enabled.
 - [ ] Open the **Mode** Select → switch to `Score-based` → notification "Medal-round mode updated" → header reflects the change. (Service-side, `JudgingRound.medalMode` is now `SCORE_BASED`; the SCORE_BASED auto-fill on Start will use this.)
 - [ ] Switch the Mode back to `Comparative` for the rest of the walkthrough.
-- [ ] **Expected:** Once you Start the medal round (next sections), the Selects vanish from the header — mode and physical table are locked beyond READY. Error if you tried to PATCH them anyway: `error.medal-round.mode-locked-after-start` / `error.round.cannot-reassign-physical-table-after-start`.
+- [ ] **Expected:** Once you Start the medal round (next sections), the Selects vanish from the header — mode and table are locked beyond READY. Error if you tried to PATCH them anyway: `error.medal-round.mode-locked-after-start` / `error.round.cannot-reassign-physical-table-after-start`.
 
 #### 12.12.0.2 Assign Judges to the medal round
 
 Medal-round judges are **independent** of scoring-round judges for the same category (redesign decision #5) — could be the same panel, could be different (head judges only). The Profissional M1B medal round is pre-seeded with judges 1+2+6 to demonstrate this — judge6 isn't on any M1B scoring panel.
 
 - [ ] Switch to Profissional → Rounds tab → Type filter `Medal` → click Open on the M1B row.
-- [ ] **Expected (from seed):** Header shows `Status: PENDING`, `Physical Table: Table 4`, and the admin button row.
+- [ ] **Expected (from seed):** Header shows `Status: PENDING`, `Table: Table 4`, and the admin button row.
 - [ ] Click **Assign Judges**.
 - [ ] **Expected:** Dialog "Assign Judges" with a multi-select grid (columns: Name, Meadery, Country). Judges 1, 2, and 6 are pre-checked.
 - [ ] Uncheck judge6, check judge3 → Save → notification "Judge assignments updated"; dialog closes; page reloads.
