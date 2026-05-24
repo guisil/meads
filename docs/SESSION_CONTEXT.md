@@ -232,7 +232,35 @@ docs/
 
 ## What's Next
 
-### CURRENT (2026-05-24): v0.4.0 paused — round-model redesign needed
+### CURRENT (2026-05-24, end-of-day): Walkthrough resumption — §12.9 (MyJudgingView)
+
+The §12.6–§12.8 walkthrough is complete (Amadora @ JUDGING with M1A Panel A ACTIVE; Profissional @ JUDGING with split-category M1A + pre-staged M1B medal round per dev seed). Next session picks up at **§12.9 MyJudgingView (judge hub)**.
+
+**State on disk (commit `3c17e36`, 1169 tests passing):**
+- `feature/judging-module` post the cycle-9 + walkthrough-polish commits. All pushed.
+- v0.4.0 still on-branch — not yet merged to main.
+
+**Cycle 9 deltas not yet UI-tested in walkthrough:**
+- MedalRoundView header mode + physical-table editable selects at PENDING/READY (§12.12.0.1).
+- MedalRoundView Assign Judges enabled through ACTIVE (§12.12.0.2).
+- New error keys `error.round.no-entries-assigned`, `error.medal-round.already-exists`, `error.round.name-duplicate` (live in 5 locales) — verify they render correctly in PT/ES/IT/PL when hit.
+
+**Walkthrough polish landed today (3 commits past cycle 9):**
+- `b53c3a3` JudgingAdmin polish: "Tables" tab rename, all grids resizable/sortable/auto-grow, leaf-only category dropdown in Add Round, validation re-enables Save, judge-active-conflict uses judge name not UUID, dev seed soft-COI fix (user@'s country = PT).
+- `8ed8c9a` Medal-round naming (code not UUID) + one-per-category uniqueness + round-name uniqueness + Delete button on medal rows.
+- `3c17e36` BOS Start tooltip wrap (Span helper) + Results-tab Type filter.
+
+**Walkthrough resumption checklist (next session):**
+1. App is running locally (user manages it — see [[feedback_dev_server_user_managed]]). Mailpit at `localhost:8025`.
+2. Log out as `compadmin@example.com`; log in as **`judge3@example.com`** or **`judge4@example.com`** (those are the two assigned to Amadora M1A Panel A from §12.6.3).
+3. Follow §12.9 (judge hub) → §12.10 (RoundView) → §12.11 (ScoresheetView) → §12.12 (MedalRoundView — incl. cycle-9 selects + ACTIVE judge reassignment) → §12.13 (BosView) → §12.14 (JudgeProfile) → §12.15 (revert guard) → §12.16 (StewardView) → §12.17 (i18n sanity) → §12.18 (cleanup). Then §13 Awards.
+4. Documented gap (§12.6.8): pre-staged medal rounds have empty entries grid until scoring completes; manual entry-pool override deferred unless it becomes a blocker.
+
+The historical priority log + the original "v0.4.0 PAUSED — round-model redesign" section below is now FULLY COMPLETE; v0.4.0 is on-branch, awaiting full walkthrough + code review + merge + release.
+
+---
+
+### Historical: v0.4.0 paused — round-model redesign needed (RESOLVED — done 2026-05-24)
 
 During the §12.6 walkthrough on the (now-refactored) JudgingRound +
 PhysicalTable model, the user identified **four blocking design gaps**
