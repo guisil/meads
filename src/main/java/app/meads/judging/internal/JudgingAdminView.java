@@ -23,12 +23,14 @@ import app.meads.judging.Judging;
 import app.meads.judging.JudgingService;
 import app.meads.judging.JudgingRound;
 import app.meads.judging.JudgingRoundStatus;
+import app.meads.judging.RoundType;
 import app.meads.judging.MedalAward;
 import app.meads.judging.MedalRoundMode;
 import app.meads.judging.ScoresheetService;
 import app.meads.judging.ScoresheetStatus;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
@@ -83,6 +85,13 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
     private UUID currentUserId;
 
     private Grid<JudgingRound> tablesGrid;
+    private Grid<JudgingRound> roundsGrid;
+    private ComboBox<RoundTypeFilter> roundsTypeFilter;
+
+    /** Filter values for the Rounds tab Type ComboBox. ALL is the null-object case. */
+    enum RoundTypeFilter {
+        ALL, SCORING, MEDAL
+    }
 
     public JudgingAdminView(CompetitionService competitionService,
                             UserService userService,
@@ -193,6 +202,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         tabSheet.add(getTranslation("judging-admin.tab.tables"), createTablesTab());
         tabSheet.add(getTranslation("judging-admin.tab.medal-rounds"), createMedalRoundsTab());
         tabSheet.add(getTranslation("judging-admin.tab.bos"), createBosTab());
+        tabSheet.add(getTranslation("judging-admin.tab.rounds"), createRoundsTab());
         return tabSheet;
     }
 
@@ -967,6 +977,98 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
                 .filter(t -> t.getStatus() == JudgingRoundStatus.COMPLETE)
                 .count();
         return complete + " / " + tables.size();
+    }
+
+    private VerticalLayout createRoundsTab() {
+        var tab = new VerticalLayout();
+        tab.setPadding(false);
+
+        roundsTypeFilter = new ComboBox<>(getTranslation("judging-admin.rounds.type-filter.label"));
+        roundsTypeFilter.setId("rounds-type-filter");
+        roundsTypeFilter.setItems(RoundTypeFilter.values());
+        roundsTypeFilter.setItemLabelGenerator(this::roundTypeFilterLabel);
+        roundsTypeFilter.setValue(RoundTypeFilter.ALL);
+        roundsTypeFilter.addValueChangeListener(e -> refreshRoundsGrid());
+        tab.add(roundsTypeFilter);
+
+        roundsGrid = new Grid<>(JudgingRound.class, false);
+        roundsGrid.setId("rounds-grid");
+        roundsGrid.addColumn(r -> roundTypeLabel(r.getType()))
+                .setHeader(getTranslation("judging-admin.rounds.column.type"));
+        roundsGrid.addColumn(JudgingRound::getName)
+                .setHeader(getTranslation("judging-admin.rounds.column.name"));
+        roundsGrid.addColumn(r -> formatCategory(r.getDivisionCategoryId()))
+                .setHeader(getTranslation("judging-admin.rounds.column.category"));
+        roundsGrid.addColumn(r -> {
+                    if (r.getPhysicalTableId() == null) return "—";
+                    return judgingService.findPhysicalTableById(r.getPhysicalTableId())
+                            .map(app.meads.judging.PhysicalTable::getLabel).orElse("—");
+                })
+                .setHeader(getTranslation("judging-admin.rounds.column.physical-table"));
+        roundsGrid.addColumn(r -> r.getStatus().name())
+                .setHeader(getTranslation("judging-admin.rounds.column.status"));
+        roundsGrid.addColumn(r -> r.getAssignments().size())
+                .setHeader(getTranslation("judging-admin.rounds.column.judges"));
+        roundsGrid.addColumn(r -> r.getScheduledDate() == null ? ""
+                        : r.getScheduledDate().format(DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT)
+                                .withLocale(getLocale())))
+                .setHeader(getTranslation("judging-admin.rounds.column.scheduled"));
+        roundsGrid.addComponentColumn(this::createRoundsActionsCell)
+                .setHeader(getTranslation("judging-admin.rounds.column.actions"));
+
+        refreshRoundsGrid();
+        tab.add(roundsGrid);
+        return tab;
+    }
+
+    private void refreshRoundsGrid() {
+        if (roundsGrid == null) {
+            return;
+        }
+        var allRounds = judgingService.findRoundsByJudgingId(judging.getId());
+        var filterValue = roundsTypeFilter == null ? RoundTypeFilter.ALL : roundsTypeFilter.getValue();
+        var filtered = allRounds.stream()
+                .filter(r -> matchesRoundTypeFilter(r, filterValue))
+                .toList();
+        roundsGrid.setItems(filtered);
+    }
+
+    private boolean matchesRoundTypeFilter(JudgingRound round, RoundTypeFilter filter) {
+        return switch (filter == null ? RoundTypeFilter.ALL : filter) {
+            case ALL -> true;
+            case SCORING -> round.getType() == RoundType.SCORING;
+            case MEDAL -> round.getType() == RoundType.MEDAL;
+        };
+    }
+
+    private String roundTypeFilterLabel(RoundTypeFilter f) {
+        return switch (f) {
+            case ALL -> getTranslation("judging-admin.rounds.type-filter.all");
+            case SCORING -> getTranslation("judging-admin.rounds.type.scoring");
+            case MEDAL -> getTranslation("judging-admin.rounds.type.medal");
+        };
+    }
+
+    private String roundTypeLabel(RoundType type) {
+        return switch (type) {
+            case SCORING -> getTranslation("judging-admin.rounds.type.scoring");
+            case MEDAL -> getTranslation("judging-admin.rounds.type.medal");
+        };
+    }
+
+    private HorizontalLayout createRoundsActionsCell(JudgingRound round) {
+        var openButton = new Button(new Icon(VaadinIcon.ARROW_RIGHT));
+        openButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+        openButton.setTooltipText(getTranslation("judging-admin.rounds.action.open"));
+        openButton.addClickListener(e -> {
+            String url = round.getType() == RoundType.MEDAL
+                    ? "competitions/" + compShortName + "/divisions/" + divShortName
+                        + "/medal-rounds/" + round.getDivisionCategoryId()
+                    : "competitions/" + compShortName + "/divisions/" + divShortName
+                        + "/tables/" + round.getId();
+            com.vaadin.flow.component.UI.getCurrent().navigate(url);
+        });
+        return new HorizontalLayout(openButton);
     }
 
     private VerticalLayout createBosTab() {

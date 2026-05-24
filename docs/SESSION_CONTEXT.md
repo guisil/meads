@@ -408,10 +408,11 @@ What landed:
 
 1. **Read** `docs/plans/2026-05-24-round-model-redesign.md` (full design)
    + this SESSION_CONTEXT.md, then verify state:
-   - `git log --oneline -20` should show 15 redesign-related commits
-     on top of `b3ade6e Pause v0.4.0`. Last commit `f03d240`.
+   - `git log --oneline -20` should show the redesign-related commits
+     on top of `b3ade6e Pause v0.4.0`, including the cycle-6a commit
+     `… Cycle 6a: Add Rounds tab to JudgingAdminView`.
    - `mvn test -Dsurefire.useFile=false 2>&1 | tail -10` should report
-     **1161 tests passing**.
+     **1162 tests passing** (was 1161 before cycle 6a).
    - `feature/judging-module` is at `0.4.0-SNAPSHOT`. Branch is in
      sync with `origin/feature/judging-module`.
 
@@ -469,24 +470,56 @@ What landed:
    The flat Rounds + Results + BOS tab layout is in the redesign doc
    §1 + decision #7.
 
-   **What cycle #6 (UI restructure) needs to do:**
-   - Replace `JudgingAdminView`'s **Tables tab** with a **Rounds tab**
-     showing all rounds (both scoring + medal) with a Type column and
-     Type filter (All / Scoring / Medal). Row click drills into
-     existing per-round views.
-   - Delete the **Medal Rounds tab** (functionality moves to Rounds tab +
-     MedalRoundView). Note: this will break ~15-20 view tests that
-     depend on tab indices — plan for that.
-   - Add a **Results tab** summarizing COMPLETE rounds with outcome data
-     (scoresheet counts for scoring, awarded medals for medal).
+   **Cycle #6 design choices (2026-05-24, third session):**
+   - Physical Tables management stays as its **own 4th tab** — final
+     tab layout: **Physical Tables / Rounds / Results / BOS** (4 tabs).
+   - Cycle #6 split into **three sub-cycles** to keep diffs small:
+     6a = add Rounds tab, 6b = add Results tab, 6c = migrate
+     `MedalRoundView` + delete the old Tables + Medal Rounds tabs +
+     fix all broken tests. 6a and 6b add tabs *alongside* the
+     existing ones (no breakage); 6c is the cleanup pass.
+
+   **Cycle 6a progress (2026-05-24):** ✅ **DONE.** New "Rounds" tab
+   appended at index 4 (after BOS, temporarily — gets reordered in
+   cycle 6c). Tab has a `rounds-type-filter` ComboBox (All / Scoring /
+   Medal) and a `rounds-grid` with 8 columns: Type / Name / Category /
+   Physical Table / Status / Judges / Scheduled / Actions. Actions has
+   an Open button that drills into `RoundView` (SCORING) or
+   `MedalRoundView` (MEDAL). New i18n keys
+   `judging-admin.tab.rounds`, `judging-admin.rounds.column.*`,
+   `judging-admin.rounds.type.*`, `judging-admin.rounds.type-filter.*`,
+   `judging-admin.rounds.action.open` in EN/PT/ES/IT/PL. 1 new view
+   test `shouldRenderRoundsGridAndTypeFilterOnRoundsTab`; existing
+   `shouldRenderHeaderAndFourTabsWhenDivisionInJudgingStatus` updated
+   to assert 5 tabs (will revert to 4 in cycle 6c). **1162 tests
+   passing** (was 1161, +1).
+
+   **What cycle #6b needs to do:** Add a **Results tab** at index 5
+   summarizing COMPLETE rounds with outcome data (scoresheet counts
+   for scoring rounds; medals awarded for medal rounds). New i18n
+   keys in 5 locales. View test.
+
+   **What cycle #6c needs to do:**
    - Migrate `MedalRoundView` to read status from medal `JudgingRound`
      (with backing-data sync on `startMedalRound`/etc. as part of the
      migration, OR new service methods that take `JudgingRound` ID).
-   - **Open design question**: what to do with the existing **Physical
-     Tables tab**? Redesign doc decision #7 only names Rounds + Results +
-     BOS, but Physical Tables management still needs to live somewhere.
-     Discuss before starting — leaving Physical Tables as a 4th tab is
-     a reasonable default if not addressed.
+   - Delete the **Tables tab** (index 1) and **Medal Rounds tab**
+     (index 2) — functionality moves to the Rounds tab + per-round
+     views. The new tab order becomes Physical Tables / Rounds /
+     Results / BOS (indices 0–3).
+   - Fix the ~15-20 view tests that depend on the old tab indices.
+     Several tests on JudgingAdminViewTest hardcode
+     `setSelectedIndex(1)` / `setSelectedIndex(2)` / `setSelectedIndex(3)`
+     — those need to be renumbered to point at the surviving tabs
+     (or removed where they were testing soon-to-be-deleted features
+     that have moved to other places).
+   - Drop the V22 column contraction (medal_round_status,
+     physical_table_id, rename medal_round_mode → mode) from
+     `category_judging_configs` once `MedalRoundView` no longer reads
+     them.
+   - Delete unused service methods: `startMedalRound`,
+     `completeMedalRound`, `reopenMedalRound`, `resetMedalRound`,
+     `assignMedalRoundToPhysicalTable`.
 
 **Tasks set up across this session** (with dependencies):
 - #1 Update redesign-doc with resolved decisions — **COMPLETE**

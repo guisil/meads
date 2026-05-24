@@ -209,8 +209,42 @@ class JudgingAdminViewTest {
         assertThat(heading.getText()).contains("Judging Admin");
 
         var tabSheet = _get(TabSheet.class);
-        // Physical Tables, Tables, Medal Rounds, Best of Show
-        assertThat(tabSheet.getTabCount()).isEqualTo(4);
+        // Physical Tables, Tables, Medal Rounds, Best of Show, Rounds
+        // (Rounds is appended in cycle 6a; old Tables + Medal Rounds tabs
+        // will be removed in cycle 6c, restoring count to 4.)
+        assertThat(tabSheet.getTabCount()).isEqualTo(5);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    @SuppressWarnings("unchecked")
+    void shouldRenderRoundsGridAndTypeFilterOnRoundsTab() {
+        advanceDivisionToJudging();
+        divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Desc",
+                null, 1, CategoryScope.JUDGING));
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(4); // Rounds tab (appended after BOS in cycle 6a)
+
+        var grids = _find(Grid.class);
+        var roundsGrid = grids.stream()
+                .filter(g -> "rounds-grid".equals(g.getId().orElse(null)))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Rounds grid not found"));
+
+        var headers = roundsGrid.getColumns().stream()
+                .map(c -> ((Grid.Column<?>) c).getHeaderText())
+                .toList();
+        assertThat(headers).containsExactly("Type", "Name", "Category",
+                "Physical Table", "Status", "Judges", "Scheduled", "Actions");
+
+        var typeFilter = _get(com.vaadin.flow.component.combobox.ComboBox.class,
+                spec -> spec.withId("rounds-type-filter"));
+        assertThat(typeFilter).isNotNull();
     }
 
     @Test
