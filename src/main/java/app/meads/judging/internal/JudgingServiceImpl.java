@@ -239,6 +239,9 @@ public class JudgingServiceImpl implements JudgingService {
         var judging = requireJudging(round.getJudgingId());
         requireAuthorizedForJudging(judging, adminUserId);
         requireNotFrozen(judging.getDivisionId());
+        if (round.getStatus() == JudgingRoundStatus.COMPLETE) {
+            throw new BusinessRuleException("error.entry.cannot-change-on-complete-round");
+        }
         if (round.getType() == RoundType.SCORING) {
             // Enforce 1:1 entry-to-scoring-round (redesign decision #1, also DB
             // UNIQUE on judging_round_entries.entry_id). Throw a helpful error
@@ -255,6 +258,12 @@ public class JudgingServiceImpl implements JudgingService {
         }
         round.assignEntry(entryId);
         judgingRoundRepository.save(round);
+        // Mid-round add: create the DRAFT scoresheet so the round's judges can
+        // start scoring this entry immediately. ensureScoresheetForEntry no-ops
+        // unless the entry is RECEIVED and the round is ACTIVE.
+        if (round.getStatus() == JudgingRoundStatus.ACTIVE && round.getType() == RoundType.SCORING) {
+            scoresheetService.ensureScoresheetForEntry(entryId);
+        }
         log.info("Assigned entry {} to round {}", entryId, roundId);
     }
 
@@ -264,6 +273,22 @@ public class JudgingServiceImpl implements JudgingService {
         var judging = requireJudging(round.getJudgingId());
         requireAuthorizedForJudging(judging, adminUserId);
         requireNotFrozen(judging.getDivisionId());
+        if (round.getStatus() == JudgingRoundStatus.COMPLETE) {
+            throw new BusinessRuleException("error.entry.cannot-change-on-complete-round");
+        }
+        // Mid-round removal: handle the scoresheet attached to this entry. Block
+        // when SUBMITTED (commits would be lost). Delete when still DRAFT.
+        if (round.getStatus() == JudgingRoundStatus.ACTIVE && round.getType() == RoundType.SCORING) {
+            for (var sheet : scoresheetService.findByEntryIdOrderBySubmittedAtAsc(entryId)) {
+                if (!sheet.getRoundId().equals(roundId)) {
+                    continue;
+                }
+                if (sheet.getStatus() == ScoresheetStatus.SUBMITTED) {
+                    throw new BusinessRuleException("error.entry.cannot-unassign-submitted");
+                }
+                scoresheetService.deleteScoresheet(sheet.getId(), adminUserId);
+            }
+        }
         round.unassignEntry(entryId);
         judgingRoundRepository.save(round);
         log.info("Unassigned entry {} from round {}", entryId, roundId);

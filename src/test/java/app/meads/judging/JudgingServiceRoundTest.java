@@ -437,6 +437,98 @@ class JudgingServiceRoundTest {
     }
 
     @Test
+    void shouldAssignEntryToActiveScoringRoundAndCreateScoresheet() {
+        var judging = new Judging(divisionId);
+        var round = new JudgingRound(judging.getId(), "T1", divisionCategoryId, null);
+        round.assignJudge(judgeUserId);
+        round.start();
+        var entryId = UUID.randomUUID();
+        given(judgingRoundRepository.findById(round.getId())).willReturn(Optional.of(round));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(judgingRoundRepository.findByJudgingId(judging.getId())).willReturn(List.of(round));
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.assignEntryToRound(round.getId(), entryId, adminUserId);
+
+        assertThat(round.getEntries()).contains(entryId);
+        then(scoresheetService).should().ensureScoresheetForEntry(entryId);
+    }
+
+    @Test
+    void shouldUnassignEntryFromActiveScoringRoundAndDeleteDraftScoresheet() {
+        var judging = new Judging(divisionId);
+        var round = new JudgingRound(judging.getId(), "T1", divisionCategoryId, null);
+        round.assignJudge(judgeUserId);
+        round.start();
+        var entryId = UUID.randomUUID();
+        round.assignEntry(entryId);
+        var sheet = mock(Scoresheet.class);
+        var sheetId = UUID.randomUUID();
+        given(sheet.getId()).willReturn(sheetId);
+        given(sheet.getRoundId()).willReturn(round.getId());
+        given(sheet.getStatus()).willReturn(ScoresheetStatus.DRAFT);
+        given(judgingRoundRepository.findById(round.getId())).willReturn(Optional.of(round));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(scoresheetService.findByEntryIdOrderBySubmittedAtAsc(entryId))
+                .willReturn(List.of(sheet));
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.unassignEntryFromRound(round.getId(), entryId, adminUserId);
+
+        assertThat(round.getEntries()).doesNotContain(entryId);
+        then(scoresheetService).should().deleteScoresheet(sheetId, adminUserId);
+    }
+
+    @Test
+    void shouldRejectUnassignEntryFromActiveScoringRoundWhenScoresheetSubmitted() {
+        var judging = new Judging(divisionId);
+        var round = new JudgingRound(judging.getId(), "T1", divisionCategoryId, null);
+        round.assignJudge(judgeUserId);
+        round.start();
+        var entryId = UUID.randomUUID();
+        round.assignEntry(entryId);
+        var sheet = mock(Scoresheet.class);
+        given(sheet.getRoundId()).willReturn(round.getId());
+        given(sheet.getStatus()).willReturn(ScoresheetStatus.SUBMITTED);
+        given(judgingRoundRepository.findById(round.getId())).willReturn(Optional.of(round));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(scoresheetService.findByEntryIdOrderBySubmittedAtAsc(entryId))
+                .willReturn(List.of(sheet));
+
+        assertThatThrownBy(() -> service.unassignEntryFromRound(round.getId(), entryId, adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.entry.cannot-unassign-submitted");
+
+        assertThat(round.getEntries()).contains(entryId);
+        then(scoresheetService).should(never()).deleteScoresheet(any(), any());
+    }
+
+    @Test
+    void shouldRejectAssignOrUnassignEntryWhenRoundIsComplete() {
+        var judging = new Judging(divisionId);
+        var round = new JudgingRound(judging.getId(), "T1", divisionCategoryId, null);
+        round.assignJudge(judgeUserId);
+        round.start();
+        round.markComplete();
+        var entryId = UUID.randomUUID();
+        given(judgingRoundRepository.findById(round.getId())).willReturn(Optional.of(round));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+
+        assertThatThrownBy(() -> service.assignEntryToRound(round.getId(), entryId, adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.entry.cannot-change-on-complete-round");
+        assertThatThrownBy(() -> service.unassignEntryFromRound(round.getId(), entryId, adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.entry.cannot-change-on-complete-round");
+    }
+
+    @Test
     void shouldUnassignEntryFromRound() {
         var judging = new Judging(divisionId);
         var round = new JudgingRound(judging.getId(), "T1", divisionCategoryId, null);

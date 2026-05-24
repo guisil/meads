@@ -1043,7 +1043,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         assignJudgesButton.setTooltipText(getTranslation("judging-admin.tables.action.assign-judges"));
         assignJudgesButton.addClickListener(e -> openAssignJudgesDialog(round));
 
-        boolean entryAssignmentAllowed = round.getStatus() == JudgingRoundStatus.PENDING;
+        boolean entryAssignmentAllowed = round.getStatus() != JudgingRoundStatus.COMPLETE;
         var assignEntriesButton = new Button(new Icon(VaadinIcon.PACKAGE));
         assignEntriesButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
         assignEntriesButton.setEnabled(entryAssignmentAllowed);

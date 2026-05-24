@@ -1813,7 +1813,8 @@ Each scoring round in the new model explicitly owns the set of entries it judges
 - [ ] Close. Click 📦 Assign Entries on the `M1A Panel B` row → uncheck one of its entries → Save → notification "Entry assignments updated".
 - [ ] Back on `M1A Panel A`: open Assign Entries again → the newly-freed entry shows `Current round: — Unassigned —`. Select it → Save → assignments updated.
 - [ ] Re-balance to whatever you prefer before continuing.
-- [ ] (Try) Start one of the M1A rounds → then open Assign Entries on it. **Expected:** 📦 button is disabled with tooltip "Entry assignments are locked once the round has started."
+- [ ] (Try) Start one of the M1A rounds → then open Assign Entries on it. **Expected:** dialog still opens (entry assignments are editable through ACTIVE). On ACTIVE rounds, adding an entry auto-creates its DRAFT scoresheet; removing an entry deletes the DRAFT scoresheet, but is blocked if the scoresheet is already SUBMITTED (key `error.entry.cannot-unassign-submitted`). After the round reaches COMPLETE the 📦 button disables with tooltip *"Entry assignments are locked once the round is COMPLETE."* (key `error.entry.cannot-change-on-complete-round` defends the same at the service level).
+- [ ] (Try) After reverting an ACTIVE round (see §12.6.4.1), open 📦 Assign Entries on the now-READY row. **Expected:** dialog opens and current assignments are editable — useful for fixing the mistake that prompted the revert.
 
 #### 12.6.8 Add a medal round
 
