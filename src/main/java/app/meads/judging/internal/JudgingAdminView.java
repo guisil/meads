@@ -438,13 +438,14 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         var startButton = new Button(getTranslation("judging-admin.tables.action.start"), e -> {
             try {
                 judgingService.startRound(table.getId(), currentUserId);
-                dialog.close();
                 refreshRoundsGrid();
                 Notification.show(getTranslation("judging-admin.tables.started"))
                         .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
             } catch (BusinessRuleException ex) {
                 Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
                         .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            } finally {
+                dialog.close();
             }
         });
         startButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
