@@ -183,7 +183,7 @@ Phasing — refine before execution. §1 is now closed (see "Resolved decisions"
    - ✅ `JudgingService` *additions*: `createMedalRound`, `assignEntryToRound`, `unassignEntryFromRound`, `confirmMedalAward`. **No callers yet.**
    - ⏳ Service-side auto-PENDING→READY based on preconditions: **not yet wired**.
    - ⏳ Cascade migration (`cascadeMarkCategoryReadyIfAllTablesComplete`) to operate on medal `JudgingRound`: **not yet done**. Currently still mutates `CategoryJudgingConfig.medalRoundStatus`.
-   - ⏳ Scoresheet creation switching from "derived from category" to use `round.entries`: **not yet done**.
+   - ✅ Scoresheet creation switching from "derived from category" to use `round.entries`: `createScoresheetsForTable` uses `round.entries` when non-empty (fallback to derived when empty). `startRound` auto-populates `round.entries` from the derived set on first start (pre-assigned entries preserved). Done 2026-05-24.
    - ⏳ `startRound` polymorphism on round type: **not yet done**. Currently scoring-specific by behavior; would misbehave on MEDAL round (but no caller does that).
    - ⏳ Delete `startMedalRound / completeMedalRound / reopenMedalRound / resetMedalRound / assignMedalRoundToPhysicalTable`: **deferred until callers migrated**.
    - ✅ `MedalAward.confirmed` flag wired into BOS read (`findGoldMedalAwardsForDivision` filters confirmed=true) and BOS write (`recordBosPlacement` requires confirmed=true). Manual `recordMedal`/`updateMedal` flip confirmed=true; auto-fill stays confirmed=false.
@@ -191,7 +191,7 @@ Phasing — refine before execution. §1 is now closed (see "Resolved decisions"
 5. ⏳ **Dev seed updates** — split-category + medal-round judges. **Not started.**
 6. ⏳ **Walkthrough rewrite** — §12.6/§12.7/§12.8. **Not started.**
 7. **i18n** — 5 locales for new error keys done as we go. Two new keys so far (`error.medal-round.category-not-configured`, `error.bos.gold-not-confirmed`). More will land with future cycles.
-8. ✅ **Tests** — TDD throughout. 1135 → 1155 (+20 net) since start of redesign. No regressions; full suite green at every commit.
+8. ✅ **Tests** — TDD throughout. 1135 → 1158 (+23 net) since start of redesign. No regressions; full suite green at every commit.
 
 Likely 2-4 more focused sessions for the remaining items.
 

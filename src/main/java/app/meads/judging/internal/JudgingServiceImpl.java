@@ -463,6 +463,14 @@ public class JudgingServiceImpl implements JudgingService {
         } catch (IllegalStateException e) {
             throw new BusinessRuleException("error.judging-table.cannot-start", e.getMessage());
         }
+        // Auto-populate round.entries from the category's entries when admin
+        // didn't explicitly assign any — preserves the pre-split-category default
+        // ("all entries in the category are judged here") while making
+        // round.entries the source of truth from now on.
+        if (table.getEntries().isEmpty()) {
+            entryService.findEntriesByFinalCategoryId(table.getDivisionCategoryId())
+                    .forEach(entry -> table.assignEntry(entry.getId()));
+        }
         judgingRoundRepository.save(table);
         if (judging.getPhase() == JudgingPhase.NOT_STARTED) {
             judging.markActive();

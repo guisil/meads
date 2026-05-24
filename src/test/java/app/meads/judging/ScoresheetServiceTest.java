@@ -168,6 +168,30 @@ class ScoresheetServiceTest {
     }
 
     @Test
+    void shouldUseRoundEntriesWhenNonEmpty() {
+        var assigned1 = UUID.randomUUID();
+        var assigned2 = UUID.randomUUID();
+        var notAssigned = UUID.randomUUID();
+        table.assignEntry(assigned1);
+        table.assignEntry(assigned2);
+        var e1 = mockEntry(assigned1, UUID.randomUUID());
+        var e2 = mockEntry(assigned2, UUID.randomUUID());
+        given(entryService.findEntryById(assigned1)).willReturn(e1);
+        given(entryService.findEntryById(assigned2)).willReturn(e2);
+        given(scoresheetRepository.findByEntryId(any())).willReturn(Optional.empty());
+        given(scoresheetRepository.save(any(Scoresheet.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.createScoresheetsForTable(roundId);
+
+        // Should NOT fall back to the derived list — round.entries is the source of truth.
+        then(entryService).should(never()).findEntriesByFinalCategoryId(any());
+        // notAssigned is not in round.entries, so it must not be looked up.
+        then(entryService).should(never()).findEntryById(notAssigned);
+        then(scoresheetRepository).should(org.mockito.Mockito.times(2)).save(any(Scoresheet.class));
+    }
+
+    @Test
     void shouldUpdateScoreAndSetFilledByOnFirstCall() {
         var entryId = UUID.randomUUID();
         var scoresheet = new Scoresheet(roundId, entryId);

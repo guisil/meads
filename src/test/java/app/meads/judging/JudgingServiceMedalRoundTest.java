@@ -107,6 +107,69 @@ class JudgingServiceMedalRoundTest {
     }
 
     @Test
+    void shouldAutoPopulateRoundEntriesFromCategoryWhenStartingRoundWithNoExplicitEntries() {
+        var physicalTableId = UUID.randomUUID();
+        var table = new JudgingRound(judging.getId(), physicalTableId, "T1", divisionCategoryId, null);
+        table.assignJudge(UUID.randomUUID());
+        table.assignJudge(UUID.randomUUID());
+        var e1Id = UUID.randomUUID();
+        var e2Id = UUID.randomUUID();
+        var e1 = mock(Entry.class);
+        lenient().when(e1.getId()).thenReturn(e1Id);
+        var e2 = mock(Entry.class);
+        lenient().when(e2.getId()).thenReturn(e2Id);
+        given(judgingRoundRepository.findByJudgingId(judging.getId())).willReturn(List.of(table));
+        given(judgingRoundRepository.findAll()).willReturn(List.of(table));
+        given(judgingRoundRepository.findById(table.getId())).willReturn(Optional.of(table));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId))
+                .willReturn(Optional.empty());
+        given(categoryConfigRepository.save(any(CategoryJudgingConfig.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(judgingRepository.save(any(Judging.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(entryService.findEntriesByFinalCategoryId(divisionCategoryId))
+                .willReturn(List.of(e1, e2));
+
+        service.startRound(table.getId(), adminUserId);
+
+        assertThat(table.getEntries()).containsExactlyInAnyOrder(e1Id, e2Id);
+    }
+
+    @Test
+    void shouldNotOverwriteExplicitlyAssignedRoundEntriesWhenStartingRound() {
+        var physicalTableId = UUID.randomUUID();
+        var table = new JudgingRound(judging.getId(), physicalTableId, "T1", divisionCategoryId, null);
+        table.assignJudge(UUID.randomUUID());
+        table.assignJudge(UUID.randomUUID());
+        var preAssigned = UUID.randomUUID();
+        table.assignEntry(preAssigned);
+        given(judgingRoundRepository.findByJudgingId(judging.getId())).willReturn(List.of(table));
+        given(judgingRoundRepository.findAll()).willReturn(List.of(table));
+        given(judgingRoundRepository.findById(table.getId())).willReturn(Optional.of(table));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId))
+                .willReturn(Optional.empty());
+        given(categoryConfigRepository.save(any(CategoryJudgingConfig.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(judgingRepository.save(any(Judging.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.startRound(table.getId(), adminUserId);
+
+        assertThat(table.getEntries()).containsExactly(preAssigned);
+        then(entryService).should(never()).findEntriesByFinalCategoryId(any());
+    }
+
+    @Test
     void shouldRejectStartTableWhenInsufficientJudges() {
         var physicalTableId = UUID.randomUUID();
         var table = new JudgingRound(judging.getId(), physicalTableId, "T1", divisionCategoryId, null);

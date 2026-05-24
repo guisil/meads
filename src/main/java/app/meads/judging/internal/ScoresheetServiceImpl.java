@@ -71,7 +71,9 @@ public class ScoresheetServiceImpl implements ScoresheetService {
         var table = requireTable(roundId);
         var judging = requireJudging(table.getJudgingId());
         requireNotFrozen(judging.getDivisionId());
-        var entries = entryService.findEntriesByFinalCategoryId(table.getDivisionCategoryId());
+        var entries = table.getEntries().isEmpty()
+                ? entryService.findEntriesByFinalCategoryId(table.getDivisionCategoryId())
+                : table.getEntries().stream().map(entryService::findEntryById).toList();
         for (var entry : entries) {
             // Only physically-present entries are judged — a bottle that never
             // arrived (SUBMITTED) or was pulled (WITHDRAWN) gets no scoresheet.
