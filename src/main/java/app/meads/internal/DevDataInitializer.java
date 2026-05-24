@@ -6,6 +6,7 @@ import app.meads.identity.UserService;
 import app.meads.judging.Certification;
 import app.meads.judging.JudgeProfileService;
 import app.meads.judging.JudgingService;
+import app.meads.judging.MedalRoundMode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -417,12 +418,67 @@ class DevDataInitializer {
         log.info("Profissional → JUDGING (ready for §12.6+ walkthrough)");
 
         // Physical tables for Profissional (5 to cover 5 judging categories in parallel).
-        judgingService.createPhysicalTable(profissional.getId(), "Table 1", compAdminId);
-        judgingService.createPhysicalTable(profissional.getId(), "Table 2", compAdminId);
+        var pt1 = judgingService.createPhysicalTable(profissional.getId(), "Table 1", compAdminId);
+        var pt2 = judgingService.createPhysicalTable(profissional.getId(), "Table 2", compAdminId);
         judgingService.createPhysicalTable(profissional.getId(), "Table 3", compAdminId);
-        judgingService.createPhysicalTable(profissional.getId(), "Table 4", compAdminId);
+        var pt4 = judgingService.createPhysicalTable(profissional.getId(), "Table 4", compAdminId);
         judgingService.createPhysicalTable(profissional.getId(), "Table 5", compAdminId);
         log.info("Profissional: created 5 physical tables");
+
+        // === Pre-staged split-category demo + medal-round judges ===
+        // Demonstrates redesign decisions #3 (per-round entry assignment, a
+        // category split across two scoring rounds with different judges &
+        // physical tables) and #5 (medal rounds with their own judge panel,
+        // independent of scoring panels). Both rounds are left at PENDING so
+        // the walkthrough admin can Start them interactively.
+
+        var profJudging = judgingService.ensureJudgingExists(profissional.getId());
+        var judge1Id = userService.findByEmail("judge@example.com").getId();
+        var judge2Id = userService.findByEmail("judge2@example.com").getId();
+        var judge4Id = userService.findByEmail("judge4@example.com").getId();
+        var judge5Id = userService.findByEmail("judge5@example.com").getId();
+        var judge6Id = userService.findByEmail("judge6@example.com").getId();
+
+        var proJudgingCats = competitionService.findJudgingCategories(profissional.getId());
+        var proM1AJ = findCategoryByCode(proJudgingCats, "M1A");
+        var proM1BJ = findCategoryByCode(proJudgingCats, "M1B");
+
+        // Split M1A (5 RECEIVED entries — 1 each from pro1/pro2/pro3, 2 from pro4)
+        // across two scoring rounds.
+        var m1aEntries = entryService.findEntriesByFinalCategoryId(proM1AJ.getId());
+        var m1aRoundA = judgingService.createRound(
+                profJudging.getId(), "M1A Panel A", proM1AJ.getId(), null, compAdminId);
+        judgingService.assignRoundToPhysicalTable(m1aRoundA.getId(), pt1.getId(), compAdminId);
+        judgingService.assignJudge(m1aRoundA.getId(), judge1Id, compAdminId);
+        judgingService.assignJudge(m1aRoundA.getId(), judge2Id, compAdminId);
+
+        var m1aRoundB = judgingService.createRound(
+                profJudging.getId(), "M1A Panel B", proM1AJ.getId(), null, compAdminId);
+        judgingService.assignRoundToPhysicalTable(m1aRoundB.getId(), pt2.getId(), compAdminId);
+        judgingService.assignJudge(m1aRoundB.getId(), judge4Id, compAdminId);
+        judgingService.assignJudge(m1aRoundB.getId(), judge5Id, compAdminId);
+
+        // First two M1A entries → Panel A; remaining → Panel B.
+        for (int i = 0; i < m1aEntries.size(); i++) {
+            var entryId = m1aEntries.get(i).getId();
+            var targetRound = (i < 2 ? m1aRoundA : m1aRoundB).getId();
+            judgingService.assignEntryToRound(targetRound, entryId, compAdminId);
+        }
+        log.info("Profissional M1A: split into Panel A (2 entries, judges 1+2, Table 1) "
+                + "and Panel B (3 entries, judges 4+5, Table 2)");
+
+        // Pre-stage a medal round for M1B with its own judge panel (judges
+        // 1, 2, 6 — note judge6 isn't on any M1B scoring panel here; this is
+        // the point of independent medal-round judges).
+        judgingService.configureCategoryMedalRound(
+                proM1BJ.getId(), MedalRoundMode.COMPARATIVE, compAdminId);
+        var m1bMedal = judgingService.createMedalRound(
+                profJudging.getId(), proM1BJ.getId(), compAdminId);
+        judgingService.assignRoundToPhysicalTable(m1bMedal.getId(), pt4.getId(), compAdminId);
+        judgingService.assignJudge(m1bMedal.getId(), judge1Id, compAdminId);
+        judgingService.assignJudge(m1bMedal.getId(), judge2Id, compAdminId);
+        judgingService.assignJudge(m1bMedal.getId(), judge6Id, compAdminId);
+        log.info("Profissional M1B: pre-staged medal round with judges 1+2+6, Table 4");
     }
 
     private void seedJudgeProfile(String email, java.util.Set<Certification> certifications,

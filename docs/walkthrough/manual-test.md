@@ -1787,6 +1787,22 @@ For COI badges to appear, `judge@example.com` should already exist as a JUDGE in
 - [ ] Click 🗑 Delete → confirm.
 - [ ] **Expected:** Notification "Round deleted"; row removed.
 
+#### 12.6.7.1 Assign entries to a scoring round (split-category demo)
+
+Each scoring round in the new model explicitly owns the set of entries it judges. Entries are 1:1 with scoring rounds — an entry can't be on two rounds at once. The walkthrough uses Profissional (pre-staged at JUDGING) which the seed has split M1A into two scoring rounds.
+
+- [ ] Switch to the Profissional division: navigate to CHIP 2026 → Divisions → Profissional → "Manage Judging" → Rounds tab.
+- [ ] **Expected (from dev seed):** Two PENDING scoring rounds for M1A: `M1A Panel A` (Physical Table 1, 2 judges, 2 entries assigned) and `M1A Panel B` (Physical Table 2, 2 judges, 3 entries assigned). Plus one PENDING medal round for M1B (Table 4, 3 judges).
+- [ ] Click 📦 Assign Entries on the `M1A Panel A` row.
+- [ ] **Expected:** Dialog titled "Assign entries to M1A Panel A" with helper text explaining 1:1 constraint, plus a multi-select grid with columns Entry / Meadery / Current round.
+- [ ] **Expected:** The 5 RECEIVED M1A entries are listed. The 2 pre-assigned to Panel A are pre-selected; the 3 on Panel B show `Current round: M1A Panel B`.
+- [ ] Try to also select one of Panel B's entries (a row currently assigned elsewhere) → Save.
+- [ ] **Expected:** Error notification "This entry is already assigned to round 'M1A Panel B'. Remove it from there first." Dialog stays open.
+- [ ] Close. Click 📦 Assign Entries on the `M1A Panel B` row → uncheck one of its entries → Save → notification "Entry assignments updated".
+- [ ] Back on `M1A Panel A`: open Assign Entries again → the newly-freed entry shows `Current round: — Unassigned —`. Select it → Save → assignments updated.
+- [ ] Re-balance to whatever you prefer before continuing.
+- [ ] (Try) Start one of the M1A rounds → then open Assign Entries on it. **Expected:** 📦 button is disabled with tooltip "Entry assignments are locked once the round has started."
+
 #### 12.6.8 Add a medal round
 
 Medal rounds are auto-created by the scoring-completion cascade — when every scoring round in a category reaches COMPLETE, a medal `JudgingRound` (type=MEDAL) appears in the grid at status `READY`. You can also add one explicitly via the Add Round dialog if you want to pre-stage with a custom physical table or before any scoring rounds finish.
@@ -1979,8 +1995,19 @@ The scoring-completion cascade auto-creates a medal `JudgingRound` (type = MEDAL
 - [ ] As `compadmin@example.com`, navigate to JudgingAdmin → Rounds tab → set Type filter to `Medal` → click Open on the M1A row.
 - [ ] **Expected:** URL `competitions/.../divisions/.../medal-rounds/<divisionCategoryId>`.
 - [ ] **Expected:** Header shows category code + name, mode line (`Mode: COMPARATIVE`), status line (`Status: READY`), physical table line (`Physical Table: Table 1` or `— Not assigned —`).
-- [ ] **Expected:** Admin button row: `Start` (enabled), `Reset` (disabled — only at ACTIVE), `Reopen` (disabled — only at COMPLETE), `Finalize` (disabled — only at ACTIVE).
+- [ ] **Expected:** Admin button row: `Assign Judges`, `Start` (enabled), `Reset` (disabled — only at ACTIVE), `Reopen` (disabled — only at COMPLETE), `Finalize` (disabled — only at ACTIVE).
 - [ ] **If no physical table assigned:** Start button is **disabled** with tooltip "Assign a physical table to this medal round before starting." Use Rounds tab → Add Round → MEDAL (or the cascade-created row's Open button → … there's currently no per-row physical-table assignment from MedalRoundView; pre-stage via Add Round). *(Known gap — to be addressed in a follow-up.)*
+
+#### 12.12.0.1 Assign Judges to the medal round
+
+Medal-round judges are **independent** of scoring-round judges for the same category (redesign decision #5) — could be the same panel, could be different (head judges only). The Profissional M1B medal round is pre-seeded with judges 1+2+6 to demonstrate this — judge6 isn't on any M1B scoring panel.
+
+- [ ] Switch to Profissional → Rounds tab → Type filter `Medal` → click Open on the M1B row.
+- [ ] **Expected (from seed):** Header shows `Status: PENDING`, `Physical Table: Table 4`, and the admin button row.
+- [ ] Click **Assign Judges**.
+- [ ] **Expected:** Dialog "Assign Judges" with a multi-select grid (columns: Name, Meadery, Country). Judges 1, 2, and 6 are pre-checked.
+- [ ] Uncheck judge6, check judge3 → Save → notification "Judge assignments updated"; dialog closes; page reloads.
+- [ ] **Expected:** Assign Judges button is disabled with no tooltip once the medal round status becomes ACTIVE (or COMPLETE). For now (PENDING/READY) it stays enabled — try opening it again to verify the change persisted.
 
 #### 12.12.1 Start medal round — COMPARATIVE mode
 
