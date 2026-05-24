@@ -13,7 +13,7 @@ import app.meads.identity.UserService;
 import app.meads.judging.Judging;
 import app.meads.judging.JudgingService;
 import app.meads.judging.JudgingRound;
-import app.meads.judging.MedalRoundStatus;
+import app.meads.judging.JudgingRoundStatus;
 import app.meads.judging.Scoresheet;
 import app.meads.judging.ScoresheetService;
 import app.meads.judging.ScoresheetStatus;
@@ -313,9 +313,8 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
     }
 
     private boolean medalRoundLocksRevert(Scoresheet sheet) {
-        return judgingService.findCategoryConfigByDivisionCategoryId(table.getDivisionCategoryId())
-                .map(c -> c.getMedalRoundStatus() == MedalRoundStatus.ACTIVE
-                        || c.getMedalRoundStatus() == MedalRoundStatus.COMPLETE)
+        return judgingService.getEffectiveMedalRoundStatus(table.getDivisionCategoryId())
+                .map(s -> s == JudgingRoundStatus.ACTIVE || s == JudgingRoundStatus.COMPLETE)
                 .orElse(false);
     }
 
@@ -332,7 +331,7 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
         var candidates = judgingService.findRoundsByDivisionAndCategory(
                         division.getId(), table.getDivisionCategoryId()).stream()
                 .filter(t -> !t.getId().equals(table.getId()))
-                .filter(t -> t.getStatus() == app.meads.judging.JudgingRoundStatus.ACTIVE)
+                .filter(t -> t.getStatus() == JudgingRoundStatus.ACTIVE)
                 .toList();
 
         var targetSelect = new Select<JudgingRound>();

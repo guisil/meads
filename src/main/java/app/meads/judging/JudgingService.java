@@ -103,6 +103,23 @@ public interface JudgingService {
 
     java.util.Optional<CategoryJudgingConfig> findCategoryConfigByDivisionCategoryId(@NotNull UUID divisionCategoryId);
 
+    /**
+     * Finds the medal {@link JudgingRound} (type = MEDAL) for a given division
+     * category. Returns empty if no medal round has been created for this
+     * category yet. There is at most one medal round per category (decision #5
+     * in the round-model redesign).
+     */
+    java.util.Optional<JudgingRound> findMedalRoundByCategoryId(@NotNull UUID divisionCategoryId);
+
+    /**
+     * Effective medal-round status for a category. Prefers the medal
+     * {@link JudgingRound}'s status; falls back to the legacy
+     * {@link CategoryJudgingConfig#getMedalRoundStatus()} during the migration
+     * (some test setups still mutate the config directly). Returns empty if
+     * neither is configured.
+     */
+    java.util.Optional<JudgingRoundStatus> getEffectiveMedalRoundStatus(@NotNull UUID divisionCategoryId);
+
     List<CategoryJudgingConfig> findActiveCategoryConfigsForJudge(@NotNull UUID judgeUserId);
 
     List<MedalAward> findMedalAwardsForCategory(@NotNull UUID divisionCategoryId);
@@ -139,6 +156,24 @@ public interface JudgingService {
     void reopenMedalRound(@NotNull UUID divisionCategoryId, @NotNull UUID adminUserId);
 
     void resetMedalRound(@NotNull UUID divisionCategoryId, @NotNull UUID adminUserId);
+
+    /**
+     * Round-id variants of the medal-round transitions. Operate directly on
+     * the medal {@link JudgingRound} rather than going through the legacy
+     * {@link CategoryJudgingConfig}. New-model API; the
+     * {@code *MedalRound(divisionCategoryId, ...)} methods above are kept
+     * during the migration window and will be deleted once all callers move
+     * to these {@code *ById} variants.
+     */
+    void completeMedalRoundById(@NotNull UUID roundId, @NotNull UUID adminUserId);
+
+    void reopenMedalRoundById(@NotNull UUID roundId, @NotNull UUID adminUserId);
+
+    /**
+     * Resets a medal round back to READY and wipes its medal awards. Medal-only —
+     * scoring rounds don't support reset.
+     */
+    void resetMedalRoundById(@NotNull UUID roundId, @NotNull UUID adminUserId);
 
     // === Medal awards (during ACTIVE) ===
     /** A {@code null} medal records an explicit withhold (per design D11). */

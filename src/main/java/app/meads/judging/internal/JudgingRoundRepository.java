@@ -1,10 +1,12 @@
 package app.meads.judging.internal;
 
 import app.meads.judging.JudgingRound;
+import app.meads.judging.RoundType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface JudgingRoundRepository extends JpaRepository<JudgingRound, UUID> {
@@ -12,6 +14,8 @@ public interface JudgingRoundRepository extends JpaRepository<JudgingRound, UUID
     List<JudgingRound> findByJudgingId(UUID judgingId);
 
     List<JudgingRound> findByDivisionCategoryId(UUID divisionCategoryId);
+
+    Optional<JudgingRound> findFirstByDivisionCategoryIdAndType(UUID divisionCategoryId, RoundType type);
 
     @Query("SELECT t FROM JudgingRound t JOIN t.assignments a WHERE a.judgeUserId = :judgeUserId")
     List<JudgingRound> findByJudgeUserId(UUID judgeUserId);

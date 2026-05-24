@@ -158,8 +158,7 @@ public class ScoresheetServiceImpl implements ScoresheetService {
         requireNotFrozenForSheet(sheet);
         enforceCoi(judgeUserId, sheet);
         var table = requireTable(sheet.getRoundId());
-        var configOpt = categoryConfigRepository.findByDivisionCategoryId(table.getDivisionCategoryId());
-        if (configOpt.isPresent() && configOpt.get().getMedalRoundStatus() == MedalRoundStatus.ACTIVE) {
+        if (effectiveMedalRoundStatus(table.getDivisionCategoryId()) == JudgingRoundStatus.ACTIVE) {
             throw new BusinessRuleException("error.scoresheet.medal-round-active");
         }
         sheet.setAdvancedToMedalRound(advanced);
@@ -242,12 +241,10 @@ public class ScoresheetServiceImpl implements ScoresheetService {
             throw new BusinessRuleException("error.auth.unauthorized");
         }
         requireNotFrozen(judging.getDivisionId());
-        var configOpt = categoryConfigRepository.findByDivisionCategoryId(table.getDivisionCategoryId());
-        if (configOpt.isPresent()) {
-            var status = configOpt.get().getMedalRoundStatus();
-            if (status != MedalRoundStatus.PENDING && status != MedalRoundStatus.READY) {
-                throw new BusinessRuleException("error.scoresheet.cannot-revert-medal-active");
-            }
+        var status = effectiveMedalRoundStatus(table.getDivisionCategoryId());
+        if (status != null && status != JudgingRoundStatus.PENDING
+                && status != JudgingRoundStatus.READY) {
+            throw new BusinessRuleException("error.scoresheet.cannot-revert-medal-active");
         }
         try {
             sheet.revertToDraft();
@@ -263,13 +260,7 @@ public class ScoresheetServiceImpl implements ScoresheetService {
             eventPublisher.publishEvent(new RoundReopenedEvent(
                     table.getId(), table.getDivisionCategoryId(),
                     judging.getDivisionId(), Instant.now()));
-            // If category config was READY, retreat to PENDING
-            configOpt.ifPresent(config -> {
-                if (config.getMedalRoundStatus() == MedalRoundStatus.READY) {
-                    config.markPending();
-                    categoryConfigRepository.save(config);
-                }
-            });
+            retreatMedalRoundFromReady(table.getDivisionCategoryId());
         }
         log.info("Reverted scoresheet {} to DRAFT", sheet.getId());
     }
@@ -283,12 +274,10 @@ public class ScoresheetServiceImpl implements ScoresheetService {
             throw new BusinessRuleException("error.auth.unauthorized");
         }
         requireNotFrozen(judging.getDivisionId());
-        var configOpt = categoryConfigRepository.findByDivisionCategoryId(table.getDivisionCategoryId());
-        if (configOpt.isPresent()) {
-            var status = configOpt.get().getMedalRoundStatus();
-            if (status != MedalRoundStatus.PENDING && status != MedalRoundStatus.READY) {
-                throw new BusinessRuleException("error.scoresheet.cannot-delete-medal-active");
-            }
+        var status = effectiveMedalRoundStatus(table.getDivisionCategoryId());
+        if (status != null && status != JudgingRoundStatus.PENDING
+                && status != JudgingRoundStatus.READY) {
+            throw new BusinessRuleException("error.scoresheet.cannot-delete-medal-active");
         }
         scoresheetRepository.delete(sheet);
         // If deleting the last scoresheet (or a SUBMITTED one) leaves the table COMPLETE
@@ -299,12 +288,7 @@ public class ScoresheetServiceImpl implements ScoresheetService {
             eventPublisher.publishEvent(new RoundReopenedEvent(
                     table.getId(), table.getDivisionCategoryId(),
                     judging.getDivisionId(), Instant.now()));
-            configOpt.ifPresent(config -> {
-                if (config.getMedalRoundStatus() == MedalRoundStatus.READY) {
-                    config.markPending();
-                    categoryConfigRepository.save(config);
-                }
-            });
+            retreatMedalRoundFromReady(table.getDivisionCategoryId());
         }
         log.info("Deleted scoresheet {} (entry {}, table {})",
                 sheet.getId(), sheet.getEntryId(), table.getId());
@@ -415,6 +399,49 @@ public class ScoresheetServiceImpl implements ScoresheetService {
         if (competitionService.findDivisionById(divisionId).getStatus().isResultsFrozen()) {
             throw new BusinessRuleException("error.judging.results-published-frozen");
         }
+    }
+
+    /**
+     * Effective medal-round status for a category. Prefers the medal
+     * {@link JudgingRound}'s status; falls back to the legacy
+     * {@link CategoryJudgingConfig#getMedalRoundStatus()} for backward
+     * compatibility with test setups that mutate the config directly.
+     * Returns {@code null} when neither is configured.
+     */
+    private JudgingRoundStatus effectiveMedalRoundStatus(UUID divisionCategoryId) {
+        var medalRound = judgingRoundRepository
+                .findFirstByDivisionCategoryIdAndType(divisionCategoryId, RoundType.MEDAL);
+        if (medalRound.isPresent()) {
+            return medalRound.get().getStatus();
+        }
+        return categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId)
+                .map(c -> switch (c.getMedalRoundStatus()) {
+                    case PENDING -> JudgingRoundStatus.PENDING;
+                    case READY -> JudgingRoundStatus.READY;
+                    case ACTIVE -> JudgingRoundStatus.ACTIVE;
+                    case COMPLETE -> JudgingRoundStatus.COMPLETE;
+                })
+                .orElse(null);
+    }
+
+    /**
+     * Used after a table reopens from COMPLETE: if the category's medal round
+     * was READY (i.e., waiting on this table's completion), drop it back to
+     * PENDING. Dual-writes legacy CJC.medalRoundStatus during the migration.
+     */
+    private void retreatMedalRoundFromReady(UUID divisionCategoryId) {
+        var medalRound = judgingRoundRepository
+                .findFirstByDivisionCategoryIdAndType(divisionCategoryId, RoundType.MEDAL);
+        if (medalRound.isPresent() && medalRound.get().getStatus() == JudgingRoundStatus.READY) {
+            medalRound.get().markPending();
+            judgingRoundRepository.save(medalRound.get());
+        }
+        categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId).ifPresent(config -> {
+            if (config.getMedalRoundStatus() == MedalRoundStatus.READY) {
+                config.markPending();
+                categoryConfigRepository.save(config);
+            }
+        });
     }
 
     private void requireNotFrozenForSheet(Scoresheet sheet) {

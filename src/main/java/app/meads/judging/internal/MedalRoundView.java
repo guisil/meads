@@ -9,12 +9,13 @@ import app.meads.competition.DivisionCategory;
 import app.meads.identity.Role;
 import app.meads.judging.CategoryJudgingConfig;
 import app.meads.judging.JudgingPhase;
+import app.meads.judging.JudgingRound;
+import app.meads.judging.JudgingRoundStatus;
 import app.meads.judging.JudgingService;
 import app.meads.judging.Medal;
 import app.meads.judging.MedalRoundEntryRow;
 import app.meads.judging.MedalRoundMode;
 import app.meads.judging.MedalRoundScorePreview;
-import app.meads.judging.MedalRoundStatus;
 import app.meads.identity.UserService;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
@@ -63,6 +64,7 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
     private Division division;
     private DivisionCategory category;
     private CategoryJudgingConfig config;
+    private JudgingRound medalRound;
     private String compShortName;
     private String divShortName;
     private UUID currentUserId;
@@ -147,13 +149,15 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         reload();
     }
 
-    /** Re-fetches the config + rows and rebuilds the whole view. */
+    /** Re-fetches the config + medal round + rows and rebuilds the whole view. */
     private void reload() {
         config = judgingService.findCategoryConfigByDivisionCategoryId(
                 config.getDivisionCategoryId()).orElse(config);
-        rows = judgingService.findMedalRoundEntries(
-                config.getDivisionCategoryId(), config.getMedalRoundMode());
-        var preview = config.getMedalRoundMode() == MedalRoundMode.SCORE_BASED
+        medalRound = judgingService.findMedalRoundByCategoryId(
+                config.getDivisionCategoryId()).orElse(null);
+        var mode = currentMode();
+        rows = judgingService.findMedalRoundEntries(config.getDivisionCategoryId(), mode);
+        var preview = mode == MedalRoundMode.SCORE_BASED
                 ? judgingService.recomputeScorePreview(config.getDivisionCategoryId())
                 : new MedalRoundScorePreview(0, Set.of());
         tiedEntryIds = preview.tiedEntryIds();
@@ -214,14 +218,15 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
                 + " — " + getTranslation("medal-round.title", categoryLabel())));
 
         var statusLine = new Span(getTranslation("medal-round.mode") + ": "
-                + config.getMedalRoundMode().name() + " · "
+                + currentMode().name() + " · "
                 + getTranslation("medal-round.status") + ": "
-                + config.getMedalRoundStatus().name());
+                + currentStatus().name());
         statusLine.setId("medal-round-status-line");
 
-        var physicalTableLabel = config.getPhysicalTableId() == null
+        var ptId = currentPhysicalTableId();
+        var physicalTableLabel = ptId == null
                 ? getTranslation("medal-round.physical-table.unassigned")
-                : judgingService.findPhysicalTableById(config.getPhysicalTableId())
+                : judgingService.findPhysicalTableById(ptId)
                         .map(app.meads.judging.PhysicalTable::getLabel)
                         .orElse(getTranslation("medal-round.physical-table.unassigned"));
         var physicalTableLine = new Span(getTranslation("medal-round.physical-table") + ": " + physicalTableLabel);
@@ -238,26 +243,26 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
     }
 
     private HorizontalLayout createAdminActions() {
-        var status = config.getMedalRoundStatus();
+        var status = currentStatus();
         boolean judgingActive = judgingService.ensureJudgingExists(division.getId())
                 .getPhase() == JudgingPhase.ACTIVE;
 
         var resetButton = new Button(getTranslation("medal-round.action.reset"));
         resetButton.setId("medal-round-reset");
         resetButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-        resetButton.setEnabled(status == MedalRoundStatus.ACTIVE && judgingActive);
+        resetButton.setEnabled(status == JudgingRoundStatus.ACTIVE && judgingActive);
         resetButton.addClickListener(e -> openResetDialog());
 
         var reopenButton = new Button(getTranslation("medal-round.action.reopen"));
         reopenButton.setId("medal-round-reopen");
         reopenButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-        reopenButton.setEnabled(status == MedalRoundStatus.COMPLETE && judgingActive);
+        reopenButton.setEnabled(status == JudgingRoundStatus.COMPLETE && judgingActive);
         reopenButton.addClickListener(e -> openReopenDialog());
 
         var finalizeButton = new Button(getTranslation("medal-round.action.finalize"));
         finalizeButton.setId("medal-round-finalize");
         finalizeButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        finalizeButton.setEnabled(status == MedalRoundStatus.ACTIVE);
+        finalizeButton.setEnabled(status == JudgingRoundStatus.ACTIVE);
         finalizeButton.addClickListener(e -> openFinalizeDialog());
 
         var actions = new HorizontalLayout(resetButton, reopenButton, finalizeButton);
@@ -291,7 +296,7 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         cell.setSpacing(true);
         cell.setDefaultVerticalComponentAlignment(Alignment.CENTER);
 
-        if (config.getMedalRoundStatus() != MedalRoundStatus.ACTIVE) {
+        if (currentStatus() != JudgingRoundStatus.ACTIVE) {
             return cell;
         }
         if (row.entrantUserId() != null && row.entrantUserId().equals(currentUserId)) {
@@ -396,7 +401,11 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         dialog.add(new Span(getTranslation("medal-round.finalize.confirm.body")));
         var confirm = new Button(getTranslation("medal-round.action.finalize"), e -> {
             try {
-                judgingService.completeMedalRound(config.getDivisionCategoryId(), currentUserId);
+                if (medalRound != null) {
+                    judgingService.completeMedalRoundById(medalRound.getId(), currentUserId);
+                } else {
+                    judgingService.completeMedalRound(config.getDivisionCategoryId(), currentUserId);
+                }
                 dialog.close();
                 reload();
                 Notification.show(getTranslation("medal-round.finalized"))
@@ -420,7 +429,11 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         dialog.add(new Span(getTranslation("medal-round.reopen.confirm.body")));
         var confirm = new Button(getTranslation("medal-round.action.reopen"), e -> {
             try {
-                judgingService.reopenMedalRound(config.getDivisionCategoryId(), currentUserId);
+                if (medalRound != null) {
+                    judgingService.reopenMedalRoundById(medalRound.getId(), currentUserId);
+                } else {
+                    judgingService.reopenMedalRound(config.getDivisionCategoryId(), currentUserId);
+                }
                 dialog.close();
                 reload();
                 Notification.show(getTranslation("medal-round.reopened"))
@@ -454,7 +467,11 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
                 return;
             }
             try {
-                judgingService.resetMedalRound(config.getDivisionCategoryId(), currentUserId);
+                if (medalRound != null) {
+                    judgingService.resetMedalRoundById(medalRound.getId(), currentUserId);
+                } else {
+                    judgingService.resetMedalRound(config.getDivisionCategoryId(), currentUserId);
+                }
                 dialog.close();
                 reload();
                 Notification.show(getTranslation("medal-round.reset.done"))
@@ -473,6 +490,38 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
 
     private String categoryLabel() {
         return category.getCode() + " " + category.getName();
+    }
+
+    /**
+     * Effective medal mode: prefer the medal {@link JudgingRound}'s mode when
+     * present, otherwise fall back to the legacy {@code CategoryJudgingConfig}
+     * field. Pending cleanup once all callers have migrated to writing through
+     * {@code JudgingRound}.
+     */
+    private MedalRoundMode currentMode() {
+        if (medalRound != null && medalRound.getMedalMode() != null) {
+            return medalRound.getMedalMode();
+        }
+        return config.getMedalRoundMode();
+    }
+
+    private JudgingRoundStatus currentStatus() {
+        if (medalRound != null) {
+            return medalRound.getStatus();
+        }
+        return switch (config.getMedalRoundStatus()) {
+            case PENDING -> JudgingRoundStatus.PENDING;
+            case READY -> JudgingRoundStatus.READY;
+            case ACTIVE -> JudgingRoundStatus.ACTIVE;
+            case COMPLETE -> JudgingRoundStatus.COMPLETE;
+        };
+    }
+
+    private UUID currentPhysicalTableId() {
+        if (medalRound != null && medalRound.getPhysicalTableId() != null) {
+            return medalRound.getPhysicalTableId();
+        }
+        return config.getPhysicalTableId();
     }
 
     private UUID getCurrentUserId() {

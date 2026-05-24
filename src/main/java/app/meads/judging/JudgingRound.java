@@ -183,6 +183,13 @@ public class JudgingRound {
         this.status = JudgingRoundStatus.ACTIVE;
     }
 
+    public void resetToReady() {
+        if (status != JudgingRoundStatus.ACTIVE) {
+            throw new IllegalStateException("Round can only reset to READY from ACTIVE, current: " + status);
+        }
+        this.status = JudgingRoundStatus.READY;
+    }
+
     @PrePersist
     void onCreate() {
         this.createdAt = Instant.now();

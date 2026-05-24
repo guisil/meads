@@ -16,7 +16,6 @@ import app.meads.identity.UserService;
 import app.meads.judging.CategoryJudgingConfig;
 import app.meads.judging.CoiCheckService;
 import app.meads.judging.Medal;
-import app.meads.judging.MedalRoundStatus;
 import app.meads.judging.JudgingPhase;
 import app.meads.judging.BosPlacement;
 import app.meads.judging.Judging;
@@ -906,7 +905,10 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
     private boolean allCategoryRoundsComplete() {
         var configs = judgingService.findCategoryConfigsForDivision(division.getId(), currentUserId);
         return !configs.isEmpty()
-                && configs.stream().allMatch(c -> c.getMedalRoundStatus() == MedalRoundStatus.COMPLETE);
+                && configs.stream().allMatch(c -> judgingService
+                        .getEffectiveMedalRoundStatus(c.getDivisionCategoryId())
+                        .map(s -> s == JudgingRoundStatus.COMPLETE)
+                        .orElse(false));
     }
 
     private VerticalLayout createBosCandidatesSection() {
