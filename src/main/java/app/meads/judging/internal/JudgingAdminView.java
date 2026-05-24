@@ -84,6 +84,9 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
 
     private Grid<JudgingRound> roundsGrid;
     private ComboBox<RoundTypeFilter> roundsTypeFilter;
+    private Grid<JudgingRound> resultsGrid;
+    private ComboBox<RoundTypeFilter> resultsTypeFilter;
+    private Span resultsEmptyCaption;
 
     /** Filter values for the Rounds tab Type ComboBox. ALL is the null-object case. */
     enum RoundTypeFilter {
@@ -892,11 +895,21 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         var tab = new VerticalLayout();
         tab.setPadding(false);
 
-        var completeRounds = judgingService.findRoundsByJudgingId(judging.getId()).stream()
-                .filter(r -> r.getStatus() == JudgingRoundStatus.COMPLETE)
-                .toList();
+        var topRow = new HorizontalLayout();
+        topRow.setDefaultVerticalComponentAlignment(Alignment.END);
+        resultsTypeFilter = new ComboBox<>(getTranslation("judging-admin.rounds.type-filter.label"));
+        resultsTypeFilter.setId("results-type-filter");
+        resultsTypeFilter.setItems(RoundTypeFilter.values());
+        resultsTypeFilter.setItemLabelGenerator(this::roundTypeFilterLabel);
+        resultsTypeFilter.setValue(RoundTypeFilter.ALL);
+        resultsTypeFilter.addValueChangeListener(e -> refreshResultsGrid());
+        topRow.add(resultsTypeFilter);
+        tab.add(topRow);
 
-        var resultsGrid = new Grid<>(JudgingRound.class, false);
+        resultsEmptyCaption = new Span(getTranslation("judging-admin.results.empty"));
+        tab.add(resultsEmptyCaption);
+
+        resultsGrid = new Grid<>(JudgingRound.class, false);
         resultsGrid.setId("results-grid");
         resultsGrid.setAllRowsVisible(true);
         resultsGrid.addColumn(r -> roundTypeLabel(r.getType()))
@@ -921,13 +934,32 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         resultsGrid.addComponentColumn(this::createRoundsActionsCell)
                 .setHeader(getTranslation("judging-admin.rounds.column.actions"))
                 .setResizable(true).setAutoWidth(true).setFlexGrow(0);
-        resultsGrid.setItems(completeRounds);
-
-        if (completeRounds.isEmpty()) {
-            tab.add(new Span(getTranslation("judging-admin.results.empty")));
-        }
         tab.add(resultsGrid);
+
+        refreshResultsGrid();
         return tab;
+    }
+
+    private void refreshResultsGrid() {
+        if (resultsGrid == null) {
+            return;
+        }
+        var filterValue = resultsTypeFilter == null ? RoundTypeFilter.ALL : resultsTypeFilter.getValue();
+        var filter = filterValue == null ? RoundTypeFilter.ALL : filterValue;
+        var rounds = judgingService.findRoundsByJudgingId(judging.getId()).stream()
+                .filter(r -> r.getStatus() == JudgingRoundStatus.COMPLETE)
+                .filter(r -> switch (filter) {
+                    case ALL -> true;
+                    case SCORING -> r.getType() == RoundType.SCORING;
+                    case MEDAL -> r.getType() == RoundType.MEDAL;
+                })
+                .toList();
+        resultsGrid.setItems(rounds);
+        boolean empty = rounds.isEmpty();
+        if (resultsEmptyCaption != null) {
+            resultsEmptyCaption.setVisible(empty);
+        }
+        resultsGrid.setVisible(!empty);
     }
 
     private String formatRoundOutcome(JudgingRound round) {
@@ -1062,15 +1094,15 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
 
         var phase = judging.getPhase();
         if (phase == JudgingPhase.ACTIVE) {
+            boolean canStart = allCategoryRoundsComplete();
             var startButton = new Button(getTranslation("judging-admin.bos.action.start"),
                     e -> openStartBosDialog());
             startButton.setId("bos-start-button");
             startButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-            startButton.setEnabled(allCategoryRoundsComplete());
-            if (!allCategoryRoundsComplete()) {
-                startButton.setTooltipText(getTranslation("judging-admin.bos.action.start.disabled-tooltip"));
-            }
-            header.add(startButton);
+            startButton.setEnabled(canStart);
+            header.add(wrapWithTooltip(startButton, canStart
+                    ? getTranslation("judging-admin.bos.action.start")
+                    : getTranslation("judging-admin.bos.action.start.disabled-tooltip")));
         } else if (phase == JudgingPhase.BOS) {
             var finalizeButton = new Button(getTranslation("judging-admin.bos.action.finalize"),
                     e -> openFinalizeBosDialog());
@@ -1084,10 +1116,10 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
             var placementsExist = !judgingService.findBosPlacementsForDivision(
                     division.getId(), currentUserId).isEmpty();
             resetButton.setEnabled(!placementsExist);
-            if (placementsExist) {
-                resetButton.setTooltipText(getTranslation("judging-admin.bos.action.reset.disabled-tooltip"));
-            }
-            header.add(finalizeButton, resetButton);
+            var resetWrapper = wrapWithTooltip(resetButton, placementsExist
+                    ? getTranslation("judging-admin.bos.action.reset.disabled-tooltip")
+                    : getTranslation("judging-admin.bos.action.reset"));
+            header.add(finalizeButton, resetWrapper);
         } else if (phase == JudgingPhase.COMPLETE) {
             var reopenButton = new Button(getTranslation("judging-admin.bos.action.reopen"),
                     e -> openReopenBosDialog());
