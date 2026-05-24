@@ -210,7 +210,9 @@ class JudgingServiceMedalRoundTest {
     void shouldCreateMedalRoundWithModeFromCategoryConfig() {
         var config = new CategoryJudgingConfig(divisionCategoryId, MedalRoundMode.SCORE_BASED);
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(competitionService.findDivisionCategoryById(divisionCategoryId)).willReturn(category);
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(judgingRoundRepository.findByJudgingId(judging.getId())).willReturn(List.of());
         given(categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId))
                 .willReturn(Optional.of(config));
         given(judgingRoundRepository.save(any(JudgingRound.class)))

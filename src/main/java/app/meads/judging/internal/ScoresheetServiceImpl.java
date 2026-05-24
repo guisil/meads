@@ -343,8 +343,9 @@ public class ScoresheetServiceImpl implements ScoresheetService {
                 .filter(r -> r.getType() == RoundType.MEDAL)
                 .findFirst()
                 .orElseGet(() -> {
+                    var category = competitionService.findDivisionCategoryById(divisionCategoryId);
                     var newMedalRound = new JudgingRound(judging.getId(),
-                            "Medal — " + divisionCategoryId, divisionCategoryId, null);
+                            "Medal — " + category.getCode(), divisionCategoryId, null);
                     newMedalRound.convertToMedalRound(config.getMedalRoundMode());
                     return judgingRoundRepository.save(newMedalRound);
                 });

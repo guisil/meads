@@ -218,10 +218,18 @@ public class JudgingServiceImpl implements JudgingService {
         var judging = requireJudging(judgingId);
         requireAuthorizedForJudging(judging, adminUserId);
         requireNotFrozen(judging.getDivisionId());
-        var table = new JudgingRound(judgingId, name, divisionCategoryId, scheduledDate);
+        var trimmedName = name == null ? "" : name.trim();
+        // Round names must be unique within a judging (= within a division) so
+        // grids + error messages refer to rounds unambiguously.
+        boolean nameTaken = judgingRoundRepository.findByJudgingId(judgingId).stream()
+                .anyMatch(r -> trimmedName.equalsIgnoreCase(r.getName()));
+        if (nameTaken) {
+            throw new BusinessRuleException("error.round.name-duplicate", trimmedName);
+        }
+        var table = new JudgingRound(judgingId, trimmedName, divisionCategoryId, scheduledDate);
         var saved = judgingRoundRepository.save(table);
         log.info("Created JudgingRound {} (name={}, category={})",
-                saved.getId(), name, divisionCategoryId);
+                saved.getId(), trimmedName, divisionCategoryId);
         return saved;
     }
 
@@ -268,9 +276,18 @@ public class JudgingServiceImpl implements JudgingService {
         var judging = requireJudging(judgingId);
         requireAuthorizedForJudging(judging, adminUserId);
         requireNotFrozen(judging.getDivisionId());
+        // One medal round per category (redesign decision #5).
+        boolean alreadyExists = judgingRoundRepository.findByJudgingId(judgingId).stream()
+                .anyMatch(r -> r.getType() == RoundType.MEDAL
+                        && divisionCategoryId.equals(r.getDivisionCategoryId()));
+        if (alreadyExists) {
+            throw new BusinessRuleException("error.medal-round.already-exists");
+        }
         var config = categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId)
                 .orElseThrow(() -> new BusinessRuleException("error.medal-round.category-not-configured"));
-        var round = new JudgingRound(judgingId, "Medal — " + divisionCategoryId, divisionCategoryId, null);
+        var category = competitionService.findDivisionCategoryById(divisionCategoryId);
+        var round = new JudgingRound(judgingId, "Medal — " + category.getCode(),
+                divisionCategoryId, null);
         round.convertToMedalRound(config.getMedalRoundMode());
         var saved = judgingRoundRepository.save(round);
         log.info("Created medal JudgingRound {} (category={}, mode={})",
@@ -303,9 +320,16 @@ public class JudgingServiceImpl implements JudgingService {
         var judging = requireJudging(table.getJudgingId());
         requireAuthorizedForJudging(judging, adminUserId);
         requireNotFrozen(judging.getDivisionId());
-        table.updateName(name);
+        var trimmedName = name == null ? "" : name.trim();
+        boolean nameTaken = judgingRoundRepository.findByJudgingId(table.getJudgingId()).stream()
+                .filter(r -> !r.getId().equals(roundId))
+                .anyMatch(r -> trimmedName.equalsIgnoreCase(r.getName()));
+        if (nameTaken) {
+            throw new BusinessRuleException("error.round.name-duplicate", trimmedName);
+        }
+        table.updateName(trimmedName);
         judgingRoundRepository.save(table);
-        log.debug("Updated table name {} → '{}'", roundId, name);
+        log.debug("Updated table name {} -> '{}'", roundId, trimmedName);
     }
 
     @Override

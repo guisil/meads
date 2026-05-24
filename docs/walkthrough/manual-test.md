@@ -1808,10 +1808,12 @@ Each scoring round in the new model explicitly owns the set of entries it judges
 Medal rounds are auto-created by the scoring-completion cascade — when every scoring round in a category reaches COMPLETE, a medal `JudgingRound` (type=MEDAL) appears in the grid at status `READY`. You can also add one explicitly via the Add Round dialog if you want to pre-stage with a custom physical table or before any scoring rounds finish.
 
 - [ ] Click "+ Add Round" → switch Type to `MEDAL`.
-- [ ] **Expected:** Name field disappears (medal rounds are auto-named "Medal — {category}").
+- [ ] **Expected:** Name field disappears (medal rounds are auto-named `Medal — {category code}`, e.g. `Medal — M1B`).
 - [ ] Pick Category = `M1B — Traditional Mead (Semi-Sweet)`, Physical Table = `Table 2`, Save.
-- [ ] **Expected:** Notification "Round added"; new row with Type = `Medal`, Status = `PENDING`, Name = `Medal — {uuid}`.
-- [ ] **Expected:** The Actions column for a medal row shows only an Open button (full management lives in `MedalRoundView`; admin doesn't get Edit / Start / Assign Judges / Delete buttons here for medal rounds).
+- [ ] **Expected:** Notification "Round added"; new row with Type = `Medal`, Status = `PENDING`, Name = `Medal — M1B`.
+- [ ] **Try** to add a second medal round for the same category → **Expected:** error *"A medal round for this category already exists. Only one medal round per category is allowed."* (One medal round per category — redesign decision #5.)
+- [ ] **Expected:** The Actions column for a medal row shows a 🗑 Delete button + Open. Delete is enabled only while PENDING with no judges and no medal awards (tooltip explains when disabled). Full management (judges, mode, physical-table reassignment, start/finalize/reset) lives in `MedalRoundView`.
+- [ ] **Known limitation:** A pre-staged medal round shows an empty entries grid until scoring rounds in its category COMPLETE. Medal-round entries are derived from scoresheet results in the category — there is no manual entry-pool override yet. To exercise medal awarding before scoring completes, use the dev-seeded Profissional M1B medal round once Profissional scoring rounds are submitted.
 
 #### 12.6.9 Type filter
 

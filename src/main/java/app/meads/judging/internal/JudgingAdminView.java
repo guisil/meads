@@ -957,7 +957,19 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         });
 
         if (round.getType() == RoundType.MEDAL) {
-            return new HorizontalLayout(openButton);
+            // Medal rounds get a Delete button (PENDING + no medal awards) plus Open.
+            // No Edit / Start / Assign Entries — those live in MedalRoundView.
+            boolean medalCanDelete = round.getStatus() == JudgingRoundStatus.PENDING
+                    && round.getAssignments().isEmpty()
+                    && judgingService.findMedalAwardsForCategory(round.getDivisionCategoryId()).isEmpty();
+            var medalDeleteButton = new Button(new Icon(VaadinIcon.TRASH));
+            medalDeleteButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            medalDeleteButton.setEnabled(medalCanDelete);
+            medalDeleteButton.addClickListener(e -> openDeleteTableDialog(round));
+            var medalDeleteWrapper = wrapWithTooltip(medalDeleteButton, medalCanDelete
+                    ? getTranslation("judging-admin.tables.action.delete")
+                    : getTranslation("judging-admin.medal-rounds.action.delete.blocked"));
+            return new HorizontalLayout(medalDeleteWrapper, openButton);
         }
 
         var editButton = new Button(new Icon(VaadinIcon.EDIT));

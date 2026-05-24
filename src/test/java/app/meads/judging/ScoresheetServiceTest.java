@@ -375,6 +375,8 @@ class ScoresheetServiceTest {
         scoresheet.setFilledBy(judgeUserId);
         // No medal JudgingRound exists yet — only the scoring table.
         var config = new CategoryJudgingConfig(divisionCategoryId, MedalRoundMode.SCORE_BASED);
+        var category = new app.meads.competition.DivisionCategory(judging.getDivisionId(),
+                null, "M1A", "Dry Mead", "Desc", null, 0);
         given(scoresheetRepository.findById(scoresheet.getId())).willReturn(Optional.of(scoresheet));
         given(judgingRoundRepository.findById(roundId)).willReturn(Optional.of(table));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
@@ -387,6 +389,7 @@ class ScoresheetServiceTest {
                 .willAnswer(inv -> inv.getArgument(0));
         given(categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId))
                 .willReturn(Optional.of(config));
+        given(competitionService.findDivisionCategoryById(divisionCategoryId)).willReturn(category);
 
         table.start();
 
