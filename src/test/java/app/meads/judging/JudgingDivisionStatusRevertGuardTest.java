@@ -56,10 +56,11 @@ class JudgingDivisionStatusRevertGuardTest {
     }
 
     @Test
-    void shouldNotBlockWhenJudgingExistsButPhaseNotStartedAndNoTables() {
+    void shouldNotBlockWhenJudgingExistsButPhaseNotStartedAndNoRounds() {
         var judging = new Judging(divisionId);
         given(judgingRepository.findByDivisionId(divisionId)).willReturn(Optional.of(judging));
-        given(judgingRoundRepository.existsByJudgingId(judging.getId())).willReturn(false);
+        given(judgingRoundRepository.findByJudgingId(judging.getId()))
+                .willReturn(java.util.List.of());
 
         assertThatCode(() -> guard.checkRevertAllowed(divisionId,
                 DivisionStatus.JUDGING, DivisionStatus.REGISTRATION_CLOSED))
@@ -67,22 +68,37 @@ class JudgingDivisionStatusRevertGuardTest {
     }
 
     @Test
-    void shouldBlockWhenJudgingPhaseIsActive() {
+    void shouldAllowRevertWhenRoundsExistButAreAllPendingOrReady() {
+        // Admin set up rounds (assigned judges + entries + tables) at
+        // REGISTRATION_CLOSED, advanced to JUDGING, then realised they want to
+        // adjust something only changeable at REG_CLOSED (e.g. BOS places,
+        // sharedTables flag). No round has actually started — judging.phase is
+        // still NOT_STARTED — so the revert is harmless and should be allowed.
         var judging = new Judging(divisionId);
-        judging.markActive();
+        var pendingRound = new JudgingRound(judging.getId(), "M1A Panel",
+                UUID.randomUUID(), null); // default status PENDING
+        var readyRound = new JudgingRound(judging.getId(), "M1B Panel",
+                UUID.randomUUID(), null);
+        readyRound.markReady();
         given(judgingRepository.findByDivisionId(divisionId)).willReturn(Optional.of(judging));
+        given(judgingRoundRepository.findByJudgingId(judging.getId()))
+                .willReturn(java.util.List.of(pendingRound, readyRound));
 
-        assertThatThrownBy(() -> guard.checkRevertAllowed(divisionId,
+        assertThatCode(() -> guard.checkRevertAllowed(divisionId,
                 DivisionStatus.JUDGING, DivisionStatus.REGISTRATION_CLOSED))
-                .isInstanceOf(BusinessRuleException.class)
-                .hasMessageContaining("error.division.cannot-revert-has-judging");
+                .doesNotThrowAnyException();
     }
 
     @Test
-    void shouldBlockWhenJudgingTablesExist() {
+    void shouldBlockWhenAnyRoundIsActive() {
         var judging = new Judging(divisionId);
+        var activeRound = new JudgingRound(judging.getId(), "M1A Panel",
+                UUID.randomUUID(), null);
+        activeRound.assignJudge(UUID.randomUUID());
+        activeRound.start();
         given(judgingRepository.findByDivisionId(divisionId)).willReturn(Optional.of(judging));
-        given(judgingRoundRepository.existsByJudgingId(judging.getId())).willReturn(true);
+        given(judgingRoundRepository.findByJudgingId(judging.getId()))
+                .willReturn(java.util.List.of(activeRound));
 
         assertThatThrownBy(() -> guard.checkRevertAllowed(divisionId,
                 DivisionStatus.JUDGING, DivisionStatus.REGISTRATION_CLOSED))

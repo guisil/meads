@@ -2193,12 +2193,14 @@ To set up: from JudgingAdmin → Rounds tab → set Type filter to `Medal` → c
 
 - [ ] **Expected:** A "Judge profile" section in the edit dialog mirroring the self-edit fields.
 
-### 12.15 Cross-module guard — block status revert when judging data exists
+### 12.15 Cross-module guard — block status revert only when judging is in progress
 
-- [ ] As `compadmin@example.com`, navigate to Amadora division detail.
+The `JudgingDivisionStatusRevertGuard` blocks the JUDGING → REGISTRATION_CLOSED revert only when an **ACTIVE or COMPLETE** round exists. Rounds still in PENDING / READY (set up but not started) don't block — admins who advanced to JUDGING and then realised they want to tweak a REG_CLOSED-only setting (BOS places, sharedTables flag, etc.) can revert freely.
+
+- [ ] As `compadmin@example.com`, with Amadora at JUDGING and at least one ACTIVE round, navigate to Amadora division detail.
 - [ ] Click "Revert Status" → confirm "Revert from Judging to Registration Closed?".
-- [ ] **Expected:** Error notification — `JudgingDivisionStatusRevertGuard` blocks the revert because `Judging.phase != NOT_STARTED` OR any JudgingRound exists. Message renders the `error.division.cannot-revert-has-judging` translation.
-- [ ] **Expected:** Status remains `JUDGING`.
+- [ ] **Expected:** Error notification — *"Cannot revert to REGISTRATION_CLOSED while an active or completed round exists. Revert or reset those rounds first. Rounds still in PENDING or READY don't block the revert — they survive the trip back."* (`error.division.cannot-revert-has-judging`). Status remains `JUDGING`.
+- [ ] **Allowed-path check:** Revert the active round back to READY (per §12.6.4.1), then revert the division. **Expected:** revert succeeds; division returns to REGISTRATION_CLOSED with rounds intact (still READY/PENDING) so the admin's setup work is preserved.
 
 ### 12.16 StewardView (read-only steward hub)
 

@@ -3,7 +3,7 @@ package app.meads.judging.internal;
 import app.meads.BusinessRuleException;
 import app.meads.competition.DivisionRevertGuard;
 import app.meads.competition.DivisionStatus;
-import app.meads.judging.JudgingPhase;
+import app.meads.judging.JudgingRoundStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -31,10 +31,17 @@ public class JudgingDivisionStatusRevertGuard implements DivisionRevertGuard {
         if (judging == null) {
             return;
         }
-        boolean hasData = judging.getPhase() != JudgingPhase.NOT_STARTED
-                || judgingRoundRepository.existsByJudgingId(judging.getId());
-        if (hasData) {
-            log.warn("Blocked division revert to REGISTRATION_CLOSED: division {} has judging data",
+        // Rounds that are still PENDING/READY haven't been started yet — they
+        // represent setup work that survives the revert (the admin can flip
+        // the division back to JUDGING later without redoing it). ACTIVE or
+        // COMPLETE rounds carry real judging work (DRAFT/SUBMITTED scoresheets,
+        // medal awards, BOS placements) that revert would orphan.
+        boolean hasInFlightOrCompleteRound = judgingRoundRepository.findByJudgingId(judging.getId())
+                .stream()
+                .anyMatch(r -> r.getStatus() == JudgingRoundStatus.ACTIVE
+                            || r.getStatus() == JudgingRoundStatus.COMPLETE);
+        if (hasInFlightOrCompleteRound) {
+            log.warn("Blocked division revert to REGISTRATION_CLOSED: division {} has active or complete rounds",
                     divisionId);
             throw new BusinessRuleException("error.division.cannot-revert-has-judging");
         }
