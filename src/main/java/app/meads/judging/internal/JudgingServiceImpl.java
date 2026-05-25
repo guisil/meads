@@ -722,9 +722,51 @@ public class JudgingServiceImpl implements JudgingService {
     @Override
     public List<MedalRoundEntryRow> findMedalRoundEntries(UUID divisionCategoryId,
                                                           MedalRoundMode mode) {
+        // Source of truth is the medal round's explicit entries set
+        // (populated at cascade time, editable via Assign Entries dialog).
+        // Fallback to legacy derivation when no medal round exists yet OR
+        // when its entries set is still empty — keeps older callers and
+        // unit tests that skip the cascade working.
+        var medalRound = judgingRoundRepository
+                .findFirstByDivisionCategoryIdAndType(divisionCategoryId, RoundType.MEDAL);
+        if (medalRound.isPresent() && !medalRound.get().getEntries().isEmpty()) {
+            return findMedalRoundRowsFromExplicitEntries(medalRound.get(), mode);
+        }
+        return findMedalRoundRowsByDerivation(divisionCategoryId, mode);
+    }
+
+    private List<MedalRoundEntryRow> findMedalRoundRowsFromExplicitEntries(JudgingRound medalRound,
+                                                                            MedalRoundMode mode) {
+        var rows = new ArrayList<MedalRoundEntryRow>();
+        for (var entryId : medalRound.getEntries()) {
+            var entry = entryService.findEntryById(entryId);
+            // Withdrawn entries drop out of the medal round even if previously assigned.
+            if (entry.getStatus() != EntryStatus.RECEIVED) {
+                continue;
+            }
+            var sheetOpt = scoresheetRepository.findByEntryId(entryId);
+            if (sheetOpt.isEmpty() || sheetOpt.get().getStatus() != ScoresheetStatus.SUBMITTED) {
+                continue;
+            }
+            var sheet = sheetOpt.get();
+            var medalOpt = medalAwardRepository.findByEntryId(entryId);
+            rows.add(new MedalRoundEntryRow(
+                    entry.getId(), entry.getEntryCode(), entry.getMeadName(),
+                    entry.getUserId(), sheet.getTotalScore(), sheet.isAdvancedToMedalRound(),
+                    medalOpt.map(MedalAward::getId).orElse(null),
+                    medalOpt.map(MedalAward::getMedal).orElse(null)));
+        }
+        if (mode == MedalRoundMode.SCORE_BASED) {
+            rows.sort(Comparator.comparing(MedalRoundEntryRow::round1Total,
+                    Comparator.nullsLast(Comparator.reverseOrder())));
+        }
+        return rows;
+    }
+
+    private List<MedalRoundEntryRow> findMedalRoundRowsByDerivation(UUID divisionCategoryId,
+                                                                     MedalRoundMode mode) {
         var rows = new ArrayList<MedalRoundEntryRow>();
         for (var entry : entryService.findEntriesByFinalCategoryId(divisionCategoryId)) {
-            // A withdrawn entry drops out of the medal round even if it was judged.
             if (entry.getStatus() != EntryStatus.RECEIVED) {
                 continue;
             }

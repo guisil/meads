@@ -10,6 +10,7 @@ import app.meads.judging.Judging;
 import app.meads.judging.JudgeProfileService;
 import app.meads.judging.JudgingRound;
 import app.meads.judging.JudgingRoundStatus;
+import app.meads.judging.MedalRoundMode;
 import app.meads.judging.RoundType;
 import app.meads.judging.Scoresheet;
 import app.meads.judging.ScoresheetRevertedEvent;
@@ -351,7 +352,30 @@ public class ScoresheetServiceImpl implements ScoresheetService {
                 });
         if (medalRound.getStatus() == JudgingRoundStatus.PENDING) {
             medalRound.markReady();
-            judgingRoundRepository.save(medalRound);
+        }
+        // Populate medalRound.entries from the eligible set, per mode:
+        //  * COMPARATIVE: entries whose SUBMITTED scoresheet has the advance flag.
+        //  * SCORE_BASED: every entry with a SUBMITTED scoresheet (all candidates).
+        // Idempotent — uses Set semantics (assignEntry no-ops when already present).
+        populateMedalRoundEntries(medalRound, divisionCategoryId);
+        judgingRoundRepository.save(medalRound);
+    }
+
+    private void populateMedalRoundEntries(JudgingRound medalRound, UUID divisionCategoryId) {
+        var mode = medalRound.getMedalMode();
+        for (var entry : entryService.findEntriesByFinalCategoryId(divisionCategoryId)) {
+            if (entry.getStatus() != EntryStatus.RECEIVED) {
+                continue;
+            }
+            var sheetOpt = scoresheetRepository.findByEntryId(entry.getId());
+            if (sheetOpt.isEmpty() || sheetOpt.get().getStatus() != ScoresheetStatus.SUBMITTED) {
+                continue;
+            }
+            if (mode == MedalRoundMode.COMPARATIVE
+                    && !sheetOpt.get().isAdvancedToMedalRound()) {
+                continue;
+            }
+            medalRound.assignEntry(entry.getId());
         }
     }
 
