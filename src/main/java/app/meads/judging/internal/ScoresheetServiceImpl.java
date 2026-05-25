@@ -206,6 +206,23 @@ public class ScoresheetServiceImpl implements ScoresheetService {
                 sheet.setCommentLanguage(defaultLang);
             }
         }
+        // Comment-length validation runs *before* the entity's field-filled
+        // check so the error messages stay specific. Each per-criterion comment
+        // must clear MIN_PER_FIELD_COMMENT_LENGTH; the overall comment must
+        // clear MIN_OVERALL_COMMENT_LENGTH. Drafts can stay incomplete.
+        var overall = sheet.getOverallComments();
+        if (overall == null || overall.trim().length() < Scoresheet.MIN_OVERALL_COMMENT_LENGTH) {
+            throw new BusinessRuleException("error.scoresheet.overall-comment-too-short",
+                    String.valueOf(Scoresheet.MIN_OVERALL_COMMENT_LENGTH));
+        }
+        for (var field : sheet.getFields()) {
+            var comment = field.getComment();
+            if (comment == null || comment.trim().length() < Scoresheet.MIN_PER_FIELD_COMMENT_LENGTH) {
+                throw new BusinessRuleException("error.scoresheet.field-comment-too-short",
+                        field.getFieldName(),
+                        String.valueOf(Scoresheet.MIN_PER_FIELD_COMMENT_LENGTH));
+            }
+        }
         try {
             sheet.submit();
         } catch (IllegalStateException e) {

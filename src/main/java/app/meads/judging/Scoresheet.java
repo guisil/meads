@@ -69,6 +69,19 @@ public class Scoresheet {
     protected Scoresheet() {
     }
 
+    /**
+     * Minimum length for a per-criterion comment to count as "filled in". Low
+     * enough that judges can stay terse for obvious criteria, high enough to
+     * block accidental keystrokes ("ok", a stray space).
+     */
+    public static final int MIN_PER_FIELD_COMMENT_LENGTH = 3;
+    /**
+     * Minimum length for the overall comment. Higher floor because the overall
+     * comment is the headline justification the entrant + judges later read —
+     * a one-word "good" doesn't convey anything.
+     */
+    public static final int MIN_OVERALL_COMMENT_LENGTH = 20;
+
     public Scoresheet(UUID roundId, UUID entryId) {
         this.id = UUID.randomUUID();
         this.roundId = roundId;

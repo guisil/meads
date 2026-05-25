@@ -231,6 +231,39 @@ class ScoresheetViewTest {
     }
 
     @Test
+    @WithMockUser(username = JUDGE_EMAIL, roles = "USER")
+    void shouldRenderFormPolish_stepButtons_prominentTotal_backToRoundAnchor() {
+        // C2 form polish: NumberFields expose +/- step buttons (no need to
+        // type to nudge a score), the running total preview is rendered as a
+        // prominent H3 (not a low-emphasis Span), and a "back to round" anchor
+        // gives judges a one-click return to RoundView from any scoresheet.
+        var entrant = userRepository.save(new User(
+                "entrant-polish-" + UUID.randomUUID() + "@example.com",
+                "Entrant", UserStatus.ACTIVE, Role.USER));
+        var sheet = createScoresheetFor(entrant, "AMA-12", "Polished Mead");
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName()
+                + "/scoresheets/" + sheet.getId());
+
+        var appearance = _get(NumberField.class, spec -> spec.withId("score-Appearance"));
+        assertThat(appearance.isStepButtonsVisible())
+                .as("+/- step buttons must be visible on score NumberFields").isTrue();
+
+        var total = _get(com.vaadin.flow.component.html.H3.class,
+                spec -> spec.withId("scoresheet-total"));
+        assertThat(total).as("total must be rendered as a prominent H3").isNotNull();
+
+        var anchors = _find(com.vaadin.flow.component.html.Anchor.class).stream()
+                .filter(a -> "scoresheet-back-to-round".equals(a.getId().orElse(null)))
+                .toList();
+        assertThat(anchors).as("back-to-round anchor must be present").hasSize(1);
+        assertThat(anchors.get(0).getHref())
+                .as("back anchor href must point at the round's RoundView")
+                .contains("/tables/");
+    }
+
+    @Test
     @WithMockUser(username = "outsider-judge-test@example.com", roles = "USER")
     void shouldForwardAwayJudgeWhoIsNotAssignedToTheRound() {
         // Visibility tightening: judges can only see scoresheets in rounds where
@@ -333,7 +366,8 @@ class ScoresheetViewTest {
         appearance.setValue(10.0);
         aroma.setValue(25.0);
 
-        var totalPreview = _get(Span.class, spec -> spec.withId("scoresheet-total"));
+        var totalPreview = _get(com.vaadin.flow.component.html.H3.class,
+                spec -> spec.withId("scoresheet-total"));
         assertThat(totalPreview.getText()).contains("35");
         assertThat(totalPreview.getText()).contains("100");
     }
@@ -484,6 +518,21 @@ class ScoresheetViewTest {
         _get(NumberField.class, spec -> spec.withId("score-Flavour and Body")).setValue(28.0);
         _get(NumberField.class, spec -> spec.withId("score-Finish")).setValue(12.0);
         _get(NumberField.class, spec -> spec.withId("score-Overall Impression")).setValue(11.0);
+        // Per-criterion + overall comment-length validation runs on submit; the
+        // form must therefore have at least MIN_PER_FIELD / MIN_OVERALL chars
+        // each. Mirror the production rule.
+        _get(TextArea.class, spec -> spec.withId("score-comment-Appearance"))
+                .setValue("crystal clear");
+        _get(TextArea.class, spec -> spec.withId("score-comment-Aroma/Bouquet"))
+                .setValue("subtle honey and stone fruit");
+        _get(TextArea.class, spec -> spec.withId("score-comment-Flavour and Body"))
+                .setValue("balanced, medium-bodied");
+        _get(TextArea.class, spec -> spec.withId("score-comment-Finish"))
+                .setValue("clean, lingering");
+        _get(TextArea.class, spec -> spec.withId("score-comment-Overall Impression"))
+                .setValue("well-crafted bochet");
+        _get(TextArea.class, spec -> spec.withId("overall-comments"))
+                .setValue("A well-balanced bochet with subtle complexity and a clean finish.");
 
         // Save draft first so values persist (Submit acts on the persisted state).
         _click(_get(Button.class, spec -> spec.withText("Save Draft")));

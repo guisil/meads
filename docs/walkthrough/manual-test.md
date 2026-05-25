@@ -1996,6 +1996,7 @@ scoresheet via `JudgingService.assignEntryToRound`.
 *As `judge@example.com`, open any DRAFT scoresheet from `/my-judging` → "Open table" → row click.*
 
 - [ ] **Expected:** URL `competitions/.../divisions/.../scoresheets/<id>`.
+- [ ] **Expected:** A **"← Back to round"** anchor (id `scoresheet-back-to-round`) appears at the very top of the view, pointing back at the round's RoundView. One click returns to the scoresheet list.
 - [ ] **Expected:** H2 `Scoresheet — {entryCode}`.
 - [ ] **Expected (judge view):** A read-only entry card showing **only the declared
   attributes** the judge needs to judge to style — category (code + name),
@@ -2013,8 +2014,8 @@ scoresheet via `JudgingService.assignEntryToRound`.
   - `Flavour and Body` (max 32)
   - `Finish` (max 14)
   - `Overall Impression` (max 12)
-  Each `NumberField` has `min=0`, `max=<field max>`, and `ValueChangeMode.EAGER`.
-- [ ] **Expected:** A "Current total: N / 100" Span (id `scoresheet-total`) below the score fields. It updates live as you change values.
+  Each `NumberField` has `min=0`, `max=<field max>`, `ValueChangeMode.EAGER`, **+/- step buttons visible**, and full width (so the label doesn't truncate on narrow viewports).
+- [ ] **Expected:** A "Current total: N / 100" **H3** (id `scoresheet-total`) below the score fields — sized as `--lumo-font-size-xxl` so it's the loudest thing on the page. Updates live as values change.
 - [ ] **Expected:** An "Overall comments" `TextArea` (`maxLength=2000`).
 - [ ] **Expected:** A "Comment language" `ComboBox` listing all ISO 639-1 languages, sorted by display name in the UI locale. Default: the judge's `JudgeProfile.preferredCommentLanguage` if set, else the judge's `User.preferredLanguage` (UI language) as a sensible fallback, else blank. Judges are free to pick any language — no per-competition restriction.
 - [ ] **Expected:** An "Advance to medal round" `Checkbox`.
@@ -2027,10 +2028,12 @@ scoresheet via `JudgingService.assignEntryToRound`.
 - [ ] Click "Save Draft".
 - [ ] **Expected:** Notification "Scoresheet saved as draft." Scores, per-criterion comments, overall comments, language, and advance flag all persist (refresh to verify; each comment shows back in its `score-comment-<field>` TextArea).
 
-#### 12.11.2 Submit (all fields filled)
+#### 12.11.2 Submit (all fields filled, comments required)
 
 - [ ] Fill in the remaining three score fields → "Submit" button enables.
-- [ ] Click "Submit".
+- [ ] **Comment requirements (server-enforced):** every per-criterion comment must be at least **3** characters; the overall comment must be at least **20** characters. Drafts can stay incomplete, but submit will reject otherwise.
+- [ ] (Try) Click "Submit" with an empty overall comment or a too-short per-criterion comment → **Expected:** error notification *"The overall comment must be at least 20 characters — please briefly justify the overall impression…"* or *"Comment on \"{field}\" must be at least 3 characters — even a few words help…"* (keys `error.scoresheet.overall-comment-too-short` / `error.scoresheet.field-comment-too-short`). The scoresheet stays in DRAFT.
+- [ ] Fill in all per-criterion comments + a one-or-two-sentence overall comment, then "Submit".
 - [ ] **Expected:** Confirmation dialog: "Submit scoresheet for {entryCode}? Once submitted, the scoresheet becomes read-only and the total score is locked. An admin can revert it to draft if the medal round has not started."
 - [ ] Click "Submit".
 - [ ] **Expected:** Notification "Scoresheet submitted."; the view reloads in read-only mode (all fields `setReadOnly(true)`; Save Draft and Submit buttons hidden).

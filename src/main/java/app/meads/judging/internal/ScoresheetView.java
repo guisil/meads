@@ -74,7 +74,7 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
     private boolean adminEditMode;
     private final Map<String, NumberField> scoreFields = new HashMap<>();
     private final Map<String, TextArea> scoreCommentFields = new HashMap<>();
-    private Span totalPreview;
+    private H3 totalPreview;
     private TextArea commentsArea;
     private ComboBox<String> commentLanguageCombo;
     private Checkbox advanceCheckbox;
@@ -187,6 +187,7 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
         scoreFields.clear();
         scoreCommentFields.clear();
         removeAll();
+        add(createBackToRoundAnchor());
         add(createHeader());
         add(createEntryCard());
         add(createScoreFieldsSection());
@@ -373,6 +374,16 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
         return new H2(getTranslation("scoresheet.title", entry.getEntryCode()));
     }
 
+    private com.vaadin.flow.component.html.Anchor createBackToRoundAnchor() {
+        var url = "competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName()
+                + "/tables/" + table.getId();
+        var anchor = new com.vaadin.flow.component.html.Anchor(url,
+                getTranslation("scoresheet.back-to-round"));
+        anchor.setId("scoresheet-back-to-round");
+        return anchor;
+    }
+
     private VerticalLayout createEntryCard() {
         var card = new VerticalLayout();
         card.setPadding(false);
@@ -436,6 +447,8 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
             field.setMin(0);
             field.setMax(def.maxValue());
             field.setStep(1);
+            field.setStepButtonsVisible(true);
+            field.setWidthFull();
             field.setValueChangeMode(ValueChangeMode.EAGER);
             var existing = existingByField.get(def.fieldName());
             if (existing != null && existing.getValue() != null) {
@@ -462,9 +475,14 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
         return section;
     }
 
-    private Span createTotalPreview() {
-        totalPreview = new Span();
+    private H3 createTotalPreview() {
+        totalPreview = new H3();
         totalPreview.setId("scoresheet-total");
+        // Inline styling keeps the running total visually loud — judges glance
+        // at it constantly while filling in scores. Avoid burying it in the
+        // surrounding text rhythm.
+        totalPreview.getStyle().set("font-size", "var(--lumo-font-size-xxl)");
+        totalPreview.getStyle().set("margin", "var(--lumo-space-m) 0");
         return totalPreview;
     }
 

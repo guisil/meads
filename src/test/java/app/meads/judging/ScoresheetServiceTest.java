@@ -232,10 +232,11 @@ class ScoresheetServiceTest {
     void shouldSubmitScoresheetWhenAllFieldsFilled() {
         var entryId = UUID.randomUUID();
         var scoresheet = new Scoresheet(roundId, entryId);
-        // Fill all 5 fields with max value
+        // Fill all 5 fields with max value and required comments
         for (var def : MjpScoringFieldDefinition.MJP_FIELDS) {
-            scoresheet.updateScore(def.fieldName(), def.maxValue(), null);
+            scoresheet.updateScore(def.fieldName(), def.maxValue(), "good depth and balance");
         }
+        scoresheet.updateOverallComments("A reasonably-worded overall assessment.");
         scoresheet.setFilledBy(judgeUserId);
         given(scoresheetRepository.findById(scoresheet.getId())).willReturn(Optional.of(scoresheet));
         given(judgingRoundRepository.findById(roundId)).willReturn(Optional.of(table));
@@ -257,10 +258,38 @@ class ScoresheetServiceTest {
     }
 
     @Test
+    void shouldRejectSubmitWhenOverallCommentIsTooShort() {
+        // Validation requirement: judges must articulate their reasoning. The
+        // bar is intentionally low (a few words) but blocks "ok" / blank.
+        var entryId = UUID.randomUUID();
+        var scoresheet = new Scoresheet(roundId, entryId);
+        for (var def : MjpScoringFieldDefinition.MJP_FIELDS) {
+            scoresheet.updateScore(def.fieldName(), def.maxValue(), "Nice depth and balance.");
+        }
+        scoresheet.updateOverallComments("Short."); // 6 chars, well under the floor
+        given(scoresheetRepository.findById(scoresheet.getId())).willReturn(Optional.of(scoresheet));
+        given(coiCheckService.check(judgeUserId, entryId)).willReturn(CoiResult.clear());
+
+        assertThatThrownBy(() -> service.submit(scoresheet.getId(), judgeUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.scoresheet.overall-comment-too-short");
+
+        assertThat(scoresheet.getStatus()).isNotEqualTo(ScoresheetStatus.SUBMITTED);
+    }
+
+    @Test
     void shouldRejectSubmitWhenNotAllFieldsFilled() {
         var entryId = UUID.randomUUID();
         var scoresheet = new Scoresheet(roundId, entryId);
-        scoresheet.updateScore(MjpScoringFieldDefinition.APPEARANCE, 10, null);
+        // Fill just one field but leave the others null; comments are filled so
+        // the new comment-length checks pass and the field-filled check is the
+        // one that fires.
+        scoresheet.updateScore(MjpScoringFieldDefinition.APPEARANCE, 10, "good depth and balance");
+        for (var def : MjpScoringFieldDefinition.MJP_FIELDS) {
+            if (def.fieldName().equals(MjpScoringFieldDefinition.APPEARANCE)) continue;
+            scoresheet.updateScore(def.fieldName(), null, "good depth and balance");
+        }
+        scoresheet.updateOverallComments("A reasonably-worded overall assessment.");
         given(scoresheetRepository.findById(scoresheet.getId())).willReturn(Optional.of(scoresheet));
         given(coiCheckService.check(judgeUserId, entryId)).willReturn(CoiResult.clear());
 
@@ -370,8 +399,9 @@ class ScoresheetServiceTest {
         var entryId = UUID.randomUUID();
         var scoresheet = new Scoresheet(roundId, entryId);
         for (var def : MjpScoringFieldDefinition.MJP_FIELDS) {
-            scoresheet.updateScore(def.fieldName(), def.maxValue(), null);
+            scoresheet.updateScore(def.fieldName(), def.maxValue(), "good depth and balance");
         }
+        scoresheet.updateOverallComments("A reasonably-worded overall assessment.");
         scoresheet.setFilledBy(judgeUserId);
         // No medal JudgingRound exists yet — only the scoring table.
         var config = new CategoryJudgingConfig(divisionCategoryId, MedalRoundMode.SCORE_BASED);
@@ -411,8 +441,9 @@ class ScoresheetServiceTest {
         var entryId = UUID.randomUUID();
         var scoresheet = new Scoresheet(roundId, entryId);
         for (var def : MjpScoringFieldDefinition.MJP_FIELDS) {
-            scoresheet.updateScore(def.fieldName(), def.maxValue(), null);
+            scoresheet.updateScore(def.fieldName(), def.maxValue(), "good depth and balance");
         }
+        scoresheet.updateOverallComments("A reasonably-worded overall assessment.");
         scoresheet.setFilledBy(judgeUserId);
         var medalRound = new JudgingRound(judging.getId(), UUID.randomUUID(), "Medal",
                 divisionCategoryId, null);
@@ -449,8 +480,9 @@ class ScoresheetServiceTest {
         var notAdvancedEntryId = UUID.randomUUID();
         var triggeringScoresheet = new Scoresheet(roundId, advancedEntryId);
         for (var def : MjpScoringFieldDefinition.MJP_FIELDS) {
-            triggeringScoresheet.updateScore(def.fieldName(), def.maxValue(), null);
+            triggeringScoresheet.updateScore(def.fieldName(), def.maxValue(), "good depth and balance");
         }
+        triggeringScoresheet.updateOverallComments("A reasonably-worded overall assessment.");
         triggeringScoresheet.setAdvancedToMedalRound(true);
         triggeringScoresheet.setFilledBy(judgeUserId);
 

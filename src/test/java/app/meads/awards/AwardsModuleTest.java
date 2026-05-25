@@ -167,11 +167,13 @@ class AwardsModuleTest {
     }
 
     private void fillAndSubmit(Scoresheet sheet, UUID judgeUserId) {
-        scoresheetService.updateScore(sheet.getId(), "Appearance", 10, null, judgeUserId);
-        scoresheetService.updateScore(sheet.getId(), "Aroma/Bouquet", 25, null, judgeUserId);
-        scoresheetService.updateScore(sheet.getId(), "Flavour and Body", 27, null, judgeUserId);
-        scoresheetService.updateScore(sheet.getId(), "Finish", 11, null, judgeUserId);
-        scoresheetService.updateScore(sheet.getId(), "Overall Impression", 10, null, judgeUserId);
+        scoresheetService.updateScore(sheet.getId(), "Appearance", 10, "crystal clear", judgeUserId);
+        scoresheetService.updateScore(sheet.getId(), "Aroma/Bouquet", 25, "subtle honey and stone fruit", judgeUserId);
+        scoresheetService.updateScore(sheet.getId(), "Flavour and Body", 27, "balanced, medium-bodied", judgeUserId);
+        scoresheetService.updateScore(sheet.getId(), "Finish", 11, "clean, lingering", judgeUserId);
+        scoresheetService.updateScore(sheet.getId(), "Overall Impression", 10, "well-crafted overall", judgeUserId);
+        scoresheetService.updateOverallComments(sheet.getId(),
+                "A well-balanced mead with subtle complexity and a clean finish.", judgeUserId);
         scoresheetService.submit(sheet.getId(), judgeUserId);
     }
 }
