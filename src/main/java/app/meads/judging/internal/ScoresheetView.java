@@ -66,6 +66,12 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
     private Entry entry;
     private UUID currentUserId;
     private boolean isAdminView;
+    /**
+     * Latched only after the admin explicitly confirms "Edit on behalf of judge".
+     * Defaults to false so a row-click in the round grid opens the form in view
+     * mode — editing a scoresheet on behalf of a judge is an exceptional act.
+     */
+    private boolean adminEditMode;
     private final Map<String, NumberField> scoreFields = new HashMap<>();
     private final Map<String, TextArea> scoreCommentFields = new HashMap<>();
     private Span totalPreview;
@@ -169,9 +175,17 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
             return;
         }
 
+        renderBody();
+    }
+
+    /**
+     * Renders / re-renders the scoresheet body. Pulled out of {@code beforeEnter}
+     * so the admin "Edit on behalf of judge" confirm dialog can call it again
+     * after flipping {@link #adminEditMode}.
+     */
+    private void renderBody() {
         scoreFields.clear();
         scoreCommentFields.clear();
-
         removeAll();
         add(createHeader());
         add(createEntryCard());
@@ -180,16 +194,21 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
         add(createCommentsSection());
         add(createCommentLanguageField());
         add(createAdvanceCheckbox());
-        // BLANK and DRAFT are both editable by judges; SUBMITTED is read-only
-        // unless the admin reverts it (which flips back to DRAFT). Treating
-        // BLANK identically to DRAFT keeps the judge form usable for a freshly-
-        // created sheet that no one has touched yet.
+        // BLANK and DRAFT are editable by judges; SUBMITTED is read-only unless
+        // the admin reverts it (which flips back to DRAFT). Admins land in
+        // read-only mode by default for any status — they must explicitly
+        // confirm "Edit on behalf of judge" to unlock the form.
         var status = scoresheet.getStatus();
-        if (status == app.meads.judging.ScoresheetStatus.BLANK
-                || status == app.meads.judging.ScoresheetStatus.DRAFT) {
+        boolean editable = (status == app.meads.judging.ScoresheetStatus.BLANK
+                            || status == app.meads.judging.ScoresheetStatus.DRAFT)
+                            && (!isAdminView || adminEditMode);
+        if (editable) {
             add(createActionBar());
         } else {
             applyReadOnlyMode();
+            if (isAdminView && status != app.meads.judging.ScoresheetStatus.SUBMITTED) {
+                add(createAdminEditButton());
+            }
         }
         recomputeTotalPreview();
     }
@@ -200,6 +219,28 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
         commentsArea.setReadOnly(true);
         commentLanguageCombo.setReadOnly(true);
         advanceCheckbox.setReadOnly(true);
+    }
+
+    private Button createAdminEditButton() {
+        var editButton = new Button(getTranslation("scoresheet.admin.edit.button"));
+        editButton.setId("admin-edit-scoresheet");
+        editButton.addThemeVariants(com.vaadin.flow.component.button.ButtonVariant.LUMO_TERTIARY);
+        editButton.addClickListener(e -> openAdminEditConfirmDialog());
+        return editButton;
+    }
+
+    private void openAdminEditConfirmDialog() {
+        var dialog = new com.vaadin.flow.component.confirmdialog.ConfirmDialog();
+        dialog.setHeader(getTranslation("scoresheet.admin.edit.confirm.title"));
+        dialog.setText(getTranslation("scoresheet.admin.edit.confirm.body"));
+        dialog.setCancelable(true);
+        dialog.setConfirmText(getTranslation("scoresheet.admin.edit.confirm.proceed"));
+        dialog.setConfirmButtonTheme("primary");
+        dialog.addConfirmListener(e -> {
+            adminEditMode = true;
+            renderBody();
+        });
+        dialog.open();
     }
 
     private VerticalLayout createCommentsSection() {

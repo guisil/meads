@@ -19,6 +19,7 @@ import app.meads.identity.Role;
 import app.meads.identity.User;
 import app.meads.identity.UserStatus;
 import app.meads.identity.internal.UserRepository;
+import app.meads.judging.internal.ScoresheetView;
 import app.meads.judging.internal.ScoresheetRepository;
 import com.github.mvysny.fakeservlet.FakeRequest;
 import com.github.mvysny.kaributesting.v10.MockVaadin;
@@ -227,6 +228,64 @@ class ScoresheetViewTest {
         var spanTexts = _find(Span.class).stream().map(Span::getText).toList();
         assertThat(spanTexts.stream().anyMatch(t -> t != null && t.contains("Hiveheart Mead")))
                 .as("mead name visible to admin").isTrue();
+    }
+
+    @Test
+    @WithMockUser(username = "outsider-judge-test@example.com", roles = "USER")
+    void shouldForwardAwayJudgeWhoIsNotAssignedToTheRound() {
+        // Visibility tightening: judges can only see scoresheets in rounds where
+        // they themselves are assigned. Another competition's judge — or even
+        // an unrelated judge in the same competition — must NOT be able to open
+        // a scoresheet by knowing its UUID.
+        var outsider = userRepository.save(new User(
+                "outsider-judge-test@example.com", "Outsider Judge",
+                UserStatus.ACTIVE, Role.USER));
+        competitionService.addParticipantByEmail(competition.getId(),
+                outsider.getEmail(), CompetitionRole.JUDGE, admin.getId());
+        var entrant = userRepository.save(new User(
+                "entrant-outsider-" + UUID.randomUUID() + "@example.com",
+                "Entrant", UserStatus.ACTIVE, Role.USER));
+        // The created scoresheet's round assigns the original `judge` user, not
+        // the outsider — so the outsider has no business viewing it.
+        var sheet = createScoresheetFor(entrant, "AMA-11", "Out-of-bounds Mead");
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName()
+                + "/scoresheets/" + sheet.getId());
+
+        assertThat(_find(ScoresheetView.class))
+                .as("outsider judge must be forwarded away, not see ScoresheetView")
+                .isEmpty();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldOpenInReadOnlyForAdminAndExposeExceptionalEditButton() {
+        // Admins land in view-only mode by default — editing a scoresheet on
+        // behalf of a judge should be an exceptional act, not a row-click side
+        // effect. The action bar (Save Draft / Submit) is replaced by a single
+        // "Edit on behalf of judge" button that fires a confirm dialog before
+        // unlocking the form.
+        var entrant = userRepository.save(new User(
+                "entrant-admin-readonly-" + UUID.randomUUID() + "@example.com",
+                "Entrant", UserStatus.ACTIVE, Role.USER));
+        var sheet = createScoresheetFor(entrant, "AMA-10", "Read-only Mead");
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName()
+                + "/scoresheets/" + sheet.getId());
+
+        var appearance = _get(NumberField.class, spec -> spec.withId("score-Appearance"));
+        assertThat(appearance.isReadOnly())
+                .as("admin view: score fields should start read-only").isTrue();
+        var overallComments = _get(TextArea.class, spec -> spec.withId("overall-comments"));
+        assertThat(overallComments.isReadOnly())
+                .as("admin view: overall-comments should start read-only").isTrue();
+
+        var editButton = _get(Button.class, spec -> spec.withId("admin-edit-scoresheet"));
+        assertThat(editButton).as("admin edit-on-behalf button must be present").isNotNull();
+        assertThat(_find(Button.class).stream().anyMatch(b -> "Save Draft".equals(b.getText())))
+                .as("admin view: Save Draft is hidden until edit-mode is unlocked").isFalse();
     }
 
     @Test

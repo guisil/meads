@@ -1932,6 +1932,11 @@ The Results tab is a read-only summary of every round that has reached COMPLETE 
 
 - [ ] Click any row.
 - [ ] **Expected:** Navigation to `competitions/.../scoresheets/<id>`.
+- [ ] **Expected (judge):** form opens in edit mode (Save Draft + Submit buttons visible, fields editable).
+- [ ] **Expected (admin):** form opens **read-only** (no Save Draft / Submit, score fields + comments / language / advance checkbox all marked read-only). Below the read-only form, an **"Edit on behalf of judge"** button (id `admin-edit-scoresheet`) is visible.
+- [ ] (As admin) Click "Edit on behalf of judge" → **Expected:** ConfirmDialog *"Edit scoresheet?"* — body warns the action should only be used in exceptional situations (judge left mid-round, correct an obvious typo) and that the admin is not silently overriding the judge's assessment. Buttons: Cancel + "Edit anyway".
+- [ ] Cancel → form stays read-only. Re-open the dialog, click "Edit anyway" → form re-renders editable; Save Draft and Submit appear.
+- [ ] **Visibility tightening:** a judge who is **not** assigned to the round must not be able to open scoresheets at that round, even by knowing the URL. Try copying a scoresheet URL while logged in as `compadmin@`, log out, log back in as a judge who is NOT on this round (e.g. `judge6@` if you've only assigned `judge3@`/`judge4@`), paste the URL → **Expected:** redirect to root (`/`); ScoresheetView not rendered.
 
 #### 12.10.2 Admin-only actions (Revert, Move)
 
