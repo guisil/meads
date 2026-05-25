@@ -73,7 +73,7 @@ public class Scoresheet {
         this.id = UUID.randomUUID();
         this.roundId = roundId;
         this.entryId = entryId;
-        this.status = ScoresheetStatus.DRAFT;
+        this.status = ScoresheetStatus.BLANK;
         this.advancedToMedalRound = false;
         for (var def : MjpScoringFieldDefinition.MJP_FIELDS) {
             fields.add(new ScoreField(def.fieldName(), def.maxValue()));
@@ -90,22 +90,41 @@ public class Scoresheet {
         }
     }
 
+    /**
+     * Allows mutation when the sheet is BLANK or DRAFT. Use this for operations
+     * that represent judge content entry (scores, comments) — the first such
+     * call promotes BLANK → DRAFT via {@link #promoteFromBlank()}.
+     */
+    private void requireMutable(String op) {
+        if (status != ScoresheetStatus.BLANK && status != ScoresheetStatus.DRAFT) {
+            throw new IllegalStateException(op + " requires BLANK or DRAFT, current: " + status);
+        }
+    }
+
+    private void promoteFromBlank() {
+        if (status == ScoresheetStatus.BLANK) {
+            this.status = ScoresheetStatus.DRAFT;
+        }
+    }
+
     public void updateScore(String fieldName, Integer value, String comment) {
-        requireDraft("updateScore");
+        requireMutable("updateScore");
         var field = fields.stream()
                 .filter(f -> f.getFieldName().equals(fieldName))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Unknown field: " + fieldName));
         field.update(value, comment);
+        promoteFromBlank();
     }
 
     public void updateOverallComments(String text) {
-        requireDraft("updateOverallComments");
+        requireMutable("updateOverallComments");
         this.overallComments = text;
+        promoteFromBlank();
     }
 
     public void setFilledBy(UUID judgeUserId) {
-        requireDraft("setFilledBy");
+        requireMutable("setFilledBy");
         this.filledByJudgeUserId = judgeUserId;
     }
 
@@ -138,12 +157,12 @@ public class Scoresheet {
     }
 
     public void moveToRound(UUID newRoundId) {
-        requireDraft("moveToRound");
+        requireMutable("moveToRound");
         this.roundId = newRoundId;
     }
 
     public void setCommentLanguage(String code) {
-        requireDraft("setCommentLanguage");
+        requireMutable("setCommentLanguage");
         this.commentLanguage = code;
     }
 

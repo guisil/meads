@@ -456,6 +456,11 @@ public class ScoresheetServiceImpl implements ScoresheetService {
     }
 
     @Override
+    public long countByRoundIdAndStatusNot(UUID roundId, ScoresheetStatus status) {
+        return scoresheetRepository.countByRoundIdAndStatusNot(roundId, status);
+    }
+
+    @Override
     public void deleteAllForRound(UUID roundId) {
         var sheets = scoresheetRepository.findByRoundId(roundId);
         if (!sheets.isEmpty()) {
@@ -498,7 +503,7 @@ public class ScoresheetServiceImpl implements ScoresheetService {
                     return dateCmp != 0 ? dateCmp : a.getName().compareTo(b.getName());
                 })
                 .flatMap(t -> scoresheetRepository.findByRoundId(t.getId()).stream())
-                .filter(s -> s.getStatus() == ScoresheetStatus.DRAFT)
+                .filter(s -> s.getStatus() != ScoresheetStatus.SUBMITTED)
                 .sorted((a, b) -> a.getCreatedAt().compareTo(b.getCreatedAt()))
                 .map(Scoresheet::getId)
                 .findFirst();

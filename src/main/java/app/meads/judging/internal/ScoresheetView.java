@@ -180,7 +180,13 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
         add(createCommentsSection());
         add(createCommentLanguageField());
         add(createAdvanceCheckbox());
-        if (scoresheet.getStatus() == app.meads.judging.ScoresheetStatus.DRAFT) {
+        // BLANK and DRAFT are both editable by judges; SUBMITTED is read-only
+        // unless the admin reverts it (which flips back to DRAFT). Treating
+        // BLANK identically to DRAFT keeps the judge form usable for a freshly-
+        // created sheet that no one has touched yet.
+        var status = scoresheet.getStatus();
+        if (status == app.meads.judging.ScoresheetStatus.BLANK
+                || status == app.meads.judging.ScoresheetStatus.DRAFT) {
             add(createActionBar());
         } else {
             applyReadOnlyMode();

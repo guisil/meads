@@ -1805,14 +1805,14 @@ medal-round setup) is fine at REG_CLOSED.
 
 #### 12.6.4.1 Revert an ACTIVE scoring round (mistake correction)
 
-An ACTIVE scoring row exposes a ↶ **Revert** button (between Assign Entries and Delete). It returns the round to `READY` and deletes every draft scoresheet, so the admin can fix a mistake (wrong table started, wrong entries assigned, wrong judges) and start again. It is blocked as soon as any judge has submitted a scoresheet (key `error.round.cannot-revert-submitted-scoresheets`) — submitted scoresheets carry committed judging work that revert would destroy.
+An ACTIVE scoring row exposes a ↶ **Revert** button (between Assign Entries and Delete). It returns the round to `READY` and deletes every BLANK scoresheet, so the admin can fix a mistake (wrong table started, wrong entries assigned, wrong judges) and start again. It is blocked as soon as **any** judge has touched a scoresheet — DRAFT (judge saved at least once) or SUBMITTED (key `error.round.cannot-revert-touched-scoresheets`) — because that content represents real judging work that revert would destroy. To clear the block, admins delete each touched scoresheet via the per-row 🗑 button on the round drill-in first, then revert.
 
 - [ ] On the ACTIVE `M1A Panel A` row, **Expected:** ↶ Revert button is enabled (tooltip: *"Revert"*); PENDING/READY/COMPLETE rows show the button disabled (tooltip: *"Only ACTIVE rounds can be reverted."*).
 - [ ] Click ↶ **Revert** → confirmation dialog *"Revert round M1A Panel A?"*, body warns it returns the round to READY + deletes drafts + only for mistake correction.
 - [ ] Click **Revert** to confirm.
 - [ ] **Expected:** Notification *"Round reverted"*; row's Status flips `ACTIVE` → `READY`; draft scoresheets are gone (verify on Round drill-in if curious).
 - [ ] ▶ Start the round again to put it back into ACTIVE for the rest of §12.6 — entries/judges/table are still assigned, so it starts straight away.
-- [ ] **(Optional — verify the submitted-scoresheets guard.)** Skip this for now and revisit after §12.10–§12.11: once you have at least one SUBMITTED scoresheet on a round, try ↶ Revert. **Expected:** error *"Cannot revert: {N} scoresheet(s) have already been submitted. Revert those scoresheets to draft first if you really need to roll back."*
+- [ ] **(Optional — verify the touched-scoresheets guard.)** Skip this for now and revisit after §12.10–§12.11: once any judge has saved scores on a scoresheet (DRAFT) or submitted one, try ↶ Revert. **Expected:** error *"Cannot revert: {N} scoresheet(s) have judging work in progress (saved as draft or submitted). Delete or revert those scoresheets first if you really need to roll back the round."* The block fires the moment a judge taps Save Draft — they don't need to actually submit.
 
 #### 12.6.5 minJudgesPerRound lock — verify settings tab
 
@@ -1849,7 +1849,7 @@ Each scoring round in the new model explicitly owns the set of entries it judges
 - [ ] Close. Click 📦 Assign Entries on the `M1A Panel B` row → uncheck one of its entries → Save → notification "Entry assignments updated".
 - [ ] Back on `M1A Panel A`: open Assign Entries again → the newly-freed entry shows `Current round: — Unassigned —`. Select it → Save → assignments updated.
 - [ ] Re-balance to whatever you prefer before continuing.
-- [ ] (Try) Start one of the M1A rounds → then open Assign Entries on it. **Expected:** dialog still opens (entry assignments are editable through ACTIVE). On ACTIVE rounds, adding an entry auto-creates its DRAFT scoresheet; removing an entry deletes the DRAFT scoresheet, but is blocked if the scoresheet is already SUBMITTED (key `error.entry.cannot-unassign-submitted`). After the round reaches COMPLETE the 📦 button disables with tooltip *"Entry assignments are locked once the round is COMPLETE."* (key `error.entry.cannot-change-on-complete-round` defends the same at the service level).
+- [ ] (Try) Start one of the M1A rounds → then open Assign Entries on it. **Expected:** dialog still opens (entry assignments are editable through ACTIVE). On ACTIVE rounds, adding an entry auto-creates its BLANK scoresheet; removing an entry deletes the scoresheet if it's still BLANK, but is blocked if the scoresheet is already SUBMITTED (key `error.entry.cannot-unassign-submitted`). After the round reaches COMPLETE the 📦 button disables with tooltip *"Entry assignments are locked once the round is COMPLETE."* (key `error.entry.cannot-change-on-complete-round` defends the same at the service level).
 - [ ] (Try) After reverting an ACTIVE round (see §12.6.4.1), open 📦 Assign Entries on the now-READY row. **Expected:** dialog opens and current assignments are editable — useful for fixing the mistake that prompted the revert.
 
 #### 12.6.8 Add a medal round
@@ -1906,7 +1906,7 @@ The Results tab is a read-only summary of every round that has reached COMPLETE 
 - [ ] Click "My Judging".
 - [ ] **Expected:** URL `/my-judging`. H2 header "My Judging".
 - [ ] **Expected:** Each competition the judge has tables in is shown as an `H3` with the competition name; under it, one block per assigned table showing the division name (Span), table name (Span), and an "Open table →" anchor.
-- [ ] If at least one DRAFT scoresheet exists across assigned tables: **Expected** a prominent "▶ Resume next draft scoresheet" anchor near the top, pointing at `competitions/.../scoresheets/<oldest-DRAFT-id>`.
+- [ ] If at least one scoresheet still needs work (BLANK or DRAFT) across assigned rounds: **Expected** a prominent "▶ Resume next draft scoresheet" anchor near the top, pointing at the oldest unfinished scoresheet (`/competitions/.../scoresheets/<id>`). The anchor now picks up BLANK sheets (just created, untouched) too — anything not SUBMITTED counts.
 - [ ] If a Medal Round is ACTIVE for a category the judge has a table for: **Expected** a "Medal Rounds" section listing each active config with an "Open medal round →" anchor.
 
 #### 12.9.1 Empty-state for a non-judge user

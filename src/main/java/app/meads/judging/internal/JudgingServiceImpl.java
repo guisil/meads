@@ -598,10 +598,14 @@ public class JudgingServiceImpl implements JudgingService {
         if (round.getStatus() != JudgingRoundStatus.ACTIVE) {
             throw new BusinessRuleException("error.round.revert-only-active");
         }
-        long submitted = scoresheetService.countByRoundIdAndStatus(roundId, ScoresheetStatus.SUBMITTED);
-        if (submitted > 0) {
-            throw new BusinessRuleException("error.round.cannot-revert-submitted-scoresheets",
-                    String.valueOf(submitted));
+        // Any judge engagement (DRAFT or SUBMITTED — anything beyond BLANK)
+        // blocks revert: DRAFT content is real work that an accidental revert
+        // would destroy. To clear, admins delete individual scoresheets via the
+        // per-row 🗑 action until every remaining sheet is BLANK or gone.
+        long touched = scoresheetService.countByRoundIdAndStatusNot(roundId, ScoresheetStatus.BLANK);
+        if (touched > 0) {
+            throw new BusinessRuleException("error.round.cannot-revert-touched-scoresheets",
+                    String.valueOf(touched));
         }
         scoresheetService.deleteAllForRound(roundId);
         round.revertToReady();

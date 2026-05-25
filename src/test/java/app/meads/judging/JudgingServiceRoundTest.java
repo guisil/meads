@@ -346,7 +346,7 @@ class JudgingServiceRoundTest {
         given(judgingRoundRepository.findById(round.getId())).willReturn(Optional.of(round));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
-        given(scoresheetService.countByRoundIdAndStatus(round.getId(), ScoresheetStatus.SUBMITTED))
+        given(scoresheetService.countByRoundIdAndStatusNot(round.getId(), ScoresheetStatus.BLANK))
                 .willReturn(0L);
         given(judgingRoundRepository.save(any(JudgingRound.class)))
                 .willAnswer(inv -> inv.getArgument(0));
@@ -358,7 +358,9 @@ class JudgingServiceRoundTest {
     }
 
     @Test
-    void shouldRejectRevertScoringRoundWhenSubmittedScoresheetsExist() {
+    void shouldRejectRevertScoringRoundWhenAnyScoresheetIsBeyondBlank() {
+        // Any judge work (DRAFT or SUBMITTED) blocks revert. The narrower
+        // SUBMITTED-only check is gone — DRAFT now represents content too.
         var judging = new Judging(divisionId);
         var round = new JudgingRound(judging.getId(), "T1", divisionCategoryId, null);
         round.assignJudge(judgeUserId);
@@ -366,12 +368,36 @@ class JudgingServiceRoundTest {
         given(judgingRoundRepository.findById(round.getId())).willReturn(Optional.of(round));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
-        given(scoresheetService.countByRoundIdAndStatus(round.getId(), ScoresheetStatus.SUBMITTED))
+        // No SUBMITTED, but 1 DRAFT (= touched). countByRoundIdAndStatusNot(BLANK)
+        // returns 1 to signal real work in progress.
+        given(scoresheetService.countByRoundIdAndStatusNot(round.getId(), ScoresheetStatus.BLANK))
+                .willReturn(1L);
+
+        assertThatThrownBy(() -> service.revertScoringRound(round.getId(), adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.round.cannot-revert-touched-scoresheets");
+
+        assertThat(round.getStatus()).isEqualTo(JudgingRoundStatus.ACTIVE);
+        then(scoresheetService).should(never()).deleteAllForRound(any());
+    }
+
+    @Test
+    void shouldRejectRevertScoringRoundWhenSubmittedScoresheetsExist() {
+        // SUBMITTED scoresheets also count as "beyond BLANK" — same protection
+        // path, single error key.
+        var judging = new Judging(divisionId);
+        var round = new JudgingRound(judging.getId(), "T1", divisionCategoryId, null);
+        round.assignJudge(judgeUserId);
+        round.start();
+        given(judgingRoundRepository.findById(round.getId())).willReturn(Optional.of(round));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(scoresheetService.countByRoundIdAndStatusNot(round.getId(), ScoresheetStatus.BLANK))
                 .willReturn(2L);
 
         assertThatThrownBy(() -> service.revertScoringRound(round.getId(), adminUserId))
                 .isInstanceOf(BusinessRuleException.class)
-                .hasMessageContaining("error.round.cannot-revert-submitted-scoresheets");
+                .hasMessageContaining("error.round.cannot-revert-touched-scoresheets");
 
         assertThat(round.getStatus()).isEqualTo(JudgingRoundStatus.ACTIVE);
         then(scoresheetService).should(never()).deleteAllForRound(any());

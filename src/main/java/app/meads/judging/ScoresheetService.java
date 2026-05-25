@@ -42,6 +42,13 @@ public interface ScoresheetService {
     long countByRoundIdAndStatus(@NotNull UUID roundId, @NotNull ScoresheetStatus status);
 
     /**
+     * Counts scoresheets on the round whose status is **not** the given one —
+     * primarily used by revert / cleanup guards: "any sheet that judges have
+     * touched" is {@code countByRoundIdAndStatusNot(roundId, BLANK)}.
+     */
+    long countByRoundIdAndStatusNot(@NotNull UUID roundId, @NotNull ScoresheetStatus status);
+
+    /**
      * Bulk-deletes every scoresheet attached to the given round. Used by
      * {@code JudgingService.revertScoringRound} when an admin reverts an
      * ACTIVE scoring round back to READY; the caller has already verified

@@ -101,7 +101,7 @@ class ScoresheetRepositoryTest {
 
         assertThat(found.getRoundId()).isEqualTo(fx.table.getId());
         assertThat(found.getEntryId()).isEqualTo(fx.entry.getId());
-        assertThat(found.getStatus()).isEqualTo(ScoresheetStatus.DRAFT);
+        assertThat(found.getStatus()).isEqualTo(ScoresheetStatus.BLANK);
         assertThat(found.getTotalScore()).isNull();
         assertThat(found.getSubmittedAt()).isNull();
         assertThat(found.isAdvancedToMedalRound()).isFalse();
