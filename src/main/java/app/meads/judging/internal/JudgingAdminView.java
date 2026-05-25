@@ -236,6 +236,14 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         var tab = new VerticalLayout();
         tab.setPadding(false);
 
+        if (competitionService.findCompetitionById(competition.getId()).isSharedTables()) {
+            var banner = new Span(getTranslation("judging-admin.physical-tables.shared-banner"));
+            banner.setId("physical-tables-shared-banner");
+            banner.getStyle().set("color", "var(--lumo-primary-text-color)")
+                    .set("font-weight", "600");
+            tab.add(banner);
+        }
+
         var addButton = new Button(getTranslation("judging-admin.physical-tables.add"),
                 e -> openAddPhysicalTableDialog());
         addButton.setId("add-physical-table-button");

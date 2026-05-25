@@ -1,6 +1,7 @@
 package app.meads.judging;
 
 import app.meads.BusinessRuleException;
+import app.meads.competition.Competition;
 import app.meads.competition.CompetitionService;
 import app.meads.competition.Division;
 import app.meads.competition.DivisionCategory;
@@ -23,6 +24,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -68,7 +70,10 @@ class JudgingServiceMedalRoundTest {
         divisionId = UUID.randomUUID();
         divisionCategoryId = UUID.randomUUID();
         adminUserId = UUID.randomUUID();
-        division = new Division(UUID.randomUUID(), "Amateur", "amateur",
+        var competition = new Competition("Amateur Competition", "amateur-competition",
+                LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30), "Lisboa");
+        competition.updateSharedTables(false); // medal-round tests don't exercise cross-division sharing
+        division = new Division(competition.getId(), "Amateur", "amateur",
                 ScoringSystem.MJP,
                 LocalDateTime.of(2026, 6, 1, 23, 59),
                 "Europe/Lisbon");
@@ -79,6 +84,7 @@ class JudgingServiceMedalRoundTest {
                 "Description", null, 0);
         judging = new Judging(divisionId);
         lenient().when(competitionService.findDivisionById(any())).thenReturn(division);
+        lenient().when(competitionService.findCompetitionById(any())).thenReturn(competition);
     }
 
     @Test

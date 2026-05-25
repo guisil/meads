@@ -3,6 +3,7 @@ package app.meads.judging.internal;
 import app.meads.BusinessRuleException;
 import app.meads.competition.CompetitionService;
 import app.meads.competition.DivisionStatus;
+import app.meads.judging.PhysicalTable;
 import app.meads.entry.EntryStatus;
 import app.meads.judging.CategoryJudgingConfig;
 import app.meads.judging.Judging;
@@ -549,6 +550,33 @@ public class JudgingServiceImpl implements JudgingService {
                 .anyMatch(r -> r.getStatus() == JudgingRoundStatus.ACTIVE);
         if (physicalTableBusy) {
             throw new BusinessRuleException("error.round.physical-table-busy");
+        }
+        // Cross-division shared-tables busy-check: when the competition has
+        // sharedTables=true, the same physical "Table 1" can't be in use by
+        // an active round in another division of the same competition.
+        // Matching is by label (label equality stands in for "same physical
+        // workspace" across the competition's per-division table records).
+        var competition = competitionService.findCompetitionById(division.getCompetitionId());
+        if (competition.isSharedTables()) {
+            var thisLabel = physicalTableRepository.findById(table.getPhysicalTableId())
+                    .map(PhysicalTable::getLabel)
+                    .orElse(null);
+            if (thisLabel != null) {
+                boolean crossDivisionBusy = competitionService.findDivisionsByCompetition(competition.getId()).stream()
+                        .filter(d -> !d.getId().equals(division.getId()))
+                        .map(d -> judgingRepository.findByDivisionId(d.getId()))
+                        .filter(Optional::isPresent)
+                        .map(Optional::get)
+                        .flatMap(j -> judgingRoundRepository.findByJudgingId(j.getId()).stream())
+                        .filter(r -> r.getStatus() == JudgingRoundStatus.ACTIVE)
+                        .filter(r -> r.getPhysicalTableId() != null)
+                        .anyMatch(r -> physicalTableRepository.findById(r.getPhysicalTableId())
+                                .map(pt -> thisLabel.equals(pt.getLabel()))
+                                .orElse(false));
+                if (crossDivisionBusy) {
+                    throw new BusinessRuleException("error.round.physical-table-busy-shared", thisLabel);
+                }
+            }
         }
         // Scoring rounds need a full judging panel; medal rounds may use fewer.
         if (table.getType() == RoundType.SCORING

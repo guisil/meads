@@ -666,6 +666,11 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         websiteField.setHelperText(getTranslation("competition-detail.settings.website.helper"));
         websiteField.setClearButtonVisible(true);
 
+        var sharedTablesCheckbox = new Checkbox(
+                getTranslation("competition-detail.settings.shared-tables"));
+        sharedTablesCheckbox.setValue(competition.isSharedTables());
+        sharedTablesCheckbox.setHelperText(getTranslation("competition-detail.settings.shared-tables.helper"));
+
         var logoData = new byte[1][];
         var logoContentType = new String[1];
 
@@ -755,6 +760,8 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                         ? websiteField.getValue().trim() : null;
                 competitionService.updateCompetitionShippingDetails(
                         competitionId, shippingAddress, phoneNumber, website, getCurrentUserId());
+                competitionService.updateCompetitionSharedTables(
+                        competitionId, sharedTablesCheckbox.getValue(), getCurrentUserId());
                 if (logoData[0] != null) {
                     competitionService.updateCompetitionLogo(
                             competitionId, logoData[0], logoContentType[0],
@@ -772,7 +779,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         });
         saveButton.setDisableOnClick(true);
 
-        tab.add(nameField, shortNameField, startDatePicker, endDatePicker, locationField, contactEmailField, shippingAddressField, phoneNumberField, websiteField, logoLabel, logoSection, saveButton);
+        tab.add(nameField, shortNameField, startDatePicker, endDatePicker, locationField, contactEmailField, shippingAddressField, phoneNumberField, websiteField, sharedTablesCheckbox, logoLabel, logoSection, saveButton);
         return tab;
     }
 

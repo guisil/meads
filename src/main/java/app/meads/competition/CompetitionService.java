@@ -194,6 +194,17 @@ public class CompetitionService {
         return competitionRepository.save(competition);
     }
 
+    public Competition updateCompetitionSharedTables(@NotNull UUID competitionId,
+                                                       boolean sharedTables,
+                                                       @NotNull UUID requestingUserId) {
+        var competition = competitionRepository.findById(competitionId)
+                .orElseThrow(() -> new BusinessRuleException("error.competition.not-found"));
+        requireAuthorized(competitionId, requestingUserId);
+        competition.updateSharedTables(sharedTables);
+        log.info("Updated sharedTables for competition {} → {}", competitionId, sharedTables);
+        return competitionRepository.save(competition);
+    }
+
     public void deleteCompetition(@NotNull UUID competitionId,
                                    @NotNull UUID requestingUserId) {
         var competition = competitionRepository.findById(competitionId)

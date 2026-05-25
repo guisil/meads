@@ -755,9 +755,10 @@ Pre-requisite: enable MFA on `admin@example.com` first (see "MFA setup" above).
 ### Settings tab
 
 - [ ] Click the "Settings" tab
-- [ ] **Expected:** Form with: Name, Short Name, Start Date, End Date, Location, Contact Email, Logo label ("Logo") above upload field (max 2.5 MB, PNG/JPEG), Save button
+- [ ] **Expected:** Form with: Name, Short Name, Start Date, End Date, Location, Contact Email, Shipping Address, Phone, Website, Shared tables checkbox, Logo label ("Logo") above upload field (max 2.5 MB, PNG/JPEG), Save button
 - [ ] **Expected:** Fields pre-populated with CHIP 2026 data
 - [ ] **Expected:** Contact Email field with helper text "Shown in emails sent to competition participants" and clear button
+- [ ] **Expected:** Shared tables checkbox label "Shared tables across divisions" + helper "When on, starting a round at e.g. \"Table 1\" locks \"Table 1\" in every other division of this competition until the round completes. Turn off if each division has its own independent physical setup." Default ON for new competitions. (Effect tested in §12.6.0.1.)
 - [ ] Enter contact email: `organizer@chip.com`
 - [ ] Change location to `Porto, Portugal`
 - [ ] Click "Save"
@@ -1716,10 +1717,22 @@ division detail. (This button is visible from REGISTRATION_CLOSED onwards — se
 A table is a fixed station within the division ("Table 1", "Table 2"). Multiple rounds can run at the same table over time, but only one round can be **active** there simultaneously. The dev seed pre-creates 3 tables for Amadora and 5 for Profissional — admins can add more.
 
 - [ ] On the Tables tab, **Expected**: grid with columns Label, Actions. Actions column sits at the right (auto-width, flex-grow 0). Grid auto-sizes its height to fit all rows. All columns are sortable + resizable. Shows the seeded `Table 1` / `Table 2` / `Table 3` for Amadora.
+- [ ] **Expected (when competition.sharedTables is ON):** A banner above the **+ Add Table** button reads "Shared tables is ON for this competition — starting a round here also locks the same-label table in other divisions." Set in the competition's Settings tab — see §11 (CompetitionDetailView Settings → "Shared tables across divisions" checkbox, default ON for new competitions).
 - [ ] Click **"+ Add Table"** → enter label `Test Table` → Save → notification "Table added"; row appears.
 - [ ] Edit the new row → change to `Test Table A` → Save → notification "Table updated".
 - [ ] **Try** to add another with label `Test Table A` → **Expected**: error "A table named 'Test Table A' already exists in this division." (key `error.physical-table.label-duplicate`).
 - [ ] Delete `Test Table A` → confirm → notification "Table deleted".
+
+##### 12.6.0.1 Cross-division shared-tables busy-check (sharedTables=true)
+
+`competition.sharedTables` (default `true` for new competitions) makes the busy-check span all divisions of the competition. When ON: starting a round at, say, Amadora's `Table 1` also locks Profissional's `Table 1` for as long as the round is ACTIVE. Matching is by label across the competition's per-division table records. (Turn off in competition settings if each division has its own independent physical setup.)
+
+- [ ] Verify CHIP 2026 has Shared tables ON (Competition Detail → Settings → "Shared tables across divisions" checkbox ticked).
+- [ ] On Amadora, start any scoring round at `Table 1` (set up entries + 2 judges first, advance Amadora to JUDGING per §12.4.2 / §12.6.4.0 — once Amadora has an ACTIVE round at `Table 1`, this check fires across to Profissional).
+- [ ] Switch to Profissional → Manage Judging → Rounds. **Try** to start a round at Profissional's `Table 1` (any pre-staged round there).
+- [ ] **Expected:** Error notification *"Table 'Table 1' is already in use by an active round in another division of this competition. Stop that round before starting this one (or turn off Shared tables in competition settings)."* (key `error.round.physical-table-busy-shared`).
+- [ ] Either revert/finish the Amadora round OR turn off Shared tables, then re-try the Profissional start → **Expected:** success.
+- [ ] (Note) The judge active-conflict check has always been cross-competition (uses `findAll()`); the shared-tables flag only governs physical-table label matching across divisions.
 
 #### 12.6.1 Add a scoring round
 
