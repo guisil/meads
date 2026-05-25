@@ -478,6 +478,24 @@ public class ScoresheetServiceImpl implements ScoresheetService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public java.util.Map<UUID, Integer> runningTotalsByRoundId(UUID roundId) {
+        var sheets = scoresheetRepository.findByRoundId(roundId);
+        var totals = new java.util.HashMap<UUID, Integer>();
+        for (var sheet : sheets) {
+            if (sheet.getTotalScore() != null) {
+                totals.put(sheet.getId(), sheet.getTotalScore());
+                continue;
+            }
+            int running = sheet.getFields().stream()
+                    .mapToInt(f -> f.getValue() == null ? 0 : f.getValue())
+                    .sum();
+            totals.put(sheet.getId(), running);
+        }
+        return totals;
+    }
+
+    @Override
     public void deleteAllForRound(UUID roundId) {
         var sheets = scoresheetRepository.findByRoundId(roundId);
         if (!sheets.isEmpty()) {

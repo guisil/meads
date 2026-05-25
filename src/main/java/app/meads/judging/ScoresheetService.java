@@ -49,6 +49,15 @@ public interface ScoresheetService {
     long countByRoundIdAndStatusNot(@NotNull UUID roundId, @NotNull ScoresheetStatus status);
 
     /**
+     * Running-total sums per scoresheet on the given round, computed eagerly
+     * so the caller can render them outside of a Hibernate session (e.g. in a
+     * Vaadin grid cell). For SUBMITTED sheets the locked {@code totalScore} is
+     * returned; for BLANK/DRAFT sheets the live sum of whatever score fields
+     * have been entered so far.
+     */
+    java.util.Map<UUID, Integer> runningTotalsByRoundId(@NotNull UUID roundId);
+
+    /**
      * Bulk-deletes every scoresheet attached to the given round. Used by
      * {@code JudgingService.revertScoringRound} when an admin reverts an
      * ACTIVE scoring round back to READY; the caller has already verified

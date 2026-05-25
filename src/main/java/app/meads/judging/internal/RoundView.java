@@ -76,6 +76,7 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
     private List<Scoresheet> allSheets;
     private Map<UUID, Entry> entriesById;
     private Map<UUID, User> usersById;
+    private Map<UUID, Integer> runningTotals;
 
     public RoundView(CompetitionService competitionService,
                      UserService userService,
@@ -171,6 +172,10 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
                 .distinct()
                 .map(userService::findById)
                 .collect(Collectors.toMap(User::getId, u -> u, (a, b) -> a));
+        // Precompute per-sheet totals while the service is still inside its
+        // read transaction. Sheet.fields is lazy and would otherwise blow up
+        // when the Vaadin grid cell tries to access it.
+        runningTotals = scoresheetService.runningTotalsByRoundId(table.getId());
     }
 
     private HorizontalLayout createFilterBar() {
@@ -179,6 +184,7 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
         statusFilter.setLabel(getTranslation("table.filter.status.label"));
         statusFilter.setItems(
                 getTranslation("table.filter.status.option.all"),
+                getTranslation("table.filter.status.option.blank"),
                 getTranslation("table.filter.status.option.draft"),
                 getTranslation("table.filter.status.option.submitted"));
         statusFilter.setValue(getTranslation("table.filter.status.option.all"));
@@ -207,8 +213,10 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
                 .setHeader(getTranslation("table.column.mead"));
         scoresheetsGrid.addColumn(s -> s.getStatus().name())
                 .setHeader(getTranslation("table.column.status"));
-        scoresheetsGrid.addColumn(s -> s.getTotalScore() == null ? "—" : s.getTotalScore().toString())
+        scoresheetsGrid.addColumn(this::formatTotalCell)
                 .setHeader(getTranslation("table.column.total"));
+        scoresheetsGrid.addColumn(s -> s.isAdvancedToMedalRound() ? "✓" : "—")
+                .setHeader(getTranslation("table.column.advances"));
         scoresheetsGrid.addColumn(s -> filledByName(s.getFilledByJudgeUserId(), usersById))
                 .setHeader(getTranslation("table.column.filled-by"));
         scoresheetsGrid.addComponentColumn(this::createActionsCell)
@@ -228,11 +236,14 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
 
     private void applyFilters() {
         var statusOpt = statusFilter.getValue();
+        var blankLabel = getTranslation("table.filter.status.option.blank");
         var draftLabel = getTranslation("table.filter.status.option.draft");
         var submittedLabel = getTranslation("table.filter.status.option.submitted");
 
         ScoresheetStatus statusFilterValue = null;
-        if (draftLabel.equals(statusOpt)) {
+        if (blankLabel.equals(statusOpt)) {
+            statusFilterValue = ScoresheetStatus.BLANK;
+        } else if (draftLabel.equals(statusOpt)) {
             statusFilterValue = ScoresheetStatus.DRAFT;
         } else if (submittedLabel.equals(statusOpt)) {
             statusFilterValue = ScoresheetStatus.SUBMITTED;
@@ -249,10 +260,85 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
         scoresheetsGrid.setItems(filtered);
     }
 
+    private void navigateToScoresheet(Scoresheet sheet) {
+        var url = "competitions/" + compShortName
+                + "/divisions/" + divShortName
+                + "/scoresheets/" + sheet.getId();
+        getUI().ifPresent(ui -> ui.navigate(url));
+    }
+
+    public void openJudgeSubmitDialog(Scoresheet sheet) {
+        var entry = entriesById.get(sheet.getEntryId());
+        var entryLabel = entry == null ? "" : entry.getEntryCode();
+        var dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("scoresheet.action.submit.confirm.title", entryLabel));
+        dialog.add(new Span(getTranslation("scoresheet.action.submit.confirm.body")));
+        var confirm = new Button(getTranslation("scoresheet.action.submit"), e -> {
+            try {
+                scoresheetService.submit(sheet.getId(), getCurrentUserId());
+                dialog.close();
+                Notification.show(getTranslation("scoresheet.action.submit.success"))
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                loadScoresheetData();
+                scoresheetsGrid.setItems(allSheets);
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                e.getSource().setEnabled(true);
+            }
+        });
+        confirm.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SUCCESS);
+        confirm.setDisableOnClick(true);
+        var cancel = new Button(getTranslation("button.cancel"), e -> dialog.close());
+        dialog.getFooter().add(cancel, confirm);
+        dialog.open();
+    }
+
+    /**
+     * Total-column cell. SUBMITTED sheets show the locked total score.
+     * BLANK/DRAFT sheets show the live running sum of whatever has been
+     * entered so far, so admins can see judging progress at a glance without
+     * drilling into each scoresheet. Returns "—" for sheets with no scores
+     * yet (pristine BLANK or DRAFT with all fields still null). The trailing
+     * " *" marks draft (running) totals so they aren't confused with the
+     * locked total of a SUBMITTED sheet.
+     */
+    private String formatTotalCell(Scoresheet sheet) {
+        if (sheet.getTotalScore() != null) {
+            return sheet.getTotalScore().toString();
+        }
+        Integer running = runningTotals.get(sheet.getId());
+        if (running == null || running == 0) {
+            return "—";
+        }
+        return running + " *";
+    }
+
     private HorizontalLayout createActionsCell(Scoresheet sheet) {
         var actions = new HorizontalLayout();
         actions.setPadding(false);
         actions.setSpacing(true);
+        // Judge per-row shortcuts (Open + Submit). Coexist with the row-click
+        // navigation; Submit is a one-click path for sheets that are already
+        // complete — service-level validation still fires and surfaces a
+        // notification if comments / fields are missing.
+        if (!isAdmin) {
+            var openButton = new Button(new Icon(VaadinIcon.EYE));
+            openButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            openButton.setId("open-" + sheet.getId());
+            openButton.setTooltipText(getTranslation("table.action.open"));
+            openButton.addClickListener(e -> navigateToScoresheet(sheet));
+            actions.add(openButton);
+            if (sheet.getStatus() == ScoresheetStatus.DRAFT) {
+                var submitButton = new Button(new Icon(VaadinIcon.PAPERPLANE));
+                submitButton.addThemeVariants(ButtonVariant.LUMO_ICON,
+                        ButtonVariant.LUMO_TERTIARY_INLINE, ButtonVariant.LUMO_SUCCESS);
+                submitButton.setId("submit-" + sheet.getId());
+                submitButton.setTooltipText(getTranslation("table.action.submit"));
+                submitButton.addClickListener(e -> openJudgeSubmitDialog(sheet));
+                actions.add(submitButton);
+            }
+        }
         if (isAdmin && sheet.getStatus() == ScoresheetStatus.SUBMITTED) {
             var revertButton = new Button(new Icon(VaadinIcon.ARROW_BACKWARD));
             revertButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);

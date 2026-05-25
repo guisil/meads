@@ -1924,14 +1924,17 @@ The Results tab is a read-only summary of every round that has reached COMPLETE 
 - [ ] **Expected:** Breadcrumb begins with "My Judging" (judge path) or "My Competitions / CHIP 2026 / Amadora / Judging Admin" (admin path).
 - [ ] **Expected:** H2 `CHIP 2026 — Amadora — Table: M1A Panel A`.
 - [ ] **Expected:** Filter bar with a `Status` Select (options: All, Draft, Submitted; default All) and a `Search` `TextField` (placeholder "Mead name or entry code", `ValueChangeMode.EAGER`).
-- [ ] **Expected:** A `Grid<Scoresheet>` with columns Entry, Mead name, Status, Total, Filled by, Actions.
-- [ ] Apply filter Status = Draft → grid narrows to DRAFT rows only.
+- [ ] **Expected:** A `Grid<Scoresheet>` with columns Entry, Mead name, Status, **Total**, **Advances**, Filled by, Actions.
+  - **Total column** shows the locked total for SUBMITTED sheets, a running sum with " *" suffix for BLANK/DRAFT sheets (judging in progress), and "—" for sheets with no scores entered yet. The running sum is computed live, so admins can see panel progress without opening each scoresheet.
+  - **Advances column** shows ✓ when the judge marked "Advance to medal round", — otherwise.
+- [ ] **Status filter** options: `All`, `Blank` (created, no judge touched yet), `Draft` (judge saved at least once), `Submitted`. Apply filter Status = Draft → grid narrows to DRAFT rows only.
 - [ ] Type part of a mead name in Search → grid filters client-side; clearing the field restores all rows.
 
-#### 12.10.1 Row click → ScoresheetView
+#### 12.10.1 Row click + judge row actions → ScoresheetView
 
 - [ ] Click any row.
 - [ ] **Expected:** Navigation to `competitions/.../scoresheets/<id>`.
+- [ ] **Expected (judge actions column):** judges see two icon buttons per row: 👁 **Open** (`open-<sheetId>`) navigates to the scoresheet (coexists with row click — both work); and 📨 **Submit** (`submit-<sheetId>`) opens a confirm dialog and calls `scoresheetService.submit` directly when confirmed. Submit is enabled only on DRAFT sheets (BLANK has nothing to submit; SUBMITTED is locked). If validation fails (e.g. comments still missing) the same notifications fire as in the form-level submit, prompting the judge to open the scoresheet and fix.
 - [ ] **Expected (judge):** form opens in edit mode (Save Draft + Submit buttons visible, fields editable).
 - [ ] **Expected (admin):** form opens **read-only** (no Save Draft / Submit, score fields + comments / language / advance checkbox all marked read-only). Below the read-only form, an **"Edit on behalf of judge"** button (id `admin-edit-scoresheet`) is visible.
 - [ ] (As admin) Click "Edit on behalf of judge" → **Expected:** ConfirmDialog *"Edit scoresheet?"* — body warns the action should only be used in exceptional situations (judge left mid-round, correct an obvious typo) and that the admin is not silently overriding the judge's assessment. Buttons: Cancel + "Edit anyway".

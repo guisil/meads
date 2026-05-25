@@ -3,6 +3,8 @@ package app.meads.judging;
 import app.meads.TestcontainersConfiguration;
 import app.meads.competition.CategoryScope;
 import app.meads.competition.Competition;
+import app.meads.competition.CompetitionRole;
+import app.meads.competition.CompetitionService;
 import app.meads.competition.Division;
 import app.meads.competition.DivisionCategory;
 import app.meads.competition.ScoringSystem;
@@ -76,6 +78,7 @@ class RoundViewTest {
     @Autowired JudgingRoundRepository judgingRoundRepository;
     @Autowired ScoresheetRepository scoresheetRepository;
     @Autowired JudgingService judgingService;
+    @Autowired CompetitionService competitionService;
 
     private Competition competition;
     private Division division;
@@ -204,7 +207,7 @@ class RoundViewTest {
                 .map(c -> ((Grid.Column<?>) c).getHeaderText())
                 .toList();
         assertThat(headers).containsExactly("Entry", "Mead name", "Status",
-                "Total", "Filled by", "Actions");
+                "Total", "Advances", "Filled by", "Actions");
     }
 
     @Test
@@ -227,7 +230,7 @@ class RoundViewTest {
         var statusFilter = (Select<String>) _get(Select.class, spec -> spec.withId("status-filter"));
         assertThat(statusFilter.getValue()).isEqualTo("All");
         var options = statusFilter.getListDataView().getItems().toList();
-        assertThat(options).containsExactly("All", "Draft", "Submitted");
+        assertThat(options).containsExactly("All", "Blank", "Draft", "Submitted");
 
         var searchField = _get(TextField.class, spec -> spec.withId("search-field"));
         assertThat(searchField).isNotNull();
@@ -363,5 +366,54 @@ class RoundViewTest {
         var expectedSuffix = "scoresheets/" + sheet.getId();
         assertThat(UI.getCurrent().getInternals().getActiveViewLocation().getPath())
                 .endsWith(expectedSuffix);
+    }
+
+    @Test
+    @WithMockUser(username = "round-view-judge-test@example.com", roles = "USER")
+    void shouldSubmitScoresheetViaJudgeRowShortcutWhenAllFieldsAndCommentsFilled() {
+        // Judges (non-admin) get a per-row Submit shortcut on RoundView. The
+        // dialog reuses the same confirmation copy as the form-level submit;
+        // service validation still fires, so an incomplete sheet would
+        // surface the existing error notification instead.
+        advanceDivisionToJudging();
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Desc",
+                null, 1, CategoryScope.JUDGING));
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var judge = userRepository.save(new User(
+                "round-view-judge-test@example.com", "Round View Judge",
+                UserStatus.ACTIVE, Role.USER));
+        competitionService.addParticipantByEmail(competition.getId(),
+                judge.getEmail(), CompetitionRole.JUDGE, admin.getId());
+
+        var judging = judgingService.ensureJudgingExists(division.getId());
+        var table = judgingService.createRound(judging.getId(), "Table A",
+                category.getId(), null, admin.getId());
+        judgingService.assignJudge(table.getId(), judge.getId(), admin.getId());
+
+        var entrant = userRepository.save(new User(
+                "entrant-judge-actions-" + UUID.randomUUID() + "@example.com",
+                "Entrant", UserStatus.ACTIVE, Role.USER));
+        var entry = entryRepository.save(new Entry(division.getId(), entrant.getId(), 1,
+                "AMA-13", "Submittable Mead", category.getId(), Sweetness.DRY,
+                BigDecimal.valueOf(11.0), Carbonation.STILL,
+                "Wildflower", null, false, null, null));
+        var sheet = new app.meads.judging.Scoresheet(table.getId(), entry.getId());
+        for (var def : MjpScoringFieldDefinition.MJP_FIELDS) {
+            sheet.updateScore(def.fieldName(), def.maxValue(), "good depth and balance");
+        }
+        sheet.updateOverallComments("Well-balanced mead, clean finish, pleasant aroma.");
+        var savedSheet = scoresheetRepository.save(sheet);
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName()
+                + "/tables/" + table.getId());
+
+        var view = _get(RoundView.class);
+        view.openJudgeSubmitDialog(savedSheet);
+        _click(_get(Button.class, spec -> spec.withText("Submit")));
+
+        var refreshed = scoresheetRepository.findById(savedSheet.getId()).orElseThrow();
+        assertThat(refreshed.getStatus()).isEqualTo(app.meads.judging.ScoresheetStatus.SUBMITTED);
     }
 }
