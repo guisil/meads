@@ -233,38 +233,72 @@ docs/
 
 ## What's Next
 
-### CURRENT (2026-05-25): Resume the walkthrough at §12.6.9
+### CURRENT (2026-05-25): Resume the walkthrough at §12.6.7.1 (Profissional)
 
-All five deferred items that paused the walkthrough are landed (see "Recently completed" below).
+The user paused the walkthrough mid-§12.6 to ship a big batch of in-session
+changes (see "Recently completed" below). After landing all of those, the user
+opted to **reset the DB** and **skip back-walking the Amadora setup** — the
+Amadora-side §12.1–§12.6.x steps were already exercised earlier in the day and
+the changes don't introduce Amadora-specific new behavior they need to verify.
 
-**State on disk** (`feature/judging-module`, 1189 tests passing, top commit `760058d`). Branch is pushed.
+**State on disk** (`feature/judging-module`, 1200 tests passing, top commit `c19ff0c`). Branch pushed.
 
-**Walkthrough position when paused:** Amadora at JUDGING with `M1A Panel A` ACTIVE (2 judges, entries assigned, scoresheets created). Profissional at JUDGING with split-category M1A + pre-staged M1B medal round (per dev seed). Amadora has a pre-staged `Medal — M1B` medal round added by hand in §12.6.8.
+**Walkthrough position on resume:** DB is being reset. After re-seed, Profissional
+is pre-staged at JUDGING with split-category M1A panels (Panel A / Panel B) + a
+pre-staged M1B medal round + 6 judges + RECEIVED entries — i.e. ready for §12.6.7.1
+without any prior setup.
 
 **Resume checklist:**
 
-1. App running locally (user manages it — [[feedback_dev_server_user_managed]]). Mailpit at `localhost:8025`.
-2. DB state: re-seed fresh — the deferred items reshape §12.5/§12.6 flow (especially #1 REGISTRATION_CLOSED setup and #3 medal-round entries). Walk §12.1 through §12.6.8 again to land at the same position.
-3. Then proceed §12.6.9 → §12.6.10 → §12.7 → §12.8 → §12.9 (MyJudgingView — log in as **`judge3@example.com`** or **`judge4@example.com`**) → §12.10 → §12.11 → §12.12 → §12.13 → §12.14 → §12.15 → §12.16 → §12.17 → §12.18. Then §13 Awards.
+1. User restarts the app after `mvn flyway:clean` (or however they reset).
+   Mailpit at `localhost:8025`.
+2. Verify the dev seed landed: log in as `compadmin@example.com`, open
+   CHIP 2026 → Profissional → Manage Judging → Rounds. Both M1A panels should
+   show **Status = READY** (auto-readiness fires now that division ≥ JUDGING +
+   table + judges ≥ 2 + entries ≥ 1) and the Entries column reflects 2 / 3 / 0.
+3. Pick up at **§12.6.7.1** (split-category demo on Profissional).
+4. **Defer §12.6.0.1** (cross-division shared-tables check) — it requires Amadora
+   to also have an ACTIVE round at `Table 1`. The cross-division rule is
+   unit-tested; skip in the walkthrough or come back to it after starting an
+   Amadora round.
+5. Then proceed **§12.6.9 (Type filter)** → §12.6.10 (Open buttons) → §12.7
+   (Results tab) → §12.8 (Best of Show tab) → §12.9 (MyJudgingView — log in as
+   one of the judges actually assigned to a Profissional round; the seed has
+   `judge@`–`judge6@` available) → §12.10 (RoundView — **see the new judge row
+   Open + Submit shortcuts + Advances column + live Total for DRAFT + Blank
+   filter**) → §12.11 (ScoresheetView — **see the back-to-round anchor, +/- step
+   buttons, prominent H3 total, required per-criterion + overall comments**) →
+   §12.12 → §12.13 → §12.14 → §12.15 (revert-guard relaxed — only ACTIVE/COMPLETE
+   block) → §12.16 → §12.17 → §12.18. Then §13 Awards.
 
 After the walkthrough completes: code review, merge, v0.4.0 release.
 
 ---
 
-### Recently completed (2026-05-25 session): five deferred items + late-RECEIVED tweak
+### Recently completed (2026-05-25 session)
 
-All shipped in one session. Eight commits past `7831ecf`:
+Two batches in one day. **Morning batch — five deferred walkthrough items + late-RECEIVED tweak** (1178 → 1189 tests, V29 → V31, `EntryReceivedEvent` removed):
 
 - `d5ff5c9` Late RECEIVED is manual-only: deleted `EntryReceivedScoresheetListener` + `EntryReceivedEvent`. Admin assigns final category + Rounds → Assign Entries; no more auto scoresheet creation.
-- `945dbcc` **Item #1** Judging setup at REGISTRATION_CLOSED: `JudgingAdminView.beforeEnter` gate lowered; "Manage Judging" button visible from REG_CLOSED; new service gate on `startRound` requiring `>= JUDGING` (key `error.round.cannot-start-before-judging` × 5 locales). Walkthrough §12.4.2 / §12.5.1 / §12.6 / §12.6.4 reordered.
-- `001fd95` **Item #5** Table → Round i18n rename across EN + PT/ES/IT/PL. 15 keys × 5 + `judge-table.title` + 2 comment lines. Keys unchanged (`error.judging-table.*`, `email.judging-table-ready.*`) to keep BRE strings stable.
-- `6fa4e1c` **Item #2** Cross-division shared tables flag: `Competition.sharedTables` (default TRUE) + V30 migration. `startRound` cross-division busy-check by label when ON. Key `error.round.physical-table-busy-shared` × 5 locales. Settings checkbox + Physical Tables banner. Regression test for cross-division judge conflict.
-- `8481a60` **Item #4** Scoresheet improvements: per-item comment TextArea per MJP field; comment language falls back to `User.preferredLanguage`; `meadName` hidden from judges (admins still see).
-- `1e2b901` **Item #3a** V31 partial unique index `(judging_id, division_category_id) WHERE type = 'MEDAL'` backstops one-medal-round-per-category.
-- `57a6784` **Item #3b** Cascade populates `medalRound.entries` per mode at READY transition. `findMedalRoundEntries` reads from `round.entries`, falls back to derivation when empty (test back-compat).
-- `760058d` **Item #3c** `MedalRoundView` Assign Entries dialog mirrors Rounds-tab equivalent. EntryService + ScoresheetRepository injected.
+- `945dbcc` **Item #1** Judging setup at REGISTRATION_CLOSED: `JudgingAdminView.beforeEnter` gate lowered; "Manage Judging" button visible from REG_CLOSED; new service gate on `startRound` requiring `>= JUDGING` (key `error.round.cannot-start-before-judging` × 5 locales).
+- `001fd95` **Item #5** Table → Round i18n rename across EN + PT/ES/IT/PL.
+- `6fa4e1c` **Item #2** Cross-division shared tables flag: `Competition.sharedTables` (default TRUE) + V30 migration + cross-division busy-check + `error.round.physical-table-busy-shared` × 5 locales.
+- `8481a60` **Item #4** Scoresheet improvements: per-item comment TextArea per MJP field; comment language falls back to `User.preferredLanguage`; `meadName` hidden from judges.
+- `1e2b901` **Item #3a** V31 partial unique index backstops one-medal-round-per-category.
+- `57a6784` **Item #3b** Cascade populates `medalRound.entries` per mode at READY transition.
+- `760058d` **Item #3c** `MedalRoundView` Assign Entries dialog mirrors Rounds-tab equivalent.
 
-Net: 1178 → 1189 tests, V29 → V31, EntryReceivedEvent removed.
+**Afternoon/evening batch — UX polish + revert guard relax** (1189 → 1200 tests):
+
+- `cc92cf0` / `408cb4f` CLAUDE.md + SESSION_CONTEXT.md trimming.
+- `c795f29` Post-deployment docs: judging + awards smoke tests added to `post-deployment-test.md`; new `post-deployment-v0.4.0.md` for the upgrade check; `deployment-checklist.md` Phase 6 + Release process now branch on fresh-deploy vs upgrade.
+- `d4eb5a6` Entries-count column on the Rounds grid (between Judges + Scheduled) × 5 locales.
+- `8b68ed4` `JudgingService.recomputeReadinessForDivision` + `@EventListener` on `DivisionStatusAdvancedEvent`: scoring rounds auto-flip PENDING ↔ READY when configuration completes (table + ≥ minJudgesPerRound + ≥1 entry) AND division ≥ JUDGING. Dynamic cross-round conflicts (table/judge busy) stay as Start-time errors.
+- `990db6a` **Group A** `ScoresheetStatus.BLANK` initial state; first `updateScore`/`updateOverallComments` promotes BLANK → DRAFT; `revertScoringRound` now blocks on any non-BLANK sheet (new key `error.round.cannot-revert-touched-scoresheets` × 5 locales; old `cannot-revert-submitted-scoresheets` removed).
+- `047e917` **Group B** Admins land in read-only `ScoresheetView` with an "Edit on behalf of judge" ConfirmDialog (4 new i18n keys × 5 locales). Judge-visibility regression test (`shouldForwardAwayJudgeWhoIsNotAssignedToTheRound`) locks in the existing `isAssignedJudge` gate.
+- `c2e3d3a` **Group C** Submit-time per-criterion + overall comment length requirements (`Scoresheet.MIN_PER_FIELD_COMMENT_LENGTH=3`, `MIN_OVERALL_COMMENT_LENGTH=20`). NumberField step buttons + full width fix label truncation. Total preview becomes a prominent H3 sized `--lumo-font-size-xxl`. "← Back to round" Anchor on ScoresheetView.
+- `1fad1cf` **Group D** RoundView grid: new Advances column (✓/—), live running-total via `ScoresheetService.runningTotalsByRoundId` (with " *" suffix for DRAFT), Blank filter option. Judges get per-row Open (eye) + Submit (paperplane, DRAFT only) shortcuts.
+- `c19ff0c` `JudgingDivisionStatusRevertGuard` relaxed: blocks JUDGING → REGISTRATION_CLOSED only when an ACTIVE or COMPLETE round exists. PENDING/READY rounds (set up but never started) survive the trip back.
 
 ---
 
