@@ -3,6 +3,7 @@ package app.meads.judging.internal;
 import app.meads.BusinessRuleException;
 import app.meads.competition.CompetitionService;
 import app.meads.competition.DivisionStatus;
+import app.meads.competition.DivisionStatusAdvancedEvent;
 import app.meads.judging.PhysicalTable;
 import app.meads.entry.EntryStatus;
 import app.meads.judging.CategoryJudgingConfig;
@@ -33,6 +34,7 @@ import app.meads.judging.ScoresheetStatus;
 import app.meads.judging.RoundStartedEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
@@ -196,8 +198,83 @@ public class JudgingServiceImpl implements JudgingService {
             throw new BusinessRuleException("error.physical-table.wrong-division");
         }
         round.assignToPhysicalTable(physicalTableId);
+        recomputeScoringRoundReadiness(round);
         judgingRoundRepository.save(round);
         log.info("Assigned round {} to physical table {}", roundId, physicalTableId);
+    }
+
+    /**
+     * Auto-toggles a SCORING round between PENDING and READY based on whether it
+     * is fully configured (physical table + ≥ minJudgesPerRound judges + ≥ 1 entry)
+     * AND the division has advanced to JUDGING. Skips rounds whose status isn't one
+     * of {PENDING, READY} (ACTIVE / COMPLETE rounds are owned by their own
+     * transitions). Medal rounds are skipped — their READY is cascade-driven.
+     */
+    private void recomputeScoringRoundReadiness(JudgingRound round) {
+        var judging = judgingRepository.findById(round.getJudgingId()).orElse(null);
+        if (judging == null) {
+            return;
+        }
+        var division = competitionService.findDivisionById(judging.getDivisionId());
+        recomputeScoringRoundReadiness(round, division);
+    }
+
+    private void recomputeScoringRoundReadiness(JudgingRound round,
+                                                 app.meads.competition.Division division) {
+        if (round.getType() != RoundType.SCORING) {
+            return;
+        }
+        if (round.getStatus() != JudgingRoundStatus.PENDING
+                && round.getStatus() != JudgingRoundStatus.READY) {
+            return;
+        }
+        boolean shouldBeReady = isScoringRoundReadyToStart(round, division);
+        if (shouldBeReady && round.getStatus() == JudgingRoundStatus.PENDING) {
+            round.markReady();
+        } else if (!shouldBeReady && round.getStatus() == JudgingRoundStatus.READY) {
+            round.markPending();
+        }
+    }
+
+    private boolean isScoringRoundReadyToStart(JudgingRound round,
+                                                app.meads.competition.Division division) {
+        if (division.getStatus().ordinal() < DivisionStatus.JUDGING.ordinal()) {
+            return false;
+        }
+        if (round.getPhysicalTableId() == null) {
+            return false;
+        }
+        if (round.getAssignments().size() < division.getMinJudgesPerRound()) {
+            return false;
+        }
+        return !round.getEntries().isEmpty();
+    }
+
+    @Override
+    public void recomputeReadinessForDivision(UUID divisionId) {
+        var judging = judgingRepository.findByDivisionId(divisionId).orElse(null);
+        if (judging == null) {
+            return;
+        }
+        var division = competitionService.findDivisionById(divisionId);
+        for (var round : judgingRoundRepository.findByJudgingId(judging.getId())) {
+            var statusBefore = round.getStatus();
+            recomputeScoringRoundReadiness(round, division);
+            if (round.getStatus() != statusBefore) {
+                judgingRoundRepository.save(round);
+            }
+        }
+    }
+
+    @EventListener
+    void onDivisionStatusAdvanced(DivisionStatusAdvancedEvent event) {
+        // Recompute on any cross-JUDGING transition: forward (to JUDGING+) makes
+        // configured rounds eligible for READY; the listener short-circuits when
+        // the new status is < JUDGING (predicate fails for all rounds anyway).
+        if (event.newStatus().ordinal() < DivisionStatus.JUDGING.ordinal()) {
+            return;
+        }
+        recomputeReadinessForDivision(event.divisionId());
     }
 
     @Override
@@ -259,6 +336,7 @@ public class JudgingServiceImpl implements JudgingService {
             }
         }
         round.assignEntry(entryId);
+        recomputeScoringRoundReadiness(round);
         judgingRoundRepository.save(round);
         // Mid-round add: create the DRAFT scoresheet so the round's judges can
         // start scoring this entry immediately. ensureScoresheetForEntry no-ops
@@ -292,6 +370,7 @@ public class JudgingServiceImpl implements JudgingService {
             }
         }
         round.unassignEntry(entryId);
+        recomputeScoringRoundReadiness(round);
         judgingRoundRepository.save(round);
         log.info("Unassigned entry {} from round {}", entryId, roundId);
     }
@@ -471,6 +550,7 @@ public class JudgingServiceImpl implements JudgingService {
             }
         }
         table.assignJudge(judgeUserId);
+        recomputeScoringRoundReadiness(table);
         judgingRoundRepository.save(table);
         judgeProfileService.ensureProfileForJudge(judgeUserId);
         log.info("Assigned judge {} to table {}", judgeUserId, roundId);
@@ -499,6 +579,7 @@ public class JudgingServiceImpl implements JudgingService {
             }
         }
         table.removeJudge(judgeUserId);
+        recomputeScoringRoundReadiness(table);
         judgingRoundRepository.save(table);
         log.info("Removed judge {} from table {}", judgeUserId, roundId);
     }

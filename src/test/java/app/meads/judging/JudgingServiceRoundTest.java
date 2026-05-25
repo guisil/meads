@@ -544,4 +544,89 @@ class JudgingServiceRoundTest {
 
         assertThat(round.getEntries()).doesNotContain(entryId);
     }
+
+    @Test
+    void shouldFlipConfiguredScoringRoundsToReadyWhenDivisionAdvancesToJudging() {
+        // Rounds were fully configured at REGISTRATION_CLOSED (so the predicate
+        // matched everything except division status). Calling
+        // recomputeReadinessForDivision after the division advances to JUDGING
+        // should flip them to READY without any per-round mutation.
+        division.advanceStatus();
+        division.advanceStatus();
+        division.advanceStatus(); // → JUDGING
+        var judging = new Judging(divisionId);
+        var configuredRound = new JudgingRound(judging.getId(), "M1A Panel",
+                divisionCategoryId, null);
+        configuredRound.assignToPhysicalTable(UUID.randomUUID());
+        configuredRound.assignJudge(UUID.randomUUID());
+        configuredRound.assignJudge(UUID.randomUUID());
+        configuredRound.assignEntry(UUID.randomUUID());
+        var unconfiguredRound = new JudgingRound(judging.getId(), "M1B Panel",
+                divisionCategoryId, null);
+        // Medal rounds use cascade-driven READY — must NOT be touched.
+        var medalRound = new JudgingRound(judging.getId(), "Medal — M1A",
+                divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.COMPARATIVE);
+        given(judgingRepository.findByDivisionId(divisionId))
+                .willReturn(Optional.of(judging));
+        given(judgingRoundRepository.findByJudgingId(judging.getId()))
+                .willReturn(List.of(configuredRound, unconfiguredRound, medalRound));
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.recomputeReadinessForDivision(divisionId);
+
+        assertThat(configuredRound.getStatus()).isEqualTo(JudgingRoundStatus.READY);
+        assertThat(unconfiguredRound.getStatus()).isEqualTo(JudgingRoundStatus.PENDING);
+        assertThat(medalRound.getStatus()).isEqualTo(JudgingRoundStatus.PENDING);
+    }
+
+    @Test
+    void shouldFlipScoringRoundFromReadyToPendingWhenLastEntryIsRemoved() {
+        // Start with a fully-configured READY scoring round; unassign its only
+        // entry — should fall back to PENDING.
+        division.advanceStatus();
+        division.advanceStatus();
+        division.advanceStatus(); // → JUDGING
+        var judging = new Judging(divisionId);
+        var round = new JudgingRound(judging.getId(), "M1A Panel", divisionCategoryId, null);
+        round.assignToPhysicalTable(UUID.randomUUID());
+        round.assignJudge(UUID.randomUUID());
+        round.assignJudge(UUID.randomUUID());
+        var entryId = UUID.randomUUID();
+        round.assignEntry(entryId);
+        round.markReady();
+        given(judgingRoundRepository.findById(round.getId())).willReturn(Optional.of(round));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.unassignEntryFromRound(round.getId(), entryId, adminUserId);
+
+        assertThat(round.getStatus()).isEqualTo(JudgingRoundStatus.PENDING);
+    }
+
+    @Test
+    void shouldFlipScoringRoundFromPendingToReadyWhenConfigurationCompletesAtJudging() {
+        // Division at JUDGING; round has table + 2 judges (= minJudgesPerRound default).
+        // Assigning the last config piece — the first entry — should flip PENDING → READY.
+        division.advanceStatus(); // DRAFT → REGISTRATION_OPEN
+        division.advanceStatus(); // → REGISTRATION_CLOSED
+        division.advanceStatus(); // → JUDGING
+        var judging = new Judging(divisionId);
+        var round = new JudgingRound(judging.getId(), "M1A Panel", divisionCategoryId, null);
+        round.assignToPhysicalTable(UUID.randomUUID());
+        round.assignJudge(UUID.randomUUID());
+        round.assignJudge(UUID.randomUUID());
+        given(judgingRoundRepository.findById(round.getId())).willReturn(Optional.of(round));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.assignEntryToRound(round.getId(), UUID.randomUUID(), adminUserId);
+
+        assertThat(round.getStatus()).isEqualTo(JudgingRoundStatus.READY);
+    }
 }

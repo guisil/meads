@@ -97,6 +97,15 @@ public interface JudgingService {
      */
     void revertScoringRound(@NotNull UUID roundId, @NotNull UUID adminUserId);
 
+    /**
+     * Recomputes PENDING ↔ READY status for every SCORING round in the division.
+     * Called by the division-advance listener when a division reaches JUDGING:
+     * scoring rounds that were "configuration-ready" but blocked on the
+     * division-status condition can now flip to READY without further admin
+     * action. Medal rounds and rounds in ACTIVE/COMPLETE are left untouched.
+     */
+    void recomputeReadinessForDivision(@NotNull UUID divisionId);
+
     // === Category medal-round configuration ===
     CategoryJudgingConfig configureCategoryMedalRound(@NotNull UUID divisionCategoryId,
                                                        @NotNull MedalRoundMode mode,

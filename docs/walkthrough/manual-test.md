@@ -1740,6 +1740,7 @@ A table is a fixed station within the division ("Table 1", "Table 2"). Multiple 
 
 - [ ] **Expected:** Toolbar with a **Type filter** ComboBox (options: All / Scoring / Medal; default All) and a **"+ Add Round"** button.
 - [ ] **Expected:** Grid columns: Type (Scoring/Medal), Name, Category (`code — name`), Table (label or "—"), Status, Judges (count), **Entries (count)**, Scheduled (locale-aware date), Actions. The Entries column shows how many entries are currently assigned to the round (via 📦 Assign Entries).
+- [ ] **Status semantics (scoring rounds):** the Status column flips automatically between `PENDING` and `READY` as configuration changes. A scoring round is `READY` when **all** of: (a) physical table assigned, (b) ≥ Minimum judges per round, (c) ≥ 1 entry assigned, (d) division is at JUDGING. Any other state shows `PENDING` — the row tells admins what is and isn't ready to start. Dynamic conflicts (table busy elsewhere, judge on another active round) are **not** part of READY — they remain Start-time errors so the message can be specific. Medal rounds use a separate `READY` semantics: the cascade flips a medal round to `READY` when every scoring round in its category COMPLETEs.
 - [ ] Click "+ Add Round".
 - [ ] **Expected:** Dialog with Type Select (default `SCORING`), Name text field, Category Select (filtered to JUDGING-scope categories), Table Select (populated from the Tables tab), Scheduled date picker.
 - [ ] Leave Type = `SCORING`, leave Name blank → Save.
@@ -1749,7 +1750,7 @@ A table is a fixed station within the division ("Table 1", "Table 2"). Multiple 
 - [ ] Pick Category = `M1A — Traditional Mead (Dry)`, leave Table empty → Save.
 - [ ] **Expected:** Inline error "Table is required."
 - [ ] Pick Table = `Table 1`, set Scheduled = today + 7 days → Save.
-- [ ] **Expected:** Notification "Round added"; row appears in the grid with Type = `Scoring`, Status = `PENDING`.
+- [ ] **Expected:** Notification "Round added"; row appears in the grid with Type = `Scoring`, Status = `PENDING` (not READY yet — judges + entries still missing, and Amadora is still at REGISTRATION_CLOSED).
 
 #### 12.6.2 Edit a scoring round
 
