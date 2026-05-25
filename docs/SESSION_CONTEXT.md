@@ -225,7 +225,8 @@ docs/
 │   └── awards.md                          ← Preliminary spec (post-rework naming)
 └── walkthrough/
     ├── manual-test.md                  ← Dev environment test plan (seeded data, comprehensive)
-    └── post-deployment-test.md         ← Production test plan (clean database, end-to-end workflow)
+    ├── post-deployment-test.md         ← Production fresh-deploy test plan (clean DB, Stage 1 + Stage 2; includes judging + awards smoke tests)
+    └── post-deployment-v0.4.0.md       ← Version-specific upgrade check for v0.4.0 (assumes prod data exists; verifies V28–V31 migrations + new settings + pre-judging setup against existing competition)
 ```
 
 ---
