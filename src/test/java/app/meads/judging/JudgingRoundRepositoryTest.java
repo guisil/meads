@@ -31,6 +31,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
@@ -263,4 +264,39 @@ class JudgingRoundRepositoryTest {
         var found = judgingRoundRepository.findById(saved.getId()).orElseThrow();
         assertThat(found.getEntries()).isEmpty();
     }
+
+    @Test
+    void shouldRejectSecondMedalRoundForSameCategoryAtTheDbLevel() {
+        // V31 partial unique index backstops the service-layer "one medal
+        // round per category" rule. Even if the service-layer check is
+        // bypassed (concurrent transactions, future regression), the DB
+        // rejects the duplicate.
+        var division = createAndSaveDivision();
+        var judging = createAndSaveJudging(division);
+        var category = createAndSaveJudgingCategory(division);
+        var first = new JudgingRound(judging.getId(), "Medal — A", category.getId(), null);
+        first.convertToMedalRound(MedalRoundMode.SCORE_BASED);
+        judgingRoundRepository.saveAndFlush(first);
+
+        var duplicate = new JudgingRound(judging.getId(), "Medal — A (dup)", category.getId(), null);
+        duplicate.convertToMedalRound(MedalRoundMode.SCORE_BASED);
+        assertThatThrownBy(() -> judgingRoundRepository.saveAndFlush(duplicate))
+                .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void shouldAllowMultipleScoringRoundsForSameCategory() {
+        // SCORING rounds in the same category are still allowed (split-category).
+        var division = createAndSaveDivision();
+        var judging = createAndSaveJudging(division);
+        var category = createAndSaveJudgingCategory(division);
+
+        var panelA = judgingRoundRepository.saveAndFlush(
+                new JudgingRound(judging.getId(), "Panel A", category.getId(), null));
+        var panelB = judgingRoundRepository.saveAndFlush(
+                new JudgingRound(judging.getId(), "Panel B", category.getId(), null));
+
+        assertThat(panelA.getId()).isNotEqualTo(panelB.getId());
+    }
+
 }
