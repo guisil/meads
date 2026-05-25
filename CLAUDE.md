@@ -235,6 +235,25 @@ Key patterns: `_get(Component.class)`, `_find(Component.class)`, `_click(button)
 
 ---
 
+## i18n (properties files)
+
+All non-ASCII characters in `src/main/resources/messages*.properties` (EN/ES/IT/PL/PT) MUST be `\uXXXX` escapes, never raw UTF-8. The convention is uniform across all five locales — keeps diffs and review readable. This applies to em dash `—` (`—`), ellipsis `…` (`…`), smart quotes `“`/`”` (`“`/`”`), low-9 quote `„` (`„`), and every accented letter.
+
+**Verify after every edit:** `grep -nP "[^\x00-\x7F]" src/main/resources/messages*.properties` — must return zero hits.
+
+**Tooling gotcha:** the Edit tool is inconsistent here — sometimes converts raw UTF-8 to escapes on write, sometimes stores the raw bytes (observed on the same multi-locale edit). Always re-verify with the grep above.
+
+**Batch edits across 5 locales:** drop a one-shot Python script that reads UTF-8 and writes ASCII with `\uXXXX`. Pattern:
+```python
+def escape(s):
+    return ''.join(c if ord(c) < 128 else f'\\u{ord(c):04x}' for c in s)
+```
+Insert each key after an anchor key (`existing.key=`). Run, grep-verify zero non-ASCII, delete the script.
+
+**Single-char fix** if the Edit tool slipped on one char: `perl -i -pe 's/\xc3\xa8/\\u00e8/g' messages_it.properties` (è = `è`).
+
+---
+
 ## Inter-Module Communication
 
 ```java
