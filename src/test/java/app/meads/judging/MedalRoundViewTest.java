@@ -516,4 +516,18 @@ class MedalRoundViewTest {
                 com.vaadin.flow.component.select.Select.class,
                 spec -> spec.withId("medal-round-physical-table-select"))).isEmpty();
     }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldRenderAssignEntriesButtonEnabledForAdminWhenMedalRoundActive() {
+        // 3c: Assign Entries dialog mirrors the scoring-round equivalent.
+        // The button is part of the admin action bar and stays enabled
+        // through PENDING / READY / ACTIVE; only COMPLETE locks it.
+        var category = activeMedalRoundCategory();
+
+        navigateToMedalRound(category);
+
+        var assignEntries = _get(Button.class, spec -> spec.withId("medal-round-assign-entries"));
+        assertThat(assignEntries.isEnabled()).isTrue();
+    }
 }

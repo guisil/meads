@@ -6,6 +6,9 @@ import app.meads.competition.Competition;
 import app.meads.competition.CompetitionService;
 import app.meads.competition.Division;
 import app.meads.competition.DivisionCategory;
+import app.meads.entry.Entry;
+import app.meads.entry.EntryService;
+import app.meads.entry.EntryStatus;
 import app.meads.identity.Role;
 import app.meads.judging.CategoryJudgingConfig;
 import app.meads.judging.JudgingPhase;
@@ -13,6 +16,7 @@ import app.meads.judging.JudgingRound;
 import app.meads.judging.JudgingRoundStatus;
 import app.meads.judging.JudgingService;
 import app.meads.judging.Medal;
+import app.meads.judging.ScoresheetStatus;
 import app.meads.judging.MedalRoundEntryRow;
 import app.meads.judging.MedalRoundMode;
 import app.meads.judging.MedalRoundScorePreview;
@@ -60,6 +64,8 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
     private final CompetitionService competitionService;
     private final UserService userService;
     private final JudgingService judgingService;
+    private final EntryService entryService;
+    private final ScoresheetRepository scoresheetRepository;
     private final transient AuthenticationContext authenticationContext;
 
     private Competition competition;
@@ -81,10 +87,14 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
     public MedalRoundView(CompetitionService competitionService,
                           UserService userService,
                           JudgingService judgingService,
+                          EntryService entryService,
+                          ScoresheetRepository scoresheetRepository,
                           AuthenticationContext authenticationContext) {
         this.competitionService = competitionService;
         this.userService = userService;
         this.judgingService = judgingService;
+        this.entryService = entryService;
+        this.scoresheetRepository = scoresheetRepository;
         this.authenticationContext = authenticationContext;
     }
 
@@ -352,6 +362,17 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
                 && status != JudgingRoundStatus.COMPLETE);
         assignJudgesButton.addClickListener(e -> openAssignJudgesDialog());
 
+        var assignEntriesButton = new Button(getTranslation("medal-round.action.assign-entries"));
+        assignEntriesButton.setId("medal-round-assign-entries");
+        assignEntriesButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        // Editable through PENDING / READY / ACTIVE; locked at COMPLETE.
+        // The cascade populated the initial set per mode; admins can refine
+        // (e.g. add a late-arriving entry that a judge forgot to advance, or
+        // remove one that shouldn't compete for medals).
+        assignEntriesButton.setEnabled(medalRound != null
+                && status != JudgingRoundStatus.COMPLETE);
+        assignEntriesButton.addClickListener(e -> openAssignEntriesDialog());
+
         var startButton = new Button(getTranslation("medal-round.action.start"));
         startButton.setId("medal-round-start");
         startButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
@@ -381,8 +402,8 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         finalizeButton.setEnabled(status == JudgingRoundStatus.ACTIVE);
         finalizeButton.addClickListener(e -> openFinalizeDialog());
 
-        var actions = new HorizontalLayout(assignJudgesButton, startButton,
-                resetButton, reopenButton, finalizeButton);
+        var actions = new HorizontalLayout(assignJudgesButton, assignEntriesButton,
+                startButton, resetButton, reopenButton, finalizeButton);
         actions.setDefaultVerticalComponentAlignment(Alignment.CENTER);
         return actions;
     }
@@ -600,6 +621,94 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
             }
         });
         save.setId("medal-round-assign-judges-save");
+        save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        save.setDisableOnClick(true);
+        var cancel = new Button(getTranslation("button.cancel"), e -> dialog.close());
+        dialog.getFooter().add(cancel, save);
+        dialog.open();
+    }
+
+    /**
+     * Edits the explicit `round.entries` set on the medal round. Pool = all
+     * RECEIVED entries in this category with a SUBMITTED scoresheet (the
+     * "eligible for medals" set). Cascade auto-population fills this set on
+     * scoring-round completion; this dialog lets admins override (e.g. add a
+     * late-arriving entry that a judge forgot to advance, or remove one that
+     * shouldn't compete for medals).
+     */
+    public void openAssignEntriesDialog() {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("medal-round.assign-entries.dialog.title", categoryLabel()));
+        dialog.setWidth("780px");
+
+        var eligibleEntries = entryService.findEntriesByFinalCategoryId(category.getId()).stream()
+                .filter(e -> e.getStatus() == EntryStatus.RECEIVED)
+                .filter(e -> scoresheetRepository.findByEntryId(e.getId())
+                        .map(s -> s.getStatus() == ScoresheetStatus.SUBMITTED)
+                        .orElse(false))
+                .toList();
+
+        var content = new VerticalLayout();
+        content.setPadding(false);
+        content.add(new Span(getTranslation("medal-round.assign-entries.helper")));
+
+        if (eligibleEntries.isEmpty()) {
+            content.add(new Span(getTranslation("medal-round.assign-entries.empty")));
+        }
+
+        var entriesGrid = new Grid<>(Entry.class, false);
+        entriesGrid.setId("medal-round-assign-entries-grid");
+        entriesGrid.setSelectionMode(Grid.SelectionMode.MULTI);
+        entriesGrid.setAllRowsVisible(true);
+        entriesGrid.addColumn(e -> e.getEntryCode() + " — " + e.getMeadName())
+                .setHeader(getTranslation("medal-round.assign-entries.column.entry"))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
+        entriesGrid.addColumn(e -> {
+                    var owner = userService.findById(e.getUserId());
+                    return owner.getMeaderyName() == null ? "" : owner.getMeaderyName();
+                })
+                .setHeader(getTranslation("medal-round.assign-entries.column.meadery"))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
+        entriesGrid.addColumn(e -> {
+                    var sheetOpt = scoresheetRepository.findByEntryId(e.getId());
+                    return sheetOpt.map(s -> String.valueOf(s.getTotalScore())).orElse("—");
+                })
+                .setHeader(getTranslation("medal-round.assign-entries.column.total"))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
+        entriesGrid.setItems(eligibleEntries);
+        eligibleEntries.stream()
+                .filter(e -> medalRound.getEntries().contains(e.getId()))
+                .forEach(e -> entriesGrid.asMultiSelect().select(e));
+
+        content.add(entriesGrid);
+        dialog.add(content);
+
+        var save = new Button(getTranslation("button.save"), e -> {
+            var selected = entriesGrid.asMultiSelect().getSelectedItems().stream()
+                    .map(Entry::getId)
+                    .collect(java.util.stream.Collectors.toSet());
+            var current = medalRound.getEntries();
+            try {
+                for (var entryId : selected) {
+                    if (!current.contains(entryId)) {
+                        judgingService.assignEntryToRound(medalRound.getId(), entryId, currentUserId);
+                    }
+                }
+                for (var entryId : current) {
+                    if (!selected.contains(entryId)) {
+                        judgingService.unassignEntryFromRound(medalRound.getId(), entryId, currentUserId);
+                    }
+                }
+                dialog.close();
+                reload();
+                Notification.show(getTranslation("medal-round.assign-entries.saved"))
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+        save.setId("medal-round-assign-entries-save");
         save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         save.setDisableOnClick(true);
         var cancel = new Button(getTranslation("button.cancel"), e -> dialog.close());
