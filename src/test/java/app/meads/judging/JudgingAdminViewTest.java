@@ -305,11 +305,58 @@ class JudgingAdminViewTest {
                 .map(c -> ((Grid.Column<?>) c).getHeaderText())
                 .toList();
         assertThat(headers).containsExactly("Type", "Name", "Category",
-                "Table", "Status", "Judges", "Scheduled", "Actions");
+                "Table", "Status", "Judges", "Entries", "Scheduled", "Actions");
 
         var typeFilter = _get(com.vaadin.flow.component.combobox.ComboBox.class,
                 spec -> spec.withId("rounds-type-filter"));
         assertThat(typeFilter).isNotNull();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    @SuppressWarnings("unchecked")
+    void shouldRenderEntriesCountColumnNextToJudgesOnRoundsGrid() {
+        advanceDivisionToJudging();
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Dry mead category",
+                null, 1, CategoryScope.JUDGING));
+
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var judging = judgingService.ensureJudgingExists(division.getId());
+        var round = judgingService.createRound(judging.getId(), "M1A Panel",
+                category.getId(), null, admin.getId());
+
+        for (int i = 1; i <= 3; i++) {
+            var entrant = userRepository.save(new User(
+                    "entries-col-entrant-" + i + "-" + UUID.randomUUID() + "@example.com",
+                    "Entrant " + i, UserStatus.ACTIVE, Role.USER));
+            var entry = new Entry(division.getId(), entrant.getId(), i, "AMA-" + i, "Mead " + i,
+                    category.getId(), Sweetness.DRY, BigDecimal.valueOf(11.0), Carbonation.STILL,
+                    "Honey", null, false, null, null);
+            entry.submit();
+            entry.markReceived();
+            entryRepository.save(entry);
+            judgingService.assignEntryToRound(round.getId(), entry.getId(), admin.getId());
+        }
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(1);
+
+        var roundsGrid = (Grid<JudgingRound>) _find(Grid.class).stream()
+                .filter(g -> "rounds-grid".equals(g.getId().orElse(null)))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Rounds grid not found"));
+
+        var headers = roundsGrid.getColumns().stream()
+                .map(c -> ((Grid.Column<?>) c).getHeaderText())
+                .toList();
+        assertThat(headers).containsSequence("Judges", "Entries");
+
+        var refreshed = judgingService.findRoundsByJudgingId(judging.getId()).get(0);
+        assertThat(refreshed.getEntries()).hasSize(3);
     }
 
     // === Physical Tables tab UI tests ===

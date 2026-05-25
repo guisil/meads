@@ -766,6 +766,9 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         roundsGrid.addColumn(r -> r.getAssignments().size())
                 .setHeader(getTranslation("judging-admin.rounds.column.judges"))
                 .setResizable(true).setSortable(true).setAutoWidth(true);
+        roundsGrid.addColumn(r -> r.getEntries().size())
+                .setHeader(getTranslation("judging-admin.rounds.column.entries"))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
         roundsGrid.addColumn(r -> r.getScheduledDate() == null ? ""
                         : r.getScheduledDate().format(DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT)
                                 .withLocale(getLocale())))

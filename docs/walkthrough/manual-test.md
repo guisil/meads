@@ -1739,7 +1739,7 @@ A table is a fixed station within the division ("Table 1", "Table 2"). Multiple 
 *Switch to the **Rounds** tab.*
 
 - [ ] **Expected:** Toolbar with a **Type filter** ComboBox (options: All / Scoring / Medal; default All) and a **"+ Add Round"** button.
-- [ ] **Expected:** Grid columns: Type (Scoring/Medal), Name, Category (`code — name`), Table (label or "—"), Status, Judges (count), Scheduled (locale-aware date), Actions.
+- [ ] **Expected:** Grid columns: Type (Scoring/Medal), Name, Category (`code — name`), Table (label or "—"), Status, Judges (count), **Entries (count)**, Scheduled (locale-aware date), Actions. The Entries column shows how many entries are currently assigned to the round (via 📦 Assign Entries).
 - [ ] Click "+ Add Round".
 - [ ] **Expected:** Dialog with Type Select (default `SCORING`), Name text field, Category Select (filtered to JUDGING-scope categories), Table Select (populated from the Tables tab), Scheduled date picker.
 - [ ] Leave Type = `SCORING`, leave Name blank → Save.
