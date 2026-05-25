@@ -65,6 +65,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ScoresheetViewTest {
 
     private static final String JUDGE_EMAIL = "scoresheet-test-judge@example.com";
+    private static final String ADMIN_EMAIL = "scoresheet-test-admin@example.com";
 
     @Autowired ApplicationContext ctx;
     @Autowired UserRepository userRepository;
@@ -87,9 +88,13 @@ class ScoresheetViewTest {
         judge = userRepository.findByEmail(JUDGE_EMAIL)
                 .orElseGet(() -> userRepository.save(
                         new User(JUDGE_EMAIL, "Test Judge", UserStatus.ACTIVE, Role.USER)));
-        admin = userRepository.save(new User(
-                "scoresheet-admin-" + UUID.randomUUID() + "@example.com",
-                "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN));
+        // Defensive: clear any preferredLanguage set by a previous test so the
+        // UI renders in English (assertions are English-only).
+        judge.updatePreferredLanguage(null);
+        judge = userRepository.save(judge);
+        admin = userRepository.findByEmail(ADMIN_EMAIL)
+                .orElseGet(() -> userRepository.save(
+                        new User(ADMIN_EMAIL, "Test Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN)));
 
         var suffix = UUID.randomUUID().toString().substring(0, 8);
         competition = competitionRepository.save(new Competition(
@@ -184,7 +189,10 @@ class ScoresheetViewTest {
 
     @Test
     @WithMockUser(username = JUDGE_EMAIL, roles = "USER")
-    void shouldRenderEntryHeaderForAssignedJudge() {
+    void shouldShowEntryCodeButNotMeadNameToAssignedJudge() {
+        // Anonymity: judges judge to style, not to a brand. The entry code in
+        // the H2 is enough to identify the sample; the mead name is reserved
+        // for admin views only.
         var entrant = userRepository.save(new User(
                 "entrant-ss-" + UUID.randomUUID() + "@example.com",
                 "Entrant", UserStatus.ACTIVE, Role.USER));
@@ -199,7 +207,26 @@ class ScoresheetViewTest {
 
         var spanTexts = _find(Span.class).stream().map(Span::getText).toList();
         assertThat(spanTexts.stream().anyMatch(t -> t != null && t.contains("Hiveheart Mead")))
-                .as("mead name").isTrue();
+                .as("mead name must be hidden from judges").isFalse();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldShowMeadNameWhenAdminOpensTheScoresheet() {
+        // Admins (system admin or division admin) DO see the mead name — they
+        // need the context for moderation, results review, etc.
+        var entrant = userRepository.save(new User(
+                "entrant-admin-view-" + UUID.randomUUID() + "@example.com",
+                "Entrant", UserStatus.ACTIVE, Role.USER));
+        var sheet = createScoresheetFor(entrant, "AMA-9", "Hiveheart Mead");
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName()
+                + "/scoresheets/" + sheet.getId());
+
+        var spanTexts = _find(Span.class).stream().map(Span::getText).toList();
+        assertThat(spanTexts.stream().anyMatch(t -> t != null && t.contains("Hiveheart Mead")))
+                .as("mead name visible to admin").isTrue();
     }
 
     @Test
@@ -281,6 +308,63 @@ class ScoresheetViewTest {
         assertThat(aroma.getValue()).isEqualTo(20);
         var refreshed = scoresheetRepository.findById(sheet.getId()).orElseThrow();
         assertThat(refreshed.getOverallComments()).isEqualTo("Promising start; lovely aroma.");
+    }
+
+    @Test
+    @WithMockUser(username = JUDGE_EMAIL, roles = "USER")
+    void shouldRenderPerFieldCommentTextAreasAndPersistThemOnSaveDraft() {
+        // MJP scoresheet has 5 score fields, each with an optional comment.
+        // The `score_fields.comment` column has always existed; this is the
+        // UI exposure that lets judges leave per-criterion feedback.
+        var entrant = userRepository.save(new User(
+                "entrant-per-comment-" + UUID.randomUUID() + "@example.com",
+                "Entrant", UserStatus.ACTIVE, Role.USER));
+        var sheet = createScoresheetFor(entrant, "AMA-PC", "Per-Comment Mead");
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName()
+                + "/scoresheets/" + sheet.getId());
+
+        // Each MJP field has a sibling TextArea with id `score-comment-<fieldName>`.
+        var appearanceComment = _get(TextArea.class,
+                spec -> spec.withId("score-comment-Appearance"));
+        appearanceComment.setValue("Bright with a slight haze.");
+        var aromaComment = _get(TextArea.class,
+                spec -> spec.withId("score-comment-Aroma/Bouquet"));
+        aromaComment.setValue("Apricot, honey, light yeast.");
+        // Set scores too (saveDraft writes everything in one go).
+        _get(NumberField.class, spec -> spec.withId("score-Appearance")).setValue(10.0);
+        _get(NumberField.class, spec -> spec.withId("score-Aroma/Bouquet")).setValue(25.0);
+
+        _click(_get(Button.class, spec -> spec.withText("Save Draft")));
+
+        var fields = scoresheetRepository.findFieldsByScoresheetId(sheet.getId()).stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        app.meads.judging.ScoreField::getFieldName, f -> f));
+        assertThat(fields.get("Appearance").getComment()).isEqualTo("Bright with a slight haze.");
+        assertThat(fields.get("Aroma/Bouquet").getComment()).isEqualTo("Apricot, honey, light yeast.");
+    }
+
+    @Test
+    @WithMockUser(username = JUDGE_EMAIL, roles = "USER")
+    @SuppressWarnings("unchecked")
+    void shouldDefaultCommentLanguageToJudgeUserPreferredLanguage() {
+        // Default-comment-language fallback: when the judge hasn't saved a
+        // scoresheet language and has no JudgeProfile preference yet, fall
+        // back to their User.preferredLanguage. Less click-work on first use.
+        judge.updatePreferredLanguage("pt");
+        userRepository.save(judge);
+        var entrant = userRepository.save(new User(
+                "entrant-ss-default-lang-" + UUID.randomUUID() + "@example.com",
+                "Entrant", UserStatus.ACTIVE, Role.USER));
+        var sheet = createScoresheetFor(entrant, "AMA-CL", "Default Lang Mead");
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName()
+                + "/scoresheets/" + sheet.getId());
+
+        var combo = (ComboBox<String>) _get(ComboBox.class, spec -> spec.withId("comment-language"));
+        assertThat(combo.getValue()).isEqualTo("pt");
     }
 
     @Test

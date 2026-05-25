@@ -1991,12 +1991,17 @@ scoresheet via `JudgingService.assignEntryToRound`.
 
 - [ ] **Expected:** URL `competitions/.../divisions/.../scoresheets/<id>`.
 - [ ] **Expected:** H2 `Scoresheet — {entryCode}`.
-- [ ] **Expected:** A read-only entry card showing the mead name **and the declared
-  attributes the judge needs to judge to style** — category (code + name), sweetness,
-  carbonation, ABV, honey varieties, and (when present) other ingredients, wood
-  ageing details, and additional information. Judges work from poured coded samples,
-  not the labelled bottle, so this on-screen detail is essential.
-- [ ] **Expected:** A "Scores" section with five `NumberField`s, one per MJP field:
+- [ ] **Expected (judge view):** A read-only entry card showing **only the declared
+  attributes** the judge needs to judge to style — category (code + name),
+  sweetness, carbonation, ABV, honey varieties, and (when present) other
+  ingredients, wood ageing details, and additional information. **The mead name
+  is NOT shown to judges** (anonymity rule — judges judge to style, not to a
+  brand). Judges work from poured coded samples, not the labelled bottle, so the
+  declared attributes still matter on screen.
+- [ ] **Expected (admin view):** If a SYSTEM_ADMIN or division admin opens the
+  same URL, the entry card additionally shows the mead name as the first row
+  (admins keep the full context for moderation / results review).
+- [ ] **Expected:** A "Scores" section with five `NumberField`s, one per MJP field. **Each NumberField is followed by a TextArea with id `score-comment-<fieldName>`** for per-criterion judge comments (placeholder *"Comments on this criterion (optional)"*, `maxLength=2000`). The fields are:
   - `Appearance` (max 12)
   - `Aroma/Bouquet` (max 30)
   - `Flavour and Body` (max 32)
@@ -2005,15 +2010,16 @@ scoresheet via `JudgingService.assignEntryToRound`.
   Each `NumberField` has `min=0`, `max=<field max>`, and `ValueChangeMode.EAGER`.
 - [ ] **Expected:** A "Current total: N / 100" Span (id `scoresheet-total`) below the score fields. It updates live as you change values.
 - [ ] **Expected:** An "Overall comments" `TextArea` (`maxLength=2000`).
-- [ ] **Expected:** A "Comment language" `ComboBox` listing all ISO 639-1 languages, sorted by display name in the UI locale. The default value is the judge's `preferredCommentLanguage` from their profile (if set); otherwise blank. Judges are free to pick any language — no per-competition restriction.
+- [ ] **Expected:** A "Comment language" `ComboBox` listing all ISO 639-1 languages, sorted by display name in the UI locale. Default: the judge's `JudgeProfile.preferredCommentLanguage` if set, else the judge's `User.preferredLanguage` (UI language) as a sensible fallback, else blank. Judges are free to pick any language — no per-competition restriction.
 - [ ] **Expected:** An "Advance to medal round" `Checkbox`.
 - [ ] **Expected:** Two buttons: "Save Draft" (always enabled) and "Submit" (enabled only when all 5 score fields are non-null).
 
 #### 12.11.1 Save Draft
 
 - [ ] Enter score values for two fields, type a few words in Overall comments, pick a Comment language, tick Advance to medal round.
+- [ ] Also enter a per-criterion comment (e.g. *"Bright with a slight haze."* in the `score-comment-Appearance` TextArea).
 - [ ] Click "Save Draft".
-- [ ] **Expected:** Notification "Scoresheet saved as draft." Scores, comments, language, and advance flag persist (refresh to verify).
+- [ ] **Expected:** Notification "Scoresheet saved as draft." Scores, per-criterion comments, overall comments, language, and advance flag all persist (refresh to verify; each comment shows back in its `score-comment-<field>` TextArea).
 
 #### 12.11.2 Submit (all fields filled)
 

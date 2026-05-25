@@ -65,7 +65,9 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
     private Scoresheet scoresheet;
     private Entry entry;
     private UUID currentUserId;
+    private boolean isAdminView;
     private final Map<String, NumberField> scoreFields = new HashMap<>();
+    private final Map<String, TextArea> scoreCommentFields = new HashMap<>();
     private Span totalPreview;
     private TextArea commentsArea;
     private ComboBox<String> commentLanguageCombo;
@@ -156,6 +158,7 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
             event.forwardTo("");
             return;
         }
+        isAdminView = isSystemAdmin || isDivisionAdmin;
 
         entry = entryService.findEntryById(scoresheet.getEntryId());
 
@@ -167,6 +170,7 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
         }
 
         scoreFields.clear();
+        scoreCommentFields.clear();
 
         removeAll();
         add(createHeader());
@@ -186,6 +190,7 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
 
     private void applyReadOnlyMode() {
         scoreFields.values().forEach(f -> f.setReadOnly(true));
+        scoreCommentFields.values().forEach(c -> c.setReadOnly(true));
         commentsArea.setReadOnly(true);
         commentLanguageCombo.setReadOnly(true);
         advanceCheckbox.setReadOnly(true);
@@ -218,6 +223,9 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
             defaultLanguage = judgeProfileService.findByUserId(currentUserId)
                     .map(p -> p.getPreferredCommentLanguage())
                     .orElse(null);
+        }
+        if (defaultLanguage == null) {
+            defaultLanguage = userService.findById(currentUserId).getPreferredLanguage();
         }
         if (defaultLanguage != null) {
             commentLanguageCombo.setValue(defaultLanguage);
@@ -291,8 +299,12 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
                 var field = scoreFields.get(def.fieldName());
                 if (field == null) continue;
                 Integer value = field.getValue() == null ? null : field.getValue().intValue();
+                var commentField = scoreCommentFields.get(def.fieldName());
+                String comment = commentField == null
+                        ? null
+                        : (StringUtils.hasText(commentField.getValue()) ? commentField.getValue() : null);
                 scoresheetService.updateScore(scoresheet.getId(), def.fieldName(),
-                        value, null, currentUserId);
+                        value, comment, currentUserId);
             }
             scoresheetService.updateOverallComments(scoresheet.getId(),
                     commentsArea.getValue(), currentUserId);
@@ -318,9 +330,13 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
         var card = new VerticalLayout();
         card.setPadding(false);
         card.setSpacing(false);
-        var meadName = new Span(entry.getMeadName());
-        meadName.getStyle().set("font-weight", "600");
-        card.add(meadName);
+        // Anonymity rule: judges judge to style, not to a brand. Mead name is
+        // reserved for admin views (moderation, results review).
+        if (isAdminView) {
+            var meadName = new Span(entry.getMeadName());
+            meadName.getStyle().set("font-weight", "600");
+            card.add(meadName);
+        }
         // Judges work from poured samples (coded glasses, not the labelled bottle),
         // so the declared attributes they judge to style against must be on screen.
         card.add(attributeLine("entries.view.category", categoryLabel()));
@@ -384,6 +400,17 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
             });
             scoreFields.put(def.fieldName(), field);
             section.add(field);
+
+            var comment = new TextArea();
+            comment.setId("score-comment-" + def.fieldName());
+            comment.setPlaceholder(getTranslation("scoresheet.scores.comment.placeholder"));
+            comment.setWidthFull();
+            comment.setMaxLength(2000);
+            if (existing != null && existing.getComment() != null) {
+                comment.setValue(existing.getComment());
+            }
+            scoreCommentFields.put(def.fieldName(), comment);
+            section.add(comment);
         }
         return section;
     }
