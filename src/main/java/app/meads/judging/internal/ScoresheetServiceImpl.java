@@ -172,6 +172,14 @@ public class ScoresheetServiceImpl implements ScoresheetService {
         requireNotFrozenForSheet(sheet);
         enforceCoi(judgeUserId, sheet);
         var table = requireTable(sheet.getRoundId());
+        // No-op for sheets owned by a MEDAL round (small-category SCORE_BASED
+        // flow): the "advance to medal round" flag exists to gate prelim
+        // SCORING sheets, but a medal-round-owned sheet is already at the
+        // medal round — the flag is meaningless and the existing "medal round
+        // active" guard would block every judge save.
+        if (table.getType() == RoundType.MEDAL) {
+            return;
+        }
         if (effectiveMedalRoundStatus(table.getDivisionCategoryId()) == JudgingRoundStatus.ACTIVE) {
             throw new BusinessRuleException("error.scoresheet.medal-round-active");
         }

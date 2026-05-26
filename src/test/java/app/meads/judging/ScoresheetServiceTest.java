@@ -546,4 +546,26 @@ class ScoresheetServiceTest {
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("error.scoresheet.language-not-allowed");
     }
+
+    @Test
+    void shouldSilentlyNoOpSetAdvancedToMedalRoundForSheetOwnedByMedalRound() {
+        // Small-category SCORE_BASED flow: judges save sheets at an ACTIVE
+        // medal round. saveDraft always calls setAdvancedToMedalRound, which
+        // would fire the medal-round-active guard and block every save. The
+        // "advance to medal round" flag is meaningless for medal-owned sheets
+        // (the entry is already there), so the call must no-op cleanly.
+        var entryId = UUID.randomUUID();
+        var medalRound = new JudgingRound(judging.getId(), UUID.randomUUID(), "Medal",
+                divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.SCORE_BASED);
+        var scoresheet = new Scoresheet(medalRound.getId(), entryId);
+        given(scoresheetRepository.findById(scoresheet.getId())).willReturn(Optional.of(scoresheet));
+        given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
+        given(coiCheckService.check(judgeUserId, entryId)).willReturn(CoiResult.clear());
+
+        service.setAdvancedToMedalRound(scoresheet.getId(), true, judgeUserId);
+
+        assertThat(scoresheet.isAdvancedToMedalRound()).isFalse(); // unchanged
+        then(scoresheetRepository).should(never()).save(any(Scoresheet.class));
+    }
 }

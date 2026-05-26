@@ -194,7 +194,13 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
         add(createTotalPreview());
         add(createCommentsSection());
         add(createCommentLanguageField());
-        add(createAdvanceCheckbox());
+        // "Advance to medal round" is a SCORING-round concept — judges flag
+        // entries to bring forward. A MEDAL-round-owned sheet (small-category
+        // SCORE_BASED flow) is already at the medal round, so the checkbox is
+        // meaningless. Hide it and skip the corresponding service call below.
+        if (!isMedalRoundSheet()) {
+            add(createAdvanceCheckbox());
+        }
         // BLANK and DRAFT are editable by judges; SUBMITTED is read-only unless
         // the admin reverts it (which flips back to DRAFT). Admins land in
         // read-only mode by default for any status — they must explicitly
@@ -219,7 +225,15 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
         scoreCommentFields.values().forEach(c -> c.setReadOnly(true));
         commentsArea.setReadOnly(true);
         commentLanguageCombo.setReadOnly(true);
-        advanceCheckbox.setReadOnly(true);
+        if (advanceCheckbox != null) {
+            advanceCheckbox.setReadOnly(true);
+        }
+    }
+
+    private boolean isMedalRoundSheet() {
+        return judgingService.findRoundById(scoresheet.getRoundId())
+                .map(r -> r.getType() == app.meads.judging.RoundType.MEDAL)
+                .orElse(false);
     }
 
     private Button createAdminEditButton() {
@@ -360,8 +374,10 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
                 scoresheetService.setCommentLanguage(scoresheet.getId(),
                         commentLanguageCombo.getValue(), currentUserId);
             }
-            scoresheetService.setAdvancedToMedalRound(scoresheet.getId(),
-                    advanceCheckbox.getValue(), currentUserId);
+            if (advanceCheckbox != null) {
+                scoresheetService.setAdvancedToMedalRound(scoresheet.getId(),
+                        advanceCheckbox.getValue(), currentUserId);
+            }
             Notification.show(getTranslation("scoresheet.action.save-draft.success"))
                     .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
         } catch (BusinessRuleException ex) {
