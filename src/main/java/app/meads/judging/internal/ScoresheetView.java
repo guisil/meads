@@ -442,13 +442,24 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
             existingByField.put(f.getFieldName(), f);
         }
         for (var def : MjpScoringFieldDefinition.MJP_FIELDS) {
-            var field = new NumberField(def.fieldName() + " (max " + def.maxValue() + ")");
+            // Each criterion gets a row: full-width label on the left so the
+            // criterion + max read clearly, a narrow NumberField on the right
+            // sized for 2 digits + the step buttons. A previous iteration set
+            // the NumberField itself to full width; that fixed label truncation
+            // but left the input cavernous (cap is 32, so 2 digits is plenty).
+            var row = new HorizontalLayout();
+            row.setWidthFull();
+            row.setAlignItems(com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment.CENTER);
+            row.setSpacing(true);
+            var label = new Span(def.fieldName() + " (max " + def.maxValue() + ")");
+            label.getStyle().set("flex", "1");
+            var field = new NumberField();
             field.setId("score-" + def.fieldName());
             field.setMin(0);
             field.setMax(def.maxValue());
             field.setStep(1);
             field.setStepButtonsVisible(true);
-            field.setWidthFull();
+            field.setWidth("8em");
             field.setValueChangeMode(ValueChangeMode.EAGER);
             var existing = existingByField.get(def.fieldName());
             if (existing != null && existing.getValue() != null) {
@@ -459,7 +470,8 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
                 updateSubmitButtonEnabled();
             });
             scoreFields.put(def.fieldName(), field);
-            section.add(field);
+            row.add(label, field);
+            section.add(row);
 
             var comment = new TextArea();
             comment.setId("score-comment-" + def.fieldName());
