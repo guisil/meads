@@ -255,11 +255,16 @@ public class ScoresheetServiceImpl implements ScoresheetService {
         eventPublisher.publishEvent(new ScoresheetSubmittedEvent(
                 sheet.getId(), sheet.getEntryId(), table.getId(),
                 sheet.getTotalScore(), sheet.getSubmittedAt()));
-        // Cascade table → category if all sheets at this table are SUBMITTED
+        // Cascade SCORING round → category-medal-ready when all its sheets are
+        // SUBMITTED. Restricted to SCORING rounds — MEDAL rounds owning their
+        // own sheets (small-category SCORE_BASED flow) should stay ACTIVE
+        // until the admin reviews medals and clicks Finalize, otherwise the
+        // medal-button actions vanish before the admin has a chance to act.
         var tableSheets = scoresheetRepository.findByRoundId(table.getId());
         boolean allSubmitted = tableSheets.stream()
                 .allMatch(s -> s.getStatus() == ScoresheetStatus.SUBMITTED);
-        if (allSubmitted && table.getStatus() == JudgingRoundStatus.ACTIVE) {
+        if (allSubmitted && table.getStatus() == JudgingRoundStatus.ACTIVE
+                && table.getType() == RoundType.SCORING) {
             table.markComplete();
             judgingRoundRepository.save(table);
             var judging = requireJudging(table.getJudgingId());

@@ -944,10 +944,11 @@ public class JudgingServiceImpl implements JudgingService {
                     medalOpt.map(MedalAward::getId).orElse(null),
                     medalOpt.map(MedalAward::getMedal).orElse(null)));
         }
-        if (mode == MedalRoundMode.SCORE_BASED) {
-            rows.sort(Comparator.comparing(MedalRoundEntryRow::round1Total,
-                    Comparator.nullsLast(Comparator.reverseOrder())));
-        }
+        // Default to entry-code order so the row layout stays stable across
+        // reloads — admins were confused by the automatic re-sort-by-score
+        // every time they came back from submitting a sheet. The grid column
+        // is now sortable, so the admin can pick a different sort manually.
+        rows.sort(Comparator.comparing(MedalRoundEntryRow::entryCode));
         return rows;
     }
 
@@ -974,10 +975,7 @@ public class JudgingServiceImpl implements JudgingService {
                     medalOpt.map(MedalAward::getId).orElse(null),
                     medalOpt.map(MedalAward::getMedal).orElse(null)));
         }
-        if (mode == MedalRoundMode.SCORE_BASED) {
-            rows.sort(Comparator.comparing(MedalRoundEntryRow::round1Total,
-                    Comparator.nullsLast(Comparator.reverseOrder())));
-        }
+        rows.sort(Comparator.comparing(MedalRoundEntryRow::entryCode));
         return rows;
     }
 
@@ -986,8 +984,13 @@ public class JudgingServiceImpl implements JudgingService {
         var rows = findMedalRoundEntries(divisionCategoryId, MedalRoundMode.SCORE_BASED);
         long medaled = rows.stream().filter(r -> r.currentMedal() != null).count();
         int openSlots = Math.max(0, Medal.values().length - (int) medaled);
+        // findMedalRoundEntries returns entry-code order (stable for the UI);
+        // the tie-detection logic needs the top scorer at index 0, so sort
+        // unresolved by descending score here. Null totals sort last.
         var unresolved = rows.stream()
                 .filter(r -> r.medalAwardId() == null)
+                .sorted(Comparator.comparing(MedalRoundEntryRow::round1Total,
+                        Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList();
         if (openSlots == 0 || unresolved.isEmpty()) {
             return new MedalRoundScorePreview(0, Set.of());

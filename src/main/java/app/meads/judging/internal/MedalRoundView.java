@@ -451,17 +451,32 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         grid.setId("medal-round-grid");
         grid.setPartNameGenerator(r ->
                 tiedEntryIds.contains(r.entryId()) ? "medal-round-tied-row" : null);
+        // Columns are resizable + sortable so admins can lay them out how they
+        // like and re-sort independently of the service's default order. The
+        // sort comparators look at the underlying record fields directly so
+        // numeric / null-safe ordering works (the rendered "—" placeholder
+        // would otherwise sort alphabetically).
         grid.addColumn(r -> (tiedEntryIds.contains(r.entryId()) ? "⚠ " : "")
                         + r.entryCode() + " — " + r.meadName())
-                .setHeader(getTranslation("medal-round.column.entry"));
+                .setHeader(getTranslation("medal-round.column.entry"))
+                .setComparator(java.util.Comparator.comparing(MedalRoundEntryRow::entryCode))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
         grid.addColumn(r -> r.round1Total() == null ? "—" : r.round1Total().toString())
-                .setHeader(getTranslation("medal-round.column.total"));
+                .setHeader(getTranslation("medal-round.column.total"))
+                .setComparator(java.util.Comparator.comparing(MedalRoundEntryRow::round1Total,
+                        java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
         grid.addColumn(r -> r.advancedToMedalRound() ? "✓" : "—")
-                .setHeader(getTranslation("medal-round.column.advanced"));
+                .setHeader(getTranslation("medal-round.column.advanced"))
+                .setComparator(java.util.Comparator.comparing(MedalRoundEntryRow::advancedToMedalRound))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
         grid.addColumn(this::medalLabel)
-                .setHeader(getTranslation("medal-round.column.current-medal"));
+                .setHeader(getTranslation("medal-round.column.current-medal"))
+                .setComparator(java.util.Comparator.comparing(this::medalLabel))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
         grid.addComponentColumn(this::createActionsCell)
-                .setHeader(getTranslation("medal-round.column.actions"));
+                .setHeader(getTranslation("medal-round.column.actions"))
+                .setResizable(true).setAutoWidth(true);
         grid.setItems(rows);
         return grid;
     }
