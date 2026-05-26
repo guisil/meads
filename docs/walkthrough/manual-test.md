@@ -1864,6 +1864,25 @@ Medal rounds are auto-created by the scoring-completion cascade — when every s
 - [ ] **Expected:** The Actions column for a medal row shows a 🗑 Delete button + Open. Delete is enabled only while PENDING with no judges and no medal awards (tooltip explains when disabled). Full management (judges, mode, physical-table reassignment, start/finalize/reset) lives in `MedalRoundView`.
 - [ ] **Known limitation:** A pre-staged medal round shows an empty entries grid until scoring rounds in its category COMPLETE. Medal-round entries are derived from scoresheet results in the category — there is no manual entry-pool override yet. To exercise medal awarding before scoring completes, use the dev-seeded Profissional M1B medal round once Profissional scoring rounds are submitted.
 
+#### 12.6.8.1 Small-category flow — SCORE_BASED medal round runs scoring directly
+
+When a category has few entries and you want to skip the preliminary scoring round entirely, a SCORE_BASED medal round can own the scoresheets directly. It acts like a hybrid: scoring happens at the medal round itself, and medals come from those scoresheets at the end (gold/silver/bronze by total, stop on tie).
+
+- [ ] Pick (or create) a small category with no scoring rounds yet — e.g., a new judging category with 3 RECEIVED entries.
+- [ ] Click "+ Add Round" → Type = `MEDAL` → Category = the small one → Table = any → Save.
+- [ ] Open the new medal round row → in the header switch **Mode** to `Score-based`.
+- [ ] Click 📦 **Assign Entries** in the admin button row.
+- [ ] **Expected:** Dialog lists ALL RECEIVED entries in the category — not just those with SUBMITTED scoresheets (which is how COMPARATIVE works). The Total column shows `—` for entries with no sheet yet.
+- [ ] Select all 3 entries → Save → "Entry assignments updated".
+- [ ] Click **Assign Judges** → pick at least minJudgesPerRound judges → Save.
+- [ ] **Expected:** Round status auto-flips PENDING → READY once table + judges (≥ minJudgesPerRound) + entries (≥ 1) + division ≥ JUDGING are all satisfied.
+- [ ] Click **Start** → confirmation → notification "Medal round started"; status → ACTIVE.
+- [ ] **Expected:** BLANK scoresheets are created for every assigned entry (mirroring how a scoring round behaves at start).
+- [ ] Log in as one of the assigned judges → MyJudging → "Open medal round →".
+- [ ] **Expected:** Judges see the standard ScoresheetView form (per-criterion scores + comments) for each assigned entry.
+- [ ] Fill + submit all sheets across all judges. Once the **last** sheet is SUBMITTED and no BLANK/DRAFT remain on the round, the system re-runs `autoPopulateMedalsByScore` — gold/silver/bronze appear on MedalRoundView as `confirmed = false` MedalAwards.
+- [ ] As `compadmin@example.com`, open the medal round → confirm or override → Finalize.
+
 #### 12.6.9 Type filter
 
 - [ ] Set the Type filter to `Scoring` → **Expected:** only the scoring rows remain in the grid.

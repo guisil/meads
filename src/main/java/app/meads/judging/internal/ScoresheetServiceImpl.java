@@ -116,6 +116,20 @@ public class ScoresheetServiceImpl implements ScoresheetService {
     }
 
     @Override
+    public void ensureScoresheetForRound(UUID entryId, UUID roundId) {
+        if (scoresheetRepository.findByEntryId(entryId).isPresent()) {
+            return;
+        }
+        var entry = entryService.findEntryById(entryId);
+        if (entry.getStatus() != EntryStatus.RECEIVED) {
+            return;
+        }
+        requireNotFrozen(entry.getDivisionId());
+        scoresheetRepository.save(new Scoresheet(roundId, entryId));
+        log.info("Created BLANK scoresheet for entry {} at medal round {}", entryId, roundId);
+    }
+
+    @Override
     public void updateScore(UUID scoresheetId, String fieldName,
                             Integer value, String comment, UUID judgeUserId) {
         var sheet = requireScoresheet(scoresheetId);

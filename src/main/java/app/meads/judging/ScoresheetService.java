@@ -15,6 +15,17 @@ public interface ScoresheetService {
 
     void ensureScoresheetForEntry(@NotNull UUID entryId);
 
+    /**
+     * Creates a BLANK scoresheet for the entry at the given round, unless the
+     * entry already has a scoresheet (entry_id is UNIQUE on scoresheets). Used
+     * by {@code JudgingService.assignEntryToRound} when the round is a
+     * SCORE_BASED medal round running without a preceding scoring round — the
+     * medal round owns the scoresheets in that case. Differs from
+     * {@code ensureScoresheetForEntry} by pinning the round explicitly instead
+     * of looking up the ACTIVE round by category.
+     */
+    void ensureScoresheetForRound(@NotNull UUID entryId, @NotNull UUID roundId);
+
     void updateScore(@NotNull UUID scoresheetId, @NotNull String fieldName,
                      Integer value, String comment, @NotNull UUID judgeUserId);
 

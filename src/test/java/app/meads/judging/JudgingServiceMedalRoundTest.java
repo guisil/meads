@@ -143,6 +143,265 @@ class JudgingServiceMedalRoundTest {
     }
 
     @Test
+    void shouldRejectStartScoreBasedMedalRoundWhenNoEntriesAssigned() {
+        // Small-category flow: the medal round owns scoresheets, so an empty
+        // entries set means nothing to judge. Mirrors the SCORING-round guard.
+        var physicalTableId = UUID.randomUUID();
+        var medalRound = new JudgingRound(judging.getId(), physicalTableId, "Medal",
+                divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.SCORE_BASED);
+        medalRound.assignJudge(UUID.randomUUID());
+        given(judgingRoundRepository.findByJudgingId(judging.getId())).willReturn(List.of(medalRound));
+        given(judgingRoundRepository.findAll()).willReturn(List.of(medalRound));
+        given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+
+        assertThatThrownBy(() -> service.startRound(medalRound.getId(), adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.round.no-entries-assigned");
+
+        assertThat(medalRound.getStatus()).isEqualTo(JudgingRoundStatus.PENDING);
+        then(scoresheetService).should(never()).createScoresheetsForTable(any());
+    }
+
+    @Test
+    void shouldCreateBlankScoresheetsWhenStartingScoreBasedMedalRound() {
+        // Mirror the SCORING-round createScoresheetsForTable call — the medal
+        // round owns the sheets in this mode, so judges need them to fill in.
+        var physicalTableId = UUID.randomUUID();
+        var medalRound = new JudgingRound(judging.getId(), physicalTableId, "Medal",
+                divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.SCORE_BASED);
+        medalRound.assignJudge(UUID.randomUUID());
+        medalRound.assignEntry(UUID.randomUUID());
+        given(judgingRoundRepository.findByJudgingId(judging.getId())).willReturn(List.of(medalRound));
+        given(judgingRoundRepository.findAll()).willReturn(List.of(medalRound));
+        given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(judgingRepository.findByDivisionId(divisionId)).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(scoresheetRepository.findByRoundId(medalRound.getId())).willReturn(List.of());
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(judgingRepository.save(any(Judging.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.startRound(medalRound.getId(), adminUserId);
+
+        assertThat(medalRound.getStatus()).isEqualTo(JudgingRoundStatus.ACTIVE);
+        then(scoresheetService).should().createScoresheetsForTable(medalRound.getId());
+    }
+
+    @Test
+    void shouldAutoPopulateMedalsFromMedalRoundOwnSubmittedSheetsWhenNoPrelimScoringRound() {
+        // No preceding scoring round in the category. The medal round's own
+        // SUBMITTED sheets feed autoPopulateMedalsByScore — and the
+        // advance-flag filter only applies to SCORING-round sheets, not to
+        // medal-round-owned sheets (those ARE the medal round).
+        var physicalTableId = UUID.randomUUID();
+        var medalRound = new JudgingRound(judging.getId(), physicalTableId, "Medal",
+                divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.SCORE_BASED);
+        medalRound.assignJudge(UUID.randomUUID());
+        var entryGold = UUID.randomUUID();
+        var entrySilver = UUID.randomUUID();
+        var entryBronze = UUID.randomUUID();
+        medalRound.assignEntry(entryGold);
+        medalRound.assignEntry(entrySilver);
+        medalRound.assignEntry(entryBronze);
+        var sheetGold = mock(app.meads.judging.Scoresheet.class);
+        given(sheetGold.getStatus()).willReturn(ScoresheetStatus.SUBMITTED);
+        given(sheetGold.getTotalScore()).willReturn(85);
+        given(sheetGold.getEntryId()).willReturn(entryGold);
+        // isAdvancedToMedalRound is not asserted — medal-round-owned sheets skip that filter.
+        var sheetSilver = mock(app.meads.judging.Scoresheet.class);
+        given(sheetSilver.getStatus()).willReturn(ScoresheetStatus.SUBMITTED);
+        given(sheetSilver.getTotalScore()).willReturn(78);
+        given(sheetSilver.getEntryId()).willReturn(entrySilver);
+        var sheetBronze = mock(app.meads.judging.Scoresheet.class);
+        given(sheetBronze.getStatus()).willReturn(ScoresheetStatus.SUBMITTED);
+        given(sheetBronze.getTotalScore()).willReturn(72);
+        given(sheetBronze.getEntryId()).willReturn(entryBronze);
+        given(judgingRoundRepository.findByJudgingId(judging.getId())).willReturn(List.of(medalRound));
+        given(judgingRoundRepository.findAll()).willReturn(List.of(medalRound));
+        given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(judgingRepository.findByDivisionId(divisionId)).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(scoresheetRepository.findByRoundId(medalRound.getId()))
+                .willReturn(List.of(sheetGold, sheetSilver, sheetBronze));
+        given(medalAwardRepository.findByEntryId(any())).willReturn(Optional.empty());
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(judgingRepository.save(any(Judging.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.startRound(medalRound.getId(), adminUserId);
+
+        var awardCaptor = org.mockito.ArgumentCaptor.forClass(MedalAward.class);
+        then(medalAwardRepository).should(org.mockito.Mockito.times(3)).save(awardCaptor.capture());
+        var awards = awardCaptor.getAllValues();
+        assertThat(awards).extracting(MedalAward::getEntryId)
+                .containsExactly(entryGold, entrySilver, entryBronze);
+        assertThat(awards).extracting(MedalAward::getMedal)
+                .containsExactly(Medal.GOLD, Medal.SILVER, Medal.BRONZE);
+    }
+
+    @Test
+    void shouldRerunAutoPopulateWhenLastSheetSubmittedOnScoreBasedMedalRound() {
+        // Listener path: judges submit sheets one-by-one. When the final sheet
+        // lands and no BLANK/DRAFT remain, autoPopulate runs and produces
+        // medals. Uses the submitting judge as the audit "trigger" user.
+        var physicalTableId = UUID.randomUUID();
+        var medalRound = new JudgingRound(judging.getId(), physicalTableId, "Medal",
+                divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.SCORE_BASED);
+        medalRound.assignJudge(UUID.randomUUID());
+        var entryGold = UUID.randomUUID();
+        var entrySilver = UUID.randomUUID();
+        medalRound.assignEntry(entryGold);
+        medalRound.assignEntry(entrySilver);
+        medalRound.start();
+        var judgeUserId = UUID.randomUUID();
+        var submittedSheetId = UUID.randomUUID();
+        var submittedSheet = mock(app.meads.judging.Scoresheet.class);
+        given(submittedSheet.getRoundId()).willReturn(medalRound.getId());
+        given(submittedSheet.getFilledByJudgeUserId()).willReturn(judgeUserId);
+        given(submittedSheet.getStatus()).willReturn(ScoresheetStatus.SUBMITTED);
+        given(submittedSheet.getEntryId()).willReturn(entrySilver);
+        given(submittedSheet.getTotalScore()).willReturn(78);
+        var earlierSheet = mock(app.meads.judging.Scoresheet.class);
+        given(earlierSheet.getStatus()).willReturn(ScoresheetStatus.SUBMITTED);
+        given(earlierSheet.getEntryId()).willReturn(entryGold);
+        given(earlierSheet.getTotalScore()).willReturn(85);
+        given(scoresheetService.findById(submittedSheetId)).willReturn(Optional.of(submittedSheet));
+        given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
+        given(judgingRoundRepository.findByJudgingId(judging.getId())).willReturn(List.of(medalRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(judgingRepository.findByDivisionId(divisionId)).willReturn(Optional.of(judging));
+        given(scoresheetService.countByRoundIdAndStatusNot(medalRound.getId(), ScoresheetStatus.SUBMITTED))
+                .willReturn(0L);
+        given(scoresheetRepository.findByRoundId(medalRound.getId()))
+                .willReturn(List.of(submittedSheet, earlierSheet));
+        given(medalAwardRepository.findByEntryId(any())).willReturn(Optional.empty());
+
+        var event = new ScoresheetSubmittedEvent(submittedSheetId, entrySilver,
+                medalRound.getId(), 78, java.time.Instant.now());
+        service.onScoresheetSubmitted(event);
+
+        var awardCaptor = org.mockito.ArgumentCaptor.forClass(MedalAward.class);
+        then(medalAwardRepository).should(org.mockito.Mockito.times(2)).save(awardCaptor.capture());
+        var awards = awardCaptor.getAllValues();
+        assertThat(awards).extracting(MedalAward::getEntryId)
+                .containsExactly(entryGold, entrySilver);
+        assertThat(awards).extracting(MedalAward::getMedal)
+                .containsExactly(Medal.GOLD, Medal.SILVER);
+    }
+
+    @Test
+    void shouldNotRerunAutoPopulateWhenSheetsStillInProgress() {
+        var medalRound = new JudgingRound(judging.getId(), UUID.randomUUID(), "Medal",
+                divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.SCORE_BASED);
+        var submittedSheetId = UUID.randomUUID();
+        given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
+        given(scoresheetService.countByRoundIdAndStatusNot(medalRound.getId(), ScoresheetStatus.SUBMITTED))
+                .willReturn(2L); // 2 sheets still BLANK/DRAFT
+
+        var event = new ScoresheetSubmittedEvent(submittedSheetId, UUID.randomUUID(),
+                medalRound.getId(), 75, java.time.Instant.now());
+        service.onScoresheetSubmitted(event);
+
+        then(medalAwardRepository).should(never()).save(any(MedalAward.class));
+    }
+
+    @Test
+    void shouldNotRerunAutoPopulateForScoringRoundOnScoresheetSubmitted() {
+        // Scoring-round submits don't trigger the medal-round populate path —
+        // those go through the existing scoring-round cascade.
+        var scoringRound = new JudgingRound(judging.getId(), UUID.randomUUID(), "T1",
+                divisionCategoryId, null);
+        var submittedSheetId = UUID.randomUUID();
+        given(judgingRoundRepository.findById(scoringRound.getId())).willReturn(Optional.of(scoringRound));
+
+        var event = new ScoresheetSubmittedEvent(submittedSheetId, UUID.randomUUID(),
+                scoringRound.getId(), 75, java.time.Instant.now());
+        service.onScoresheetSubmitted(event);
+
+        then(medalAwardRepository).should(never()).save(any(MedalAward.class));
+        then(scoresheetService).should(never()).countByRoundIdAndStatusNot(any(), any());
+    }
+
+    @Test
+    void shouldFlipScoreBasedMedalRoundToReadyWhenJudgePushesAboveMinimum() {
+        // Auto-readiness: SCORE_BASED medal round behaves like a scoring round.
+        // Once table + ≥ minJudgesPerRound judges + ≥ 1 entry + division ≥ JUDGING
+        // are all satisfied, PENDING → READY without admin intervention.
+        var medalRound = new JudgingRound(judging.getId(), UUID.randomUUID(), "Medal",
+                divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.SCORE_BASED);
+        medalRound.assignEntry(UUID.randomUUID());
+        medalRound.assignJudge(UUID.randomUUID()); // 1 of 2 minimum
+        given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.assignJudge(medalRound.getId(), UUID.randomUUID(), adminUserId);
+
+        assertThat(medalRound.getStatus()).isEqualTo(JudgingRoundStatus.READY);
+    }
+
+    @Test
+    void shouldFlipScoreBasedMedalRoundBackToPendingWhenJudgesDropBelowMinimum() {
+        var medalRound = new JudgingRound(judging.getId(), UUID.randomUUID(), "Medal",
+                divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.SCORE_BASED);
+        medalRound.assignEntry(UUID.randomUUID());
+        var judgeA = UUID.randomUUID();
+        var judgeB = UUID.randomUUID();
+        medalRound.assignJudge(judgeA);
+        medalRound.assignJudge(judgeB);
+        medalRound.markReady();
+        given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.removeJudge(medalRound.getId(), judgeB, adminUserId);
+
+        assertThat(medalRound.getStatus()).isEqualTo(JudgingRoundStatus.PENDING);
+    }
+
+    @Test
+    void shouldNotAutoFlipComparativeMedalRoundOnConfigurationChange() {
+        // COMPARATIVE keeps the cascade-driven readiness model. Adding a judge
+        // doesn't auto-promote — readiness comes from scoring rounds COMPLETE.
+        var medalRound = new JudgingRound(judging.getId(), UUID.randomUUID(), "Medal",
+                divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.COMPARATIVE);
+        medalRound.assignEntry(UUID.randomUUID());
+        medalRound.assignJudge(UUID.randomUUID()); // 1 of 2 (would-be minimum)
+        given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.assignJudge(medalRound.getId(), UUID.randomUUID(), adminUserId);
+
+        assertThat(medalRound.getStatus()).isEqualTo(JudgingRoundStatus.PENDING);
+    }
+
+    @Test
     void shouldStartMedalTypedRoundWithoutCreatingScoresheetsOrEnforcingMinJudges() {
         var physicalTableId = UUID.randomUUID();
         var medalRound = new JudgingRound(judging.getId(), physicalTableId, "Medal",
@@ -563,6 +822,86 @@ class JudgingServiceMedalRoundTest {
     }
 
     @Test
+    void shouldIncludeBlankAndDraftSheetsInScoreBasedMedalRoundEntriesViaExplicitEntriesSet() {
+        // Small-category flow: SCORE_BASED medal round has entries assigned
+        // explicitly but their scoresheets may be BLANK/DRAFT (judges still
+        // scoring). The view needs to show those rows so admin sees the
+        // assignment + current progress.
+        var entrySubmittedId = UUID.randomUUID();
+        var entryDraftId = UUID.randomUUID();
+        var entryBlankId = UUID.randomUUID();
+        var medalRound = new JudgingRound(judging.getId(), UUID.randomUUID(), "Medal",
+                divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.SCORE_BASED);
+        medalRound.assignEntry(entrySubmittedId);
+        medalRound.assignEntry(entryDraftId);
+        medalRound.assignEntry(entryBlankId);
+        var entrySubmitted = mockReceivedEntry(entrySubmittedId, "AMA-1");
+        var entryDraft = mockReceivedEntry(entryDraftId, "AMA-2");
+        var entryBlank = mockReceivedEntry(entryBlankId, "AMA-3");
+        var sheetSubmitted = mock(Scoresheet.class);
+        given(sheetSubmitted.getStatus()).willReturn(ScoresheetStatus.SUBMITTED);
+        given(sheetSubmitted.getTotalScore()).willReturn(85);
+        given(sheetSubmitted.isAdvancedToMedalRound()).willReturn(false);
+        var sheetDraft = mock(Scoresheet.class);
+        given(sheetDraft.getStatus()).willReturn(ScoresheetStatus.DRAFT);
+        var sheetBlank = mock(Scoresheet.class);
+        given(sheetBlank.getStatus()).willReturn(ScoresheetStatus.BLANK);
+        given(scoresheetRepository.findByEntryId(entrySubmittedId)).willReturn(Optional.of(sheetSubmitted));
+        given(scoresheetRepository.findByEntryId(entryDraftId)).willReturn(Optional.of(sheetDraft));
+        given(scoresheetRepository.findByEntryId(entryBlankId)).willReturn(Optional.of(sheetBlank));
+        given(medalAwardRepository.findByEntryId(any())).willReturn(Optional.empty());
+        given(judgingRoundRepository.findFirstByDivisionCategoryIdAndType(divisionCategoryId, RoundType.MEDAL))
+                .willReturn(Optional.of(medalRound));
+        given(entryService.findEntryById(entrySubmittedId)).willReturn(entrySubmitted);
+        given(entryService.findEntryById(entryDraftId)).willReturn(entryDraft);
+        given(entryService.findEntryById(entryBlankId)).willReturn(entryBlank);
+
+        var rows = service.findMedalRoundEntries(divisionCategoryId, MedalRoundMode.SCORE_BASED);
+
+        assertThat(rows).hasSize(3);
+        // SUBMITTED row has the highest score (85), then BLANK/DRAFT (null totals)
+        // sort last via nullsLast(reverseOrder).
+        assertThat(rows.get(0).entryId()).isEqualTo(entrySubmittedId);
+        assertThat(rows.get(0).round1Total()).isEqualTo(85);
+        assertThat(rows).extracting(MedalRoundEntryRow::entryId)
+                .containsExactlyInAnyOrder(entrySubmittedId, entryDraftId, entryBlankId);
+    }
+
+    @Test
+    void shouldShowExplicitlyAssignedEntryWithNoSheetYetInScoreBasedMedalRound() {
+        // Cycle 1 assigns the entry at PENDING with no sheet creation. The
+        // view should still surface that row so the admin sees the assignment.
+        var entryId = UUID.randomUUID();
+        var medalRound = new JudgingRound(judging.getId(), UUID.randomUUID(), "Medal",
+                divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.SCORE_BASED);
+        medalRound.assignEntry(entryId);
+        var entry = mockReceivedEntry(entryId, "AMA-1");
+        given(scoresheetRepository.findByEntryId(entryId)).willReturn(Optional.empty());
+        given(medalAwardRepository.findByEntryId(any())).willReturn(Optional.empty());
+        given(judgingRoundRepository.findFirstByDivisionCategoryIdAndType(divisionCategoryId, RoundType.MEDAL))
+                .willReturn(Optional.of(medalRound));
+        given(entryService.findEntryById(entryId)).willReturn(entry);
+
+        var rows = service.findMedalRoundEntries(divisionCategoryId, MedalRoundMode.SCORE_BASED);
+
+        assertThat(rows).hasSize(1);
+        assertThat(rows.get(0).round1Total()).isNull();
+        assertThat(rows.get(0).advancedToMedalRound()).isFalse();
+    }
+
+    private Entry mockReceivedEntry(UUID entryId, String code) {
+        var entry = mock(Entry.class);
+        lenient().when(entry.getId()).thenReturn(entryId);
+        lenient().when(entry.getEntryCode()).thenReturn(code);
+        lenient().when(entry.getMeadName()).thenReturn(code + " mead");
+        lenient().when(entry.getUserId()).thenReturn(UUID.randomUUID());
+        lenient().when(entry.getStatus()).thenReturn(EntryStatus.RECEIVED);
+        return entry;
+    }
+
+    @Test
     void shouldExcludeNonReceivedEntriesFromMedalRoundEntries() {
         var received = mockEntryWithScoresheet("AMA-1", 88, true);
         var withdrawn = mockEntryWithScoresheet("AMA-2", 90, true);
@@ -593,5 +932,131 @@ class JudgingServiceMedalRoundTest {
         assertThatThrownBy(() -> service.reopenMedalRoundById(medalRound.getId(), adminUserId))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("error.medal-round.judging-not-active");
+    }
+
+    @Test
+    void shouldCreateScoresheetWhenAssigningEntryToActiveScoreBasedMedalRound() {
+        // Small-category flow: SCORE_BASED medal round runs without a preceding
+        // SCORING round. Mid-round add must mirror the SCORING-round behavior
+        // (line 344 of JudgingServiceImpl) — create a BLANK scoresheet pinned
+        // to the medal round so its judges can start scoring this entry.
+        var physicalTableId = UUID.randomUUID();
+        var medalRound = new JudgingRound(judging.getId(), physicalTableId,
+                "Medal — M1A", divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.SCORE_BASED);
+        medalRound.assignJudge(UUID.randomUUID());
+        medalRound.start();
+        var entryId = UUID.randomUUID();
+        given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.assignEntryToRound(medalRound.getId(), entryId, adminUserId);
+
+        assertThat(medalRound.getEntries()).contains(entryId);
+        then(scoresheetService).should().ensureScoresheetForRound(entryId, medalRound.getId());
+    }
+
+    @Test
+    void shouldNotCreateScoresheetWhenAssigningEntryToComparativeMedalRound() {
+        // COMPARATIVE keeps the existing semantics: it picks from advance-flagged
+        // entries that already have SUBMITTED sheets from a preceding scoring
+        // round. The medal round itself owns no sheets in this mode.
+        var physicalTableId = UUID.randomUUID();
+        var medalRound = new JudgingRound(judging.getId(), physicalTableId,
+                "Medal — M1A", divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.COMPARATIVE);
+        medalRound.assignJudge(UUID.randomUUID());
+        medalRound.start();
+        var entryId = UUID.randomUUID();
+        given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.assignEntryToRound(medalRound.getId(), entryId, adminUserId);
+
+        assertThat(medalRound.getEntries()).contains(entryId);
+        then(scoresheetService).should(never()).ensureScoresheetForRound(any(), any());
+        then(scoresheetService).should(never()).ensureScoresheetForEntry(any());
+    }
+
+    @Test
+    void shouldDeleteBlankScoresheetWhenUnassigningEntryFromActiveScoreBasedMedalRound() {
+        // Symmetric to the assign path: removing an entry from an ACTIVE
+        // SCORE_BASED medal round cleans up the BLANK/DRAFT sheet so it
+        // doesn't linger in the DB as an orphan. SUBMITTED still blocks.
+        var physicalTableId = UUID.randomUUID();
+        var medalRound = new JudgingRound(judging.getId(), physicalTableId,
+                "Medal — M1A", divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.SCORE_BASED);
+        medalRound.assignJudge(UUID.randomUUID());
+        medalRound.start();
+        var entryId = UUID.randomUUID();
+        medalRound.assignEntry(entryId);
+        var sheet = mock(app.meads.judging.Scoresheet.class);
+        var sheetId = UUID.randomUUID();
+        given(sheet.getId()).willReturn(sheetId);
+        given(sheet.getRoundId()).willReturn(medalRound.getId());
+        given(sheet.getStatus()).willReturn(ScoresheetStatus.BLANK);
+        given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(scoresheetService.findByEntryIdOrderBySubmittedAtAsc(entryId)).willReturn(List.of(sheet));
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.unassignEntryFromRound(medalRound.getId(), entryId, adminUserId);
+
+        assertThat(medalRound.getEntries()).doesNotContain(entryId);
+        then(scoresheetService).should().deleteScoresheet(sheetId, adminUserId);
+    }
+
+    @Test
+    void shouldRejectUnassignEntryFromActiveScoreBasedMedalRoundWhenScoresheetSubmitted() {
+        var physicalTableId = UUID.randomUUID();
+        var medalRound = new JudgingRound(judging.getId(), physicalTableId,
+                "Medal — M1A", divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.SCORE_BASED);
+        medalRound.assignJudge(UUID.randomUUID());
+        medalRound.start();
+        var entryId = UUID.randomUUID();
+        medalRound.assignEntry(entryId);
+        var sheet = mock(app.meads.judging.Scoresheet.class);
+        given(sheet.getRoundId()).willReturn(medalRound.getId());
+        given(sheet.getStatus()).willReturn(ScoresheetStatus.SUBMITTED);
+        given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(scoresheetService.findByEntryIdOrderBySubmittedAtAsc(entryId)).willReturn(List.of(sheet));
+
+        assertThatThrownBy(() -> service.unassignEntryFromRound(medalRound.getId(), entryId, adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.entry.cannot-unassign-submitted");
+
+        assertThat(medalRound.getEntries()).contains(entryId);
+    }
+
+    @Test
+    void shouldNotCreateScoresheetWhenAssigningEntryToPendingScoreBasedMedalRound() {
+        // Pre-start assignments are bookkeeping only — sheets are created at
+        // startRound time (see Cycle 3) for whatever's been assigned.
+        var medalRound = new JudgingRound(judging.getId(), "Medal — M1A",
+                divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.SCORE_BASED);
+        var entryId = UUID.randomUUID();
+        given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.assignEntryToRound(medalRound.getId(), entryId, adminUserId);
+
+        assertThat(medalRound.getEntries()).contains(entryId);
+        then(scoresheetService).should(never()).ensureScoresheetForRound(any(), any());
     }
 }

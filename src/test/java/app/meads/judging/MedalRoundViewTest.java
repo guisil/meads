@@ -239,6 +239,38 @@ class MedalRoundViewTest {
         scoresheetRepository.save(sheet);
     }
 
+    private DivisionCategory pendingScoreBasedMedalRoundCategory() {
+        division.advanceStatus(); // REGISTRATION_OPEN
+        division.advanceStatus(); // REGISTRATION_CLOSED
+        division.advanceStatus(); // JUDGING
+        division = divisionRepository.save(division);
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Desc", null, 1, CategoryScope.JUDGING));
+        var config = new CategoryJudgingConfig(category.getId(), MedalRoundMode.SCORE_BASED);
+        categoryConfigRepository.save(config);
+        var judging = judgingService.ensureJudgingExists(division.getId());
+        var medalRound = new JudgingRound(judging.getId(), "Medal — M1A",
+                category.getId(), null);
+        medalRound.convertToMedalRound(MedalRoundMode.SCORE_BASED);
+        judgingRoundRepository.save(medalRound);
+        return category;
+    }
+
+    private Entry receivedEntryWithoutScoresheet(DivisionCategory category, String code) {
+        var entrant = userRepository.save(new User(
+                "mr-rs-" + UUID.randomUUID() + "@example.com",
+                "Entrant", UserStatus.ACTIVE, Role.USER));
+        var entry = new Entry(division.getId(), entrant.getId(),
+                entryNum++, code, code + " Mead", category.getId(), Sweetness.DRY,
+                BigDecimal.valueOf(11.0), Carbonation.STILL, "Wildflower", null, false, null, null);
+        entry.submit();
+        entry.markReceived();
+        entry = entryRepository.save(entry);
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        entryService.assignFinalCategory(entry.getId(), category.getId(), admin.getId());
+        return entry;
+    }
+
     private void navigateToMedalRound(DivisionCategory category) {
         UI.getCurrent().navigate("competitions/" + competition.getShortName()
                 + "/divisions/" + division.getShortName()
@@ -515,6 +547,27 @@ class MedalRoundViewTest {
         assertThat(com.github.mvysny.kaributesting.v10.LocatorJ._find(
                 com.vaadin.flow.component.select.Select.class,
                 spec -> spec.withId("medal-round-physical-table-select"))).isEmpty();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldShowAllReceivedEntriesInScoreBasedAssignDialogEvenWithoutScoresheets() {
+        // Small-category flow: SCORE_BASED medal round runs without a preceding
+        // scoring round, so eligible entries don't have SUBMITTED scoresheets
+        // yet. The Assign Entries dialog must still list them — they'll get
+        // BLANK scoresheets on round start (Cycle 3 wiring).
+        var category = pendingScoreBasedMedalRoundCategory();
+        receivedEntryWithoutScoresheet(category, "001");
+        receivedEntryWithoutScoresheet(category, "002");
+        receivedEntryWithoutScoresheet(category, "003");
+
+        navigateToMedalRound(category);
+        var assignEntries = _get(Button.class, spec -> spec.withId("medal-round-assign-entries"));
+        _click(assignEntries);
+
+        @SuppressWarnings("unchecked")
+        var grid = (Grid<Entry>) _get(Grid.class, spec -> spec.withId("medal-round-assign-entries-grid"));
+        assertThat(grid.getGenericDataView().getItems().count()).isEqualTo(3);
     }
 
     @Test

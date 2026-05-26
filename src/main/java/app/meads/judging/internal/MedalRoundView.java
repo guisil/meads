@@ -641,11 +641,19 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         dialog.setHeaderTitle(getTranslation("medal-round.assign-entries.dialog.title", categoryLabel()));
         dialog.setWidth("780px");
 
+        // SCORE_BASED medal rounds may run without a preceding scoring round
+        // (small-category flow) — in that case the medal round owns the
+        // scoresheets, so eligibility doesn't require an existing SUBMITTED
+        // sheet. COMPARATIVE keeps the original "must have a SUBMITTED prelim
+        // sheet" filter because it picks from advance-flagged sheets only.
+        boolean modeIsScoreBased = medalRound != null
+                && medalRound.getMedalMode() == MedalRoundMode.SCORE_BASED;
         var eligibleEntries = entryService.findEntriesByFinalCategoryId(category.getId()).stream()
                 .filter(e -> e.getStatus() == EntryStatus.RECEIVED)
-                .filter(e -> scoresheetRepository.findByEntryId(e.getId())
-                        .map(s -> s.getStatus() == ScoresheetStatus.SUBMITTED)
-                        .orElse(false))
+                .filter(e -> modeIsScoreBased
+                        || scoresheetRepository.findByEntryId(e.getId())
+                                .map(s -> s.getStatus() == ScoresheetStatus.SUBMITTED)
+                                .orElse(false))
                 .toList();
 
         var content = new VerticalLayout();

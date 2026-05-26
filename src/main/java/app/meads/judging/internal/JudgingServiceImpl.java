@@ -32,6 +32,7 @@ import app.meads.judging.CoiCheckService;
 import app.meads.judging.ScoresheetService;
 import app.meads.judging.ScoresheetStatus;
 import app.meads.judging.RoundStartedEvent;
+import app.meads.judging.ScoresheetSubmittedEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
@@ -221,7 +222,14 @@ public class JudgingServiceImpl implements JudgingService {
 
     private void recomputeScoringRoundReadiness(JudgingRound round,
                                                  app.meads.competition.Division division) {
-        if (round.getType() != RoundType.SCORING) {
+        // Applies to SCORING rounds and to SCORE_BASED medal rounds (small-
+        // category flow — the medal round acts as a scoring panel and uses the
+        // same configuration-driven readiness rule). COMPARATIVE medal rounds
+        // remain on the cascade-driven readiness model (READY when every prelim
+        // scoring round in the category COMPLETEs).
+        boolean medalRoundActsAsScoringPanel = round.getType() == RoundType.MEDAL
+                && round.getMedalMode() == MedalRoundMode.SCORE_BASED;
+        if (round.getType() != RoundType.SCORING && !medalRoundActsAsScoringPanel) {
             return;
         }
         if (round.getStatus() != JudgingRoundStatus.PENDING
@@ -264,6 +272,41 @@ public class JudgingServiceImpl implements JudgingService {
                 judgingRoundRepository.save(round);
             }
         }
+    }
+
+    /**
+     * Re-runs medal auto-populate once every sheet on a SCORE_BASED medal round
+     * is SUBMITTED. The small-category flow (medal round owns its sheets, no
+     * preceding scoring round) doesn't have any SUBMITTED sheets at
+     * {@code startRound} time, so the auto-populate call there is a no-op;
+     * this listener fills in once the round's judges finish. Idempotent — the
+     * {@code autoPopulateMedalsByScore} write check skips entries that already
+     * have a MedalAward, so repeated firings are safe. Visibility is public
+     * so the unit tests can invoke it directly.
+     */
+    @EventListener
+    public void onScoresheetSubmitted(ScoresheetSubmittedEvent event) {
+        var round = judgingRoundRepository.findById(event.roundId()).orElse(null);
+        if (round == null
+                || round.getType() != RoundType.MEDAL
+                || round.getMedalMode() != MedalRoundMode.SCORE_BASED) {
+            return;
+        }
+        long pending = scoresheetService.countByRoundIdAndStatusNot(
+                round.getId(), ScoresheetStatus.SUBMITTED);
+        if (pending > 0) {
+            return;
+        }
+        var sheet = scoresheetService.findById(event.scoresheetId()).orElse(null);
+        if (sheet == null) {
+            return;
+        }
+        var judging = judgingRepository.findById(round.getJudgingId()).orElse(null);
+        if (judging == null) {
+            return;
+        }
+        autoPopulateMedalsByScore(round.getDivisionCategoryId(),
+                judging.getDivisionId(), sheet.getFilledByJudgeUserId());
     }
 
     @EventListener
@@ -338,11 +381,19 @@ public class JudgingServiceImpl implements JudgingService {
         round.assignEntry(entryId);
         recomputeScoringRoundReadiness(round);
         judgingRoundRepository.save(round);
-        // Mid-round add: create the DRAFT scoresheet so the round's judges can
-        // start scoring this entry immediately. ensureScoresheetForEntry no-ops
-        // unless the entry is RECEIVED and the round is ACTIVE.
-        if (round.getStatus() == JudgingRoundStatus.ACTIVE && round.getType() == RoundType.SCORING) {
-            scoresheetService.ensureScoresheetForEntry(entryId);
+        // Mid-round add: create the BLANK scoresheet so the round's judges can
+        // start scoring this entry immediately. SCORING rounds delegate the
+        // round-lookup-by-category to ensureScoresheetForEntry; SCORE_BASED
+        // medal rounds (small-category flow with no preceding scoring round)
+        // pin the round explicitly via ensureScoresheetForRound so the sheet
+        // lands at this medal round even when no ACTIVE scoring round exists
+        // for the category. COMPARATIVE medal rounds own no sheets.
+        if (round.getStatus() == JudgingRoundStatus.ACTIVE) {
+            if (round.getType() == RoundType.SCORING) {
+                scoresheetService.ensureScoresheetForEntry(entryId);
+            } else if (round.getMedalMode() == MedalRoundMode.SCORE_BASED) {
+                scoresheetService.ensureScoresheetForRound(entryId, roundId);
+            }
         }
         log.info("Assigned entry {} to round {}", entryId, roundId);
     }
@@ -357,8 +408,14 @@ public class JudgingServiceImpl implements JudgingService {
             throw new BusinessRuleException("error.entry.cannot-change-on-complete-round");
         }
         // Mid-round removal: handle the scoresheet attached to this entry. Block
-        // when SUBMITTED (commits would be lost). Delete when still DRAFT.
-        if (round.getStatus() == JudgingRoundStatus.ACTIVE && round.getType() == RoundType.SCORING) {
+        // when SUBMITTED (commits would be lost). Delete when still BLANK/DRAFT.
+        // Applies to SCORING rounds and to SCORE_BASED medal rounds running
+        // without a preceding scoring round (small-category flow — the medal
+        // round owns the scoresheet directly). COMPARATIVE medal rounds own no
+        // sheets so nothing to clean up here.
+        boolean roundOwnsScoresheets = round.getType() == RoundType.SCORING
+                || round.getMedalMode() == MedalRoundMode.SCORE_BASED;
+        if (round.getStatus() == JudgingRoundStatus.ACTIVE && roundOwnsScoresheets) {
             for (var sheet : scoresheetService.findByEntryIdOrderBySubmittedAtAsc(entryId)) {
                 if (!sheet.getRoundId().equals(roundId)) {
                     continue;
@@ -683,11 +740,13 @@ public class JudgingServiceImpl implements JudgingService {
                         judgeNameForError(assignment.getJudgeUserId()));
             }
         }
-        // Scoring rounds must have an explicit entry assignment before starting —
-        // the Assign Entries dialog is the canonical way to set this. (Medal
-        // rounds source their entries from the scoring rounds' results, not
-        // from round.entries, so this check doesn't apply to them.)
-        if (table.getType() == RoundType.SCORING && table.getEntries().isEmpty()) {
+        // Scoring rounds and SCORE_BASED medal rounds (small-category flow) must
+        // have an explicit entry assignment before starting — the Assign Entries
+        // dialog is the canonical way to set this. (COMPARATIVE medal rounds
+        // source their entries from prelim scoring rounds, not round.entries.)
+        boolean medalRoundOwnsSheets = table.getType() == RoundType.MEDAL
+                && table.getMedalMode() == MedalRoundMode.SCORE_BASED;
+        if ((table.getType() == RoundType.SCORING || medalRoundOwnsSheets) && table.getEntries().isEmpty()) {
             throw new BusinessRuleException("error.round.no-entries-assigned");
         }
         try {
@@ -711,9 +770,17 @@ public class JudgingServiceImpl implements JudgingService {
                     judging.getDivisionId(), Instant.now()));
         } else {
             // Medal round just transitioned to ACTIVE. For SCORE_BASED mode,
-            // pre-populate the top-3 medals (confirmed=false) from Round 1
-            // totals; admin/judges then review + confirm or override.
+            // create BLANK scoresheets for any directly-assigned entries
+            // (small-category flow with no preceding scoring round — the medal
+            // round owns the sheets); createScoresheetsForTable is a no-op for
+            // entries that already have a sheet (cascade-populated entries
+            // arrive with prelim SUBMITTED sheets). Then pre-populate the top-3
+            // medals (confirmed=false) from whatever's already SUBMITTED;
+            // for the no-prelim path that's nothing, and the @EventListener on
+            // ScoresheetSubmittedEvent will re-run autoPopulate once all sheets
+            // on this round are SUBMITTED.
             if (table.getMedalMode() == MedalRoundMode.SCORE_BASED) {
+                scoresheetService.createScoresheetsForTable(roundId);
                 autoPopulateMedalsByScore(table.getDivisionCategoryId(),
                         judging.getDivisionId(), adminUserId);
             }
@@ -735,22 +802,40 @@ public class JudgingServiceImpl implements JudgingService {
     private void autoPopulateMedalsByScore(UUID divisionCategoryId, UUID divisionId,
                                             UUID adminUserId) {
         var sheetsByEntry = new HashMap<UUID, Integer>();
-        var allTables = judgingRoundRepository.findByJudgingId(
+        var roundsInCategory = judgingRoundRepository.findByJudgingId(
                 judgingRepository.findByDivisionId(divisionId)
                         .orElseThrow().getId()).stream()
                 .filter(t -> t.getDivisionCategoryId().equals(divisionCategoryId))
-                .filter(t -> t.getType() == RoundType.SCORING)
+                .toList();
+        // Source sheets from SCORING rounds AND from the SCORE_BASED medal
+        // round itself (small-category flow). COMPARATIVE medal rounds own no
+        // sheets — they only consume them — so they're not a source here.
+        var sourceRounds = roundsInCategory.stream()
+                .filter(t -> t.getType() == RoundType.SCORING
+                        || (t.getType() == RoundType.MEDAL
+                                && t.getMedalMode() == MedalRoundMode.SCORE_BASED))
                 .toList();
         var allSheets = new ArrayList<app.meads.judging.Scoresheet>();
-        for (var t : allTables) {
+        for (var t : sourceRounds) {
             allSheets.addAll(scoresheetRepository.findByRoundId(t.getId()));
         }
         for (var sheet : allSheets) {
-            if (sheet.getStatus() == ScoresheetStatus.SUBMITTED
-                    && sheet.isAdvancedToMedalRound()
-                    && sheet.getTotalScore() != null) {
-                sheetsByEntry.merge(sheet.getEntryId(), sheet.getTotalScore(), Integer::max);
+            if (sheet.getStatus() != ScoresheetStatus.SUBMITTED || sheet.getTotalScore() == null) {
+                continue;
             }
+            // The "advanced to medal round" flag only gates prelim SCORING-round
+            // sheets — it's how judges signal which entries deserve a medal
+            // round at all. Medal-round-owned sheets ARE the medal round, so
+            // every SUBMITTED sheet there is automatically a medal candidate.
+            var sourceRound = sourceRounds.stream()
+                    .filter(r -> r.getId().equals(sheet.getRoundId()))
+                    .findFirst().orElse(null);
+            if (sourceRound != null
+                    && sourceRound.getType() == RoundType.SCORING
+                    && !sheet.isAdvancedToMedalRound()) {
+                continue;
+            }
+            sheetsByEntry.merge(sheet.getEntryId(), sheet.getTotalScore(), Integer::max);
         }
         var ranked = sheetsByEntry.entrySet().stream()
                 .sorted(Map.Entry.<UUID, Integer>comparingByValue().reversed())
@@ -830,14 +915,24 @@ public class JudgingServiceImpl implements JudgingService {
                 continue;
             }
             var sheetOpt = scoresheetRepository.findByEntryId(entryId);
-            if (sheetOpt.isEmpty() || sheetOpt.get().getStatus() != ScoresheetStatus.SUBMITTED) {
+            // COMPARATIVE selects from advance-flagged prelim sheets, so it requires
+            // a SUBMITTED sheet. SCORE_BASED (small-category flow) lets the medal
+            // round own its sheets — surface assigned entries even when the sheet
+            // is still BLANK/DRAFT or absent so admin sees what's coming.
+            if (mode == MedalRoundMode.COMPARATIVE
+                    && (sheetOpt.isEmpty() || sheetOpt.get().getStatus() != ScoresheetStatus.SUBMITTED)) {
                 continue;
             }
-            var sheet = sheetOpt.get();
+            Integer totalScore = null;
+            boolean advanced = false;
+            if (sheetOpt.isPresent() && sheetOpt.get().getStatus() == ScoresheetStatus.SUBMITTED) {
+                totalScore = sheetOpt.get().getTotalScore();
+                advanced = sheetOpt.get().isAdvancedToMedalRound();
+            }
             var medalOpt = medalAwardRepository.findByEntryId(entryId);
             rows.add(new MedalRoundEntryRow(
                     entry.getId(), entry.getEntryCode(), entry.getMeadName(),
-                    entry.getUserId(), sheet.getTotalScore(), sheet.isAdvancedToMedalRound(),
+                    entry.getUserId(), totalScore, advanced,
                     medalOpt.map(MedalAward::getId).orElse(null),
                     medalOpt.map(MedalAward::getMedal).orElse(null)));
         }
