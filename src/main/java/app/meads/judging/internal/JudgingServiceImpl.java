@@ -29,6 +29,7 @@ import app.meads.judging.BosReopenedEvent;
 import app.meads.judging.BosResetEvent;
 import app.meads.judging.BosStartedEvent;
 import app.meads.judging.CoiCheckService;
+import app.meads.judging.Scoresheet;
 import app.meads.judging.ScoresheetService;
 import app.meads.judging.ScoresheetStatus;
 import app.meads.judging.RoundStartedEvent;
@@ -821,7 +822,7 @@ public class JudgingServiceImpl implements JudgingService {
                         || (t.getType() == RoundType.MEDAL
                                 && t.getMedalMode() == MedalRoundMode.SCORE_BASED))
                 .toList();
-        var allSheets = new ArrayList<app.meads.judging.Scoresheet>();
+        var allSheets = new ArrayList<Scoresheet>();
         for (var t : sourceRounds) {
             allSheets.addAll(scoresheetRepository.findByRoundId(t.getId()));
         }
@@ -939,6 +940,7 @@ public class JudgingServiceImpl implements JudgingService {
             rows.add(new MedalRoundEntryRow(
                     entry.getId(), entry.getEntryCode(), entry.getMeadName(),
                     entry.getUserId(), totalScore, advanced,
+                    sheetOpt.map(Scoresheet::getId).orElse(null),
                     medalOpt.map(MedalAward::getId).orElse(null),
                     medalOpt.map(MedalAward::getMedal).orElse(null)));
         }
@@ -968,6 +970,7 @@ public class JudgingServiceImpl implements JudgingService {
             rows.add(new MedalRoundEntryRow(
                     entry.getId(), entry.getEntryCode(), entry.getMeadName(),
                     entry.getUserId(), sheet.getTotalScore(), sheet.isAdvancedToMedalRound(),
+                    sheet.getId(),
                     medalOpt.map(MedalAward::getId).orElse(null),
                     medalOpt.map(MedalAward::getMedal).orElse(null)));
         }

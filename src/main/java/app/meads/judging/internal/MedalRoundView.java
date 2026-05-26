@@ -20,6 +20,8 @@ import app.meads.judging.ScoresheetStatus;
 import app.meads.judging.MedalRoundEntryRow;
 import app.meads.judging.MedalRoundMode;
 import app.meads.judging.MedalRoundScorePreview;
+import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import app.meads.identity.UserService;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
@@ -470,6 +472,19 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         cell.setSpacing(true);
         cell.setDefaultVerticalComponentAlignment(Alignment.CENTER);
 
+        // Open scoresheet drill-in: visible whenever the entry has a sheet,
+        // regardless of round status. ScoresheetView enforces its own access
+        // rules (admin or assigned judge). For the small-category SCORE_BASED
+        // flow this is the admin's path to view/edit sheets during scoring.
+        if (row.scoresheetId() != null) {
+            var openButton = new Button(new Icon(VaadinIcon.EYE));
+            openButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            openButton.setId("medal-round-open-scoresheet-" + row.scoresheetId());
+            openButton.setTooltipText(getTranslation("medal-round.action.open-scoresheet"));
+            openButton.addClickListener(e -> navigateToScoresheet(row.scoresheetId()));
+            cell.add(openButton);
+        }
+
         if (currentStatus() != JudgingRoundStatus.ACTIVE) {
             return cell;
         }
@@ -480,9 +495,20 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
             return cell;
         }
 
-        cell.add(medalButton("🥇", "medal-round.action.award-gold", row, Medal.GOLD));
-        cell.add(medalButton("🥈", "medal-round.action.award-silver", row, Medal.SILVER));
-        cell.add(medalButton("🥉", "medal-round.action.award-bronze", row, Medal.BRONZE));
+        // In SCORE_BASED, medals must wait for a SUBMITTED sheet — premature
+        // gold/silver/bronze on unscored entries doesn't reflect reality, and
+        // the @EventListener on ScoresheetSubmittedEvent re-runs autoPopulate
+        // once every sheet on the round is SUBMITTED so medals appear
+        // automatically. COMPARATIVE rows always have non-null totals (filter
+        // upstream), so the gate is a no-op there.
+        boolean scoreBasedPending = currentMode() == MedalRoundMode.SCORE_BASED
+                && row.round1Total() == null;
+        cell.add(medalButton("🥇", "medal-round.action.award-gold", row, Medal.GOLD,
+                scoreBasedPending));
+        cell.add(medalButton("🥈", "medal-round.action.award-silver", row, Medal.SILVER,
+                scoreBasedPending));
+        cell.add(medalButton("🥉", "medal-round.action.award-bronze", row, Medal.BRONZE,
+                scoreBasedPending));
 
         var more = new MenuBar();
         more.addThemeVariants();
@@ -495,11 +521,22 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         return cell;
     }
 
-    private Button medalButton(String glyph, String tooltipKey, MedalRoundEntryRow row, Medal medal) {
+    private Button medalButton(String glyph, String tooltipKey, MedalRoundEntryRow row, Medal medal,
+                                boolean pendingScoresheet) {
         var button = new Button(glyph, e -> applyMedal(row, medal));
         button.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
-        button.setTooltipText(getTranslation(tooltipKey));
+        button.setTooltipText(getTranslation(pendingScoresheet
+                ? "medal-round.action.medals-await-scoresheet"
+                : tooltipKey));
+        button.setEnabled(!pendingScoresheet);
         return button;
+    }
+
+    private void navigateToScoresheet(java.util.UUID scoresheetId) {
+        var url = "competitions/" + compShortName
+                + "/divisions/" + divShortName
+                + "/scoresheets/" + scoresheetId;
+        getUI().ifPresent(ui -> ui.navigate(url));
     }
 
     /** Records or updates a medal for the row. A {@code null} medal records a withhold. */
@@ -667,10 +704,14 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
 
         var content = new VerticalLayout();
         content.setPadding(false);
-        content.add(new Span(getTranslation("medal-round.assign-entries.helper")));
+        content.add(new Span(getTranslation(modeIsScoreBased
+                ? "medal-round.assign-entries.helper.score-based"
+                : "medal-round.assign-entries.helper")));
 
         if (eligibleEntries.isEmpty()) {
-            content.add(new Span(getTranslation("medal-round.assign-entries.empty")));
+            content.add(new Span(getTranslation(modeIsScoreBased
+                    ? "medal-round.assign-entries.empty.score-based"
+                    : "medal-round.assign-entries.empty")));
         }
 
         var entriesGrid = new Grid<>(Entry.class, false);
