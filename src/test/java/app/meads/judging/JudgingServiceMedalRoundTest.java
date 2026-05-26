@@ -496,6 +496,31 @@ class JudgingServiceMedalRoundTest {
     }
 
     @Test
+    void shouldAutoCreateConfigWhenCreatingMedalRoundWithoutPriorConfiguration() {
+        // Small-category flow: admin creates the medal round before any scoring
+        // round runs in the category, so no CategoryJudgingConfig exists yet.
+        // Auto-create with default mode (COMPARATIVE); admin can switch to
+        // SCORE_BASED via the MedalRoundView header Select afterwards. Mirrors
+        // the existing auto-create in JudgingServiceImpl.startRound for SCORING.
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(competitionService.findDivisionCategoryById(divisionCategoryId)).willReturn(category);
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(judgingRoundRepository.findByJudgingId(judging.getId())).willReturn(List.of());
+        given(categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId))
+                .willReturn(Optional.empty());
+        given(categoryConfigRepository.save(any(CategoryJudgingConfig.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var round = service.createMedalRound(judging.getId(), divisionCategoryId, adminUserId);
+
+        assertThat(round.getType()).isEqualTo(RoundType.MEDAL);
+        assertThat(round.getMedalMode()).isEqualTo(MedalRoundMode.COMPARATIVE);
+        then(categoryConfigRepository).should().save(any(CategoryJudgingConfig.class));
+    }
+
+    @Test
     void shouldConfigureCategoryMedalRoundCreatingNew() {
         given(competitionService.findDivisionCategoryById(divisionCategoryId)).willReturn(category);
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);

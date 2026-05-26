@@ -446,8 +446,14 @@ public class JudgingServiceImpl implements JudgingService {
         if (alreadyExists) {
             throw new BusinessRuleException("error.medal-round.already-exists");
         }
+        // Auto-create the CategoryJudgingConfig with default mode (COMPARATIVE)
+        // when it's missing — covers the small-category flow where the admin
+        // creates the medal round before any scoring round runs in the category.
+        // Admin can switch mode to SCORE_BASED via MedalRoundView's header.
+        // Mirrors the same auto-create in startRound's SCORING branch.
         var config = categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId)
-                .orElseThrow(() -> new BusinessRuleException("error.medal-round.category-not-configured"));
+                .orElseGet(() -> categoryConfigRepository.save(
+                        new CategoryJudgingConfig(divisionCategoryId)));
         var category = competitionService.findDivisionCategoryById(divisionCategoryId);
         var round = new JudgingRound(judgingId, "Medal — " + category.getCode(),
                 divisionCategoryId, null);
