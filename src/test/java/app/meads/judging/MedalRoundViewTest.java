@@ -551,6 +551,44 @@ class MedalRoundViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldEnableStartButtonForReadyScoreBasedMedalRoundWhenJudgingPhaseIsNotStarted() {
+        // Small-category flow: the medal round IS the first round in the division.
+        // judging.phase stays NOT_STARTED until JudgingService.startRound flips it,
+        // so the UI Start button must allow starting from that state — otherwise
+        // it's a chicken-and-egg deadlock. (Service-side, startRound already
+        // handles NOT_STARTED → ACTIVE for any round type, see line 713-715.)
+        var category = pendingScoreBasedMedalRoundCategory();
+        // Get the medal round into READY with a physical table assigned so the
+        // only remaining gate is judging.phase.
+        var judging = judgingService.ensureJudgingExists(division.getId());
+        var medalRound = judgingRoundRepository.findByJudgingId(judging.getId()).stream()
+                .filter(r -> r.getType() == RoundType.MEDAL)
+                .findFirst().orElseThrow();
+        var pt = judgingService.createPhysicalTable(division.getId(), "Table 1",
+                userRepository.findByEmail(ADMIN_EMAIL).orElseThrow().getId());
+        medalRound.assignToPhysicalTable(pt.getId());
+        var judgeA = userRepository.save(new User(
+                "mr-judge-a-" + UUID.randomUUID() + "@example.com",
+                "Judge A", UserStatus.ACTIVE, Role.USER));
+        var judgeB = userRepository.save(new User(
+                "mr-judge-b-" + UUID.randomUUID() + "@example.com",
+                "Judge B", UserStatus.ACTIVE, Role.USER));
+        medalRound.assignJudge(judgeA.getId());
+        medalRound.assignJudge(judgeB.getId());
+        var entry = receivedEntryWithoutScoresheet(category, "001");
+        medalRound.assignEntry(entry.getId());
+        medalRound.markReady();
+        judgingRoundRepository.save(medalRound);
+        assertThat(judging.getPhase()).isEqualTo(JudgingPhase.NOT_STARTED);
+
+        navigateToMedalRound(category);
+
+        var startButton = _get(Button.class, spec -> spec.withId("medal-round-start"));
+        assertThat(startButton.isEnabled()).isTrue();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldShowAllReceivedEntriesInScoreBasedAssignDialogEvenWithoutScoresheets() {
         // Small-category flow: SCORE_BASED medal round runs without a preceding
         // scoring round, so eligible entries don't have SUBMITTED scoresheets

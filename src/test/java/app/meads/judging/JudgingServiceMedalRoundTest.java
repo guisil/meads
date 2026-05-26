@@ -816,6 +816,46 @@ class JudgingServiceMedalRoundTest {
     }
 
     @Test
+    void shouldNotFlagTiesWhenNoSubmittedSheetsYetInScoreBasedMedalRound() {
+        // Small-category flow: just after admin assigns entries to a SCORE_BASED
+        // medal round, no sheets are SUBMITTED yet so every row has a null total.
+        // The tied-slot check must skip until at least one score is in — otherwise
+        // Objects.equals(null, null) treats all entries as tied at "null".
+        var entryA = mockEntryWithoutScoresheet("AMA-1");
+        var entryB = mockEntryWithoutScoresheet("AMA-2");
+        var entryC = mockEntryWithoutScoresheet("AMA-3");
+        var medalRound = new JudgingRound(judging.getId(), UUID.randomUUID(), "Medal",
+                divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.SCORE_BASED);
+        medalRound.assignEntry(entryA.getId());
+        medalRound.assignEntry(entryB.getId());
+        medalRound.assignEntry(entryC.getId());
+        given(judgingRoundRepository.findFirstByDivisionCategoryIdAndType(divisionCategoryId, RoundType.MEDAL))
+                .willReturn(Optional.of(medalRound));
+        given(entryService.findEntryById(entryA.getId())).willReturn(entryA);
+        given(entryService.findEntryById(entryB.getId())).willReturn(entryB);
+        given(entryService.findEntryById(entryC.getId())).willReturn(entryC);
+        given(scoresheetRepository.findByEntryId(any())).willReturn(Optional.empty());
+        given(medalAwardRepository.findByEntryId(any())).willReturn(Optional.empty());
+
+        var preview = service.recomputeScorePreview(divisionCategoryId);
+
+        assertThat(preview.tiedSlotCount()).isZero();
+        assertThat(preview.tiedEntryIds()).isEmpty();
+    }
+
+    private Entry mockEntryWithoutScoresheet(String code) {
+        var id = UUID.randomUUID();
+        var entry = mock(Entry.class);
+        lenient().when(entry.getId()).thenReturn(id);
+        lenient().when(entry.getEntryCode()).thenReturn(code);
+        lenient().when(entry.getMeadName()).thenReturn(code + " mead");
+        lenient().when(entry.getUserId()).thenReturn(UUID.randomUUID());
+        lenient().when(entry.getStatus()).thenReturn(EntryStatus.RECEIVED);
+        return entry;
+    }
+
+    @Test
     void shouldReportNoTiesWhenScoreBasedTopScoresAreDistinct() {
         var first = mockEntryWithScoresheet("AMA-1", 95, false);
         var second = mockEntryWithScoresheet("AMA-2", 88, false);

@@ -376,7 +376,16 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         var startButton = new Button(getTranslation("medal-round.action.start"));
         startButton.setId("medal-round-start");
         startButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        startButton.setEnabled(status == JudgingRoundStatus.READY && judgingActive
+        // Phase can be NOT_STARTED here: in the small-category SCORE_BASED flow
+        // the medal round IS the first round, so judging.phase stays NOT_STARTED
+        // until startRound flips it. NOT_STARTED + ACTIVE are both valid Start
+        // moments (BOS / COMPLETE phases are not — by then medal rounds shouldn't
+        // start). JudgingService.startRound performs the NOT_STARTED → ACTIVE
+        // transition for any round type (line ~713 of JudgingServiceImpl).
+        var phase = judgingService.ensureJudgingExists(division.getId()).getPhase();
+        boolean phaseAllowsStart = phase == JudgingPhase.NOT_STARTED
+                || phase == JudgingPhase.ACTIVE;
+        startButton.setEnabled(status == JudgingRoundStatus.READY && phaseAllowsStart
                 && medalRound != null && medalRound.getPhysicalTableId() != null);
         if (status == JudgingRoundStatus.READY
                 && (medalRound == null || medalRound.getPhysicalTableId() == null)) {

@@ -990,6 +990,13 @@ public class JudgingServiceImpl implements JudgingService {
             return new MedalRoundScorePreview(0, Set.of());
         }
         var topScore = unresolved.get(0).round1Total();
+        if (topScore == null) {
+            // No SUBMITTED sheets yet — too early to assess ties. Most callers
+            // hit this in the small-category SCORE_BASED flow before judges
+            // start filling sheets; Objects.equals(null, null) would otherwise
+            // flag every entry as tied at a phantom "null" score.
+            return new MedalRoundScorePreview(0, Set.of());
+        }
         var tied = unresolved.stream()
                 .filter(r -> Objects.equals(r.round1Total(), topScore))
                 .toList();
