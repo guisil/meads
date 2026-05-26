@@ -336,11 +336,16 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
 
         var confirm = new Button(getTranslation("scoresheet.action.submit"), e -> {
             try {
+                // Submit validates against persisted state, so flush any in-flight
+                // form edits to the draft first. Otherwise a user who typed more
+                // characters in a comment but didn't click Save Draft first would
+                // see submit complain about the old (shorter) value.
+                syncFormStateToDraft();
                 scoresheetService.submit(scoresheet.getId(), currentUserId);
                 dialog.close();
                 Notification.show(getTranslation("scoresheet.action.submit.success"))
                         .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-                UI.getCurrent().getPage().reload();
+                navigateToRound();
             } catch (BusinessRuleException ex) {
                 Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
                         .addThemeVariants(NotificationVariant.LUMO_ERROR);
@@ -357,33 +362,51 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
 
     private void saveDraft() {
         try {
-            for (var def : MjpScoringFieldDefinition.MJP_FIELDS) {
-                var field = scoreFields.get(def.fieldName());
-                if (field == null) continue;
-                Integer value = field.getValue() == null ? null : field.getValue().intValue();
-                var commentField = scoreCommentFields.get(def.fieldName());
-                String comment = commentField == null
-                        ? null
-                        : (StringUtils.hasText(commentField.getValue()) ? commentField.getValue() : null);
-                scoresheetService.updateScore(scoresheet.getId(), def.fieldName(),
-                        value, comment, currentUserId);
-            }
-            scoresheetService.updateOverallComments(scoresheet.getId(),
-                    commentsArea.getValue(), currentUserId);
-            if (commentLanguageCombo.getValue() != null) {
-                scoresheetService.setCommentLanguage(scoresheet.getId(),
-                        commentLanguageCombo.getValue(), currentUserId);
-            }
-            if (advanceCheckbox != null) {
-                scoresheetService.setAdvancedToMedalRound(scoresheet.getId(),
-                        advanceCheckbox.getValue(), currentUserId);
-            }
+            syncFormStateToDraft();
             Notification.show(getTranslation("scoresheet.action.save-draft.success"))
                     .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
         } catch (BusinessRuleException ex) {
             Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
+    }
+
+    /**
+     * Pushes the in-memory form state (scores, per-criterion comments, overall
+     * comments, language, advance flag) to the persisted draft. Shared by
+     * Save Draft and Submit so that submit validation operates on the freshest
+     * data. Throws {@link BusinessRuleException} on validation failures —
+     * callers wrap with a user-facing notification.
+     */
+    private void syncFormStateToDraft() {
+        for (var def : MjpScoringFieldDefinition.MJP_FIELDS) {
+            var field = scoreFields.get(def.fieldName());
+            if (field == null) continue;
+            Integer value = field.getValue() == null ? null : field.getValue().intValue();
+            var commentField = scoreCommentFields.get(def.fieldName());
+            String comment = commentField == null
+                    ? null
+                    : (StringUtils.hasText(commentField.getValue()) ? commentField.getValue() : null);
+            scoresheetService.updateScore(scoresheet.getId(), def.fieldName(),
+                    value, comment, currentUserId);
+        }
+        scoresheetService.updateOverallComments(scoresheet.getId(),
+                commentsArea.getValue(), currentUserId);
+        if (commentLanguageCombo.getValue() != null) {
+            scoresheetService.setCommentLanguage(scoresheet.getId(),
+                    commentLanguageCombo.getValue(), currentUserId);
+        }
+        if (advanceCheckbox != null) {
+            scoresheetService.setAdvancedToMedalRound(scoresheet.getId(),
+                    advanceCheckbox.getValue(), currentUserId);
+        }
+    }
+
+    private void navigateToRound() {
+        var url = "competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName()
+                + "/tables/" + table.getId();
+        UI.getCurrent().navigate(url);
     }
 
     private H2 createHeader() {
