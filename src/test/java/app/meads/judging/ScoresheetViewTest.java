@@ -232,6 +232,44 @@ class ScoresheetViewTest {
 
     @Test
     @WithMockUser(username = JUDGE_EMAIL, roles = "USER")
+    void shouldRouteBackAnchorToMedalRoundViewForMedalOwnedScoresheet() {
+        // Small-category SCORE_BASED flow: the sheet's roundId is a MEDAL
+        // round. RoundView (at /tables/<roundId>) is built for SCORING rounds
+        // and renders the wrong actions list — admin needs to land on
+        // MedalRoundView (keyed by divisionCategoryId).
+        var judging = judgingService.ensureJudgingExists(division.getId());
+        var medalRound = judgingService.createMedalRound(judging.getId(),
+                category.getId(), admin.getId());
+        judgingService.updateMedalRoundMode(medalRound.getId(),
+                MedalRoundMode.SCORE_BASED, admin.getId());
+        judgingService.assignJudge(medalRound.getId(), judge.getId(), admin.getId());
+        var entrant = userRepository.save(new User(
+                "entrant-mr-anchor-" + UUID.randomUUID() + "@example.com",
+                "Entrant", UserStatus.ACTIVE, Role.USER));
+        var entry = new Entry(division.getId(), entrant.getId(), 1, "AMA-99",
+                "Medal-owned Mead", category.getId(), Sweetness.DRY,
+                BigDecimal.valueOf(11.0), Carbonation.STILL,
+                "Wildflower", null, false, null, null);
+        entry.assignFinalCategory(category.getId());
+        entry = entryRepository.save(entry);
+        var sheet = scoresheetRepository.save(
+                new Scoresheet(medalRound.getId(), entry.getId()));
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName()
+                + "/scoresheets/" + sheet.getId());
+
+        var anchor = _find(com.vaadin.flow.component.html.Anchor.class).stream()
+                .filter(a -> "scoresheet-back-to-round".equals(a.getId().orElse(null)))
+                .findFirst().orElseThrow();
+        assertThat(anchor.getHref())
+                .as("back anchor on a medal-owned sheet must point at MedalRoundView")
+                .contains("/medal-rounds/" + category.getId())
+                .doesNotContain("/tables/");
+    }
+
+    @Test
+    @WithMockUser(username = JUDGE_EMAIL, roles = "USER")
     void shouldRenderFormPolish_stepButtons_prominentTotal_backToRoundAnchor() {
         // C2 form polish: NumberFields expose +/- step buttons (no need to
         // type to nudge a score), the running total preview is rendered as a

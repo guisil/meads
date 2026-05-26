@@ -403,10 +403,24 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
     }
 
     private void navigateToRound() {
-        var url = "competitions/" + competition.getShortName()
-                + "/divisions/" + division.getShortName()
-                + "/tables/" + table.getId();
-        UI.getCurrent().navigate(url);
+        UI.getCurrent().navigate(roundViewUrl());
+    }
+
+    /**
+     * Routes back to the appropriate per-round view based on the round's type.
+     * SCORING sheets live in RoundView (the entries-list per round); medal-
+     * round-owned sheets (small-category SCORE_BASED flow) belong with
+     * MedalRoundView, which is keyed by divisionCategoryId rather than
+     * roundId. Hardcoding {@code /tables/} sent admins to the wrong view
+     * with a broken Actions column.
+     */
+    private String roundViewUrl() {
+        var base = "competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName();
+        if (table.getType() == app.meads.judging.RoundType.MEDAL) {
+            return base + "/medal-rounds/" + table.getDivisionCategoryId();
+        }
+        return base + "/tables/" + table.getId();
     }
 
     private H2 createHeader() {
@@ -414,10 +428,7 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
     }
 
     private com.vaadin.flow.component.html.Anchor createBackToRoundAnchor() {
-        var url = "competitions/" + competition.getShortName()
-                + "/divisions/" + division.getShortName()
-                + "/tables/" + table.getId();
-        var anchor = new com.vaadin.flow.component.html.Anchor(url,
+        var anchor = new com.vaadin.flow.component.html.Anchor(roundViewUrl(),
                 getTranslation("scoresheet.back-to-round"));
         anchor.setId("scoresheet-back-to-round");
         return anchor;
