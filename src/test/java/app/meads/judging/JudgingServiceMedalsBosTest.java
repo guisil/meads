@@ -146,6 +146,73 @@ class JudgingServiceMedalsBosTest {
     }
 
     @Test
+    void shouldRejectRecordMedalWhenAnotherEntryInCategoryAlreadyHasSameType() {
+        // At most one Gold / Silver / Bronze per category. Admin must clear or
+        // reassign the existing award before stacking a duplicate medal of the
+        // same type. Withhold (null medal) is exempt — covered below.
+        var entry = mockEntry();
+        var otherEntryId = UUID.randomUUID();
+        var existingGold = new MedalAward(otherEntryId, divisionId, divisionCategoryId,
+                Medal.GOLD, adminUserId);
+        given(entryService.findEntryById(entryId)).willReturn(entry);
+        given(coiCheckService.check(adminUserId, entryId)).willReturn(CoiResult.clear());
+        givenActiveMedalRoundForCategory();
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(medalAwardRepository.findByFinalCategoryId(divisionCategoryId))
+                .willReturn(List.of(existingGold));
+
+        assertThatThrownBy(() -> service.recordMedal(entryId, Medal.GOLD, adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.medal.duplicate-type");
+
+        then(medalAwardRepository).should(never()).save(any(MedalAward.class));
+    }
+
+    @Test
+    void shouldAllowRecordMedalWhenSameEntryAlreadyHasMedalOfDifferentType() {
+        // Same-entry update: changing entry A from Silver to Gold is fine
+        // even though A already has an award (just not the same type via
+        // another entry).
+        var entry = mockEntry();
+        var existingSilverForSameEntry = new MedalAward(entryId, divisionId, divisionCategoryId,
+                Medal.SILVER, adminUserId);
+        given(entryService.findEntryById(entryId)).willReturn(entry);
+        given(coiCheckService.check(adminUserId, entryId)).willReturn(CoiResult.clear());
+        givenActiveMedalRoundForCategory();
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(medalAwardRepository.findByEntryId(entryId)).willReturn(Optional.of(existingSilverForSameEntry));
+        given(medalAwardRepository.findByFinalCategoryId(divisionCategoryId))
+                .willReturn(List.of(existingSilverForSameEntry));
+        given(medalAwardRepository.save(any(MedalAward.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var award = service.recordMedal(entryId, Medal.GOLD, adminUserId);
+
+        assertThat(award.getMedal()).isEqualTo(Medal.GOLD);
+    }
+
+    @Test
+    void shouldAllowWithholdEvenWhenAnotherEntryHasMedal() {
+        // null medal = explicit withhold. The "no duplicate" rule only applies
+        // to G / S / B — multiple withholds in a category are fine.
+        var entry = mockEntry();
+        var existingGold = new MedalAward(UUID.randomUUID(), divisionId, divisionCategoryId,
+                Medal.GOLD, adminUserId);
+        given(entryService.findEntryById(entryId)).willReturn(entry);
+        given(coiCheckService.check(adminUserId, entryId)).willReturn(CoiResult.clear());
+        givenActiveMedalRoundForCategory();
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(medalAwardRepository.findByEntryId(entryId)).willReturn(Optional.empty());
+        given(medalAwardRepository.save(any(MedalAward.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var award = service.recordMedal(entryId, null, adminUserId);
+
+        assertThat(award.getMedal()).isNull();
+        then(medalAwardRepository).should(never()).findByFinalCategoryId(any());
+    }
+
+    @Test
     void shouldRejectRecordMedalWhenCoiHardBlock() {
         var entry = mockEntry();
         given(entryService.findEntryById(entryId)).willReturn(entry);

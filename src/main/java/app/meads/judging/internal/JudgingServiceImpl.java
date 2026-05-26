@@ -1169,6 +1169,25 @@ public class JudgingServiceImpl implements JudgingService {
         }
     }
 
+    /**
+     * Enforces "at most one G / S / B per category" on manual medal assignment.
+     * Auto-populate respects this naturally (it walks the medal list once and
+     * stops on ties), but {@code recordMedal} and {@code updateMedal} were
+     * happily letting admins stack three Golds in a row. {@code medal == null}
+     * (explicit withhold) is exempt — withholds aren't medals.
+     */
+    private void requireUniqueMedalTypeInCategory(UUID finalCategoryId, UUID entryId, Medal medal) {
+        if (medal == null) {
+            return;
+        }
+        boolean duplicate = medalAwardRepository.findByFinalCategoryId(finalCategoryId).stream()
+                .filter(a -> !a.getEntryId().equals(entryId))
+                .anyMatch(a -> a.getMedal() == medal);
+        if (duplicate) {
+            throw new BusinessRuleException("error.medal.duplicate-type", medal.name());
+        }
+    }
+
     /** Internal call site for in-class use (bypasses Spring proxy / @Transactional). */
     private Optional<JudgingRoundStatus> effectiveMedalRoundStatusInternal(UUID divisionCategoryId) {
         return judgingRoundRepository
@@ -1193,6 +1212,7 @@ public class JudgingServiceImpl implements JudgingService {
         }
         requireMedalRoundActive(finalCategoryId);
         requireAuthorizedForMedalAction(entry.getDivisionId(), finalCategoryId, judgeUserId);
+        requireUniqueMedalTypeInCategory(finalCategoryId, entryId, medal);
         var existing = medalAwardRepository.findByEntryId(entryId);
         MedalAward award;
         if (existing.isPresent()) {
@@ -1220,6 +1240,7 @@ public class JudgingServiceImpl implements JudgingService {
         }
         requireMedalRoundActive(award.getFinalCategoryId());
         requireAuthorizedForMedalAction(award.getDivisionId(), award.getFinalCategoryId(), judgeUserId);
+        requireUniqueMedalTypeInCategory(award.getFinalCategoryId(), award.getEntryId(), newValue);
         award.updateMedal(newValue, judgeUserId);
         award.confirm(judgeUserId);
         medalAwardRepository.save(award);
