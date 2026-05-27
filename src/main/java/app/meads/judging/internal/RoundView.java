@@ -153,6 +153,13 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
 
         isAdmin = isSystemAdmin || isDivisionAdmin;
 
+        // Judges only see the ACTIVE round they're working. Admins retain
+        // full access to rounds in any state.
+        if (!isAdmin && table.getStatus() != JudgingRoundStatus.ACTIVE) {
+            event.forwardTo("");
+            return;
+        }
+
         loadScoresheetData();
         removeAll();
         add(createBreadcrumb());

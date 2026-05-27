@@ -11,24 +11,18 @@ import app.meads.competition.ScoringSystem;
 import app.meads.competition.internal.CompetitionRepository;
 import app.meads.competition.internal.DivisionCategoryRepository;
 import app.meads.competition.internal.DivisionRepository;
-import app.meads.entry.Carbonation;
-import app.meads.entry.Entry;
-import app.meads.entry.Sweetness;
-import app.meads.entry.internal.EntryRepository;
 import app.meads.identity.Role;
 import app.meads.identity.User;
 import app.meads.identity.UserStatus;
 import app.meads.identity.internal.UserRepository;
-import app.meads.judging.internal.CategoryJudgingConfigRepository;
-import app.meads.judging.internal.ScoresheetRepository;
+import app.meads.judging.internal.MedalRoundView;
+import app.meads.judging.internal.MyJudgingView;
+import app.meads.judging.internal.RoundView;
 import com.github.mvysny.fakeservlet.FakeRequest;
 import com.github.mvysny.kaributesting.v10.MockVaadin;
 import com.github.mvysny.kaributesting.v10.Routes;
 import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
 import com.vaadin.flow.component.UI;
-import com.vaadin.flow.component.html.Anchor;
-import com.vaadin.flow.component.html.H2;
-import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.server.VaadinServletRequest;
 import org.junit.jupiter.api.AfterEach;
@@ -46,7 +40,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.annotation.DirtiesContext;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -56,6 +49,11 @@ import static com.github.mvysny.kaributesting.v10.LocatorJ._find;
 import static com.github.mvysny.kaributesting.v10.LocatorJ._get;
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * MyJudgingView is a redirect-or-stub. If the judge has an ACTIVE round it
+ * forwards there directly; otherwise it shows a bare "no active round"
+ * message.
+ */
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
 @DirtiesContext
@@ -69,10 +67,8 @@ class MyJudgingViewTest {
     @Autowired CompetitionRepository competitionRepository;
     @Autowired DivisionRepository divisionRepository;
     @Autowired DivisionCategoryRepository divisionCategoryRepository;
-    @Autowired EntryRepository entryRepository;
-    @Autowired CategoryJudgingConfigRepository categoryJudgingConfigRepository;
+    @Autowired app.meads.judging.internal.CategoryJudgingConfigRepository categoryJudgingConfigRepository;
     @Autowired app.meads.judging.internal.JudgingRoundRepository judgingRoundRepository;
-    @Autowired ScoresheetRepository scoresheetRepository;
     @Autowired CompetitionService competitionService;
     @Autowired JudgingService judgingService;
 
@@ -140,166 +136,150 @@ class MyJudgingViewTest {
         SecurityContextHolder.clearContext();
     }
 
+    private record Fixture(Competition competition, Division division,
+                            DivisionCategory category, UUID adminId, UUID judgeId,
+                            String judgeEmail) {}
+
+    /**
+     * Each test that needs a judge with assignments creates a UNIQUE judge.
+     * The class-level @DirtiesContext only resets at end-of-class, so the
+     * shared JUDGE_EMAIL accumulates ACTIVE rounds across tests and would
+     * mess up assertions like "this judge has exactly one ACTIVE round".
+     * Per-test unique judges sidestep the issue cleanly.
+     */
+    private Fixture createJudgingFixture(String catCode) {
+        var judgeEmail = "judge-" + UUID.randomUUID() + "@example.com";
+        var judge = userRepository.save(new User(
+                judgeEmail, "Test Judge", UserStatus.ACTIVE, Role.USER));
+        var admin = userRepository.save(new User(
+                "my-judging-admin-" + UUID.randomUUID() + "@example.com",
+                "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN));
+        var suffix = UUID.randomUUID().toString().substring(0, 8);
+        var competition = competitionRepository.save(new Competition(
+                "MyJudging Competition", "myjudging-comp-" + suffix,
+                LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30), "Test"));
+        var division = divisionRepository.save(new Division(
+                competition.getId(), "Profissional", "myjudging-div-" + suffix,
+                ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC"));
+        division.advanceStatus();
+        division.advanceStatus();
+        division.advanceStatus(); // → JUDGING
+        divisionRepository.save(division);
+        competitionService.addParticipantByEmail(competition.getId(),
+                judgeEmail, CompetitionRole.JUDGE, admin.getId());
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, catCode, "Dry Mead", "Desc",
+                null, 1, CategoryScope.JUDGING));
+        return new Fixture(competition, division, category, admin.getId(),
+                judge.getId(), judgeEmail);
+    }
+
+    private void authAs(String email) {
+        var authorities = java.util.List.of(new SimpleGrantedAuthority("ROLE_USER"));
+        var userDetails = org.springframework.security.core.userdetails.User.builder()
+                .username(email).password("password").authorities(authorities).build();
+        var auth = new UsernamePasswordAuthenticationToken(userDetails, null, authorities);
+        SecurityContextHolder.getContext().setAuthentication(auth);
+        propagateSecurityContext(auth);
+    }
+
     @Test
     @WithMockUser(username = FRESH_USER_EMAIL, roles = "USER")
-    void shouldRenderHeaderAndEmptyStateForUserWithNoAssignments() {
+    void shouldShowEmptyStateWhenUserHasNoActiveRound() {
         UI.getCurrent().navigate("my-judging");
 
-        var heading = _get(H2.class);
-        assertThat(heading.getText()).contains("My Judging");
-
-        var anchors = _find(Anchor.class);
-        var profileAnchor = anchors.stream()
-                .filter(a -> "profile".equals(a.getHref()))
-                .findFirst();
-        var competitionsAnchor = anchors.stream()
-                .filter(a -> "competitions".equals(a.getHref()) || "my-competitions".equals(a.getHref()))
-                .findFirst();
-        assertThat(profileAnchor).isPresent();
-        assertThat(competitionsAnchor).isPresent();
+        assertThat(_find(MyJudgingView.class)).as("MyJudgingView rendered").isNotEmpty();
+        var empty = _get(Span.class, spec -> spec.withId("my-judging-empty"));
+        assertThat(empty.getText()).contains("No active round");
     }
 
     @Test
-    @WithMockUser(username = JUDGE_EMAIL, roles = "USER")
-    void shouldRenderTablesGroupedByCompetitionWhenJudgeIsAssigned() {
-        var judge = userRepository.findByEmail(JUDGE_EMAIL).orElseThrow();
+    void shouldShowEmptyStateWhenJudgeOnlyHasPendingAssignments() {
+        var fx = createJudgingFixture("M1A");
+        var judging = judgingService.ensureJudgingExists(fx.division().getId());
+        var round = judgingService.createRound(judging.getId(), "Table 1",
+                fx.category().getId(), null, fx.adminId());
+        judgingService.assignJudge(round.getId(), fx.judgeId(), fx.adminId());
 
-        var admin = userRepository.save(new User(
-                "my-judging-admin-" + UUID.randomUUID() + "@example.com",
-                "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN));
-
-        var suffix = UUID.randomUUID().toString().substring(0, 8);
-        var competition = competitionRepository.save(new Competition(
-                "MyJudging Competition", "myjudging-comp-" + suffix,
-                LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30), "Test"));
-        var division = divisionRepository.save(new Division(
-                competition.getId(), "Profissional", "myjudging-div-" + suffix,
-                ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC"));
-        division.advanceStatus();
-        division.advanceStatus();
-        division.advanceStatus();
-        divisionRepository.save(division);
-
-        // Make the judge a participant with JUDGE role so the assignment is consistent.
-        competitionService.addParticipantByEmail(competition.getId(),
-                JUDGE_EMAIL, CompetitionRole.JUDGE, admin.getId());
-
-        var category = divisionCategoryRepository.save(new DivisionCategory(
-                division.getId(), null, "M1A", "Dry Mead", "Desc",
-                null, 1, CategoryScope.JUDGING));
-        var judging = judgingService.ensureJudgingExists(division.getId());
-        var table = judgingService.createRound(judging.getId(), "Table 1",
-                category.getId(), null, admin.getId());
-        judgingService.assignJudge(table.getId(), judge.getId(), admin.getId());
-
+        authAs(fx.judgeEmail());
         UI.getCurrent().navigate("my-judging");
 
-        var h3Texts = _find(H3.class).stream().map(H3::getText).toList();
-        var spanTexts = _find(Span.class).stream().map(Span::getText).toList();
-        assertThat(h3Texts.stream().anyMatch(t -> t != null && t.contains("MyJudging Competition")))
-                .as("competition name in H3").isTrue();
-        assertThat(spanTexts.stream().anyMatch(t -> t != null && t.contains("Profissional")))
-                .as("division name in Span").isTrue();
-        assertThat(spanTexts.stream().anyMatch(t -> t != null && t.contains("Table 1")))
-                .as("table name in Span").isTrue();
+        assertThat(_find(MyJudgingView.class)).as("MyJudgingView rendered").isNotEmpty();
+        var empty = _get(Span.class, spec -> spec.withId("my-judging-empty"));
+        assertThat(empty.getText()).contains("No active round");
     }
 
     @Test
-    @WithMockUser(username = JUDGE_EMAIL, roles = "USER")
-    void shouldRenderResumeNextDraftAnchorWhenDraftScoresheetExists() {
-        var judge = userRepository.findByEmail(JUDGE_EMAIL).orElseThrow();
-        var admin = userRepository.save(new User(
-                "my-judging-admin-" + UUID.randomUUID() + "@example.com",
-                "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN));
-
-        var suffix = UUID.randomUUID().toString().substring(0, 8);
-        var competition = competitionRepository.save(new Competition(
-                "MyJudging Competition", "myjudging-comp-" + suffix,
-                LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30), "Test"));
-        var division = divisionRepository.save(new Division(
-                competition.getId(), "Profissional", "myjudging-div-" + suffix,
-                ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC"));
-        division.advanceStatus();
-        division.advanceStatus();
-        division.advanceStatus();
-        divisionRepository.save(division);
-
-        competitionService.addParticipantByEmail(competition.getId(),
-                JUDGE_EMAIL, CompetitionRole.JUDGE, admin.getId());
-
-        var category = divisionCategoryRepository.save(new DivisionCategory(
-                division.getId(), null, "M1A", "Dry Mead", "Desc",
-                null, 1, CategoryScope.JUDGING));
-        var judging = judgingService.ensureJudgingExists(division.getId());
-        var table = judgingService.createRound(judging.getId(), "Table 1",
-                category.getId(), null, admin.getId());
-        judgingService.assignJudge(table.getId(), judge.getId(), admin.getId());
-
+    void shouldForwardToRoundViewWhenJudgeHasActiveScoringRound() {
+        var fx = createJudgingFixture("M1A");
+        var judging = judgingService.ensureJudgingExists(fx.division().getId());
+        var round = judgingService.createRound(judging.getId(), "Table 1",
+                fx.category().getId(), null, fx.adminId());
+        var table = judgingService.createPhysicalTable(
+                fx.division().getId(), "Table 1", fx.adminId());
+        judgingService.assignRoundToPhysicalTable(round.getId(), table.getId(), fx.adminId());
+        judgingService.assignJudge(round.getId(), fx.judgeId(), fx.adminId());
+        judgingService.assignJudge(round.getId(), userRepository.save(new User(
+                "co-judge-" + UUID.randomUUID() + "@example.com",
+                "Co-Judge", UserStatus.ACTIVE, Role.USER)).getId(), fx.adminId());
+        // Need an entry assigned for the round to reach READY.
         var entrant = userRepository.save(new User(
-                "entrant-myjudging-" + UUID.randomUUID() + "@example.com",
+                "entrant-" + UUID.randomUUID() + "@example.com",
                 "Entrant", UserStatus.ACTIVE, Role.USER));
-        var entry = new Entry(division.getId(), entrant.getId(), 1, "AMA-1",
-                "Test", category.getId(), Sweetness.DRY, BigDecimal.valueOf(11.0),
-                Carbonation.STILL, "Wildflower", null, false, null, null);
-        entry = entryRepository.save(entry);
-        var sheet = scoresheetRepository.save(new app.meads.judging.Scoresheet(table.getId(), entry.getId()));
+        var entry = new app.meads.entry.Entry(fx.division().getId(), entrant.getId(),
+                1, "AMA-1", "Mead", fx.category().getId(),
+                app.meads.entry.Sweetness.DRY, java.math.BigDecimal.valueOf(11.0),
+                app.meads.entry.Carbonation.STILL, "Wildflower",
+                null, false, null, null);
+        var er = ctx.getBean(app.meads.entry.internal.EntryRepository.class).save(entry);
+        judgingService.assignEntryToRound(round.getId(), er.getId(), fx.adminId());
+        judgingService.startRound(round.getId(), fx.adminId());
 
+        authAs(fx.judgeEmail());
         UI.getCurrent().navigate("my-judging");
 
-        var anchors = _find(Anchor.class);
-        var resumeAnchor = anchors.stream()
-                .filter(a -> a.getHref() != null && a.getHref().endsWith("/scoresheets/" + sheet.getId()))
-                .findFirst();
-        assertThat(resumeAnchor).as("resume next draft anchor").isPresent();
+        // After forward, RoundView is the active view (not MyJudgingView).
+        assertThat(_find(RoundView.class)).as("forwarded to RoundView").isNotEmpty();
+        assertThat(_find(MyJudgingView.class)).as("MyJudgingView NOT rendered").isEmpty();
     }
 
     @Test
-    @WithMockUser(username = JUDGE_EMAIL, roles = "USER")
-    void shouldRenderMedalRoundsSectionWhenAnActiveConfigCoversTheJudgesCategory() {
-        var judge = userRepository.findByEmail(JUDGE_EMAIL).orElseThrow();
-        var admin = userRepository.save(new User(
-                "my-judging-admin-" + UUID.randomUUID() + "@example.com",
-                "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN));
-
-        var suffix = UUID.randomUUID().toString().substring(0, 8);
-        var competition = competitionRepository.save(new Competition(
-                "MR Competition", "mr-comp-" + suffix,
-                LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30), "Test"));
-        var division = divisionRepository.save(new Division(
-                competition.getId(), "Profissional", "mr-div-" + suffix,
-                ScoringSystem.MJP, LocalDateTime.of(2026, 12, 31, 23, 59), "UTC"));
-        division.advanceStatus();
-        division.advanceStatus();
-        division.advanceStatus();
-        divisionRepository.save(division);
-
-        competitionService.addParticipantByEmail(competition.getId(),
-                JUDGE_EMAIL, CompetitionRole.JUDGE, admin.getId());
-
-        var category = divisionCategoryRepository.save(new DivisionCategory(
-                division.getId(), null, "M2B", "Cyser", "Desc",
-                null, 1, CategoryScope.JUDGING));
-        var judging = judgingService.ensureJudgingExists(division.getId());
-        var table = judgingService.createRound(judging.getId(), "Table 9",
-                category.getId(), null, admin.getId());
-        judgingService.assignJudge(table.getId(), judge.getId(), admin.getId());
-
-        // Set up an ACTIVE medal JudgingRound for this category.
-        var config = new app.meads.judging.CategoryJudgingConfig(category.getId());
+    void shouldForwardToMedalRoundViewWhenJudgeHasActiveMedalRound() {
+        var fx = createJudgingFixture("M3B");
+        var judging = judgingService.ensureJudgingExists(fx.division().getId());
+        var config = new CategoryJudgingConfig(fx.category().getId(), MedalRoundMode.COMPARATIVE);
         categoryJudgingConfigRepository.save(config);
-        var medalRound = new JudgingRound(judging.getId(), "Medal", category.getId(), null);
+        var medalRound = new JudgingRound(judging.getId(), "Medal",
+                fx.category().getId(), null);
         medalRound.convertToMedalRound(MedalRoundMode.COMPARATIVE);
+        medalRound.assignJudge(fx.judgeId());
         medalRound.markReady();
         medalRound.start();
         judgingRoundRepository.save(medalRound);
 
+        authAs(fx.judgeEmail());
         UI.getCurrent().navigate("my-judging");
 
-        var anchors = _find(Anchor.class);
-        var medalRoundLink = anchors.stream()
-                .filter(a -> a.getHref() != null
-                        && a.getHref().endsWith("/medal-rounds/" + category.getId()))
-                .findFirst();
-        assertThat(medalRoundLink).as("medal round anchor").isPresent();
+        assertThat(_find(MedalRoundView.class)).as("forwarded to MedalRoundView").isNotEmpty();
+        assertThat(_find(MyJudgingView.class)).as("MyJudgingView NOT rendered").isEmpty();
+    }
+
+    @Test
+    void shouldShowEmptyStateWhenJudgeOnlyHasCompletedRound() {
+        var fx = createJudgingFixture("M2A");
+        var judging = judgingService.ensureJudgingExists(fx.division().getId());
+        var round = new JudgingRound(judging.getId(), "Table X",
+                fx.category().getId(), null);
+        round.assignJudge(fx.judgeId());
+        round.start();
+        round.markComplete();
+        judgingRoundRepository.save(round);
+
+        authAs(fx.judgeEmail());
+        UI.getCurrent().navigate("my-judging");
+
+        assertThat(_find(MyJudgingView.class)).isNotEmpty();
+        var empty = _get(Span.class, spec -> spec.withId("my-judging-empty"));
+        assertThat(empty.getText()).contains("No active round");
     }
 }

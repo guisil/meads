@@ -75,6 +75,7 @@ class ScoresheetViewTest {
     @Autowired DivisionCategoryRepository divisionCategoryRepository;
     @Autowired EntryRepository entryRepository;
     @Autowired ScoresheetRepository scoresheetRepository;
+    @Autowired app.meads.judging.internal.JudgingRoundRepository judgingRoundRepository;
     @Autowired CompetitionService competitionService;
     @Autowired JudgingService judgingService;
 
@@ -176,6 +177,12 @@ class ScoresheetViewTest {
         var table = judgingService.createRound(judging.getId(), "Table A",
                 category.getId(), null, admin.getId());
         judgingService.assignJudge(table.getId(), judge.getId(), admin.getId());
+        // Judges can only open scoresheets on an ACTIVE round. Bypass the
+        // service's start preconditions via direct entity moves — these tests
+        // are about scoresheet behavior, not round-start gates.
+        table.markReady();
+        table.start();
+        judgingRoundRepository.save(table);
 
         var entry = new Entry(division.getId(), entrant.getId(), 1, entryCode,
                 meadName, category.getId(), Sweetness.DRY,
@@ -243,6 +250,10 @@ class ScoresheetViewTest {
         judgingService.updateMedalRoundMode(medalRound.getId(),
                 MedalRoundMode.SCORE_BASED, admin.getId());
         judgingService.assignJudge(medalRound.getId(), judge.getId(), admin.getId());
+        // Judge access requires ACTIVE round status. Bypass service preconds.
+        medalRound.markReady();
+        medalRound.start();
+        judgingRoundRepository.save(medalRound);
         var entrant = userRepository.save(new User(
                 "entrant-mr-anchor-" + UUID.randomUUID() + "@example.com",
                 "Entrant", UserStatus.ACTIVE, Role.USER));

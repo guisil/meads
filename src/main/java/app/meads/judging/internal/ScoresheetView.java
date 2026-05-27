@@ -12,6 +12,7 @@ import app.meads.identity.UserService;
 import app.meads.judging.JudgeProfileService;
 import app.meads.judging.JudgingService;
 import app.meads.judging.JudgingRound;
+import app.meads.judging.JudgingRoundStatus;
 import app.meads.judging.ScoreField;
 import app.meads.judging.Scoresheet;
 import app.meads.judging.ScoresheetService;
@@ -165,6 +166,13 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
             return;
         }
         isAdminView = isSystemAdmin || isDivisionAdmin;
+
+        // Judges can only open a scoresheet while its owning round is
+        // ACTIVE. Admins retain full access at any status.
+        if (!isAdminView && table.getStatus() != JudgingRoundStatus.ACTIVE) {
+            event.forwardTo("");
+            return;
+        }
 
         entry = entryService.findEntryById(scoresheet.getEntryId());
 

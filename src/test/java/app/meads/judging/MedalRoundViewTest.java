@@ -376,9 +376,9 @@ class MedalRoundViewTest {
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldGateWithholdBehindConfirmDialog() {
-        // Cycle B: Withhold is a sensitive action (records a deliberate
-        // no-medal decision in the audit log) — the icon-button click opens
-        // a ConfirmDialog before invoking applyMedal(null). The service must
+        // Withhold is a sensitive action (records a deliberate no-medal
+        // decision in the audit log) — the icon-button click opens a
+        // ConfirmDialog before invoking applyMedal(null). The service must
         // not be called until the admin confirms.
         var category = activeMedalRoundCategory();
         var table = tableFor(category);
@@ -403,9 +403,9 @@ class MedalRoundViewTest {
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldGateClearBehindConfirmDialog() {
-        // Cycle B: Clear deletes the audit row entirely (vs. Withhold which
-        // keeps the row with medal=null). Confirm dialog warns and suggests
-        // Withhold as the safer alternative for "no medal".
+        // Clear deletes the audit row entirely (vs. Withhold which keeps the
+        // row with medal=null). Confirm dialog warns and suggests Withhold
+        // as the safer alternative for "no medal".
         var category = activeMedalRoundCategory();
         var table = tableFor(category);
         advancedEntry(category, table, "AMA-1");
@@ -674,8 +674,8 @@ class MedalRoundViewTest {
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldRenderScoreBasedAssignDialogAsReadOnlyPreviewAndSyncOnSave() {
-        // Force-all invariant (Cycle A2): SCORE_BASED dialog is informational —
-        // every RECEIVED entry in the category MUST be assigned, so the dialog
+        // Force-all invariant: SCORE_BASED dialog is informational — every
+        // RECEIVED entry in the category MUST be assigned, so the dialog
         // cannot offer a subset. Selection mode is NONE; Save click triggers
         // syncScoreBasedMedalRoundEntries which assigns any missing entries.
         var category = pendingScoreBasedMedalRoundCategory();

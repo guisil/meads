@@ -748,10 +748,10 @@ class JudgingServiceRoundTest {
 
     @Test
     void shouldAllowManualUnassignOfWithdrawnEntryFromScoreBasedMedalRound() {
-        // A3.1 refinement — escape hatch for zombie entries. If the entry's
-        // status has moved out of RECEIVED (admin withdrew it, or reverted
-        // status), the force-all set no longer applies and the admin can
-        // clean it off the round.
+        // Escape hatch for zombie entries. If the entry's status has moved
+        // out of RECEIVED (admin withdrew it, or reverted status), the
+        // force-all set no longer applies and the admin can clean it off
+        // the round.
         var judging = new Judging(divisionId);
         var medalRound = new JudgingRound(judging.getId(), "Medal — M1A",
                 divisionCategoryId, null);
@@ -776,9 +776,49 @@ class JudgingServiceRoundTest {
     }
 
     @Test
+    void shouldFindActiveRoundForJudgeWhenExactlyOneIsActive() {
+        // Judges have at most one ACTIVE round at any time (enforced by
+        // assignJudge's active-conflict check). This lookup is the default-
+        // landing helper for MyJudgingView + RootView.
+        var judging = new Judging(divisionId);
+        var activeRound = new JudgingRound(judging.getId(), "M1A Panel A",
+                divisionCategoryId, null);
+        activeRound.assignJudge(judgeUserId);
+        activeRound.start();
+        var pendingRound = new JudgingRound(judging.getId(), "M1B Panel",
+                divisionCategoryId, null);
+        pendingRound.assignJudge(judgeUserId);
+        given(judgingRoundRepository.findByJudgeUserId(judgeUserId))
+                .willReturn(List.of(activeRound, pendingRound));
+
+        var result = service.findActiveRoundForJudge(judgeUserId);
+
+        assertThat(result).contains(activeRound);
+    }
+
+    @Test
+    void shouldReturnEmptyWhenJudgeHasNoActiveRound() {
+        var judging = new Judging(divisionId);
+        var pendingRound = new JudgingRound(judging.getId(), "M1A Panel",
+                divisionCategoryId, null);
+        pendingRound.assignJudge(judgeUserId);
+        var completeRound = new JudgingRound(judging.getId(), "M1B Panel",
+                divisionCategoryId, null);
+        completeRound.assignJudge(judgeUserId);
+        completeRound.start();
+        completeRound.markComplete();
+        given(judgingRoundRepository.findByJudgeUserId(judgeUserId))
+                .willReturn(List.of(pendingRound, completeRound));
+
+        var result = service.findActiveRoundForJudge(judgeUserId);
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
     void shouldRemoveZombieEntriesFromScoreBasedMedalRoundDuringSync() {
-        // A3.1 — sync mirrors current eligibility: adds RECEIVED entries not
-        // on the round AND removes non-RECEIVED entries that are still on it
+        // Sync mirrors current eligibility: adds RECEIVED entries not on the
+        // round AND removes non-RECEIVED entries that are still on it
         // (withdrawn or reverted entries left as zombies).
         var judging = new Judging(divisionId);
         var medalRound = new JudgingRound(judging.getId(), "Medal — M1A",

@@ -1923,27 +1923,39 @@ The Results tab is a read-only summary of every round that has reached COMPLETE 
 - [ ] After all medal rounds COMPLETE, click "Start BOS" → confirm.
 - [ ] **Expected:** Notification "BOS started"; phase badge updates to `Phase: BOS`; "Finalize BOS" and "Reset BOS" appear.
 
-### 12.9 MyJudgingView (judge hub)
+### 12.9 MyJudgingView (Cycle C: redirect-or-stub)
+
+**Design (Cycle C):** A judge has at most one ACTIVE round at any time (enforced by `JudgingService.assignJudge`'s active-conflict check). MyJudgingView reflects that:
+- If the judge has an ACTIVE round → forward directly to RoundView (for SCORING) or MedalRoundView (for MEDAL).
+- If none → show a bare "No active round right now" message.
+
+There is no hub view, no "Resume next draft" shortcut, and no list of upcoming / past rounds. Judges land where they need to work, or are told there's nothing live.
+
+Additionally, **RootView** now redirects judges (any user with a `JudgeAssignment`) to `/my-judging` after login, which then applies the redirect logic above. This makes the "log in → see your live work" UX automatic.
+
+Access tightening: judges can only open **ACTIVE** rounds. RoundView, MedalRoundView, and ScoresheetView all gate non-admin access by `round.status == ACTIVE`; PENDING/READY/COMPLETE rounds forward unauthorized judges to `""` (root → re-redirects).
 
 *Log out as compadmin, log in as `judge@example.com` (use the magic link from Mailpit; access code also works).*
 
-- [ ] **Expected (sidebar):** A new "My Judging" entry (gavel icon) appears in the drawer. Only visible because the judge has at least one `JudgeAssignment`.
-- [ ] Click "My Judging".
-- [ ] **Expected:** URL `/my-judging`. H2 header "My Judging".
-- [ ] **Expected:** Each competition the judge has tables in is shown as an `H3` with the competition name; under it, one block per assigned table showing the division name (Span), table name (Span), and an "Open table →" anchor.
-- [ ] If at least one scoresheet still needs work (BLANK or DRAFT) across assigned rounds: **Expected** a prominent "▶ Resume next draft scoresheet" anchor near the top, pointing at the oldest unfinished scoresheet (`/competitions/.../scoresheets/<id>`). The anchor now picks up BLANK sheets (just created, untouched) too — anything not SUBMITTED counts.
-- [ ] If a Medal Round is ACTIVE for a category the judge has a table for: **Expected** a "Medal Rounds" section listing each active config with an "Open medal round →" anchor.
+- [ ] After login, you should land **directly** on the ACTIVE round you're assigned to (RoundView for SCORING, MedalRoundView for MEDAL). The sidebar "My Judging" entry is visible (gavel icon).
+- [ ] Manually type `/my-judging` in the URL bar → **Expected:** same forward — you end up at the same active-round view.
+- [ ] Manually type a different round URL the judge ISN'T assigned to (e.g. a sibling scoring round) → **Expected:** forwarded to root, ends back at the active round or stub.
+- [ ] Manually type the URL of a PENDING/READY/COMPLETE round the judge IS assigned to (if any) → **Expected:** same forward (judges only see ACTIVE rounds).
 
-#### 12.9.1 Empty-state for a non-judge user
+#### 12.9.1 No-active-round stub
 
-- [ ] Log out, log in as `entrant@example.com` (regular entrant).
+- [ ] If the judge has no ACTIVE round (e.g. all their rounds are still PENDING/READY, or all are COMPLETE), the `/my-judging` page shows H2 "My Judging" plus a Span with id `my-judging-empty` reading *"No active round right now. The admin will let you know when judging starts."*
+- [ ] To test deliberately: log in as a judge whose round is still PENDING (e.g. before admin clicks Start). Sidebar still shows "My Judging"; click it → the stub renders.
+
+#### 12.9.2 Non-judge user — no sidebar entry
+
+- [ ] Log out, log in as `entrant@example.com` (regular entrant with no judge assignment).
 - [ ] **Expected (sidebar):** "My Judging" entry is *not* present (gated by `JudgeAssignmentChecker.hasAnyJudgeAssignment`).
-- [ ] Navigate directly to `/my-judging` (manually type the URL).
-- [ ] **Expected:** H2 "My Judging" renders, plus an empty-state message ("You have no judging assignments yet…") and two CTA anchors: "Edit your judge profile →" (to `/profile`) and "Browse competitions →" (to `/competitions` or `/my-competitions` depending on role).
+- [ ] Manually navigate to `/my-judging` → **Expected:** MyJudgingView renders with the empty-state stub (no active round). The view itself is `@PermitAll` so it doesn't 403; the sidebar gating is the discoverability cue.
 
 ### 12.10 TableView (per-table)
 
-*Back as `judge@example.com`, on `/my-judging`, click "Open table →" for the started M1A table.*
+*Back as `judge@example.com`. Per Cycle C, `/my-judging` auto-forwards to the started M1A table — you should already be on RoundView. If not, login again or navigate to `/my-judging`.*
 
 - [ ] **Expected:** URL is `competitions/chip-2026/divisions/amadora/tables/<tableId>`.
 - [ ] **Expected:** Breadcrumb begins with "My Judging" (judge path) or "My Competitions / CHIP 2026 / Amadora / Judging Admin" (admin path).

@@ -64,6 +64,15 @@ public interface JudgingService {
 
     List<JudgingRound> findRoundsByJudgeUserId(@NotNull UUID judgeUserId);
 
+    /**
+     * The single ACTIVE round (SCORING or MEDAL) the judge is assigned to, or
+     * empty if they have no live work right now. The service guarantees
+     * at-most-one ACTIVE assignment per judge via {@link #assignJudge}'s
+     * active-conflict check; if multiple show up (shouldn't), the first one
+     * is returned and the situation logged.
+     */
+    java.util.Optional<JudgingRound> findActiveRoundForJudge(@NotNull UUID judgeUserId);
+
     boolean hasAnyJudgeAssignment(@NotNull UUID judgeUserId);
 
     boolean isJudgeAssignedToRound(@NotNull UUID roundId, @NotNull UUID judgeUserId);

@@ -1206,9 +1206,9 @@ class EntryServiceTest {
 
     @Test
     void shouldPublishEntryReceivedEventOnWithdrawWhenEntryWasReceived() {
-        // A3.1 zombie-cleanup trigger: withdrawing a RECEIVED entry needs to
-        // re-fire EntryReceivedEvent so the medal-round listener can drop the
-        // zombie from any SCORE_BASED round in the entry's category.
+        // Zombie-cleanup trigger: withdrawing a RECEIVED entry re-fires
+        // EntryReceivedEvent so the medal-round listener drops the zombie
+        // from any SCORE_BASED round in the entry's category.
         var divisionId = UUID.randomUUID();
         var adminUser = createSystemAdmin();
         var entry = new Entry(divisionId, UUID.randomUUID(), 1, "ABC123",

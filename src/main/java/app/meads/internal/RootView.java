@@ -1,6 +1,7 @@
 package app.meads.internal;
 
 import app.meads.CompetitionAdminChecker;
+import app.meads.JudgeAssignmentChecker;
 import app.meads.MainLayout;
 import app.meads.identity.UserService;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
@@ -16,13 +17,16 @@ public class RootView extends VerticalLayout implements BeforeEnterObserver {
 
     private final transient AuthenticationContext authenticationContext;
     private final CompetitionAdminChecker competitionAdminChecker;
+    private final JudgeAssignmentChecker judgeAssignmentChecker;
     private final UserService userService;
 
     public RootView(AuthenticationContext authenticationContext,
                      CompetitionAdminChecker competitionAdminChecker,
+                     JudgeAssignmentChecker judgeAssignmentChecker,
                      UserService userService) {
         this.authenticationContext = authenticationContext;
         this.competitionAdminChecker = competitionAdminChecker;
+        this.judgeAssignmentChecker = judgeAssignmentChecker;
         this.userService = userService;
     }
 
@@ -45,6 +49,15 @@ public class RootView extends VerticalLayout implements BeforeEnterObserver {
                 event.forwardTo("my-competitions");
                 return;
             }
+        }
+
+        // Judges with any assignment default to /my-judging — which itself
+        // forwards to the ACTIVE round (or shows "no active round" when
+        // nothing is live). Keeps the "log in → see what you need to do"
+        // UX without RootView knowing about round state.
+        if (judgeAssignmentChecker.hasAnyJudgeAssignment(email)) {
+            event.forwardTo("my-judging");
+            return;
         }
 
         event.forwardTo("my-entries");

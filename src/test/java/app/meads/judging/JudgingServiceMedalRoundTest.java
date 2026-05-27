@@ -1051,11 +1051,10 @@ class JudgingServiceMedalRoundTest {
 
     @Test
     void shouldRejectManualUnassignOfReceivedEntryFromActiveScoreBasedMedalRound() {
-        // Force-all invariant (A3 + A3.1): RECEIVED entries can't be removed
-        // from a SCORE_BASED medal round manually — the reject fires before
-        // the SUBMITTED-sheet branch, so scoresheetService is never consulted.
-        // Non-RECEIVED entries are an admin escape hatch (see A3.1 unit
-        // tests in JudgingServiceRoundTest).
+        // Force-all invariant: RECEIVED entries can't be removed from a
+        // SCORE_BASED medal round manually — the reject fires before the
+        // SUBMITTED-sheet branch, so scoresheetService is never consulted.
+        // Non-RECEIVED entries are an admin escape hatch.
         var physicalTableId = UUID.randomUUID();
         var medalRound = new JudgingRound(judging.getId(), physicalTableId,
                 "Medal — M1A", divisionCategoryId, null);

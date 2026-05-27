@@ -117,10 +117,10 @@ class MedalRoundAutoSyncListenerTest {
 
     @Test
     void shouldSyncEvenWhenEntryNoLongerReceivedSoZombiesGetCleaned() {
-        // A3.1 — sync runs regardless of the entry's current status; the
-        // method itself decides what to add (RECEIVED) vs remove (zombies).
-        // This event also fires on withdraw/revert so the listener path is
-        // the cleanup trigger.
+        // Sync runs regardless of the entry's current status; the method
+        // itself decides what to add (RECEIVED) vs remove (zombies). This
+        // event also fires on withdraw/revert so the listener path is the
+        // cleanup trigger.
         var entryId = UUID.randomUUID();
         var divisionId = UUID.randomUUID();
         var categoryId = UUID.randomUUID();

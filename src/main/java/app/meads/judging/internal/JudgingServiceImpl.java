@@ -630,6 +630,20 @@ public class JudgingServiceImpl implements JudgingService {
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<JudgingRound> findActiveRoundForJudge(UUID judgeUserId) {
+        var active = judgingRoundRepository.findByJudgeUserId(judgeUserId).stream()
+                .filter(r -> r.getStatus() == JudgingRoundStatus.ACTIVE)
+                .toList();
+        if (active.size() > 1) {
+            log.warn("Judge {} has {} ACTIVE rounds (expected at most 1): {}",
+                    judgeUserId, active.size(),
+                    active.stream().map(JudgingRound::getName).toList());
+        }
+        return active.stream().findFirst();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public boolean hasAnyJudgeAssignment(UUID judgeUserId) {
         return judgingRoundRepository.existsAssignmentByJudgeUserId(judgeUserId);
     }

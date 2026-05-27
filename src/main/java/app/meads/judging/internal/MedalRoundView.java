@@ -159,6 +159,18 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         }
         isAdmin = isSystemAdmin || isDivisionAdmin;
 
+        // Judges only see the ACTIVE medal round they're working. Admins
+        // retain full access at any status.
+        if (!isAdmin) {
+            var medalRoundForGate = judgingService.findMedalRoundByCategoryId(divisionCategoryId)
+                    .orElse(null);
+            if (medalRoundForGate == null
+                    || medalRoundForGate.getStatus() != JudgingRoundStatus.ACTIVE) {
+                event.forwardTo("");
+                return;
+            }
+        }
+
         reload();
     }
 

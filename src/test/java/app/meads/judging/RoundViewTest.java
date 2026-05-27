@@ -390,6 +390,10 @@ class RoundViewTest {
         var table = judgingService.createRound(judging.getId(), "Table A",
                 category.getId(), null, admin.getId());
         judgingService.assignJudge(table.getId(), judge.getId(), admin.getId());
+        // Round must be ACTIVE for judge access — bypass service preconds.
+        table.markReady();
+        table.start();
+        judgingRoundRepository.save(table);
 
         var entrant = userRepository.save(new User(
                 "entrant-judge-actions-" + UUID.randomUUID() + "@example.com",
