@@ -302,6 +302,48 @@ Two batches in one day. **Morning batch — five deferred walkthrough items + la
 
 <!-- Historical sections (round-model redesign 2026-05-24, completed Priority 1-6) removed 2026-05-25; full audit log in git history. -->
 
+### Priority 12: Label / scoresheet download button lifecycle (post-walkthrough)
+Today the per-entry 📄 Download Label button (on `MyEntriesView` and `DivisionEntryAdminView`'s
+Entries tab) plus the "Download all labels" batch button are enabled whenever entries are
+SUBMITTED. Two changes wanted:
+
+1. **Disable both during JUDGING.** Once `division.status >= JUDGING`, the bottles are with
+   judges — labels are useless to the entrant and confusing to keep visible. Disable with a
+   tooltip explaining why (e.g. "Labels are unavailable during judging — your bottles are
+   already in evaluation").
+2. **Re-enable as scoresheet downloads after RESULTS_PUBLISHED.** When
+   `division.status == RESULTS_PUBLISHED`, the same buttons should flip to "Download
+   scoresheet" / "Download all scoresheets" — generating anonymized PDFs via the existing
+   `ScoresheetPdfService.AnonymizationLevel.ANONYMIZED` path (already in the awards module,
+   currently surfaced via `MyResultsView` → `MyScoresheetView`). The label-generation code
+   path stays available for admin re-prints if needed (kept on `DivisionEntryAdminView`).
+
+Sketch when implementing:
+- `MyEntriesView` per-row Actions column + bottom batch button: switch label between "Label"
+  and "Scoresheet" based on `division.status`; rebind action to label-PDF or scoresheet-PDF
+  respectively; disable in JUDGING / DELIBERATION with explanatory tooltip.
+- `DivisionEntryAdminView` Entries tab per-row download + batch "Download all labels": same
+  three-state lifecycle.
+- New i18n keys × 5 locales for the scoresheet variants + the JUDGING-disabled tooltip.
+- Cross-module touch: `awards` module's PDF generation needs to be callable from `entry`'s
+  views. Either move `ScoresheetPdfService` further up (already in `judging` public API per
+  SESSION_CONTEXT) or have the entry view call awards-side `getAnonymizedScoresheet`. Verify
+  module-boundary dependency direction stays clean.
+- Tests: per-status rendering + click → correct PDF served.
+
+### Priority 13: Participant counts by role on Competition page (post-walkthrough)
+On `CompetitionDetailView`'s Participants tab, add an aggregate summary above the grid
+showing counts per role (e.g., "Entrants: 42 · Judges: 12 · Stewards: 4 · Admins: 2").
+Light enhancement using existing `ParticipantRole` data.
+
+Sketch when implementing:
+- New `CompetitionService.findParticipantCountsByRole(competitionId)` returning
+  `Map<CompetitionRole, Long>` (or a small DTO if more shape is wanted later).
+- Render as a Span / Spans above the Participants grid; locale-aware number formatting.
+- 1 new i18n key per role label + 1 for the aggregate line × 5 locales (reuse existing role
+  display names if possible).
+- Tests: service-level count test + UI rendering test.
+
 ### Priority 7: Auto-close + deadline reminders (deferred)
 - **Auto-close** — automatically advance division from REGISTRATION_OPEN → REGISTRATION_CLOSED
   when registration deadline passes (scheduled task)
