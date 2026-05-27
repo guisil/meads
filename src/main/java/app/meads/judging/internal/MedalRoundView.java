@@ -32,7 +32,6 @@ import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.html.Nav;
 import com.vaadin.flow.component.html.Span;
-import com.vaadin.flow.component.menubar.MenuBar;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment;
@@ -525,15 +524,51 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         cell.add(medalButton("🥉", "medal-round.action.award-bronze", row, Medal.BRONZE,
                 scoreBasedPending));
 
-        var more = new MenuBar();
-        more.addThemeVariants();
-        var moreItem = more.addItem(getTranslation("medal-round.action.more"));
-        moreItem.getSubMenu().addItem(getTranslation("medal-round.action.withhold"),
-                e -> applyMedal(row, null));
-        moreItem.getSubMenu().addItem(getTranslation("medal-round.action.clear"),
-                e -> clearMedal(row));
-        cell.add(more);
+        // Withhold + Clear — sensitive actions, gated behind a ConfirmDialog.
+        // Withhold records an explicit no-medal decision (audit row stays);
+        // Clear deletes the audit row entirely.
+        var withhold = new Button(new Icon(VaadinIcon.BAN));
+        withhold.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+        withhold.setTooltipText(getTranslation("medal-round.action.withhold"));
+        withhold.setEnabled(!scoreBasedPending);
+        withhold.addClickListener(e -> openWithholdConfirmDialog(row));
+        cell.add(withhold);
+
+        var clear = new Button(new Icon(VaadinIcon.TRASH));
+        clear.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+        clear.setTooltipText(getTranslation("medal-round.action.clear"));
+        clear.setEnabled(row.medalAwardId() != null);
+        clear.addClickListener(e -> openClearConfirmDialog(row));
+        cell.add(clear);
         return cell;
+    }
+
+    /** Opens a confirmation dialog before recording an explicit withhold. */
+    public void openWithholdConfirmDialog(MedalRoundEntryRow row) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("medal-round.action.withhold.confirm.title"));
+        dialog.add(new Span(getTranslation("medal-round.action.withhold.confirm.body")));
+        var confirm = new Button(getTranslation("medal-round.action.withhold.confirm.proceed"),
+                e -> { applyMedal(row, null); dialog.close(); });
+        confirm.setId("medal-round-withhold-confirm");
+        confirm.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        var cancel = new Button(getTranslation("button.cancel"), e -> dialog.close());
+        dialog.getFooter().add(cancel, confirm);
+        dialog.open();
+    }
+
+    /** Opens a confirmation dialog before deleting the medal award row entirely. */
+    public void openClearConfirmDialog(MedalRoundEntryRow row) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("medal-round.action.clear.confirm.title"));
+        dialog.add(new Span(getTranslation("medal-round.action.clear.confirm.body")));
+        var confirm = new Button(getTranslation("medal-round.action.clear.confirm.proceed"),
+                e -> { clearMedal(row); dialog.close(); });
+        confirm.setId("medal-round-clear-confirm");
+        confirm.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        var cancel = new Button(getTranslation("button.cancel"), e -> dialog.close());
+        dialog.getFooter().add(cancel, confirm);
+        dialog.open();
     }
 
     private Button medalButton(String glyph, String tooltipKey, MedalRoundEntryRow row, Medal medal,

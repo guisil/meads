@@ -194,9 +194,15 @@ class MedalRoundViewTest {
                 BigDecimal.valueOf(11.0), Carbonation.STILL, "Wildflower", null, false, null, null);
         entry.submit();
         entry.markReceived();
+        // Bypass entryService.assignFinalCategory to avoid firing
+        // EntryReceivedEvent — this test's setup pre-creates SUBMITTED sheets
+        // on a separate scoring round and depends on the derivation fallback
+        // in findMedalRoundEntries (medal round's explicit entries set stays
+        // empty so the legacy code path runs). The auto-sync listener path
+        // is exercised by other tests; here it would conflict with the
+        // pre-created sheets on UNIQUE entry_id.
+        entry.assignFinalCategory(category.getId());
         entry = entryRepository.save(entry);
-        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
-        entryService.assignFinalCategory(entry.getId(), category.getId(), admin.getId());
         var sheet = new Scoresheet(table.getId(), entry.getId());
         int deficit = 100 - total;
         for (var def : MjpScoringFieldDefinition.MJP_FIELDS) {
@@ -227,9 +233,10 @@ class MedalRoundViewTest {
                 BigDecimal.valueOf(11.0), Carbonation.STILL, "Wildflower", null, false, null, null);
         entry.submit();
         entry.markReceived();
+        // See submittedScoreBasedEntry — bypass the service path to avoid
+        // listener-triggered sync conflicting with the pre-created sheets.
+        entry.assignFinalCategory(category.getId());
         entry = entryRepository.save(entry);
-        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
-        entryService.assignFinalCategory(entry.getId(), category.getId(), admin.getId());
         var sheet = new Scoresheet(table.getId(), entry.getId());
         for (var def : MjpScoringFieldDefinition.MJP_FIELDS) {
             sheet.updateScore(def.fieldName(), def.maxValue(), null);
@@ -364,6 +371,62 @@ class MedalRoundViewTest {
 
         var award = medalAwardRepository.findByEntryId(row.entryId()).orElseThrow();
         assertThat(award.getMedal()).isNull();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldGateWithholdBehindConfirmDialog() {
+        // Cycle B: Withhold is a sensitive action (records a deliberate
+        // no-medal decision in the audit log) — the icon-button click opens
+        // a ConfirmDialog before invoking applyMedal(null). The service must
+        // not be called until the admin confirms.
+        var category = activeMedalRoundCategory();
+        var table = tableFor(category);
+        advancedEntry(category, table, "AMA-1");
+
+        navigateToMedalRound(category);
+
+        var row = judgingService.findMedalRoundEntries(
+                category.getId(), MedalRoundMode.COMPARATIVE).get(0);
+        var view = _get(MedalRoundView.class);
+        view.openWithholdConfirmDialog(row);
+
+        assertThat(medalAwardRepository.findByEntryId(row.entryId()))
+                .as("withhold must not fire until confirm is clicked").isEmpty();
+
+        _click(_get(Button.class, spec -> spec.withId("medal-round-withhold-confirm")));
+
+        var award = medalAwardRepository.findByEntryId(row.entryId()).orElseThrow();
+        assertThat(award.getMedal()).isNull();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldGateClearBehindConfirmDialog() {
+        // Cycle B: Clear deletes the audit row entirely (vs. Withhold which
+        // keeps the row with medal=null). Confirm dialog warns and suggests
+        // Withhold as the safer alternative for "no medal".
+        var category = activeMedalRoundCategory();
+        var table = tableFor(category);
+        advancedEntry(category, table, "AMA-1");
+
+        navigateToMedalRound(category);
+
+        var row = judgingService.findMedalRoundEntries(
+                category.getId(), MedalRoundMode.COMPARATIVE).get(0);
+        var view = _get(MedalRoundView.class);
+        view.applyMedal(row, Medal.GOLD);
+        var rowAfterAward = judgingService.findMedalRoundEntries(
+                category.getId(), MedalRoundMode.COMPARATIVE).get(0);
+
+        view.openClearConfirmDialog(rowAfterAward);
+
+        assertThat(medalAwardRepository.findByEntryId(rowAfterAward.entryId()))
+                .as("clear must not fire until confirm is clicked").isPresent();
+
+        _click(_get(Button.class, spec -> spec.withId("medal-round-clear-confirm")));
+
+        assertThat(medalAwardRepository.findByEntryId(rowAfterAward.entryId())).isEmpty();
     }
 
     @Test

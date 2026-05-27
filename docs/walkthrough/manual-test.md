@@ -2118,14 +2118,16 @@ Medal-round judges are **independent** of scoring-round judges for the same cate
 - [ ] **Check Mailpit:** each judge with a scoring assignment in this category receives a "Medal round ready" email, subject "[MEADS] Medal round ready — {category}", heading "A medal round is ready", CTA "Log in to MEADS". `JudgingNotificationListener` handles `MedalRoundActivatedEvent`.
 - [ ] As `judge@example.com`, navigate via `/my-judging` → Medal Rounds section → "Open medal round →".
 - [ ] **Expected:** Entries with a SUBMITTED scoresheet flagged `advancedToMedalRound = true` for this category are listed (eligibility refined per §1.9).
-- [ ] **Expected:** Per-row controls — Gold/Silver/Bronze buttons plus a "More ▾" dropdown (Withhold / Clear).
+- [ ] **Expected:** Per-row controls (Cycle B) — 👁 Open scoresheet (if any) · 🥇 · 🥈 · 🥉 · 🚫 Withhold · 🗑 Clear. All five are inline icon buttons (no "More ▾" dropdown).
 - [ ] Click `🥇` on a row.
 - [ ] **Expected:** Notification or live update; row gets a Gold badge.
 - [ ] **Expected:** Bottom summary line "Summary: 1 Gold · 0 Silver · 0 Bronze · 0 Withhold · {N} unset" updates live.
-- [ ] Click "Withhold" via the dropdown.
-- [ ] **Expected:** Row badge shows "Withheld" (per D11 — `MedalAward.medal = null` distinguishes explicit withhold from no row).
-- [ ] Click "Clear".
-- [ ] **Expected:** Row reverts to no medal.
+- [ ] Click 🚫 **Withhold** on a row.
+- [ ] **Expected:** ConfirmDialog "Withhold medal?" with body explaining the audit semantic (records a deliberate "no medal" decision; row stays in audit log as Withhold; distinct from "no decision yet"). Footer: Cancel + Withhold.
+- [ ] Cancel → no change. Re-open, click Withhold → row badge shows "Withheld" (per D11 — `MedalAward.medal = null` distinguishes explicit withhold from no row).
+- [ ] Click 🗑 **Clear** on a row with a medal (icon disabled when no award row exists).
+- [ ] **Expected:** ConfirmDialog "Delete medal record?" body warns the audit row is deleted entirely and suggests Withhold as the safer "no medal" alternative. Footer: Cancel + Delete record.
+- [ ] Cancel → no change. Re-open, click Delete record → row reverts to no medal (audit row gone).
 
 #### 12.12.2 SCORE_BASED mode — auto-fill on Start
 
