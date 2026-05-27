@@ -6,6 +6,7 @@ import app.meads.competition.Division;
 import app.meads.competition.ScoringSystem;
 import app.meads.entry.Entry;
 import app.meads.entry.EntryService;
+import app.meads.entry.EntryStatus;
 import app.meads.judging.internal.BosPlacementRepository;
 import app.meads.judging.internal.CategoryJudgingConfigRepository;
 import app.meads.judging.internal.JudgingRepository;
@@ -654,5 +655,180 @@ class JudgingServiceRoundTest {
         service.assignEntryToRound(round.getId(), UUID.randomUUID(), adminUserId);
 
         assertThat(round.getStatus()).isEqualTo(JudgingRoundStatus.READY);
+    }
+
+    @Test
+    void shouldSyncAllReceivedEntriesInCategoryOntoScoreBasedMedalRound() {
+        // Force-all invariant: every RECEIVED entry in the category must be on
+        // the SCORE_BASED medal round. Sync is idempotent — already-assigned
+        // entries are skipped; only the missing ones get added.
+        var judging = new Judging(divisionId);
+        var medalRound = new JudgingRound(judging.getId(), "Medal — M1A",
+                divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.SCORE_BASED);
+        var alreadyOnRoundId = UUID.randomUUID();
+        medalRound.assignEntry(alreadyOnRoundId);
+        var newReceivedId = UUID.randomUUID();
+        var draftId = UUID.randomUUID();
+
+        var alreadyOnRound = mock(Entry.class);
+        given(alreadyOnRound.getId()).willReturn(alreadyOnRoundId);
+        given(alreadyOnRound.getStatus()).willReturn(EntryStatus.RECEIVED);
+        var newReceived = mock(Entry.class);
+        given(newReceived.getId()).willReturn(newReceivedId);
+        given(newReceived.getStatus()).willReturn(EntryStatus.RECEIVED);
+        var draft = mock(Entry.class);
+        lenient().when(draft.getId()).thenReturn(draftId);
+        given(draft.getStatus()).willReturn(EntryStatus.DRAFT);
+        given(entryService.findEntriesByFinalCategoryId(divisionCategoryId))
+                .willReturn(List.of(alreadyOnRound, newReceived, draft));
+        given(judgingRoundRepository.findById(medalRound.getId()))
+                .willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId()))
+                .willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId))
+                .willReturn(true);
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.syncScoreBasedMedalRoundEntries(medalRound.getId(), adminUserId);
+
+        assertThat(medalRound.getEntries())
+                .containsExactlyInAnyOrder(alreadyOnRoundId, newReceivedId);
+    }
+
+    @Test
+    void shouldRejectSyncScoreBasedMedalRoundEntriesWhenRoundIsComparative() {
+        var judging = new Judging(divisionId);
+        var medalRound = new JudgingRound(judging.getId(), "Medal — M1A",
+                divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.COMPARATIVE);
+        given(judgingRoundRepository.findById(medalRound.getId()))
+                .willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId()))
+                .willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId))
+                .willReturn(true);
+
+        assertThatThrownBy(() -> service.syncScoreBasedMedalRoundEntries(
+                medalRound.getId(), adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.medal-round.sync-score-based-only");
+    }
+
+    @Test
+    void shouldRejectManualUnassignOfReceivedEntryFromScoreBasedMedalRound() {
+        // Force-all invariant: admin can't manually take a RECEIVED entry off
+        // a SCORE_BASED medal round. To remove: change the entry's status
+        // (withdraw) or change its final category. COMPARATIVE medal rounds
+        // keep the existing admin-selectable advance set.
+        var judging = new Judging(divisionId);
+        var medalRound = new JudgingRound(judging.getId(), "Medal — M1A",
+                divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.SCORE_BASED);
+        var entryId = UUID.randomUUID();
+        medalRound.assignEntry(entryId);
+        var entry = mock(Entry.class);
+        given(entry.getStatus()).willReturn(EntryStatus.RECEIVED);
+        given(entryService.findById(entryId)).willReturn(Optional.of(entry));
+        given(judgingRoundRepository.findById(medalRound.getId()))
+                .willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId()))
+                .willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId))
+                .willReturn(true);
+
+        assertThatThrownBy(() -> service.unassignEntryFromRound(
+                medalRound.getId(), entryId, adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.entry.cannot-unassign-from-score-based");
+
+        assertThat(medalRound.getEntries()).contains(entryId);
+    }
+
+    @Test
+    void shouldAllowManualUnassignOfWithdrawnEntryFromScoreBasedMedalRound() {
+        // A3.1 refinement — escape hatch for zombie entries. If the entry's
+        // status has moved out of RECEIVED (admin withdrew it, or reverted
+        // status), the force-all set no longer applies and the admin can
+        // clean it off the round.
+        var judging = new Judging(divisionId);
+        var medalRound = new JudgingRound(judging.getId(), "Medal — M1A",
+                divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.SCORE_BASED);
+        var entryId = UUID.randomUUID();
+        medalRound.assignEntry(entryId);
+        var entry = mock(Entry.class);
+        given(entry.getStatus()).willReturn(EntryStatus.WITHDRAWN);
+        given(entryService.findById(entryId)).willReturn(Optional.of(entry));
+        given(judgingRoundRepository.findById(medalRound.getId()))
+                .willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId()))
+                .willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId))
+                .willReturn(true);
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.unassignEntryFromRound(medalRound.getId(), entryId, adminUserId);
+
+        assertThat(medalRound.getEntries()).doesNotContain(entryId);
+    }
+
+    @Test
+    void shouldRemoveZombieEntriesFromScoreBasedMedalRoundDuringSync() {
+        // A3.1 — sync mirrors current eligibility: adds RECEIVED entries not
+        // on the round AND removes non-RECEIVED entries that are still on it
+        // (withdrawn or reverted entries left as zombies).
+        var judging = new Judging(divisionId);
+        var medalRound = new JudgingRound(judging.getId(), "Medal — M1A",
+                divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.SCORE_BASED);
+        var stayingReceivedId = UUID.randomUUID();
+        var zombieWithdrawnId = UUID.randomUUID();
+        medalRound.assignEntry(stayingReceivedId);
+        medalRound.assignEntry(zombieWithdrawnId);
+
+        var staying = mock(Entry.class);
+        given(staying.getId()).willReturn(stayingReceivedId);
+        given(staying.getStatus()).willReturn(EntryStatus.RECEIVED);
+        // Zombie is absent from the category's RECEIVED list (because it's
+        // WITHDRAWN). Sync needs the entry's status to decide unassign — pull
+        // from entryService.findById per-entry.
+        var zombie = mock(Entry.class);
+        given(zombie.getStatus()).willReturn(EntryStatus.WITHDRAWN);
+        given(entryService.findById(zombieWithdrawnId)).willReturn(Optional.of(zombie));
+        given(entryService.findEntriesByFinalCategoryId(divisionCategoryId))
+                .willReturn(List.of(staying));
+        given(judgingRoundRepository.findById(medalRound.getId()))
+                .willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId()))
+                .willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId))
+                .willReturn(true);
+        given(judgingRoundRepository.save(any(JudgingRound.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.syncScoreBasedMedalRoundEntries(medalRound.getId(), adminUserId);
+
+        assertThat(medalRound.getEntries()).containsExactly(stayingReceivedId);
+    }
+
+    @Test
+    void shouldRejectSyncScoreBasedMedalRoundEntriesWhenRoundIsScoring() {
+        var judging = new Judging(divisionId);
+        var scoringRound = new JudgingRound(judging.getId(), "M1A Panel",
+                divisionCategoryId, null);
+        given(judgingRoundRepository.findById(scoringRound.getId()))
+                .willReturn(Optional.of(scoringRound));
+        given(judgingRepository.findById(judging.getId()))
+                .willReturn(Optional.of(judging));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId))
+                .willReturn(true);
+
+        assertThatThrownBy(() -> service.syncScoreBasedMedalRoundEntries(
+                scoringRound.getId(), adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.medal-round.sync-score-based-only");
     }
 }

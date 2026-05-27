@@ -1050,10 +1050,12 @@ class JudgingServiceMedalRoundTest {
     }
 
     @Test
-    void shouldDeleteBlankScoresheetWhenUnassigningEntryFromActiveScoreBasedMedalRound() {
-        // Symmetric to the assign path: removing an entry from an ACTIVE
-        // SCORE_BASED medal round cleans up the BLANK/DRAFT sheet so it
-        // doesn't linger in the DB as an orphan. SUBMITTED still blocks.
+    void shouldRejectManualUnassignOfReceivedEntryFromActiveScoreBasedMedalRound() {
+        // Force-all invariant (A3 + A3.1): RECEIVED entries can't be removed
+        // from a SCORE_BASED medal round manually — the reject fires before
+        // the SUBMITTED-sheet branch, so scoresheetService is never consulted.
+        // Non-RECEIVED entries are an admin escape hatch (see A3.1 unit
+        // tests in JudgingServiceRoundTest).
         var physicalTableId = UUID.randomUUID();
         var medalRound = new JudgingRound(judging.getId(), physicalTableId,
                 "Medal — M1A", divisionCategoryId, null);
@@ -1062,47 +1064,19 @@ class JudgingServiceMedalRoundTest {
         medalRound.start();
         var entryId = UUID.randomUUID();
         medalRound.assignEntry(entryId);
-        var sheet = mock(app.meads.judging.Scoresheet.class);
-        var sheetId = UUID.randomUUID();
-        given(sheet.getId()).willReturn(sheetId);
-        given(sheet.getRoundId()).willReturn(medalRound.getId());
-        given(sheet.getStatus()).willReturn(ScoresheetStatus.BLANK);
+        var entry = mock(app.meads.entry.Entry.class);
+        given(entry.getStatus()).willReturn(app.meads.entry.EntryStatus.RECEIVED);
+        given(entryService.findById(entryId)).willReturn(Optional.of(entry));
         given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
-        given(scoresheetService.findByEntryIdOrderBySubmittedAtAsc(entryId)).willReturn(List.of(sheet));
-        given(judgingRoundRepository.save(any(JudgingRound.class)))
-                .willAnswer(inv -> inv.getArgument(0));
-
-        service.unassignEntryFromRound(medalRound.getId(), entryId, adminUserId);
-
-        assertThat(medalRound.getEntries()).doesNotContain(entryId);
-        then(scoresheetService).should().deleteScoresheet(sheetId, adminUserId);
-    }
-
-    @Test
-    void shouldRejectUnassignEntryFromActiveScoreBasedMedalRoundWhenScoresheetSubmitted() {
-        var physicalTableId = UUID.randomUUID();
-        var medalRound = new JudgingRound(judging.getId(), physicalTableId,
-                "Medal — M1A", divisionCategoryId, null);
-        medalRound.convertToMedalRound(MedalRoundMode.SCORE_BASED);
-        medalRound.assignJudge(UUID.randomUUID());
-        medalRound.start();
-        var entryId = UUID.randomUUID();
-        medalRound.assignEntry(entryId);
-        var sheet = mock(app.meads.judging.Scoresheet.class);
-        given(sheet.getRoundId()).willReturn(medalRound.getId());
-        given(sheet.getStatus()).willReturn(ScoresheetStatus.SUBMITTED);
-        given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
-        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
-        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
-        given(scoresheetService.findByEntryIdOrderBySubmittedAtAsc(entryId)).willReturn(List.of(sheet));
 
         assertThatThrownBy(() -> service.unassignEntryFromRound(medalRound.getId(), entryId, adminUserId))
                 .isInstanceOf(BusinessRuleException.class)
-                .hasMessageContaining("error.entry.cannot-unassign-submitted");
+                .hasMessageContaining("error.entry.cannot-unassign-from-score-based");
 
         assertThat(medalRound.getEntries()).contains(entryId);
+        then(scoresheetService).should(never()).deleteScoresheet(any(), any());
     }
 
     @Test

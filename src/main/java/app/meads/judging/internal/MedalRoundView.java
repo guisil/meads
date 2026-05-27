@@ -702,11 +702,11 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         dialog.setHeaderTitle(getTranslation("medal-round.assign-entries.dialog.title", categoryLabel()));
         dialog.setWidth("780px");
 
-        // SCORE_BASED medal rounds may run without a preceding scoring round
-        // (small-category flow) — in that case the medal round owns the
-        // scoresheets, so eligibility doesn't require an existing SUBMITTED
-        // sheet. COMPARATIVE keeps the original "must have a SUBMITTED prelim
-        // sheet" filter because it picks from advance-flagged sheets only.
+        // SCORE_BASED: force-all invariant — every RECEIVED entry in the
+        // category MUST be on the round. Dialog is informational; Save calls
+        // syncScoreBasedMedalRoundEntries which adds whatever's missing.
+        // COMPARATIVE: admin picks a subset of advance-flagged entries via
+        // multi-select checkboxes (original flow).
         boolean modeIsScoreBased = medalRound != null
                 && medalRound.getMedalMode() == MedalRoundMode.SCORE_BASED;
         var eligibleEntries = entryService.findEntriesByFinalCategoryId(category.getId()).stream()
@@ -731,7 +731,9 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
 
         var entriesGrid = new Grid<>(Entry.class, false);
         entriesGrid.setId("medal-round-assign-entries-grid");
-        entriesGrid.setSelectionMode(Grid.SelectionMode.MULTI);
+        entriesGrid.setSelectionMode(modeIsScoreBased
+                ? Grid.SelectionMode.NONE
+                : Grid.SelectionMode.MULTI);
         entriesGrid.setAllRowsVisible(true);
         entriesGrid.addColumn(e -> e.getEntryCode() + " — " + e.getMeadName())
                 .setHeader(getTranslation("medal-round.assign-entries.column.entry"))
@@ -749,27 +751,36 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
                 .setHeader(getTranslation("medal-round.assign-entries.column.total"))
                 .setResizable(true).setSortable(true).setAutoWidth(true);
         entriesGrid.setItems(eligibleEntries);
-        eligibleEntries.stream()
-                .filter(e -> medalRound.getEntries().contains(e.getId()))
-                .forEach(e -> entriesGrid.asMultiSelect().select(e));
+        if (!modeIsScoreBased) {
+            eligibleEntries.stream()
+                    .filter(e -> medalRound.getEntries().contains(e.getId()))
+                    .forEach(e -> entriesGrid.asMultiSelect().select(e));
+        }
 
         content.add(entriesGrid);
         dialog.add(content);
 
-        var save = new Button(getTranslation("button.save"), e -> {
-            var selected = entriesGrid.asMultiSelect().getSelectedItems().stream()
-                    .map(Entry::getId)
-                    .collect(java.util.stream.Collectors.toSet());
-            var current = medalRound.getEntries();
+        var save = new Button(getTranslation(modeIsScoreBased
+                ? "medal-round.assign-entries.sync"
+                : "button.save"), e -> {
             try {
-                for (var entryId : selected) {
-                    if (!current.contains(entryId)) {
-                        judgingService.assignEntryToRound(medalRound.getId(), entryId, currentUserId);
+                if (modeIsScoreBased) {
+                    judgingService.syncScoreBasedMedalRoundEntries(
+                            medalRound.getId(), currentUserId);
+                } else {
+                    var selected = entriesGrid.asMultiSelect().getSelectedItems().stream()
+                            .map(Entry::getId)
+                            .collect(java.util.stream.Collectors.toSet());
+                    var current = medalRound.getEntries();
+                    for (var entryId : selected) {
+                        if (!current.contains(entryId)) {
+                            judgingService.assignEntryToRound(medalRound.getId(), entryId, currentUserId);
+                        }
                     }
-                }
-                for (var entryId : current) {
-                    if (!selected.contains(entryId)) {
-                        judgingService.unassignEntryFromRound(medalRound.getId(), entryId, currentUserId);
+                    for (var entryId : current) {
+                        if (!selected.contains(entryId)) {
+                            judgingService.unassignEntryFromRound(medalRound.getId(), entryId, currentUserId);
+                        }
                     }
                 }
                 dialog.close();

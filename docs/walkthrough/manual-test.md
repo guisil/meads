@@ -1868,12 +1868,18 @@ Medal rounds are auto-created by the scoring-completion cascade — when every s
 
 When a category has few entries and you want to skip the preliminary scoring round entirely, a SCORE_BASED medal round can own the scoresheets directly. It acts like a hybrid: scoring happens at the medal round itself, and medals come from those scoresheets at the end (gold/silver/bronze by total, stop on tie).
 
+**Force-all invariant (Cycle A):** Every RECEIVED entry in the category MUST be on the medal round, and nothing else. Partial assignment doesn't make sense when the medal round IS the only judging venue. The Assign Entries dialog is read-only (no checkboxes); the "Sync now" footer button reconciles in both directions — adds any missing RECEIVED entries AND removes zombies (entries no longer RECEIVED: withdrawn, reverted, moved category). Subsequent state changes auto-sync via an `EntryReceivedEvent` listener (fires on RECEIVED transitions in OR out of that state). Manual unassign of a RECEIVED entry is rejected (`error.entry.cannot-unassign-from-score-based`); the only ways to drop a RECEIVED entry are to withdraw it (auto-sync removes the zombie) or move its final category. Non-RECEIVED entries can be manually unassigned as an escape hatch. Entries with a SUBMITTED scoresheet on the round are never auto-removed (committed work isn't silently dropped — sync logs a warning and skips).
+
 - [ ] Pick (or create) a small category with no scoring rounds yet — e.g., a new judging category with 3 RECEIVED entries.
 - [ ] Click "+ Add Round" → Type = `MEDAL` → Category = the small one → Table = any → Save.
 - [ ] Open the new medal round row → in the header switch **Mode** to `Score-based`.
 - [ ] Click 📦 **Assign Entries** in the admin button row.
-- [ ] **Expected:** Dialog lists ALL RECEIVED entries in the category — not just those with SUBMITTED scoresheets (which is how COMPARATIVE works). The Total column shows `—` for entries with no sheet yet.
-- [ ] Select all 3 entries → Save → "Entry assignments updated".
+- [ ] **Expected:** Dialog is a **read-only preview** (no checkboxes — selection mode NONE). Lists every RECEIVED entry in the category. The Total column shows `—` for entries with no sheet yet. Helper text reads "Every RECEIVED entry in this category is automatically part of this medal round…". Footer button reads "Sync now" (not "Save").
+- [ ] Click **Sync now** → notification "Medal-round entries updated"; the round now contains all 3 entries.
+- [ ] (Optional regression check — auto-sync add) Without closing the page, in another tab / as `compadmin@`, mark a NEW entry as RECEIVED in the same category. **Expected:** within a few seconds the new entry is automatically added to the medal round (via `EntryReceivedEvent` → `MedalRoundAutoSyncListener` → `syncScoreBasedMedalRoundEntries`). Re-open the Assign Entries dialog to confirm the count grew.
+- [ ] (Optional regression check — auto-sync cleanup) Withdraw one of the assigned entries (Entry Admin → ✖ Withdraw). **Expected:** within a few seconds the withdrawn entry is automatically removed from the medal round (zombie cleanup path on the same listener). Re-open the dialog to confirm the count dropped.
+- [ ] (Try) Attempt a manual unassign of a RECEIVED entry via direct API. **Expected:** rejected with `error.entry.cannot-unassign-from-score-based` ("Can't remove an entry from a SCORE_BASED medal round manually — every RECEIVED entry in the category is assigned automatically. Withdraw the entry or change its final category to remove it.")
+- [ ] (Try) Attempt a manual unassign of a NON-RECEIVED (e.g. WITHDRAWN) entry via direct API. **Expected:** succeeds — escape hatch lets admin clean stale zombie data manually.
 - [ ] Click **Assign Judges** → pick at least minJudgesPerRound judges → Save.
 - [ ] **Expected:** Round status auto-flips PENDING → READY once table + judges (≥ minJudgesPerRound) + entries (≥ 1) + division ≥ JUDGING are all satisfied.
 - [ ] Click **Start** → confirmation → notification "Medal round started"; status → ACTIVE.

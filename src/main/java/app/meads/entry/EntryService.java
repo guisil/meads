@@ -27,6 +27,7 @@ import java.math.BigDecimal;
 import java.security.SecureRandom;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -333,6 +334,9 @@ public class EntryService {
         log.info("Advanced entry status to {}: #{} ({})", saved.getStatus(), saved.getEntryNumber(), entryId);
         if (saved.getStatus() == EntryStatus.SUBMITTED) {
             publishSubmissionEventIfComplete(saved.getDivisionId(), saved.getUserId());
+        } else if (saved.getStatus() == EntryStatus.RECEIVED) {
+            eventPublisher.publishEvent(new EntryReceivedEvent(
+                    saved.getId(), saved.getDivisionId(), requestingUserId));
         }
         return saved;
     }
@@ -342,9 +346,16 @@ public class EntryService {
                 .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
         requireAuthorizedForDivision(entry.getDivisionId(), requestingUserId);
         statusRevertGuards.forEach(g -> g.checkRevertAllowed(entryId, entry.getDivisionId()));
+        var wasReceived = entry.getStatus() == EntryStatus.RECEIVED;
         entry.revertStatus();
-        log.info("Reverted entry status to {}: #{} ({})", entry.getStatus(), entry.getEntryNumber(), entryId);
-        return entryRepository.save(entry);
+        var saved = entryRepository.save(entry);
+        log.info("Reverted entry status to {}: #{} ({})", saved.getStatus(), saved.getEntryNumber(), entryId);
+        // If the entry just left RECEIVED, trigger medal-round zombie cleanup.
+        if (wasReceived && saved.getStatus() != EntryStatus.RECEIVED) {
+            eventPublisher.publishEvent(new EntryReceivedEvent(
+                    saved.getId(), saved.getDivisionId(), requestingUserId));
+        }
+        return saved;
     }
 
     public Entry markReceived(@NotNull UUID entryId, @NotNull UUID requestingUserId) {
@@ -354,6 +365,8 @@ public class EntryService {
         entry.markReceived();
         var saved = entryRepository.save(entry);
         log.info("Marked entry received: #{} ({})", saved.getEntryNumber(), entryId);
+        eventPublisher.publishEvent(new EntryReceivedEvent(
+                saved.getId(), saved.getDivisionId(), requestingUserId));
         return saved;
     }
 
@@ -362,9 +375,17 @@ public class EntryService {
                 .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
         requireAuthorizedForDivision(entry.getDivisionId(), requestingUserId);
         statusRevertGuards.forEach(g -> g.checkRevertAllowed(entryId, entry.getDivisionId()));
+        var wasReceived = entry.getStatus() == EntryStatus.RECEIVED;
         entry.withdraw();
-        log.info("Withdrew entry: #{} ({})", entry.getEntryNumber(), entryId);
-        return entryRepository.save(entry);
+        var saved = entryRepository.save(entry);
+        log.info("Withdrew entry: #{} ({})", saved.getEntryNumber(), entryId);
+        // Withdrawing a RECEIVED entry leaves a zombie on any SCORE_BASED
+        // medal round in the entry's category — re-fire the sync trigger.
+        if (wasReceived) {
+            eventPublisher.publishEvent(new EntryReceivedEvent(
+                    saved.getId(), saved.getDivisionId(), requestingUserId));
+        }
+        return saved;
     }
 
     public Entry adminUpdateEntry(@NotNull UUID entryId,
@@ -416,6 +437,10 @@ public class EntryService {
                 .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
     }
 
+    public Optional<Entry> findById(@NotNull UUID entryId) {
+        return entryRepository.findById(entryId);
+    }
+
     public List<Entry> findEntriesByFinalCategoryId(@NotNull UUID finalCategoryId) {
         return entryRepository.findByFinalCategoryId(finalCategoryId);
     }
@@ -442,7 +467,15 @@ public class EntryService {
         }
         entry.assignFinalCategory(finalCategoryId);
         log.debug("Assigned final category {} to entry {}", finalCategoryId, entryId);
-        return entryRepository.save(entry);
+        var saved = entryRepository.save(entry);
+        // Re-publish for medal-round auto-sync: a newly-assigned (or changed)
+        // final category on a RECEIVED entry may make it newly eligible for a
+        // SCORE_BASED medal round in the new category.
+        if (saved.getStatus() == EntryStatus.RECEIVED && finalCategoryId != null) {
+            eventPublisher.publishEvent(new EntryReceivedEvent(
+                    saved.getId(), saved.getDivisionId(), requestingUserId));
+        }
+        return saved;
     }
 
     /**
@@ -477,8 +510,12 @@ public class EntryService {
                 continue;
             }
             entry.assignFinalCategory(judgingId);
-            entryRepository.save(entry);
+            var saved = entryRepository.save(entry);
             assigned++;
+            if (saved.getStatus() == EntryStatus.RECEIVED) {
+                eventPublisher.publishEvent(new EntryReceivedEvent(
+                        saved.getId(), saved.getDivisionId(), requestingUserId));
+            }
         }
         log.info("Bulk-assigned final categories to {} entries in division {}", assigned, divisionId);
         return assigned;

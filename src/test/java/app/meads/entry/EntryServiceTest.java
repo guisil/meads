@@ -1177,6 +1177,7 @@ class EntryServiceTest {
         var result = entryService.markReceived(entry.getId(), adminUser.getId());
 
         assertThat(result.getStatus()).isEqualTo(EntryStatus.RECEIVED);
+        then(eventPublisher).should().publishEvent(any(EntryReceivedEvent.class));
     }
 
     // Cycle 13: withdrawEntry — admin only
@@ -1198,6 +1199,32 @@ class EntryServiceTest {
         var result = entryService.withdrawEntry(entry.getId(), adminUser.getId());
 
         assertThat(result.getStatus()).isEqualTo(EntryStatus.WITHDRAWN);
+        // No EntryReceivedEvent fired — entry was SUBMITTED (not RECEIVED) at
+        // withdraw time, so no zombie cleanup needed.
+        then(eventPublisher).should(never()).publishEvent(any(EntryReceivedEvent.class));
+    }
+
+    @Test
+    void shouldPublishEntryReceivedEventOnWithdrawWhenEntryWasReceived() {
+        // A3.1 zombie-cleanup trigger: withdrawing a RECEIVED entry needs to
+        // re-fire EntryReceivedEvent so the medal-round listener can drop the
+        // zombie from any SCORE_BASED round in the entry's category.
+        var divisionId = UUID.randomUUID();
+        var adminUser = createSystemAdmin();
+        var entry = new Entry(divisionId, UUID.randomUUID(), 1, "ABC123",
+                "My Mead", UUID.randomUUID(), Sweetness.DRY,  new BigDecimal("12.5"), Carbonation.STILL,
+                "Wildflower honey", null, false, null, null);
+        entry.submit();
+        entry.markReceived(); // RECEIVED
+
+        given(userService.findById(adminUser.getId())).willReturn(adminUser);
+        given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
+        given(entryRepository.save(any(Entry.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        entryService.withdrawEntry(entry.getId(), adminUser.getId());
+
+        then(eventPublisher).should().publishEvent(any(EntryReceivedEvent.class));
     }
 
     // Cycle 14: adminUpdateEntry — any non-WITHDRAWN

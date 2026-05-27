@@ -81,6 +81,16 @@ public interface JudgingService {
     /** Removes an entry from a round. No-op if the entry isn't currently assigned to this round. */
     void unassignEntryFromRound(@NotNull UUID roundId, @NotNull UUID entryId, @NotNull UUID adminUserId);
 
+    /**
+     * Reconciles a SCORE_BASED medal round's entries to include every RECEIVED
+     * entry in its category. Idempotent — already-assigned entries are skipped;
+     * only missing ones are added. Non-RECEIVED entries are not touched here
+     * (removal is admin-driven via entry status changes). Rejects when the
+     * round is not a SCORE_BASED medal round (force-all invariant only applies
+     * to SCORE_BASED — COMPARATIVE keeps admin-chosen advance flags).
+     */
+    void syncScoreBasedMedalRoundEntries(@NotNull UUID roundId, @NotNull UUID adminUserId);
+
     // === Judge assignment ===
     void assignJudge(@NotNull UUID roundId, @NotNull UUID judgeUserId, @NotNull UUID adminUserId);
 

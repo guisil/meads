@@ -610,6 +610,39 @@ class MedalRoundViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldRenderScoreBasedAssignDialogAsReadOnlyPreviewAndSyncOnSave() {
+        // Force-all invariant (Cycle A2): SCORE_BASED dialog is informational —
+        // every RECEIVED entry in the category MUST be assigned, so the dialog
+        // cannot offer a subset. Selection mode is NONE; Save click triggers
+        // syncScoreBasedMedalRoundEntries which assigns any missing entries.
+        var category = pendingScoreBasedMedalRoundCategory();
+        receivedEntryWithoutScoresheet(category, "001");
+        receivedEntryWithoutScoresheet(category, "002");
+        receivedEntryWithoutScoresheet(category, "003");
+
+        navigateToMedalRound(category);
+        var assignEntries = _get(Button.class, spec -> spec.withId("medal-round-assign-entries"));
+        _click(assignEntries);
+
+        @SuppressWarnings("unchecked")
+        var grid = (Grid<Entry>) _get(Grid.class, spec -> spec.withId("medal-round-assign-entries-grid"));
+        // Read-only: selection mode is NONE (no checkboxes for partial picks).
+        assertThat(grid.getSelectionModel().getClass().getSimpleName())
+                .contains("None");
+
+        var save = _get(Button.class, spec -> spec.withId("medal-round-assign-entries-save"));
+        _click(save);
+
+        var judgingId = judgingRepository.findByDivisionId(division.getId())
+                .orElseThrow().getId();
+        var medalRound = judgingRoundRepository.findByJudgingId(judgingId).stream()
+                .filter(r -> r.getType() == RoundType.MEDAL)
+                .findFirst().orElseThrow();
+        assertThat(medalRound.getEntries()).hasSize(3);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldRenderAssignEntriesButtonEnabledForAdminWhenMedalRoundActive() {
         // 3c: Assign Entries dialog mirrors the scoring-round equivalent.
         // The button is part of the admin action bar and stays enabled

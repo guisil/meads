@@ -5,6 +5,7 @@ import app.meads.competition.CompetitionService;
 import app.meads.competition.DivisionStatus;
 import app.meads.competition.DivisionStatusAdvancedEvent;
 import app.meads.judging.PhysicalTable;
+import app.meads.entry.Entry;
 import app.meads.entry.EntryStatus;
 import app.meads.judging.CategoryJudgingConfig;
 import app.meads.judging.Judging;
@@ -408,6 +409,21 @@ public class JudgingServiceImpl implements JudgingService {
         if (round.getStatus() == JudgingRoundStatus.COMPLETE) {
             throw new BusinessRuleException("error.entry.cannot-change-on-complete-round");
         }
+        // Force-all invariant: SCORE_BASED medal rounds mirror "all RECEIVED
+        // entries in the category". A RECEIVED entry can't be manually
+        // unassigned (admin must withdraw the entry or change its final
+        // category instead). Non-RECEIVED entries (withdrawn, reverted, etc.)
+        // are zombies — allowing admin to clean them off the round is the
+        // escape hatch that keeps the round consistent with reality.
+        if (round.getType() == RoundType.MEDAL
+                && round.getMedalMode() == MedalRoundMode.SCORE_BASED) {
+            var entryStatus = entryService.findById(entryId)
+                    .map(Entry::getStatus)
+                    .orElse(null);
+            if (entryStatus == EntryStatus.RECEIVED) {
+                throw new BusinessRuleException("error.entry.cannot-unassign-from-score-based");
+            }
+        }
         // Mid-round removal: handle the scoresheet attached to this entry. Block
         // when SUBMITTED (commits would be lost). Delete when still BLANK/DRAFT.
         // Applies to SCORING rounds and to SCORE_BASED medal rounds running
@@ -431,6 +447,50 @@ public class JudgingServiceImpl implements JudgingService {
         recomputeScoringRoundReadiness(round);
         judgingRoundRepository.save(round);
         log.info("Unassigned entry {} from round {}", entryId, roundId);
+    }
+
+    @Override
+    public void syncScoreBasedMedalRoundEntries(UUID roundId, UUID adminUserId) {
+        var round = requireTable(roundId);
+        var judging = requireJudging(round.getJudgingId());
+        requireAuthorizedForJudging(judging, adminUserId);
+        requireNotFrozen(judging.getDivisionId());
+        if (round.getType() != RoundType.MEDAL
+                || round.getMedalMode() != MedalRoundMode.SCORE_BASED) {
+            throw new BusinessRuleException("error.medal-round.sync-score-based-only");
+        }
+        var receivedEntryIds = entryService
+                .findEntriesByFinalCategoryId(round.getDivisionCategoryId()).stream()
+                .filter(e -> e.getStatus() == EntryStatus.RECEIVED)
+                .map(Entry::getId)
+                .collect(java.util.stream.Collectors.toSet());
+        int added = 0;
+        for (var entryId : receivedEntryIds) {
+            if (!round.getEntries().contains(entryId)) {
+                assignEntryToRound(roundId, entryId, adminUserId);
+                added++;
+            }
+        }
+        // Zombie cleanup: anything on the round that's no longer eligible
+        // (withdrawn, reverted, moved category) is removed. The standard
+        // unassign path is used — its refined SCORE_BASED check permits
+        // removal of non-RECEIVED entries; SUBMITTED-sheet block still
+        // applies (committed work isn't silently dropped), surfaced as a
+        // warning so the rest of the cleanup proceeds.
+        int removed = 0;
+        var zombieIds = new java.util.ArrayList<>(round.getEntries());
+        zombieIds.removeAll(receivedEntryIds);
+        for (var entryId : zombieIds) {
+            try {
+                unassignEntryFromRound(roundId, entryId, adminUserId);
+                removed++;
+            } catch (BusinessRuleException ex) {
+                log.warn("Sync skipped removing entry {} from medal round {}: {}",
+                        entryId, roundId, ex.getMessageKey());
+            }
+        }
+        log.info("Synced SCORE_BASED medal round {}: +{} added, -{} removed (total now {})",
+                roundId, added, removed, round.getEntries().size());
     }
 
     @Override
