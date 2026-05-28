@@ -22,6 +22,7 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.tabs.TabSheet;
+import com.vaadin.flow.data.provider.SortDirection;
 import com.vaadin.flow.server.VaadinServletRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -331,5 +332,62 @@ class DivisionEntryAdminViewTest {
         var items = entriesGrid.getGenericDataView().getItems().toList();
         assertThat(items).hasSize(1);
         assertThat(((Entry) items.getFirst()).getFinalCategoryId()).isEqualTo(judgingCategory.getId());
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldSortEntriesByFinalCategoryCode() {
+        division.advanceStatus(); // DRAFT → REGISTRATION_OPEN
+        division.advanceStatus(); // → REGISTRATION_CLOSED
+        division = divisionRepository.save(division);
+
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+
+        var registrationCategory = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Dry mead", null, 1));
+        var aaaCategory = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "AAA", "Alpha", "Alpha judging", null, 1,
+                CategoryScope.JUDGING));
+        var zzzCategory = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "ZZZ", "Omega", "Omega judging", null, 2,
+                CategoryScope.JUDGING));
+
+        var aaaEntry = entryRepository.save(new Entry(division.getId(), admin.getId(), 1, "ENTAAA",
+                "Alpha Mead", registrationCategory.getId(), Sweetness.DRY,
+                new BigDecimal("12.0"), Carbonation.STILL, "Honey", null, false, null, null));
+        aaaEntry.assignFinalCategory(aaaCategory.getId());
+        aaaEntry = entryRepository.save(aaaEntry);
+
+        var zzzEntry = entryRepository.save(new Entry(division.getId(), admin.getId(), 2, "ENTZZZ",
+                "Omega Mead", registrationCategory.getId(), Sweetness.DRY,
+                new BigDecimal("12.0"), Carbonation.STILL, "Honey", null, false, null, null));
+        zzzEntry.assignFinalCategory(zzzCategory.getId());
+        zzzEntry = entryRepository.save(zzzEntry);
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/entry-admin");
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(1);
+
+        var grids = _find(Grid.class);
+        var entriesGrid = grids.stream()
+                .filter(g -> "entries-grid".equals(g.getId().orElse(null)))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Entries grid not found"));
+
+        Grid<Entry> typedGrid = entriesGrid;
+        Grid.Column<Entry> finalCategoryColumn = typedGrid.getColumns().stream()
+                .filter(c -> "Final Category".equals(c.getHeaderText()))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Final Category column not found"));
+
+        var comparator = finalCategoryColumn.getComparator(SortDirection.ASCENDING);
+        assertThat(comparator).as("Final Category column must have a comparator").isNotNull();
+        assertThat(comparator.compare(aaaEntry, zzzEntry))
+                .as("AAA must sort before ZZZ ascending").isNegative();
+        assertThat(comparator.compare(zzzEntry, aaaEntry))
+                .as("ZZZ must sort after AAA ascending").isPositive();
     }
 }

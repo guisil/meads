@@ -481,7 +481,9 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 return new Span("—");
             }
             return createCategorySpan(entry.getFinalCategoryId());
-        }).setHeader(getTranslation("entry-admin.entries.column.final-category")).setSortable(true);
+        }).setHeader(getTranslation("entry-admin.entries.column.final-category")).setSortable(true)
+                .setComparator((a, b) -> resolveCategoryCode(a.getFinalCategoryId())
+                        .compareTo(resolveCategoryCode(b.getFinalCategoryId())));
         entriesGrid.addColumn(entry -> userService.findById(entry.getUserId()).getEmail())
                 .setHeader(getTranslation("entry-admin.entries.column.entrant")).setSortable(true).setFlexGrow(2);
         entriesGrid.addColumn(entry -> {

@@ -239,10 +239,11 @@ Cycle A + B answered the end-of-day design questions. Cycle C landed mid-walkthr
 
 - **Cycle A** (force-all-entries on SCORE_BASED, commit `ceef486`).
 - **Cycle B** (Withhold / Clear inline icons + ConfirmDialogs, commit `65d0092`).
-- **Cycle C** (MyJudgingView → redirect-or-stub + judge access tightened to ACTIVE rounds, commit HEAD).
+- **Cycle C** (MyJudgingView → redirect-or-stub + judge access tightened to ACTIVE rounds, commit `331743b`).
+- **Mid-walkthrough fix (2026-05-28)** — Final Category column on `DivisionEntryAdminView` Entries tab + `MyEntriesView` had `.setSortable(true)` but no comparator (component column with no value-provider = no sort). Mirrored the Initial Category pattern (`resolveCategoryCode(...).compareTo(...)`). Unset entries sort last (resolve to `"—"`). +1 test per view.
 
-**State on disk** (`feature/judging-module` at HEAD, 1243 tests passing,
-push pending after Cycle C commit). Verify with `mvn test -Dsurefire.useFile=false`.
+**State on disk** (`feature/judging-module` at HEAD + uncommitted Final Category sort fix, 1245 tests passing,
+push pending). Verify with `mvn test -Dsurefire.useFile=false`.
 Walkthrough paused at §12.6.8.1 step 10 (judge scoring the M3B SCORE_BASED
 medal round in Profissional). Resume there — the judge will now land
 directly on the medal round via the new redirect.

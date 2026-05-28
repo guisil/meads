@@ -483,7 +483,9 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                 return new Span(getTranslation("entries.column.final-category.none"));
             }
             return createCategorySpan(entry.getFinalCategoryId());
-        }).setHeader(getTranslation("entries.column.final-category")).setSortable(true);
+        }).setHeader(getTranslation("entries.column.final-category")).setSortable(true)
+                .setComparator((a, b) -> resolveCategoryCode(a.getFinalCategoryId())
+                        .compareTo(resolveCategoryCode(b.getFinalCategoryId())));
 
         // 2. Status badge — styled like DivisionStatus
         entriesGrid.addComponentColumn(this::createStatusBadge)
