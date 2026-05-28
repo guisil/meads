@@ -233,6 +233,42 @@ docs/
 
 ## What's Next
 
+### NEXT SESSION (start here, 2026-05-28 end-of-day handoff)
+
+**Before resuming the walkthrough**, work through this triage in order:
+
+1. **Re-evaluate the post-walkthrough deferred priorities (P12, P13, P14) — decide whether any are worth doing *before* continuing the walkthrough.** Look at each and judge whether picking it up now would simplify a walkthrough step, fold neatly into something already in flight (e.g. P14 ↔ medal-round scheduled date below), or risk derailing v0.4.0 if left for after.
+
+2. **Then a new shortlist (raised end-of-day 2026-05-28):**
+
+   - **(a) Round → physical-table reassignment.** Today the table assignment is locked at create time. There's no path to move a round to a different physical table after creation. Surface it in the existing Edit Round dialog as a `Select<PhysicalTable>` (same options as the Add dialog). Watch out for `JudgingService.startRound` table-busy validation — reassignment of an ACTIVE round to a busy table needs to reject cleanly.
+
+   - **(b) Scheduled date on medal rounds — column is always empty + no edit path.** Currently `JudgingRound.scheduledDate` is settable on SCORING rounds only (Add Round dialog has a DatePicker; medal rounds use the auto-create path with no date). The grid's "Scheduled" column therefore reads `—` for every medal row, and there's no way to populate it. **Fold this into P14** (scheduled date → date + time): the same edit-dialog rework can both promote LocalDate → LocalDateTime and surface the field on medal rounds.
+
+   - **(c) Round admin view redesign — uniform UX across SCORING and MEDAL.** This is the biggest item; explore + sketch before implementing.
+     - **Motivation:** the judge experience and the admin Rounds-tab UX currently varies a lot between SCORING and MEDAL rounds (different grids, different actions, different per-row affordances, different terminology). The user wants both round types to look and behave the same way wherever possible — the medal round is just another round with a different scoring mode, not a parallel universe.
+     - **Add Round dialog:** keep the Type radio/Select (SCORING / MEDAL). When MEDAL is picked, **show a second dropdown for medal mode** (COMPARATIVE / SCORE_BASED). Today, mode is set after creation via MedalRoundView's header switch — collapse that into create-time.
+     - **Rounds grid:** present a single uniform grid for all rounds (no separate MedalRoundView for the row interactions). Possible Type column treatment: render as a suffix on the type label (e.g. `Medal — Score`, `Medal — Comparative`, `Scoring`) OR split into Type + Mode columns.
+     - **Inline per-row actions** (icons in the grid, same icon vocabulary as SCORING rounds):
+       - 👥 Assign Judges
+       - 📦 Assign Entries
+       - ▶ Start
+       - ↶ Revert (replaces medal "Reopen")
+       - 🗑 Delete (existing)
+       - 👁 Open (drill into the detail view for the per-entry work)
+     - **Actions to retire / consolidate:**
+       - **Reset** (medal-only): the user is not sure this is needed. Resetting medals can be done manually inside the medal round via Withhold/Clear per row. Likely remove.
+       - **Reopen** (medal-only): unify under the existing **Revert** verb used on scoring rounds. Same icon, same confirm copy pattern.
+       - **Finalize**: the user wants to review *why* this exists and whether it can be unified across both round types.
+         - **Proposal to explore:** every round has a **Finalize** button (in the grid OR on the detail view, consistently).
+           - SCORING round Finalize = "Submit all DRAFT scoresheets" (warning dialog; equivalent to bulk-submitting; once all sheets are SUBMITTED, button disabled).
+           - MEDAL round Finalize = commit the medal decisions (current behavior).
+         - The verb and visual presence become uniform; the underlying semantics are round-type-specific but the user-visible affordance is the same.
+     - **Goal restated:** minimize the cognitive load on judges and admins by making the medal round feel like just-another-round, with the smallest possible vocabulary of distinct actions. The MedalRoundView could potentially shrink to just the per-row medal-awarding UI, with everything else (judges, entries, start, revert) handled inline on the unified Rounds grid.
+     - **Scope flags to settle before implementing:** does MedalRoundView still exist as a drill-in view (for the per-row 🥇🥈🥉 + Withhold + Clear), or do those move into a dialog on the unified grid? Where does the SCORE_BASED scoresheet flow (judges scoring directly on medal round) get its admin Start/Revert UI? Does the Rounds tab become long with mixed rounds, and is that fine?
+
+After this triage, resume the walkthrough per the existing **CURRENT** section below.
+
 ### CURRENT (2026-05-27, evening): Cycles A + B + C landed — walkthrough paused mid-§12.6.8.1 step 10
 
 Cycle A + B answered the end-of-day design questions. Cycle C landed mid-walkthrough after the user (mid-§12.6.8.1 step 10) flagged that the MyJudgingView hub was redundant given the 1-active-round-per-judge invariant.
