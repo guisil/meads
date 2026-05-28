@@ -348,6 +348,32 @@ Sketch when implementing:
   display names if possible).
 - Tests: service-level count test + UI rendering test.
 
+### Priority 14: Scheduled date → date + time on rounds (post-walkthrough)
+`JudgingRound.scheduledDate` is currently a `LocalDate` (DB column `scheduled_date`,
+edited via `DatePicker` in `JudgingAdminView`, surfaced as the "Scheduled" column on
+the Rounds grid). Promote it to date + time (HH:mm) — purely as a planning reference
+for admins to organise which rounds happen together at what time of day. **Not** a
+trigger: nothing binds, no scheduled job, no auto-status changes; it's a display
+label only.
+
+Sketch when implementing:
+- Migration: new `scheduled_at TIMESTAMP WITH TIME ZONE` (or `TIMESTAMP WITHOUT TIME ZONE`
+  if we want a wall-clock semantic), backfill from `scheduled_date` (midnight in the
+  competition's timezone), drop `scheduled_date` (or keep as a generated column if
+  worried about rollback — backward-compat policy says new versioned file, no edits).
+- Entity: `scheduledDate: LocalDate` → `scheduledAt: LocalDateTime` (or `Instant` —
+  decide based on whether HH:mm should drift with venue timezone). Update the
+  `addTable` / `updateScheduledDate` service signatures + the constructor.
+- UI: `DatePicker` → `DateTimePicker` on Add Round + Edit Round dialogs in
+  `JudgingAdminView`. Rounds-grid "Scheduled" column formats as `yyyy-MM-dd HH:mm`
+  (locale-aware). No other view consumes this field today.
+- i18n: column header key stays (`judging-admin.rounds.column.scheduled`); dialog
+  label key may need a copy refresh × 5 locales if "Scheduled date" reads wrong as a
+  date-time picker label.
+- Tests: entity unit test for the field; repo test; UI tests for the dialog +
+  column rendering with HH:mm.
+- Walkthrough: §12.6.1 / §12.6.2 add a time-of-day step.
+
 ### Priority 7: Auto-close + deadline reminders (deferred)
 - **Auto-close** — automatically advance division from REGISTRATION_OPEN → REGISTRATION_CLOSED
   when registration deadline passes (scheduled task)
