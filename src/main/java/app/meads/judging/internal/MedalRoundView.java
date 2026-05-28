@@ -467,10 +467,23 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         // sort comparators look at the underlying record fields directly so
         // numeric / null-safe ordering works (the rendered "—" placeholder
         // would otherwise sort alphabetically).
+        // Entry # — admin-facing cross-reference to the Entry Admin grid (the
+        // entry code is the anonymous label judges see, the number ties it back
+        // to the internal record). MedalRoundView is admin-only so we don't
+        // gate it further here.
+        grid.addColumn(r -> formatEntryNumber(r.entryNumber()))
+                .setHeader(getTranslation("medal-round.column.entry-number"))
+                .setComparator(java.util.Comparator.comparingInt(MedalRoundEntryRow::entryNumber))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
         grid.addColumn(r -> (tiedEntryIds.contains(r.entryId()) ? "⚠ " : "")
-                        + r.entryCode() + " — " + r.meadName())
-                .setHeader(getTranslation("medal-round.column.entry"))
+                        + r.entryCode())
+                .setHeader(getTranslation("medal-round.column.entry-code"))
                 .setComparator(java.util.Comparator.comparing(MedalRoundEntryRow::entryCode))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
+        grid.addColumn(MedalRoundEntryRow::meadName)
+                .setHeader(getTranslation("medal-round.column.mead-name"))
+                .setComparator(java.util.Comparator.comparing(MedalRoundEntryRow::meadName,
+                        String.CASE_INSENSITIVE_ORDER))
                 .setResizable(true).setSortable(true).setAutoWidth(true);
         grid.addColumn(r -> r.round1Total() == null ? "—" : r.round1Total().toString())
                 .setHeader(getTranslation("medal-round.column.total"))
@@ -782,8 +795,17 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
                 ? Grid.SelectionMode.NONE
                 : Grid.SelectionMode.MULTI);
         entriesGrid.setAllRowsVisible(true);
-        entriesGrid.addColumn(e -> e.getEntryCode() + " — " + e.getMeadName())
-                .setHeader(getTranslation("medal-round.assign-entries.column.entry"))
+        entriesGrid.addColumn(e -> formatEntryNumber(e.getEntryNumber()))
+                .setHeader(getTranslation("medal-round.assign-entries.column.entry-number"))
+                .setComparator(java.util.Comparator.comparingInt(Entry::getEntryNumber))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
+        entriesGrid.addColumn(Entry::getEntryCode)
+                .setHeader(getTranslation("medal-round.assign-entries.column.entry-code"))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
+        entriesGrid.addColumn(Entry::getMeadName)
+                .setHeader(getTranslation("medal-round.assign-entries.column.mead-name"))
+                .setComparator(java.util.Comparator.comparing(Entry::getMeadName,
+                        String.CASE_INSENSITIVE_ORDER))
                 .setResizable(true).setSortable(true).setAutoWidth(true);
         entriesGrid.addColumn(e -> {
                     var owner = userService.findById(e.getUserId());
@@ -930,6 +952,14 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
 
     private String categoryLabel() {
         return category.getCode() + " " + category.getName();
+    }
+
+    private String formatEntryNumber(int entryNumber) {
+        var prefix = division.getEntryPrefix();
+        if (prefix != null && !prefix.isBlank()) {
+            return prefix + "-" + entryNumber;
+        }
+        return String.valueOf(entryNumber);
     }
 
     /**

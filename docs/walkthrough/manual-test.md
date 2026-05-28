@@ -1961,7 +1961,7 @@ Access tightening: judges can only open **ACTIVE** rounds. RoundView, MedalRound
 - [ ] **Expected:** Breadcrumb begins with "My Judging" (judge path) or "My Competitions / CHIP 2026 / Amadora / Judging Admin" (admin path).
 - [ ] **Expected:** H2 `CHIP 2026 — Amadora — Table: M1A Panel A`.
 - [ ] **Expected:** Filter bar with a `Status` Select (options: All, Draft, Submitted; default All) and a `Search` `TextField` (placeholder "Mead name or entry code", `ValueChangeMode.EAGER`).
-- [ ] **Expected:** A `Grid<Scoresheet>` with columns Entry, Mead name, Status, **Total**, **Advances**, Filled by, Actions.
+- [ ] **Expected:** A `Grid<Scoresheet>` with columns Entry # *(admin-only, e.g. "PRO-1", shown to cross-reference back to Entry Admin)*, Code, Mead Name, Status, **Total**, **Advances**, Filled by, Actions. Judges see the same grid **without** the Entry # column.
   - **Total column** shows the locked total for SUBMITTED sheets, a running sum with " *" suffix for BLANK/DRAFT sheets (judging in progress), and "—" for sheets with no scores entered yet. The running sum is computed live, so admins can see panel progress without opening each scoresheet.
   - **Advances column** shows ✓ when the judge marked "Advance to medal round", — otherwise.
 - [ ] **Status filter** options: `All`, `Blank` (created, no judge touched yet), `Draft` (judge saved at least once), `Submitted`. Apply filter Status = Draft → grid narrows to DRAFT rows only.
@@ -2039,8 +2039,10 @@ scoresheet via `JudgingService.assignEntryToRound`.
 - [ ] **Expected:** A **"← Back to round"** anchor (id `scoresheet-back-to-round`) appears at the very top of the view, pointing back at the round's RoundView. One click returns to the scoresheet list.
 - [ ] **Expected:** H2 `Scoresheet — {entryCode}`.
 - [ ] **Expected (judge view):** A read-only entry card showing **only the declared
-  attributes** the judge needs to judge to style — category (code + name),
-  sweetness, carbonation, ABV, honey varieties, and (when present) other
+  attributes** the judge needs to judge to style — **Initial Category** (code +
+  name, what the entrant registered under) and **Final Category** (code + name,
+  where the admin placed it for judging; both rendered side-by-side on separate
+  lines), sweetness, carbonation, ABV, honey varieties, and (when present) other
   ingredients, wood ageing details, and additional information. **The mead name
   is NOT shown to judges** (anonymity rule — judges judge to style, not to a
   brand). Judges work from poured coded samples, not the labelled bottle, so the
@@ -2149,7 +2151,7 @@ To set up: from JudgingAdmin → Rounds tab → set Type filter to `Medal` → c
 - [ ] **Expected:** Confirmation dialog body reads "Score-based medals will be auto-populated from Round 1 totals (gold/silver/bronze, stopping on ties). Auto-filled medals are unconfirmed until you review them."
 - [ ] Click Start → notification "Medal round started"; status flips to ACTIVE; the top-3 entries (by Round 1 total, walking gold → silver → bronze, stopping on the first tie within a slot) are pre-populated as MedalAwards with `confirmed = false`.
 - [ ] **Expected:** Pre-populated rows render with their medal badge but don't propagate to results/BOS until confirmed (results queries filter to `confirmed = true`).
-- [ ] **Expected:** A "tied-slot" banner at the top of MedalRoundView when ties exist (red text: "{N} slots tied — resolve before finalizing."); tied rows are flagged with a `⚠` marker in the Entry column. Resolve a tie by awarding a medal to one tied entry (or withholding the others) — the view recomputes the cascade live on every action.
+- [ ] **Expected:** A "tied-slot" banner at the top of MedalRoundView when ties exist (red text: "{N} slots tied — resolve before finalizing."); tied rows are flagged with a `⚠` marker in the Code column. Resolve a tie by awarding a medal to one tied entry (or withholding the others) — the view recomputes the cascade live on every action.
 - [ ] To **confirm** an auto-filled medal: click the same medal button (e.g. `🥇` on a row that's already auto-Gold) → `updateMedal` flips `confirmed = true`. (A dedicated per-row "Confirm" button is a possible follow-up — for now confirmation happens implicitly via any manual medal action on the row.)
 
 #### 12.12.3 Admin actions (Reset / Reopen / Finalize)

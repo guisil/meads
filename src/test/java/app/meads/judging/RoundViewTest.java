@@ -206,8 +206,51 @@ class RoundViewTest {
         var headers = scoresheetsGrid.getColumns().stream()
                 .map(c -> ((Grid.Column<?>) c).getHeaderText())
                 .toList();
-        assertThat(headers).containsExactly("Entry", "Mead name", "Status",
+        assertThat(headers).containsExactly("Entry #", "Code", "Mead Name", "Status",
                 "Total", "Advances", "Filled by", "Actions");
+    }
+
+    @Test
+    @WithMockUser(username = "round-view-columns-judge@example.com", roles = "USER")
+    @SuppressWarnings("unchecked")
+    void shouldHideEntryNumberColumnFromJudges() {
+        // Entry # cross-references the internal record — admin-only. Judges see
+        // only the anonymized Code column.
+        advanceDivisionToJudging();
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Desc",
+                null, 1, CategoryScope.JUDGING));
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var judge = userRepository.save(new User(
+                "round-view-columns-judge@example.com", "Columns Judge",
+                UserStatus.ACTIVE, Role.USER));
+        competitionService.addParticipantByEmail(competition.getId(),
+                judge.getEmail(), CompetitionRole.JUDGE, admin.getId());
+
+        var judging = judgingService.ensureJudgingExists(division.getId());
+        var table = judgingService.createRound(judging.getId(), "Table A",
+                category.getId(), null, admin.getId());
+        judgingService.assignJudge(table.getId(), judge.getId(), admin.getId());
+        // Round must be ACTIVE for non-admin judge access — bypass service preconds.
+        table.markReady();
+        table.start();
+        judgingRoundRepository.save(table);
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName()
+                + "/tables/" + table.getId());
+
+        var grids = _find(Grid.class);
+        var scoresheetsGrid = grids.stream()
+                .filter(g -> "scoresheets-grid".equals(g.getId().orElse(null)))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Scoresheets grid not found"));
+
+        var headers = scoresheetsGrid.getColumns().stream()
+                .map(c -> ((Grid.Column<?>) c).getHeaderText())
+                .toList();
+        assertThat(headers).doesNotContain("Entry #");
+        assertThat(headers).contains("Code", "Mead Name");
     }
 
     @Test

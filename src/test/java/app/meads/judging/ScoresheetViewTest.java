@@ -219,6 +219,28 @@ class ScoresheetViewTest {
     }
 
     @Test
+    @WithMockUser(username = JUDGE_EMAIL, roles = "USER")
+    void shouldShowBothInitialAndFinalCategoryLines() {
+        // Informative: the scoresheet card shows the entry's initial category
+        // (what the entrant registered under) and its final category (where the
+        // admin placed it for judging). Judges + admins both see both lines.
+        var entrant = userRepository.save(new User(
+                "entrant-cats-" + UUID.randomUUID() + "@example.com",
+                "Entrant", UserStatus.ACTIVE, Role.USER));
+        var sheet = createScoresheetFor(entrant, "AMACAT", "Category Mead");
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName()
+                + "/scoresheets/" + sheet.getId());
+
+        var spanTexts = _find(Span.class).stream().map(Span::getText).toList();
+        assertThat(spanTexts.stream().anyMatch(t -> t != null && t.startsWith("Initial Category:")))
+                .as("Initial Category line must be present").isTrue();
+        assertThat(spanTexts.stream().anyMatch(t -> t != null && t.startsWith("Final Category:")))
+                .as("Final Category line must be present").isTrue();
+    }
+
+    @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldShowMeadNameWhenAdminOpensTheScoresheet() {
         // Admins (system admin or division admin) DO see the mead name — they

@@ -455,7 +455,8 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
         }
         // Judges work from poured samples (coded glasses, not the labelled bottle),
         // so the declared attributes they judge to style against must be on screen.
-        card.add(attributeLine("entries.view.category", categoryLabel()));
+        card.add(attributeLine("entries.view.initial-category", initialCategoryLabel()));
+        card.add(attributeLine("entries.view.final-category", finalCategoryLabel()));
         card.add(attributeLine("entries.view.sweetness",
                 getTranslation("entry.sweetness." + entry.getSweetness().name())));
         card.add(attributeLine("entries.view.carbonation",
@@ -479,11 +480,19 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
         return new Span(getTranslation(labelKey) + ": " + value);
     }
 
-    private String categoryLabel() {
-        if (entry.getFinalCategoryId() == null) {
+    private String initialCategoryLabel() {
+        return categoryLabelFor(entry.getInitialCategoryId());
+    }
+
+    private String finalCategoryLabel() {
+        return categoryLabelFor(entry.getFinalCategoryId());
+    }
+
+    private String categoryLabelFor(java.util.UUID categoryId) {
+        if (categoryId == null) {
             return "—";
         }
-        var category = competitionService.findDivisionCategoryById(entry.getFinalCategoryId());
+        var category = competitionService.findDivisionCategoryById(categoryId);
         return category.getCode() + " — " + category.getName();
     }
 

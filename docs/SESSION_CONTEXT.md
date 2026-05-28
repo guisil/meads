@@ -240,9 +240,17 @@ Cycle A + B answered the end-of-day design questions. Cycle C landed mid-walkthr
 - **Cycle A** (force-all-entries on SCORE_BASED, commit `ceef486`).
 - **Cycle B** (Withhold / Clear inline icons + ConfirmDialogs, commit `65d0092`).
 - **Cycle C** (MyJudgingView → redirect-or-stub + judge access tightened to ACTIVE rounds, commit `331743b`).
-- **Mid-walkthrough fix (2026-05-28)** — Final Category column on `DivisionEntryAdminView` Entries tab + `MyEntriesView` had `.setSortable(true)` but no comparator (component column with no value-provider = no sort). Mirrored the Initial Category pattern (`resolveCategoryCode(...).compareTo(...)`). Unset entries sort last (resolve to `"—"`). +1 test per view.
+- **Mid-walkthrough fix (2026-05-28)** — Final Category column on `DivisionEntryAdminView` Entries tab + `MyEntriesView` had `.setSortable(true)` but no comparator (component column with no value-provider = no sort). Mirrored the Initial Category pattern (`resolveCategoryCode(...).compareTo(...)`). Unset entries sort last (resolve to `"—"`). +1 test per view. Committed as `c9e2ed0`.
+- **Mid-walkthrough enhancement (2026-05-28)** — Round entry views: code/name split + admin-only Entry # cross-reference.
+  - `MedalRoundEntryRow` gained `int entryNumber`; both `JudgingServiceImpl` builders pass it through.
+  - `MedalRoundView` main grid: "Entry — code+name" column → three: Entry # / Code / Mead Name. Tie ⚠ prefix stays on the Code column. (View is admin-only so no gating.)
+  - `MedalRoundView` Assign Entries dialog: same split.
+  - `RoundView` scoresheets grid: Entry # column gated to admins (`isAdmin` already existed); existing Entry → Code, Mead → Mead Name renames for parity. `entryNumberLabel(Entry)` helper added.
+  - `ScoresheetView`: single "Category" line replaced with two — "Initial Category" + "Final Category". `categoryLabel` split into `initialCategoryLabel` / `finalCategoryLabel` over a new `categoryLabelFor(UUID)` helper.
+  - i18n: removed `medal-round.column.entry`, `medal-round.assign-entries.column.entry`, `table.column.entry`, `table.column.mead`. Added 7 new keys × 5 locales: `medal-round.column.entry-number/entry-code/mead-name`, `medal-round.assign-entries.column.entry-number/entry-code/mead-name`, `table.column.entry-number/entry-code/mead-name`, `entries.view.initial-category`.
+  - +4 tests (one per view + dialog + judge gate).
 
-**State on disk** (`feature/judging-module` at HEAD + uncommitted Final Category sort fix, 1245 tests passing,
+**State on disk** (`feature/judging-module` at HEAD + uncommitted round-view changes, 1249 tests passing,
 push pending). Verify with `mvn test -Dsurefire.useFile=false`.
 Walkthrough paused at §12.6.8.1 step 10 (judge scoring the M3B SCORE_BASED
 medal round in Profissional). Resume there — the judge will now land

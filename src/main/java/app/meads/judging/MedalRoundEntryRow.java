@@ -20,6 +20,7 @@ import java.util.UUID;
  */
 public record MedalRoundEntryRow(
         UUID entryId,
+        int entryNumber,
         String entryCode,
         String meadName,
         UUID entrantUserId,

@@ -214,10 +214,14 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
         scoresheetsGrid = new Grid<>(Scoresheet.class, false);
         scoresheetsGrid.setId("scoresheets-grid");
 
+        if (isAdmin) {
+            scoresheetsGrid.addColumn(s -> entryNumberLabel(entriesById.get(s.getEntryId())))
+                    .setHeader(getTranslation("table.column.entry-number"));
+        }
         scoresheetsGrid.addColumn(s -> entryCode(entriesById.get(s.getEntryId())))
-                .setHeader(getTranslation("table.column.entry"));
+                .setHeader(getTranslation("table.column.entry-code"));
         scoresheetsGrid.addColumn(s -> meadName(entriesById.get(s.getEntryId())))
-                .setHeader(getTranslation("table.column.mead"));
+                .setHeader(getTranslation("table.column.mead-name"));
         scoresheetsGrid.addColumn(s -> s.getStatus().name())
                 .setHeader(getTranslation("table.column.status"));
         scoresheetsGrid.addColumn(this::formatTotalCell)
@@ -514,6 +518,17 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
 
     private String meadName(Entry entry) {
         return entry == null ? "" : entry.getMeadName();
+    }
+
+    private String entryNumberLabel(Entry entry) {
+        if (entry == null) {
+            return "";
+        }
+        var prefix = division.getEntryPrefix();
+        if (prefix != null && !prefix.isBlank()) {
+            return prefix + "-" + entry.getEntryNumber();
+        }
+        return String.valueOf(entry.getEntryNumber());
     }
 
     private String filledByName(UUID userId, Map<UUID, User> usersById) {

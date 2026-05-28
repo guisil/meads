@@ -1012,7 +1012,8 @@ public class JudgingServiceImpl implements JudgingService {
             }
             var medalOpt = medalAwardRepository.findByEntryId(entryId);
             rows.add(new MedalRoundEntryRow(
-                    entry.getId(), entry.getEntryCode(), entry.getMeadName(),
+                    entry.getId(), entry.getEntryNumber(),
+                    entry.getEntryCode(), entry.getMeadName(),
                     entry.getUserId(), totalScore, advanced,
                     sheetOpt.map(Scoresheet::getId).orElse(null),
                     medalOpt.map(MedalAward::getId).orElse(null),
@@ -1043,7 +1044,8 @@ public class JudgingServiceImpl implements JudgingService {
             }
             var medalOpt = medalAwardRepository.findByEntryId(entry.getId());
             rows.add(new MedalRoundEntryRow(
-                    entry.getId(), entry.getEntryCode(), entry.getMeadName(),
+                    entry.getId(), entry.getEntryNumber(),
+                    entry.getEntryCode(), entry.getMeadName(),
                     entry.getUserId(), sheet.getTotalScore(), sheet.isAdvancedToMedalRound(),
                     sheet.getId(),
                     medalOpt.map(MedalAward::getId).orElse(null),

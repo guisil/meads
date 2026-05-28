@@ -310,6 +310,26 @@ class MedalRoundViewTest {
         assertThat(grid).isNotNull();
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldRenderSeparateEntryNumberCodeAndMeadNameColumnsOnMedalRoundGrid() {
+        var category = activeMedalRoundCategory();
+        var table = tableFor(category);
+        advancedEntry(category, table, "AMA-1");
+
+        navigateToMedalRound(category);
+
+        var grid = _get(Grid.class, spec -> spec.withId("medal-round-grid"));
+        var headers = grid.getColumns().stream()
+                .map(c -> ((Grid.Column) c).getHeaderText())
+                .filter(h -> h instanceof String s && !s.isBlank())
+                .map(Object::toString)
+                .toList();
+        assertThat(headers).contains("Entry #", "Code", "Mead Name");
+        assertThat(headers).doesNotContain("Entry");
+    }
+
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldShowPhysicalTableLineInHeader() {
@@ -648,6 +668,27 @@ class MedalRoundViewTest {
 
         var startButton = _get(Button.class, spec -> spec.withId("medal-round-start"));
         assertThat(startButton.isEnabled()).isTrue();
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldRenderSeparateEntryNumberCodeAndMeadNameColumnsOnAssignEntriesDialog() {
+        var category = pendingScoreBasedMedalRoundCategory();
+        receivedEntryWithoutScoresheet(category, "001");
+
+        navigateToMedalRound(category);
+        var assignEntries = _get(Button.class, spec -> spec.withId("medal-round-assign-entries"));
+        _click(assignEntries);
+
+        var grid = _get(Grid.class, spec -> spec.withId("medal-round-assign-entries-grid"));
+        var headers = grid.getColumns().stream()
+                .map(c -> ((Grid.Column) c).getHeaderText())
+                .filter(h -> h instanceof String s && !s.isBlank())
+                .map(Object::toString)
+                .toList();
+        assertThat(headers).contains("Entry #", "Code", "Mead Name");
+        assertThat(headers).doesNotContain("Entry");
     }
 
     @Test
