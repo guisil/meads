@@ -211,11 +211,73 @@ class RoundViewTest {
     }
 
     @Test
+    @WithMockUser(username = "round-view-search-judge@example.com", roles = "USER")
+    void shouldNotMatchSearchOnMeadNameForJudges() {
+        // Same anonymity rule that hides the Mead Name column from judges
+        // applies to the search box. A judge typing a mead-name fragment must
+        // not find a match — otherwise they could de-anonymize a coded row by
+        // searching for a known brand.
+        advanceDivisionToJudging();
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Desc",
+                null, 1, CategoryScope.JUDGING));
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var judge = userRepository.save(new User(
+                "round-view-search-judge@example.com", "Search Judge",
+                UserStatus.ACTIVE, Role.USER));
+        competitionService.addParticipantByEmail(competition.getId(),
+                judge.getEmail(), CompetitionRole.JUDGE, admin.getId());
+
+        var judging = judgingService.ensureJudgingExists(division.getId());
+        var table = judgingService.createRound(judging.getId(), "Table A",
+                category.getId(), null, admin.getId());
+        judgingService.assignJudge(table.getId(), judge.getId(), admin.getId());
+        table.markReady();
+        table.start();
+        judgingRoundRepository.save(table);
+
+        var entrant = userRepository.save(new User(
+                "entrant-search-" + UUID.randomUUID() + "@example.com",
+                "Entrant", UserStatus.ACTIVE, Role.USER));
+        var entry = entryRepository.save(new Entry(division.getId(), entrant.getId(), 1,
+                "AMA-50", "Hiveheart Brew", category.getId(), Sweetness.DRY,
+                BigDecimal.valueOf(11.0), Carbonation.STILL,
+                "Wildflower", null, false, null, null));
+        scoresheetRepository.save(new app.meads.judging.Scoresheet(table.getId(), entry.getId()));
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName()
+                + "/tables/" + table.getId());
+
+        var searchField = _get(com.vaadin.flow.component.textfield.TextField.class,
+                spec -> spec.withId("search-field"));
+        // Placeholder should be the judge-specific one (no mention of mead name).
+        assertThat(searchField.getPlaceholder()).isEqualTo("Entry code");
+
+        searchField.setValue("Hiveheart");
+        var grids = _find(Grid.class);
+        var scoresheetsGrid = grids.stream()
+                .filter(g -> "scoresheets-grid".equals(g.getId().orElse(null)))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Scoresheets grid not found"));
+        @SuppressWarnings("unchecked")
+        var visibleItems = scoresheetsGrid.getGenericDataView().getItems().toList();
+        assertThat(visibleItems).as("judge search by mead name must not match").isEmpty();
+
+        // Sanity: code-based search still works for judges.
+        searchField.setValue("AMA-50");
+        @SuppressWarnings("unchecked")
+        var afterCodeSearch = scoresheetsGrid.getGenericDataView().getItems().toList();
+        assertThat(afterCodeSearch).hasSize(1);
+    }
+
+    @Test
     @WithMockUser(username = "round-view-columns-judge@example.com", roles = "USER")
     @SuppressWarnings("unchecked")
-    void shouldHideEntryNumberColumnFromJudges() {
-        // Entry # cross-references the internal record — admin-only. Judges see
-        // only the anonymized Code column.
+    void shouldHideEntryNumberAndMeadNameColumnsFromJudges() {
+        // Anonymity: judges judge to style, not to a brand. Mead name (the
+        // entrant's chosen label) and Entry # (the internal cross-reference)
+        // are both admin-only. Judges see only the anonymized Code column.
         advanceDivisionToJudging();
         var category = divisionCategoryRepository.save(new DivisionCategory(
                 division.getId(), null, "M1A", "Dry Mead", "Desc",
@@ -249,8 +311,8 @@ class RoundViewTest {
         var headers = scoresheetsGrid.getColumns().stream()
                 .map(c -> ((Grid.Column<?>) c).getHeaderText())
                 .toList();
-        assertThat(headers).doesNotContain("Entry #");
-        assertThat(headers).contains("Code", "Mead Name");
+        assertThat(headers).doesNotContain("Entry #", "Mead Name");
+        assertThat(headers).contains("Code");
     }
 
     @Test

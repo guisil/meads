@@ -467,24 +467,28 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         // sort comparators look at the underlying record fields directly so
         // numeric / null-safe ordering works (the rendered "—" placeholder
         // would otherwise sort alphabetically).
-        // Entry # — admin-facing cross-reference to the Entry Admin grid (the
-        // entry code is the anonymous label judges see, the number ties it back
-        // to the internal record). MedalRoundView is admin-only so we don't
-        // gate it further here.
-        grid.addColumn(r -> formatEntryNumber(r.entryNumber()))
-                .setHeader(getTranslation("medal-round.column.entry-number"))
-                .setComparator(java.util.Comparator.comparingInt(MedalRoundEntryRow::entryNumber))
-                .setResizable(true).setSortable(true).setAutoWidth(true);
+        // Anonymity rule applies on MedalRoundView too: judges assigned to an
+        // ACTIVE medal round (small-category SCORE_BASED flow) DO open this
+        // view. Entry # (admin cross-reference) and Mead Name (entrant brand
+        // label) are admin-only; judges see just the anonymized Code column.
+        if (isAdmin) {
+            grid.addColumn(r -> formatEntryNumber(r.entryNumber()))
+                    .setHeader(getTranslation("medal-round.column.entry-number"))
+                    .setComparator(java.util.Comparator.comparingInt(MedalRoundEntryRow::entryNumber))
+                    .setResizable(true).setSortable(true).setAutoWidth(true);
+        }
         grid.addColumn(r -> (tiedEntryIds.contains(r.entryId()) ? "⚠ " : "")
                         + r.entryCode())
                 .setHeader(getTranslation("medal-round.column.entry-code"))
                 .setComparator(java.util.Comparator.comparing(MedalRoundEntryRow::entryCode))
                 .setResizable(true).setSortable(true).setAutoWidth(true);
-        grid.addColumn(MedalRoundEntryRow::meadName)
-                .setHeader(getTranslation("medal-round.column.mead-name"))
-                .setComparator(java.util.Comparator.comparing(MedalRoundEntryRow::meadName,
-                        String.CASE_INSENSITIVE_ORDER))
-                .setResizable(true).setSortable(true).setAutoWidth(true);
+        if (isAdmin) {
+            grid.addColumn(MedalRoundEntryRow::meadName)
+                    .setHeader(getTranslation("medal-round.column.mead-name"))
+                    .setComparator(java.util.Comparator.comparing(MedalRoundEntryRow::meadName,
+                            String.CASE_INSENSITIVE_ORDER))
+                    .setResizable(true).setSortable(true).setAutoWidth(true);
+        }
         grid.addColumn(r -> r.round1Total() == null ? "—" : r.round1Total().toString())
                 .setHeader(getTranslation("medal-round.column.total"))
                 .setComparator(java.util.Comparator.comparing(MedalRoundEntryRow::round1Total,

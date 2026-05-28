@@ -3,6 +3,8 @@ package app.meads.judging;
 import app.meads.TestcontainersConfiguration;
 import app.meads.competition.CategoryScope;
 import app.meads.competition.Competition;
+import app.meads.competition.CompetitionRole;
+import app.meads.competition.CompetitionService;
 import app.meads.competition.Division;
 import app.meads.competition.DivisionCategory;
 import app.meads.competition.ScoringSystem;
@@ -82,6 +84,7 @@ class MedalRoundViewTest {
     @Autowired ScoresheetRepository scoresheetRepository;
     @Autowired MedalAwardRepository medalAwardRepository;
     @Autowired JudgingService judgingService;
+    @Autowired CompetitionService competitionService;
 
     private Competition competition;
     private Division division;
@@ -308,6 +311,45 @@ class MedalRoundViewTest {
         assertThat(heading.getText()).contains("M1A");
         var grid = _get(Grid.class, spec -> spec.withId("medal-round-grid"));
         assertThat(grid).isNotNull();
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    @Test
+    @WithMockUser(username = "mr-columns-judge@example.com", roles = "USER")
+    void shouldHideEntryNumberAndMeadNameColumnsFromJudgesOnMedalRoundGrid() {
+        // Anonymity: same rule as RoundView/ScoresheetView. Judges on a
+        // SCORE_BASED small-category medal round (when they're assigned and
+        // the round is ACTIVE) DO open MedalRoundView, so the admin-only
+        // Entry # cross-reference and the entrant's brand label (mead name)
+        // must both be hidden.
+        var category = activeMedalRoundCategory();
+        var table = tableFor(category);
+        advancedEntry(category, table, "AMA-1");
+        // Attach a judge to the medal round so they can access MedalRoundView.
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var judge = userRepository.save(new User(
+                "mr-columns-judge@example.com", "Columns Judge",
+                UserStatus.ACTIVE, Role.USER));
+        competitionService.addParticipantByEmail(competition.getId(),
+                judge.getEmail(), CompetitionRole.JUDGE, admin.getId());
+        var judgingId = judgingRepository.findByDivisionId(division.getId())
+                .orElseThrow().getId();
+        var medalRound = judgingRoundRepository.findByJudgingId(judgingId).stream()
+                .filter(r -> r.getType() == RoundType.MEDAL
+                        && category.getId().equals(r.getDivisionCategoryId()))
+                .findFirst().orElseThrow();
+        judgingService.assignJudge(medalRound.getId(), judge.getId(), admin.getId());
+
+        navigateToMedalRound(category);
+
+        var grid = _get(Grid.class, spec -> spec.withId("medal-round-grid"));
+        var headers = grid.getColumns().stream()
+                .map(c -> ((Grid.Column) c).getHeaderText())
+                .filter(h -> h instanceof String s && !s.isBlank())
+                .map(Object::toString)
+                .toList();
+        assertThat(headers).doesNotContain("Entry #", "Mead Name");
+        assertThat(headers).contains("Code");
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})

@@ -199,7 +199,12 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
 
         searchField = new TextField();
         searchField.setId("search-field");
-        searchField.setPlaceholder(getTranslation("table.filter.search.placeholder"));
+        // Anonymity rule: judges can search by code only (mead name is hidden +
+        // unsearchable to prevent de-anonymizing a coded row by typing a known
+        // brand fragment). Admins keep the dual-field search.
+        searchField.setPlaceholder(getTranslation(isAdmin
+                ? "table.filter.search.placeholder"
+                : "table.filter.search.placeholder.judge"));
         searchField.setValueChangeMode(ValueChangeMode.EAGER);
         searchField.setClearButtonVisible(true);
         searchField.addValueChangeListener(e -> applyFilters());
@@ -220,8 +225,13 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
         }
         scoresheetsGrid.addColumn(s -> entryCode(entriesById.get(s.getEntryId())))
                 .setHeader(getTranslation("table.column.entry-code"));
-        scoresheetsGrid.addColumn(s -> meadName(entriesById.get(s.getEntryId())))
-                .setHeader(getTranslation("table.column.mead-name"));
+        // Mead name is the entrant's brand label. Anonymity rule: judges judge
+        // to style, not to a brand. Same rule already gates the mead name on
+        // ScoresheetView (see shouldShowEntryCodeButNotMeadNameToAssignedJudge).
+        if (isAdmin) {
+            scoresheetsGrid.addColumn(s -> meadName(entriesById.get(s.getEntryId())))
+                    .setHeader(getTranslation("table.column.mead-name"));
+        }
         scoresheetsGrid.addColumn(s -> s.getStatus().name())
                 .setHeader(getTranslation("table.column.status"));
         scoresheetsGrid.addColumn(this::formatTotalCell)
@@ -508,8 +518,13 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
         if (entry == null) {
             return false;
         }
-        return (entry.getEntryCode() != null && entry.getEntryCode().toLowerCase(Locale.ROOT).contains(needle))
-                || (entry.getMeadName() != null && entry.getMeadName().toLowerCase(Locale.ROOT).contains(needle));
+        if (entry.getEntryCode() != null && entry.getEntryCode().toLowerCase(Locale.ROOT).contains(needle)) {
+            return true;
+        }
+        // Anonymity rule: judges can't search by mead name (see search-field
+        // placeholder gate in createFilterBar).
+        return isAdmin && entry.getMeadName() != null
+                && entry.getMeadName().toLowerCase(Locale.ROOT).contains(needle);
     }
 
     private String entryCode(Entry entry) {

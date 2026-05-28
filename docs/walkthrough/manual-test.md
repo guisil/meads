@@ -1960,8 +1960,9 @@ Access tightening: judges can only open **ACTIVE** rounds. RoundView, MedalRound
 - [ ] **Expected:** URL is `competitions/chip-2026/divisions/amadora/tables/<tableId>`.
 - [ ] **Expected:** Breadcrumb begins with "My Judging" (judge path) or "My Competitions / CHIP 2026 / Amadora / Judging Admin" (admin path).
 - [ ] **Expected:** H2 `CHIP 2026 — Amadora — Table: M1A Panel A`.
-- [ ] **Expected:** Filter bar with a `Status` Select (options: All, Draft, Submitted; default All) and a `Search` `TextField` (placeholder "Mead name or entry code", `ValueChangeMode.EAGER`).
-- [ ] **Expected:** A `Grid<Scoresheet>` with columns Entry # *(admin-only, e.g. "PRO-1", shown to cross-reference back to Entry Admin)*, Code, Mead Name, Status, **Total**, **Advances**, Filled by, Actions. Judges see the same grid **without** the Entry # column.
+- [ ] **Expected:** Filter bar with a `Status` Select (options: All, Draft, Submitted; default All) and a `Search` `TextField` (`ValueChangeMode.EAGER`). Placeholder is **"Mead name or entry code"** for admins, **"Entry code"** for judges (anonymity rule — judges can't search by mead name either).
+- [ ] **Expected (admin):** A `Grid<Scoresheet>` with columns Entry # *(e.g. "PRO-1", cross-reference back to Entry Admin)*, Code, Mead Name, Status, **Total**, **Advances**, Filled by, Actions.
+- [ ] **Expected (judge):** Same grid with **Entry # and Mead Name hidden** (anonymity rule — judges judge to style, not to a brand, and don't see the internal cross-reference either). Visible columns: Code, Status, Total, Advances, Filled by, Actions.
   - **Total column** shows the locked total for SUBMITTED sheets, a running sum with " *" suffix for BLANK/DRAFT sheets (judging in progress), and "—" for sheets with no scores entered yet. The running sum is computed live, so admins can see panel progress without opening each scoresheet.
   - **Advances column** shows ✓ when the judge marked "Advance to medal round", — otherwise.
 - [ ] **Status filter** options: `All`, `Blank` (created, no judge touched yet), `Draft` (judge saved at least once), `Submitted`. Apply filter Status = Draft → grid narrows to DRAFT rows only.

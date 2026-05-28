@@ -250,7 +250,9 @@ Cycle A + B answered the end-of-day design questions. Cycle C landed mid-walkthr
   - i18n: removed `medal-round.column.entry`, `medal-round.assign-entries.column.entry`, `table.column.entry`, `table.column.mead`. Added 7 new keys × 5 locales: `medal-round.column.entry-number/entry-code/mead-name`, `medal-round.assign-entries.column.entry-number/entry-code/mead-name`, `table.column.entry-number/entry-code/mead-name`, `entries.view.initial-category`.
   - +4 tests (one per view + dialog + judge gate).
 
-**State on disk** (`feature/judging-module` at HEAD + uncommitted round-view changes, 1249 tests passing,
+- **Mid-walkthrough anonymity fix (2026-05-28)** — judges DO open MedalRoundView for ACTIVE SCORE_BASED medal rounds (small-category flow), so the Entry # and Mead Name columns on `MedalRoundView.createGrid` had to be gated on `isAdmin` (initial commit assumed the view was admin-only — wrong). Same anonymity rule extended to `RoundView.scoresheetsGrid.mead-name` column (was visible to judges). Search box on `RoundView` also gated: judges' `matchesSearch` no longer matches mead name; placeholder swaps to `table.filter.search.placeholder.judge` ("Entry code") × 5 locales. Now: judges on either view see only the Code column and can search by code only. Admins keep Entry # + Code + Mead Name + dual-field search. +2 tests.
+
+**State on disk** (`feature/judging-module` at `252168e` + uncommitted anonymity gating, 1251 tests passing,
 push pending). Verify with `mvn test -Dsurefire.useFile=false`.
 Walkthrough paused at §12.6.8.1 step 10 (judge scoring the M3B SCORE_BASED
 medal round in Profissional). Resume there — the judge will now land
