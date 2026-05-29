@@ -43,7 +43,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
 import java.time.Instant;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -337,7 +337,7 @@ public class JudgingServiceImpl implements JudgingService {
     public JudgingRound createRound(UUID judgingId,
                                     String name,
                                     UUID divisionCategoryId,
-                                    LocalDate scheduledDate,
+                                    LocalDateTime scheduledAt,
                                     UUID adminUserId) {
         var judging = requireJudging(judgingId);
         requireAuthorizedForJudging(judging, adminUserId);
@@ -350,7 +350,7 @@ public class JudgingServiceImpl implements JudgingService {
         if (nameTaken) {
             throw new BusinessRuleException("error.round.name-duplicate", trimmedName);
         }
-        var table = new JudgingRound(judgingId, trimmedName, divisionCategoryId, scheduledDate);
+        var table = new JudgingRound(judgingId, trimmedName, divisionCategoryId, scheduledAt);
         var saved = judgingRoundRepository.save(table);
         log.info("Created JudgingRound {} (name={}, category={})",
                 saved.getId(), trimmedName, divisionCategoryId);
@@ -563,15 +563,15 @@ public class JudgingServiceImpl implements JudgingService {
     }
 
     @Override
-    public void updateRoundScheduledDate(UUID roundId, LocalDate date,
-                                          UUID adminUserId) {
+    public void updateRoundScheduledAt(UUID roundId, LocalDateTime scheduledAt,
+                                       UUID adminUserId) {
         var table = requireTable(roundId);
         var judging = requireJudging(table.getJudgingId());
         requireAuthorizedForJudging(judging, adminUserId);
         requireNotFrozen(judging.getDivisionId());
-        table.updateScheduledDate(date);
+        table.updateScheduledAt(scheduledAt);
         judgingRoundRepository.save(table);
-        log.debug("Updated table {} scheduled date → {}", roundId, date);
+        log.debug("Updated round {} scheduled-at → {}", roundId, scheduledAt);
     }
 
     @Override

@@ -130,7 +130,7 @@ class JudgingServiceRoundTest {
                 .willAnswer(inv -> inv.getArgument(0));
 
         var table = service.createRound(judging.getId(), "Table 1",
-                divisionCategoryId, LocalDate.of(2026, 7, 1), adminUserId);
+                divisionCategoryId, LocalDateTime.of(2026, 7, 1, 0, 0), adminUserId);
 
         assertThat(table.getName()).isEqualTo("Table 1");
         assertThat(table.getDivisionCategoryId()).isEqualTo(divisionCategoryId);
@@ -144,7 +144,7 @@ class JudgingServiceRoundTest {
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(false);
 
         assertThatThrownBy(() -> service.createRound(judging.getId(), "Table 1",
-                divisionCategoryId, LocalDate.of(2026, 7, 1), adminUserId))
+                divisionCategoryId, LocalDateTime.of(2026, 7, 1, 0, 0), adminUserId))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("error.auth.unauthorized");
 
@@ -176,9 +176,9 @@ class JudgingServiceRoundTest {
         given(judgingRoundRepository.save(any(JudgingRound.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 
-        service.updateRoundScheduledDate(table.getId(), LocalDate.of(2026, 7, 5), adminUserId);
+        service.updateRoundScheduledAt(table.getId(), LocalDateTime.of(2026, 7, 5, 0, 0), adminUserId);
 
-        assertThat(table.getScheduledDate()).isEqualTo(LocalDate.of(2026, 7, 5));
+        assertThat(table.getScheduledAt()).isEqualTo(LocalDateTime.of(2026, 7, 5, 0, 0));
     }
 
     @Test

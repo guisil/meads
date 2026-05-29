@@ -302,11 +302,21 @@ unified grid → Finalize/Reopen flow → i18n+tests → P14 date+time → docs)
   cascade tests + `ScoresheetServiceFreezeGuardTest.shouldRejectSubmitWhenResultsPublished` +
   `AwardsModuleTest.fillAndSubmit` to the `markFilled` + `finalizeScoringRound` path. Deferred to
   preserve context for P14 + docs; `submit()` is dead UI-wise so leaving it is harmless transitional debt.
-- **Phase 5 NEXT (P14):** `JudgingRound.scheduledDate` LocalDate → `scheduledAt` LocalDateTime; edit
-  `V21` in place (DATE → TIMESTAMP, un-deployed); `DatePicker` → `DateTimePicker` (Add + Edit dialogs);
-  grid "Scheduled" column formats `yyyy-MM-dd HH:mm`; medal rows now schedulable. Ripple is small —
-  ~4 non-null-date test sites (`ScoresheetServiceTest:91`, `JudgingServiceRoundTest:179/181`,
-  `JudgingAdminViewTest:658`, `JudgingRoundRepositoryTest:102/113`) + the entity/service/view. Then Phase 6 (docs).
+- **Phase 5 (P14) DONE (2026-05-29):** `JudgingRound.scheduledDate` (LocalDate) → `scheduledAt`
+  (LocalDateTime) — display-only planning label, now date+time. V21 edited in place
+  (`scheduled_date DATE` → `scheduled_at TIMESTAMP`, un-deployed). `DatePicker` → `DateTimePicker` on
+  the Add + Edit Round dialogs; Rounds-grid Scheduled column formats `yyyy-MM-dd HH:mm`; medal rows
+  editable → schedulable. `JudgingService.createRound` + `updateRoundScheduledAt` take LocalDateTime;
+  `findNextDraftForJudge` sorts on `scheduledAt`. "Scheduled" dialog label reworded for date+time × 5
+  locales. All `LocalDate`/`scheduledDate` test sites migrated. Verified: judging + awards **430 green**.
+  **Dev-DB note:** editing V21 in place means a local dev DB that already ran V21 will hit a Flyway
+  checksum mismatch — recreate / `flyway clean` the dev DB before `mvn spring-boot:run` (Testcontainers
+  tests are unaffected — they migrate fresh).
+- **Phase 6 NEXT (docs):** rewrite walkthrough §12.6 (unified grid) + §12.9–§12.12 (Finalize/Reopen,
+  Save-validates + auto-save, no per-sheet Submit, Additional comments, eye-icon parity, date+time);
+  note the scoresheet status lifecycle in CLAUDE.md; finalize this SESSION_CONTEXT. After (c) lands:
+  the deferred `submit()` retire (above) + the deeper scoresheet *field-layout* redesign (awaiting user
+  screenshots) remain; then resume the walkthrough.
 - **Build note:** project is on **JDK 25** — if `mvn` fails with "release version 25 not supported"
   (BUILD FAILURE before any "Tests run:" line), the default JDK has drifted off 25; fix the JDK, not the code.
 

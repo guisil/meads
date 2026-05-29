@@ -24,7 +24,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -88,7 +88,7 @@ class ScoresheetServiceTest {
         adminUserId = UUID.randomUUID();
         competitionId = UUID.randomUUID();
         judging = new Judging(divisionId);
-        table = new JudgingRound(judging.getId(), "T1", divisionCategoryId, LocalDate.of(2026, 7, 1));
+        table = new JudgingRound(judging.getId(), "T1", divisionCategoryId, LocalDateTime.of(2026, 7, 1, 0, 0));
         roundId = table.getId();
         var nonFrozenDivision = mock(Division.class);
         lenient().when(nonFrozenDivision.getStatus()).thenReturn(DivisionStatus.JUDGING);

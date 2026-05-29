@@ -652,8 +652,8 @@ public class ScoresheetServiceImpl implements ScoresheetService {
         var tables = judgingRoundRepository.findByJudgeUserId(judgeUserId);
         return tables.stream()
                 .sorted((a, b) -> {
-                    var ad = a.getScheduledDate();
-                    var bd = b.getScheduledDate();
+                    var ad = a.getScheduledAt();
+                    var bd = b.getScheduledAt();
                     if (ad == null && bd == null) {
                         return a.getName().compareTo(b.getName());
                     }

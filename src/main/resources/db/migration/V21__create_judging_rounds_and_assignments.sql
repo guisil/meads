@@ -5,7 +5,7 @@ CREATE TABLE judging_rounds (
     division_category_id  UUID NOT NULL REFERENCES division_categories(id),
     type                  VARCHAR(20) NOT NULL DEFAULT 'SCORING',
     medal_mode            VARCHAR(20),
-    scheduled_date        DATE,
+    scheduled_at          TIMESTAMP,
     status                VARCHAR(20) NOT NULL,
     created_at            TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at            TIMESTAMP WITH TIME ZONE

@@ -99,7 +99,7 @@ class JudgingRoundRepositoryTest {
         var judge2 = createAndSaveJudge("judge2@test.com");
 
         var table = new JudgingRound(judging.getId(), "Table A",
-                category.getId(), LocalDate.of(2026, 7, 1));
+                category.getId(), LocalDateTime.of(2026, 7, 1, 14, 30));
         table.assignJudge(judge1.getId());
         table.assignJudge(judge2.getId());
 
@@ -110,7 +110,7 @@ class JudgingRoundRepositoryTest {
         assertThat(found.getJudgingId()).isEqualTo(judging.getId());
         assertThat(found.getName()).isEqualTo("Table A");
         assertThat(found.getDivisionCategoryId()).isEqualTo(category.getId());
-        assertThat(found.getScheduledDate()).isEqualTo(LocalDate.of(2026, 7, 1));
+        assertThat(found.getScheduledAt()).isEqualTo(LocalDateTime.of(2026, 7, 1, 14, 30));
         assertThat(found.getStatus()).isEqualTo(JudgingRoundStatus.PENDING);
         assertThat(found.getCreatedAt()).isNotNull();
         assertThat(found.getAssignments()).hasSize(2);

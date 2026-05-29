@@ -19,7 +19,7 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 
 import java.time.Instant;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -55,8 +55,8 @@ public class JudgingRound {
     @Column(name = "medal_mode", length = 20)
     private MedalRoundMode medalMode;
 
-    @Column(name = "scheduled_date")
-    private LocalDate scheduledDate;
+    @Column(name = "scheduled_at")
+    private LocalDateTime scheduledAt;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
@@ -82,18 +82,18 @@ public class JudgingRound {
     protected JudgingRound() {
     }
 
-    public JudgingRound(UUID judgingId, String name, UUID divisionCategoryId, LocalDate scheduledDate) {
-        this(judgingId, null, name, divisionCategoryId, scheduledDate);
+    public JudgingRound(UUID judgingId, String name, UUID divisionCategoryId, LocalDateTime scheduledAt) {
+        this(judgingId, null, name, divisionCategoryId, scheduledAt);
     }
 
     public JudgingRound(UUID judgingId, UUID physicalTableId, String name,
-                         UUID divisionCategoryId, LocalDate scheduledDate) {
+                         UUID divisionCategoryId, LocalDateTime scheduledAt) {
         this.id = UUID.randomUUID();
         this.judgingId = judgingId;
         this.physicalTableId = physicalTableId;
         this.name = name;
         this.divisionCategoryId = divisionCategoryId;
-        this.scheduledDate = scheduledDate;
+        this.scheduledAt = scheduledAt;
         this.type = RoundType.SCORING;
         this.medalMode = null;
         this.status = JudgingRoundStatus.PENDING;
@@ -141,8 +141,8 @@ public class JudgingRound {
         this.name = name;
     }
 
-    public void updateScheduledDate(LocalDate scheduledDate) {
-        this.scheduledDate = scheduledDate;
+    public void updateScheduledAt(LocalDateTime scheduledAt) {
+        this.scheduledAt = scheduledAt;
     }
 
     public void assignJudge(UUID judgeUserId) {

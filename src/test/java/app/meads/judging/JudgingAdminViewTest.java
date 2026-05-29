@@ -32,7 +32,7 @@ import com.github.mvysny.kaributesting.v10.Routes;
 import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.datepicker.DatePicker;
+import com.vaadin.flow.component.datetimepicker.DateTimePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Anchor;
@@ -247,14 +247,14 @@ class JudgingAdminViewTest {
         var judging = judgingService.ensureJudgingExists(division.getId());
 
         var completeRound = new JudgingRound(judging.getId(), "Complete Round",
-                category.getId(), LocalDate.of(2026, 7, 1));
+                category.getId(), LocalDateTime.of(2026, 7, 1, 0, 0));
         completeRound.markReady();
         completeRound.start();
         completeRound.markComplete();
         judgingRoundRepository.save(completeRound);
 
         var pendingRound = new JudgingRound(judging.getId(), "Pending Round",
-                category.getId(), LocalDate.of(2026, 7, 2));
+                category.getId(), LocalDateTime.of(2026, 7, 2, 0, 0));
         judgingRoundRepository.save(pendingRound);
 
         UI.getCurrent().navigate("competitions/" + competition.getShortName()
@@ -642,20 +642,20 @@ class JudgingAdminViewTest {
         var judging = judgingService.ensureJudgingExists(division.getId());
         var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
         var table = judgingService.createRound(judging.getId(), "Original Name",
-                category.getId(), LocalDate.of(2026, 7, 1), admin.getId());
+                category.getId(), LocalDateTime.of(2026, 7, 1, 0, 0), admin.getId());
 
         view.openEditTableDialog(table);
 
         var nameField = _get(TextField.class, spec -> spec.withId("edit-table-name"));
         nameField.setValue("Renamed Table");
-        var datePicker = _get(DatePicker.class, spec -> spec.withId("edit-table-scheduled"));
-        datePicker.setValue(LocalDate.of(2026, 8, 15));
+        var datePicker = _get(DateTimePicker.class, spec -> spec.withId("edit-table-scheduled"));
+        datePicker.setValue(LocalDateTime.of(2026, 8, 15, 9, 30));
 
         _click(_get(Button.class, spec -> spec.withText("Save")));
 
         var refreshed = judgingService.findRoundsByJudgingId(judging.getId()).get(0);
         assertThat(refreshed.getName()).isEqualTo("Renamed Table");
-        assertThat(refreshed.getScheduledDate()).isEqualTo(LocalDate.of(2026, 8, 15));
+        assertThat(refreshed.getScheduledAt()).isEqualTo(LocalDateTime.of(2026, 8, 15, 9, 30));
     }
 
     @Test
@@ -674,7 +674,7 @@ class JudgingAdminViewTest {
         var tableOne = judgingService.createPhysicalTable(division.getId(), "Table 1", admin.getId());
         var tableTwo = judgingService.createPhysicalTable(division.getId(), "Table 2", admin.getId());
         var round = judgingService.createRound(judging.getId(), "Round 1",
-                category.getId(), LocalDate.of(2026, 7, 1), admin.getId());
+                category.getId(), LocalDateTime.of(2026, 7, 1, 0, 0), admin.getId());
         judgingService.assignRoundToPhysicalTable(round.getId(), tableOne.getId(), admin.getId());
 
         view.openEditTableDialog(round);
@@ -705,7 +705,7 @@ class JudgingAdminViewTest {
         var tableOne = judgingService.createPhysicalTable(division.getId(), "Table 1", admin.getId());
         judgingService.createPhysicalTable(division.getId(), "Table 2", admin.getId());
         var round = judgingService.createRound(judging.getId(), "Round 1",
-                category.getId(), LocalDate.of(2026, 7, 1), admin.getId());
+                category.getId(), LocalDateTime.of(2026, 7, 1, 0, 0), admin.getId());
         judgingService.assignRoundToPhysicalTable(round.getId(), tableOne.getId(), admin.getId());
 
         // The grid passes a freshly-loaded round (refreshRoundsGrid re-queries),

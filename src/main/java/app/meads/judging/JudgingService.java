@@ -3,7 +3,7 @@ package app.meads.judging;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -37,7 +37,7 @@ public interface JudgingService {
     JudgingRound createRound(@NotNull UUID judgingId,
                              @NotBlank String name,
                              @NotNull UUID divisionCategoryId,
-                             LocalDate scheduledDate,
+                             LocalDateTime scheduledAt,
                              @NotNull UUID adminUserId);
 
     /**
@@ -52,7 +52,7 @@ public interface JudgingService {
 
     void updateRoundName(@NotNull UUID roundId, @NotBlank String name, @NotNull UUID adminUserId);
 
-    void updateRoundScheduledDate(@NotNull UUID roundId, LocalDate date, @NotNull UUID adminUserId);
+    void updateRoundScheduledAt(@NotNull UUID roundId, LocalDateTime scheduledAt, @NotNull UUID adminUserId);
 
     void deleteRound(@NotNull UUID roundId, @NotNull UUID adminUserId);
 

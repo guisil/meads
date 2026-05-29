@@ -31,7 +31,7 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.CheckboxGroup;
 import com.vaadin.flow.component.combobox.ComboBox;
-import com.vaadin.flow.component.datepicker.DatePicker;
+import com.vaadin.flow.component.datetimepicker.DateTimePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Anchor;
@@ -58,7 +58,6 @@ import jakarta.annotation.security.PermitAll;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.format.DateTimeFormatter;
-import java.time.format.FormatStyle;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -419,10 +418,10 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
                     getTranslation("judging-admin.tables.dialog.physical-table.locked"));
         }
 
-        var datePicker = new DatePicker(getTranslation("judging-admin.tables.dialog.scheduled"));
+        var datePicker = new DateTimePicker(getTranslation("judging-admin.tables.dialog.scheduled"));
         datePicker.setId("edit-table-scheduled");
         datePicker.setWidthFull();
-        datePicker.setValue(table.getScheduledDate());
+        datePicker.setValue(table.getScheduledAt());
 
         form.add(nameField, physicalTableSelect, datePicker);
         dialog.add(form);
@@ -443,8 +442,8 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
                         && !java.util.Objects.equals(selectedTableId, table.getPhysicalTableId())) {
                     judgingService.assignRoundToPhysicalTable(table.getId(), selectedTableId, currentUserId);
                 }
-                if (!java.util.Objects.equals(datePicker.getValue(), table.getScheduledDate())) {
-                    judgingService.updateRoundScheduledDate(table.getId(), datePicker.getValue(), currentUserId);
+                if (!java.util.Objects.equals(datePicker.getValue(), table.getScheduledAt())) {
+                    judgingService.updateRoundScheduledAt(table.getId(), datePicker.getValue(), currentUserId);
                 }
                 dialog.close();
                 refreshRoundsGrid();
@@ -857,9 +856,8 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         roundsGrid.addColumn(r -> r.getEntries().size())
                 .setHeader(getTranslation("judging-admin.rounds.column.entries"))
                 .setResizable(true).setSortable(true).setAutoWidth(true);
-        roundsGrid.addColumn(r -> r.getScheduledDate() == null ? ""
-                        : r.getScheduledDate().format(DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT)
-                                .withLocale(getLocale())))
+        roundsGrid.addColumn(r -> r.getScheduledAt() == null ? ""
+                        : r.getScheduledAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")))
                 .setHeader(getTranslation("judging-admin.rounds.column.scheduled"))
                 .setResizable(true).setSortable(true).setAutoWidth(true);
         roundsGrid.addComponentColumn(this::createRoundsActionsCell)
@@ -990,7 +988,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
             physicalTableSelect.setHelperText(getTranslation("judging-admin.tables.dialog.physical-table.empty"));
         }
 
-        var datePicker = new DatePicker(getTranslation("judging-admin.tables.dialog.scheduled"));
+        var datePicker = new DateTimePicker(getTranslation("judging-admin.tables.dialog.scheduled"));
         datePicker.setWidthFull();
 
         form.add(typeSelect, nameField, medalModeSelect, categorySelect, physicalTableSelect, datePicker);

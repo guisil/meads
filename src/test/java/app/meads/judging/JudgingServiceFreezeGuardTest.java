@@ -24,7 +24,7 @@ import org.mockito.quality.Strictness;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.springframework.context.ApplicationEventPublisher;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -97,7 +97,7 @@ class JudgingServiceFreezeGuardTest {
     @Test
     void shouldRejectCreateTableWhenResultsPublished() {
         assertFrozen(() -> service.createRound(judging.getId(), "Table 1",
-                divisionCategoryId, LocalDate.of(2026, 7, 1), adminUserId));
+                divisionCategoryId, LocalDateTime.of(2026, 7, 1, 0, 0), adminUserId));
     }
 
     @Test
@@ -107,7 +107,7 @@ class JudgingServiceFreezeGuardTest {
 
     @Test
     void shouldRejectUpdateTableScheduledDateWhenResultsPublished() {
-        assertFrozen(() -> service.updateRoundScheduledDate(roundId, LocalDate.now(), adminUserId));
+        assertFrozen(() -> service.updateRoundScheduledAt(roundId, LocalDateTime.now(), adminUserId));
     }
 
     @Test
