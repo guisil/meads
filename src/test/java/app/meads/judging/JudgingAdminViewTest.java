@@ -767,6 +767,158 @@ class JudgingAdminViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldGiveMedalRowsTheSameInlineActionSetAsScoringRows() {
+        // The headline of the unified grid: a medal round is "just another round",
+        // so its row gets the full action set (edit / assign judges / assign
+        // entries / start / revert / delete / open) — not the old delete+open pair.
+        advanceDivisionToJudging();
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Dry mead category",
+                null, 1, CategoryScope.JUDGING));
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var view = _get(JudgingAdminView.class);
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var judging = judgingService.ensureJudgingExists(division.getId());
+        var scoringRound = judgingService.createRound(judging.getId(), "R1",
+                category.getId(), null, admin.getId());
+        var medalRound = judgingService.createMedalRound(judging.getId(),
+                category.getId(), admin.getId());
+
+        var scoringCell = view.createRoundsActionsCell(scoringRound);
+        var medalCell = view.createRoundsActionsCell(medalRound);
+
+        assertThat(medalCell.getComponentCount())
+                .as("medal rows get the same inline action set as scoring rows")
+                .isEqualTo(scoringCell.getComponentCount())
+                .isEqualTo(7);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    @SuppressWarnings("unchecked")
+    void shouldToggleMedalModeSelectAndNameFieldByRoundTypeInAddRoundDialog() {
+        advanceDivisionToJudging();
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var view = _get(JudgingAdminView.class);
+        view.openAddRoundDialog();
+
+        // SCORING (default): admin-entered name visible, medal-mode picker hidden.
+        assertThat(_find(TextField.class, spec -> spec.withId("add-round-name"))).hasSize(1);
+        assertThat(_find(com.vaadin.flow.component.select.Select.class,
+                spec -> spec.withId("add-round-medal-mode"))).isEmpty();
+
+        _get(com.vaadin.flow.component.select.Select.class, spec -> spec.withId("add-round-type"))
+                .setValue(RoundType.MEDAL);
+
+        // MEDAL: name derived from category (hidden), medal-mode picker shown.
+        assertThat(_find(TextField.class, spec -> spec.withId("add-round-name"))).isEmpty();
+        assertThat(_find(com.vaadin.flow.component.select.Select.class,
+                spec -> spec.withId("add-round-medal-mode"))).hasSize(1);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    @SuppressWarnings("unchecked")
+    void shouldCreateScoreBasedMedalRoundWithChosenModeViaAddRoundDialog() {
+        advanceDivisionToJudging();
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Dry mead category",
+                null, 1, CategoryScope.JUDGING));
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var physicalTable = judgingService.createPhysicalTable(division.getId(), "Table 1", admin.getId());
+
+        var view = _get(JudgingAdminView.class);
+        view.openAddRoundDialog();
+
+        _get(com.vaadin.flow.component.select.Select.class, spec -> spec.withId("add-round-type"))
+                .setValue(RoundType.MEDAL);
+        _get(com.vaadin.flow.component.select.Select.class, spec -> spec.withId("add-round-medal-mode"))
+                .setValue(MedalRoundMode.SCORE_BASED);
+        _get(com.vaadin.flow.component.select.Select.class, spec -> spec.withId("add-round-category"))
+                .setValue(category);
+        _get(com.vaadin.flow.component.select.Select.class, spec -> spec.withId("add-round-physical-table"))
+                .setValue(physicalTable);
+
+        _click(_get(Button.class, spec -> spec.withText("Save")));
+
+        var judging = judgingService.ensureJudgingExists(division.getId());
+        var rounds = judgingService.findRoundsByJudgingId(judging.getId());
+        assertThat(rounds).hasSize(1);
+        assertThat(rounds.get(0).getType()).isEqualTo(RoundType.MEDAL);
+        assertThat(rounds.get(0).getMedalMode())
+                .as("medal mode chosen at create time should stick")
+                .isEqualTo(MedalRoundMode.SCORE_BASED);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    @SuppressWarnings("unchecked")
+    void shouldRenderStatusFilterWithAllStatusesSelectedOnRoundsTab() {
+        advanceDivisionToJudging();
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(1); // Rounds tab
+
+        var statusFilter = (com.vaadin.flow.component.checkbox.CheckboxGroup<JudgingRoundStatus>)
+                _get(com.vaadin.flow.component.checkbox.CheckboxGroup.class,
+                        spec -> spec.withId("rounds-status-filter"));
+        assertThat(statusFilter.getSelectedItems())
+                .as("status filter starts with every status selected (no rows hidden)")
+                .containsExactlyInAnyOrder(JudgingRoundStatus.values());
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldRevertMedalRoundToReadyViaRevertDialog() {
+        // The unified grid's Revert routes a medal round through the medal-aware
+        // service path (ACTIVE -> READY, clearing awards). If it wrongly called
+        // the scoring revert, the service would reject it and the round would
+        // stay ACTIVE — so the READY transition proves the medal branch.
+        advanceDivisionToJudging();
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Dry mead category",
+                null, 1, CategoryScope.JUDGING));
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var view = _get(JudgingAdminView.class);
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var judging = judgingService.ensureJudgingExists(division.getId());
+        var medalRound = judgingService.createMedalRound(judging.getId(), category.getId(), admin.getId());
+        // Force ACTIVE directly — this test targets the Revert wiring, not the start
+        // flow. resetMedalRoundById also requires the judging phase to be ACTIVE
+        // (normally set by startRound), so flip that too.
+        var loaded = judgingRoundRepository.findById(medalRound.getId()).orElseThrow();
+        loaded.markReady();
+        loaded.start();
+        judgingRoundRepository.save(loaded);
+        var judgingEntity = judgingRepository.findById(judging.getId()).orElseThrow();
+        judgingEntity.markActive();
+        judgingRepository.save(judgingEntity);
+
+        view.openRevertRoundDialog(judgingService.findRoundById(medalRound.getId()).orElseThrow());
+        _click(_get(Button.class, spec -> spec.withText("Revert")));
+
+        var reverted = judgingService.findRoundById(medalRound.getId()).orElseThrow();
+        assertThat(reverted.getStatus()).isEqualTo(JudgingRoundStatus.READY);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldRenderDisabledMessageOnBosTabWhenJudgingPhaseNotStarted() {
         advanceDivisionToJudging();
 

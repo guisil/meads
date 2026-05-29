@@ -24,10 +24,12 @@ import app.meads.judging.JudgingRound;
 import app.meads.judging.JudgingRoundStatus;
 import app.meads.judging.RoundType;
 import app.meads.judging.MedalAward;
+import app.meads.judging.MedalRoundMode;
 import app.meads.judging.ScoresheetService;
 import app.meads.judging.ScoresheetStatus;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.checkbox.CheckboxGroup;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.dialog.Dialog;
@@ -84,6 +86,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
 
     private Grid<JudgingRound> roundsGrid;
     private ComboBox<RoundTypeFilter> roundsTypeFilter;
+    private CheckboxGroup<JudgingRoundStatus> roundsStatusFilter;
     private Grid<JudgingRound> resultsGrid;
     private ComboBox<RoundTypeFilter> resultsTypeFilter;
     private Span resultsEmptyCaption;
@@ -590,6 +593,55 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
                 .filter(e -> e.getStatus() == app.meads.entry.EntryStatus.RECEIVED)
                 .toList();
 
+        // SCORE_BASED medal rounds own every RECEIVED entry automatically — show a
+        // read-only preview + a Sync button rather than a multi-select (manual
+        // unassign is rejected by the service for these rounds).
+        if (round.getType() == RoundType.MEDAL
+                && round.getMedalMode() == MedalRoundMode.SCORE_BASED) {
+            var content = new VerticalLayout();
+            content.setPadding(false);
+            content.add(new Span(getTranslation("medal-round.assign-entries.helper.score-based")));
+            if (allEntries.isEmpty()) {
+                content.add(new Span(getTranslation("medal-round.assign-entries.empty.score-based")));
+            }
+            var preview = new Grid<>(app.meads.entry.Entry.class, false);
+            preview.setId("assign-entries-grid");
+            preview.setSelectionMode(Grid.SelectionMode.NONE);
+            preview.setAllRowsVisible(true);
+            preview.addColumn(e -> e.getEntryCode() + " — " + e.getMeadName())
+                    .setHeader(getTranslation("judging-admin.tables.assign-entries.column.entry"))
+                    .setResizable(true).setSortable(true).setAutoWidth(true);
+            preview.addColumn(e -> {
+                        var owner = userService.findById(e.getUserId());
+                        return owner.getMeaderyName() == null ? "" : owner.getMeaderyName();
+                    })
+                    .setHeader(getTranslation("judging-admin.tables.assign-entries.column.meadery"))
+                    .setResizable(true).setSortable(true).setAutoWidth(true);
+            preview.setItems(allEntries);
+            content.add(preview);
+            dialog.add(content);
+
+            var syncButton = new Button(getTranslation("medal-round.assign-entries.sync"), e -> {
+                try {
+                    judgingService.syncScoreBasedMedalRoundEntries(round.getId(), currentUserId);
+                    dialog.close();
+                    refreshRoundsGrid();
+                    Notification.show(getTranslation("judging-admin.tables.assign-entries.saved"))
+                            .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                } catch (BusinessRuleException ex) {
+                    Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
+                            .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                }
+            });
+            syncButton.setId("assign-entries-sync");
+            syncButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+            syncButton.setDisableOnClick(true);
+            var cancelSync = new Button(getTranslation("button.cancel"), e -> dialog.close());
+            dialog.getFooter().add(cancelSync, syncButton);
+            dialog.open();
+            return;
+        }
+
         var roundsInDivision = judgingService.findRoundsByJudgingId(judging.getId()).stream()
                 .filter(r -> r.getType() == RoundType.SCORING)
                 .toList();
@@ -766,13 +818,22 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         roundsTypeFilter.addValueChangeListener(e -> refreshRoundsGrid());
         topRow.add(roundsTypeFilter);
 
+        roundsStatusFilter = new CheckboxGroup<>(getTranslation("judging-admin.rounds.status-filter.label"));
+        roundsStatusFilter.setId("rounds-status-filter");
+        roundsStatusFilter.setItems(JudgingRoundStatus.values());
+        roundsStatusFilter.setItemLabelGenerator(Enum::name);
+        roundsStatusFilter.select(JudgingRoundStatus.values()); // all statuses shown by default
+        roundsStatusFilter.addValueChangeListener(e -> refreshRoundsGrid());
+        topRow.add(roundsStatusFilter);
+
         tab.add(topRow);
 
         roundsGrid = new Grid<>(JudgingRound.class, false);
         roundsGrid.setId("rounds-grid");
         roundsGrid.setAllRowsVisible(true);
-        roundsGrid.addColumn(r -> roundTypeLabel(r.getType()))
+        roundsGrid.addComponentColumn(this::roundTypeBadge)
                 .setHeader(getTranslation("judging-admin.rounds.column.type"))
+                .setComparator(java.util.Comparator.comparing(this::roundTypeBadgeLabel))
                 .setResizable(true).setSortable(true).setAutoWidth(true);
         roundsGrid.addColumn(JudgingRound::getName)
                 .setHeader(getTranslation("judging-admin.rounds.column.name"))
@@ -816,8 +877,14 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         }
         var allRounds = judgingService.findRoundsByJudgingId(judging.getId());
         var filterValue = roundsTypeFilter == null ? RoundTypeFilter.ALL : roundsTypeFilter.getValue();
+        // Empty status selection is treated as "no constraint" (show all) rather
+        // than "show none", so an accidental clear doesn't blank the grid.
+        var statuses = (roundsStatusFilter == null || roundsStatusFilter.getValue().isEmpty())
+                ? java.util.EnumSet.allOf(JudgingRoundStatus.class)
+                : roundsStatusFilter.getValue();
         var filtered = allRounds.stream()
                 .filter(r -> matchesRoundTypeFilter(r, filterValue))
+                .filter(r -> statuses.contains(r.getStatus()))
                 .toList();
         roundsGrid.setItems(filtered);
     }
@@ -845,6 +912,31 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         };
     }
 
+    /**
+     * Colored Lumo badge for the unified Rounds grid Type column: a medal round
+     * reads as "just another round" but its scoring mode is visible at a glance —
+     * Scoring (contrast), Medal — Comparative (primary), Medal — Score-based (success).
+     */
+    private Span roundTypeBadge(JudgingRound round) {
+        var badge = new Span(roundTypeBadgeLabel(round));
+        String theme = switch (round.getType()) {
+            case SCORING -> "badge contrast";
+            case MEDAL -> round.getMedalMode() == MedalRoundMode.SCORE_BASED
+                    ? "badge success" : "badge primary";
+        };
+        badge.getElement().getThemeList().add(theme);
+        return badge;
+    }
+
+    private String roundTypeBadgeLabel(JudgingRound round) {
+        if (round.getType() == RoundType.SCORING) {
+            return getTranslation("judging-admin.rounds.type.scoring");
+        }
+        String mode = getTranslation(round.getMedalMode() == MedalRoundMode.SCORE_BASED
+                ? "medal-round.mode.score-based" : "medal-round.mode.comparative");
+        return getTranslation("judging-admin.rounds.type.medal") + " — " + mode;
+    }
+
     /** Package-public for tests — opened by the "+ Add Round" toolbar button on the Rounds tab. */
     public void openAddRoundDialog() {
         var dialog = new Dialog();
@@ -865,6 +957,18 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         nameField.setId("add-round-name");
         nameField.setWidthFull();
         nameField.setMaxLength(120);
+
+        // Medal mode is chosen at create time (collapses the old post-create
+        // header switch). Shown only when Type = MEDAL.
+        var medalModeSelect = new Select<MedalRoundMode>();
+        medalModeSelect.setId("add-round-medal-mode");
+        medalModeSelect.setLabel(getTranslation("judging-admin.rounds.dialog.medal-mode"));
+        medalModeSelect.setWidthFull();
+        medalModeSelect.setItems(MedalRoundMode.values());
+        medalModeSelect.setItemLabelGenerator(m -> getTranslation(m == MedalRoundMode.SCORE_BASED
+                ? "medal-round.mode.score-based" : "medal-round.mode.comparative"));
+        medalModeSelect.setValue(MedalRoundMode.COMPARATIVE);
+        medalModeSelect.setVisible(false);
 
         var categorySelect = new Select<DivisionCategory>();
         categorySelect.setId("add-round-category");
@@ -889,11 +993,16 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         var datePicker = new DatePicker(getTranslation("judging-admin.tables.dialog.scheduled"));
         datePicker.setWidthFull();
 
-        form.add(typeSelect, nameField, categorySelect, physicalTableSelect, datePicker);
+        form.add(typeSelect, nameField, medalModeSelect, categorySelect, physicalTableSelect, datePicker);
         dialog.add(form);
 
-        // MEDAL rounds derive their name from the category and don't need an admin-entered name.
-        typeSelect.addValueChangeListener(e -> nameField.setVisible(e.getValue() == RoundType.SCORING));
+        // MEDAL rounds derive their name from the category (no admin-entered name)
+        // and expose the medal-mode picker; SCORING rounds hide the mode picker.
+        typeSelect.addValueChangeListener(e -> {
+            boolean medal = e.getValue() == RoundType.MEDAL;
+            nameField.setVisible(!medal);
+            medalModeSelect.setVisible(medal);
+        });
 
         var saveButton = new Button(getTranslation("button.save"));
         saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
@@ -925,6 +1034,11 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
                 if (type == RoundType.MEDAL) {
                     created = judgingService.createMedalRound(judging.getId(),
                             categorySelect.getValue().getId(), currentUserId);
+                    if (medalModeSelect.getValue() != null
+                            && created.getMedalMode() != medalModeSelect.getValue()) {
+                        judgingService.updateMedalRoundMode(created.getId(),
+                                medalModeSelect.getValue(), currentUserId);
+                    }
                 } else {
                     created = judgingService.createRound(judging.getId(), nameField.getValue().trim(),
                             categorySelect.getValue().getId(), datePicker.getValue(), currentUserId);
@@ -1032,7 +1146,8 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         return getTranslation("judging-admin.results.outcome.scoresheets", submitted);
     }
 
-    private HorizontalLayout createRoundsActionsCell(JudgingRound round) {
+    /** Package-public for tests — the inline action set rendered per Rounds-grid row. */
+    public HorizontalLayout createRoundsActionsCell(JudgingRound round) {
         var openButton = new Button(new Icon(VaadinIcon.ARROW_RIGHT));
         openButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
         openButton.setTooltipText(getTranslation("judging-admin.rounds.action.open"));
@@ -1045,21 +1160,12 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
             com.vaadin.flow.component.UI.getCurrent().navigate(url);
         });
 
-        if (round.getType() == RoundType.MEDAL) {
-            // Medal rounds get a Delete button (PENDING + no medal awards) plus Open.
-            // No Edit / Start / Assign Entries — those live in MedalRoundView.
-            boolean medalCanDelete = round.getStatus() == JudgingRoundStatus.PENDING
-                    && round.getAssignments().isEmpty()
-                    && judgingService.findMedalAwardsForCategory(round.getDivisionCategoryId()).isEmpty();
-            var medalDeleteButton = new Button(new Icon(VaadinIcon.TRASH));
-            medalDeleteButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            medalDeleteButton.setEnabled(medalCanDelete);
-            medalDeleteButton.addClickListener(e -> openDeleteTableDialog(round));
-            var medalDeleteWrapper = wrapWithTooltip(medalDeleteButton, medalCanDelete
-                    ? getTranslation("judging-admin.tables.action.delete")
-                    : getTranslation("judging-admin.medal-rounds.action.delete.blocked"));
-            return new HorizontalLayout(medalDeleteWrapper, openButton);
-        }
+        // Unified action set for SCORING and MEDAL rounds alike (decision: a
+        // medal round is just another round with a different scoring mode). Type-
+        // specific behavior is folded into the shared dialogs / service calls:
+        // Start uses startRound (handles both), Revert branches in the dialog
+        // (medal clears awards), Open routes to MedalRoundView vs RoundView.
+        boolean isMedal = round.getType() == RoundType.MEDAL;
 
         var editButton = new Button(new Icon(VaadinIcon.EDIT));
         editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
@@ -1090,16 +1196,6 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
                 ? getTranslation("judging-admin.tables.action.assign-entries")
                 : getTranslation("judging-admin.tables.assign-entries.disabled-tooltip"));
 
-        boolean canDelete = round.getStatus() == JudgingRoundStatus.PENDING
-                && round.getAssignments().isEmpty();
-        var deleteButton = new Button(new Icon(VaadinIcon.TRASH));
-        deleteButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-        deleteButton.setEnabled(canDelete);
-        deleteButton.addClickListener(e -> openDeleteTableDialog(round));
-        var deleteWrapper = wrapWithTooltip(deleteButton, canDelete
-                ? getTranslation("judging-admin.tables.action.delete")
-                : getTranslation("judging-admin.tables.action.delete.blocked"));
-
         boolean canRevert = round.getStatus() == JudgingRoundStatus.ACTIVE;
         var revertButton = new Button(new Icon(VaadinIcon.BACKWARDS));
         revertButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
@@ -1109,19 +1205,45 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
                 ? getTranslation("judging-admin.tables.action.revert")
                 : getTranslation("judging-admin.tables.action.revert.blocked"));
 
+        // Delete: PENDING + no judges; a medal round additionally must have no
+        // medal awards recorded yet.
+        boolean canDelete = round.getStatus() == JudgingRoundStatus.PENDING
+                && round.getAssignments().isEmpty()
+                && (!isMedal || judgingService.findMedalAwardsForCategory(
+                        round.getDivisionCategoryId()).isEmpty());
+        var deleteButton = new Button(new Icon(VaadinIcon.TRASH));
+        deleteButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+        deleteButton.setEnabled(canDelete);
+        deleteButton.addClickListener(e -> openDeleteTableDialog(round));
+        var deleteWrapper = wrapWithTooltip(deleteButton, canDelete
+                ? getTranslation("judging-admin.tables.action.delete")
+                : getTranslation(isMedal
+                        ? "judging-admin.medal-rounds.action.delete.blocked"
+                        : "judging-admin.tables.action.delete.blocked"));
+
         return new HorizontalLayout(editButton, assignJudgesButton, assignEntriesWrapper,
                 startWrapper, revertWrapper, deleteWrapper, openButton);
     }
 
     public void openRevertRoundDialog(JudgingRound round) {
+        boolean isMedal = round.getType() == RoundType.MEDAL;
         var dialog = new Dialog();
         dialog.setHeaderTitle(getTranslation("judging-admin.tables.action.revert.confirm.title",
                 round.getName()));
-        dialog.add(new Span(getTranslation("judging-admin.tables.action.revert.confirm.body")));
+        dialog.add(new Span(getTranslation(isMedal
+                ? "judging-admin.tables.action.revert.confirm.body.medal"
+                : "judging-admin.tables.action.revert.confirm.body")));
 
         var confirmButton = new Button(getTranslation("judging-admin.tables.action.revert"), e -> {
             try {
-                judgingService.revertScoringRound(round.getId(), currentUserId);
+                // Medal Revert returns the round to READY and clears its medal
+                // awards (scoresheets are kept); scoring Revert returns to READY
+                // and deletes the round's scoresheets.
+                if (isMedal) {
+                    judgingService.resetMedalRoundById(round.getId(), currentUserId);
+                } else {
+                    judgingService.revertScoringRound(round.getId(), currentUserId);
+                }
                 refreshRoundsGrid();
                 Notification.show(getTranslation("judging-admin.tables.reverted"))
                         .addThemeVariants(NotificationVariant.LUMO_SUCCESS);

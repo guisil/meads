@@ -265,8 +265,21 @@ unified grid → Finalize/Reopen flow → i18n+tests → P14 date+time → docs)
   judging + awards regression **421 tests green**. (Dead keys `scoresheet.action.{save-draft*,submit*}`,
   `scoresheet.comments.section`, `error.scoresheet.overall-comment-too-short`, `table.action.submit`
   left for Phase 4 cleanup.)
-- **Phase 2 NEXT:** unified Rounds grid in `JudgingAdminView` (medal rows get the full inline action
-  set; Type colored badge; status multi-select filter; Add-Round medal-mode Select; medal Revert).
+- **Phase 2 DONE (2026-05-29):** unified Rounds grid in `JudgingAdminView`. `createRoundsActionsCell`
+  (now public for tests) builds the SAME inline set for SCORING and MEDAL — Edit / Assign Judges /
+  Assign Entries / Start / Revert / Delete / Open (medal rows previously had only Delete + Open).
+  Type column is a colored Lumo badge (Scoring=contrast, Medal — Comparative=primary, Medal —
+  Score-based=success). New `rounds-status-filter` `CheckboxGroup<JudgingRoundStatus>` (all selected
+  by default; empty = show all) composes with the existing type filter. Add-Round dialog shows a
+  medal-mode `Select` (`add-round-medal-mode`) when Type=MEDAL — mode set at create time
+  (`createMedalRound` + `updateMedalRoundMode`); name field hides for MEDAL. `openRevertRoundDialog`
+  branches by type: medal → `resetMedalRoundById` (ACTIVE→READY + clears awards), scoring →
+  `revertScoringRound`; new medal revert body key. `openAssignEntriesDialog` is mode-aware:
+  SCORE_BASED medal → read-only preview + Sync (reuses `medal-round.assign-entries.*` keys). 3 new
+  i18n keys × 5 locales. +5 `JudgingAdminViewTest`. Verified: judging + awards **426 tests green**.
+- **Phase 3 NEXT:** round-level Finalize/Submit + Reopen in the detail views (`RoundView`,
+  `MedalRoundView`) + `finalizeScoringRound`/`reopenScoringRound` service flow; remove per-row judge
+  Submit; admin eye-icon; medal Finalize undecided-guard; retire `resetMedalRoundById`'s "Reset" UI.
 
 Resume the walkthrough only after (c) lands. The deeper scoresheet *field-layout* redesign (user
 will supply screenshots) is a separate follow-up, possibly slotted before the walkthrough resumes.
