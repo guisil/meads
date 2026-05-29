@@ -35,6 +35,16 @@ public interface ScoresheetService {
 
     void setCommentLanguage(@NotNull UUID scoresheetId, String languageCode, @NotNull UUID judgeUserId);
 
+    /**
+     * Validates and promotes a DRAFT sheet to FILLED — the judge's "Save". Each
+     * MJP field must be scored and each per-criterion comment must clear
+     * {@link Scoresheet#MIN_PER_FIELD_COMMENT_LENGTH}; the additional comment is
+     * optional. Throws {@code error.scoresheet.field-comment-too-short} or
+     * {@code error.scoresheet.incomplete} on validation failure. Does not
+     * compute the total — that happens when the round is finalized.
+     */
+    void markFilled(@NotNull UUID scoresheetId, @NotNull UUID judgeUserId);
+
     void submit(@NotNull UUID scoresheetId, @NotNull UUID judgeUserId);
 
     void revertToDraft(@NotNull UUID scoresheetId, @NotNull UUID adminUserId);

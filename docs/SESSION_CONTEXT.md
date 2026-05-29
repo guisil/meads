@@ -247,10 +247,29 @@ the user (MedalRoundView survives as the medal drill-in; Start/Revert move to th
 single Type column with a colored badge; new `FILLED` scoresheet status with auto-save + a
 validating Save button; round-level Finalize/Submit + admin Reopen in the detail views; (b)+P14
 folded in). The plan is split into 6 independently-committable phases (Scoresheet status model →
-unified grid → Finalize/Reopen flow → i18n+tests → P14 date+time → docs). Start at Phase 1.
-**Not started** as of 2026-05-29 — approved + queued for a fresh session. Resume the walkthrough
-only after (c) lands. The deeper scoresheet *field-layout* redesign (user will supply screenshots)
-is a separate follow-up, possibly slotted before the walkthrough resumes.
+unified grid → Finalize/Reopen flow → i18n+tests → P14 date+time → docs).
+
+**(c) PROGRESS — committing per phase (docs/walkthrough batched in Phase 6):**
+- **Phase 1 DONE (2026-05-29):** `ScoresheetStatus.FILLED` added between DRAFT and SUBMITTED.
+  Entity `markFilled()` (DRAFT→FILLED, idempotent on FILLED, throws if any field unscored) +
+  `demoteFromFilled()` on score/overall-comment edits; `submit()` precondition now FILLED→SUBMITTED;
+  per-criterion comment floor 3→**15**, `MIN_OVERALL_COMMENT_LENGTH` removed (overall comment is now
+  the optional "Additional comments"). `ScoresheetService.markFilled(id, judge)` (per-field comment
+  validation @15, no overall); per-sheet `submit()` kept as a **transitional bridge** (validate →
+  markFilled-if-DRAFT → submit → cascade) so RoundView's per-row judge submit + tests stay green
+  until Phase 3's round-level Finalize replaces it. `ScoresheetView` rewired: auto-saves each field
+  on blur (`scoresheet-save-status` Span), renamed **Save** button (`save-button`) validates →
+  `markFilled` (navigates back to round on success), **per-sheet Submit button removed**, overall →
+  optional "Additional comments". 6 new i18n keys × 5 locales (`scoresheet.action.save[.success]`,
+  `scoresheet.additional-comments.label`, `scoresheet.save.status.{saving,saved,error}`). Verified:
+  judging + awards regression **421 tests green**. (Dead keys `scoresheet.action.{save-draft*,submit*}`,
+  `scoresheet.comments.section`, `error.scoresheet.overall-comment-too-short`, `table.action.submit`
+  left for Phase 4 cleanup.)
+- **Phase 2 NEXT:** unified Rounds grid in `JudgingAdminView` (medal rows get the full inline action
+  set; Type colored badge; status multi-select filter; Add-Round medal-mode Select; medal Revert).
+
+Resume the walkthrough only after (c) lands. The deeper scoresheet *field-layout* redesign (user
+will supply screenshots) is a separate follow-up, possibly slotted before the walkthrough resumes.
 
 ---
 

@@ -216,6 +216,7 @@ class MedalRoundViewTest {
             }
             sheet.updateScore(def.fieldName(), value, null);
         }
+        sheet.markFilled();
         sheet.submit();
         scoresheetRepository.save(sheet);
     }
@@ -245,6 +246,7 @@ class MedalRoundViewTest {
             sheet.updateScore(def.fieldName(), def.maxValue(), null);
         }
         sheet.setAdvancedToMedalRound(true);
+        sheet.markFilled();
         sheet.submit();
         scoresheetRepository.save(sheet);
     }

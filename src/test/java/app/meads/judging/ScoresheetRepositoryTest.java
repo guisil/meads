@@ -158,6 +158,7 @@ class ScoresheetRepositoryTest {
         scoresheet.updateScore("Finish", 12, null);
         scoresheet.updateScore("Overall Impression", 11, null);
         scoresheet.updateOverallComments("Solid traditional mead");
+        scoresheet.markFilled();
         scoresheet.submit();
         scoresheetRepository.save(scoresheet);
 

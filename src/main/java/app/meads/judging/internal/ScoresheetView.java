@@ -21,7 +21,6 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.combobox.ComboBox;
-import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Span;
@@ -79,7 +78,8 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
     private TextArea commentsArea;
     private ComboBox<String> commentLanguageCombo;
     private Checkbox advanceCheckbox;
-    private Button submitButton;
+    private Span saveStatus;
+    private boolean editable;
 
     public ScoresheetView(CompetitionService competitionService,
                           UserService userService,
@@ -195,6 +195,21 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
         scoreFields.clear();
         scoreCommentFields.clear();
         removeAll();
+        // Created up-front so the per-field auto-save listeners (attached while
+        // building the score section below) always have a status target.
+        saveStatus = new Span();
+        saveStatus.setId("scoresheet-save-status");
+        saveStatus.getStyle().set("color", "var(--lumo-secondary-text-color)");
+        // BLANK, DRAFT and FILLED are editable by judges; editing scored content
+        // on a FILLED sheet demotes it to DRAFT (the judge must re-Save).
+        // SUBMITTED is read-only unless an admin reverts it. Admins land in
+        // read-only mode by default for any status — they must explicitly
+        // confirm "Edit on behalf of judge" to unlock the form.
+        var status = scoresheet.getStatus();
+        editable = (status == app.meads.judging.ScoresheetStatus.BLANK
+                    || status == app.meads.judging.ScoresheetStatus.DRAFT
+                    || status == app.meads.judging.ScoresheetStatus.FILLED)
+                   && (!isAdminView || adminEditMode);
         add(createBackToRoundAnchor());
         add(createHeader());
         add(createEntryCard());
@@ -209,14 +224,6 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
         if (!isMedalRoundSheet()) {
             add(createAdvanceCheckbox());
         }
-        // BLANK and DRAFT are editable by judges; SUBMITTED is read-only unless
-        // the admin reverts it (which flips back to DRAFT). Admins land in
-        // read-only mode by default for any status — they must explicitly
-        // confirm "Edit on behalf of judge" to unlock the form.
-        var status = scoresheet.getStatus();
-        boolean editable = (status == app.meads.judging.ScoresheetStatus.BLANK
-                            || status == app.meads.judging.ScoresheetStatus.DRAFT)
-                            && (!isAdminView || adminEditMode);
         if (editable) {
             add(createActionBar());
         } else {
@@ -269,14 +276,19 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
     private VerticalLayout createCommentsSection() {
         var section = new VerticalLayout();
         section.setPadding(false);
-        section.add(new H3(getTranslation("scoresheet.comments.section")));
-        commentsArea = new TextArea();
+        // "Additional comments" — optional, low-emphasis (no section heading).
+        // The required per-criterion comments carry the judging justification;
+        // this field is just for any closing remarks to the entrant.
+        commentsArea = new TextArea(getTranslation("scoresheet.additional-comments.label"));
         commentsArea.setId("overall-comments");
         commentsArea.setWidthFull();
         commentsArea.setMaxLength(2000);
         if (scoresheet.getOverallComments() != null) {
             commentsArea.setValue(scoresheet.getOverallComments());
         }
+        commentsArea.addValueChangeListener(e -> autoSave(() ->
+                scoresheetService.updateOverallComments(scoresheet.getId(),
+                        commentsArea.getValue(), currentUserId)));
         section.add(commentsArea);
         return section;
     }
@@ -300,6 +312,12 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
         if (defaultLanguage != null) {
             commentLanguageCombo.setValue(defaultLanguage);
         }
+        commentLanguageCombo.addValueChangeListener(e -> {
+            if (commentLanguageCombo.getValue() != null) {
+                autoSave(() -> scoresheetService.setCommentLanguage(scoresheet.getId(),
+                        commentLanguageCombo.getValue(), currentUserId));
+            }
+        });
         return commentLanguageCombo;
     }
 
@@ -312,71 +330,67 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
         advanceCheckbox = new Checkbox(getTranslation("scoresheet.advance.label"));
         advanceCheckbox.setId("advance-checkbox");
         advanceCheckbox.setValue(scoresheet.isAdvancedToMedalRound());
+        advanceCheckbox.addValueChangeListener(e -> autoSave(() ->
+                scoresheetService.setAdvancedToMedalRound(scoresheet.getId(),
+                        advanceCheckbox.getValue(), currentUserId)));
         return advanceCheckbox;
     }
 
     private HorizontalLayout createActionBar() {
-        var saveDraft = new Button(getTranslation("scoresheet.action.save-draft"), e -> saveDraft());
-        saveDraft.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        saveDraft.setDisableOnClick(true);
-        saveDraft.setId("save-draft-button");
-
-        submitButton = new Button(getTranslation("scoresheet.action.submit"), e -> openSubmitDialog());
-        submitButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SUCCESS);
-        submitButton.setId("submit-button");
-        updateSubmitButtonEnabled();
-
-        return new HorizontalLayout(saveDraft, submitButton);
+        var save = new Button(getTranslation("scoresheet.action.save"), e -> save());
+        save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        save.setId("save-button");
+        return new HorizontalLayout(save, saveStatus);
     }
 
-    private void updateSubmitButtonEnabled() {
-        if (submitButton == null) return;
-        boolean allFilled = scoreFields.size() == MjpScoringFieldDefinition.MJP_FIELDS.size()
-                && scoreFields.values().stream().allMatch(f -> f.getValue() != null);
-        submitButton.setEnabled(allFilled);
-    }
-
-    private void openSubmitDialog() {
-        var dialog = new Dialog();
-        dialog.setHeaderTitle(getTranslation("scoresheet.action.submit.confirm.title",
-                entry.getEntryCode()));
-        dialog.add(new Span(getTranslation("scoresheet.action.submit.confirm.body")));
-
-        var confirm = new Button(getTranslation("scoresheet.action.submit"), e -> {
-            try {
-                // Submit validates against persisted state, so flush any in-flight
-                // form edits to the draft first. Otherwise a user who typed more
-                // characters in a comment but didn't click Save Draft first would
-                // see submit complain about the old (shorter) value.
-                syncFormStateToDraft();
-                scoresheetService.submit(scoresheet.getId(), currentUserId);
-                dialog.close();
-                Notification.show(getTranslation("scoresheet.action.submit.success"))
-                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-                navigateToRound();
-            } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
-            }
-        });
-        confirm.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SUCCESS);
-        confirm.setId("submit-confirm-button");
-        confirm.setDisableOnClick(true);
-
-        var cancel = new Button(getTranslation("button.cancel"), e -> dialog.close());
-        dialog.getFooter().add(cancel, confirm);
-        dialog.open();
-    }
-
-    private void saveDraft() {
+    /**
+     * The validating "Save": flushes the freshest in-memory form state (auto-save
+     * persists each field on blur, but a value typed and not yet blurred would
+     * otherwise be missed), then promotes the sheet DRAFT → FILLED. On success
+     * the judge returns to the round, where the round-level Finalize submits all
+     * FILLED sheets at once.
+     */
+    private void save() {
         try {
             syncFormStateToDraft();
-            Notification.show(getTranslation("scoresheet.action.save-draft.success"))
+            scoresheetService.markFilled(scoresheet.getId(), currentUserId);
+            Notification.show(getTranslation("scoresheet.action.save.success"))
                     .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            navigateToRound();
         } catch (BusinessRuleException ex) {
             Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
+    }
+
+    /**
+     * Persists a single change as the judge works (on blur), updating the inline
+     * save-status indicator. Validation errors (e.g. a frozen division) surface
+     * as a notification; the explicit "Save" button is what enforces the full
+     * per-criterion completeness rules.
+     */
+    private void autoSave(Runnable persist) {
+        if (!editable || saveStatus == null) {
+            return;
+        }
+        saveStatus.setText(getTranslation("scoresheet.save.status.saving"));
+        try {
+            persist.run();
+            saveStatus.setText(getTranslation("scoresheet.save.status.saved"));
+        } catch (BusinessRuleException ex) {
+            saveStatus.setText(getTranslation("scoresheet.save.status.error"));
+            Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        }
+    }
+
+    private void autoSaveField(String fieldName) {
+        var nf = scoreFields.get(fieldName);
+        var cf = scoreCommentFields.get(fieldName);
+        Integer value = (nf == null || nf.getValue() == null) ? null : nf.getValue().intValue();
+        String comment = (cf == null || !StringUtils.hasText(cf.getValue())) ? null : cf.getValue();
+        autoSave(() -> scoresheetService.updateScore(scoresheet.getId(), fieldName,
+                value, comment, currentUserId));
     }
 
     /**
@@ -527,14 +541,16 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
             field.setStep(1);
             field.setStepButtonsVisible(true);
             field.setWidth("8em");
-            field.setValueChangeMode(ValueChangeMode.EAGER);
+            field.setValueChangeMode(ValueChangeMode.ON_BLUR);
             var existing = existingByField.get(def.fieldName());
             if (existing != null && existing.getValue() != null) {
                 field.setValue(existing.getValue().doubleValue());
             }
+            // Listener added AFTER the initial setValue so loading the persisted
+            // value doesn't trigger a spurious auto-save on render.
             field.addValueChangeListener(e -> {
                 recomputeTotalPreview();
-                updateSubmitButtonEnabled();
+                autoSaveField(def.fieldName());
             });
             scoreFields.put(def.fieldName(), field);
             row.add(label, field);
@@ -548,6 +564,7 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
             if (existing != null && existing.getComment() != null) {
                 comment.setValue(existing.getComment());
             }
+            comment.addValueChangeListener(e -> autoSaveField(def.fieldName()));
             scoreCommentFields.put(def.fieldName(), comment);
             section.add(comment);
         }

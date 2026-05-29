@@ -9,15 +9,26 @@ public enum ScoresheetStatus {
      */
     BLANK,
     /**
-     * A judge has entered at least one score or comment. The round still
-     * accepts edits, but admin operations like revertScoringRound now treat
-     * this as "real work in progress" — broader than the previous SUBMITTED-only
-     * gate.
+     * A judge has entered at least one score or comment but has not yet
+     * committed the sheet as complete. The round still accepts edits, and
+     * admin operations like revertScoringRound treat this as "real work in
+     * progress". Auto-save keeps work here; the validating "Save" button
+     * promotes DRAFT → FILLED.
      */
     DRAFT,
     /**
-     * Final — total score computed, judge has committed. Counts toward
-     * round-completion + medal cascade. Reversible only via admin revertToDraft.
+     * The judge clicked "Save" and the sheet passed validation (every field
+     * scored, every per-criterion comment long enough) — it is ready to be
+     * submitted by the round-level Finalize. Not yet final: the total is not
+     * computed, and editing any scored content (updateScore /
+     * updateOverallComments) demotes it back to DRAFT. Toggling the
+     * advance-to-medal flag keeps it FILLED.
+     */
+    FILLED,
+    /**
+     * Final — total score computed, committed by the round-level Finalize.
+     * Counts toward round-completion + medal cascade. Reversible only via the
+     * admin reopen / revert path (SUBMITTED → DRAFT).
      */
     SUBMITTED
 }

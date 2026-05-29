@@ -388,8 +388,8 @@ class ScoresheetViewTest {
 
         var editButton = _get(Button.class, spec -> spec.withId("admin-edit-scoresheet"));
         assertThat(editButton).as("admin edit-on-behalf button must be present").isNotNull();
-        assertThat(_find(Button.class).stream().anyMatch(b -> "Save Draft".equals(b.getText())))
-                .as("admin view: Save Draft is hidden until edit-mode is unlocked").isFalse();
+        assertThat(_find(Button.class).stream().anyMatch(b -> "save-button".equals(b.getId().orElse(null))))
+                .as("admin view: Save is hidden until edit-mode is unlocked").isFalse();
     }
 
     @Test
@@ -445,7 +445,10 @@ class ScoresheetViewTest {
 
     @Test
     @WithMockUser(username = JUDGE_EMAIL, roles = "USER")
-    void shouldPersistScoresAndCommentsWhenSaveDraftClicked() {
+    void shouldAutoSaveScoresAndAdditionalCommentsOnChange() {
+        // Auto-save: each score / comment change persists on blur — there is no
+        // explicit "Save Draft" button anymore. The sheet stays DRAFT until the
+        // judge clicks the validating "Save" (which promotes it to FILLED).
         var entrant = userRepository.save(new User(
                 "entrant-ss-save-" + UUID.randomUUID() + "@example.com",
                 "Entrant", UserStatus.ACTIVE, Role.USER));
@@ -457,11 +460,8 @@ class ScoresheetViewTest {
 
         _get(NumberField.class, spec -> spec.withId("score-Appearance")).setValue(8.0);
         _get(NumberField.class, spec -> spec.withId("score-Aroma/Bouquet")).setValue(20.0);
-
-        var commentsArea = _get(TextArea.class, spec -> spec.withId("overall-comments"));
-        commentsArea.setValue("Promising start; lovely aroma.");
-
-        _click(_get(Button.class, spec -> spec.withText("Save Draft")));
+        _get(TextArea.class, spec -> spec.withId("overall-comments"))
+                .setValue("Promising start; lovely aroma.");
 
         var fields = scoresheetRepository.findFieldsByScoresheetId(sheet.getId());
         var appearance = fields.stream()
@@ -472,14 +472,14 @@ class ScoresheetViewTest {
         assertThat(aroma.getValue()).isEqualTo(20);
         var refreshed = scoresheetRepository.findById(sheet.getId()).orElseThrow();
         assertThat(refreshed.getOverallComments()).isEqualTo("Promising start; lovely aroma.");
+        assertThat(refreshed.getStatus()).isEqualTo(ScoresheetStatus.DRAFT);
     }
 
     @Test
     @WithMockUser(username = JUDGE_EMAIL, roles = "USER")
-    void shouldRenderPerFieldCommentTextAreasAndPersistThemOnSaveDraft() {
-        // MJP scoresheet has 5 score fields, each with an optional comment.
-        // The `score_fields.comment` column has always existed; this is the
-        // UI exposure that lets judges leave per-criterion feedback.
+    void shouldAutoSavePerFieldCommentsOnChange() {
+        // MJP scoresheet has 5 score fields, each with a per-criterion comment
+        // (`score_fields.comment` column). The comments auto-save on change.
         var entrant = userRepository.save(new User(
                 "entrant-per-comment-" + UUID.randomUUID() + "@example.com",
                 "Entrant", UserStatus.ACTIVE, Role.USER));
@@ -489,18 +489,13 @@ class ScoresheetViewTest {
                 + "/divisions/" + division.getShortName()
                 + "/scoresheets/" + sheet.getId());
 
-        // Each MJP field has a sibling TextArea with id `score-comment-<fieldName>`.
-        var appearanceComment = _get(TextArea.class,
-                spec -> spec.withId("score-comment-Appearance"));
-        appearanceComment.setValue("Bright with a slight haze.");
-        var aromaComment = _get(TextArea.class,
-                spec -> spec.withId("score-comment-Aroma/Bouquet"));
-        aromaComment.setValue("Apricot, honey, light yeast.");
-        // Set scores too (saveDraft writes everything in one go).
+        // Set scores first, then the sibling comment TextAreas (id `score-comment-<fieldName>`).
         _get(NumberField.class, spec -> spec.withId("score-Appearance")).setValue(10.0);
         _get(NumberField.class, spec -> spec.withId("score-Aroma/Bouquet")).setValue(25.0);
-
-        _click(_get(Button.class, spec -> spec.withText("Save Draft")));
+        _get(TextArea.class, spec -> spec.withId("score-comment-Appearance"))
+                .setValue("Bright with a slight haze.");
+        _get(TextArea.class, spec -> spec.withId("score-comment-Aroma/Bouquet"))
+                .setValue("Apricot, honey, light yeast.");
 
         var fields = scoresheetRepository.findFieldsByScoresheetId(sheet.getId()).stream()
                 .collect(java.util.stream.Collectors.toMap(
@@ -553,7 +548,7 @@ class ScoresheetViewTest {
 
     @Test
     @WithMockUser(username = JUDGE_EMAIL, roles = "USER")
-    void shouldPersistAdvanceToMedalRoundFlagWhenSaveDraftClicked() {
+    void shouldAutoSaveAdvanceToMedalRoundFlagOnChange() {
         var entrant = userRepository.save(new User(
                 "entrant-ss-advance-" + UUID.randomUUID() + "@example.com",
                 "Entrant", UserStatus.ACTIVE, Role.USER));
@@ -563,10 +558,7 @@ class ScoresheetViewTest {
                 + "/divisions/" + division.getShortName()
                 + "/scoresheets/" + sheet.getId());
 
-        var advance = _get(Checkbox.class, spec -> spec.withId("advance-checkbox"));
-        advance.setValue(true);
-
-        _click(_get(Button.class, spec -> spec.withText("Save Draft")));
+        _get(Checkbox.class, spec -> spec.withId("advance-checkbox")).setValue(true);
 
         var refreshed = scoresheetRepository.findById(sheet.getId()).orElseThrow();
         assertThat(refreshed.isAdvancedToMedalRound()).isTrue();
@@ -574,7 +566,11 @@ class ScoresheetViewTest {
 
     @Test
     @WithMockUser(username = JUDGE_EMAIL, roles = "USER")
-    void shouldSubmitScoresheetWhenAllFieldsFilledAndConfirmClicked() {
+    void shouldMarkSheetFilledWhenSaveClickedWithCompleteSheet() {
+        // The validating "Save" promotes a complete sheet DRAFT → FILLED — it no
+        // longer submits (the round-level Finalize does that). All five fields
+        // must be scored and each per-criterion comment must clear the 15-char
+        // floor.
         var entrant = userRepository.save(new User(
                 "entrant-ss-submit-" + UUID.randomUUID() + "@example.com",
                 "Entrant", UserStatus.ACTIVE, Role.USER));
@@ -589,32 +585,59 @@ class ScoresheetViewTest {
         _get(NumberField.class, spec -> spec.withId("score-Flavour and Body")).setValue(28.0);
         _get(NumberField.class, spec -> spec.withId("score-Finish")).setValue(12.0);
         _get(NumberField.class, spec -> spec.withId("score-Overall Impression")).setValue(11.0);
-        // Per-criterion + overall comment-length validation runs on submit; the
-        // form must therefore have at least MIN_PER_FIELD / MIN_OVERALL chars
-        // each. Mirror the production rule.
         _get(TextArea.class, spec -> spec.withId("score-comment-Appearance"))
-                .setValue("crystal clear");
+                .setValue("crystal clear appearance");
         _get(TextArea.class, spec -> spec.withId("score-comment-Aroma/Bouquet"))
                 .setValue("subtle honey and stone fruit");
         _get(TextArea.class, spec -> spec.withId("score-comment-Flavour and Body"))
                 .setValue("balanced, medium-bodied");
         _get(TextArea.class, spec -> spec.withId("score-comment-Finish"))
-                .setValue("clean, lingering");
+                .setValue("clean, lingering finish");
         _get(TextArea.class, spec -> spec.withId("score-comment-Overall Impression"))
-                .setValue("well-crafted bochet");
-        _get(TextArea.class, spec -> spec.withId("overall-comments"))
-                .setValue("A well-balanced bochet with subtle complexity and a clean finish.");
+                .setValue("well-crafted bochet example");
 
-        // Save draft first so values persist (Submit acts on the persisted state).
-        _click(_get(Button.class, spec -> spec.withText("Save Draft")));
-
-        // Open submit dialog and confirm.
-        _click(_get(Button.class, spec -> spec.withId("submit-button")));
-        _click(_get(Button.class, spec -> spec.withId("submit-confirm-button")));
+        _click(_get(Button.class, spec -> spec.withId("save-button")));
 
         var refreshed = scoresheetRepository.findById(sheet.getId()).orElseThrow();
-        assertThat(refreshed.getStatus()).isEqualTo(app.meads.judging.ScoresheetStatus.SUBMITTED);
-        assertThat(refreshed.getTotalScore()).isEqualTo(86);
+        assertThat(refreshed.getStatus()).isEqualTo(app.meads.judging.ScoresheetStatus.FILLED);
+        assertThat(refreshed.getTotalScore())
+                .as("Save must not compute the total — the round Finalize does").isNull();
+    }
+
+    @Test
+    @WithMockUser(username = JUDGE_EMAIL, roles = "USER")
+    void shouldRejectSaveAndStayDraftWhenSheetIsIncomplete() {
+        // Save validates: an incomplete sheet (a missing score and/or a missing
+        // per-criterion comment) cannot be promoted to FILLED — it stays DRAFT.
+        var entrant = userRepository.save(new User(
+                "entrant-ss-incomplete-" + UUID.randomUUID() + "@example.com",
+                "Entrant", UserStatus.ACTIVE, Role.USER));
+        var sheet = createScoresheetFor(entrant, "AMA-IC", "Incomplete Mead");
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName()
+                + "/scoresheets/" + sheet.getId());
+
+        // Four of five fields scored; Overall Impression left blank and uncommented.
+        _get(NumberField.class, spec -> spec.withId("score-Appearance")).setValue(10.0);
+        _get(NumberField.class, spec -> spec.withId("score-Aroma/Bouquet")).setValue(25.0);
+        _get(NumberField.class, spec -> spec.withId("score-Flavour and Body")).setValue(28.0);
+        _get(NumberField.class, spec -> spec.withId("score-Finish")).setValue(12.0);
+        _get(TextArea.class, spec -> spec.withId("score-comment-Appearance"))
+                .setValue("crystal clear appearance");
+        _get(TextArea.class, spec -> spec.withId("score-comment-Aroma/Bouquet"))
+                .setValue("subtle honey and stone fruit");
+        _get(TextArea.class, spec -> spec.withId("score-comment-Flavour and Body"))
+                .setValue("balanced, medium-bodied");
+        _get(TextArea.class, spec -> spec.withId("score-comment-Finish"))
+                .setValue("clean, lingering finish");
+
+        _click(_get(Button.class, spec -> spec.withId("save-button")));
+
+        var refreshed = scoresheetRepository.findById(sheet.getId()).orElseThrow();
+        assertThat(refreshed.getStatus())
+                .as("an incomplete sheet must not be promoted to FILLED")
+                .isEqualTo(app.meads.judging.ScoresheetStatus.DRAFT);
     }
 
     @Test
@@ -627,6 +650,7 @@ class ScoresheetViewTest {
         for (var def : app.meads.judging.internal.MjpScoringFieldDefinition.MJP_FIELDS) {
             sheet.updateScore(def.fieldName(), def.maxValue() / 2, null);
         }
+        sheet.markFilled();
         sheet.submit();
         scoresheetRepository.save(sheet);
 
@@ -638,13 +662,9 @@ class ScoresheetViewTest {
         assertThat(appearance.isReadOnly()).isTrue();
         var commentsArea = _get(TextArea.class, spec -> spec.withId("overall-comments"));
         assertThat(commentsArea.isReadOnly()).isTrue();
-        var saveDraftButtons = _find(Button.class).stream()
-                .filter(b -> "Save Draft".equals(b.getText()))
+        var saveButtons = _find(Button.class).stream()
+                .filter(b -> "save-button".equals(b.getId().orElse(null)))
                 .toList();
-        assertThat(saveDraftButtons).as("Save Draft hidden when SUBMITTED").isEmpty();
-        var submitButtons = _find(Button.class).stream()
-                .filter(b -> "submit-button".equals(b.getId().orElse(null)))
-                .toList();
-        assertThat(submitButtons).as("Submit hidden when SUBMITTED").isEmpty();
+        assertThat(saveButtons).as("Save hidden when SUBMITTED").isEmpty();
     }
 }

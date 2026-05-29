@@ -258,26 +258,6 @@ class ScoresheetServiceTest {
     }
 
     @Test
-    void shouldRejectSubmitWhenOverallCommentIsTooShort() {
-        // Validation requirement: judges must articulate their reasoning. The
-        // bar is intentionally low (a few words) but blocks "ok" / blank.
-        var entryId = UUID.randomUUID();
-        var scoresheet = new Scoresheet(roundId, entryId);
-        for (var def : MjpScoringFieldDefinition.MJP_FIELDS) {
-            scoresheet.updateScore(def.fieldName(), def.maxValue(), "Nice depth and balance.");
-        }
-        scoresheet.updateOverallComments("Short."); // 6 chars, well under the floor
-        given(scoresheetRepository.findById(scoresheet.getId())).willReturn(Optional.of(scoresheet));
-        given(coiCheckService.check(judgeUserId, entryId)).willReturn(CoiResult.clear());
-
-        assertThatThrownBy(() -> service.submit(scoresheet.getId(), judgeUserId))
-                .isInstanceOf(BusinessRuleException.class)
-                .hasMessageContaining("error.scoresheet.overall-comment-too-short");
-
-        assertThat(scoresheet.getStatus()).isNotEqualTo(ScoresheetStatus.SUBMITTED);
-    }
-
-    @Test
     void shouldRejectSubmitWhenNotAllFieldsFilled() {
         var entryId = UUID.randomUUID();
         var scoresheet = new Scoresheet(roundId, entryId);
@@ -305,6 +285,7 @@ class ScoresheetServiceTest {
         for (var def : MjpScoringFieldDefinition.MJP_FIELDS) {
             scoresheet.updateScore(def.fieldName(), def.maxValue(), null);
         }
+        scoresheet.markFilled();
         scoresheet.submit();
         given(scoresheetRepository.findById(scoresheet.getId())).willReturn(Optional.of(scoresheet));
         given(judgingRoundRepository.findById(roundId)).willReturn(Optional.of(table));
@@ -326,6 +307,7 @@ class ScoresheetServiceTest {
         for (var def : MjpScoringFieldDefinition.MJP_FIELDS) {
             scoresheet.updateScore(def.fieldName(), def.maxValue(), null);
         }
+        scoresheet.markFilled();
         scoresheet.submit();
         given(scoresheetRepository.findById(scoresheet.getId())).willReturn(Optional.of(scoresheet));
         given(judgingRoundRepository.findById(roundId)).willReturn(Optional.of(table));
@@ -567,5 +549,65 @@ class ScoresheetServiceTest {
 
         assertThat(scoresheet.isAdvancedToMedalRound()).isFalse(); // unchanged
         then(scoresheetRepository).should(never()).save(any(Scoresheet.class));
+    }
+
+    @Test
+    void shouldMarkSheetFilledWhenAllFieldsScoredAndCommentsLongEnough() {
+        var entryId = UUID.randomUUID();
+        var scoresheet = new Scoresheet(roundId, entryId);
+        for (var def : MjpScoringFieldDefinition.MJP_FIELDS) {
+            scoresheet.updateScore(def.fieldName(), def.maxValue(), "good depth and balance");
+        }
+        given(scoresheetRepository.findById(scoresheet.getId())).willReturn(Optional.of(scoresheet));
+        given(coiCheckService.check(judgeUserId, entryId)).willReturn(CoiResult.clear());
+        given(scoresheetRepository.save(any(Scoresheet.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.markFilled(scoresheet.getId(), judgeUserId);
+
+        assertThat(scoresheet.getStatus()).isEqualTo(ScoresheetStatus.FILLED);
+        assertThat(scoresheet.getFilledByJudgeUserId()).isEqualTo(judgeUserId);
+        assertThat(scoresheet.getTotalScore())
+                .as("Save must not compute the total — that is the round Finalize's job")
+                .isNull();
+    }
+
+    @Test
+    void shouldRejectMarkFilledWhenAFieldCommentIsTooShort() {
+        var entryId = UUID.randomUUID();
+        var scoresheet = new Scoresheet(roundId, entryId);
+        for (var def : MjpScoringFieldDefinition.MJP_FIELDS) {
+            scoresheet.updateScore(def.fieldName(), def.maxValue(), "good depth and balance");
+        }
+        // Shorten one criterion's comment below the 15-char floor.
+        scoresheet.updateScore(MjpScoringFieldDefinition.FINISH, 14, "short");
+        given(scoresheetRepository.findById(scoresheet.getId())).willReturn(Optional.of(scoresheet));
+        given(coiCheckService.check(judgeUserId, entryId)).willReturn(CoiResult.clear());
+
+        assertThatThrownBy(() -> service.markFilled(scoresheet.getId(), judgeUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.scoresheet.field-comment-too-short");
+
+        assertThat(scoresheet.getStatus()).isNotEqualTo(ScoresheetStatus.FILLED);
+    }
+
+    @Test
+    void shouldRejectMarkFilledWhenAFieldIsUnscored() {
+        var entryId = UUID.randomUUID();
+        var scoresheet = new Scoresheet(roundId, entryId);
+        // All comments long enough, but leave one field unscored.
+        for (var def : MjpScoringFieldDefinition.MJP_FIELDS) {
+            Integer value = def.fieldName().equals(MjpScoringFieldDefinition.FINISH)
+                    ? null : def.maxValue();
+            scoresheet.updateScore(def.fieldName(), value, "good depth and balance");
+        }
+        given(scoresheetRepository.findById(scoresheet.getId())).willReturn(Optional.of(scoresheet));
+        given(coiCheckService.check(judgeUserId, entryId)).willReturn(CoiResult.clear());
+
+        assertThatThrownBy(() -> service.markFilled(scoresheet.getId(), judgeUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.scoresheet.incomplete");
+
+        assertThat(scoresheet.getStatus()).isNotEqualTo(ScoresheetStatus.FILLED);
     }
 }

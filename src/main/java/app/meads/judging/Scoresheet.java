@@ -70,17 +70,14 @@ public class Scoresheet {
     }
 
     /**
-     * Minimum length for a per-criterion comment to count as "filled in". Low
-     * enough that judges can stay terse for obvious criteria, high enough to
-     * block accidental keystrokes ("ok", a stray space).
+     * Minimum length for a per-criterion comment to count as "filled in".
+     * Enforced when the judge clicks "Save" (DRAFT → FILLED) so every criterion
+     * carries at least a short justification the entrant can read later. High
+     * enough to block accidental keystrokes ("ok", a stray space) yet still
+     * terse. The overall ("Additional comments") field is now optional and has
+     * no minimum.
      */
-    public static final int MIN_PER_FIELD_COMMENT_LENGTH = 3;
-    /**
-     * Minimum length for the overall comment. Higher floor because the overall
-     * comment is the headline justification the entrant + judges later read —
-     * a one-word "good" doesn't convey anything.
-     */
-    public static final int MIN_OVERALL_COMMENT_LENGTH = 20;
+    public static final int MIN_PER_FIELD_COMMENT_LENGTH = 15;
 
     public Scoresheet(UUID roundId, UUID entryId) {
         this.id = UUID.randomUUID();
@@ -97,25 +94,34 @@ public class Scoresheet {
         return Collections.unmodifiableList(fields);
     }
 
-    private void requireDraft(String op) {
-        if (status != ScoresheetStatus.DRAFT) {
-            throw new IllegalStateException(op + " requires DRAFT, current: " + status);
-        }
-    }
-
     /**
-     * Allows mutation when the sheet is BLANK or DRAFT. Use this for operations
-     * that represent judge content entry (scores, comments) — the first such
-     * call promotes BLANK → DRAFT via {@link #promoteFromBlank()}.
+     * Allows mutation when the sheet is BLANK, DRAFT, or FILLED. Use this for
+     * operations that represent judge content entry (scores, comments) — the
+     * first such call promotes BLANK → DRAFT via {@link #promoteFromBlank()},
+     * and editing scored content on a FILLED sheet demotes it back to DRAFT
+     * via {@link #demoteFromFilled()} (the judge must re-Save to re-validate).
      */
     private void requireMutable(String op) {
-        if (status != ScoresheetStatus.BLANK && status != ScoresheetStatus.DRAFT) {
-            throw new IllegalStateException(op + " requires BLANK or DRAFT, current: " + status);
+        if (status != ScoresheetStatus.BLANK
+                && status != ScoresheetStatus.DRAFT
+                && status != ScoresheetStatus.FILLED) {
+            throw new IllegalStateException(op + " requires BLANK, DRAFT or FILLED, current: " + status);
         }
     }
 
     private void promoteFromBlank() {
         if (status == ScoresheetStatus.BLANK) {
+            this.status = ScoresheetStatus.DRAFT;
+        }
+    }
+
+    /**
+     * Editing scored content on a FILLED sheet invalidates the judge's "Save" —
+     * drop it back to DRAFT so it must be re-validated via {@link #markFilled()}
+     * before it can be submitted.
+     */
+    private void demoteFromFilled() {
+        if (status == ScoresheetStatus.FILLED) {
             this.status = ScoresheetStatus.DRAFT;
         }
     }
@@ -128,12 +134,14 @@ public class Scoresheet {
                 .orElseThrow(() -> new IllegalArgumentException("Unknown field: " + fieldName));
         field.update(value, comment);
         promoteFromBlank();
+        demoteFromFilled();
     }
 
     public void updateOverallComments(String text) {
         requireMutable("updateOverallComments");
         this.overallComments = text;
         promoteFromBlank();
+        demoteFromFilled();
     }
 
     public void setFilledBy(UUID judgeUserId) {
@@ -145,8 +153,33 @@ public class Scoresheet {
         this.advancedToMedalRound = advanced;
     }
 
+    /**
+     * Promotes a fully-scored DRAFT sheet to FILLED — the judge's explicit
+     * "this is done" signal via the validating "Save" button. Requires every
+     * MJP field to carry a value; per-criterion comment-length validation lives
+     * in the service (it raises a localized {@link app.meads.BusinessRuleException}).
+     * Does NOT compute the total — that happens at {@link #submit()}.
+     */
+    public void markFilled() {
+        if (status == ScoresheetStatus.FILLED) {
+            return; // idempotent — an unchanged FILLED sheet is already validated
+        }
+        if (status != ScoresheetStatus.DRAFT) {
+            throw new IllegalStateException("markFilled requires DRAFT, current: " + status);
+        }
+        for (var f : fields) {
+            if (f.getValue() == null) {
+                throw new IllegalStateException(
+                        "Cannot mark filled — field '" + f.getFieldName() + "' is unscored");
+            }
+        }
+        this.status = ScoresheetStatus.FILLED;
+    }
+
     public void submit() {
-        requireDraft("submit");
+        if (status != ScoresheetStatus.FILLED) {
+            throw new IllegalStateException("submit requires FILLED, current: " + status);
+        }
         int total = 0;
         for (var f : fields) {
             if (f.getValue() == null) {

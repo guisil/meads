@@ -218,6 +218,24 @@ public class ScoresheetServiceImpl implements ScoresheetService {
     }
 
     @Override
+    public void markFilled(UUID scoresheetId, UUID judgeUserId) {
+        var sheet = requireScoresheet(scoresheetId);
+        requireNotFrozenForSheet(sheet);
+        enforceCoi(judgeUserId, sheet);
+        requireFieldCommentsLongEnough(sheet);
+        if (sheet.getFilledByJudgeUserId() == null) {
+            sheet.setFilledBy(judgeUserId);
+        }
+        try {
+            sheet.markFilled();
+        } catch (IllegalStateException e) {
+            throw new BusinessRuleException("error.scoresheet.incomplete", e.getMessage());
+        }
+        scoresheetRepository.save(sheet);
+        log.info("Marked scoresheet {} FILLED (judge {})", sheet.getId(), judgeUserId);
+    }
+
+    @Override
     public void submit(UUID scoresheetId, UUID judgeUserId) {
         var sheet = requireScoresheet(scoresheetId);
         requireNotFrozenForSheet(sheet);
@@ -230,22 +248,17 @@ public class ScoresheetServiceImpl implements ScoresheetService {
         }
         // Comment-length validation runs *before* the entity's field-filled
         // check so the error messages stay specific. Each per-criterion comment
-        // must clear MIN_PER_FIELD_COMMENT_LENGTH; the overall comment must
-        // clear MIN_OVERALL_COMMENT_LENGTH. Drafts can stay incomplete.
-        var overall = sheet.getOverallComments();
-        if (overall == null || overall.trim().length() < Scoresheet.MIN_OVERALL_COMMENT_LENGTH) {
-            throw new BusinessRuleException("error.scoresheet.overall-comment-too-short",
-                    String.valueOf(Scoresheet.MIN_OVERALL_COMMENT_LENGTH));
-        }
-        for (var field : sheet.getFields()) {
-            var comment = field.getComment();
-            if (comment == null || comment.trim().length() < Scoresheet.MIN_PER_FIELD_COMMENT_LENGTH) {
-                throw new BusinessRuleException("error.scoresheet.field-comment-too-short",
-                        field.getFieldName(),
-                        String.valueOf(Scoresheet.MIN_PER_FIELD_COMMENT_LENGTH));
-            }
-        }
+        // must clear MIN_PER_FIELD_COMMENT_LENGTH; the additional ("overall")
+        // comment is optional. Drafts can stay incomplete.
+        requireFieldCommentsLongEnough(sheet);
         try {
+            // Transitional bridge: submit() now requires FILLED. A judge who came
+            // through the per-row submit shortcut (or a test) may still hand us a
+            // DRAFT sheet — promote it first so submit() can run. The round-level
+            // Finalize flow submits already-FILLED sheets directly.
+            if (sheet.getStatus() == ScoresheetStatus.DRAFT) {
+                sheet.markFilled();
+            }
             sheet.submit();
         } catch (IllegalStateException e) {
             throw new BusinessRuleException("error.scoresheet.incomplete", e.getMessage());
@@ -432,6 +445,22 @@ public class ScoresheetServiceImpl implements ScoresheetService {
         }
         // No profile language → don't set; leave as null (admin can edit later)
         return null;
+    }
+
+    /**
+     * Each per-criterion comment must clear {@link Scoresheet#MIN_PER_FIELD_COMMENT_LENGTH}.
+     * Shared by the per-sheet submit bridge and {@link #markFilled}. The
+     * additional ("overall") comment is optional and not checked here.
+     */
+    private void requireFieldCommentsLongEnough(Scoresheet sheet) {
+        for (var field : sheet.getFields()) {
+            var comment = field.getComment();
+            if (comment == null || comment.trim().length() < Scoresheet.MIN_PER_FIELD_COMMENT_LENGTH) {
+                throw new BusinessRuleException("error.scoresheet.field-comment-too-short",
+                        field.getFieldName(),
+                        String.valueOf(Scoresheet.MIN_PER_FIELD_COMMENT_LENGTH));
+            }
+        }
     }
 
     private void enforceCoi(UUID judgeUserId, Scoresheet sheet) {

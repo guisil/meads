@@ -366,6 +366,7 @@ class RoundViewTest {
         for (var def : MjpScoringFieldDefinition.MJP_FIELDS) {
             sheet.updateScore(def.fieldName(), def.maxValue(), null);
         }
+        sheet.markFilled();
         sheet.submit();
         var savedSheet = scoresheetRepository.save(sheet);
 
