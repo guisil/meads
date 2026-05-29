@@ -241,7 +241,12 @@ The 2026-05-28 triage below was assessed. Decisions:
 - **(a) round → physical-table reassignment: DONE** (2026-05-29). The service method `assignRoundToPhysicalTable` already existed (gated PENDING/READY, rejects post-start) — only the UI was missing. Added a `Select<PhysicalTable>` (`edit-table-physical-table`) to `JudgingAdminView.openEditTableDialog`, enabled while PENDING/READY, disabled with helper text otherwise (new key `judging-admin.tables.dialog.physical-table.locked` × 5 locales). Pre-selects the round's current table by matching id within the items list (NOT a separately-fetched instance — `PhysicalTable` has identity equality, so `setValue` with a different instance silently fails to select). +2 UI tests (`shouldReassignPhysicalTableViaEditDialog`, `shouldPrefillCurrentPhysicalTableInEditDialog`). 1253 tests. Walkthrough §12.6.2 updated. **Will be re-folded into (c)'s unified Edit Round dialog.**
 - **P12 (download-button lifecycle) and P13 (participant counts): DEFERRED** unconditionally — independent of judging, post-v0.4.0.
 
-**Next concrete step: implement (c) per the APPROVED plan** in
+**✅ (c) is DONE + PUSHED (2026-05-29)** — all 6 phases + the test-only `submit()` retire + the
+walkthrough substep rewrite are committed & pushed on `feature/judging-module` (per-phase record below
++ `git log`; commit hashes in "State on disk"). **NEXT NOW:** (1) the deferred scoresheet
+**field-layout redesign** — the only (c)-adjacent item left, **awaiting the user's screenshots/examples**;
+(2) **resume the walkthrough** (it now validates the final UI; was paused at §12.6.8.1 step 10) → code
+review → merge to main → **v0.4.0 release**. (c) was implemented per the (now **DONE**-marked) plan in
 `docs/plans/2026-05-29-unified-round-admin-scoresheet-redesign.md` — all scope flags settled with
 the user (MedalRoundView survives as the medal drill-in; Start/Revert move to the unified grid;
 single Type column with a colored badge; new `FILLED` scoresheet status with auto-save + a
@@ -388,7 +393,8 @@ Cycle A + B answered the end-of-day design questions. Cycle C landed mid-walkthr
 reassignment + the **(c) unified round-admin + scoresheet redesign Phases 1-5 all committed**
 (`07673ef` FILLED status, `10eece5` unified grid, `5d680df` Finalize/Reopen, `0108c08` i18n prune,
 `0243e94` P14 date+time) + the **test-only `submit()` retire follow-up**, **1274 tests passing on
-JDK 25** (judging+awards 429), push pending). Verify with `mvn test -Dsurefire.useFile=false`.
+JDK 25** (judging+awards 429), **all pushed 2026-05-29** — plus `58869c9` (test-only `submit()` retire)
++ `9193893` (walkthrough §12.6-§12.12 rewrite)). Verify with `mvn test -Dsurefire.useFile=false`.
 
 **Remaining for (c) before the walkthrough resumes:** (1) **DONE (2026-05-29):** the test-only
 `ScoresheetService.submit()` is retired; its tests migrated to `markFilled` + `finalizeScoringRound`

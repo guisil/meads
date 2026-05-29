@@ -1,8 +1,11 @@
 # Plan: Unified round-admin UX + scoresheet status/finalize redesign (judging module, v0.4.0)
 
-> **Status:** APPROVED + QUEUED (2026-05-29), **not started**. This is the next coding task on
-> `feature/judging-module` before the walkthrough resumes. Resume from a clean context by reading
-> `docs/SESSION_CONTEXT.md` then this file.
+> **Status:** ✅ **DONE + PUSHED (2026-05-29)** — all 6 phases + the test-only `submit()` retire + the
+> walkthrough §12.6-§12.12 rewrite are implemented, committed, and pushed on `feature/judging-module`
+> (commits `07673ef`, `10eece5`, `5d680df`, `0108c08`, `0243e94`, `f30cf25`, `58869c9`, `9193893`).
+> Full suite **1274 green on JDK 25**. The only out-of-scope follow-up is the deeper scoresheet
+> *field-layout* redesign (awaiting user screenshots). Kept for reference through the v0.4.0 merge —
+> safe to delete after merge. Live state: `docs/SESSION_CONTEXT.md` → "(c) PROGRESS".
 
 ## Context
 
