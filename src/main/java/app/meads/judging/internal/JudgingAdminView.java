@@ -395,12 +395,33 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         nameField.setMaxLength(120);
         nameField.setValue(table.getName());
 
+        var physicalTableSelect = new Select<app.meads.judging.PhysicalTable>();
+        physicalTableSelect.setId("edit-table-physical-table");
+        physicalTableSelect.setLabel(getTranslation("judging-admin.tables.dialog.physical-table"));
+        physicalTableSelect.setWidthFull();
+        var physicalTables = judgingService.findPhysicalTablesByDivision(division.getId());
+        physicalTableSelect.setItems(physicalTables);
+        physicalTableSelect.setItemLabelGenerator(pt -> pt == null ? "" : pt.getLabel());
+        if (table.getPhysicalTableId() != null) {
+            physicalTables.stream()
+                    .filter(pt -> pt.getId().equals(table.getPhysicalTableId()))
+                    .findFirst()
+                    .ifPresent(physicalTableSelect::setValue);
+        }
+        boolean tableReassignable = table.getStatus() == JudgingRoundStatus.PENDING
+                || table.getStatus() == JudgingRoundStatus.READY;
+        physicalTableSelect.setEnabled(tableReassignable);
+        if (!tableReassignable) {
+            physicalTableSelect.setHelperText(
+                    getTranslation("judging-admin.tables.dialog.physical-table.locked"));
+        }
+
         var datePicker = new DatePicker(getTranslation("judging-admin.tables.dialog.scheduled"));
         datePicker.setId("edit-table-scheduled");
         datePicker.setWidthFull();
         datePicker.setValue(table.getScheduledDate());
 
-        form.add(nameField, datePicker);
+        form.add(nameField, physicalTableSelect, datePicker);
         dialog.add(form);
 
         var saveButton = new Button(getTranslation("button.save"), e -> {
@@ -412,6 +433,12 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
             try {
                 if (!nameField.getValue().trim().equals(table.getName())) {
                     judgingService.updateRoundName(table.getId(), nameField.getValue().trim(), currentUserId);
+                }
+                var selectedTableId = physicalTableSelect.getValue() == null ? null
+                        : physicalTableSelect.getValue().getId();
+                if (tableReassignable && selectedTableId != null
+                        && !java.util.Objects.equals(selectedTableId, table.getPhysicalTableId())) {
+                    judgingService.assignRoundToPhysicalTable(table.getId(), selectedTableId, currentUserId);
                 }
                 if (!java.util.Objects.equals(datePicker.getValue(), table.getScheduledDate())) {
                     judgingService.updateRoundScheduledDate(table.getId(), datePicker.getValue(), currentUserId);

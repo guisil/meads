@@ -233,7 +233,19 @@ docs/
 
 ## What's Next
 
-### NEXT SESSION (start here, 2026-05-28 end-of-day handoff)
+### TRIAGE OUTCOME (2026-05-29) — decisions made
+
+The 2026-05-28 triage below was assessed. Decisions:
+
+- **(c) unified round-admin redesign is IN v0.4.0** — do it *before* finishing the walkthrough so the walkthrough validates the final UI (avoids re-walking the MedalRoundView/Rounds-grid screens that (c) replaces). It is the umbrella; **(b) medal scheduled date** and **P14 (date→date+time)** fold into it.
+- **(a) round → physical-table reassignment: DONE** (2026-05-29). The service method `assignRoundToPhysicalTable` already existed (gated PENDING/READY, rejects post-start) — only the UI was missing. Added a `Select<PhysicalTable>` (`edit-table-physical-table`) to `JudgingAdminView.openEditTableDialog`, enabled while PENDING/READY, disabled with helper text otherwise (new key `judging-admin.tables.dialog.physical-table.locked` × 5 locales). Pre-selects the round's current table by matching id within the items list (NOT a separately-fetched instance — `PhysicalTable` has identity equality, so `setValue` with a different instance silently fails to select). +2 UI tests (`shouldReassignPhysicalTableViaEditDialog`, `shouldPrefillCurrentPhysicalTableInEditDialog`). 1253 tests. Walkthrough §12.6.2 updated. **Will be re-folded into (c)'s unified Edit Round dialog.**
+- **P12 (download-button lifecycle) and P13 (participant counts): DEFERRED** unconditionally — independent of judging, post-v0.4.0.
+
+**Next concrete step:** design/sketch (c) — settle the open scope flags (does MedalRoundView survive as a drill-in? where does SCORE_BASED Start/Revert live? unified grid Type+Mode treatment?), fold in (b)+P14, then implement. Resume the walkthrough only after (c) lands.
+
+---
+
+### NEXT SESSION (original 2026-05-28 end-of-day handoff — superseded by triage outcome above)
 
 **Before resuming the walkthrough**, work through this triage in order:
 
@@ -288,11 +300,12 @@ Cycle A + B answered the end-of-day design questions. Cycle C landed mid-walkthr
 
 - **Mid-walkthrough anonymity fix (2026-05-28)** — judges DO open MedalRoundView for ACTIVE SCORE_BASED medal rounds (small-category flow), so the Entry # and Mead Name columns on `MedalRoundView.createGrid` had to be gated on `isAdmin` (initial commit assumed the view was admin-only — wrong). Same anonymity rule extended to `RoundView.scoresheetsGrid.mead-name` column (was visible to judges). Search box on `RoundView` also gated: judges' `matchesSearch` no longer matches mead name; placeholder swaps to `table.filter.search.placeholder.judge` ("Entry code") × 5 locales. Now: judges on either view see only the Code column and can search by code only. Admins keep Entry # + Code + Mead Name + dual-field search. +2 tests.
 
-**State on disk** (`feature/judging-module` at `252168e` + uncommitted anonymity gating, 1251 tests passing,
-push pending). Verify with `mvn test -Dsurefire.useFile=false`.
+**State on disk** (`feature/judging-module` at `33633bb` + item (a) round→table
+reassignment, 1253 tests passing, push pending). Verify with `mvn test -Dsurefire.useFile=false`.
 Walkthrough paused at §12.6.8.1 step 10 (judge scoring the M3B SCORE_BASED
-medal round in Profissional). Resume there — the judge will now land
-directly on the medal round via the new redirect.
+medal round in Profissional) — **but per the triage outcome above, do the (c)
+unified round-admin redesign before resuming.** When the walkthrough does resume,
+the judge will land directly on the medal round via the new redirect.
 
 **Walkthrough resume checklist:**
 

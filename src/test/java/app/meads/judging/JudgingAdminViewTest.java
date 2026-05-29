@@ -660,6 +660,68 @@ class JudgingAdminViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldReassignPhysicalTableViaEditDialog() {
+        advanceDivisionToJudging();
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Dry mead category",
+                null, 1, CategoryScope.JUDGING));
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var view = _get(JudgingAdminView.class);
+        var judging = judgingService.ensureJudgingExists(division.getId());
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var tableOne = judgingService.createPhysicalTable(division.getId(), "Table 1", admin.getId());
+        var tableTwo = judgingService.createPhysicalTable(division.getId(), "Table 2", admin.getId());
+        var round = judgingService.createRound(judging.getId(), "Round 1",
+                category.getId(), LocalDate.of(2026, 7, 1), admin.getId());
+        judgingService.assignRoundToPhysicalTable(round.getId(), tableOne.getId(), admin.getId());
+
+        view.openEditTableDialog(round);
+
+        var physicalTableSelect = _get(com.vaadin.flow.component.select.Select.class,
+                spec -> spec.withId("edit-table-physical-table"));
+        physicalTableSelect.setValue(tableTwo);
+
+        _click(_get(Button.class, spec -> spec.withText("Save")));
+
+        var refreshed = judgingService.findRoundsByJudgingId(judging.getId()).get(0);
+        assertThat(refreshed.getPhysicalTableId()).isEqualTo(tableTwo.getId());
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldPrefillCurrentPhysicalTableInEditDialog() {
+        advanceDivisionToJudging();
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Dry mead category",
+                null, 1, CategoryScope.JUDGING));
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var view = _get(JudgingAdminView.class);
+        var judging = judgingService.ensureJudgingExists(division.getId());
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var tableOne = judgingService.createPhysicalTable(division.getId(), "Table 1", admin.getId());
+        judgingService.createPhysicalTable(division.getId(), "Table 2", admin.getId());
+        var round = judgingService.createRound(judging.getId(), "Round 1",
+                category.getId(), LocalDate.of(2026, 7, 1), admin.getId());
+        judgingService.assignRoundToPhysicalTable(round.getId(), tableOne.getId(), admin.getId());
+
+        // The grid passes a freshly-loaded round (refreshRoundsGrid re-queries),
+        // so the dialog must pre-select from a current physicalTableId, not a stale one.
+        var freshRound = judgingService.findRoundsByJudgingId(judging.getId()).get(0);
+        view.openEditTableDialog(freshRound);
+
+        var physicalTableSelect = _get(com.vaadin.flow.component.select.Select.class,
+                spec -> spec.withId("edit-table-physical-table"));
+        assertThat(physicalTableSelect.getValue()).isNotNull();
+        assertThat(((app.meads.judging.PhysicalTable) physicalTableSelect.getValue()).getId())
+                .isEqualTo(tableOne.getId());
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     @SuppressWarnings("unchecked")
     void shouldCreateScoringRoundWhenAddRoundDialogSaved() {
         advanceDivisionToJudging();

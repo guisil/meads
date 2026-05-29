@@ -1755,7 +1755,8 @@ A table is a fixed station within the division ("Table 1", "Table 2"). Multiple 
 #### 12.6.2 Edit a scoring round
 
 - [ ] Click ✏ Edit on the new row.
-- [ ] **Expected:** Dialog with Name and Scheduled (Category and Table are not editable after creation).
+- [ ] **Expected:** Dialog with Name, **Table** (a `Select` of the division's physical tables, `edit-table-physical-table`), and Scheduled. Category is not editable after creation.
+- [ ] **Expected (table reassignment):** the Table Select is enabled while the round is PENDING/READY and pre-selects the round's current table. Pick a different table → Save → **Expected:** the round's physical table changes (verify on the grid's Table column). Once the round is ACTIVE or later, the Select is disabled with helper text *"The table can only be changed before the round starts."* (key `judging-admin.tables.dialog.physical-table.locked`).
 - [ ] Change name to `M1A Panel A`, Save.
 - [ ] **Expected:** Notification "Round updated"; grid reflects new name.
 
