@@ -277,9 +277,24 @@ unified grid → Finalize/Reopen flow → i18n+tests → P14 date+time → docs)
   `revertScoringRound`; new medal revert body key. `openAssignEntriesDialog` is mode-aware:
   SCORE_BASED medal → read-only preview + Sync (reuses `medal-round.assign-entries.*` keys). 3 new
   i18n keys × 5 locales. +5 `JudgingAdminViewTest`. Verified: judging + awards **426 tests green**.
-- **Phase 3 NEXT:** round-level Finalize/Submit + Reopen in the detail views (`RoundView`,
-  `MedalRoundView`) + `finalizeScoringRound`/`reopenScoringRound` service flow; remove per-row judge
-  Submit; admin eye-icon; medal Finalize undecided-guard; retire `resetMedalRoundById`'s "Reset" UI.
+- **Phase 3 DONE (2026-05-29):** round-level Finalize/Reopen flow. `ScoresheetService.finalizeScoringRound`
+  (ACTIVE SCORING + all sheets FILLED → submit all + COMPLETE + cascade; judge-or-admin) +
+  `reopenScoringRound` (admin; COMPLETE → ACTIVE, dropping SUBMITTED sheets → FILLED via new entity
+  `Scoresheet.revertToFilled()`). `JudgingServiceImpl.completeMedalRoundById` gains an undecided-entry
+  guard (`error.medal-round.undecided-entries`): every entry in `round.getEntries()` must have a
+  MedalAward (medal or explicit withhold). `RoundView`: round-level **Finalize** (`round-finalize-button`,
+  judge+admin, enabled only when all FILLED; dialog states N advancing + zero-advance + admin warnings)
+  + admin **Reopen** (`round-reopen-button`) on COMPLETE; per-row judge Submit removed; Open (eye) now
+  shown for judges AND admins; admin Move also offered on FILLED. `MedalRoundView`: Start + Reset removed
+  from header (Start is on the grid, Revert replaces Reset); Finalize dialog lists medals + admin warning.
+  19 new i18n keys × 5 locales (5 error + 14 UI). Verified: judging + awards **430 tests green**.
+  **Transitional debt for Phase 4:** per-sheet `ScoresheetService.submit()` (cascade bridge) still exists
+  + is only test-reachable now; orphan i18n keys (`scoresheet.action.{save-draft*,submit*}`,
+  `scoresheet.comments.section`, `error.scoresheet.overall-comment-too-short`, `table.action.submit`,
+  `medal-round.action.{start,reset}` + start/reset dialog keys); `AwardsModuleTest.fillAndSubmit` still
+  uses `submit()` (migrate to markFilled + finalizeScoringRound).
+- **Phase 4 NEXT:** retire `submit()` + migrate its tests to finalize; prune the orphan i18n keys;
+  `grep -nP "[^\x00-\x7F]"` verify; round out coverage. Then Phase 5 (P14 date+time) + Phase 6 (docs).
 
 Resume the walkthrough only after (c) lands. The deeper scoresheet *field-layout* redesign (user
 will supply screenshots) is a separate follow-up, possibly slotted before the walkthrough resumes.

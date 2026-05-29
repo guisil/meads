@@ -541,49 +541,6 @@ class MedalRoundViewTest {
         assertThat(medalRound.getStatus()).isEqualTo(JudgingRoundStatus.COMPLETE);
     }
 
-    @Test
-    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldStartReadyMedalRoundWhenAdminConfirms() {
-        var category = readyMedalRoundCategory();
-
-        navigateToMedalRound(category);
-
-        var view = _get(MedalRoundView.class);
-        view.openStartDialog();
-        _click(_get(Button.class, spec -> spec.withId("medal-round-start-confirm")));
-
-        var medalRound = judgingService.findMedalRoundByCategoryId(category.getId()).orElseThrow();
-        assertThat(medalRound.getStatus()).isEqualTo(JudgingRoundStatus.ACTIVE);
-    }
-
-    /**
-     * Sets up a medal round at READY with a physical table assigned — the
-     * preconditions the Start button requires. Mirrors {@link #categoryWithActiveConfig}
-     * but stops at READY.
-     */
-    private DivisionCategory readyMedalRoundCategory() {
-        division.advanceStatus(); // REGISTRATION_OPEN
-        division.advanceStatus(); // REGISTRATION_CLOSED
-        division.advanceStatus(); // JUDGING
-        division = divisionRepository.save(division);
-        var category = divisionCategoryRepository.save(new DivisionCategory(
-                division.getId(), null, "M1A", "Dry Mead", "Desc", null, 1, CategoryScope.JUDGING));
-        var config = new CategoryJudgingConfig(category.getId(), MedalRoundMode.COMPARATIVE);
-        categoryConfigRepository.save(config);
-        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
-        var judging = judgingService.ensureJudgingExists(division.getId());
-        judging.markActive();
-        judgingRepository.save(judging);
-        var physicalTable = judgingService.createPhysicalTable(division.getId(),
-                "Medal Table", admin.getId());
-        var medalRound = new JudgingRound(judging.getId(), physicalTable.getId(),
-                "Medal", category.getId(), null);
-        medalRound.convertToMedalRound(MedalRoundMode.COMPARATIVE);
-        medalRound.markReady();
-        judgingRoundRepository.save(medalRound);
-        return category;
-    }
-
     /**
      * Sets up a medal round at READY with NO physical table — simulates the
      * cascade-auto-created medal round. Admin needs to assign a physical table
@@ -674,44 +631,6 @@ class MedalRoundViewTest {
         assertThat(com.github.mvysny.kaributesting.v10.LocatorJ._find(
                 com.vaadin.flow.component.select.Select.class,
                 spec -> spec.withId("medal-round-physical-table-select"))).isEmpty();
-    }
-
-    @Test
-    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldEnableStartButtonForReadyScoreBasedMedalRoundWhenJudgingPhaseIsNotStarted() {
-        // Small-category flow: the medal round IS the first round in the division.
-        // judging.phase stays NOT_STARTED until JudgingService.startRound flips it,
-        // so the UI Start button must allow starting from that state — otherwise
-        // it's a chicken-and-egg deadlock. (Service-side, startRound already
-        // handles NOT_STARTED → ACTIVE for any round type, see line 713-715.)
-        var category = pendingScoreBasedMedalRoundCategory();
-        // Get the medal round into READY with a physical table assigned so the
-        // only remaining gate is judging.phase.
-        var judging = judgingService.ensureJudgingExists(division.getId());
-        var medalRound = judgingRoundRepository.findByJudgingId(judging.getId()).stream()
-                .filter(r -> r.getType() == RoundType.MEDAL)
-                .findFirst().orElseThrow();
-        var pt = judgingService.createPhysicalTable(division.getId(), "Table 1",
-                userRepository.findByEmail(ADMIN_EMAIL).orElseThrow().getId());
-        medalRound.assignToPhysicalTable(pt.getId());
-        var judgeA = userRepository.save(new User(
-                "mr-judge-a-" + UUID.randomUUID() + "@example.com",
-                "Judge A", UserStatus.ACTIVE, Role.USER));
-        var judgeB = userRepository.save(new User(
-                "mr-judge-b-" + UUID.randomUUID() + "@example.com",
-                "Judge B", UserStatus.ACTIVE, Role.USER));
-        medalRound.assignJudge(judgeA.getId());
-        medalRound.assignJudge(judgeB.getId());
-        var entry = receivedEntryWithoutScoresheet(category, "001");
-        medalRound.assignEntry(entry.getId());
-        medalRound.markReady();
-        judgingRoundRepository.save(medalRound);
-        assertThat(judging.getPhase()).isEqualTo(JudgingPhase.NOT_STARTED);
-
-        navigateToMedalRound(category);
-
-        var startButton = _get(Button.class, spec -> spec.withId("medal-round-start"));
-        assertThat(startButton.isEnabled()).isTrue();
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})

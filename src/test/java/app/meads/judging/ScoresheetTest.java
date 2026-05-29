@@ -127,6 +127,31 @@ class ScoresheetTest {
                 .isInstanceOf(IllegalStateException.class);
     }
 
+    @Test
+    void shouldRevertSubmittedSheetBackToFilledClearingTotal() {
+        var sheet = filledDraft();
+        sheet.markFilled();
+        sheet.submit();
+        assertThat(sheet.getStatus()).isEqualTo(ScoresheetStatus.SUBMITTED);
+
+        // Round reopen drops sheets SUBMITTED -> FILLED (not DRAFT) so they stay
+        // valid; the total is cleared and only a fresh edit demotes to DRAFT.
+        sheet.revertToFilled();
+
+        assertThat(sheet.getStatus()).isEqualTo(ScoresheetStatus.FILLED);
+        assertThat(sheet.getTotalScore()).isNull();
+        assertThat(sheet.getSubmittedAt()).isNull();
+    }
+
+    @Test
+    void shouldRejectRevertToFilledWhenNotSubmitted() {
+        var sheet = filledDraft();
+        sheet.markFilled(); // FILLED, not SUBMITTED
+
+        assertThatThrownBy(sheet::revertToFilled)
+                .isInstanceOf(IllegalStateException.class);
+    }
+
     /** A DRAFT sheet with every MJP field scored — the precondition for markFilled. */
     private static Scoresheet filledDraft() {
         var sheet = new Scoresheet(UUID.randomUUID(), UUID.randomUUID());

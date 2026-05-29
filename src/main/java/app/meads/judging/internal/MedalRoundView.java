@@ -386,32 +386,9 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
                 && status != JudgingRoundStatus.COMPLETE);
         assignEntriesButton.addClickListener(e -> openAssignEntriesDialog());
 
-        var startButton = new Button(getTranslation("medal-round.action.start"));
-        startButton.setId("medal-round-start");
-        startButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        // Phase can be NOT_STARTED here: in the small-category SCORE_BASED flow
-        // the medal round IS the first round, so judging.phase stays NOT_STARTED
-        // until startRound flips it. NOT_STARTED + ACTIVE are both valid Start
-        // moments (BOS / COMPLETE phases are not — by then medal rounds shouldn't
-        // start). JudgingService.startRound performs the NOT_STARTED → ACTIVE
-        // transition for any round type (line ~713 of JudgingServiceImpl).
-        var phase = judgingService.ensureJudgingExists(division.getId()).getPhase();
-        boolean phaseAllowsStart = phase == JudgingPhase.NOT_STARTED
-                || phase == JudgingPhase.ACTIVE;
-        startButton.setEnabled(status == JudgingRoundStatus.READY && phaseAllowsStart
-                && medalRound != null && medalRound.getPhysicalTableId() != null);
-        if (status == JudgingRoundStatus.READY
-                && (medalRound == null || medalRound.getPhysicalTableId() == null)) {
-            startButton.setTooltipText(getTranslation("medal-round.action.start.no-table"));
-        }
-        startButton.addClickListener(e -> openStartDialog());
-
-        var resetButton = new Button(getTranslation("medal-round.action.reset"));
-        resetButton.setId("medal-round-reset");
-        resetButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-        resetButton.setEnabled(status == JudgingRoundStatus.ACTIVE && judgingActive);
-        resetButton.addClickListener(e -> openResetDialog());
-
+        // Start and Revert now live inline on the unified Rounds grid (a medal
+        // round is just another round). MedalRoundView keeps only the medal-
+        // specific lifecycle controls: Finalize (commit medals) + Reopen.
         var reopenButton = new Button(getTranslation("medal-round.action.reopen"));
         reopenButton.setId("medal-round-reopen");
         reopenButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
@@ -425,36 +402,9 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         finalizeButton.addClickListener(e -> openFinalizeDialog());
 
         var actions = new HorizontalLayout(assignJudgesButton, assignEntriesButton,
-                startButton, resetButton, reopenButton, finalizeButton);
+                reopenButton, finalizeButton);
         actions.setDefaultVerticalComponentAlignment(Alignment.CENTER);
         return actions;
-    }
-
-    public void openStartDialog() {
-        var dialog = new Dialog();
-        dialog.setHeaderTitle(getTranslation("medal-round.start.confirm.title", categoryLabel()));
-        var body = currentMode() == MedalRoundMode.SCORE_BASED
-                ? getTranslation("medal-round.start.confirm.body.score-based")
-                : getTranslation("medal-round.start.confirm.body.comparative");
-        dialog.add(new Span(body));
-        var confirm = new Button(getTranslation("medal-round.action.start"), e -> {
-            try {
-                judgingService.startRound(medalRound.getId(), currentUserId);
-                dialog.close();
-                reload();
-                Notification.show(getTranslation("medal-round.started"))
-                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-            } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
-            }
-        });
-        confirm.setId("medal-round-start-confirm");
-        confirm.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        confirm.setDisableOnClick(true);
-        var cancel = new Button(getTranslation("button.cancel"), e -> dialog.close());
-        dialog.getFooter().add(cancel, confirm);
-        dialog.open();
     }
 
     private Grid<MedalRoundEntryRow> createGrid() {
@@ -876,7 +826,20 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
     public void openFinalizeDialog() {
         var dialog = new Dialog();
         dialog.setHeaderTitle(getTranslation("medal-round.finalize.confirm.title", categoryLabel()));
-        dialog.add(new Span(getTranslation("medal-round.finalize.confirm.body")));
+        var body = new VerticalLayout();
+        body.setPadding(false);
+        body.add(new Span(getTranslation("medal-round.finalize.confirm.body")));
+        // List the medals being committed so the admin sees the outcome. The
+        // service blocks finalize if any entry in scope is still undecided.
+        var awards = judgingService.findMedalAwardsForCategory(config.getDivisionCategoryId());
+        long gold = awards.stream().filter(a -> a.getMedal() == Medal.GOLD).count();
+        long silver = awards.stream().filter(a -> a.getMedal() == Medal.SILVER).count();
+        long bronze = awards.stream().filter(a -> a.getMedal() == Medal.BRONZE).count();
+        body.add(new Span(getTranslation("medal-round.finalize.confirm.summary", gold, silver, bronze)));
+        if (isAdmin) {
+            body.add(new Span(getTranslation("medal-round.finalize.confirm.admin-warning")));
+        }
+        dialog.add(body);
         var confirm = new Button(getTranslation("medal-round.action.finalize"), e -> {
             try {
                 judgingService.completeMedalRoundById(medalRound.getId(), currentUserId);
@@ -916,39 +879,6 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         confirm.setId("medal-round-reopen-confirm");
         confirm.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         confirm.setDisableOnClick(true);
-        var cancel = new Button(getTranslation("button.cancel"), e -> dialog.close());
-        dialog.getFooter().add(cancel, confirm);
-        dialog.open();
-    }
-
-    public void openResetDialog() {
-        var dialog = new Dialog();
-        dialog.setHeaderTitle(getTranslation("medal-round.reset.confirm.title", categoryLabel()));
-        var awards = judgingService.findMedalAwardsForCategory(config.getDivisionCategoryId());
-        dialog.add(new Span(getTranslation("medal-round.reset.confirm.body", awards.size())));
-        var confirmField = new TextField(getTranslation("medal-round.reset.confirm.label"));
-        confirmField.setId("medal-round-reset-field");
-        confirmField.setWidthFull();
-        dialog.add(confirmField);
-        var confirm = new Button(getTranslation("medal-round.action.reset"), e -> {
-            if (!"RESET".equals(confirmField.getValue())) {
-                confirmField.setInvalid(true);
-                confirmField.setErrorMessage(getTranslation("medal-round.reset.confirm.error"));
-                return;
-            }
-            try {
-                judgingService.resetMedalRoundById(medalRound.getId(), currentUserId);
-                dialog.close();
-                reload();
-                Notification.show(getTranslation("medal-round.reset.done"))
-                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-            } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
-            }
-        });
-        confirm.setId("medal-round-reset-confirm");
-        confirm.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
         var cancel = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancel, confirm);
         dialog.open();

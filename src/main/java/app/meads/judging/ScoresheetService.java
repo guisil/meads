@@ -49,6 +49,21 @@ public interface ScoresheetService {
 
     void revertToDraft(@NotNull UUID scoresheetId, @NotNull UUID adminUserId);
 
+    /**
+     * Round-level Finalize (judge or admin): asserts the round is an ACTIVE
+     * SCORING round with every scoresheet FILLED, submits them all (computing
+     * totals), marks the round COMPLETE, and cascades category-medal-readiness.
+     * Replaces the old per-sheet submit + auto-complete-on-last-submit flow.
+     */
+    void finalizeScoringRound(@NotNull UUID roundId, @NotNull UUID userId);
+
+    /**
+     * Admin reopen of a COMPLETE scoring round: COMPLETE → ACTIVE, dropping its
+     * SUBMITTED scoresheets back to FILLED so a subsequent edit demotes them to
+     * DRAFT (and the round must be re-finalized).
+     */
+    void reopenScoringRound(@NotNull UUID roundId, @NotNull UUID adminUserId);
+
     void moveToRound(@NotNull UUID scoresheetId, @NotNull UUID newRoundId, @NotNull UUID adminUserId);
 
     /**

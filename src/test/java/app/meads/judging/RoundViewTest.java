@@ -476,11 +476,10 @@ class RoundViewTest {
 
     @Test
     @WithMockUser(username = "round-view-judge-test@example.com", roles = "USER")
-    void shouldSubmitScoresheetViaJudgeRowShortcutWhenAllFieldsAndCommentsFilled() {
-        // Judges (non-admin) get a per-row Submit shortcut on RoundView. The
-        // dialog reuses the same confirmation copy as the form-level submit;
-        // service validation still fires, so an incomplete sheet would
-        // surface the existing error notification instead.
+    void shouldFinalizeScoringRoundViaJudgeWhenAllScoresheetsFilled() {
+        // Judges finalize the round (submitting all FILLED scoresheets at once);
+        // the per-row Submit shortcut is gone. Service validation still fires,
+        // so an incomplete round would surface an error notification instead.
         advanceDivisionToJudging();
         var category = divisionCategoryRepository.save(new DivisionCategory(
                 division.getId(), null, "M1A", "Dry Mead", "Desc",
@@ -513,6 +512,7 @@ class RoundViewTest {
             sheet.updateScore(def.fieldName(), def.maxValue(), "good depth and balance");
         }
         sheet.updateOverallComments("Well-balanced mead, clean finish, pleasant aroma.");
+        sheet.markFilled();
         var savedSheet = scoresheetRepository.save(sheet);
 
         UI.getCurrent().navigate("competitions/" + competition.getShortName()
@@ -520,10 +520,12 @@ class RoundViewTest {
                 + "/tables/" + table.getId());
 
         var view = _get(RoundView.class);
-        view.openJudgeSubmitDialog(savedSheet);
-        _click(_get(Button.class, spec -> spec.withText("Submit")));
+        view.openFinalizeDialog();
+        _click(_get(Button.class, spec -> spec.withId("round-finalize-confirm")));
 
         var refreshed = scoresheetRepository.findById(savedSheet.getId()).orElseThrow();
         assertThat(refreshed.getStatus()).isEqualTo(app.meads.judging.ScoresheetStatus.SUBMITTED);
+        var refreshedRound = judgingService.findRoundById(table.getId()).orElseThrow();
+        assertThat(refreshedRound.getStatus()).isEqualTo(JudgingRoundStatus.COMPLETE);
     }
 }

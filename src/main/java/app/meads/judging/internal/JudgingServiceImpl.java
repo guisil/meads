@@ -1157,6 +1157,18 @@ public class JudgingServiceImpl implements JudgingService {
         var judging = requireJudging(round.getJudgingId());
         requireAuthorizedForDivision(judging.getDivisionId(), adminUserId);
         requireNotFrozen(judging.getDivisionId());
+        // Every entry in scope must be decided before finalize: a medal award OR
+        // an explicit withhold (a MedalAward row with medal=null). An entry with
+        // no MedalAward row at all is undecided and blocks finalize.
+        var decidedEntryIds = medalAwardRepository
+                .findByFinalCategoryId(round.getDivisionCategoryId()).stream()
+                .map(MedalAward::getEntryId)
+                .collect(java.util.stream.Collectors.toSet());
+        boolean anyUndecided = round.getEntries().stream()
+                .anyMatch(entryId -> !decidedEntryIds.contains(entryId));
+        if (anyUndecided) {
+            throw new BusinessRuleException("error.medal-round.undecided-entries");
+        }
         try {
             round.markComplete();
         } catch (IllegalStateException e) {

@@ -665,6 +665,26 @@ class JudgingServiceMedalRoundTest {
     }
 
     @Test
+    void shouldRejectCompleteMedalRoundWhenAnAssignedEntryIsUndecided() {
+        var medalRound = new JudgingRound(judging.getId(), "Medal", divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.COMPARATIVE);
+        medalRound.markReady();
+        medalRound.start();
+        medalRound.assignEntry(UUID.randomUUID()); // assigned, but no medal award and not withheld
+        given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(medalAwardRepository.findByFinalCategoryId(divisionCategoryId)).willReturn(List.of());
+
+        assertThatThrownBy(() -> service.completeMedalRoundById(medalRound.getId(), adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.medal-round.undecided-entries");
+
+        assertThat(medalRound.getStatus()).isEqualTo(JudgingRoundStatus.ACTIVE);
+    }
+
+    @Test
     void shouldResetMedalRoundByIdAndDeleteAwards() {
         var medalRound = new JudgingRound(judging.getId(), "Medal", divisionCategoryId, null);
         medalRound.convertToMedalRound(MedalRoundMode.COMPARATIVE);

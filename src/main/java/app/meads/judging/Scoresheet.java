@@ -202,6 +202,21 @@ public class Scoresheet {
         this.submittedAt = null;
     }
 
+    /**
+     * Drops a SUBMITTED sheet back to FILLED (not DRAFT) — used when an admin
+     * reopens a COMPLETE round. The sheet stays "validated/filled"; the total +
+     * submittedAt are cleared, and only a subsequent content edit demotes it to
+     * DRAFT (requiring a fresh Save before the round can finalize again).
+     */
+    public void revertToFilled() {
+        if (status != ScoresheetStatus.SUBMITTED) {
+            throw new IllegalStateException("Can only revert to FILLED from SUBMITTED, current: " + status);
+        }
+        this.status = ScoresheetStatus.FILLED;
+        this.totalScore = null;
+        this.submittedAt = null;
+    }
+
     public void moveToRound(UUID newRoundId) {
         requireMutable("moveToRound");
         this.roundId = newRoundId;

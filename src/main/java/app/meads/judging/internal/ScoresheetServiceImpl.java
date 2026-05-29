@@ -323,6 +323,75 @@ public class ScoresheetServiceImpl implements ScoresheetService {
     }
 
     @Override
+    public void finalizeScoringRound(UUID roundId, UUID userId) {
+        var table = requireTable(roundId);
+        var judging = requireJudging(table.getJudgingId());
+        requireNotFrozen(judging.getDivisionId());
+        if (table.getType() != RoundType.SCORING) {
+            throw new BusinessRuleException("error.round.finalize-scoring-only");
+        }
+        // Finalize is a judge-or-admin action (it is the judges' responsibility,
+        // but admins can step in). An assigned judge or a division admin may run it.
+        boolean assignedJudge = table.getAssignments().stream()
+                .anyMatch(a -> a.getJudgeUserId().equals(userId));
+        if (!assignedJudge && !competitionService.isAuthorizedForDivision(judging.getDivisionId(), userId)) {
+            throw new BusinessRuleException("error.auth.unauthorized");
+        }
+        if (table.getStatus() != JudgingRoundStatus.ACTIVE) {
+            throw new BusinessRuleException("error.round.cannot-finalize-not-active");
+        }
+        var sheets = scoresheetRepository.findByRoundId(roundId);
+        boolean allFilled = !sheets.isEmpty()
+                && sheets.stream().allMatch(s -> s.getStatus() == ScoresheetStatus.FILLED);
+        if (!allFilled) {
+            throw new BusinessRuleException("error.round.cannot-finalize-unfilled");
+        }
+        for (var sheet : sheets) {
+            sheet.submit();
+            scoresheetRepository.save(sheet);
+            eventPublisher.publishEvent(new ScoresheetSubmittedEvent(
+                    sheet.getId(), sheet.getEntryId(), roundId,
+                    sheet.getTotalScore(), sheet.getSubmittedAt()));
+        }
+        table.markComplete();
+        judgingRoundRepository.save(table);
+        eventPublisher.publishEvent(new RoundCompletedEvent(
+                roundId, table.getDivisionCategoryId(), judging.getDivisionId(), Instant.now()));
+        cascadeMarkCategoryReadyIfAllTablesComplete(judging, table.getDivisionCategoryId());
+        log.info("Finalized scoring round {} ({} sheets submitted)", roundId, sheets.size());
+    }
+
+    @Override
+    public void reopenScoringRound(UUID roundId, UUID adminUserId) {
+        var table = requireTable(roundId);
+        var judging = requireJudging(table.getJudgingId());
+        if (!competitionService.isAuthorizedForDivision(judging.getDivisionId(), adminUserId)) {
+            throw new BusinessRuleException("error.auth.unauthorized");
+        }
+        requireNotFrozen(judging.getDivisionId());
+        if (table.getType() != RoundType.SCORING) {
+            throw new BusinessRuleException("error.round.finalize-scoring-only");
+        }
+        if (table.getStatus() != JudgingRoundStatus.COMPLETE) {
+            throw new BusinessRuleException("error.round.cannot-reopen-not-complete");
+        }
+        table.reopen();
+        judgingRoundRepository.save(table);
+        // SUBMITTED sheets drop back to FILLED — still valid, but a re-edit
+        // demotes them to DRAFT and the round must be re-finalized.
+        for (var sheet : scoresheetRepository.findByRoundId(roundId)) {
+            if (sheet.getStatus() == ScoresheetStatus.SUBMITTED) {
+                sheet.revertToFilled();
+                scoresheetRepository.save(sheet);
+            }
+        }
+        eventPublisher.publishEvent(new RoundReopenedEvent(
+                roundId, table.getDivisionCategoryId(), judging.getDivisionId(), Instant.now()));
+        retreatMedalRoundFromReady(table.getDivisionCategoryId());
+        log.info("Reopened scoring round {}", roundId);
+    }
+
+    @Override
     public void deleteScoresheet(UUID scoresheetId, UUID adminUserId) {
         var sheet = requireScoresheet(scoresheetId);
         var table = requireTable(sheet.getRoundId());

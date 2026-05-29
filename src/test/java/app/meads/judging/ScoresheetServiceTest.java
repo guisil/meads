@@ -610,4 +610,52 @@ class ScoresheetServiceTest {
 
         assertThat(scoresheet.getStatus()).isNotEqualTo(ScoresheetStatus.FILLED);
     }
+
+    @Test
+    void shouldRejectFinalizeScoringRoundWhenAnySheetNotFilled() {
+        var scoresheet = new Scoresheet(roundId, UUID.randomUUID()); // BLANK, not FILLED
+        given(scoresheetRepository.findByRoundId(roundId)).willReturn(List.of(scoresheet));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        table.start(); // ACTIVE
+
+        assertThatThrownBy(() -> service.finalizeScoringRound(roundId, adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.round.cannot-finalize-unfilled");
+
+        assertThat(table.getStatus()).isEqualTo(JudgingRoundStatus.ACTIVE);
+    }
+
+    @Test
+    void shouldRejectFinalizeScoringRoundWhenRoundNotActive() {
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        // table is PENDING — never started
+
+        assertThatThrownBy(() -> service.finalizeScoringRound(roundId, adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.round.cannot-finalize-not-active");
+    }
+
+    @Test
+    void shouldReopenScoringRoundDroppingSubmittedSheetsBackToFilled() {
+        var scoresheet = new Scoresheet(roundId, UUID.randomUUID());
+        for (var def : MjpScoringFieldDefinition.MJP_FIELDS) {
+            scoresheet.updateScore(def.fieldName(), def.maxValue(), null);
+        }
+        scoresheet.markFilled();
+        scoresheet.submit(); // SUBMITTED
+        table.start();
+        table.markComplete(); // COMPLETE
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(scoresheetRepository.findByRoundId(roundId)).willReturn(List.of(scoresheet));
+        given(scoresheetRepository.save(any(Scoresheet.class))).willAnswer(inv -> inv.getArgument(0));
+        given(judgingRoundRepository.save(any(JudgingRound.class))).willAnswer(inv -> inv.getArgument(0));
+        given(judgingRoundRepository.findFirstByDivisionCategoryIdAndType(
+                divisionCategoryId, app.meads.judging.RoundType.MEDAL)).willReturn(Optional.empty());
+
+        service.reopenScoringRound(roundId, adminUserId);
+
+        assertThat(table.getStatus()).isEqualTo(JudgingRoundStatus.ACTIVE);
+        assertThat(scoresheet.getStatus()).isEqualTo(ScoresheetStatus.FILLED);
+        assertThat(scoresheet.getTotalScore()).isNull();
+    }
 }

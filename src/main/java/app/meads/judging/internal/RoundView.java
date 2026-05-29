@@ -160,10 +160,15 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
             return;
         }
 
+        renderView();
+    }
+
+    private void renderView() {
         loadScoresheetData();
         removeAll();
         add(createBreadcrumb());
         add(createHeader());
+        add(createRoundActionBar());
         add(createFilterBar());
         add(createScoresheetsGrid());
     }
@@ -288,27 +293,93 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
         getUI().ifPresent(ui -> ui.navigate(url));
     }
 
-    public void openJudgeSubmitDialog(Scoresheet sheet) {
-        var entry = entriesById.get(sheet.getEntryId());
-        var entryLabel = entry == null ? "" : entry.getEntryCode();
+    /**
+     * Round-level action bar: a single Finalize/Submit for ACTIVE rounds
+     * (judge + admin; enabled only when every scoresheet is FILLED) and an
+     * admin-only Reopen for COMPLETE rounds. Replaces the per-row judge Submit.
+     */
+    private HorizontalLayout createRoundActionBar() {
+        var bar = new HorizontalLayout();
+        bar.setDefaultVerticalComponentAlignment(Alignment.CENTER);
+        if (table.getStatus() == JudgingRoundStatus.ACTIVE) {
+            boolean allFilled = !allSheets.isEmpty()
+                    && allSheets.stream().allMatch(s -> s.getStatus() == ScoresheetStatus.FILLED);
+            var finalize = new Button(getTranslation("table.action.finalize"), e -> openFinalizeDialog());
+            finalize.setId("round-finalize-button");
+            finalize.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SUCCESS);
+            finalize.setEnabled(allFilled);
+            var wrapper = new Span(finalize);
+            com.vaadin.flow.component.shared.Tooltip.forComponent(wrapper).setText(allFilled
+                    ? getTranslation("table.finalize.tooltip")
+                    : getTranslation("table.finalize.disabled"));
+            bar.add(wrapper);
+        } else if (table.getStatus() == JudgingRoundStatus.COMPLETE && isAdmin) {
+            var reopen = new Button(getTranslation("table.action.reopen"), e -> openReopenDialog());
+            reopen.setId("round-reopen-button");
+            reopen.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+            bar.add(reopen);
+        }
+        return bar;
+    }
+
+    public void openFinalizeDialog() {
+        long advancing = allSheets.stream().filter(Scoresheet::isAdvancedToMedalRound).count();
         var dialog = new Dialog();
-        dialog.setHeaderTitle(getTranslation("scoresheet.action.submit.confirm.title", entryLabel));
-        dialog.add(new Span(getTranslation("scoresheet.action.submit.confirm.body")));
-        var confirm = new Button(getTranslation("scoresheet.action.submit"), e -> {
+        dialog.setHeaderTitle(getTranslation("table.finalize.confirm.title", table.getName()));
+        var body = new VerticalLayout();
+        body.setPadding(false);
+        body.add(new Span(getTranslation("table.finalize.confirm.body", allSheets.size(), advancing)));
+        if (advancing == 0) {
+            var warn = new Span(getTranslation("table.finalize.confirm.zero-advancing"));
+            warn.getElement().getThemeList().add("badge error");
+            body.add(warn);
+        }
+        if (isAdmin) {
+            body.add(new Span(getTranslation("table.finalize.confirm.admin-warning")));
+        }
+        dialog.add(body);
+        var confirm = new Button(getTranslation("table.action.finalize"), e -> {
             try {
-                scoresheetService.submit(sheet.getId(), getCurrentUserId());
+                scoresheetService.finalizeScoringRound(table.getId(), getCurrentUserId());
                 dialog.close();
-                Notification.show(getTranslation("scoresheet.action.submit.success"))
+                Notification.show(getTranslation("table.finalized"))
                         .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-                loadScoresheetData();
-                scoresheetsGrid.setItems(allSheets);
+                table = judgingService.findRoundById(table.getId()).orElseThrow();
+                renderView();
             } catch (BusinessRuleException ex) {
                 Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
                         .addThemeVariants(NotificationVariant.LUMO_ERROR);
                 e.getSource().setEnabled(true);
             }
         });
+        confirm.setId("round-finalize-confirm");
         confirm.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SUCCESS);
+        confirm.setDisableOnClick(true);
+        var cancel = new Button(getTranslation("button.cancel"), e -> dialog.close());
+        dialog.getFooter().add(cancel, confirm);
+        dialog.open();
+    }
+
+    public void openReopenDialog() {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("table.reopen.confirm.title", table.getName()));
+        dialog.add(new Span(getTranslation("table.reopen.confirm.body")));
+        var confirm = new Button(getTranslation("table.action.reopen"), e -> {
+            try {
+                scoresheetService.reopenScoringRound(table.getId(), getCurrentUserId());
+                dialog.close();
+                Notification.show(getTranslation("table.reopened"))
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                table = judgingService.findRoundById(table.getId()).orElseThrow();
+                renderView();
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                e.getSource().setEnabled(true);
+            }
+        });
+        confirm.setId("round-reopen-confirm");
+        confirm.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         confirm.setDisableOnClick(true);
         var cancel = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancel, confirm);
@@ -339,27 +410,15 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
         var actions = new HorizontalLayout();
         actions.setPadding(false);
         actions.setSpacing(true);
-        // Judge per-row shortcuts (Open + Submit). Coexist with the row-click
-        // navigation; Submit is a one-click path for sheets that are already
-        // complete — service-level validation still fires and surfaces a
-        // notification if comments / fields are missing.
-        if (!isAdmin) {
-            var openButton = new Button(new Icon(VaadinIcon.EYE));
-            openButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-            openButton.setId("open-" + sheet.getId());
-            openButton.setTooltipText(getTranslation("table.action.open"));
-            openButton.addClickListener(e -> navigateToScoresheet(sheet));
-            actions.add(openButton);
-            if (sheet.getStatus() == ScoresheetStatus.DRAFT) {
-                var submitButton = new Button(new Icon(VaadinIcon.PAPERPLANE));
-                submitButton.addThemeVariants(ButtonVariant.LUMO_ICON,
-                        ButtonVariant.LUMO_TERTIARY_INLINE, ButtonVariant.LUMO_SUCCESS);
-                submitButton.setId("submit-" + sheet.getId());
-                submitButton.setTooltipText(getTranslation("table.action.submit"));
-                submitButton.addClickListener(e -> openJudgeSubmitDialog(sheet));
-                actions.add(submitButton);
-            }
-        }
+        // Per-row Open (eye) for judges AND admins — row-click also navigates.
+        // The per-row judge Submit is gone: judges Save each sheet (-> FILLED),
+        // then the round-level Finalize submits them all at once.
+        var openButton = new Button(new Icon(VaadinIcon.EYE));
+        openButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+        openButton.setId("open-" + sheet.getId());
+        openButton.setTooltipText(getTranslation("table.action.open"));
+        openButton.addClickListener(e -> navigateToScoresheet(sheet));
+        actions.add(openButton);
         if (isAdmin && sheet.getStatus() == ScoresheetStatus.SUBMITTED) {
             var revertButton = new Button(new Icon(VaadinIcon.ARROW_BACKWARD));
             revertButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
@@ -371,7 +430,8 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
             revertButton.addClickListener(e -> openRevertDialog(sheet));
             actions.add(revertButton);
         }
-        if (isAdmin && sheet.getStatus() == ScoresheetStatus.DRAFT) {
+        if (isAdmin && (sheet.getStatus() == ScoresheetStatus.DRAFT
+                || sheet.getStatus() == ScoresheetStatus.FILLED)) {
             var moveButton = new Button(new Icon(VaadinIcon.EXCHANGE));
             moveButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
             moveButton.setTooltipText(getTranslation("table.action.move"));
