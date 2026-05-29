@@ -45,8 +45,6 @@ public interface ScoresheetService {
      */
     void markFilled(@NotNull UUID scoresheetId, @NotNull UUID judgeUserId);
 
-    void submit(@NotNull UUID scoresheetId, @NotNull UUID judgeUserId);
-
     void revertToDraft(@NotNull UUID scoresheetId, @NotNull UUID adminUserId);
 
     /**

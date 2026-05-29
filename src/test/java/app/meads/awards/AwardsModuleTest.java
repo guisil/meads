@@ -174,6 +174,7 @@ class AwardsModuleTest {
         scoresheetService.updateScore(sheet.getId(), "Overall Impression", 10, "well-crafted overall", judgeUserId);
         scoresheetService.updateOverallComments(sheet.getId(),
                 "A well-balanced mead with subtle complexity and a clean finish.", judgeUserId);
-        scoresheetService.submit(sheet.getId(), judgeUserId);
+        scoresheetService.markFilled(sheet.getId(), judgeUserId);
+        scoresheetService.finalizeScoringRound(sheet.getRoundId(), judgeUserId);
     }
 }

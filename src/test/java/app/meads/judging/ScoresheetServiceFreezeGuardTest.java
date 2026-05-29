@@ -124,8 +124,8 @@ class ScoresheetServiceFreezeGuardTest {
     }
 
     @Test
-    void shouldRejectSubmitWhenResultsPublished() {
-        assertFrozen(() -> service.submit(scoresheetId, judgeUserId));
+    void shouldRejectFinalizeScoringRoundWhenResultsPublished() {
+        assertFrozen(() -> service.finalizeScoringRound(roundId, adminUserId));
     }
 
     @Test

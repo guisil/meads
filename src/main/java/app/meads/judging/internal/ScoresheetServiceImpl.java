@@ -236,60 +236,6 @@ public class ScoresheetServiceImpl implements ScoresheetService {
     }
 
     @Override
-    public void submit(UUID scoresheetId, UUID judgeUserId) {
-        var sheet = requireScoresheet(scoresheetId);
-        requireNotFrozenForSheet(sheet);
-        enforceCoi(judgeUserId, sheet);
-        if (sheet.getCommentLanguage() == null) {
-            var defaultLang = resolveDefaultCommentLanguage(judgeUserId, sheet);
-            if (defaultLang != null) {
-                sheet.setCommentLanguage(defaultLang);
-            }
-        }
-        // Comment-length validation runs *before* the entity's field-filled
-        // check so the error messages stay specific. Each per-criterion comment
-        // must clear MIN_PER_FIELD_COMMENT_LENGTH; the additional ("overall")
-        // comment is optional. Drafts can stay incomplete.
-        requireFieldCommentsLongEnough(sheet);
-        try {
-            // Transitional bridge: submit() now requires FILLED. A judge who came
-            // through the per-row submit shortcut (or a test) may still hand us a
-            // DRAFT sheet — promote it first so submit() can run. The round-level
-            // Finalize flow submits already-FILLED sheets directly.
-            if (sheet.getStatus() == ScoresheetStatus.DRAFT) {
-                sheet.markFilled();
-            }
-            sheet.submit();
-        } catch (IllegalStateException e) {
-            throw new BusinessRuleException("error.scoresheet.incomplete", e.getMessage());
-        }
-        scoresheetRepository.save(sheet);
-        var table = requireTable(sheet.getRoundId());
-        eventPublisher.publishEvent(new ScoresheetSubmittedEvent(
-                sheet.getId(), sheet.getEntryId(), table.getId(),
-                sheet.getTotalScore(), sheet.getSubmittedAt()));
-        // Cascade SCORING round → category-medal-ready when all its sheets are
-        // SUBMITTED. Restricted to SCORING rounds — MEDAL rounds owning their
-        // own sheets (small-category SCORE_BASED flow) should stay ACTIVE
-        // until the admin reviews medals and clicks Finalize, otherwise the
-        // medal-button actions vanish before the admin has a chance to act.
-        var tableSheets = scoresheetRepository.findByRoundId(table.getId());
-        boolean allSubmitted = tableSheets.stream()
-                .allMatch(s -> s.getStatus() == ScoresheetStatus.SUBMITTED);
-        if (allSubmitted && table.getStatus() == JudgingRoundStatus.ACTIVE
-                && table.getType() == RoundType.SCORING) {
-            table.markComplete();
-            judgingRoundRepository.save(table);
-            var judging = requireJudging(table.getJudgingId());
-            eventPublisher.publishEvent(new RoundCompletedEvent(
-                    table.getId(), table.getDivisionCategoryId(),
-                    judging.getDivisionId(), Instant.now()));
-            cascadeMarkCategoryReadyIfAllTablesComplete(judging, table.getDivisionCategoryId());
-        }
-        log.info("Submitted scoresheet {} (total={})", sheet.getId(), sheet.getTotalScore());
-    }
-
-    @Override
     public void revertToDraft(UUID scoresheetId, UUID adminUserId) {
         var sheet = requireScoresheet(scoresheetId);
         var table = requireTable(sheet.getRoundId());
@@ -503,17 +449,6 @@ public class ScoresheetServiceImpl implements ScoresheetService {
             }
             medalRound.assignEntry(entry.getId());
         }
-    }
-
-    private String resolveDefaultCommentLanguage(UUID judgeUserId, Scoresheet sheet) {
-        var profileLang = judgeProfileService.findByUserId(judgeUserId)
-                .map(p -> p.getPreferredCommentLanguage())
-                .orElse(null);
-        if (profileLang != null) {
-            return profileLang;
-        }
-        // No profile language → don't set; leave as null (admin can edit later)
-        return null;
     }
 
     /**

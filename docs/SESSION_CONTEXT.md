@@ -384,12 +384,13 @@ Cycle A + B answered the end-of-day design questions. Cycle C landed mid-walkthr
 **State on disk** (`feature/judging-module` at `33633bb` + item (a) round→table
 reassignment + the **(c) unified round-admin + scoresheet redesign Phases 1-5 all committed**
 (`07673ef` FILLED status, `10eece5` unified grid, `5d680df` Finalize/Reopen, `0108c08` i18n prune,
-`0243e94` P14 date+time), **1275 tests passing on JDK 25**, push pending). Verify with
-`mvn test -Dsurefire.useFile=false`.
+`0243e94` P14 date+time) + the **test-only `submit()` retire follow-up**, **1274 tests passing on
+JDK 25** (judging+awards 429), push pending). Verify with `mvn test -Dsurefire.useFile=false`.
 
-**Remaining for (c) before the walkthrough resumes:** (1) retire the test-only
-`ScoresheetService.submit()` + migrate its tests to `markFilled` + `finalizeScoringRound`
-(documented above — dead UI-wise, harmless); (2) rewrite the walkthrough §12.6-§12.12 detailed
+**Remaining for (c) before the walkthrough resumes:** (1) **DONE (2026-05-29):** the test-only
+`ScoresheetService.submit()` is retired; its tests migrated to `markFilled` + `finalizeScoringRound`
+(`ScoresheetServiceTest`, `ScoresheetServiceFreezeGuardTest`, `AwardsModuleTest.fillAndSubmit`).
+(2) rewrite the walkthrough §12.6-§12.12 detailed
 substeps for the new UI (an authoritative summary banner is already in place at §12.6, and §12.10.1 /
 §12.11 / §12.12 carry pointers to it); (3) the separately-deferred scoresheet *field-layout* redesign
 (awaiting user screenshots). Then resume the walkthrough, code review, merge, v0.4.0.

@@ -229,53 +229,28 @@ class ScoresheetServiceTest {
     }
 
     @Test
-    void shouldSubmitScoresheetWhenAllFieldsFilled() {
+    void shouldFinalizeScoringRoundSubmittingAllSheetsAndCompleting() {
         var entryId = UUID.randomUUID();
         var scoresheet = new Scoresheet(roundId, entryId);
-        // Fill all 5 fields with max value and required comments
         for (var def : MjpScoringFieldDefinition.MJP_FIELDS) {
             scoresheet.updateScore(def.fieldName(), def.maxValue(), "good depth and balance");
         }
         scoresheet.updateOverallComments("A reasonably-worded overall assessment.");
-        scoresheet.setFilledBy(judgeUserId);
-        given(scoresheetRepository.findById(scoresheet.getId())).willReturn(Optional.of(scoresheet));
+        scoresheet.markFilled(); // FILLED — the precondition the round Finalize requires
         given(judgingRoundRepository.findById(roundId)).willReturn(Optional.of(table));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
-        given(coiCheckService.check(judgeUserId, entryId)).willReturn(CoiResult.clear());
-        given(scoresheetRepository.findByRoundId(roundId))
-                .willReturn(List.of(scoresheet)); // last DRAFT
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(scoresheetRepository.findByRoundId(roundId)).willReturn(List.of(scoresheet));
         given(scoresheetRepository.save(any(Scoresheet.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 
-        // Pre-mark table started
         table.start();
 
-        service.submit(scoresheet.getId(), judgeUserId);
+        service.finalizeScoringRound(roundId, adminUserId);
 
         assertThat(scoresheet.getStatus()).isEqualTo(ScoresheetStatus.SUBMITTED);
         assertThat(scoresheet.getTotalScore()).isEqualTo(100);
         assertThat(table.getStatus()).isEqualTo(JudgingRoundStatus.COMPLETE);
-    }
-
-    @Test
-    void shouldRejectSubmitWhenNotAllFieldsFilled() {
-        var entryId = UUID.randomUUID();
-        var scoresheet = new Scoresheet(roundId, entryId);
-        // Fill just one field but leave the others null; comments are filled so
-        // the new comment-length checks pass and the field-filled check is the
-        // one that fires.
-        scoresheet.updateScore(MjpScoringFieldDefinition.APPEARANCE, 10, "good depth and balance");
-        for (var def : MjpScoringFieldDefinition.MJP_FIELDS) {
-            if (def.fieldName().equals(MjpScoringFieldDefinition.APPEARANCE)) continue;
-            scoresheet.updateScore(def.fieldName(), null, "good depth and balance");
-        }
-        scoresheet.updateOverallComments("A reasonably-worded overall assessment.");
-        given(scoresheetRepository.findById(scoresheet.getId())).willReturn(Optional.of(scoresheet));
-        given(coiCheckService.check(judgeUserId, entryId)).willReturn(CoiResult.clear());
-
-        assertThatThrownBy(() -> service.submit(scoresheet.getId(), judgeUserId))
-                .isInstanceOf(BusinessRuleException.class)
-                .hasMessageContaining("error.scoresheet.incomplete");
     }
 
     @Test
@@ -389,10 +364,9 @@ class ScoresheetServiceTest {
         var config = new CategoryJudgingConfig(divisionCategoryId, MedalRoundMode.SCORE_BASED);
         var category = new app.meads.competition.DivisionCategory(judging.getDivisionId(),
                 null, "M1A", "Dry Mead", "Desc", null, 0);
-        given(scoresheetRepository.findById(scoresheet.getId())).willReturn(Optional.of(scoresheet));
         given(judgingRoundRepository.findById(roundId)).willReturn(Optional.of(table));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
-        given(coiCheckService.check(judgeUserId, entryId)).willReturn(CoiResult.clear());
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
         given(scoresheetRepository.findByRoundId(roundId)).willReturn(List.of(scoresheet));
         given(judgingRoundRepository.findByJudgingId(judging.getId())).willReturn(List.of(table));
         given(judgingRoundRepository.save(any(JudgingRound.class)))
@@ -403,9 +377,10 @@ class ScoresheetServiceTest {
                 .willReturn(Optional.of(config));
         given(competitionService.findDivisionCategoryById(divisionCategoryId)).willReturn(category);
 
+        scoresheet.markFilled();
         table.start();
 
-        service.submit(scoresheet.getId(), judgeUserId);
+        service.finalizeScoringRound(roundId, adminUserId);
 
         var captor = org.mockito.ArgumentCaptor.forClass(JudgingRound.class);
         then(judgingRoundRepository).should(org.mockito.Mockito.atLeastOnce()).save(captor.capture());
@@ -430,10 +405,9 @@ class ScoresheetServiceTest {
         var medalRound = new JudgingRound(judging.getId(), UUID.randomUUID(), "Medal",
                 divisionCategoryId, null);
         medalRound.convertToMedalRound(MedalRoundMode.COMPARATIVE);
-        given(scoresheetRepository.findById(scoresheet.getId())).willReturn(Optional.of(scoresheet));
         given(judgingRoundRepository.findById(roundId)).willReturn(Optional.of(table));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
-        given(coiCheckService.check(judgeUserId, entryId)).willReturn(CoiResult.clear());
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
         given(scoresheetRepository.findByRoundId(roundId)).willReturn(List.of(scoresheet));
         given(judgingRoundRepository.findByJudgingId(judging.getId()))
                 .willReturn(List.of(table, medalRound));
@@ -444,9 +418,10 @@ class ScoresheetServiceTest {
         given(categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId))
                 .willReturn(Optional.of(new CategoryJudgingConfig(divisionCategoryId)));
 
+        scoresheet.markFilled();
         table.start();
 
-        service.submit(scoresheet.getId(), judgeUserId);
+        service.finalizeScoringRound(roundId, adminUserId);
 
         assertThat(table.getStatus()).isEqualTo(JudgingRoundStatus.COMPLETE);
         assertThat(medalRound.getStatus()).isEqualTo(JudgingRoundStatus.READY);
@@ -486,11 +461,9 @@ class ScoresheetServiceTest {
                 divisionCategoryId, null);
         medalRound.convertToMedalRound(MedalRoundMode.COMPARATIVE);
 
-        given(scoresheetRepository.findById(triggeringScoresheet.getId()))
-                .willReturn(Optional.of(triggeringScoresheet));
         given(judgingRoundRepository.findById(roundId)).willReturn(Optional.of(table));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
-        given(coiCheckService.check(judgeUserId, advancedEntryId)).willReturn(CoiResult.clear());
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
         given(scoresheetRepository.findByRoundId(roundId)).willReturn(List.of(triggeringScoresheet));
         given(judgingRoundRepository.findByJudgingId(judging.getId()))
                 .willReturn(List.of(table, medalRound));
@@ -505,9 +478,10 @@ class ScoresheetServiceTest {
         given(scoresheetRepository.findByEntryId(advancedEntryId)).willReturn(Optional.of(advancedSheet));
         given(scoresheetRepository.findByEntryId(notAdvancedEntryId)).willReturn(Optional.of(notAdvancedSheet));
 
+        triggeringScoresheet.markFilled();
         table.start();
 
-        service.submit(triggeringScoresheet.getId(), judgeUserId);
+        service.finalizeScoringRound(roundId, adminUserId);
 
         assertThat(medalRound.getEntries()).containsExactly(advancedEntryId);
     }
