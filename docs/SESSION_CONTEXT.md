@@ -293,8 +293,22 @@ unified grid → Finalize/Reopen flow → i18n+tests → P14 date+time → docs)
   `scoresheet.comments.section`, `error.scoresheet.overall-comment-too-short`, `table.action.submit`,
   `medal-round.action.{start,reset}` + start/reset dialog keys); `AwardsModuleTest.fillAndSubmit` still
   uses `submit()` (migrate to markFilled + finalizeScoringRound).
-- **Phase 4 NEXT:** retire `submit()` + migrate its tests to finalize; prune the orphan i18n keys;
-  `grep -nP "[^\x00-\x7F]"` verify; round out coverage. Then Phase 5 (P14 date+time) + Phase 6 (docs).
+- **Phase 4 (i18n prune) DONE (2026-05-29):** removed 21 orphan i18n keys × 5 locales
+  (`scoresheet.action.{save-draft*,submit*}`, `scoresheet.comments.section`,
+  `error.scoresheet.overall-comment-too-short`, `table.action.submit`, `medal-round.action.{start,reset}`
+  + start/reset dialog keys). `grep -nP "[^\x00-\x7F]"` → zero. Verified: judging + awards **430 green**.
+  **Still open (small follow-up within (c)):** retire the now test-only `ScoresheetService.submit()`
+  (no production caller — RoundView's per-row submit is gone) + migrate its `ScoresheetServiceTest`
+  cascade tests + `ScoresheetServiceFreezeGuardTest.shouldRejectSubmitWhenResultsPublished` +
+  `AwardsModuleTest.fillAndSubmit` to the `markFilled` + `finalizeScoringRound` path. Deferred to
+  preserve context for P14 + docs; `submit()` is dead UI-wise so leaving it is harmless transitional debt.
+- **Phase 5 NEXT (P14):** `JudgingRound.scheduledDate` LocalDate → `scheduledAt` LocalDateTime; edit
+  `V21` in place (DATE → TIMESTAMP, un-deployed); `DatePicker` → `DateTimePicker` (Add + Edit dialogs);
+  grid "Scheduled" column formats `yyyy-MM-dd HH:mm`; medal rows now schedulable. Ripple is small —
+  ~4 non-null-date test sites (`ScoresheetServiceTest:91`, `JudgingServiceRoundTest:179/181`,
+  `JudgingAdminViewTest:658`, `JudgingRoundRepositoryTest:102/113`) + the entity/service/view. Then Phase 6 (docs).
+- **Build note:** project is on **JDK 25** — if `mvn` fails with "release version 25 not supported"
+  (BUILD FAILURE before any "Tests run:" line), the default JDK has drifted off 25; fix the JDK, not the code.
 
 Resume the walkthrough only after (c) lands. The deeper scoresheet *field-layout* redesign (user
 will supply screenshots) is a separate follow-up, possibly slotted before the walkthrough resumes.
