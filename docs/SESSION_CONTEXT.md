@@ -241,7 +241,16 @@ The 2026-05-28 triage below was assessed. Decisions:
 - **(a) round → physical-table reassignment: DONE** (2026-05-29). The service method `assignRoundToPhysicalTable` already existed (gated PENDING/READY, rejects post-start) — only the UI was missing. Added a `Select<PhysicalTable>` (`edit-table-physical-table`) to `JudgingAdminView.openEditTableDialog`, enabled while PENDING/READY, disabled with helper text otherwise (new key `judging-admin.tables.dialog.physical-table.locked` × 5 locales). Pre-selects the round's current table by matching id within the items list (NOT a separately-fetched instance — `PhysicalTable` has identity equality, so `setValue` with a different instance silently fails to select). +2 UI tests (`shouldReassignPhysicalTableViaEditDialog`, `shouldPrefillCurrentPhysicalTableInEditDialog`). 1253 tests. Walkthrough §12.6.2 updated. **Will be re-folded into (c)'s unified Edit Round dialog.**
 - **P12 (download-button lifecycle) and P13 (participant counts): DEFERRED** unconditionally — independent of judging, post-v0.4.0.
 
-**Next concrete step:** design/sketch (c) — settle the open scope flags (does MedalRoundView survive as a drill-in? where does SCORE_BASED Start/Revert live? unified grid Type+Mode treatment?), fold in (b)+P14, then implement. Resume the walkthrough only after (c) lands.
+**Next concrete step: implement (c) per the APPROVED plan** in
+`docs/plans/2026-05-29-unified-round-admin-scoresheet-redesign.md` — all scope flags settled with
+the user (MedalRoundView survives as the medal drill-in; Start/Revert move to the unified grid;
+single Type column with a colored badge; new `FILLED` scoresheet status with auto-save + a
+validating Save button; round-level Finalize/Submit + admin Reopen in the detail views; (b)+P14
+folded in). The plan is split into 6 independently-committable phases (Scoresheet status model →
+unified grid → Finalize/Reopen flow → i18n+tests → P14 date+time → docs). Start at Phase 1.
+**Not started** as of 2026-05-29 — approved + queued for a fresh session. Resume the walkthrough
+only after (c) lands. The deeper scoresheet *field-layout* redesign (user will supply screenshots)
+is a separate follow-up, possibly slotted before the walkthrough resumes.
 
 ---
 
