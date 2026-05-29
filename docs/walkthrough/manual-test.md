@@ -1702,6 +1702,32 @@ show 0 here.
 
 ### 12.6 JudgingAdminView — Rounds tab
 
+> **⚠ The (c) round-admin + scoresheet redesign landed (v0.4.0). Some detailed
+> substeps in §12.6–§12.12 below predate it — follow this summary wherever they
+> differ:**
+> - **Unified Rounds grid:** medal rows now carry the SAME inline action icons as
+>   scoring rows — ✏ Edit · 👥 Assign Judges · 📦 Assign Entries · ▶ Start · ↶ Revert ·
+>   🗑 Delete · 👁 Open. The **Type** column is a colored badge (`Scoring` /
+>   `Medal — Comparative` / `Medal — Score-based`). A **Status** multi-select filter
+>   (every status selected by default) sits next to the Type filter.
+> - **Add Round dialog:** choosing Type = MEDAL reveals a **medal-mode** Select
+>   (Comparative / Score-based) — the mode is now chosen at create time. The
+>   **Scheduled** field is a **date + time** picker (`yyyy-MM-dd HH:mm`), and is
+>   available on medal rounds too.
+> - **Scoresheet (ScoresheetView):** no "Save Draft" and no per-sheet "Submit".
+>   Fields **auto-save on blur** (a "Saving…/Saved ✓" indicator shows); a single
+>   validating **Save** button promotes the sheet DRAFT → **FILLED** (requires all 5
+>   scores + each per-criterion comment ≥ 15 chars). The former "Overall comments" is
+>   now the optional **"Additional comments"**.
+> - **Finishing a scoring round:** a round-level **Finalize** button on RoundView
+>   (judge *or* admin; enabled only when every scoresheet is FILLED) submits them all
+>   and completes the round. Admins get **Reopen** on a COMPLETE round (drops its
+>   sheets back to FILLED).
+> - **Medal rounds:** Start + Revert live on the grid now (medal Revert clears the
+>   round's awards). MedalRoundView keeps the per-row medal actions, **Finalize** (now
+>   lists the medals being committed and blocks if any entry is undecided), and
+>   **Reopen**. The old **Reset** button is gone.
+
 *Amadora is still at `REGISTRATION_CLOSED`. Click "Manage Judging" on Amadora
 division detail. (This button is visible from REGISTRATION_CLOSED onwards — see
 §12.4.2.)*
@@ -1974,10 +2000,10 @@ Access tightening: judges can only open **ACTIVE** rounds. RoundView, MedalRound
 - [ ] Click any row.
 - [ ] **Expected:** Navigation to `competitions/.../scoresheets/<id>`.
 - [ ] **Expected (judge actions column):** judges see two icon buttons per row: 👁 **Open** (`open-<sheetId>`) navigates to the scoresheet (coexists with row click — both work); and 📨 **Submit** (`submit-<sheetId>`) opens a confirm dialog and calls `scoresheetService.submit` directly when confirmed. Submit is enabled only on DRAFT sheets (BLANK has nothing to submit; SUBMITTED is locked). If validation fails (e.g. comments still missing) the same notifications fire as in the form-level submit, prompting the judge to open the scoresheet and fix.
-- [ ] **Expected (judge):** form opens in edit mode (Save Draft + Submit buttons visible, fields editable).
-- [ ] **Expected (admin):** form opens **read-only** (no Save Draft / Submit, score fields + comments / language / advance checkbox all marked read-only). Below the read-only form, an **"Edit on behalf of judge"** button (id `admin-edit-scoresheet`) is visible.
+- [ ] **Expected (judge):** form opens in edit mode — a single **Save** button (id `save-button`) is visible, fields editable and **auto-saving on blur** (a "Saving…/Saved ✓" status shows). No "Save Draft", no per-sheet "Submit".
+- [ ] **Expected (admin):** form opens **read-only** (no **Save** button, score fields + comments / language / advance checkbox all marked read-only). Below the read-only form, an **"Edit on behalf of judge"** button (id `admin-edit-scoresheet`) is visible.
 - [ ] (As admin) Click "Edit on behalf of judge" → **Expected:** ConfirmDialog *"Edit scoresheet?"* — body warns the action should only be used in exceptional situations (judge left mid-round, correct an obvious typo) and that the admin is not silently overriding the judge's assessment. Buttons: Cancel + "Edit anyway".
-- [ ] Cancel → form stays read-only. Re-open the dialog, click "Edit anyway" → form re-renders editable; Save Draft and Submit appear.
+- [ ] Cancel → form stays read-only. Re-open the dialog, click "Edit anyway" → form re-renders editable; the **Save** button appears.
 - [ ] **Visibility tightening:** a judge who is **not** assigned to the round must not be able to open scoresheets at that round, even by knowing the URL. Try copying a scoresheet URL while logged in as `compadmin@`, log out, log back in as a judge who is NOT on this round (e.g. `judge6@` if you've only assigned `judge3@`/`judge4@`), paste the URL → **Expected:** redirect to root (`/`); ScoresheetView not rendered.
 
 #### 12.10.2 Admin-only actions (Revert, Move)
@@ -2034,6 +2060,11 @@ scoresheet via `JudgingService.assignEntryToRound`.
 - [ ] Manage Judging → Rounds → **Assign Entries** on the round of your choice → tick the entry → save. **Expected:** the entry now appears in the round's entries; if the round is ACTIVE and SCORING, a DRAFT scoresheet is visible in RoundView's scoresheets grid.
 
 ### 12.11 ScoresheetView (judge form)
+
+> **(c) redesign:** "Save Draft" + per-sheet "Submit" are gone — see the §12.6 summary.
+> Fields auto-save on blur; the **Save** button validates the sheet → FILLED; the
+> round-level **Finalize** (on RoundView, §12.10) submits all sheets at once. The
+> 12.11.1 / 12.11.2 substeps below describe the pre-(c) flow and need a rewrite.
 
 *As `judge@example.com`, open any DRAFT scoresheet from `/my-judging` → "Open table" → row click.*
 
@@ -2095,6 +2126,12 @@ scoresheet via `JudgingService.assignEntryToRound`.
 - [ ] **Expected:** Forward to `""`.
 
 ### 12.12 MedalRoundView
+
+> **(c) redesign:** Start + Revert moved to the unified Rounds grid (§12.6); medal
+> Revert clears the round's awards. MedalRoundView keeps the per-row medal actions,
+> **Finalize** (now lists the medals being committed and blocks if any entry is
+> undecided), and **Reopen**. The old **Reset** button is gone — substeps below that
+> mention Start/Reset here need a rewrite.
 
 The scoring-completion cascade auto-creates a medal `JudgingRound` (type = MEDAL) and marks it READY once every scoring round in the category reaches COMPLETE. From there an admin opens MedalRoundView and clicks **Start** to transition READY → ACTIVE.
 
