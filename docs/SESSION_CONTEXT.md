@@ -314,10 +314,13 @@ unified grid → Finalize/Reopen flow → i18n+tests → P14 date+time → docs)
   tests are unaffected — they migrate fresh).
 - **Phase 6 (docs) DONE (2026-05-29):** CLAUDE.md left unchanged (no *coding* convention changed —
   the scoresheet status lifecycle is domain detail, captured here). SESSION_CONTEXT finalized (count +
-  state-on-disk + remaining items). Walkthrough got an authoritative **(c) summary banner at §12.6**
-  describing the whole new flow, plus local pointers at §12.10.1 / §12.11 / §12.12 and a fixed §12.10.1
-  entry-point; the **detailed substep rewrite of §12.6.x / §12.11.x / §12.12.x is still pending** (those
-  steps still describe the pre-(c) Save-Draft/Submit/Start/Reset UI — see "Remaining for (c)" above).
+  state-on-disk + remaining items). Walkthrough rewritten for the new UI: authoritative **(c) summary
+  banner at §12.6** + the detailed substeps brought up to date — §12.6.1 (badge column, status filter,
+  date+time picker, medal-mode in Add Round), §12.6.8/§12.6.8.1 (unified medal-row actions, create-time
+  mode, grid Start/Assign, no Reset), §12.6.9 (Type + Status filters), §12.10.0 (round-level
+  Finalize/Reopen), §12.10.1 (per-row Open; judge Submit gone), §12.11.1/§12.11.2 (auto-save + Save→FILLED,
+  Additional comments, no Save-Draft/Submit), §12.12.0–§12.12.3 (Start/Revert on the grid, Finalize lists
+  medals + undecided guard, Reset gone). **Detailed substep rewrite COMPLETE (2026-05-29).**
 - **Build note:** project is on **JDK 25** — if `mvn` fails with "release version 25 not supported"
   (BUILD FAILURE before any "Tests run:" line), the default JDK has drifted off 25; fix the JDK, not the code.
 
@@ -390,10 +393,10 @@ JDK 25** (judging+awards 429), push pending). Verify with `mvn test -Dsurefire.u
 **Remaining for (c) before the walkthrough resumes:** (1) **DONE (2026-05-29):** the test-only
 `ScoresheetService.submit()` is retired; its tests migrated to `markFilled` + `finalizeScoringRound`
 (`ScoresheetServiceTest`, `ScoresheetServiceFreezeGuardTest`, `AwardsModuleTest.fillAndSubmit`).
-(2) rewrite the walkthrough §12.6-§12.12 detailed
-substeps for the new UI (an authoritative summary banner is already in place at §12.6, and §12.10.1 /
-§12.11 / §12.12 carry pointers to it); (3) the separately-deferred scoresheet *field-layout* redesign
-(awaiting user screenshots). Then resume the walkthrough, code review, merge, v0.4.0.
+(2) **DONE (2026-05-29):** the walkthrough §12.6-§12.12 detailed substeps are rewritten for the new UI
+(summary banner at §12.6 + updated §12.6.1/§12.6.8/§12.6.8.1/§12.6.9/§12.10.0/§12.10.1/§12.11/§12.12).
+(3) the separately-deferred scoresheet *field-layout* redesign (awaiting user screenshots) — the ONLY
+(c)-adjacent item left. Then resume the walkthrough, code review, merge, v0.4.0.
 Walkthrough paused at §12.6.8.1 step 10 (judge scoring the M3B SCORE_BASED
 medal round in Profissional) — **but per the triage outcome above, do the (c)
 unified round-admin redesign before resuming.** When the walkthrough does resume,
