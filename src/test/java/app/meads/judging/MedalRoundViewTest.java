@@ -438,55 +438,9 @@ class MedalRoundViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldRecordExplicitWithholdWhenNoRowExists() {
-        var category = activeMedalRoundCategory();
-        var table = tableFor(category);
-        advancedEntry(category, table, "AMA-1");
-
-        navigateToMedalRound(category);
-
-        var row = judgingService.findMedalRoundEntries(
-                category.getId(), MedalRoundMode.COMPARATIVE).get(0);
-        var view = _get(MedalRoundView.class);
-        view.applyMedal(row, null);
-
-        var award = medalAwardRepository.findByEntryId(row.entryId()).orElseThrow();
-        assertThat(award.getMedal()).isNull();
-    }
-
-    @Test
-    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldGateWithholdBehindConfirmDialog() {
-        // Withhold is a sensitive action (records a deliberate no-medal
-        // decision in the audit log) — the icon-button click opens a
-        // ConfirmDialog before invoking applyMedal(null). The service must
-        // not be called until the admin confirms.
-        var category = activeMedalRoundCategory();
-        var table = tableFor(category);
-        advancedEntry(category, table, "AMA-1");
-
-        navigateToMedalRound(category);
-
-        var row = judgingService.findMedalRoundEntries(
-                category.getId(), MedalRoundMode.COMPARATIVE).get(0);
-        var view = _get(MedalRoundView.class);
-        view.openWithholdConfirmDialog(row);
-
-        assertThat(medalAwardRepository.findByEntryId(row.entryId()))
-                .as("withhold must not fire until confirm is clicked").isEmpty();
-
-        _click(_get(Button.class, spec -> spec.withId("medal-round-withhold-confirm")));
-
-        var award = medalAwardRepository.findByEntryId(row.entryId()).orElseThrow();
-        assertThat(award.getMedal()).isNull();
-    }
-
-    @Test
-    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldGateClearBehindConfirmDialog() {
-        // Clear deletes the audit row entirely (vs. Withhold which keeps the
-        // row with medal=null). Confirm dialog warns and suggests Withhold
-        // as the safer alternative for "no medal".
+        // Clear deletes the medal award row; the confirm dialog gates it so the
+        // service is not called until the admin confirms.
         var category = activeMedalRoundCategory();
         var table = tableFor(category);
         advancedEntry(category, table, "AMA-1");

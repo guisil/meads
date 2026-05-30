@@ -733,23 +733,25 @@ class JudgingServiceMedalRoundTest {
     }
 
     @Test
-    void shouldRejectCompleteMedalRoundWhenAnAssignedEntryIsUndecided() {
+    void shouldCompleteMedalRoundEvenWhenSomeAssignedEntriesHaveNoMedal() {
+        // Withhold was removed: a COMPARATIVE finalize commits whatever medals
+        // were awarded and the remaining entries simply receive no medal. The
+        // confirmation dialog is responsible for making the "left behind" count
+        // clear; the service no longer blocks on undecided entries.
         var medalRound = new JudgingRound(judging.getId(), "Medal", divisionCategoryId, null);
         medalRound.convertToMedalRound(MedalRoundMode.COMPARATIVE);
         medalRound.markReady();
         medalRound.start();
-        medalRound.assignEntry(UUID.randomUUID()); // assigned, but no medal award and not withheld
+        medalRound.assignEntry(UUID.randomUUID()); // assigned, no medal award — gets no medal
         given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
         given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
         given(competitionService.findDivisionById(divisionId)).willReturn(division);
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
-        given(medalAwardRepository.findByFinalCategoryId(divisionCategoryId)).willReturn(List.of());
 
-        assertThatThrownBy(() -> service.completeMedalRoundById(medalRound.getId(), adminUserId))
-                .isInstanceOf(BusinessRuleException.class)
-                .hasMessageContaining("error.medal-round.undecided-entries");
+        service.completeMedalRoundById(medalRound.getId(), adminUserId);
 
-        assertThat(medalRound.getStatus()).isEqualTo(JudgingRoundStatus.ACTIVE);
+        assertThat(medalRound.getStatus()).isEqualTo(JudgingRoundStatus.COMPLETE);
+        then(judgingRoundRepository).should().save(medalRound);
     }
 
     @Test

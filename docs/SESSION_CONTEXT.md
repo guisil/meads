@@ -422,7 +422,23 @@ SUBMITTED) is visible at a glance, like a scoring round. +2 `MedalRoundViewTest`
 the bold medal-tally **summary** from below the grid to **above it**, right-aligned on the same
 `HorizontalLayout` as the Finalize button (`createSummary()` now built inside `createActions()`); the
 entries grid `setAllRowsVisible(true)` so it grows to fit all rows (matches JudgingAdminView).
-Walkthrough §12.6.8.1 / §12.10 / §12.12 updated. **1275 tests passing on JDK 25.**
+Walkthrough §12.6.8.1 / §12.10 / §12.12 updated.
+
+**Walkthrough-found change #4 (2026-05-30, NOT yet committed — Withhold action removed):** the per-row
+🚫 Withhold (explicit `MedalAward.medal = null`) was dropped — it was ambiguous (which of N non-medal
+entries do you withhold?) and only existed to satisfy the COMPARATIVE finalize "undecided-entries" guard.
+New model: **COMPARATIVE** finalize commits whatever medals were awarded; the rest get no medal — the
+`completeMedalRoundById` undecided guard is gone, and the **Finalize confirm dialog now states, in bold,
+how many entries will receive no medal** (`medal-round.finalize.confirm.no-medal`). **SCORE_BASED** is
+unchanged (auto-populate, then Clear to remove). Removed: 🚫 button + `openWithholdConfirmDialog`, the
+`medal-round.medal.withheld` label, the "Withhold" summary bucket (now `{3} no medal`), the `W:` count on
+the Rounds-Results outcome, AwardsServiceImpl "Withheld" admin label (→ "—"), `error.medal-round.undecided-entries`
++ the 4 `medal-round.action.withhold.*` keys × 5 locales; reworded `clear.confirm.body` (no longer suggests
+Withhold). `MedalAward.medal` stays nullable (no migration — judging not in prod; null is now only a
+defensive case). Tests: rewrote `shouldRejectCompleteMedalRoundWhenAnAssignedEntryIsUndecided` →
+`shouldCompleteMedalRoundEvenWhenSomeAssignedEntriesHaveNoMedal`; deleted 2 MedalRoundViewTest withhold
+tests + 1 BOS withhold test. Walkthrough §12.12.1/§12.12.3/§13.3/§13.4 + the (c) summary banner updated.
+**1272 tests passing on JDK 25.**
 
 **Earlier 2026-05-30 fixes** are **committed** (`3313e2c`, `fb35d40`) on `feature/judging-module` but
 **not yet pushed**.

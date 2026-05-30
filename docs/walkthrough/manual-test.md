@@ -1724,9 +1724,10 @@ show 0 here.
 >   and completes the round. Admins get **Reopen** on a COMPLETE round (drops its
 >   sheets back to FILLED).
 > - **Medal rounds:** Start + Revert live on the grid now (medal Revert clears the
->   round's awards). MedalRoundView keeps the per-row medal actions, **Finalize** (now
->   lists the medals being committed and blocks if any entry is undecided), and
->   **Reopen**. The old **Reset** button is gone.
+>   round's awards). MedalRoundView keeps the per-row medal actions, **Finalize** (lists
+>   the medals being committed **and how many entries get no medal** — finalize never
+>   blocks on undecided entries; there is no Withhold), and **Reopen**. The old **Reset**
+>   button is gone.
 
 *Amadora is still at `REGISTRATION_CLOSED`. Click "Manage Judging" on Amadora
 division detail. (This button is visible from REGISTRATION_CLOSED onwards — see
@@ -1941,7 +1942,7 @@ The Results tab is a read-only summary of every round that has reached COMPLETE 
 - [ ] **Expected:** Grid columns: Type, Name, Category, Table, Outcome, Actions.
 - [ ] **Expected:** The COMPLETE scoring row shows Outcome = `{N} scoresheets submitted` where N = the count of submitted scoresheets at the round.
 - [ ] After a medal round goes COMPLETE (§12.12), come back here.
-- [ ] **Expected:** The COMPLETE medal row shows Outcome = `G:{n} S:{n} B:{n} W:{n}` (Gold/Silver/Bronze/Withheld counts).
+- [ ] **Expected:** The COMPLETE medal row shows Outcome = `G:{n} S:{n} B:{n}` (Gold/Silver/Bronze counts).
 - [ ] Click the Open button on a COMPLETE row → **Expected:** navigates to the same per-round view as the Rounds tab (RoundView for SCORING, MedalRoundView for MEDAL).
 
 ### 12.8 JudgingAdminView — Best of Show tab
@@ -2174,16 +2175,13 @@ Medal-round judges are **independent** of scoring-round judges for the same cate
 - [ ] **Check Mailpit:** each judge with a scoring assignment in this category receives a "Medal round ready" email, subject "[MEADS] Medal round ready — {category}", heading "A medal round is ready", CTA "Log in to MEADS". `JudgingNotificationListener` handles `MedalRoundActivatedEvent`.
 - [ ] As `judge@example.com`, navigate via `/my-judging` → Medal Rounds section → "Open medal round →".
 - [ ] **Expected:** Entries with a SUBMITTED scoresheet flagged `advancedToMedalRound = true` for this category are listed (eligibility refined per §1.9).
-- [ ] **Expected:** Per-row controls (Cycle B) — 👁 Open scoresheet (if any) · 🥇 · 🥈 · 🥉 · 🚫 Withhold · 🗑 Clear. All five are inline icon buttons (no "More ▾" dropdown).
+- [ ] **Expected:** Per-row controls — 👁 Open scoresheet (if any) · 🥇 · 🥈 · 🥉 · 🗑 Clear. All inline icon buttons (no "More ▾" dropdown). **There is no Withhold action** — an entry with no medal simply isn't awarded one; finalize leaves it without a medal.
 - [ ] Click `🥇` on a row.
 - [ ] **Expected:** Notification or live update; row gets a Gold badge.
-- [ ] **Expected:** The medal-tally summary "Summary: 1 Gold · 0 Silver · 0 Bronze · 0 Withhold · {N} unset" updates live. It sits **above the grid**, right-aligned on the **same row as the Finalize button**, in **bold** (moved up from below the grid for visibility while finalizing).
-- [ ] Click 🚫 **Withhold** on a row.
-- [ ] **Expected:** ConfirmDialog "Withhold medal?" with body explaining the audit semantic (records a deliberate "no medal" decision; row stays in audit log as Withhold; distinct from "no decision yet"). Footer: Cancel + Withhold.
-- [ ] Cancel → no change. Re-open, click Withhold → row badge shows "Withheld" (per D11 — `MedalAward.medal = null` distinguishes explicit withhold from no row).
+- [ ] **Expected:** The medal-tally summary "Summary: 1 Gold · 0 Silver · 0 Bronze · {N} no medal" updates live (the last bucket counts every entry without a medal — there's no separate Withhold count anymore). It sits **above the grid**, right-aligned on the **same row as the Finalize button**, in **bold**.
 - [ ] Click 🗑 **Clear** on a row with a medal (icon disabled when no award row exists).
-- [ ] **Expected:** ConfirmDialog "Delete medal record?" body warns the audit row is deleted entirely and suggests Withhold as the safer "no medal" alternative. Footer: Cancel + Delete record.
-- [ ] Cancel → no change. Re-open, click Delete record → row reverts to no medal (audit row gone).
+- [ ] **Expected:** ConfirmDialog "Delete medal record?" body explains the medal award is deleted and the entry will receive no medal unless awarded again. Footer: Cancel + Delete record.
+- [ ] Cancel → no change. Re-open, click Delete record → row reverts to no medal.
 
 #### 12.12.2 SCORE_BASED mode — medals auto-populate as sheets are filled
 
@@ -2192,17 +2190,17 @@ A SCORE_BASED medal round owns its scoresheets (small-category flow, §12.6.8.1)
 - [ ] Set up + Start the SCORE_BASED medal round from the Rounds grid (mode chosen at create time, or via the header **Mode** Select while PENDING/READY — §12.12.0.1). At Start, BLANK scoresheets are created; no medals yet.
 - [ ] As the judges, score each entry and click **Save** (sheet → FILLED). The grid **Status** column tracks each sheet (`BLANK` → `FILLED` → `SUBMITTED`) and the **Total** column fills in per sheet as you go.
 - [ ] **Expected:** Once **every** sheet on the round is FILLED, the top-3 entries (by total, walking gold → silver → bronze, stopping on the first tie within a slot) are auto-populated as MedalAwards. They render with their medal badge.
-- [ ] **Expected:** A "tied-slot" banner at the top when ties exist (red text: "{N} slots tied — resolve before finalizing."); tied rows are flagged with a `⚠` marker in the Code column. Resolve a tie by awarding a medal to one tied entry (or withholding the others) — the view recomputes the cascade live on every action.
+- [ ] **Expected:** A "tied-slot" banner at the top when ties exist (red text: "{N} slots tied — resolve before finalizing."); tied rows are flagged with a `⚠` marker in the Code column. Resolve a tie by awarding the medal to one tied entry (or clearing awards) until the tie is broken — the view recomputes the cascade live on every action.
 - [ ] **Finalize (judge or admin):** when every sheet is FILLED and no tie is open, click **Finalize** (§12.6.8.1) → the sheets are submitted, the medals locked, and the round → COMPLETE in one step. See §12.6.8.1 for the full end-to-end flow.
 
 #### 12.12.3 Admin actions — COMPARATIVE Finalize / Reopen
 
-*(This is the COMPARATIVE finalize path, where the admin decides each medal by hand and the undecided-entries guard applies. The SCORE_BASED judge-driven Finalize is in §12.12.2 / §12.6.8.1 and has no per-entry guard.)*
+*(This is the COMPARATIVE finalize path, where the admin awards each medal by hand. The SCORE_BASED judge-driven Finalize is in §12.12.2 / §12.6.8.1.)*
 
 - [ ] As `compadmin@example.com`, on the ACTIVE COMPARATIVE medal round.
 - [ ] **Expected:** Header admin buttons are **Finalize** + **Reopen** (disabled — only at COMPLETE). Start + Reset are gone (Start is on the grid; the old Reset is replaced by the grid's ↶ Revert).
-- [ ] (Try) Click **Finalize** while some entry is still **undecided** (no medal and not withheld) → **Expected:** error *"Every entry must have a medal or be explicitly withheld before finalizing the medal round."* (key `error.medal-round.undecided-entries`). Decide every entry first (award or 🚫 Withhold).
-- [ ] Click **Finalize** with all entries decided → **Expected:** confirm dialog **lists the medals being committed** (Gold / Silver / Bronze counts) + an admin warning → click Finalize → notification "Medal round complete"; status → `COMPLETE`; per-row buttons disappear (read-only).
+- [ ] Award medals to the entries you want (🥇🥈🥉) and **leave the rest with no medal** — there is no requirement to decide every entry (the old undecided-entries guard and the Withhold action are gone).
+- [ ] Click **Finalize** → **Expected:** confirm dialog **lists the medals being committed** (Gold / Silver / Bronze counts) **and, in bold, how many entries will receive no medal** (e.g. "3 entries in this category will receive no medal.") + an admin warning → click Finalize → notification "Medal round complete"; status → `COMPLETE`; per-row buttons disappear (read-only).
 - [ ] Click **Reopen** → confirm → status back to `ACTIVE`; existing MedalAwards preserved.
 - [ ] **To wipe the awards + return the round to READY**, use the unified Rounds grid (§12.6) → ↶ **Revert** on the medal row (confirm body warns the awards are cleared, scoresheets kept). The in-view Reset button is gone.
 
@@ -2433,7 +2431,7 @@ Steps below are admin-driven unless noted.
   at least one medal awarded. Within each section, separate blocks for Gold /
   Silver / Bronze, listing `Mead name — Meadery name` only (no entry IDs, no
   entrant names, no category in BOS rows).
-- [ ] **Expected:** Withheld medals (Medal = null) are **not** rendered.
+- [ ] **Expected:** Entries without a medal are **not** rendered in the medal blocks (only Gold/Silver/Bronze entries appear).
 - [ ] Hard refresh the page in a logged-out window for a division still in
   `REGISTRATION_OPEN` (e.g., another division of CHIP 2026 you haven't published):
   `/competitions/chip-2026/divisions/amadora-old/results`.
@@ -2455,8 +2453,7 @@ Steps below are admin-driven unless noted.
 - [ ] **Expected:** Grid with columns: Entry, Mead, Category, Round 1 total
   (`N / 100` or `—`), Advanced (Yes/No), Medal (Gold / Silver / Bronze / —),
   BOS place (number or —), Action.
-- [ ] **Expected:** Withheld medals render as `—` (same as no medal) — entrant
-  view does NOT distinguish withheld vs unset.
+- [ ] **Expected:** Entries with no medal render as `—` in the Medal column.
 - [ ] **Expected:** "View scoresheet" button is enabled only for rows whose
   scoresheet is SUBMITTED.
 

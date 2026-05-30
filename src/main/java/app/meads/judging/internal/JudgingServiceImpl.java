@@ -1268,18 +1268,10 @@ public class JudgingServiceImpl implements JudgingService {
         var judging = requireJudging(round.getJudgingId());
         requireAuthorizedForDivision(judging.getDivisionId(), adminUserId);
         requireNotFrozen(judging.getDivisionId());
-        // Every entry in scope must be decided before finalize: a medal award OR
-        // an explicit withhold (a MedalAward row with medal=null). An entry with
-        // no MedalAward row at all is undecided and blocks finalize.
-        var decidedEntryIds = medalAwardRepository
-                .findByFinalCategoryId(round.getDivisionCategoryId()).stream()
-                .map(MedalAward::getEntryId)
-                .collect(java.util.stream.Collectors.toSet());
-        boolean anyUndecided = round.getEntries().stream()
-                .anyMatch(entryId -> !decidedEntryIds.contains(entryId));
-        if (anyUndecided) {
-            throw new BusinessRuleException("error.medal-round.undecided-entries");
-        }
+        // A COMPARATIVE finalize commits whatever medals were awarded; entries
+        // without a medal award simply receive no medal. (Withhold was removed —
+        // there is no "explicit no-medal" state to require anymore. The finalize
+        // confirmation dialog surfaces how many entries are left without a medal.)
         try {
             round.markComplete();
         } catch (IllegalStateException e) {
@@ -1372,8 +1364,8 @@ public class JudgingServiceImpl implements JudgingService {
      * Enforces "at most one G / S / B per category" on manual medal assignment.
      * Auto-populate respects this naturally (it walks the medal list once and
      * stops on ties), but {@code recordMedal} and {@code updateMedal} were
-     * happily letting admins stack three Golds in a row. {@code medal == null}
-     * (explicit withhold) is exempt — withholds aren't medals.
+     * happily letting admins stack three Golds in a row. A {@code null} medal is
+     * defensively ignored (no UI path produces one).
      */
     private void requireUniqueMedalTypeInCategory(UUID finalCategoryId, UUID entryId, Medal medal) {
         if (medal == null) {

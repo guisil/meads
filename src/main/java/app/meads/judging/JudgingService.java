@@ -215,7 +215,6 @@ public interface JudgingService {
     void resetMedalRoundById(@NotNull UUID roundId, @NotNull UUID adminUserId);
 
     // === Medal awards (during ACTIVE) ===
-    /** A {@code null} medal records an explicit withhold (per design D11). */
     MedalAward recordMedal(@NotNull UUID entryId, Medal medal, @NotNull UUID judgeUserId);
 
     void updateMedal(@NotNull UUID medalAwardId, Medal newValue, @NotNull UUID judgeUserId);

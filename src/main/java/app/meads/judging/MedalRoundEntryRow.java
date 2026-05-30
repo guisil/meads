@@ -17,10 +17,9 @@ import java.util.UUID;
  *                     SUBMITTED) when a sheet exists; null when the entry has no
  *                     sheet yet. Surfaced as a grid column so the scoring
  *                     progress of a medal round is visible at a glance.
- * @param medalAwardId {@code null} when no {@link MedalAward} row exists yet; a
- *                     non-null id with {@code currentMedal == null} means an
- *                     explicit withhold.
- * @param currentMedal the awarded medal, or {@code null} for no row / withhold.
+ * @param medalAwardId {@code null} when no {@link MedalAward} row exists yet.
+ * @param currentMedal the awarded medal, or {@code null} when the entry has no
+ *                     medal.
  */
 public record MedalRoundEntryRow(
         UUID entryId,

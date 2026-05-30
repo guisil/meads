@@ -12,7 +12,8 @@ import java.util.UUID;
  * @param tiedSlotCount number of medal slots blocked by an unresolved tie
  *                      ({@code 0} = the cascade is clear).
  * @param tiedEntryIds  entries tied at the blocked boundary slot — the admin or
- *                      judge must award/withhold to resolve them.
+ *                      judge resolves them by awarding the medal to one (or
+ *                      clearing awards) until the tie is broken.
  */
 public record MedalRoundScorePreview(int tiedSlotCount, Set<UUID> tiedEntryIds) {
 }

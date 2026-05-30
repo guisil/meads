@@ -50,8 +50,8 @@ import java.util.UUID;
 
 /**
  * Shared judge/admin medal-round form for one JUDGING-scope category. Judges and
- * admins award Gold / Silver / Bronze (or withhold) per entry; admins also get
- * Finalize / Reopen / Reset in the header. See design §4.E.
+ * admins award Gold / Silver / Bronze (or clear an award) per entry; entries
+ * left without a medal simply receive none at finalize. See design §4.E.
  */
 @Route(value = "competitions/:compShortName/divisions/:divShortName/medal-rounds/:divisionCategoryId",
         layout = MainLayout.class)
@@ -558,16 +558,9 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         cell.add(medalButton("🥉", "medal-round.action.award-bronze", row, Medal.BRONZE,
                 scoreBasedPending));
 
-        // Withhold + Clear — sensitive actions, gated behind a ConfirmDialog.
-        // Withhold records an explicit no-medal decision (audit row stays);
-        // Clear deletes the audit row entirely.
-        var withhold = new Button(new Icon(VaadinIcon.BAN));
-        withhold.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-        withhold.setTooltipText(getTranslation("medal-round.action.withhold"));
-        withhold.setEnabled(!scoreBasedPending);
-        withhold.addClickListener(e -> openWithholdConfirmDialog(row));
-        cell.add(withhold);
-
+        // Clear removes a medal award — a sensitive action gated behind a
+        // ConfirmDialog. (There is no Withhold: an entry with no medal is simply
+        // not awarded one; finalize leaves it without a medal.)
         var clear = new Button(new Icon(VaadinIcon.TRASH));
         clear.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
         clear.setTooltipText(getTranslation("medal-round.action.clear"));
@@ -575,20 +568,6 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         clear.addClickListener(e -> openClearConfirmDialog(row));
         cell.add(clear);
         return cell;
-    }
-
-    /** Opens a confirmation dialog before recording an explicit withhold. */
-    public void openWithholdConfirmDialog(MedalRoundEntryRow row) {
-        var dialog = new Dialog();
-        dialog.setHeaderTitle(getTranslation("medal-round.action.withhold.confirm.title"));
-        dialog.add(new Span(getTranslation("medal-round.action.withhold.confirm.body")));
-        var confirm = new Button(getTranslation("medal-round.action.withhold.confirm.proceed"),
-                e -> { applyMedal(row, null); dialog.close(); });
-        confirm.setId("medal-round-withhold-confirm");
-        confirm.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        var cancel = new Button(getTranslation("button.cancel"), e -> dialog.close());
-        dialog.getFooter().add(cancel, confirm);
-        dialog.open();
     }
 
     /** Opens a confirmation dialog before deleting the medal award row entirely. */
@@ -623,7 +602,7 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         getUI().ifPresent(ui -> ui.navigate(url));
     }
 
-    /** Records or updates a medal for the row. A {@code null} medal records a withhold. */
+    /** Records or updates a medal for the row. */
     public void applyMedal(MedalRoundEntryRow row, Medal medal) {
         try {
             if (row.medalAwardId() == null) {
@@ -653,11 +632,8 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
     }
 
     private String medalLabel(MedalRoundEntryRow row) {
-        if (row.medalAwardId() == null) {
-            return getTranslation("medal-round.medal.none");
-        }
         if (row.currentMedal() == null) {
-            return getTranslation("medal-round.medal.withheld");
+            return getTranslation("medal-round.medal.none");
         }
         return switch (row.currentMedal()) {
             case GOLD -> getTranslation("medal-round.medal.gold");
@@ -676,11 +652,9 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         long gold = rows.stream().filter(r -> r.currentMedal() == Medal.GOLD).count();
         long silver = rows.stream().filter(r -> r.currentMedal() == Medal.SILVER).count();
         long bronze = rows.stream().filter(r -> r.currentMedal() == Medal.BRONZE).count();
-        long withheld = rows.stream()
-                .filter(r -> r.medalAwardId() != null && r.currentMedal() == null).count();
-        long unset = rows.stream().filter(r -> r.medalAwardId() == null).count();
+        long noMedal = rows.size() - gold - silver - bronze;
         summary.setText(getTranslation("medal-round.summary",
-                gold, silver, bronze, withheld, unset));
+                gold, silver, bronze, noMedal));
     }
 
     private Anchor createBackLink() {
@@ -696,13 +670,22 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         var body = new VerticalLayout();
         body.setPadding(false);
         body.add(new Span(getTranslation("medal-round.finalize.confirm.body")));
-        // List the medals being committed so the admin sees the outcome. The
-        // service blocks finalize if any entry in scope is still undecided.
+        // List the medals being committed so the admin sees the outcome, and
+        // make the "left without a medal" count explicit — finalize no longer
+        // requires every entry to be decided, so entries with no medal award
+        // are committed as receiving no medal.
         var awards = judgingService.findMedalAwardsForCategory(config.getDivisionCategoryId());
         long gold = awards.stream().filter(a -> a.getMedal() == Medal.GOLD).count();
         long silver = awards.stream().filter(a -> a.getMedal() == Medal.SILVER).count();
         long bronze = awards.stream().filter(a -> a.getMedal() == Medal.BRONZE).count();
+        long awarded = gold + silver + bronze;
+        long noMedal = Math.max(0, rows.size() - awarded);
         body.add(new Span(getTranslation("medal-round.finalize.confirm.summary", gold, silver, bronze)));
+        if (noMedal > 0) {
+            var noMedalLine = new Span(getTranslation("medal-round.finalize.confirm.no-medal", noMedal));
+            noMedalLine.getStyle().set("font-weight", "bold");
+            body.add(noMedalLine);
+        }
         if (isAdmin) {
             body.add(new Span(getTranslation("medal-round.finalize.confirm.admin-warning")));
         }

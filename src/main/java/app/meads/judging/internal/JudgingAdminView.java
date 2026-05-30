@@ -1152,8 +1152,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
             long gold = awards.stream().filter(a -> a.getMedal() == Medal.GOLD).count();
             long silver = awards.stream().filter(a -> a.getMedal() == Medal.SILVER).count();
             long bronze = awards.stream().filter(a -> a.getMedal() == Medal.BRONZE).count();
-            long withheld = awards.stream().filter(a -> a.getMedal() == null).count();
-            return "G:" + gold + " S:" + silver + " B:" + bronze + " W:" + withheld;
+            return "G:" + gold + " S:" + silver + " B:" + bronze;
         }
         long submitted = scoresheetService.countByRoundIdAndStatus(round.getId(), ScoresheetStatus.SUBMITTED);
         return getTranslation("judging-admin.results.outcome.scoresheets", submitted);

@@ -299,11 +299,8 @@ public class AwardsServiceImpl implements AwardsService {
     }
 
     private String formatAdminMedalLabel(app.meads.judging.MedalAward award) {
-        if (award == null) {
+        if (award == null || award.getMedal() == null) {
             return "—";
-        }
-        if (award.getMedal() == null) {
-            return "Withheld";
         }
         return award.getMedal().name();
     }
