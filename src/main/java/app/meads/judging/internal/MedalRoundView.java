@@ -669,7 +669,6 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         dialog.setHeaderTitle(getTranslation("medal-round.finalize.confirm.title", categoryLabel()));
         var body = new VerticalLayout();
         body.setPadding(false);
-        body.add(new Span(getTranslation("medal-round.finalize.confirm.body")));
         // List the medals being committed so the admin sees the outcome, and
         // make the "left without a medal" count explicit — finalize no longer
         // requires every entry to be decided, so entries with no medal award
@@ -687,6 +686,8 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
             body.add(noMedalLine);
         }
         if (isAdmin) {
+            // Reopen is admin-only — only reassure admins about reversibility.
+            body.add(new Span(getTranslation("medal-round.finalize.confirm.body")));
             body.add(new Span(getTranslation("medal-round.finalize.confirm.admin-warning")));
         }
         dialog.add(body);

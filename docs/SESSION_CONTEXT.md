@@ -438,7 +438,10 @@ Withhold). `MedalAward.medal` stays nullable (no migration — judging not in pr
 defensive case). Tests: rewrote `shouldRejectCompleteMedalRoundWhenAnAssignedEntryIsUndecided` →
 `shouldCompleteMedalRoundEvenWhenSomeAssignedEntriesHaveNoMedal`; deleted 2 MedalRoundViewTest withhold
 tests + 1 BOS withhold test. Walkthrough §12.12.1/§12.12.3/§13.3/§13.4 + the (c) summary banner updated.
-**1272 tests passing on JDK 25.**
+**1272 tests passing on JDK 25.** **Follow-up (uncommitted):** the Finalize confirm dialog's "You can
+reopen later if needed" reassurance + the admin-warning are now gated to `isAdmin` only — a judge
+finalizing a SCORE_BASED medal round no longer sees a reopen claim (Reopen is admin-only). Fast-cycle, no
+new tests.
 
 **Earlier 2026-05-30 fixes** are **committed** (`3313e2c`, `fb35d40`) on `feature/judging-module` but
 **not yet pushed**.
