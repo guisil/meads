@@ -433,7 +433,7 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
      * SCORING sheets live in RoundView (the entries-list per round); medal-
      * round-owned sheets (small-category SCORE_BASED flow) belong with
      * MedalRoundView, which is keyed by divisionCategoryId rather than
-     * roundId. Hardcoding {@code /tables/} sent admins to the wrong view
+     * roundId. Hardcoding {@code /rounds/} sent admins to the wrong view
      * with a broken Actions column.
      */
     private String roundViewUrl() {
@@ -442,7 +442,7 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
         if (table.getType() == app.meads.judging.RoundType.MEDAL) {
             return base + "/medal-rounds/" + table.getDivisionCategoryId();
         }
-        return base + "/tables/" + table.getId();
+        return base + "/rounds/" + table.getId();
     }
 
     private H2 createHeader() {

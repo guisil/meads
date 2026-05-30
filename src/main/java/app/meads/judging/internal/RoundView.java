@@ -50,7 +50,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-@Route(value = "competitions/:compShortName/divisions/:divShortName/tables/:roundId", layout = MainLayout.class)
+@Route(value = "competitions/:compShortName/divisions/:divShortName/rounds/:roundId", layout = MainLayout.class)
 @PermitAll
 public class RoundView extends VerticalLayout implements BeforeEnterObserver {
 

@@ -1168,7 +1168,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
                     ? "competitions/" + compShortName + "/divisions/" + divShortName
                         + "/medal-rounds/" + round.getDivisionCategoryId()
                     : "competitions/" + compShortName + "/divisions/" + divShortName
-                        + "/tables/" + round.getId();
+                        + "/rounds/" + round.getId();
             com.vaadin.flow.component.UI.getCurrent().navigate(url);
         });
 

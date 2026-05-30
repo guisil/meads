@@ -74,7 +74,7 @@ public class MyJudgingView extends VerticalLayout implements BeforeEnterObserver
                 + "/divisions/" + division.getShortName();
         return round.getType() == RoundType.MEDAL
                 ? prefix + "/medal-rounds/" + category.getId()
-                : prefix + "/tables/" + round.getId();
+                : prefix + "/rounds/" + round.getId();
     }
 
     private UUID getCurrentUserId() {

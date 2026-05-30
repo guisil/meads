@@ -173,7 +173,7 @@ class RoundViewTest {
 
         UI.getCurrent().navigate("competitions/" + competition.getShortName()
                 + "/divisions/" + division.getShortName()
-                + "/tables/" + table.getId());
+                + "/rounds/" + table.getId());
 
         var heading = _get(H2.class);
         assertThat(heading.getText()).contains("Amadora");
@@ -195,7 +195,7 @@ class RoundViewTest {
 
         UI.getCurrent().navigate("competitions/" + competition.getShortName()
                 + "/divisions/" + division.getShortName()
-                + "/tables/" + table.getId());
+                + "/rounds/" + table.getId());
 
         var grids = _find(Grid.class);
         var scoresheetsGrid = grids.stream()
@@ -247,7 +247,7 @@ class RoundViewTest {
 
         UI.getCurrent().navigate("competitions/" + competition.getShortName()
                 + "/divisions/" + division.getShortName()
-                + "/tables/" + table.getId());
+                + "/rounds/" + table.getId());
 
         var searchField = _get(com.vaadin.flow.component.textfield.TextField.class,
                 spec -> spec.withId("search-field"));
@@ -300,7 +300,7 @@ class RoundViewTest {
 
         UI.getCurrent().navigate("competitions/" + competition.getShortName()
                 + "/divisions/" + division.getShortName()
-                + "/tables/" + table.getId());
+                + "/rounds/" + table.getId());
 
         var grids = _find(Grid.class);
         var scoresheetsGrid = grids.stream()
@@ -330,7 +330,7 @@ class RoundViewTest {
 
         UI.getCurrent().navigate("competitions/" + competition.getShortName()
                 + "/divisions/" + division.getShortName()
-                + "/tables/" + table.getId());
+                + "/rounds/" + table.getId());
 
         var statusFilter = (Select<String>) _get(Select.class, spec -> spec.withId("status-filter"));
         assertThat(statusFilter.getValue()).isEqualTo("All");
@@ -372,7 +372,7 @@ class RoundViewTest {
 
         UI.getCurrent().navigate("competitions/" + competition.getShortName()
                 + "/divisions/" + division.getShortName()
-                + "/tables/" + table.getId());
+                + "/rounds/" + table.getId());
 
         var view = _get(RoundView.class);
         view.openRevertDialog(savedSheet);
@@ -420,7 +420,7 @@ class RoundViewTest {
 
         UI.getCurrent().navigate("competitions/" + competition.getShortName()
                 + "/divisions/" + division.getShortName()
-                + "/tables/" + table1.getId());
+                + "/rounds/" + table1.getId());
 
         var view = _get(RoundView.class);
         view.openMoveDialog(savedSheet);
@@ -461,7 +461,7 @@ class RoundViewTest {
 
         UI.getCurrent().navigate("competitions/" + competition.getShortName()
                 + "/divisions/" + division.getShortName()
-                + "/tables/" + table.getId());
+                + "/rounds/" + table.getId());
 
         var grids = _find(Grid.class);
         var scoresheetsGrid = (Grid<app.meads.judging.Scoresheet>) grids.stream()
@@ -517,7 +517,7 @@ class RoundViewTest {
 
         UI.getCurrent().navigate("competitions/" + competition.getShortName()
                 + "/divisions/" + division.getShortName()
-                + "/tables/" + table.getId());
+                + "/rounds/" + table.getId());
 
         var view = _get(RoundView.class);
         view.openFinalizeDialog();

@@ -1930,7 +1930,7 @@ When a category has few entries and you want to skip the preliminary scoring rou
 
 #### 12.6.10 Open buttons drill into per-round views
 
-- [ ] Click the Open button on a Scoring row → **Expected:** navigates to `RoundView` (`/competitions/.../divisions/.../tables/{roundId}`) — see §12.10.
+- [ ] Click the Open button on a Scoring row → **Expected:** navigates to `RoundView` (`/competitions/.../divisions/.../rounds/{roundId}`) — see §12.10.
 - [ ] Click the Open button on a Medal row → **Expected:** navigates to `MedalRoundView` (`/competitions/.../divisions/.../medal-rounds/{divisionCategoryId}`) — see §12.12.
 
 ### 12.7 JudgingAdminView — Results tab
@@ -1990,7 +1990,7 @@ Access tightening: judges can only open **ACTIVE** rounds. RoundView, MedalRound
 
 *Back as `judge@example.com`. Per Cycle C, `/my-judging` auto-forwards to the started M1A table — you should already be on RoundView. If not, login again or navigate to `/my-judging`.*
 
-- [ ] **Expected:** URL is `competitions/chip-2026/divisions/amadora/tables/<tableId>`.
+- [ ] **Expected:** URL is `competitions/chip-2026/divisions/amadora/rounds/<roundId>`.
 - [ ] **Expected:** Breadcrumb begins with "My Judging" (judge path) or "My Competitions / CHIP 2026 / Amadora / Judging Admin" (admin path).
 - [ ] **Expected:** H2 `CHIP 2026 — Amadora — Table: M1A Panel A`.
 - [ ] **Expected:** A one-line **explanation** (`round-explanation`) below the header, **role-phrased** like the medal round (§12.12): judges see "Score each entry against the MJP criteria and save every scoresheet…"; admins see the third-person "Judges score each entry against the MJP criteria and save their scoresheets…".

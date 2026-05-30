@@ -457,6 +457,14 @@ existing `roundOpenForChanges = status != COMPLETE` gate in `JudgingAdminView.cr
 Cell still returns 7 components (buttons wrapped, not removed). +1 UI test
 (`shouldDisableEditAndAssignJudgesIconsWhenRoundIsComplete`). Walkthrough (c) summary banner updated.
 
+**Walkthrough-found change #7 (uncommitted):** scoring-round URL segment renamed `tables` → `rounds`
+(finishes the Table→Round rename — the route param was already `:roundId`). `RoundView` `@Route` now
+`…/divisions/:divShortName/rounds/:roundId`; URL builders updated in `JudgingAdminView`, `MyJudgingView`,
+`ScoresheetView.roundViewUrl()`. (MedalRoundView stays `…/medal-rounds/:divisionCategoryId`; PhysicalTable
+URLs untouched.) Tests updated (RoundViewTest, ScoresheetViewTest) + walkthrough §12.6.10/§12.10. No new
+tests (fast-cycle rename). Note: `/medal-rounds/` does not contain the substring `/rounds/`, so the
+medal-vs-scoring back-anchor assertions stay valid.
+
 **Earlier 2026-05-30 fixes** are **committed** (`3313e2c`, `fb35d40`) on `feature/judging-module` but
 **not yet pushed**.
 

@@ -263,7 +263,7 @@ class ScoresheetViewTest {
     @WithMockUser(username = JUDGE_EMAIL, roles = "USER")
     void shouldRouteBackAnchorToMedalRoundViewForMedalOwnedScoresheet() {
         // Small-category SCORE_BASED flow: the sheet's roundId is a MEDAL
-        // round. RoundView (at /tables/<roundId>) is built for SCORING rounds
+        // round. RoundView (at /rounds/<roundId>) is built for SCORING rounds
         // and renders the wrong actions list — admin needs to land on
         // MedalRoundView (keyed by divisionCategoryId).
         var judging = judgingService.ensureJudgingExists(division.getId());
@@ -298,7 +298,7 @@ class ScoresheetViewTest {
         assertThat(anchor.getHref())
                 .as("back anchor on a medal-owned sheet must point at MedalRoundView")
                 .contains("/medal-rounds/" + category.getId())
-                .doesNotContain("/tables/");
+                .doesNotContain("/rounds/");
     }
 
     @Test
@@ -331,7 +331,7 @@ class ScoresheetViewTest {
         assertThat(anchors).as("back-to-round anchor must be present").hasSize(1);
         assertThat(anchors.get(0).getHref())
                 .as("back anchor href must point at the round's RoundView")
-                .contains("/tables/");
+                .contains("/rounds/");
     }
 
     @Test
