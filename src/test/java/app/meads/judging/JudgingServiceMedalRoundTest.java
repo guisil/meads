@@ -781,6 +781,25 @@ class JudgingServiceMedalRoundTest {
     }
 
     @Test
+    void shouldAllowAssignedJudgeToCompleteComparativeMedalRound() {
+        // The judges award the medals on a COMPARATIVE round, so an assigned
+        // judge (not only an admin) can finalize it — no admin authorization stub.
+        var judgeId = UUID.randomUUID();
+        var medalRound = new JudgingRound(judging.getId(), "Medal", divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.COMPARATIVE);
+        medalRound.assignJudge(judgeId);
+        medalRound.markReady();
+        medalRound.start();
+        given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+
+        service.completeMedalRoundById(medalRound.getId(), judgeId);
+
+        assertThat(medalRound.getStatus()).isEqualTo(JudgingRoundStatus.COMPLETE);
+    }
+
+    @Test
     void shouldCompleteMedalRoundEvenWhenSomeAssignedEntriesHaveNoMedal() {
         // Withhold was removed: a COMPARATIVE finalize commits whatever medals
         // were awarded and the remaining entries simply receive no medal. The

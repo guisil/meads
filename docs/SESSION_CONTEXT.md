@@ -505,7 +505,14 @@ candidates grid (`bos.candidates.column.entry` → `.entry-number` + `.entry-cod
 forwards to the judging-admin view (Rounds tab) while `judging.phase ∉ {BOS, COMPLETE}`; "Start BOS" is
 enabled only once every category's medal round is COMPLETE.
 
-**Walkthrough-found change #17 (uncommitted):** MedalRoundView grid is now mode/role-aware so a COMPARATIVE
+**Walkthrough-found change #18 (uncommitted):** COMPARATIVE medal-round **Finalize is now judge-or-admin**
+(was admin-only) — the judges award the medals, so they can commit them. `MedalRoundView` shows Finalize to
+judges too (`showFinalize = medalRound != null`); `JudgingServiceImpl.completeMedalRoundById` now authorizes
+an assigned judge OR an admin (mirrors `finalizeMedalRound`). Reopen stays admin-only; the finalize dialog's
+reopen-reassurance + warning stay admin-only. +1 unit test
+(`shouldAllowAssignedJudgeToCompleteComparativeMedalRound`).
+
+**Walkthrough-found change #17 (committed `05a7f03`):** MedalRoundView grid is now mode/role-aware so a COMPARATIVE
 round doesn't leak the prelim scores to judges. **(a)** Scoresheet **Status** column shows only for
 SCORE_BASED (medal round owns the sheets); hidden on COMPARATIVE (prelim sheets are always SUBMITTED here —
 noise). **(b)** **Total** column hidden from judges on COMPARATIVE (they award by tasting, independent of

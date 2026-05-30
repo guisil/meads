@@ -405,7 +405,10 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         bar.setDefaultVerticalComponentAlignment(Alignment.CENTER);
         bar.setWidthFull();
 
-        boolean showFinalize = medalRound != null && (scoreBased || isAdmin);
+        // Finalize is judge-or-admin in both modes: in SCORE_BASED the judge runs
+        // the whole flow; in COMPARATIVE the judges award the medals, so they can
+        // commit them too (the service authorizes an assigned judge or an admin).
+        boolean showFinalize = medalRound != null;
         if (showFinalize) {
             var finalize = new Button(getTranslation("medal-round.action.finalize"), e -> openFinalizeDialog());
             finalize.setId("medal-round-finalize");

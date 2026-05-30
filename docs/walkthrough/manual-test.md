@@ -2198,14 +2198,14 @@ A SCORE_BASED medal round owns its scoresheets (small-category flow, §12.6.8.1)
 - [ ] **Expected:** A "tied-slot" banner at the top when ties exist (red text: "{N} slots tied — resolve before finalizing."); tied rows are flagged with a `⚠` marker in the Code column. Resolve a tie by awarding the medal to one tied entry (or clearing awards) until the tie is broken — the view recomputes the cascade live on every action.
 - [ ] **Finalize (judge or admin):** when every sheet is FILLED and no tie is open, click **Finalize** (§12.6.8.1) → the sheets are submitted, the medals locked, and the round → COMPLETE in one step. See §12.6.8.1 for the full end-to-end flow.
 
-#### 12.12.3 Admin actions — COMPARATIVE Finalize / Reopen
+#### 12.12.3 COMPARATIVE Finalize / Reopen
 
-*(This is the COMPARATIVE finalize path, where the admin awards each medal by hand. The SCORE_BASED judge-driven Finalize is in §12.12.2 / §12.6.8.1.)*
+*(The COMPARATIVE finalize path, where the judges award each medal by hand. **Finalize is judge-or-admin** — the assigned judges who awarded the medals can commit them, and an admin may step in too. **Reopen is admin-only.** The SCORE_BASED judge-driven Finalize is in §12.12.2 / §12.6.8.1.)*
 
-- [ ] As `compadmin@example.com`, on the ACTIVE COMPARATIVE medal round.
-- [ ] **Expected:** Header admin buttons are **Finalize** + **Reopen** (disabled — only at COMPLETE). Start + Reset are gone (Start is on the grid; the old Reset is replaced by the grid's ↶ Revert).
+- [ ] On the ACTIVE COMPARATIVE medal round, as **either an assigned judge or `compadmin@example.com`**.
+- [ ] **Expected:** A **Finalize** button (visible to judge + admin, enabled while ACTIVE). An admin additionally sees **Reopen** (admin-only, enabled only at COMPLETE). Start + Reset are gone (Start is on the grid; the old Reset is replaced by the grid's ↶ Revert).
 - [ ] Award medals to the entries you want (🥇🥈🥉) and **leave the rest with no medal** — there is no requirement to decide every entry (the old undecided-entries guard and the Withhold action are gone).
-- [ ] Click **Finalize** → **Expected:** confirm dialog **lists the medals being committed** (Gold / Silver / Bronze counts) **and, in bold, how many entries will receive no medal** (e.g. "3 entries in this category will receive no medal.") + an admin warning → click Finalize → notification "Medal round complete"; status → `COMPLETE`; per-row buttons disappear (read-only).
+- [ ] Click **Finalize** → **Expected:** confirm dialog **lists the medals being committed** (Gold / Silver / Bronze counts) **and, in bold, how many entries will receive no medal** (e.g. "3 entries in this category will receive no medal."). Admins additionally see the "you can reopen later" reassurance + the finalize-warning; a judge sees neither (Reopen is admin-only). Click Finalize → notification "Medal round complete"; status → `COMPLETE`; per-row buttons disappear (read-only).
 - [ ] Click **Reopen** → confirm → status back to `ACTIVE`; existing MedalAwards preserved (admin can reassign them). For a **SCORE_BASED** medal round (which owns its scoresheets), reopening also drops its **SUBMITTED scoresheets back to FILLED** so the scores can be edited again — without this the medals were reassignable but the sheets stayed locked. (A COMPARATIVE medal round owns no scoresheets, so only the medals are affected.)
 - [ ] **To wipe the awards + return the round to READY**, use the unified Rounds grid (§12.6) → ↶ **Revert** on the medal row (confirm body warns the awards are cleared, scoresheets kept). The in-view Reset button is gone.
 

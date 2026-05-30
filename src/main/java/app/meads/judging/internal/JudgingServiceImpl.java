@@ -1295,7 +1295,13 @@ public class JudgingServiceImpl implements JudgingService {
     public void completeMedalRoundById(UUID roundId, UUID adminUserId) {
         var round = requireMedalRound(roundId);
         var judging = requireJudging(round.getJudgingId());
-        requireAuthorizedForDivision(judging.getDivisionId(), adminUserId);
+        // Judge-or-admin: the judges award the medals on a COMPARATIVE round, so
+        // an assigned judge can finalize it; an admin may step in too.
+        boolean assignedJudge = round.getAssignments().stream()
+                .anyMatch(a -> a.getJudgeUserId().equals(adminUserId));
+        if (!assignedJudge && !competitionService.isAuthorizedForDivision(judging.getDivisionId(), adminUserId)) {
+            throw new BusinessRuleException("error.auth.unauthorized");
+        }
         requireNotFrozen(judging.getDivisionId());
         // A COMPARATIVE finalize commits whatever medals were awarded; entries
         // without a medal award simply receive no medal. (Withhold was removed —
