@@ -1397,8 +1397,11 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         var candidatesGrid = new Grid<MedalAward>(MedalAward.class, false);
         candidatesGrid.setId("bos-candidates-grid");
         candidatesGrid.setAllRowsVisible(true);
+        candidatesGrid.addColumn(this::formatEntryNumber)
+                .setHeader(getTranslation("judging-admin.bos.candidates.column.entry-number"))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
         candidatesGrid.addColumn(this::formatEntryCode)
-                .setHeader(getTranslation("judging-admin.bos.candidates.column.entry"))
+                .setHeader(getTranslation("judging-admin.bos.candidates.column.entry-code"))
                 .setResizable(true).setSortable(true).setAutoWidth(true);
         candidatesGrid.addColumn(this::formatEntryMeadName)
                 .setHeader(getTranslation("judging-admin.bos.candidates.column.mead-name"))
@@ -1409,6 +1412,16 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         candidatesGrid.setItems(goldAwards);
         section.add(candidatesGrid);
         return section;
+    }
+
+    private String formatEntryNumber(MedalAward award) {
+        try {
+            var number = entryService.findEntryById(award.getEntryId()).getEntryNumber();
+            var prefix = division.getEntryPrefix();
+            return prefix != null && !prefix.isBlank() ? prefix + "-" + number : String.valueOf(number);
+        } catch (Exception e) {
+            return "?";
+        }
     }
 
     private String formatEntryCode(MedalAward award) {

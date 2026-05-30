@@ -1952,6 +1952,7 @@ The Results tab is a read-only summary of every round that has reached COMPLETE 
 *Click "Best of Show" tab.*
 
 - [ ] **Expected (Judging.phase = ACTIVE):** Phase badge `Phase: Active`, configured BOS places line, "Manage placements →" anchor, and three sections: header, GOLD candidates (empty until medal rounds complete), placements (1 empty row).
+- [ ] **Expected (GOLD candidates grid columns):** `Entry #` (prefixed, e.g. `PRO-1`), `Code`, `Mead`, `Category` — the entry number and the code are now separate columns (the code used to sit alone under an "Entry" header).
 - [ ] **Expected:** "Start BOS" button is disabled with tooltip "All medal rounds must be COMPLETE before BOS can start." until every JUDGING category's medal `JudgingRound` is at status `COMPLETE`.
 - [ ] After all medal rounds COMPLETE, click "Start BOS" → confirm.
 - [ ] **Expected:** Notification "BOS started"; phase badge updates to `Phase: BOS`; "Finalize BOS" and "Reset BOS" appear.

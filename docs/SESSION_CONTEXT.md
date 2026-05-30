@@ -492,6 +492,12 @@ as already taken so the cascade fills only the remaining slots. +1 unit test
 (`shouldRecomputeUnconfirmedMedalsWhenScoresChangeOnScoreBasedMedalRound`); 3 auto-populate tests had their
 now-unused `findByEntryId` stubs removed.
 
+**Walkthrough-found change #12 (uncommitted):** the JudgingAdminView BOS-tab GOLD-candidates grid now has
+separate **Entry #** (prefixed, via new `formatEntryNumber(MedalAward)`) and **Code** columns — previously
+the code sat alone under an "Entry" header. i18n: `judging-admin.bos.candidates.column.entry` replaced by
+`.entry-number` + `.entry-code` × 5 locales (reusing the existing Entry #/Code strings). Display-only.
+(BosView's own candidates grid was left as-is — the user pointed at the BOS tab.)
+
 **Earlier 2026-05-30 fixes** are **committed** (`3313e2c`, `fb35d40`) on `feature/judging-module` but
 **not yet pushed**.
 
