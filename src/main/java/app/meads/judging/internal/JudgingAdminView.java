@@ -1179,10 +1179,17 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         // (medal clears awards), Open routes to MedalRoundView vs RoundView.
         boolean isMedal = round.getType() == RoundType.MEDAL;
 
+        // Once a round is COMPLETE there's nothing left to edit (name / schedule)
+        // and no point reassigning judges — disable both.
+        boolean roundOpenForChanges = round.getStatus() != JudgingRoundStatus.COMPLETE;
+
         var editButton = new Button(new Icon(VaadinIcon.EDIT));
         editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-        editButton.setTooltipText(getTranslation("judging-admin.tables.action.edit"));
+        editButton.setEnabled(roundOpenForChanges);
         editButton.addClickListener(e -> openEditTableDialog(round));
+        var editWrapper = wrapWithTooltip(editButton, roundOpenForChanges
+                ? getTranslation("judging-admin.tables.action.edit")
+                : getTranslation("judging-admin.tables.action.edit.disabled"));
 
         boolean startEnabled = round.getStatus() == JudgingRoundStatus.PENDING
                 || round.getStatus() == JudgingRoundStatus.READY;
@@ -1196,8 +1203,11 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
 
         var assignJudgesButton = new Button(new Icon(VaadinIcon.USERS));
         assignJudgesButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-        assignJudgesButton.setTooltipText(getTranslation("judging-admin.tables.action.assign-judges"));
+        assignJudgesButton.setEnabled(roundOpenForChanges);
         assignJudgesButton.addClickListener(e -> openAssignJudgesDialog(round));
+        var assignJudgesWrapper = wrapWithTooltip(assignJudgesButton, roundOpenForChanges
+                ? getTranslation("judging-admin.tables.action.assign-judges")
+                : getTranslation("judging-admin.tables.action.assign-judges.disabled"));
 
         boolean entryAssignmentAllowed = round.getStatus() != JudgingRoundStatus.COMPLETE;
         var assignEntriesButton = new Button(new Icon(VaadinIcon.PACKAGE));
@@ -1233,7 +1243,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
                         ? "judging-admin.medal-rounds.action.delete.blocked"
                         : "judging-admin.tables.action.delete.blocked"));
 
-        return new HorizontalLayout(editButton, assignJudgesButton, assignEntriesWrapper,
+        return new HorizontalLayout(editWrapper, assignJudgesWrapper, assignEntriesWrapper,
                 startWrapper, revertWrapper, deleteWrapper, openButton);
     }
 

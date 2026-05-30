@@ -1707,9 +1707,11 @@ show 0 here.
 > differ:**
 > - **Unified Rounds grid:** medal rows now carry the SAME inline action icons as
 >   scoring rows — ✏ Edit · 👥 Assign Judges · 📦 Assign Entries · ▶ Start · ↶ Revert ·
->   🗑 Delete · 👁 Open. The **Type** column is a colored badge (`Scoring` /
->   `Medal — Comparative` / `Medal — Score-based`). A **Status** multi-select filter
->   (every status selected by default) sits next to the Type filter.
+>   🗑 Delete · 👁 Open. On a **COMPLETE** round, ✏ Edit and 👥 Assign Judges are
+>   **disabled** (nothing left to edit; judges can't be reassigned) — only 👁 Open (and
+>   ↶ Revert/Reopen where applicable) remain meaningful. The **Type** column is a colored
+>   badge (`Scoring` / `Medal — Comparative` / `Medal — Score-based`). A **Status**
+>   multi-select filter (every status selected by default) sits next to the Type filter.
 > - **Add Round dialog:** choosing Type = MEDAL reveals a **medal-mode** Select
 >   (Comparative / Score-based) — the mode is now chosen at create time. The
 >   **Scheduled** field is a **date + time** picker (`yyyy-MM-dd HH:mm`), and is

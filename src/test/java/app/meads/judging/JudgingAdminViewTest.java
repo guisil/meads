@@ -798,6 +798,51 @@ class JudgingAdminViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldDisableEditAndAssignJudgesIconsWhenRoundIsComplete() {
+        // Once a round is COMPLETE there's nothing to edit (name/schedule) and
+        // no point reassigning judges — those icons must be disabled.
+        advanceDivisionToJudging();
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Dry mead category",
+                null, 1, CategoryScope.JUDGING));
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var view = _get(JudgingAdminView.class);
+        var judging = judgingService.ensureJudgingExists(division.getId());
+
+        var pending = new JudgingRound(judging.getId(), "R1", category.getId(), null);
+        var complete = new JudgingRound(judging.getId(), "R2", category.getId(), null);
+        complete.markReady();
+        complete.start();
+        complete.markComplete();
+
+        var pendingButtons = buttonsInOrder(view.createRoundsActionsCell(pending));
+        var completeButtons = buttonsInOrder(view.createRoundsActionsCell(complete));
+
+        // Action order in the cell: edit, assign judges, assign entries, start,
+        // revert, delete, open.
+        assertThat(pendingButtons.get(0).isEnabled()).as("edit enabled while PENDING").isTrue();
+        assertThat(pendingButtons.get(1).isEnabled()).as("assign judges enabled while PENDING").isTrue();
+        assertThat(completeButtons.get(0).isEnabled()).as("edit disabled when COMPLETE").isFalse();
+        assertThat(completeButtons.get(1).isEnabled()).as("assign judges disabled when COMPLETE").isFalse();
+    }
+
+    private static java.util.List<Button> buttonsInOrder(com.vaadin.flow.component.Component root) {
+        var result = new java.util.ArrayList<Button>();
+        root.getChildren().forEach(child -> {
+            if (child instanceof Button b) {
+                result.add(b);
+            } else {
+                result.addAll(buttonsInOrder(child));
+            }
+        });
+        return result;
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     @SuppressWarnings("unchecked")
     void shouldToggleMedalModeSelectAndNameFieldByRoundTypeInAddRoundDialog() {
         advanceDivisionToJudging();

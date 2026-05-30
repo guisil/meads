@@ -450,6 +450,13 @@ reassignable after reopen but the sheets stayed locked. `JudgingServiceImpl.reop
 medal rounds own no sheets, so the loop is a no-op there). +1 unit test
 (`shouldRevertSubmittedScoresheetsToFilledWhenReopeningScoreBasedMedalRound`). Walkthrough §12.12.3 updated.
 
+**Walkthrough-found change #6 (uncommitted):** on a **COMPLETE** round, the Rounds-grid ✏ Edit and
+👥 Assign Judges icons are now **disabled** (nothing left to edit; judges can't be reassigned). Both wrapped
+with disabled tooltips (`judging-admin.tables.action.{edit,assign-judges}.disabled` × 5 locales) via the
+existing `roundOpenForChanges = status != COMPLETE` gate in `JudgingAdminView.createRoundsActionsCell`.
+Cell still returns 7 components (buttons wrapped, not removed). +1 UI test
+(`shouldDisableEditAndAssignJudgesIconsWhenRoundIsComplete`). Walkthrough (c) summary banner updated.
+
 **Earlier 2026-05-30 fixes** are **committed** (`3313e2c`, `fb35d40`) on `feature/judging-module` but
 **not yet pushed**.
 
