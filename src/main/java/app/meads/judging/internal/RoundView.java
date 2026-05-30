@@ -656,6 +656,9 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
         var header = new VerticalLayout(titleRow, createInfoRow(), createExplanation());
         header.setPadding(false);
         header.setSpacing(false);
+        // A little breathing room between the title, the info row, and the
+        // explanation — matches MedalRoundView's header.
+        header.getStyle().set("gap", "var(--lumo-space-s)");
         return header;
     }
 

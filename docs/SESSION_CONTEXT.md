@@ -500,7 +500,11 @@ the code sat alone under an "Entry" header. i18n: `judging-admin.bos.candidates.
 `.entry-number` + `.entry-code` × 5 locales (reusing the existing Entry #/Code strings). Display-only.
 
 **Walkthrough-found change #13 (uncommitted):** same Entry # + Code split applied to **BosView**'s candidates
-grid **Walkthrough-found change #14 (BUG FIX, uncommitted):** the scoring→COMPARATIVE-medal cascade tripped
+grid **Walkthrough-found change #15 (uncommitted):** `RoundView` header got the same `gap: var(--lumo-space-s)`
+between title / info row / explanation that MedalRoundView already had (it was cramped with `setSpacing(false)`
+and no gap). Cosmetic, fast-cycle, no new test.
+
+**Walkthrough-found change #14 (committed `27ffb2c`):** the scoring→COMPARATIVE-medal cascade tripped
 `judging_round_entries_entry_id_key`. When the last scoring round in a category finalized, the cascade
 (`ScoresheetServiceImpl.cascadeMarkCategoryReadyIfAllTablesComplete` → `populateMedalRoundEntries`) copied
 the advance-flagged entries onto the medal round's `entries` — but those entries already live in their
