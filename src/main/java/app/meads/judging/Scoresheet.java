@@ -176,6 +176,32 @@ public class Scoresheet {
         this.status = ScoresheetStatus.FILLED;
     }
 
+    /**
+     * The score that should count towards medal ranking. SUBMITTED sheets carry
+     * a locked {@link #totalScore}; FILLED sheets are fully scored but not yet
+     * submitted, so their total is the live sum of field values. BLANK/DRAFT
+     * sheets are not yet complete and return {@code null} (no medal-eligible
+     * total). Lets the SCORE_BASED medal round compute medals from FILLED sheets,
+     * before the round-level Finalize submits them. Lazy {@code fields} must be
+     * accessed within a transaction (all callers are service methods).
+     */
+    public Integer medalEligibleTotal() {
+        if (totalScore != null) {
+            return totalScore;
+        }
+        if (status != ScoresheetStatus.FILLED) {
+            return null;
+        }
+        int total = 0;
+        for (var f : fields) {
+            if (f.getValue() == null) {
+                return null;
+            }
+            total += f.getValue();
+        }
+        return total;
+    }
+
     public void submit() {
         if (status != ScoresheetStatus.FILLED) {
             throw new IllegalStateException("submit requires FILLED, current: " + status);

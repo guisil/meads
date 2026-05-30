@@ -34,6 +34,7 @@ import app.meads.judging.Scoresheet;
 import app.meads.judging.ScoresheetService;
 import app.meads.judging.ScoresheetStatus;
 import app.meads.judging.RoundStartedEvent;
+import app.meads.judging.ScoresheetFilledEvent;
 import app.meads.judging.ScoresheetSubmittedEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -286,6 +287,37 @@ public class JudgingServiceImpl implements JudgingService {
      * have a MedalAward, so repeated firings are safe. Visibility is public
      * so the unit tests can invoke it directly.
      */
+    /**
+     * Auto-populates medals on a SCORE_BASED medal round once every one of its
+     * sheets is FILLED — medals then appear while the round is still ACTIVE so
+     * the judge sees them before Finalize. Idempotent (autoPopulate skips
+     * entries that already have a MedalAward) and tie-safe (it stops at a tie,
+     * leaving the slot for manual resolution). Public for direct unit testing.
+     */
+    @EventListener
+    public void onScoresheetFilled(ScoresheetFilledEvent event) {
+        var round = judgingRoundRepository.findById(event.roundId()).orElse(null);
+        if (round == null
+                || round.getType() != RoundType.MEDAL
+                || round.getMedalMode() != MedalRoundMode.SCORE_BASED) {
+            return;
+        }
+        // Only once the whole panel is done — partial fills would rank on
+        // incomplete data. A sheet still BLANK/DRAFT (or SUBMITTED, which can't
+        // happen pre-Finalize) means not-all-FILLED.
+        long notFilled = scoresheetService.countByRoundIdAndStatusNot(
+                round.getId(), ScoresheetStatus.FILLED);
+        if (notFilled > 0) {
+            return;
+        }
+        var judging = judgingRepository.findById(round.getJudgingId()).orElse(null);
+        if (judging == null) {
+            return;
+        }
+        autoPopulateMedalsByScore(round.getDivisionCategoryId(),
+                judging.getDivisionId(), event.filledByJudgeUserId());
+    }
+
     @EventListener
     public void onScoresheetSubmitted(ScoresheetSubmittedEvent event) {
         var round = judgingRoundRepository.findById(event.roundId()).orElse(null);
@@ -901,22 +933,38 @@ public class JudgingServiceImpl implements JudgingService {
             allSheets.addAll(scoresheetRepository.findByRoundId(t.getId()));
         }
         for (var sheet : allSheets) {
-            if (sheet.getStatus() != ScoresheetStatus.SUBMITTED || sheet.getTotalScore() == null) {
-                continue;
-            }
-            // The "advanced to medal round" flag only gates prelim SCORING-round
-            // sheets — it's how judges signal which entries deserve a medal
-            // round at all. Medal-round-owned sheets ARE the medal round, so
-            // every SUBMITTED sheet there is automatically a medal candidate.
             var sourceRound = sourceRounds.stream()
                     .filter(r -> r.getId().equals(sheet.getRoundId()))
                     .findFirst().orElse(null);
-            if (sourceRound != null
-                    && sourceRound.getType() == RoundType.SCORING
-                    && !sheet.isAdvancedToMedalRound()) {
+            boolean medalOwned = sourceRound != null && sourceRound.getType() == RoundType.MEDAL;
+            // Medal-round-owned sheets (SCORE_BASED small-category flow) count as
+            // soon as they are FILLED, so medals compute live while judges score —
+            // by Finalize time the medals already exist. Prelim SCORING-round
+            // sheets must be SUBMITTED (their round is finalized) and explicitly
+            // advance-flagged (the judges' signal that the entry deserves a medal).
+            Integer total;
+            if (medalOwned) {
+                // SUBMITTED carries the locked total; FILLED computes the live
+                // sum so medals can populate before the round-level Finalize.
+                if (sheet.getStatus() == ScoresheetStatus.SUBMITTED) {
+                    total = sheet.getTotalScore();
+                } else if (sheet.getStatus() == ScoresheetStatus.FILLED) {
+                    total = sheet.medalEligibleTotal();
+                } else {
+                    continue;
+                }
+            } else {
+                if (sheet.getStatus() != ScoresheetStatus.SUBMITTED
+                        || sheet.getTotalScore() == null
+                        || !sheet.isAdvancedToMedalRound()) {
+                    continue;
+                }
+                total = sheet.getTotalScore();
+            }
+            if (total == null) {
                 continue;
             }
-            sheetsByEntry.merge(sheet.getEntryId(), sheet.getTotalScore(), Integer::max);
+            sheetsByEntry.merge(sheet.getEntryId(), total, Integer::max);
         }
         var ranked = sheetsByEntry.entrySet().stream()
                 .sorted(Map.Entry.<UUID, Integer>comparingByValue().reversed())
@@ -1004,11 +1052,20 @@ public class JudgingServiceImpl implements JudgingService {
                     && (sheetOpt.isEmpty() || sheetOpt.get().getStatus() != ScoresheetStatus.SUBMITTED)) {
                 continue;
             }
+            // SCORE_BASED rows surface the medal-eligible total as soon as the
+            // sheet is FILLED (not only SUBMITTED) so the grid Total and the
+            // tie preview reflect the judges' scoring while the round is still
+            // ACTIVE. COMPARATIVE rows only reach here with SUBMITTED sheets.
             Integer totalScore = null;
             boolean advanced = false;
-            if (sheetOpt.isPresent() && sheetOpt.get().getStatus() == ScoresheetStatus.SUBMITTED) {
-                totalScore = sheetOpt.get().getTotalScore();
-                advanced = sheetOpt.get().isAdvancedToMedalRound();
+            if (sheetOpt.isPresent()) {
+                var s = sheetOpt.get();
+                if (s.getStatus() == ScoresheetStatus.SUBMITTED) {
+                    totalScore = s.getTotalScore();
+                    advanced = s.isAdvancedToMedalRound();
+                } else if (s.getStatus() == ScoresheetStatus.FILLED) {
+                    totalScore = s.medalEligibleTotal();
+                }
             }
             var medalOpt = medalAwardRepository.findByEntryId(entryId);
             rows.add(new MedalRoundEntryRow(
@@ -1150,6 +1207,59 @@ public class JudgingServiceImpl implements JudgingService {
     }
 
     // === Medal round transitions (operate on the medal JudgingRound) ===
+
+    @Override
+    public void finalizeMedalRound(UUID roundId, UUID userId) {
+        var round = requireMedalRound(roundId);
+        var judging = requireJudging(round.getJudgingId());
+        requireNotFrozen(judging.getDivisionId());
+        if (round.getMedalMode() != MedalRoundMode.SCORE_BASED) {
+            throw new BusinessRuleException("error.medal-round.finalize-score-based-only");
+        }
+        // Judge-or-admin: an assigned judge can finish the round end-to-end; an
+        // admin may step in but isn't required to.
+        boolean assignedJudge = round.getAssignments().stream()
+                .anyMatch(a -> a.getJudgeUserId().equals(userId));
+        if (!assignedJudge && !competitionService.isAuthorizedForDivision(judging.getDivisionId(), userId)) {
+            throw new BusinessRuleException("error.auth.unauthorized");
+        }
+        if (round.getStatus() != JudgingRoundStatus.ACTIVE) {
+            throw new BusinessRuleException("error.medal-round.cannot-finalize-not-active");
+        }
+        var sheets = scoresheetRepository.findByRoundId(roundId);
+        boolean allFilled = !sheets.isEmpty()
+                && sheets.stream().allMatch(s -> s.getStatus() == ScoresheetStatus.FILLED);
+        if (!allFilled) {
+            throw new BusinessRuleException("error.medal-round.cannot-finalize-unfilled");
+        }
+        // A live tie at a medal boundary must be resolved by hand first —
+        // auto-populate stops at it, so finalizing would award fewer medals
+        // than slots without the judge knowing.
+        if (recomputeScorePreview(round.getDivisionCategoryId()).tiedSlotCount() > 0) {
+            throw new BusinessRuleException("error.medal-round.cannot-finalize-tied");
+        }
+        // Medals were already populated when the last sheet filled; submit the
+        // sheets (locks each total) and re-run autoPopulate for any slot that
+        // a manual tie resolution left open. Then complete — no per-entry
+        // decision is required for SCORE_BASED (the score order decides).
+        for (var sheet : sheets) {
+            sheet.submit();
+            scoresheetRepository.save(sheet);
+            eventPublisher.publishEvent(new ScoresheetSubmittedEvent(
+                    sheet.getId(), sheet.getEntryId(), roundId,
+                    sheet.getTotalScore(), sheet.getSubmittedAt()));
+        }
+        autoPopulateMedalsByScore(round.getDivisionCategoryId(), judging.getDivisionId(), userId);
+        try {
+            round.markComplete();
+        } catch (IllegalStateException e) {
+            throw new BusinessRuleException("error.medal-round.cannot-complete", e.getMessage());
+        }
+        judgingRoundRepository.save(round);
+        eventPublisher.publishEvent(new MedalRoundCompletedEvent(
+                round.getDivisionCategoryId(), judging.getDivisionId(), Instant.now()));
+        log.info("Finalized SCORE_BASED medal round {} ({} sheets submitted)", roundId, sheets.size());
+    }
 
     @Override
     public void completeMedalRoundById(UUID roundId, UUID adminUserId) {

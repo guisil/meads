@@ -194,6 +194,17 @@ public interface JudgingService {
      */
     void completeMedalRoundById(@NotNull UUID roundId, @NotNull UUID adminUserId);
 
+    /**
+     * Judge-or-admin Finalize for a SCORE_BASED medal round (small-category flow,
+     * where the medal round owns the scoresheets). Requires the round to be
+     * ACTIVE with every scoresheet FILLED and no unresolved score tie; submits
+     * all sheets, ensures medals are populated from the totals, and completes the
+     * round — all in one judge-driven step (no admin hand-off needed). Non-medal
+     * entries simply place below the medals; unlike the COMPARATIVE Finalize this
+     * does not require an explicit decision per entry.
+     */
+    void finalizeMedalRound(@NotNull UUID roundId, @NotNull UUID userId);
+
     /** Reopens a COMPLETE medal round back to ACTIVE. */
     void reopenMedalRoundById(@NotNull UUID roundId, @NotNull UUID adminUserId);
 

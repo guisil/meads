@@ -216,12 +216,15 @@ class JudgingServiceMedalRoundTest {
         given(sheetGold.getStatus()).willReturn(ScoresheetStatus.SUBMITTED);
         given(sheetGold.getTotalScore()).willReturn(85);
         given(sheetGold.getEntryId()).willReturn(entryGold);
+        given(sheetGold.getRoundId()).willReturn(medalRound.getId());
         // isAdvancedToMedalRound is not asserted — medal-round-owned sheets skip that filter.
         var sheetSilver = mock(app.meads.judging.Scoresheet.class);
+        given(sheetSilver.getRoundId()).willReturn(medalRound.getId());
         given(sheetSilver.getStatus()).willReturn(ScoresheetStatus.SUBMITTED);
         given(sheetSilver.getTotalScore()).willReturn(78);
         given(sheetSilver.getEntryId()).willReturn(entrySilver);
         var sheetBronze = mock(app.meads.judging.Scoresheet.class);
+        given(sheetBronze.getRoundId()).willReturn(medalRound.getId());
         given(sheetBronze.getStatus()).willReturn(ScoresheetStatus.SUBMITTED);
         given(sheetBronze.getTotalScore()).willReturn(72);
         given(sheetBronze.getEntryId()).willReturn(entryBronze);
@@ -275,6 +278,7 @@ class JudgingServiceMedalRoundTest {
         given(submittedSheet.getEntryId()).willReturn(entrySilver);
         given(submittedSheet.getTotalScore()).willReturn(78);
         var earlierSheet = mock(app.meads.judging.Scoresheet.class);
+        given(earlierSheet.getRoundId()).willReturn(medalRound.getId());
         given(earlierSheet.getStatus()).willReturn(ScoresheetStatus.SUBMITTED);
         given(earlierSheet.getEntryId()).willReturn(entryGold);
         given(earlierSheet.getTotalScore()).willReturn(85);
@@ -300,6 +304,70 @@ class JudgingServiceMedalRoundTest {
                 .containsExactly(entryGold, entrySilver);
         assertThat(awards).extracting(MedalAward::getMedal)
                 .containsExactly(Medal.GOLD, Medal.SILVER);
+    }
+
+    @Test
+    void shouldAutoPopulateMedalsWhenAllSheetsFilledOnScoreBasedMedalRound() {
+        // Judge-driven flow: medals appear as soon as the LAST sheet is FILLED
+        // (before the round-level Finalize submits them), keyed on the live
+        // medal-eligible total rather than the locked SUBMITTED total.
+        var physicalTableId = UUID.randomUUID();
+        var medalRound = new JudgingRound(judging.getId(), physicalTableId, "Medal",
+                divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.SCORE_BASED);
+        medalRound.assignJudge(UUID.randomUUID());
+        var entryGold = UUID.randomUUID();
+        var entrySilver = UUID.randomUUID();
+        medalRound.assignEntry(entryGold);
+        medalRound.assignEntry(entrySilver);
+        medalRound.start();
+        var judgeUserId = UUID.randomUUID();
+        var filledSheetId = UUID.randomUUID();
+        var goldSheet = mock(app.meads.judging.Scoresheet.class);
+        given(goldSheet.getRoundId()).willReturn(medalRound.getId());
+        given(goldSheet.getStatus()).willReturn(ScoresheetStatus.FILLED);
+        given(goldSheet.medalEligibleTotal()).willReturn(88);
+        given(goldSheet.getEntryId()).willReturn(entryGold);
+        var silverSheet = mock(app.meads.judging.Scoresheet.class);
+        given(silverSheet.getRoundId()).willReturn(medalRound.getId());
+        given(silverSheet.getStatus()).willReturn(ScoresheetStatus.FILLED);
+        given(silverSheet.medalEligibleTotal()).willReturn(80);
+        given(silverSheet.getEntryId()).willReturn(entrySilver);
+        given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
+        given(judgingRoundRepository.findByJudgingId(judging.getId())).willReturn(List.of(medalRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(judgingRepository.findByDivisionId(divisionId)).willReturn(Optional.of(judging));
+        given(scoresheetService.countByRoundIdAndStatusNot(medalRound.getId(), ScoresheetStatus.FILLED))
+                .willReturn(0L);
+        given(scoresheetRepository.findByRoundId(medalRound.getId()))
+                .willReturn(List.of(goldSheet, silverSheet));
+        given(medalAwardRepository.findByEntryId(any())).willReturn(Optional.empty());
+
+        var event = new ScoresheetFilledEvent(filledSheetId, entrySilver,
+                medalRound.getId(), judgeUserId, java.time.Instant.now());
+        service.onScoresheetFilled(event);
+
+        var awardCaptor = org.mockito.ArgumentCaptor.forClass(MedalAward.class);
+        then(medalAwardRepository).should(org.mockito.Mockito.times(2)).save(awardCaptor.capture());
+        assertThat(awardCaptor.getAllValues()).extracting(MedalAward::getEntryId)
+                .containsExactly(entryGold, entrySilver);
+        assertThat(awardCaptor.getAllValues()).extracting(MedalAward::getMedal)
+                .containsExactly(Medal.GOLD, Medal.SILVER);
+    }
+
+    @Test
+    void shouldNotAutoPopulateMedalsUntilEverySheetFilledOnScoreBasedMedalRound() {
+        var medalRound = new JudgingRound(judging.getId(), UUID.randomUUID(), "Medal",
+                divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.SCORE_BASED);
+        given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
+        given(scoresheetService.countByRoundIdAndStatusNot(medalRound.getId(), ScoresheetStatus.FILLED))
+                .willReturn(1L); // one sheet still BLANK/DRAFT
+
+        service.onScoresheetFilled(new ScoresheetFilledEvent(UUID.randomUUID(), UUID.randomUUID(),
+                medalRound.getId(), UUID.randomUUID(), java.time.Instant.now()));
+
+        then(medalAwardRepository).should(never()).save(any(MedalAward.class));
     }
 
     @Test

@@ -1715,7 +1715,7 @@ show 0 here.
 >   **Scheduled** field is a **date + time** picker (`yyyy-MM-dd HH:mm`), and is
 >   available on medal rounds too.
 > - **Scoresheet (ScoresheetView):** no "Save Draft" and no per-sheet "Submit".
->   Fields **auto-save on blur** (a "Saving…/Saved ✓" indicator shows); a single
+>   Fields **auto-save on blur** (a "Saving…/Draft saved ✓" indicator shows); a single
 >   validating **Save** button promotes the sheet DRAFT → **FILLED** (requires all 5
 >   scores + each per-criterion comment ≥ 15 chars). The former "Overall comments" is
 >   now the optional **"Additional comments"**.
@@ -1910,10 +1910,11 @@ When a category has few entries and you want to skip the preliminary scoring rou
 - [ ] **Expected:** Round status auto-flips PENDING → READY once table + judges (≥ minJudgesPerRound) + entries (≥ 1) + division ≥ JUDGING are all satisfied.
 - [ ] Click ▶ **Start** on the medal row (grid) → confirmation → notification "Round started"; status → ACTIVE.
 - [ ] **Expected:** BLANK scoresheets are created for every assigned entry (mirroring how a scoring round behaves at start).
-- [ ] Log in as one of the assigned judges → MyJudging → "Open medal round →".
-- [ ] **Expected:** Judges see the standard ScoresheetView form (per-criterion scores + comments) for each assigned entry.
-- [ ] Fill + submit all sheets across all judges. Once the **last** sheet is SUBMITTED and no BLANK/DRAFT remain on the round, the system re-runs `autoPopulateMedalsByScore` — gold/silver/bronze appear on MedalRoundView as `confirmed = false` MedalAwards.
-- [ ] As `compadmin@example.com`, open the medal round → confirm or override → Finalize.
+- [ ] Log in as one of the assigned judges → land directly on the medal round (Cycle C redirect).
+- [ ] **Expected:** Judges see the standard ScoresheetView form (per-criterion scores + comments) for each assigned entry. Score each and click **Save** (sheet → FILLED). The grid **Total** column fills in as each sheet is saved (no need to submit first).
+- [ ] When the **last** sheet is FILLED (none BLANK/DRAFT left), the system auto-populates medals from the FILLED totals — 🥇🥈🥉 appear in the grid's Current medal column. If two entries tie at a medal boundary, the ties banner shows and the medals for the tied slot are left for manual resolution (use the per-row medal buttons).
+- [ ] **As the judge** (no admin needed), click **Finalize**. The button is enabled only once every sheet is FILLED and no tie is open (otherwise it's disabled with a tooltip explaining why). The confirm dialog now lists the actual medal counts (not zeros).
+- [ ] **Expected:** Confirm → all sheets submitted, medals committed, round → COMPLETE in one step. An admin *can* Finalize too, but isn't required.
 
 #### 12.6.9 Type + Status filters
 
@@ -2008,7 +2009,7 @@ Access tightening: judges can only open **ACTIVE** rounds. RoundView, MedalRound
 - [ ] Click any row.
 - [ ] **Expected:** Navigation to `competitions/.../scoresheets/<id>`.
 - [ ] **Expected (per-row actions):** both judges and admins see a 👁 **Open** (`open-<sheetId>`) icon that navigates to the scoresheet (coexists with row click). The old per-row 📨 Submit is **gone** — judges Save each sheet (→ FILLED), then the round-level **Finalize** (§12.10.0) submits them all at once. Admins additionally see Revert / Move / Delete (§12.10.2).
-- [ ] **Expected (judge):** form opens in edit mode — a single **Save** button (id `save-button`) is visible, fields editable and **auto-saving on blur** (a "Saving…/Saved ✓" status shows). No "Save Draft", no per-sheet "Submit".
+- [ ] **Expected (judge):** form opens in edit mode — a single **Save** button (id `save-button`) is visible, fields editable and **auto-saving on blur** (a "Saving…/Draft saved ✓" status shows). No "Save Draft", no per-sheet "Submit".
 - [ ] **Expected (admin):** form opens **read-only** (no **Save** button, score fields + comments / language / advance checkbox all marked read-only). Below the read-only form, an **"Edit on behalf of judge"** button (id `admin-edit-scoresheet`) is visible.
 - [ ] (As admin) Click "Edit on behalf of judge" → **Expected:** ConfirmDialog *"Edit scoresheet?"* — body warns the action should only be used in exceptional situations (judge left mid-round, correct an obvious typo) and that the admin is not silently overriding the judge's assessment. Buttons: Cancel + "Edit anyway".
 - [ ] Cancel → form stays read-only. Re-open the dialog, click "Edit anyway" → form re-renders editable; the **Save** button appears.
@@ -2096,7 +2097,7 @@ scoresheet via `JudgingService.assignEntryToRound`.
   - `Flavour and Body` (max 32)
   - `Finish` (max 14)
   - `Overall Impression` (max 12)
-  Each `NumberField` has `min=0`, `max=<field max>`, **+/- step buttons visible**, and **auto-saves on blur** (`ValueChangeMode.ON_BLUR`) — a small **save-status** Span (`scoresheet-save-status`) shows "Saving…/Saved ✓".
+  Each `NumberField` has `min=0`, `max=<field max>`, **+/- step buttons visible**, and **auto-saves on blur** (`ValueChangeMode.ON_BLUR`) — a small **save-status** Span (`scoresheet-save-status`) shows "Saving…/Draft saved ✓".
 - [ ] **Expected:** A "Current total: N / 100" **H3** (id `scoresheet-total`) below the score fields — sized as `--lumo-font-size-xxl` so it's the loudest thing on the page. Updates as values change.
 - [ ] **Expected:** An optional **"Additional comments"** `TextArea` (id `overall-comments`, label "Additional comments (optional)", `maxLength=2000`, **no minimum length** — the old required "Overall comments" is gone). Auto-saves on blur.
 - [ ] **Expected:** A "Comment language" `ComboBox` listing all ISO 639-1 languages, sorted by display name in the UI locale. Default: the judge's `JudgeProfile.preferredCommentLanguage` if set, else the judge's `User.preferredLanguage` (UI language) as a sensible fallback, else blank. Judges are free to pick any language — no per-competition restriction.
@@ -2129,10 +2130,12 @@ scoresheet via `JudgingService.assignEntryToRound`.
 
 ### 12.12 MedalRoundView
 
-> **(c) redesign:** Start + Revert moved to the unified Rounds grid (§12.6); medal
-> Revert clears the round's awards (replacing the old Reset). MedalRoundView keeps
-> Assign Judges / Assign Entries, the per-row medal actions, **Finalize** (now lists
-> the medals being committed and blocks if any entry is undecided), and **Reopen**.
+> **(c) redesign + 2026-05-30 follow-up:** Start, Revert, **Assign Judges and Assign
+> Entries** all moved to the unified Rounds grid (§12.6); medal Revert clears the
+> round's awards (replacing the old Reset). MedalRoundView keeps only the per-row
+> medal actions, **Finalize**, and admin **Reopen**. For a **SCORE_BASED** round
+> Finalize is available to the **judge and** admin (judge runs it end-to-end); for
+> **COMPARATIVE** it stays admin-only.
 
 The scoring-completion cascade auto-creates a medal `JudgingRound` (type = MEDAL) and marks it READY once every scoring round in the category reaches COMPLETE. From there an admin opens MedalRoundView and clicks **Start** to transition READY → ACTIVE.
 
@@ -2142,27 +2145,25 @@ The scoring-completion cascade auto-creates a medal `JudgingRound` (type = MEDAL
 
 - [ ] As `compadmin@example.com`, navigate to JudgingAdmin → Rounds tab → set Type filter to `Medal` → click Open on the M1A row.
 - [ ] **Expected:** URL `competitions/.../divisions/.../medal-rounds/<divisionCategoryId>`.
-- [ ] **Expected:** Header shows category code + name. At PENDING/READY the header carries **two editable Selects** plus a status badge: `Mode` (Comparative / Score-based), `Table` (any PhysicalTable defined for the division), and `Status: READY`. Once the round starts (ACTIVE/COMPLETE) the Selects are replaced with read-only `Mode: …` / `Table: …` lines.
-- [ ] **Expected:** Admin button row: `Assign Judges`, `Assign Entries`, `Reopen` (enabled only at COMPLETE), `Finalize` (enabled only at ACTIVE). **Start and Revert are not here** — they're inline on the unified Rounds grid (§12.6); medal Revert (grid) clears the awards (the old in-view Reset is gone).
+- [ ] **Expected (header, ACTIVE/read-only):** title, then an info row in this order — **Table** first, a colored **Type badge** (`Medal — Comparative` / `Medal — Score-based`, matching the grid), then **Status** (shown to **admins only**), then a one-line **explanation of what the judge does** in this round type. At PENDING/READY (admin) the Table + Mode are **editable Selects** plus the status badge (so cascade-auto-created rounds can be configured); once ACTIVE the row is read-only.
+- [ ] **Expected:** Action row: `Finalize` and `Reopen` (admin, enabled only at COMPLETE). **No Assign Judges / Assign Entries here** — those are inline on the unified Rounds grid (§12.6), alongside Start and Revert. For SCORE_BASED, Finalize is disabled with a tooltip until every sheet is FILLED and no tie is open.
 - [ ] **If no table assigned:** assign one via the header **Table** Select (or the grid's ✏ Edit) before starting from the grid — `startRound` requires a physical table.
 
 #### 12.12.0.1 Change mode + table on a cascade-auto-created medal round
 
 - [ ] On the M1A medal round (READY, no PT, mode COMPARATIVE), open the **Table** Select in the header → pick `Table 1` → notification "Table updated" → page reloads → Start button becomes enabled.
-- [ ] Open the **Mode** Select → switch to `Score-based` → notification "Medal-round mode updated" → header reflects the change. (Service-side, `JudgingRound.medalMode` is now `SCORE_BASED`; the SCORE_BASED auto-fill on Start will use this.)
+- [ ] Open the **Mode** Select → switch to `Score-based` → notification "Medal-round mode updated" → header reflects the change. (Service-side, `JudgingRound.medalMode` is now `SCORE_BASED`; the round will own its scoresheets and auto-populate medals from the FILLED totals — see §12.12.2.)
 - [ ] Switch the Mode back to `Comparative` for the rest of the walkthrough.
 - [ ] **Expected:** Once you Start the medal round (next sections), the Selects vanish from the header — mode and table are locked beyond READY. Error if you tried to PATCH them anyway: `error.medal-round.mode-locked-after-start` / `error.round.cannot-reassign-physical-table-after-start`.
 
-#### 12.12.0.2 Assign Judges to the medal round
+#### 12.12.0.2 Assign Judges to the medal round (on the Rounds grid)
 
-Medal-round judges are **independent** of scoring-round judges for the same category (redesign decision #5) — could be the same panel, could be different (head judges only). The Profissional M1B medal round is pre-seeded with judges 1+2+6 to demonstrate this — judge6 isn't on any M1B scoring panel.
+Medal-round judges are **independent** of scoring-round judges for the same category (redesign decision #5) — could be the same panel, could be different (head judges only). The Profissional M1B medal round is pre-seeded with judges 1+2+6 to demonstrate this — judge6 isn't on any M1B scoring panel. **Assign Judges now lives on the unified Rounds grid**, not inside MedalRoundView.
 
-- [ ] Switch to Profissional → Rounds tab → Type filter `Medal` → click Open on the M1B row.
-- [ ] **Expected (from seed):** Header shows `Status: PENDING`, `Table: Table 4`, and the admin button row.
-- [ ] Click **Assign Judges**.
+- [ ] Switch to Profissional → Rounds tab → Type filter `Medal` → click 👥 **Assign Judges** on the M1B row.
 - [ ] **Expected:** Dialog "Assign Judges" with a multi-select grid (columns: Name, Meadery, Country). Judges 1, 2, and 6 are pre-checked.
-- [ ] Uncheck judge6, check judge3 → Save → notification "Judge assignments updated"; dialog closes; page reloads.
-- [ ] **Expected:** Assign Judges button stays enabled through PENDING → READY → ACTIVE — mid-deliberation panel adjustments are allowed. Only disabled at COMPLETE. Removing a judge mid-ACTIVE does not undo any medals they already awarded (those carry their own `awardedBy`); it just stops further awards from that judge. The min-judges-per-round check (which applies to scoring rounds) is **skipped for medal rounds** — you can drop a medal-round panel even to zero if needed.
+- [ ] Uncheck judge6, check judge3 → Save → notification "Judge assignments updated"; dialog closes; grid refreshes.
+- [ ] **Expected:** the grid's 👥 Assign Judges stays available through PENDING → READY → ACTIVE — mid-deliberation panel adjustments are allowed; only locked at COMPLETE. Removing a judge mid-ACTIVE does not undo any medals they already awarded (those carry their own `awardedBy`); it just stops further awards from that judge. The min-judges-per-round check (which applies to scoring rounds) is **skipped for medal rounds** — you can drop a medal-round panel even to zero if needed.
 
 #### 12.12.1 Start medal round — COMPARATIVE mode
 
@@ -2181,20 +2182,21 @@ Medal-round judges are **independent** of scoring-round judges for the same cate
 - [ ] **Expected:** ConfirmDialog "Delete medal record?" body warns the audit row is deleted entirely and suggests Withhold as the safer "no medal" alternative. Footer: Cancel + Delete record.
 - [ ] Cancel → no change. Re-open, click Delete record → row reverts to no medal (audit row gone).
 
-#### 12.12.2 SCORE_BASED mode — auto-fill on Start
+#### 12.12.2 SCORE_BASED mode — medals auto-populate as sheets are filled
 
-To set up: a SCORE_BASED medal round — mode chosen at create time in the Add Round dialog, or switched via the header **Mode** Select while PENDING/READY (see §12.12.0.1).
+A SCORE_BASED medal round owns its scoresheets (small-category flow, §12.6.8.1). **Medals are no longer auto-filled at Start** (at Start the sheets are still BLANK). Instead they populate from the **FILLED** totals as judges score.
 
-- [ ] (Once SCORE_BASED preconditions are met) **Start the medal round from the Rounds grid** (▶ Start on the medal row — §12.6).
-- [ ] **Expected:** Confirmation dialog body reads "Score-based medals will be auto-populated from each entry's scoresheet total (gold/silver/bronze, stopping on ties). Auto-filled medals are unconfirmed until you review them."
-- [ ] Confirm → notification "Round started"; status flips to ACTIVE; the top-3 entries (by total, walking gold → silver → bronze, stopping on the first tie within a slot) are pre-populated as MedalAwards with `confirmed = false`.
-- [ ] **Expected:** Pre-populated rows render with their medal badge but don't propagate to results/BOS until confirmed (results queries filter to `confirmed = true`).
-- [ ] **Expected:** A "tied-slot" banner at the top of MedalRoundView when ties exist (red text: "{N} slots tied — resolve before finalizing."); tied rows are flagged with a `⚠` marker in the Code column. Resolve a tie by awarding a medal to one tied entry (or withholding the others) — the view recomputes the cascade live on every action.
-- [ ] To **confirm** an auto-filled medal: click the same medal button (e.g. `🥇` on a row that's already auto-Gold) → `updateMedal` flips `confirmed = true`. (A dedicated per-row "Confirm" button is a possible follow-up — for now confirmation happens implicitly via any manual medal action on the row.)
+- [ ] Set up + Start the SCORE_BASED medal round from the Rounds grid (mode chosen at create time, or via the header **Mode** Select while PENDING/READY — §12.12.0.1). At Start, BLANK scoresheets are created; no medals yet.
+- [ ] As the judges, score each entry and click **Save** (sheet → FILLED). The grid **Total** column fills in per sheet as you go.
+- [ ] **Expected:** Once **every** sheet on the round is FILLED, the top-3 entries (by total, walking gold → silver → bronze, stopping on the first tie within a slot) are auto-populated as MedalAwards. They render with their medal badge.
+- [ ] **Expected:** A "tied-slot" banner at the top when ties exist (red text: "{N} slots tied — resolve before finalizing."); tied rows are flagged with a `⚠` marker in the Code column. Resolve a tie by awarding a medal to one tied entry (or withholding the others) — the view recomputes the cascade live on every action.
+- [ ] **Finalize (judge or admin):** when every sheet is FILLED and no tie is open, click **Finalize** (§12.6.8.1) → the sheets are submitted, the medals locked, and the round → COMPLETE in one step. See §12.6.8.1 for the full end-to-end flow.
 
-#### 12.12.3 Admin actions (Reset / Reopen / Finalize)
+#### 12.12.3 Admin actions — COMPARATIVE Finalize / Reopen
 
-- [ ] As `compadmin@example.com`, on the ACTIVE medal round.
+*(This is the COMPARATIVE finalize path, where the admin decides each medal by hand and the undecided-entries guard applies. The SCORE_BASED judge-driven Finalize is in §12.12.2 / §12.6.8.1 and has no per-entry guard.)*
+
+- [ ] As `compadmin@example.com`, on the ACTIVE COMPARATIVE medal round.
 - [ ] **Expected:** Header admin buttons are **Finalize** + **Reopen** (disabled — only at COMPLETE). Start + Reset are gone (Start is on the grid; the old Reset is replaced by the grid's ↶ Revert).
 - [ ] (Try) Click **Finalize** while some entry is still **undecided** (no medal and not withheld) → **Expected:** error *"Every entry must have a medal or be explicitly withheld before finalizing the medal round."* (key `error.medal-round.undecided-entries`). Decide every entry first (award or 🚫 Withhold).
 - [ ] Click **Finalize** with all entries decided → **Expected:** confirm dialog **lists the medals being committed** (Gold / Silver / Bronze counts) + an admin warning → click Finalize → notification "Medal round complete"; status → `COMPLETE`; per-row buttons disappear (read-only).

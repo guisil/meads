@@ -251,23 +251,6 @@ class MedalRoundViewTest {
         scoresheetRepository.save(sheet);
     }
 
-    private DivisionCategory pendingScoreBasedMedalRoundCategory() {
-        division.advanceStatus(); // REGISTRATION_OPEN
-        division.advanceStatus(); // REGISTRATION_CLOSED
-        division.advanceStatus(); // JUDGING
-        division = divisionRepository.save(division);
-        var category = divisionCategoryRepository.save(new DivisionCategory(
-                division.getId(), null, "M1A", "Dry Mead", "Desc", null, 1, CategoryScope.JUDGING));
-        var config = new CategoryJudgingConfig(category.getId(), MedalRoundMode.SCORE_BASED);
-        categoryConfigRepository.save(config);
-        var judging = judgingService.ensureJudgingExists(division.getId());
-        var medalRound = new JudgingRound(judging.getId(), "Medal — M1A",
-                category.getId(), null);
-        medalRound.convertToMedalRound(MedalRoundMode.SCORE_BASED);
-        judgingRoundRepository.save(medalRound);
-        return category;
-    }
-
     private Entry receivedEntryWithoutScoresheet(DivisionCategory category, String code) {
         var entrant = userRepository.save(new User(
                 "mr-rs-" + UUID.randomUUID() + "@example.com",
@@ -605,20 +588,6 @@ class MedalRoundViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldEnableAssignJudgesButtonWhileMedalRoundActive() {
-        // Mid-deliberation, admin may discover the panel needs adjusting (a
-        // judge dropped out, or a head-judge was missed). Allowed while ACTIVE;
-        // only locked once the medal round is COMPLETE.
-        var category = activeMedalRoundCategory();
-
-        navigateToMedalRound(category);
-
-        var assignJudges = _get(Button.class, spec -> spec.withId("medal-round-assign-judges"));
-        assertThat(assignJudges.isEnabled()).isTrue();
-    }
-
-    @Test
-    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldNotShowEditableModeAndPhysicalTableSelectsWhenMedalRoundActive() {
         var category = activeMedalRoundCategory();
 
@@ -633,92 +602,63 @@ class MedalRoundViewTest {
                 spec -> spec.withId("medal-round-physical-table-select"))).isEmpty();
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldRenderSeparateEntryNumberCodeAndMeadNameColumnsOnAssignEntriesDialog() {
-        var category = pendingScoreBasedMedalRoundCategory();
-        receivedEntryWithoutScoresheet(category, "001");
+    void shouldLetAssignedJudgeFinalizeScoreBasedMedalRoundEndToEnd() {
+        // The whole point of the SCORE_BASED flow: an assigned judge scores the
+        // sheets and finalizes the round themselves — no admin hand-off. Once
+        // every sheet is FILLED, finalize submits them, populates medals from the
+        // totals, and completes the round.
+        division.advanceStatus(); // REGISTRATION_OPEN
+        division.advanceStatus(); // REGISTRATION_CLOSED
+        division.advanceStatus(); // JUDGING
+        division = divisionRepository.save(division);
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Desc", null, 1, CategoryScope.JUDGING));
+        categoryConfigRepository.save(new CategoryJudgingConfig(category.getId(), MedalRoundMode.SCORE_BASED));
+        var judging = judgingService.ensureJudgingExists(division.getId());
+        var judge = userRepository.save(new User(
+                "mr-fin-judge-" + UUID.randomUUID() + "@example.com",
+                "Judge", UserStatus.ACTIVE, Role.USER));
+        var top = receivedEntryWithoutScoresheet(category, "001");
+        var second = receivedEntryWithoutScoresheet(category, "002");
+        var medalRound = new JudgingRound(judging.getId(), "Medal — M1A", category.getId(), null);
+        medalRound.convertToMedalRound(MedalRoundMode.SCORE_BASED);
+        medalRound.assignJudge(judge.getId());
+        medalRound.assignEntry(top.getId());
+        medalRound.assignEntry(second.getId());
+        medalRound.markReady();
+        medalRound.start();
+        judgingRoundRepository.save(medalRound);
+        fillSheet(medalRound, top, 92, judge.getId());
+        fillSheet(medalRound, second, 81, judge.getId());
 
-        navigateToMedalRound(category);
-        var assignEntries = _get(Button.class, spec -> spec.withId("medal-round-assign-entries"));
-        _click(assignEntries);
+        judgingService.finalizeMedalRound(medalRound.getId(), judge.getId());
 
-        var grid = _get(Grid.class, spec -> spec.withId("medal-round-assign-entries-grid"));
-        var headers = grid.getColumns().stream()
-                .map(c -> ((Grid.Column) c).getHeaderText())
-                .filter(h -> h instanceof String s && !s.isBlank())
-                .map(Object::toString)
-                .toList();
-        assertThat(headers).contains("Entry #", "Code", "Mead Name");
-        assertThat(headers).doesNotContain("Entry");
+        var reloaded = judgingRoundRepository.findById(medalRound.getId()).orElseThrow();
+        assertThat(reloaded.getStatus()).isEqualTo(JudgingRoundStatus.COMPLETE);
+        assertThat(scoresheetRepository.findByEntryId(top.getId()).orElseThrow().getStatus())
+                .isEqualTo(ScoresheetStatus.SUBMITTED);
+        var awards = medalAwardRepository.findByFinalCategoryId(category.getId());
+        assertThat(awards).anyMatch(a -> a.getEntryId().equals(top.getId()) && a.getMedal() == Medal.GOLD);
+        assertThat(awards).anyMatch(a -> a.getEntryId().equals(second.getId()) && a.getMedal() == Medal.SILVER);
     }
 
-    @Test
-    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldShowAllReceivedEntriesInScoreBasedAssignDialogEvenWithoutScoresheets() {
-        // Small-category flow: SCORE_BASED medal round runs without a preceding
-        // scoring round, so eligible entries don't have SUBMITTED scoresheets
-        // yet. The Assign Entries dialog must still list them — they'll get
-        // BLANK scoresheets on round start (Cycle 3 wiring).
-        var category = pendingScoreBasedMedalRoundCategory();
-        receivedEntryWithoutScoresheet(category, "001");
-        receivedEntryWithoutScoresheet(category, "002");
-        receivedEntryWithoutScoresheet(category, "003");
-
-        navigateToMedalRound(category);
-        var assignEntries = _get(Button.class, spec -> spec.withId("medal-round-assign-entries"));
-        _click(assignEntries);
-
-        @SuppressWarnings("unchecked")
-        var grid = (Grid<Entry>) _get(Grid.class, spec -> spec.withId("medal-round-assign-entries-grid"));
-        assertThat(grid.getGenericDataView().getItems().count()).isEqualTo(3);
+    /** Builds a FILLED (not submitted) scoresheet on the round with the given total. */
+    private void fillSheet(JudgingRound round, Entry entry, int total, UUID judgeId) {
+        var sheet = new Scoresheet(round.getId(), entry.getId());
+        int deficit = 100 - total;
+        for (var def : MjpScoringFieldDefinition.MJP_FIELDS) {
+            int value = def.maxValue();
+            if (deficit > 0 && def.maxValue() >= deficit) {
+                value = def.maxValue() - deficit;
+                deficit = 0;
+            }
+            sheet.updateScore(def.fieldName(), value, null);
+        }
+        sheet.setFilledBy(judgeId);
+        sheet.markFilled();
+        scoresheetRepository.save(sheet);
     }
 
-    @Test
-    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldRenderScoreBasedAssignDialogAsReadOnlyPreviewAndSyncOnSave() {
-        // Force-all invariant: SCORE_BASED dialog is informational — every
-        // RECEIVED entry in the category MUST be assigned, so the dialog
-        // cannot offer a subset. Selection mode is NONE; Save click triggers
-        // syncScoreBasedMedalRoundEntries which assigns any missing entries.
-        var category = pendingScoreBasedMedalRoundCategory();
-        receivedEntryWithoutScoresheet(category, "001");
-        receivedEntryWithoutScoresheet(category, "002");
-        receivedEntryWithoutScoresheet(category, "003");
-
-        navigateToMedalRound(category);
-        var assignEntries = _get(Button.class, spec -> spec.withId("medal-round-assign-entries"));
-        _click(assignEntries);
-
-        @SuppressWarnings("unchecked")
-        var grid = (Grid<Entry>) _get(Grid.class, spec -> spec.withId("medal-round-assign-entries-grid"));
-        // Read-only: selection mode is NONE (no checkboxes for partial picks).
-        assertThat(grid.getSelectionModel().getClass().getSimpleName())
-                .contains("None");
-
-        var save = _get(Button.class, spec -> spec.withId("medal-round-assign-entries-save"));
-        _click(save);
-
-        var judgingId = judgingRepository.findByDivisionId(division.getId())
-                .orElseThrow().getId();
-        var medalRound = judgingRoundRepository.findByJudgingId(judgingId).stream()
-                .filter(r -> r.getType() == RoundType.MEDAL)
-                .findFirst().orElseThrow();
-        assertThat(medalRound.getEntries()).hasSize(3);
-    }
-
-    @Test
-    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldRenderAssignEntriesButtonEnabledForAdminWhenMedalRoundActive() {
-        // 3c: Assign Entries dialog mirrors the scoring-round equivalent.
-        // The button is part of the admin action bar and stays enabled
-        // through PENDING / READY / ACTIVE; only COMPLETE locks it.
-        var category = activeMedalRoundCategory();
-
-        navigateToMedalRound(category);
-
-        var assignEntries = _get(Button.class, spec -> spec.withId("medal-round-assign-entries"));
-        assertThat(assignEntries.isEnabled()).isTrue();
-    }
 }

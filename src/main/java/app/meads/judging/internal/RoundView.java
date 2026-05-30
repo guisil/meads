@@ -638,21 +638,61 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
         return nav;
     }
 
-    private HorizontalLayout createHeader() {
-        var header = new HorizontalLayout();
-        header.setDefaultVerticalComponentAlignment(Alignment.CENTER);
+    private VerticalLayout createHeader() {
+        var titleRow = new HorizontalLayout();
+        titleRow.setDefaultVerticalComponentAlignment(Alignment.CENTER);
 
         if (competition.hasLogo()) {
             var dataUri = "data:" + competition.getLogoContentType() + ";base64,"
                     + Base64.getEncoder().encodeToString(competition.getLogo());
             var logo = new Image(dataUri, competition.getName() + " logo");
             logo.setHeight("64px");
-            header.add(logo);
+            titleRow.add(logo);
         }
 
-        header.add(new H2(competition.getName() + " — " + division.getName()
+        titleRow.add(new H2(competition.getName() + " — " + division.getName()
                 + " — " + getTranslation("judge-table.title", table.getName())));
+
+        var header = new VerticalLayout(titleRow, createInfoRow(), createExplanation());
+        header.setPadding(false);
+        header.setSpacing(false);
         return header;
+    }
+
+    /**
+     * Uniform info row mirroring the medal round: Table first, then a colored
+     * Type badge, then Status — Status shown to admins only (a judge only ever
+     * lands here on an ACTIVE round, so its status is implicit).
+     */
+    private HorizontalLayout createInfoRow() {
+        var tableLabel = table.getPhysicalTableId() == null
+                ? getTranslation("medal-round.physical-table.unassigned")
+                : judgingService.findPhysicalTableById(table.getPhysicalTableId())
+                        .map(app.meads.judging.PhysicalTable::getLabel)
+                        .orElse(getTranslation("medal-round.physical-table.unassigned"));
+        var tableLine = new Span(getTranslation("medal-round.physical-table") + ": " + tableLabel);
+        tableLine.setId("round-physical-table-line");
+
+        var badge = new Span(getTranslation("judging-admin.rounds.type.scoring"));
+        badge.setId("round-type-badge");
+        badge.getElement().getThemeList().add("badge contrast");
+
+        var row = new HorizontalLayout(tableLine, badge);
+        row.setDefaultVerticalComponentAlignment(Alignment.CENTER);
+        row.setSpacing(true);
+        if (isAdmin) {
+            var statusBadge = new Span(getTranslation("medal-round.status") + ": " + table.getStatus().name());
+            statusBadge.setId("round-status-line");
+            row.add(statusBadge);
+        }
+        return row;
+    }
+
+    private Span createExplanation() {
+        var span = new Span(getTranslation("round.explanation.scoring"));
+        span.setId("round-explanation");
+        span.getStyle().set("color", "var(--lumo-secondary-text-color)");
+        return span;
     }
 
     private UUID getCurrentUserId() {

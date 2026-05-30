@@ -16,6 +16,7 @@ import app.meads.judging.Scoresheet;
 import app.meads.judging.ScoresheetRevertedEvent;
 import app.meads.judging.ScoresheetService;
 import app.meads.judging.ScoresheetStatus;
+import app.meads.judging.ScoresheetFilledEvent;
 import app.meads.judging.ScoresheetSubmittedEvent;
 import app.meads.judging.RoundCompletedEvent;
 import app.meads.judging.RoundReopenedEvent;
@@ -232,6 +233,9 @@ public class ScoresheetServiceImpl implements ScoresheetService {
             throw new BusinessRuleException("error.scoresheet.incomplete", e.getMessage());
         }
         scoresheetRepository.save(sheet);
+        eventPublisher.publishEvent(new ScoresheetFilledEvent(
+                sheet.getId(), sheet.getEntryId(), sheet.getRoundId(),
+                judgeUserId, Instant.now()));
         log.info("Marked scoresheet {} FILLED (judge {})", sheet.getId(), judgeUserId);
     }
 

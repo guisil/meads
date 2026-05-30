@@ -394,13 +394,43 @@ reassignment + the **(c) unified round-admin + scoresheet redesign Phases 1-5 al
 (`07673ef` FILLED status, `10eece5` unified grid, `5d680df` Finalize/Reopen, `0108c08` i18n prune,
 `0243e94` P14 date+time) + the **test-only `submit()` retire follow-up**, **all pushed 2026-05-29** —
 plus `58869c9` (test-only `submit()` retire) + `9193893` (walkthrough §12.6-§12.12 rewrite).
-**Walkthrough-found fix (2026-05-30, uncommitted):** the Add Round dialog dropped the Scheduled
+**Walkthrough-found fix #1 (2026-05-30, committed `3313e2c`):** the Add Round dialog dropped the Scheduled
 date/time for MEDAL rounds (`createMedalRound` ignored it) — now persisted via `updateRoundScheduledAt`
 after create (id `add-round-scheduled` on the picker). Rounds-grid Category column now shows the **code
 only** with a full `code — name` tooltip (`setTooltipGenerator`, narrower via `setFlexGrow(0)`); Scheduled
 column given a fixed `12em` width so the full `yyyy-MM-dd HH:mm` fits. +1 UI test
-(`JudgingAdminViewTest.shouldPersistScheduledAtWhenCreatingMedalRoundViaAddRoundDialog`). **1275 tests
-passing on JDK 25.** Verify with `mvn test -Dsurefire.useFile=false`.
+(`JudgingAdminViewTest.shouldPersistScheduledAtWhenCreatingMedalRoundViaAddRoundDialog`).
+
+**Walkthrough-found fix #2 (2026-05-30, SCORE_BASED medal-round UX overhaul — uncommitted):** the (c)
+redesign left the small-category SCORE_BASED flow stranded — judges Save sheets to FILLED but the
+per-sheet Submit was retired, so nothing submitted them → medals never auto-populated → Finalize
+(admin-only) was unreachable and its dialog always read zero. Fixed end-to-end:
+- **Medals compute from FILLED sheets, not only SUBMITTED.** New `Scoresheet.medalEligibleTotal()`
+  (SUBMITTED→locked total; FILLED→live field sum). `autoPopulateMedalsByScore` + the grid Total +
+  `recomputeScorePreview` use FILLED totals for medal-owned sheets. New `ScoresheetFilledEvent`
+  (published by `markFilled`) + `JudgingServiceImpl.onScoresheetFilled` listener auto-populate once
+  **every** sheet on a SCORE_BASED medal round is FILLED. Idempotent — never overwrites an existing
+  award, so FILLED-time results (auto or manual tie-resolution) survive the later SUBMITTED locking.
+- **New `JudgingService.finalizeMedalRound(roundId, userId)` — judge OR admin.** SCORE_BASED + ACTIVE +
+  all FILLED + no unresolved tie → submits all sheets, re-runs autoPopulate, completes the round in one
+  judge-driven step (no admin hand-off; no per-entry undecided guard — score order decides). 4 new error
+  keys × 5 locales (`error.medal-round.{finalize-score-based-only,cannot-finalize-not-active,
+  cannot-finalize-unfilled,cannot-finalize-tied}`). `MedalRoundView` Finalize is judge+admin for
+  SCORE_BASED (calls `finalizeMedalRound`, disabled+tooltip until all-FILLED & no-tie); admin-only for
+  COMPARATIVE (still `completeMedalRoundById`).
+- **MedalRoundView + RoundView header reorder (uniform):** Table → colored **Type badge** → Status
+  (**admin-only**) → a per-round-type **"what judges do"** explanation (`round.explanation.{scoring,
+  medal-comparative,medal-score-based}` × 5 locales, id `round-explanation`).
+- **MedalRoundView: Assign Judges / Assign Entries buttons + their dialogs removed** (they live on the
+  unified Rounds grid now — `JudgingAdminView.openAssignEntriesDialog` is mode-aware). Dead
+  `entryService` dependency dropped. **"Advanced" column removed** from the medal grid (it flagged
+  scoring-round advance — meaningless on a medal round; the advance checkbox is already hidden on medal
+  sheets). Grid Total now shows the FILLED total (was "—" until SUBMITTED).
+- **ScoresheetView**: the autosave status next to the Save button changed from "Saved ✓" to
+  **"Draft saved ✓"** (`scoresheet.save.status.saved`) so it reads as state, not as the button's action.
+- Tests: +`onScoresheetFilled` unit tests, +`finalizeMedalRound` end-to-end integration test
+  (`MedalRoundViewTest`); 5 obsolete MedalRoundView assign-button tests deleted (functionality on the
+  grid). **1273 tests passing on JDK 25.** Verify with `mvn test -Dsurefire.useFile=false`.
 
 **Remaining for (c) before the walkthrough resumes:** (1) **DONE (2026-05-29):** the test-only
 `ScoresheetService.submit()` is retired; its tests migrated to `markFilled` + `finalizeScoringRound`
