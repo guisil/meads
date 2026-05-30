@@ -290,8 +290,10 @@ public class BosView extends VerticalLayout implements BeforeEnterObserver {
 
         var grid = new Grid<>(MedalAward.class, false);
         grid.setId("bos-candidates-grid");
+        grid.addColumn(a -> entryNumberFor(a.getEntryId()))
+                .setHeader(getTranslation("bos.candidates.column.entry-number"));
         grid.addColumn(a -> entryCodeFor(a.getEntryId()))
-                .setHeader(getTranslation("bos.candidates.column.entry"));
+                .setHeader(getTranslation("bos.candidates.column.entry-code"));
         grid.addColumn(a -> meadNameFor(a.getEntryId()))
                 .setHeader(getTranslation("bos.candidates.column.mead"));
         grid.addColumn(a -> categoryCodeFor(a.getFinalCategoryId()))
@@ -313,6 +315,16 @@ public class BosView extends VerticalLayout implements BeforeEnterObserver {
             ids.add(p.getEntryId());
         }
         return ids;
+    }
+
+    private String entryNumberFor(UUID entryId) {
+        try {
+            var number = entryService.findEntryById(entryId).getEntryNumber();
+            var prefix = division.getEntryPrefix();
+            return prefix != null && !prefix.isBlank() ? prefix + "-" + number : String.valueOf(number);
+        } catch (BusinessRuleException e) {
+            return "";
+        }
     }
 
     private String entryCodeFor(UUID entryId) {

@@ -2216,7 +2216,7 @@ A SCORE_BASED medal round owns its scoresheets (small-category flow, §12.6.8.1)
 - [ ] **Expected:** H2 `Best of Show — Amadora`. Header shows `Phase: BOS` and `Places: N` (where N = `Division.bosPlaces`).
 - [ ] **Expected:** A placements grid (id `bos-placements-grid`) with N rows (one per slot). Columns: Place, Entry, Mead name, Category, Awarded by, Action.
 - [ ] **Expected:** Empty rows show `[+]` Assign button in the Action column. Filled rows show ✏ Reassign and 🗑 Delete.
-- [ ] **Expected:** A candidates grid (id `bos-candidates-grid`) listing GOLD MedalAwards across all categories where the entry isn't placed yet. Columns: Entry, Mead name, Category.
+- [ ] **Expected:** A candidates grid (id `bos-candidates-grid`) listing GOLD MedalAwards across all categories where the entry isn't placed yet. Columns: Entry # (prefixed), Code, Mead name, Category.
 - [ ] **Expected:** "← Back to dashboard" anchor at the bottom returning to JudgingAdmin.
 
 #### 12.13.1 Assign
