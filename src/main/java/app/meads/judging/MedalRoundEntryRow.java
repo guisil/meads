@@ -13,6 +13,10 @@ import java.util.UUID;
  * @param scoresheetId the entry's scoresheet id when one exists (any status —
  *                     used by MedalRoundView to expose an Open scoresheet
  *                     drill-in); null when the entry has no sheet yet.
+ * @param scoresheetStatus the entry's scoresheet status (BLANK/DRAFT/FILLED/
+ *                     SUBMITTED) when a sheet exists; null when the entry has no
+ *                     sheet yet. Surfaced as a grid column so the scoring
+ *                     progress of a medal round is visible at a glance.
  * @param medalAwardId {@code null} when no {@link MedalAward} row exists yet; a
  *                     non-null id with {@code currentMedal == null} means an
  *                     explicit withhold.
@@ -27,6 +31,7 @@ public record MedalRoundEntryRow(
         Integer round1Total,
         boolean advancedToMedalRound,
         UUID scoresheetId,
+        ScoresheetStatus scoresheetStatus,
         UUID medalAwardId,
         Medal currentMedal) {
 }

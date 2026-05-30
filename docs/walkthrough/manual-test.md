@@ -1911,7 +1911,7 @@ When a category has few entries and you want to skip the preliminary scoring rou
 - [ ] Click ▶ **Start** on the medal row (grid) → confirmation → notification "Round started"; status → ACTIVE.
 - [ ] **Expected:** BLANK scoresheets are created for every assigned entry (mirroring how a scoring round behaves at start).
 - [ ] Log in as one of the assigned judges → land directly on the medal round (Cycle C redirect).
-- [ ] **Expected:** Judges see the standard ScoresheetView form (per-criterion scores + comments) for each assigned entry. Score each and click **Save** (sheet → FILLED). The grid **Total** column fills in as each sheet is saved (no need to submit first).
+- [ ] **Expected:** Judges see the standard ScoresheetView form (per-criterion scores + comments) for each assigned entry. Score each and click **Save** (sheet → FILLED). The medal grid now carries a **Status** column (next to Total) that tracks each sheet's scoresheet status — `BLANK` → `FILLED` → `SUBMITTED` (`—` for an entry with no sheet yet) — so the scoring progress of a medal round is visible at a glance, just like a scoring round. The grid **Total** column fills in alongside it as each sheet is saved (no need to submit first).
 - [ ] When the **last** sheet is FILLED (none BLANK/DRAFT left), the system auto-populates medals from the FILLED totals — 🥇🥈🥉 appear in the grid's Current medal column. If two entries tie at a medal boundary, the ties banner shows and the medals for the tied slot are left for manual resolution (use the per-row medal buttons).
 - [ ] **As the judge** (no admin needed), click **Finalize**. The button is enabled only once every sheet is FILLED and no tie is open (otherwise it's disabled with a tooltip explaining why). The confirm dialog now lists the actual medal counts (not zeros).
 - [ ] **Expected:** Confirm → all sheets submitted, medals committed, round → COMPLETE in one step. An admin *can* Finalize too, but isn't required.
@@ -1990,6 +1990,7 @@ Access tightening: judges can only open **ACTIVE** rounds. RoundView, MedalRound
 - [ ] **Expected:** URL is `competitions/chip-2026/divisions/amadora/tables/<tableId>`.
 - [ ] **Expected:** Breadcrumb begins with "My Judging" (judge path) or "My Competitions / CHIP 2026 / Amadora / Judging Admin" (admin path).
 - [ ] **Expected:** H2 `CHIP 2026 — Amadora — Table: M1A Panel A`.
+- [ ] **Expected:** A one-line **explanation** (`round-explanation`) below the header, **role-phrased** like the medal round (§12.12): judges see "Score each entry against the MJP criteria and save every scoresheet…"; admins see the third-person "Judges score each entry against the MJP criteria and save their scoresheets…".
 - [ ] **Expected:** Filter bar with a `Status` Select (options: All, Draft, Submitted; default All) and a `Search` `TextField` (`ValueChangeMode.EAGER`). Placeholder is **"Mead name or entry code"** for admins, **"Entry code"** for judges (anonymity rule — judges can't search by mead name either).
 - [ ] **Expected (admin):** A `Grid<Scoresheet>` with columns Entry # *(e.g. "PRO-1", cross-reference back to Entry Admin)*, Code, Mead Name, Status, **Total**, **Advances**, Filled by, Actions.
 - [ ] **Expected (judge):** Same grid with **Entry # and Mead Name hidden** (anonymity rule — judges judge to style, not to a brand, and don't see the internal cross-reference either). Visible columns: Code, Status, Total, Advances, Filled by, Actions.
@@ -2145,8 +2146,10 @@ The scoring-completion cascade auto-creates a medal `JudgingRound` (type = MEDAL
 
 - [ ] As `compadmin@example.com`, navigate to JudgingAdmin → Rounds tab → set Type filter to `Medal` → click Open on the M1A row.
 - [ ] **Expected:** URL `competitions/.../divisions/.../medal-rounds/<divisionCategoryId>`.
-- [ ] **Expected (header, ACTIVE/read-only):** title, then an info row in this order — **Table** first, a colored **Type badge** (`Medal — Comparative` / `Medal — Score-based`, matching the grid), then **Status** (shown to **admins only**), then a one-line **explanation of what the judge does** in this round type. At PENDING/READY (admin) the Table + Mode are **editable Selects** plus the status badge (so cascade-auto-created rounds can be configured); once ACTIVE the row is read-only.
-- [ ] **Expected:** Action row: `Finalize` and `Reopen` (admin, enabled only at COMPLETE). **No Assign Judges / Assign Entries here** — those are inline on the unified Rounds grid (§12.6), alongside Start and Revert. For SCORE_BASED, Finalize is disabled with a tooltip until every sheet is FILLED and no tie is open.
+- [ ] **Expected (header, ACTIVE/read-only):** title, then an info row in this order — **Table** first, a colored **Type badge** (`Medal — Comparative` / `Medal — Score-based`, matching the grid), then **Status** (shown to **admins only**), then a one-line **explanation of the round** (id `round-explanation`). The explanation is **role-phrased**: judges see a second-person instruction ("Score each entry…" / "Compare the entries…"), while admins — who observe rather than score — see a third-person variant ("Judges score each entry…" / "Judges compare the entries…"). At PENDING/READY (admin) the Table + Mode are **editable Selects** plus the status badge (so cascade-auto-created rounds can be configured); once ACTIVE the row is read-only.
+- [ ] **Expected:** The header lines (title → table/type/status row → explanation) have a little vertical breathing room between them (not crammed together).
+- [ ] **Expected:** Action row: `Finalize` and `Reopen` (admin, enabled only at COMPLETE), with the **bold medal-tally summary right-aligned on the same row** (§12.12.1). **No Assign Judges / Assign Entries here** — those are inline on the unified Rounds grid (§12.6), alongside Start and Revert. For SCORE_BASED, Finalize is disabled with a tooltip until every sheet is FILLED and no tie is open.
+- [ ] **Expected:** The entries grid **grows to fit all rows** (no fixed-height internal scrollbar) — a category with many entries expands the grid rather than capping it.
 - [ ] **If no table assigned:** assign one via the header **Table** Select (or the grid's ✏ Edit) before starting from the grid — `startRound` requires a physical table.
 
 #### 12.12.0.1 Change mode + table on a cascade-auto-created medal round
@@ -2174,7 +2177,7 @@ Medal-round judges are **independent** of scoring-round judges for the same cate
 - [ ] **Expected:** Per-row controls (Cycle B) — 👁 Open scoresheet (if any) · 🥇 · 🥈 · 🥉 · 🚫 Withhold · 🗑 Clear. All five are inline icon buttons (no "More ▾" dropdown).
 - [ ] Click `🥇` on a row.
 - [ ] **Expected:** Notification or live update; row gets a Gold badge.
-- [ ] **Expected:** Bottom summary line "Summary: 1 Gold · 0 Silver · 0 Bronze · 0 Withhold · {N} unset" updates live.
+- [ ] **Expected:** The medal-tally summary "Summary: 1 Gold · 0 Silver · 0 Bronze · 0 Withhold · {N} unset" updates live. It sits **above the grid**, right-aligned on the **same row as the Finalize button**, in **bold** (moved up from below the grid for visibility while finalizing).
 - [ ] Click 🚫 **Withhold** on a row.
 - [ ] **Expected:** ConfirmDialog "Withhold medal?" with body explaining the audit semantic (records a deliberate "no medal" decision; row stays in audit log as Withhold; distinct from "no decision yet"). Footer: Cancel + Withhold.
 - [ ] Cancel → no change. Re-open, click Withhold → row badge shows "Withheld" (per D11 — `MedalAward.medal = null` distinguishes explicit withhold from no row).
@@ -2187,7 +2190,7 @@ Medal-round judges are **independent** of scoring-round judges for the same cate
 A SCORE_BASED medal round owns its scoresheets (small-category flow, §12.6.8.1). **Medals are no longer auto-filled at Start** (at Start the sheets are still BLANK). Instead they populate from the **FILLED** totals as judges score.
 
 - [ ] Set up + Start the SCORE_BASED medal round from the Rounds grid (mode chosen at create time, or via the header **Mode** Select while PENDING/READY — §12.12.0.1). At Start, BLANK scoresheets are created; no medals yet.
-- [ ] As the judges, score each entry and click **Save** (sheet → FILLED). The grid **Total** column fills in per sheet as you go.
+- [ ] As the judges, score each entry and click **Save** (sheet → FILLED). The grid **Status** column tracks each sheet (`BLANK` → `FILLED` → `SUBMITTED`) and the **Total** column fills in per sheet as you go.
 - [ ] **Expected:** Once **every** sheet on the round is FILLED, the top-3 entries (by total, walking gold → silver → bronze, stopping on the first tie within a slot) are auto-populated as MedalAwards. They render with their medal badge.
 - [ ] **Expected:** A "tied-slot" banner at the top when ties exist (red text: "{N} slots tied — resolve before finalizing."); tied rows are flagged with a `⚠` marker in the Code column. Resolve a tie by awarding a medal to one tied entry (or withholding the others) — the view recomputes the cascade live on every action.
 - [ ] **Finalize (judge or admin):** when every sheet is FILLED and no tie is open, click **Finalize** (§12.6.8.1) → the sheets are submitted, the medals locked, and the round → COMPLETE in one step. See §12.6.8.1 for the full end-to-end flow.

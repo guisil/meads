@@ -359,6 +359,40 @@ class MedalRoundViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldRenderScoresheetStatusColumnOnMedalRoundGrid() {
+        var category = activeMedalRoundCategory();
+        var table = tableFor(category);
+        advancedEntry(category, table, "AMA-1");
+
+        navigateToMedalRound(category);
+
+        var grid = _get(Grid.class, spec -> spec.withId("medal-round-grid"));
+        var headers = grid.getColumns().stream()
+                .map(c -> ((Grid.Column) c).getHeaderText())
+                .filter(h -> h instanceof String s && !s.isBlank())
+                .map(Object::toString)
+                .toList();
+        assertThat(headers).contains("Status");
+
+        var row = judgingService.findMedalRoundEntries(
+                category.getId(), MedalRoundMode.COMPARATIVE).get(0);
+        assertThat(row.scoresheetStatus()).isEqualTo(ScoresheetStatus.SUBMITTED);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldShowAdminPhrasedExplanationToAdmins() {
+        var category = activeMedalRoundCategory();
+
+        navigateToMedalRound(category);
+
+        var explanation = _get(Span.class, spec -> spec.withId("round-explanation"));
+        // Admins observe; judges act. The admin copy is phrased in the third person.
+        assertThat(explanation.getText()).startsWith("Judges");
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldShowPhysicalTableLineInHeader() {
         var category = activeMedalRoundCategory();
 

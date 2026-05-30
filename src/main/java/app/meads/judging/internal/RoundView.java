@@ -689,7 +689,9 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
     }
 
     private Span createExplanation() {
-        var span = new Span(getTranslation("round.explanation.scoring"));
+        // Admins get a third-person variant (they observe; the judges score).
+        var span = new Span(getTranslation(isAdmin
+                ? "round.explanation.scoring.admin" : "round.explanation.scoring"));
         span.setId("round-explanation");
         span.getStyle().set("color", "var(--lumo-secondary-text-color)");
         return span;

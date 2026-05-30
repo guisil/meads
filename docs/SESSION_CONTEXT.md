@@ -401,12 +401,31 @@ only** with a full `code — name` tooltip (`setTooltipGenerator`, narrower via 
 column given a fixed `12em` width so the full `yyyy-MM-dd HH:mm` fits. +1 UI test
 (`JudgingAdminViewTest.shouldPersistScheduledAtWhenCreatingMedalRoundViaAddRoundDialog`).
 
-**▶ RESUME HERE (next session):** restart the walkthrough at **§12.6.8.1** (small-category SCORE_BASED
-medal round, fresh) to validate the new judge-driven finalize flow end-to-end — judges score → Save
-(→ FILLED) → medals auto-appear when all FILLED → judge clicks **Finalize** (no admin needed) → round
-COMPLETE. Both 2026-05-30 fixes below are **committed** (`3313e2c`, `fb35d40`) on `feature/judging-module`;
-working tree clean; **not yet pushed**. Dev-DB reminder: V21 was edited in place earlier, so recreate /
-`flyway clean` the local dev DB before `mvn spring-boot:run`.
+**▶ RESUME HERE (next session):** the §12.6.8.1 walkthrough (small-category SCORE_BASED medal round) is
+**in progress** — checkpoints 1-2 (create the Medal — Score-based round for Profissional/M3B) verified
+clean. Continuing from Assign Entries → Judges → Start → judge scoring → Finalize. Dev-DB reminder: V21
+was edited in place earlier, so recreate / `flyway clean` the local dev DB before `mvn spring-boot:run`.
+
+**Walkthrough-found enhancement #3 (2026-05-30, NOT yet committed — working tree dirty):** two admin-UX
+polish items raised mid-§12.6.8.1. **(1) Role-phrased round explanation.** `RoundView` + `MedalRoundView`
+showed the same second-person "what the judge does" blurb to everyone; admins observe rather than score,
+so they now get a third-person variant. 3 new i18n keys × 5 locales
+(`round.explanation.{scoring,medal-comparative,medal-score-based}.admin`); both views switch on `isAdmin`.
+**(2) Scoresheet-status column on the medal grid.** `MedalRoundEntryRow` gained a nullable
+`ScoresheetStatus scoresheetStatus`; both `JudgingServiceImpl` builders pass `sheet.getStatus()`;
+`MedalRoundView` renders a **Status** column (reusing the existing `medal-round.status` = "Status" key,
+`—` when no sheet) between Code/Mead and Total — so a medal round's scoring progress (BLANK → FILLED →
+SUBMITTED) is visible at a glance, like a scoring round. +2 `MedalRoundViewTest` UI tests
+(`shouldRenderScoresheetStatusColumnOnMedalRoundGrid`, `shouldShowAdminPhrasedExplanationToAdmins`).
+**(3) MedalRoundView layout polish (fast-cycle, no new tests):** added vertical gap
+(`var(--lumo-space-s)`) between the header lines (title / table-type-status row / explanation); moved
+the bold medal-tally **summary** from below the grid to **above it**, right-aligned on the same
+`HorizontalLayout` as the Finalize button (`createSummary()` now built inside `createActions()`); the
+entries grid `setAllRowsVisible(true)` so it grows to fit all rows (matches JudgingAdminView).
+Walkthrough §12.6.8.1 / §12.10 / §12.12 updated. **1275 tests passing on JDK 25.**
+
+**Earlier 2026-05-30 fixes** are **committed** (`3313e2c`, `fb35d40`) on `feature/judging-module` but
+**not yet pushed**.
 
 **Walkthrough-found fix #2 (2026-05-30, SCORE_BASED medal-round UX overhaul — committed `fb35d40`):** the (c)
 redesign left the small-category SCORE_BASED flow stranded — judges Save sheets to FILLED but the
@@ -437,7 +456,8 @@ per-sheet Submit was retired, so nothing submitted them → medals never auto-po
   **"Draft saved ✓"** (`scoresheet.save.status.saved`) so it reads as state, not as the button's action.
 - Tests: +`onScoresheetFilled` unit tests, +`finalizeMedalRound` end-to-end integration test
   (`MedalRoundViewTest`); 5 obsolete MedalRoundView assign-button tests deleted (functionality on the
-  grid). **1273 tests passing on JDK 25.** Verify with `mvn test -Dsurefire.useFile=false`.
+  grid). 1273 tests passing on JDK 25 at the time; now **1275** after enhancement #3 above. Verify with
+  `mvn test -Dsurefire.useFile=false`.
 
 **Remaining for (c) before the walkthrough resumes:** (1) **DONE (2026-05-29):** the test-only
 `ScoresheetService.submit()` is retired; its tests migrated to `markFilled` + `finalizeScoringRound`

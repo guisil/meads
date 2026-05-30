@@ -187,7 +187,6 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
             add(createTiesBanner(preview.tiedSlotCount()));
         }
         add(createGrid());
-        add(createSummary());
         add(createBackLink());
         refreshSummary();
     }
@@ -238,6 +237,9 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         var header = new VerticalLayout(titleRow);
         header.setPadding(false);
         header.setSpacing(false);
+        // A little breathing room between the title, the table/type/status row,
+        // and the explanation line.
+        header.getStyle().set("gap", "var(--lumo-space-s)");
 
         boolean editable = isAdmin && medalRound != null
                 && (currentStatus() == JudgingRoundStatus.PENDING
@@ -296,11 +298,15 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         return badge;
     }
 
-    /** What the judge is expected to do in this round — varies by medal mode. */
+    /**
+     * What happens in this round — varies by medal mode. Admins get a
+     * third-person variant (they observe; the judges do the scoring/comparing).
+     */
     private Span createExplanation() {
-        var span = new Span(getTranslation(currentMode() == MedalRoundMode.SCORE_BASED
+        var base = currentMode() == MedalRoundMode.SCORE_BASED
                 ? "round.explanation.medal-score-based"
-                : "round.explanation.medal-comparative"));
+                : "round.explanation.medal-comparative";
+        var span = new Span(getTranslation(isAdmin ? base + ".admin" : base));
         span.setId("round-explanation");
         span.getStyle().set("color", "var(--lumo-secondary-text-color)");
         return span;
@@ -397,6 +403,7 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
 
         var bar = new HorizontalLayout();
         bar.setDefaultVerticalComponentAlignment(Alignment.CENTER);
+        bar.setWidthFull();
 
         boolean showFinalize = medalRound != null && (scoreBased || isAdmin);
         if (showFinalize) {
@@ -431,6 +438,13 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
             reopenButton.addClickListener(e -> openReopenDialog());
             bar.add(reopenButton);
         }
+
+        // Medal tally sits on the right of the action row, above the grid, in
+        // bold so the standings are visible at a glance while finalizing.
+        var summarySpan = createSummary();
+        summarySpan.getStyle().set("font-weight", "bold");
+        summarySpan.getStyle().set("margin-left", "auto");
+        bar.add(summarySpan);
         return bar;
     }
 
@@ -446,6 +460,10 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
     private Grid<MedalRoundEntryRow> createGrid() {
         grid = new Grid<>(MedalRoundEntryRow.class, false);
         grid.setId("medal-round-grid");
+        // Grow to fit all rows rather than capping at a fixed height with an
+        // internal scrollbar — categories can have more entries than the
+        // default viewport (matches JudgingAdminView's grids).
+        grid.setAllRowsVisible(true);
         grid.setPartNameGenerator(r ->
                 tiedEntryIds.contains(r.entryId()) ? "medal-round-tied-row" : null);
         // Columns are resizable + sortable so admins can lay them out how they
@@ -475,6 +493,11 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
                             String.CASE_INSENSITIVE_ORDER))
                     .setResizable(true).setSortable(true).setAutoWidth(true);
         }
+        grid.addColumn(r -> r.scoresheetStatus() == null ? "—" : r.scoresheetStatus().name())
+                .setHeader(getTranslation("medal-round.status"))
+                .setComparator(java.util.Comparator.comparing(
+                        r -> r.scoresheetStatus() == null ? "" : r.scoresheetStatus().name()))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
         grid.addColumn(r -> r.round1Total() == null ? "—" : r.round1Total().toString())
                 .setHeader(getTranslation("medal-round.column.total"))
                 .setComparator(java.util.Comparator.comparing(MedalRoundEntryRow::round1Total,
