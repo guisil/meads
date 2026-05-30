@@ -477,9 +477,20 @@ already confirmed, so defensive there). Extended the end-to-end finalize test
 (`shouldLetAssignedJudgeFinalizeScoreBasedMedalRoundEndToEnd`) to assert the awards are confirmed + appear
 in `findGoldMedalAwardsForDivision`.
 
-**Walkthrough-found change #10 (uncommitted):** Results-tab medal Outcome now renders one glyph per medal
-slot (no counts — each medal is unique per category): the medal icon when awarded, `🚫` when not — e.g.
-`🥇 🥈 🥉` or `🥇 🚫 🥉`. Replaces `G:n S:n B:n`. Display-only, in `JudgingAdminView.formatRoundOutcome`.
+**Walkthrough-found change #10 (committed `46f1c74`):** Results-tab medal Outcome now renders one glyph per
+medal slot (no counts — each medal is unique per category): the medal icon when awarded, `🚫` when not —
+e.g. `🥇 🥈 🥉` or `🥇 🚫 🥉`. Replaces `G:n S:n B:n`. Display-only, in `JudgingAdminView.formatRoundOutcome`.
+
+**Walkthrough-found change #11 (BUG FIX, uncommitted):** auto-populated medals now **recompute** when scores
+change. `autoPopulateMedalsByScore` previously only created an award for entries with none — so editing a
+sheet after auto-population never re-ranked (or cleared, on a new tie) the medals. It now reconciles the
+**unconfirmed** (auto) awards: `deleteAll` them + `flush()` (the flush matters — `finalizeMedalRound` runs
+autoPopulate twice, once via the `onScoresheetSubmitted` event and once explicitly, so delete-then-reinsert
+the same `entry_id` in one tx would trip the unique constraint without it) then re-derive from current
+totals. **Confirmed** (manual tie-resolution) awards are preserved, and their medal type + entry are treated
+as already taken so the cascade fills only the remaining slots. +1 unit test
+(`shouldRecomputeUnconfirmedMedalsWhenScoresChangeOnScoreBasedMedalRound`); 3 auto-populate tests had their
+now-unused `findByEntryId` stubs removed.
 
 **Earlier 2026-05-30 fixes** are **committed** (`3313e2c`, `fb35d40`) on `feature/judging-module` but
 **not yet pushed**.

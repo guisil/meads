@@ -969,22 +969,48 @@ public class JudgingServiceImpl implements JudgingService {
         var ranked = sheetsByEntry.entrySet().stream()
                 .sorted(Map.Entry.<UUID, Integer>comparingByValue().reversed())
                 .toList();
-        var medalsToAssign = List.of(Medal.GOLD, Medal.SILVER, Medal.BRONZE);
+        // Reconcile the auto (unconfirmed) awards against the current ranking:
+        // drop them and re-derive, so editing a sheet after auto-population
+        // re-ranks the medals (and clears them when a new tie appears). Confirmed
+        // awards are manual decisions (e.g. tie resolutions) — preserve them, and
+        // treat their medal type + entry as already taken so the cascade fills
+        // only the remaining slots.
+        var existingAwards = medalAwardRepository.findByFinalCategoryId(divisionCategoryId);
+        var toDelete = existingAwards.stream().filter(a -> !a.isConfirmed()).toList();
+        if (!toDelete.isEmpty()) {
+            medalAwardRepository.deleteAll(toDelete);
+            // Flush so the DELETEs hit the DB before we re-insert the same
+            // entry_ids below — otherwise Hibernate may order the inserts first
+            // and trip the unique (entry_id) constraint.
+            medalAwardRepository.flush();
+        }
+        var confirmed = existingAwards.stream().filter(MedalAward::isConfirmed).toList();
+        var takenMedals = confirmed.stream()
+                .map(MedalAward::getMedal)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        var takenEntries = confirmed.stream()
+                .map(MedalAward::getEntryId)
+                .collect(Collectors.toSet());
+        var available = ranked.stream()
+                .filter(e -> !takenEntries.contains(e.getKey()))
+                .toList();
+        var medalsToAssign = List.of(Medal.GOLD, Medal.SILVER, Medal.BRONZE).stream()
+                .filter(m -> !takenMedals.contains(m))
+                .toList();
         int rankIdx = 0;
         for (Medal medal : medalsToAssign) {
-            if (rankIdx >= ranked.size()) break;
-            var slot = ranked.get(rankIdx);
+            if (rankIdx >= available.size()) break;
+            var slot = available.get(rankIdx);
             int slotScore = slot.getValue();
-            long tieCount = ranked.subList(rankIdx, ranked.size()).stream()
+            long tieCount = available.subList(rankIdx, available.size()).stream()
                     .takeWhile(e -> e.getValue() == slotScore)
                     .count();
             if (tieCount > 1) {
                 break;
             }
-            if (medalAwardRepository.findByEntryId(slot.getKey()).isEmpty()) {
-                medalAwardRepository.save(new MedalAward(
-                        slot.getKey(), divisionId, divisionCategoryId, medal, adminUserId));
-            }
+            medalAwardRepository.save(new MedalAward(
+                    slot.getKey(), divisionId, divisionCategoryId, medal, adminUserId));
             rankIdx++;
         }
     }

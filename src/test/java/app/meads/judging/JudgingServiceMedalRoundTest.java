@@ -237,7 +237,6 @@ class JudgingServiceMedalRoundTest {
         given(competitionService.findDivisionById(divisionId)).willReturn(division);
         given(scoresheetRepository.findByRoundId(medalRound.getId()))
                 .willReturn(List.of(sheetGold, sheetSilver, sheetBronze));
-        given(medalAwardRepository.findByEntryId(any())).willReturn(Optional.empty());
         given(judgingRoundRepository.save(any(JudgingRound.class)))
                 .willAnswer(inv -> inv.getArgument(0));
         given(judgingRepository.save(any(Judging.class)))
@@ -291,7 +290,6 @@ class JudgingServiceMedalRoundTest {
                 .willReturn(0L);
         given(scoresheetRepository.findByRoundId(medalRound.getId()))
                 .willReturn(List.of(submittedSheet, earlierSheet));
-        given(medalAwardRepository.findByEntryId(any())).willReturn(Optional.empty());
 
         var event = new ScoresheetSubmittedEvent(submittedSheetId, entrySilver,
                 medalRound.getId(), 78, java.time.Instant.now());
@@ -341,7 +339,6 @@ class JudgingServiceMedalRoundTest {
                 .willReturn(0L);
         given(scoresheetRepository.findByRoundId(medalRound.getId()))
                 .willReturn(List.of(goldSheet, silverSheet));
-        given(medalAwardRepository.findByEntryId(any())).willReturn(Optional.empty());
 
         var event = new ScoresheetFilledEvent(filledSheetId, entrySilver,
                 medalRound.getId(), judgeUserId, java.time.Instant.now());
@@ -352,6 +349,57 @@ class JudgingServiceMedalRoundTest {
         assertThat(awardCaptor.getAllValues()).extracting(MedalAward::getEntryId)
                 .containsExactly(entryGold, entrySilver);
         assertThat(awardCaptor.getAllValues()).extracting(MedalAward::getMedal)
+                .containsExactly(Medal.GOLD, Medal.SILVER);
+    }
+
+    @Test
+    void shouldRecomputeUnconfirmedMedalsWhenScoresChangeOnScoreBasedMedalRound() {
+        // After auto-population, a judge edits a sheet and the ranking flips.
+        // Re-running autoPopulate must drop the stale auto (unconfirmed) awards
+        // and re-derive from the new scores — previously it skipped any entry
+        // that already had an award, so medals never moved.
+        var medalRound = new JudgingRound(judging.getId(), UUID.randomUUID(), "Medal",
+                divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.SCORE_BASED);
+        var entryA = UUID.randomUUID();
+        var entryB = UUID.randomUUID();
+        medalRound.assignJudge(UUID.randomUUID());
+        medalRound.assignEntry(entryA);
+        medalRound.assignEntry(entryB);
+        medalRound.start();
+        // The edit: B now outscores A, but the stale awards still say A=GOLD, B=SILVER.
+        var sheetA = mock(app.meads.judging.Scoresheet.class);
+        given(sheetA.getRoundId()).willReturn(medalRound.getId());
+        given(sheetA.getStatus()).willReturn(ScoresheetStatus.FILLED);
+        given(sheetA.medalEligibleTotal()).willReturn(80);
+        given(sheetA.getEntryId()).willReturn(entryA);
+        var sheetB = mock(app.meads.judging.Scoresheet.class);
+        given(sheetB.getRoundId()).willReturn(medalRound.getId());
+        given(sheetB.getStatus()).willReturn(ScoresheetStatus.FILLED);
+        given(sheetB.medalEligibleTotal()).willReturn(95);
+        given(sheetB.getEntryId()).willReturn(entryB);
+        var staleGoldA = new MedalAward(entryA, divisionId, divisionCategoryId, Medal.GOLD, adminUserId);
+        var staleSilverB = new MedalAward(entryB, divisionId, divisionCategoryId, Medal.SILVER, adminUserId);
+        given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
+        given(judgingRoundRepository.findByJudgingId(judging.getId())).willReturn(List.of(medalRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(judgingRepository.findByDivisionId(divisionId)).willReturn(Optional.of(judging));
+        given(scoresheetService.countByRoundIdAndStatusNot(medalRound.getId(), ScoresheetStatus.FILLED))
+                .willReturn(0L);
+        given(scoresheetRepository.findByRoundId(medalRound.getId()))
+                .willReturn(List.of(sheetA, sheetB));
+        given(medalAwardRepository.findByFinalCategoryId(divisionCategoryId))
+                .willReturn(List.of(staleGoldA, staleSilverB));
+
+        service.onScoresheetFilled(new ScoresheetFilledEvent(UUID.randomUUID(), entryB,
+                medalRound.getId(), adminUserId, java.time.Instant.now()));
+
+        then(medalAwardRepository).should().deleteAll(List.of(staleGoldA, staleSilverB));
+        var captor = org.mockito.ArgumentCaptor.forClass(MedalAward.class);
+        then(medalAwardRepository).should(org.mockito.Mockito.times(2)).save(captor.capture());
+        assertThat(captor.getAllValues()).extracting(MedalAward::getEntryId)
+                .containsExactly(entryB, entryA);
+        assertThat(captor.getAllValues()).extracting(MedalAward::getMedal)
                 .containsExactly(Medal.GOLD, Medal.SILVER);
     }
 
