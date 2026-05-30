@@ -483,6 +483,16 @@ in `findGoldMedalAwardsForDivision`.
 medal slot (no counts — each medal is unique per category): the medal icon when awarded, `🚫` when not —
 e.g. `🥇 🥈 🥉` or `🥇 🚫 🥉`. Replaces `G:n S:n B:n`. Display-only, in `JudgingAdminView.formatRoundOutcome`.
 
+**Walkthrough-found change #19 (BUG FIX, uncommitted):** deleting a JUDGING-scope category that's in judging
+use crashed with a raw FK violation (`category_judging_configs_division_category_id_fkey`) — the only
+`JudgingCategoryDeletionGuard` was the entry module's (checks `entry.finalCategoryId`), so a category with a
+`CategoryJudgingConfig`/rounds/awards but **no entries** (e.g. M4S) sailed past it to the DB delete. New
+`JudgingCategoryUsageDeletionGuard` (judging.internal) blocks deletion when the category has a judging config,
+judging rounds, or medal awards → clean `error.category.judging-in-use` × 5 locales. (Category management
+during judging stays allowed — `allowsJudgingCategoryManagement()` is REGISTRATION_CLOSED+ by design — it's
+just guarded against in-use categories now.) +3 unit tests (`JudgingCategoryUsageDeletionGuardTest`,
+including the config-only case).
+
 **Walkthrough-found change #11 (BUG FIX, committed `4749dc4`):** auto-populated medals now **recompute** when scores
 change. `autoPopulateMedalsByScore` previously only created an award for entries with none — so editing a
 sheet after auto-population never re-ranked (or cleared, on a new tie) the medals. It now reconciles the
