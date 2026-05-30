@@ -428,34 +428,21 @@ class ScoresheetServiceTest {
     }
 
     @Test
-    void shouldPopulateMedalRoundEntriesFromAdvancedEntriesWhenComparativeCascadeFires() {
-        // Cascade auto-population (item 3b): when scoring rounds in a category
-        // COMPLETE, the medal round's `round.entries` is filled from the
-        // eligible set per its mode. For COMPARATIVE, only entries with the
-        // advance flag set on their SUBMITTED scoresheet make it in.
-        var advancedEntryId = UUID.randomUUID();
-        var notAdvancedEntryId = UUID.randomUUID();
-        var triggeringScoresheet = new Scoresheet(roundId, advancedEntryId);
+    void shouldReadyMedalRoundWithoutPopulatingEntriesWhenComparativeCascadeFires() {
+        // When the scoring rounds in a category COMPLETE, the cascade auto-creates
+        // / readies the medal round but does NOT copy the candidate entries onto
+        // it: they still live in their SCORING rounds' `entries`
+        // (judging_round_entries.entry_id is globally unique — an entry is on
+        // exactly one round). Candidates derive from the advance-flagged
+        // scoresheets instead (findMedalRoundEntries).
+        var entryId = UUID.randomUUID();
+        var triggeringScoresheet = new Scoresheet(roundId, entryId);
         for (var def : MjpScoringFieldDefinition.MJP_FIELDS) {
             triggeringScoresheet.updateScore(def.fieldName(), def.maxValue(), "good depth and balance");
         }
         triggeringScoresheet.updateOverallComments("A reasonably-worded overall assessment.");
         triggeringScoresheet.setAdvancedToMedalRound(true);
         triggeringScoresheet.setFilledBy(judgeUserId);
-
-        var advancedSheet = mock(Scoresheet.class);
-        given(advancedSheet.getStatus()).willReturn(ScoresheetStatus.SUBMITTED);
-        given(advancedSheet.isAdvancedToMedalRound()).willReturn(true);
-        var notAdvancedSheet = mock(Scoresheet.class);
-        given(notAdvancedSheet.getStatus()).willReturn(ScoresheetStatus.SUBMITTED);
-        given(notAdvancedSheet.isAdvancedToMedalRound()).willReturn(false);
-
-        var advancedEntry = mock(Entry.class);
-        given(advancedEntry.getId()).willReturn(advancedEntryId);
-        given(advancedEntry.getStatus()).willReturn(EntryStatus.RECEIVED);
-        var notAdvancedEntry = mock(Entry.class);
-        given(notAdvancedEntry.getId()).willReturn(notAdvancedEntryId);
-        given(notAdvancedEntry.getStatus()).willReturn(EntryStatus.RECEIVED);
 
         var medalRound = new JudgingRound(judging.getId(), UUID.randomUUID(), "Medal",
                 divisionCategoryId, null);
@@ -473,17 +460,14 @@ class ScoresheetServiceTest {
                 .willAnswer(inv -> inv.getArgument(0));
         given(categoryConfigRepository.findByDivisionCategoryId(divisionCategoryId))
                 .willReturn(Optional.of(new CategoryJudgingConfig(divisionCategoryId, MedalRoundMode.COMPARATIVE)));
-        given(entryService.findEntriesByFinalCategoryId(divisionCategoryId))
-                .willReturn(List.of(advancedEntry, notAdvancedEntry));
-        given(scoresheetRepository.findByEntryId(advancedEntryId)).willReturn(Optional.of(advancedSheet));
-        given(scoresheetRepository.findByEntryId(notAdvancedEntryId)).willReturn(Optional.of(notAdvancedSheet));
 
         triggeringScoresheet.markFilled();
         table.start();
 
         service.finalizeScoringRound(roundId, adminUserId);
 
-        assertThat(medalRound.getEntries()).containsExactly(advancedEntryId);
+        assertThat(medalRound.getStatus()).isEqualTo(JudgingRoundStatus.READY);
+        assertThat(medalRound.getEntries()).isEmpty();
     }
 
     @Test

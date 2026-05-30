@@ -829,6 +829,39 @@ class JudgingAdminViewTest {
         assertThat(completeButtons.get(1).isEnabled()).as("assign judges disabled when COMPLETE").isFalse();
     }
 
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldDisableAssignEntriesForComparativeMedalRoundOnly() {
+        // A COMPARATIVE medal round's candidates derive from advance flags and
+        // can't be hand-assigned (entries live in scoring rounds; entry_id is
+        // globally unique). Assign Entries is disabled there but stays available
+        // on scoring rounds and SCORE_BASED medal rounds (which sync).
+        advanceDivisionToJudging();
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Dry mead category",
+                null, 1, CategoryScope.JUDGING));
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var view = _get(JudgingAdminView.class);
+        var judging = judgingService.ensureJudgingExists(division.getId());
+
+        var scoring = new JudgingRound(judging.getId(), "R1", category.getId(), null);
+        var comparative = new JudgingRound(judging.getId(), "Medal C", category.getId(), null);
+        comparative.convertToMedalRound(MedalRoundMode.COMPARATIVE);
+        var scoreBased = new JudgingRound(judging.getId(), "Medal S", category.getId(), null);
+        scoreBased.convertToMedalRound(MedalRoundMode.SCORE_BASED);
+
+        // Action order: edit, assign judges, assign entries (index 2), start, revert, delete, open.
+        assertThat(buttonsInOrder(view.createRoundsActionsCell(scoring)).get(2).isEnabled())
+                .as("scoring round allows Assign Entries").isTrue();
+        assertThat(buttonsInOrder(view.createRoundsActionsCell(scoreBased)).get(2).isEnabled())
+                .as("SCORE_BASED medal round allows Assign Entries").isTrue();
+        assertThat(buttonsInOrder(view.createRoundsActionsCell(comparative)).get(2).isEnabled())
+                .as("COMPARATIVE medal round disables Assign Entries").isFalse();
+    }
+
     private static java.util.List<Button> buttonsInOrder(com.vaadin.flow.component.Component root) {
         var result = new java.util.ArrayList<Button>();
         root.getChildren().forEach(child -> {

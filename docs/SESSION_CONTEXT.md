@@ -500,7 +500,26 @@ the code sat alone under an "Entry" header. i18n: `judging-admin.bos.candidates.
 `.entry-number` + `.entry-code` × 5 locales (reusing the existing Entry #/Code strings). Display-only.
 
 **Walkthrough-found change #13 (uncommitted):** same Entry # + Code split applied to **BosView**'s candidates
-grid (`bos.candidates.column.entry` → `.entry-number` + `.entry-code` × 5 locales; new `entryNumberFor(UUID)`
+grid **Walkthrough-found change #14 (BUG FIX, uncommitted):** the scoring→COMPARATIVE-medal cascade tripped
+`judging_round_entries_entry_id_key`. When the last scoring round in a category finalized, the cascade
+(`ScoresheetServiceImpl.cascadeMarkCategoryReadyIfAllTablesComplete` → `populateMedalRoundEntries`) copied
+the advance-flagged entries onto the medal round's `entries` — but those entries already live in their
+scoring rounds, and `judging_round_entries.entry_id` is **globally UNIQUE** (an entry is on exactly one
+round). Removed `populateMedalRoundEntries`: a prelim-fed medal round derives its candidates from the
+advance-flagged SUBMITTED scoresheets (`findMedalRoundEntries`'s derivation path); the explicit `entries`
+set is reserved for the SCORE_BASED small-category flow (medal round owns the entries, no scoring round
+holds them). Why no test caught it: `AwardsModuleTest` never sets the advance flag, so the COMPARATIVE
+populate skipped its lone entry. +1 integration test reproducing the violation
+(`MedalRoundViewTest.shouldNotDuplicateEntryWhenScoringCascadeReadiesMedalRound`); rewrote
+`ScoresheetServiceTest`'s populate test → `shouldReadyMedalRoundWithoutPopulatingEntriesWhenComparativeCascadeFires`.
+**Same root cause, also fixed:** the unified-grid **📦 Assign Entries** is now **disabled for COMPARATIVE
+medal rounds** (its dialog called `assignEntryToRound`, whose 1:1 guard only covers SCORING rounds — it
+would hit the same constraint). New tooltip key `judging-admin.tables.assign-entries.disabled-comparative-medal`
+× 5 locales; +1 UI test (`shouldDisableAssignEntriesForComparativeMedalRoundOnly`). SCORING + SCORE_BASED
+medal keep Assign Entries.
+
+**Walkthrough-found change #13 (committed):** Entry # + Code split on BosView's candidates grid
+(`bos.candidates.column.entry` → `.entry-number` + `.entry-code` × 5 locales; new `entryNumberFor(UUID)`
 helper). Note: **BosView is only reachable once BOS is *started*** — `beforeEnter` forwards to the
 judging-admin view (Rounds tab) while `judging.phase ∉ {BOS, COMPLETE}`. "Start BOS" (on the BOS tab) is
 enabled only once every category's medal round is COMPLETE; that's why "Manage placements" bounced back to

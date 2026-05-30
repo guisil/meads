@@ -84,6 +84,7 @@ class MedalRoundViewTest {
     @Autowired ScoresheetRepository scoresheetRepository;
     @Autowired MedalAwardRepository medalAwardRepository;
     @Autowired JudgingService judgingService;
+    @Autowired ScoresheetService scoresheetService;
     @Autowired CompetitionService competitionService;
 
     private Competition competition;
@@ -637,6 +638,47 @@ class MedalRoundViewTest {
         assertThat(judgingService.findGoldMedalAwardsForDivision(division.getId(), adminId))
                 .as("the finalized gold must be an eligible BOS candidate")
                 .anyMatch(a -> a.getEntryId().equals(top.getId()));
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldNotDuplicateEntryWhenScoringCascadeReadiesMedalRound() {
+        // COMPARATIVE prelim flow: the entry lives in its SCORING round's entries
+        // set. When the round finalizes, the cascade must NOT also add it to the
+        // medal round's entries (judging_round_entries.entry_id is globally unique
+        // — that would trip the constraint). The medal candidates derive from the
+        // advance-flagged scoresheets instead.
+        division.advanceStatus(); // REGISTRATION_OPEN
+        division.advanceStatus(); // REGISTRATION_CLOSED
+        division.advanceStatus(); // JUDGING
+        division = divisionRepository.save(division);
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Desc", null, 1, CategoryScope.JUDGING));
+        categoryConfigRepository.save(new CategoryJudgingConfig(category.getId(), MedalRoundMode.COMPARATIVE));
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var entry = receivedEntryWithoutScoresheet(category, "AMA-1");
+
+        var judging = judgingService.ensureJudgingExists(division.getId());
+        var scoringRound = new JudgingRound(judging.getId(), "Panel A", category.getId(), null);
+        scoringRound.assignEntry(entry.getId());
+        scoringRound.markReady();
+        scoringRound.start();
+        judgingRoundRepository.save(scoringRound);
+
+        var sheet = new Scoresheet(scoringRound.getId(), entry.getId());
+        for (var def : MjpScoringFieldDefinition.MJP_FIELDS) {
+            sheet.updateScore(def.fieldName(), def.maxValue(), null);
+        }
+        sheet.setAdvancedToMedalRound(true);
+        sheet.setFilledBy(admin.getId());
+        sheet.markFilled();
+        scoresheetRepository.save(sheet);
+
+        // Cascade fires here — must not throw a duplicate-key DataIntegrityViolation.
+        scoresheetService.finalizeScoringRound(scoringRound.getId(), admin.getId());
+
+        var rows = judgingService.findMedalRoundEntries(category.getId(), MedalRoundMode.COMPARATIVE);
+        assertThat(rows).extracting(MedalRoundEntryRow::entryId).containsExactly(entry.getId());
     }
 
     /** Builds a FILLED (not submitted) scoresheet on the round with the given total. */

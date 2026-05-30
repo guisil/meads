@@ -1213,14 +1213,25 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
                 ? getTranslation("judging-admin.tables.action.assign-judges")
                 : getTranslation("judging-admin.tables.action.assign-judges.disabled"));
 
-        boolean entryAssignmentAllowed = round.getStatus() != JudgingRoundStatus.COMPLETE;
+        // A COMPARATIVE medal round's candidates derive from the judges' "advance
+        // to medal round" flags on the scoring-round scoresheets — they can't be
+        // hand-assigned (the entries live in their scoring rounds, and
+        // judging_round_entries.entry_id is globally unique). So Assign Entries is
+        // disabled there. SCORING rounds and SCORE_BASED medal rounds keep it.
+        boolean comparativeMedal = round.getType() == RoundType.MEDAL
+                && round.getMedalMode() == MedalRoundMode.COMPARATIVE;
+        boolean entryAssignmentAllowed = round.getStatus() != JudgingRoundStatus.COMPLETE
+                && !comparativeMedal;
         var assignEntriesButton = new Button(new Icon(VaadinIcon.PACKAGE));
         assignEntriesButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
         assignEntriesButton.setEnabled(entryAssignmentAllowed);
         assignEntriesButton.addClickListener(e -> openAssignEntriesDialog(round));
-        var assignEntriesWrapper = wrapWithTooltip(assignEntriesButton, entryAssignmentAllowed
+        String assignEntriesTip = entryAssignmentAllowed
                 ? getTranslation("judging-admin.tables.action.assign-entries")
-                : getTranslation("judging-admin.tables.assign-entries.disabled-tooltip"));
+                : comparativeMedal
+                        ? getTranslation("judging-admin.tables.assign-entries.disabled-comparative-medal")
+                        : getTranslation("judging-admin.tables.assign-entries.disabled-tooltip");
+        var assignEntriesWrapper = wrapWithTooltip(assignEntriesButton, assignEntriesTip);
 
         boolean canRevert = round.getStatus() == JudgingRoundStatus.ACTIVE;
         var revertButton = new Button(new Icon(VaadinIcon.BACKWARDS));

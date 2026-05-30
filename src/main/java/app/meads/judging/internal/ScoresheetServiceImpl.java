@@ -429,30 +429,15 @@ public class ScoresheetServiceImpl implements ScoresheetService {
         if (medalRound.getStatus() == JudgingRoundStatus.PENDING) {
             medalRound.markReady();
         }
-        // Populate medalRound.entries from the eligible set, per mode:
-        //  * COMPARATIVE: entries whose SUBMITTED scoresheet has the advance flag.
-        //  * SCORE_BASED: every entry with a SUBMITTED scoresheet (all candidates).
-        // Idempotent — uses Set semantics (assignEntry no-ops when already present).
-        populateMedalRoundEntries(medalRound, divisionCategoryId);
         judgingRoundRepository.save(medalRound);
-    }
-
-    private void populateMedalRoundEntries(JudgingRound medalRound, UUID divisionCategoryId) {
-        var mode = medalRound.getMedalMode();
-        for (var entry : entryService.findEntriesByFinalCategoryId(divisionCategoryId)) {
-            if (entry.getStatus() != EntryStatus.RECEIVED) {
-                continue;
-            }
-            var sheetOpt = scoresheetRepository.findByEntryId(entry.getId());
-            if (sheetOpt.isEmpty() || sheetOpt.get().getStatus() != ScoresheetStatus.SUBMITTED) {
-                continue;
-            }
-            if (mode == MedalRoundMode.COMPARATIVE
-                    && !sheetOpt.get().isAdvancedToMedalRound()) {
-                continue;
-            }
-            medalRound.assignEntry(entry.getId());
-        }
+        // NOTE: a prelim-fed medal round does NOT populate its own `entries` set.
+        // The candidate entries still live in their SCORING rounds' `entries`
+        // (judging_round_entries.entry_id is globally UNIQUE — an entry can be on
+        // exactly one round), so copying them onto the medal round would trip the
+        // constraint. findMedalRoundEntries derives the candidates from the
+        // advance-flagged SUBMITTED scoresheets instead. The explicit `entries`
+        // set is reserved for the SCORE_BASED small-category flow, where the medal
+        // round owns the entries directly (no scoring round holds them).
     }
 
     /**
