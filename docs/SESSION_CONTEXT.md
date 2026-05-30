@@ -441,7 +441,14 @@ tests + 1 BOS withhold test. Walkthrough §12.12.1/§12.12.3/§13.3/§13.4 + the
 **1272 tests passing on JDK 25.** **Follow-up (uncommitted):** the Finalize confirm dialog's "You can
 reopen later if needed" reassurance + the admin-warning are now gated to `isAdmin` only — a judge
 finalizing a SCORE_BASED medal round no longer sees a reopen claim (Reopen is admin-only). Fast-cycle, no
-new tests.
+new tests. **(committed `788db06`.)**
+
+**Walkthrough-found change #5 (committed `788db06`+):** reopening a **SCORE_BASED** medal round now reverts
+its SUBMITTED scoresheets back to FILLED (mirrors `reopenScoringRound`) — previously the medals were
+reassignable after reopen but the sheets stayed locked. `JudgingServiceImpl.reopenMedalRoundById` loops
+`scoresheetRepository.findByRoundId(roundId)` and calls `revertToFilled()` on SUBMITTED sheets (COMPARATIVE
+medal rounds own no sheets, so the loop is a no-op there). +1 unit test
+(`shouldRevertSubmittedScoresheetsToFilledWhenReopeningScoreBasedMedalRound`). Walkthrough §12.12.3 updated.
 
 **Earlier 2026-05-30 fixes** are **committed** (`3313e2c`, `fb35d40`) on `feature/judging-module` but
 **not yet pushed**.

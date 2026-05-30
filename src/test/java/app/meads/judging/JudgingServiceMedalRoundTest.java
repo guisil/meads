@@ -1071,6 +1071,33 @@ class JudgingServiceMedalRoundTest {
     }
 
     @Test
+    void shouldRevertSubmittedScoresheetsToFilledWhenReopeningScoreBasedMedalRound() {
+        // A SCORE_BASED medal round owns its scoresheets; finalize submitted them.
+        // Reopening must drop them back to FILLED so judges/admins can edit the
+        // scores again — otherwise the medals can be reassigned but the sheets
+        // stay locked.
+        var medalRound = new JudgingRound(judging.getId(), "Medal", divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.SCORE_BASED);
+        medalRound.markReady();
+        medalRound.start();
+        medalRound.markComplete();
+        judging.markActive();
+        var submitted = mock(app.meads.judging.Scoresheet.class);
+        given(submitted.getStatus()).willReturn(ScoresheetStatus.SUBMITTED);
+        given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(scoresheetRepository.findByRoundId(medalRound.getId())).willReturn(List.of(submitted));
+
+        service.reopenMedalRoundById(medalRound.getId(), adminUserId);
+
+        then(submitted).should().revertToFilled();
+        then(scoresheetRepository).should().save(submitted);
+        assertThat(medalRound.getStatus()).isEqualTo(JudgingRoundStatus.ACTIVE);
+    }
+
+    @Test
     void shouldRejectReopenMedalRoundByIdWhenJudgingNotActive() {
         var medalRound = new JudgingRound(judging.getId(), "Medal", divisionCategoryId, null);
         medalRound.convertToMedalRound(MedalRoundMode.COMPARATIVE);

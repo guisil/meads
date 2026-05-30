@@ -1298,6 +1298,16 @@ public class JudgingServiceImpl implements JudgingService {
             throw new BusinessRuleException("error.medal-round.cannot-reopen", e.getMessage());
         }
         judgingRoundRepository.save(round);
+        // A SCORE_BASED medal round owns its scoresheets (finalize submitted
+        // them). Drop them back to FILLED so the scores can be edited again —
+        // the medals stay put for the admin to reassign. COMPARATIVE medal
+        // rounds own no sheets, so findByRoundId returns nothing here.
+        for (var sheet : scoresheetRepository.findByRoundId(roundId)) {
+            if (sheet.getStatus() == ScoresheetStatus.SUBMITTED) {
+                sheet.revertToFilled();
+                scoresheetRepository.save(sheet);
+            }
+        }
         eventPublisher.publishEvent(new MedalRoundReopenedEvent(
                 round.getDivisionCategoryId(), judging.getDivisionId(), Instant.now()));
         log.info("Reopened medal round {} (category {})", roundId, round.getDivisionCategoryId());

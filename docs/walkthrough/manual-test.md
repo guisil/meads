@@ -2201,7 +2201,7 @@ A SCORE_BASED medal round owns its scoresheets (small-category flow, §12.6.8.1)
 - [ ] **Expected:** Header admin buttons are **Finalize** + **Reopen** (disabled — only at COMPLETE). Start + Reset are gone (Start is on the grid; the old Reset is replaced by the grid's ↶ Revert).
 - [ ] Award medals to the entries you want (🥇🥈🥉) and **leave the rest with no medal** — there is no requirement to decide every entry (the old undecided-entries guard and the Withhold action are gone).
 - [ ] Click **Finalize** → **Expected:** confirm dialog **lists the medals being committed** (Gold / Silver / Bronze counts) **and, in bold, how many entries will receive no medal** (e.g. "3 entries in this category will receive no medal.") + an admin warning → click Finalize → notification "Medal round complete"; status → `COMPLETE`; per-row buttons disappear (read-only).
-- [ ] Click **Reopen** → confirm → status back to `ACTIVE`; existing MedalAwards preserved.
+- [ ] Click **Reopen** → confirm → status back to `ACTIVE`; existing MedalAwards preserved (admin can reassign them). For a **SCORE_BASED** medal round (which owns its scoresheets), reopening also drops its **SUBMITTED scoresheets back to FILLED** so the scores can be edited again — without this the medals were reassignable but the sheets stayed locked. (A COMPARATIVE medal round owns no scoresheets, so only the medals are affected.)
 - [ ] **To wipe the awards + return the round to READY**, use the unified Rounds grid (§12.6) → ↶ **Revert** on the medal row (confirm body warns the awards are cleared, scoresheets kept). The in-view Reset button is gone.
 
 ### 12.13 BosView (dedicated admin form)
