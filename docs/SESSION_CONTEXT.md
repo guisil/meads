@@ -392,9 +392,15 @@ Cycle A + B answered the end-of-day design questions. Cycle C landed mid-walkthr
 **State on disk** (`feature/judging-module` at `33633bb` + item (a) round→table
 reassignment + the **(c) unified round-admin + scoresheet redesign Phases 1-5 all committed**
 (`07673ef` FILLED status, `10eece5` unified grid, `5d680df` Finalize/Reopen, `0108c08` i18n prune,
-`0243e94` P14 date+time) + the **test-only `submit()` retire follow-up**, **1274 tests passing on
-JDK 25** (judging+awards 429), **all pushed 2026-05-29** — plus `58869c9` (test-only `submit()` retire)
-+ `9193893` (walkthrough §12.6-§12.12 rewrite)). Verify with `mvn test -Dsurefire.useFile=false`.
+`0243e94` P14 date+time) + the **test-only `submit()` retire follow-up**, **all pushed 2026-05-29** —
+plus `58869c9` (test-only `submit()` retire) + `9193893` (walkthrough §12.6-§12.12 rewrite).
+**Walkthrough-found fix (2026-05-30, uncommitted):** the Add Round dialog dropped the Scheduled
+date/time for MEDAL rounds (`createMedalRound` ignored it) — now persisted via `updateRoundScheduledAt`
+after create (id `add-round-scheduled` on the picker). Rounds-grid Category column now shows the **code
+only** with a full `code — name` tooltip (`setTooltipGenerator`, narrower via `setFlexGrow(0)`); Scheduled
+column given a fixed `12em` width so the full `yyyy-MM-dd HH:mm` fits. +1 UI test
+(`JudgingAdminViewTest.shouldPersistScheduledAtWhenCreatingMedalRoundViaAddRoundDialog`). **1275 tests
+passing on JDK 25.** Verify with `mvn test -Dsurefire.useFile=false`.
 
 **Remaining for (c) before the walkthrough resumes:** (1) **DONE (2026-05-29):** the test-only
 `ScoresheetService.submit()` is retired; its tests migrated to `markFilled` + `finalizeScoringRound`

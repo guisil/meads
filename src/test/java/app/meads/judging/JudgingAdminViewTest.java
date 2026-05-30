@@ -863,6 +863,45 @@ class JudgingAdminViewTest {
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     @SuppressWarnings("unchecked")
+    void shouldPersistScheduledAtWhenCreatingMedalRoundViaAddRoundDialog() {
+        advanceDivisionToJudging();
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Dry mead category",
+                null, 1, CategoryScope.JUDGING));
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var physicalTable = judgingService.createPhysicalTable(division.getId(), "Table 1", admin.getId());
+
+        var view = _get(JudgingAdminView.class);
+        view.openAddRoundDialog();
+
+        _get(com.vaadin.flow.component.select.Select.class, spec -> spec.withId("add-round-type"))
+                .setValue(RoundType.MEDAL);
+        _get(com.vaadin.flow.component.select.Select.class, spec -> spec.withId("add-round-medal-mode"))
+                .setValue(MedalRoundMode.SCORE_BASED);
+        _get(com.vaadin.flow.component.select.Select.class, spec -> spec.withId("add-round-category"))
+                .setValue(category);
+        _get(com.vaadin.flow.component.select.Select.class, spec -> spec.withId("add-round-physical-table"))
+                .setValue(physicalTable);
+        _get(DateTimePicker.class, spec -> spec.withId("add-round-scheduled"))
+                .setValue(LocalDateTime.of(2026, 9, 10, 14, 30));
+
+        _click(_get(Button.class, spec -> spec.withText("Save")));
+
+        var judging = judgingService.ensureJudgingExists(division.getId());
+        var rounds = judgingService.findRoundsByJudgingId(judging.getId());
+        assertThat(rounds).hasSize(1);
+        assertThat(rounds.get(0).getScheduledAt())
+                .as("scheduled date/time entered in the Add Round dialog must persist on the medal round")
+                .isEqualTo(LocalDateTime.of(2026, 9, 10, 14, 30));
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    @SuppressWarnings("unchecked")
     void shouldRenderStatusFilterWithAllStatusesSelectedOnRoundsTab() {
         advanceDivisionToJudging();
 

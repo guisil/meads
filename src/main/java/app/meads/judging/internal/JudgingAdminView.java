@@ -379,6 +379,15 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
                 : "";
     }
 
+    private String formatCategoryCode(UUID divisionCategoryId) {
+        if (divisionCategoryId == null) {
+            return "";
+        }
+        return categoriesById().getOrDefault(divisionCategoryId, null) instanceof DivisionCategory dc
+                ? dc.getCode()
+                : "";
+    }
+
     private Map<UUID, DivisionCategory> categoriesById() {
         return competitionService.findJudgingCategories(division.getId()).stream()
                 .collect(Collectors.toMap(DivisionCategory::getId, c -> c));
@@ -837,9 +846,10 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         roundsGrid.addColumn(JudgingRound::getName)
                 .setHeader(getTranslation("judging-admin.rounds.column.name"))
                 .setResizable(true).setSortable(true).setAutoWidth(true);
-        roundsGrid.addColumn(r -> formatCategory(r.getDivisionCategoryId()))
+        roundsGrid.addColumn(r -> formatCategoryCode(r.getDivisionCategoryId()))
                 .setHeader(getTranslation("judging-admin.rounds.column.category"))
-                .setResizable(true).setSortable(true).setAutoWidth(true);
+                .setTooltipGenerator(r -> formatCategory(r.getDivisionCategoryId()))
+                .setResizable(true).setSortable(true).setAutoWidth(true).setFlexGrow(0);
         roundsGrid.addColumn(r -> {
                     if (r.getPhysicalTableId() == null) return "—";
                     return judgingService.findPhysicalTableById(r.getPhysicalTableId())
@@ -859,7 +869,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         roundsGrid.addColumn(r -> r.getScheduledAt() == null ? ""
                         : r.getScheduledAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")))
                 .setHeader(getTranslation("judging-admin.rounds.column.scheduled"))
-                .setResizable(true).setSortable(true).setAutoWidth(true);
+                .setResizable(true).setSortable(true).setWidth("12em").setFlexGrow(0);
         roundsGrid.addComponentColumn(this::createRoundsActionsCell)
                 .setHeader(getTranslation("judging-admin.rounds.column.actions"))
                 .setResizable(true).setAutoWidth(true).setFlexGrow(0);
@@ -989,6 +999,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         }
 
         var datePicker = new DateTimePicker(getTranslation("judging-admin.tables.dialog.scheduled"));
+        datePicker.setId("add-round-scheduled");
         datePicker.setWidthFull();
 
         form.add(typeSelect, nameField, medalModeSelect, categorySelect, physicalTableSelect, datePicker);
@@ -1036,6 +1047,10 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
                             && created.getMedalMode() != medalModeSelect.getValue()) {
                         judgingService.updateMedalRoundMode(created.getId(),
                                 medalModeSelect.getValue(), currentUserId);
+                    }
+                    if (datePicker.getValue() != null) {
+                        judgingService.updateRoundScheduledAt(created.getId(),
+                                datePicker.getValue(), currentUserId);
                     }
                 } else {
                     created = judgingService.createRound(judging.getId(), nameField.getValue().trim(),
