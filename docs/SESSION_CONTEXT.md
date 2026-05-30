@@ -483,7 +483,7 @@ in `findGoldMedalAwardsForDivision`.
 medal slot (no counts — each medal is unique per category): the medal icon when awarded, `🚫` when not —
 e.g. `🥇 🥈 🥉` or `🥇 🚫 🥉`. Replaces `G:n S:n B:n`. Display-only, in `JudgingAdminView.formatRoundOutcome`.
 
-**Walkthrough-found change #11 (BUG FIX, uncommitted):** auto-populated medals now **recompute** when scores
+**Walkthrough-found change #11 (BUG FIX, committed `4749dc4`):** auto-populated medals now **recompute** when scores
 change. `autoPopulateMedalsByScore` previously only created an award for entries with none — so editing a
 sheet after auto-population never re-ranked (or cleared, on a new tie) the medals. It now reconciles the
 **unconfirmed** (auto) awards: `deleteAll` them + `flush()` (the flush matters — `finalizeMedalRound` runs
@@ -494,13 +494,28 @@ as already taken so the cascade fills only the remaining slots. +1 unit test
 (`shouldRecomputeUnconfirmedMedalsWhenScoresChangeOnScoreBasedMedalRound`); 3 auto-populate tests had their
 now-unused `findByEntryId` stubs removed.
 
-**Walkthrough-found change #12 (uncommitted):** the JudgingAdminView BOS-tab GOLD-candidates grid now has
+**Walkthrough-found change #12 (committed `460db9a`):** the JudgingAdminView BOS-tab GOLD-candidates grid now has
 separate **Entry #** (prefixed, via new `formatEntryNumber(MedalAward)`) and **Code** columns — previously
 the code sat alone under an "Entry" header. i18n: `judging-admin.bos.candidates.column.entry` replaced by
 `.entry-number` + `.entry-code` × 5 locales (reusing the existing Entry #/Code strings). Display-only.
 
-**Walkthrough-found change #13 (uncommitted):** same Entry # + Code split applied to **BosView**'s candidates
-grid **Walkthrough-found change #15 (uncommitted):** `RoundView` header got the same `gap: var(--lumo-space-s)`
+**Walkthrough-found change #13 (committed `adc8277`):** same Entry # + Code split applied to **BosView**'s
+candidates grid (`bos.candidates.column.entry` → `.entry-number` + `.entry-code` × 5 locales; new
+`entryNumberFor(UUID)` helper). **Note:** BosView is only reachable once BOS is *started* — `beforeEnter`
+forwards to the judging-admin view (Rounds tab) while `judging.phase ∉ {BOS, COMPLETE}`; "Start BOS" is
+enabled only once every category's medal round is COMPLETE.
+
+**Walkthrough-found change #17 (uncommitted):** MedalRoundView grid is now mode/role-aware so a COMPARATIVE
+round doesn't leak the prelim scores to judges. **(a)** Scoresheet **Status** column shows only for
+SCORE_BASED (medal round owns the sheets); hidden on COMPARATIVE (prelim sheets are always SUBMITTED here —
+noise). **(b)** **Total** column hidden from judges on COMPARATIVE (they award by tasting, independent of
+prelim scores); admins keep it; SCORE_BASED shows it to all (it's the medal basis). **(c)** the 👁 Open-scoresheet
+icon is admin-only on COMPARATIVE (the sheet is on a prelim round the judge isn't assigned to — the icon just
+forwarded them away); judges keep it on SCORE_BASED (they own the sheet). Tests: rewrote the Status-column test
+to SCORE_BASED (`shouldRenderScoresheetStatusColumnOnScoreBasedMedalRound`) + added `doesNotContain` Status/Total
+assertions to the COMPARATIVE admin + judge column tests.
+
+**Walkthrough-found change #15+#16 (committed `75d6d06`, `ed66a71`):** RoundView header `gap: var(--lumo-space-s)`
 between title / info row / explanation that MedalRoundView already had (it was cramped with `setSpacing(false)`
 and no gap). Cosmetic, fast-cycle, no new test.
 
@@ -521,13 +536,6 @@ medal rounds** (its dialog called `assignEntryToRound`, whose 1:1 guard only cov
 would hit the same constraint). New tooltip key `judging-admin.tables.assign-entries.disabled-comparative-medal`
 × 5 locales; +1 UI test (`shouldDisableAssignEntriesForComparativeMedalRoundOnly`). SCORING + SCORE_BASED
 medal keep Assign Entries.
-
-**Walkthrough-found change #13 (committed):** Entry # + Code split on BosView's candidates grid
-(`bos.candidates.column.entry` → `.entry-number` + `.entry-code` × 5 locales; new `entryNumberFor(UUID)`
-helper). Note: **BosView is only reachable once BOS is *started*** — `beforeEnter` forwards to the
-judging-admin view (Rounds tab) while `judging.phase ∉ {BOS, COMPLETE}`. "Start BOS" (on the BOS tab) is
-enabled only once every category's medal round is COMPLETE; that's why "Manage placements" bounced back to
-the Rounds tab before BOS was started.
 
 **Earlier 2026-05-30 fixes** are **committed** (`3313e2c`, `fb35d40`) on `feature/judging-module` but
 **not yet pushed**.

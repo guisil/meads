@@ -493,16 +493,29 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
                             String.CASE_INSENSITIVE_ORDER))
                     .setResizable(true).setSortable(true).setAutoWidth(true);
         }
-        grid.addColumn(r -> r.scoresheetStatus() == null ? "—" : r.scoresheetStatus().name())
-                .setHeader(getTranslation("medal-round.status"))
-                .setComparator(java.util.Comparator.comparing(
-                        r -> r.scoresheetStatus() == null ? "" : r.scoresheetStatus().name()))
-                .setResizable(true).setSortable(true).setAutoWidth(true);
-        grid.addColumn(r -> r.round1Total() == null ? "—" : r.round1Total().toString())
-                .setHeader(getTranslation("medal-round.column.total"))
-                .setComparator(java.util.Comparator.comparing(MedalRoundEntryRow::round1Total,
-                        java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())))
-                .setResizable(true).setSortable(true).setAutoWidth(true);
+        boolean scoreBased = currentMode() == MedalRoundMode.SCORE_BASED;
+        // Scoresheet status only means something for a SCORE_BASED round, where
+        // the medal round owns the sheets (BLANK → FILLED → SUBMITTED). On a
+        // COMPARATIVE round the sheets live on the prelim scoring rounds and are
+        // always SUBMITTED here, so the column is noise — hide it.
+        if (scoreBased) {
+            grid.addColumn(r -> r.scoresheetStatus() == null ? "—" : r.scoresheetStatus().name())
+                    .setHeader(getTranslation("medal-round.status"))
+                    .setComparator(java.util.Comparator.comparing(
+                            r -> r.scoresheetStatus() == null ? "" : r.scoresheetStatus().name()))
+                    .setResizable(true).setSortable(true).setAutoWidth(true);
+        }
+        // Total drives the medals in SCORE_BASED (everyone sees it). In
+        // COMPARATIVE, judges award medals by tasting, independently of the
+        // prelim scores — so the prelim total is hidden from judges (admins keep
+        // it for context / results review).
+        if (scoreBased || isAdmin) {
+            grid.addColumn(r -> r.round1Total() == null ? "—" : r.round1Total().toString())
+                    .setHeader(getTranslation("medal-round.column.total"))
+                    .setComparator(java.util.Comparator.comparing(MedalRoundEntryRow::round1Total,
+                            java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())))
+                    .setResizable(true).setSortable(true).setAutoWidth(true);
+        }
         grid.addColumn(this::medalLabel)
                 .setHeader(getTranslation("medal-round.column.current-medal"))
                 .setComparator(java.util.Comparator.comparing(this::medalLabel))
@@ -520,11 +533,14 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         cell.setSpacing(true);
         cell.setDefaultVerticalComponentAlignment(Alignment.CENTER);
 
-        // Open scoresheet drill-in: visible whenever the entry has a sheet,
-        // regardless of round status. ScoresheetView enforces its own access
-        // rules (admin or assigned judge). For the small-category SCORE_BASED
-        // flow this is the admin's path to view/edit sheets during scoring.
-        if (row.scoresheetId() != null) {
+        // Open scoresheet drill-in. Admins always get it (view/edit any sheet).
+        // Judges get it only in SCORE_BASED, where they own + score the sheet on
+        // this very round; in COMPARATIVE the sheet belongs to a prelim scoring
+        // round the judge isn't on — ScoresheetView would just forward them away
+        // (and they should award medals by tasting, not by reading the sheet), so
+        // don't show a dead icon.
+        boolean canOpenScoresheet = isAdmin || currentMode() == MedalRoundMode.SCORE_BASED;
+        if (row.scoresheetId() != null && canOpenScoresheet) {
             var openButton = new Button(new Icon(VaadinIcon.EYE));
             openButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
             openButton.setId("medal-round-open-scoresheet-" + row.scoresheetId());

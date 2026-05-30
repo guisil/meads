@@ -336,6 +336,10 @@ class MedalRoundViewTest {
                 .toList();
         assertThat(headers).doesNotContain("Entry #", "Mead Name");
         assertThat(headers).contains("Code");
+        // In a COMPARATIVE round judges award medals by tasting, independently of
+        // the prelim scores — so the Total (and the always-SUBMITTED Status) are
+        // hidden from them.
+        assertThat(headers).doesNotContain("Total", "Status");
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -356,14 +360,23 @@ class MedalRoundViewTest {
                 .toList();
         assertThat(headers).contains("Entry #", "Code", "Mead Name");
         assertThat(headers).doesNotContain("Entry");
+        // Status is hidden on a COMPARATIVE round (prelim sheets are always
+        // SUBMITTED here); admins still see Total for context.
+        assertThat(headers).doesNotContain("Status");
+        assertThat(headers).contains("Total");
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldRenderScoresheetStatusColumnOnMedalRoundGrid() {
-        var category = activeMedalRoundCategory();
+    void shouldRenderScoresheetStatusColumnOnScoreBasedMedalRound() {
+        // Scoresheet status is meaningful only on a SCORE_BASED round, where the
+        // medal round owns the sheets (BLANK → FILLED → SUBMITTED). The
+        // COMPARATIVE case hides it (sheets always SUBMITTED here) — asserted in
+        // shouldRenderSeparateEntryNumberCodeAndMeadNameColumnsOnMedalRoundGrid.
+        var category = categoryWithActiveConfig(MedalRoundMode.SCORE_BASED);
         var table = tableFor(category);
-        advancedEntry(category, table, "AMA-1");
+        submittedScoreBasedEntry(category, table, "AMA-1", 90);
 
         navigateToMedalRound(category);
 
@@ -376,7 +389,7 @@ class MedalRoundViewTest {
         assertThat(headers).contains("Status");
 
         var row = judgingService.findMedalRoundEntries(
-                category.getId(), MedalRoundMode.COMPARATIVE).get(0);
+                category.getId(), MedalRoundMode.SCORE_BASED).get(0);
         assertThat(row.scoresheetStatus()).isEqualTo(ScoresheetStatus.SUBMITTED);
     }
 
