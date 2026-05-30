@@ -388,12 +388,10 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
 
     /**
      * Total-column cell. SUBMITTED sheets show the locked total score.
-     * BLANK/DRAFT sheets show the live running sum of whatever has been
+     * BLANK/DRAFT/FILLED sheets show the live running sum of whatever has been
      * entered so far, so admins can see judging progress at a glance without
      * drilling into each scoresheet. Returns "—" for sheets with no scores
-     * yet (pristine BLANK or DRAFT with all fields still null). The trailing
-     * " *" marks draft (running) totals so they aren't confused with the
-     * locked total of a SUBMITTED sheet.
+     * yet (pristine BLANK or DRAFT with all fields still null).
      */
     private String formatTotalCell(Scoresheet sheet) {
         if (sheet.getTotalScore() != null) {
@@ -403,7 +401,7 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
         if (running == null || running == 0) {
             return "—";
         }
-        return running + " *";
+        return running.toString();
     }
 
     private HorizontalLayout createActionsCell(Scoresheet sheet) {
