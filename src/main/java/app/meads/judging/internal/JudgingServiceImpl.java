@@ -1251,6 +1251,9 @@ public class JudgingServiceImpl implements JudgingService {
                     sheet.getTotalScore(), sheet.getSubmittedAt()));
         }
         autoPopulateMedalsByScore(round.getDivisionCategoryId(), judging.getDivisionId(), userId);
+        // Finalizing is the sign-off: confirm the (auto-populated) awards so they
+        // propagate to results + BOS candidacy.
+        confirmMedalAwardsForCategory(round.getDivisionCategoryId(), userId);
         try {
             round.markComplete();
         } catch (IllegalStateException e) {
@@ -1272,6 +1275,9 @@ public class JudgingServiceImpl implements JudgingService {
         // without a medal award simply receive no medal. (Withhold was removed —
         // there is no "explicit no-medal" state to require anymore. The finalize
         // confirmation dialog surfaces how many entries are left without a medal.)
+        // Manual awards are already confirmed, but confirm defensively so every
+        // medal propagates to results + BOS candidacy.
+        confirmMedalAwardsForCategory(round.getDivisionCategoryId(), adminUserId);
         try {
             round.markComplete();
         } catch (IllegalStateException e) {
@@ -1335,6 +1341,21 @@ public class JudgingServiceImpl implements JudgingService {
                 round.getDivisionCategoryId(), judging.getDivisionId(), wiped, Instant.now()));
         log.info("Reset medal round {} (category {}, wiped {} awards)",
                 roundId, round.getDivisionCategoryId(), wiped);
+    }
+
+    /**
+     * Marks every medal award in the category as confirmed. Auto-populated
+     * SCORE_BASED awards are written with {@code confirmed = false} so they stay
+     * provisional while the round is ACTIVE; finalizing the round is the sign-off
+     * that promotes them to confirmed (eligible for results + BOS candidacy).
+     */
+    private void confirmMedalAwardsForCategory(UUID divisionCategoryId, UUID userId) {
+        for (var award : medalAwardRepository.findByFinalCategoryId(divisionCategoryId)) {
+            if (!award.isConfirmed()) {
+                award.confirm(userId);
+                medalAwardRepository.save(award);
+            }
+        }
     }
 
     private JudgingRound requireMedalRound(UUID roundId) {

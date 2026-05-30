@@ -630,6 +630,13 @@ class MedalRoundViewTest {
         var awards = medalAwardRepository.findByFinalCategoryId(category.getId());
         assertThat(awards).anyMatch(a -> a.getEntryId().equals(top.getId()) && a.getMedal() == Medal.GOLD);
         assertThat(awards).anyMatch(a -> a.getEntryId().equals(second.getId()) && a.getMedal() == Medal.SILVER);
+        // Finalizing confirms the (auto-populated) awards so they propagate to
+        // results + BOS — otherwise the gold never shows up as a BOS candidate.
+        assertThat(awards).allMatch(MedalAward::isConfirmed);
+        var adminId = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow().getId();
+        assertThat(judgingService.findGoldMedalAwardsForDivision(division.getId(), adminId))
+                .as("the finalized gold must be an eligible BOS candidate")
+                .anyMatch(a -> a.getEntryId().equals(top.getId()));
     }
 
     /** Builds a FILLED (not submitted) scoresheet on the round with the given total. */

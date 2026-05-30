@@ -1944,7 +1944,7 @@ The Results tab is a read-only summary of every round that has reached COMPLETE 
 - [ ] **Expected:** Grid columns: Type, Name, Category, Table, Outcome, Actions.
 - [ ] **Expected:** The COMPLETE scoring row shows Outcome = `{N} scoresheets submitted` where N = the count of submitted scoresheets at the round.
 - [ ] After a medal round goes COMPLETE (§12.12), come back here.
-- [ ] **Expected:** The COMPLETE medal row shows Outcome = `G:{n} S:{n} B:{n}` (Gold/Silver/Bronze counts).
+- [ ] **Expected:** The COMPLETE medal row shows Outcome as one glyph per medal slot (no counts — each medal is unique per category): `🥇 🥈 🥉` when all three are awarded, with `🚫` standing in for any medal that was not awarded (e.g. `🥇 🚫 🥉` = no silver).
 - [ ] Click the Open button on a COMPLETE row → **Expected:** navigates to the same per-round view as the Rounds tab (RoundView for SCORING, MedalRoundView for MEDAL).
 
 ### 12.8 JudgingAdminView — Best of Show tab

@@ -465,6 +465,22 @@ URLs untouched.) Tests updated (RoundViewTest, ScoresheetViewTest) + walkthrough
 tests (fast-cycle rename). Note: `/medal-rounds/` does not contain the substring `/rounds/`, so the
 medal-vs-scoring back-anchor assertions stay valid.
 
+**Walkthrough-found change #8 (committed `4a4f6ca`):** the medal-round Current medal column prefixes the
+medal icon (🥇/🥈/🥉) before the label.
+
+**Walkthrough-found change #9 (BUG FIX, uncommitted):** finalizing a medal round now **confirms** its
+medal awards. BOS candidates filter on `MedalAward.confirmed`, but auto-populated SCORE_BASED awards are
+written `confirmed=false` — so after a SCORE_BASED finalize the gold never appeared as a BOS candidate
+("No GOLD medals were awarded"). New private `confirmMedalAwardsForCategory(categoryId, userId)` called
+from both `finalizeMedalRound` (SCORE_BASED) and `completeMedalRoundById` (COMPARATIVE — manual awards were
+already confirmed, so defensive there). Extended the end-to-end finalize test
+(`shouldLetAssignedJudgeFinalizeScoreBasedMedalRoundEndToEnd`) to assert the awards are confirmed + appear
+in `findGoldMedalAwardsForDivision`.
+
+**Walkthrough-found change #10 (uncommitted):** Results-tab medal Outcome now renders one glyph per medal
+slot (no counts — each medal is unique per category): the medal icon when awarded, `🚫` when not — e.g.
+`🥇 🥈 🥉` or `🥇 🚫 🥉`. Replaces `G:n S:n B:n`. Display-only, in `JudgingAdminView.formatRoundOutcome`.
+
 **Earlier 2026-05-30 fixes** are **committed** (`3313e2c`, `fb35d40`) on `feature/judging-module` but
 **not yet pushed**.
 

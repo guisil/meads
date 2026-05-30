@@ -1148,11 +1148,15 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
 
     private String formatRoundOutcome(JudgingRound round) {
         if (round.getType() == RoundType.MEDAL) {
+            // At most one of each medal per category, so show one glyph per slot:
+            // the medal icon when awarded, 🚫 when that medal was not awarded.
             var awards = judgingService.findMedalAwardsForCategory(round.getDivisionCategoryId());
-            long gold = awards.stream().filter(a -> a.getMedal() == Medal.GOLD).count();
-            long silver = awards.stream().filter(a -> a.getMedal() == Medal.SILVER).count();
-            long bronze = awards.stream().filter(a -> a.getMedal() == Medal.BRONZE).count();
-            return "G:" + gold + " S:" + silver + " B:" + bronze;
+            boolean gold = awards.stream().anyMatch(a -> a.getMedal() == Medal.GOLD);
+            boolean silver = awards.stream().anyMatch(a -> a.getMedal() == Medal.SILVER);
+            boolean bronze = awards.stream().anyMatch(a -> a.getMedal() == Medal.BRONZE);
+            return (gold ? "🥇" : "🚫")
+                    + "   " + (silver ? "🥈" : "🚫")
+                    + "   " + (bronze ? "🥉" : "🚫");
         }
         long submitted = scoresheetService.countByRoundIdAndStatus(round.getId(), ScoresheetStatus.SUBMITTED);
         return getTranslation("judging-admin.results.outcome.scoresheets", submitted);
