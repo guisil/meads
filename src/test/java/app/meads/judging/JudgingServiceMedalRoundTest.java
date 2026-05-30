@@ -856,7 +856,7 @@ class JudgingServiceMedalRoundTest {
     }
 
     @Test
-    void shouldFindCategoryConfigsForDivisionAndLazyCreateMissing() {
+    void shouldReturnTransientDefaultConfigForCategoryWithoutOneWithoutPersisting() {
         var existingCat = new DivisionCategory(divisionId, null, "M1A", "Dry Trad",
                 "Desc", null, 0, app.meads.competition.CategoryScope.JUDGING);
         var newCat = new DivisionCategory(divisionId, null, "M1B", "Medium Trad",
@@ -869,16 +869,15 @@ class JudgingServiceMedalRoundTest {
                 .willReturn(Optional.of(existingConfig));
         given(categoryConfigRepository.findByDivisionCategoryId(newCat.getId()))
                 .willReturn(Optional.empty());
-        given(categoryConfigRepository.save(any(CategoryJudgingConfig.class)))
-                .willAnswer(inv -> inv.getArgument(0));
 
         var result = service.findCategoryConfigsForDivision(divisionId, adminUserId);
 
         assertThat(result).hasSize(2);
         assertThat(result).extracting(CategoryJudgingConfig::getDivisionCategoryId)
                 .containsExactlyInAnyOrder(existingCat.getId(), newCat.getId());
-        // The missing one should have been saved lazily with default COMPARATIVE
-        then(categoryConfigRepository).should().save(any(CategoryJudgingConfig.class));
+        // The missing one is returned as a transient default — NOT persisted, so
+        // entry-less categories don't accumulate config rows.
+        then(categoryConfigRepository).should(never()).save(any(CategoryJudgingConfig.class));
     }
 
     @Test

@@ -1202,14 +1202,19 @@ public class JudgingServiceImpl implements JudgingService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<CategoryJudgingConfig> findCategoryConfigsForDivision(UUID divisionId, UUID adminUserId) {
         if (!competitionService.isAuthorizedForDivision(divisionId, adminUserId)) {
             throw new BusinessRuleException("error.auth.unauthorized");
         }
+        // Return a transient default for categories without a stored config — do
+        // NOT persist one. Eagerly materializing a config row for every category
+        // (including entry-less ones) left empty categories "in use" (undeletable)
+        // and made them block BOS. A real config row is created only when a
+        // category is actually configured (medal mode set / round created).
         return competitionService.findJudgingCategories(divisionId).stream()
                 .map(cat -> categoryConfigRepository.findByDivisionCategoryId(cat.getId())
-                        .orElseGet(() -> categoryConfigRepository.save(
-                                new CategoryJudgingConfig(cat.getId()))))
+                        .orElseGet(() -> new CategoryJudgingConfig(cat.getId())))
                 .toList();
     }
 

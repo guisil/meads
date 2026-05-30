@@ -483,7 +483,19 @@ in `findGoldMedalAwardsForDivision`.
 medal slot (no counts — each medal is unique per category): the medal icon when awarded, `🚫` when not —
 e.g. `🥇 🥈 🥉` or `🥇 🚫 🥉`. Replaces `G:n S:n B:n`. Display-only, in `JudgingAdminView.formatRoundOutcome`.
 
-**Walkthrough-found change #19 (BUG FIX, uncommitted):** deleting a JUDGING-scope category that's in judging
+**Walkthrough-found change #20 (BUG FIX, uncommitted):** stop materializing a `CategoryJudgingConfig` for
+every judging category. `findCategoryConfigsForDivision` was a *read* that **persisted** a default config for
+any category lacking one (`orElseGet(save(...))`) — called on every BOS-tab render, so entry-less categories
+(e.g. M4S) silently gained config rows → became "in use"/undeletable AND permanently blocked "Start BOS"
+(`allCategoryRoundsComplete` required every config's medal round COMPLETE, impossible for entry-less ones).
+Fixes: **(a)** `findCategoryConfigsForDivision` now returns a *transient* default (no save), `@Transactional(readOnly)`.
+**(b)** `JudgingAdminView.allCategoryRoundsComplete` now gates on actual **medal rounds** (≥1 exists + all
+COMPLETE), mirroring the already-correct service `startBos` guard (which skips categories with no medal round).
+Empty categories no longer block BOS and stay deletable. Test renamed →
+`shouldReturnTransientDefaultConfigForCategoryWithoutOneWithoutPersisting` (asserts `never().save`). The #19
+deletion guard still applies to genuinely-configured categories.
+
+**Walkthrough-found change #19 (committed `080babf`):** deleting a JUDGING-scope category that's in judging
 use crashed with a raw FK violation (`category_judging_configs_division_category_id_fkey`) — the only
 `JudgingCategoryDeletionGuard` was the entry module's (checks `entry.finalCategoryId`), so a category with a
 `CategoryJudgingConfig`/rounds/awards but **no entries** (e.g. M4S) sailed past it to the DB delete. New

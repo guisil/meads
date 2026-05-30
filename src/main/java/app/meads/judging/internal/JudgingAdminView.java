@@ -1383,12 +1383,15 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
     }
 
     private boolean allCategoryRoundsComplete() {
-        var configs = judgingService.findCategoryConfigsForDivision(division.getId(), currentUserId);
-        return !configs.isEmpty()
-                && configs.stream().allMatch(c -> judgingService
-                        .getEffectiveMedalRoundStatus(c.getDivisionCategoryId())
-                        .map(s -> s == JudgingRoundStatus.COMPLETE)
-                        .orElse(false));
+        // BOS is ready when at least one medal round exists and every medal round
+        // in the division is COMPLETE. Categories without a medal round (e.g.
+        // entry-less ones, or ones never set up) simply don't appear here and
+        // don't block — mirrors the service-side startBos guard.
+        var medalRounds = judgingService.findRoundsByJudgingId(judging.getId()).stream()
+                .filter(r -> r.getType() == RoundType.MEDAL)
+                .toList();
+        return !medalRounds.isEmpty()
+                && medalRounds.stream().allMatch(r -> r.getStatus() == JudgingRoundStatus.COMPLETE);
     }
 
     private VerticalLayout createBosCandidatesSection() {
