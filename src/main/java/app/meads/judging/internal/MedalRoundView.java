@@ -635,10 +635,11 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         if (row.currentMedal() == null) {
             return getTranslation("medal-round.medal.none");
         }
+        // Prefix the medal icon (matching the award buttons) before the label.
         return switch (row.currentMedal()) {
-            case GOLD -> getTranslation("medal-round.medal.gold");
-            case SILVER -> getTranslation("medal-round.medal.silver");
-            case BRONZE -> getTranslation("medal-round.medal.bronze");
+            case GOLD -> "🥇 " + getTranslation("medal-round.medal.gold");
+            case SILVER -> "🥈 " + getTranslation("medal-round.medal.silver");
+            case BRONZE -> "🥉 " + getTranslation("medal-round.medal.bronze");
         };
     }
 

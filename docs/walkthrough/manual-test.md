@@ -2179,7 +2179,7 @@ Medal-round judges are **independent** of scoring-round judges for the same cate
 - [ ] **Expected:** Entries with a SUBMITTED scoresheet flagged `advancedToMedalRound = true` for this category are listed (eligibility refined per §1.9).
 - [ ] **Expected:** Per-row controls — 👁 Open scoresheet (if any) · 🥇 · 🥈 · 🥉 · 🗑 Clear. All inline icon buttons (no "More ▾" dropdown). **There is no Withhold action** — an entry with no medal simply isn't awarded one; finalize leaves it without a medal.
 - [ ] Click `🥇` on a row.
-- [ ] **Expected:** Notification or live update; row gets a Gold badge.
+- [ ] **Expected:** Notification or live update; the Current medal column shows `🥇 Gold` (the medal icon precedes the label, matching the award buttons).
 - [ ] **Expected:** The medal-tally summary "Summary: 1 Gold · 0 Silver · 0 Bronze · {N} no medal" updates live (the last bucket counts every entry without a medal — there's no separate Withhold count anymore). It sits **above the grid**, right-aligned on the **same row as the Finalize button**, in **bold**.
 - [ ] Click 🗑 **Clear** on a row with a medal (icon disabled when no award row exists).
 - [ ] **Expected:** ConfirmDialog "Delete medal record?" body explains the medal award is deleted and the entry will receive no medal unless awarded again. Footer: Cancel + Delete record.
