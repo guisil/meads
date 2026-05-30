@@ -401,7 +401,14 @@ only** with a full `code — name` tooltip (`setTooltipGenerator`, narrower via 
 column given a fixed `12em` width so the full `yyyy-MM-dd HH:mm` fits. +1 UI test
 (`JudgingAdminViewTest.shouldPersistScheduledAtWhenCreatingMedalRoundViaAddRoundDialog`).
 
-**Walkthrough-found fix #2 (2026-05-30, SCORE_BASED medal-round UX overhaul — uncommitted):** the (c)
+**▶ RESUME HERE (next session):** restart the walkthrough at **§12.6.8.1** (small-category SCORE_BASED
+medal round, fresh) to validate the new judge-driven finalize flow end-to-end — judges score → Save
+(→ FILLED) → medals auto-appear when all FILLED → judge clicks **Finalize** (no admin needed) → round
+COMPLETE. Both 2026-05-30 fixes below are **committed** (`3313e2c`, `fb35d40`) on `feature/judging-module`;
+working tree clean; **not yet pushed**. Dev-DB reminder: V21 was edited in place earlier, so recreate /
+`flyway clean` the local dev DB before `mvn spring-boot:run`.
+
+**Walkthrough-found fix #2 (2026-05-30, SCORE_BASED medal-round UX overhaul — committed `fb35d40`):** the (c)
 redesign left the small-category SCORE_BASED flow stranded — judges Save sheets to FILLED but the
 per-sheet Submit was retired, so nothing submitted them → medals never auto-populated → Finalize
 (admin-only) was unreachable and its dialog always read zero. Fixed end-to-end:
