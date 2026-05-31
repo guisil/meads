@@ -618,6 +618,18 @@ produces valid `%PDF` bytes server-side — the old "Site wasn't available" was 
 the separate `MyScoresheetView` page hiding per-criterion **comments + advanced** (display gap). **1299 green.**
 No migration. Walkthrough §13.4 updated.
 
+**Walkthrough-found change #35 (BUG FIX, 2026-05-31, uncommitted):** the scoresheet PDF downloads ("Site
+wasn't available") — root cause was NOT the locale: `ScoresheetPdfService` wasn't `@Transactional`,
+`Scoresheet.fields` is LAZY, and `spring.jpa.open-in-view=false`, so when Vaadin runs the `StreamResource`
+supplier on the download request thread (no session bound) `sheet.getFields()` threw
+`LazyInitializationException` → 500. (Existing `ScoresheetPdfServiceTest` passed because the test keeps a
+session open — didn't reproduce the no-session path.) Fix: `@Transactional(readOnly = true)` on
+`generatePdf` + `generateBatchPdf` so each call opens its own session and the lazy fields load. Fixes both the
+per-row + "Download all" buttons in `MyResultsView` AND the old `MyScoresheetView` PDF button. **1299 green.**
+No migration. **Now resolved** (was the deferred "PDF broken" item); the only remaining DEFERRED item is the
+`MyScoresheetView` on-screen page hiding per-criterion **comments + advanced** (a display gap, separate from
+the download). Walkthrough §13.4 updated.
+
 **Walkthrough-found enhancement #3 (2026-05-30, NOT yet committed — working tree dirty):** two admin-UX
 polish items raised mid-§12.6.8.1. **(1) Role-phrased round explanation.** `RoundView` + `MedalRoundView`
 showed the same second-person "what the judge does" blurb to everyone; admins observe rather than score,

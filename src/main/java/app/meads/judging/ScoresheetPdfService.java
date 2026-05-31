@@ -20,6 +20,7 @@ import org.openpdf.text.pdf.PdfReader;
 import org.openpdf.text.pdf.PdfWriter;
 import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
@@ -72,6 +73,7 @@ public class ScoresheetPdfService {
         this.messageSource = messageSource;
     }
 
+    @Transactional(readOnly = true)
     public byte[] generatePdf(UUID scoresheetId, UUID requestingUserId,
                                AnonymizationLevel level, Locale locale) {
         var sheet = scoresheetService.findById(scoresheetId)
@@ -169,6 +171,7 @@ public class ScoresheetPdfService {
      * page). Each is generated via {@link #generatePdf} — so the same auth rules
      * apply per scoresheet — then merged with {@link PdfCopy}.
      */
+    @Transactional(readOnly = true)
     public byte[] generateBatchPdf(List<UUID> scoresheetIds, UUID requestingUserId,
                                    AnonymizationLevel level, Locale locale) {
         var baos = new ByteArrayOutputStream();
