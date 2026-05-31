@@ -140,4 +140,20 @@ class MyResultsViewTest {
         assertThat(heading.getText()).contains("Amateur");
         _get(Grid.class, spec -> spec.withId("my-results-grid"));
     }
+
+    @Test
+    @WithMockUser(username = ENTRANT_EMAIL, roles = "USER")
+    void shouldRenderSearchFieldAboveResultsGrid() {
+        for (int i = 0; i < 5; i++) {
+            division.advanceStatus();
+        }
+        division = divisionRepository.save(division);
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/my-results");
+
+        // The redesigned grid is searchable.
+        _get(com.vaadin.flow.component.textfield.TextField.class,
+                spec -> spec.withId("my-results-search"));
+    }
 }

@@ -572,6 +572,23 @@ Walkthrough §12.13 updated.
 grid (`awards-publication-history`) — all four columns now `setResizable(true)`; the **Version** column is
 `setSortable(true)`. No new tests (existing `AwardsAdminViewTest` covers structure); **1294 green.** Walkthrough §13.2 updated.
 
+**Walkthrough-found change #33 (entrant results redesign — STEP 1 of 2, 2026-05-31, uncommitted):** rebuilt the
+awards-module `MyResultsView` grid to look like the entry grid: a **search field** (filters by mead name),
+**sortable + resizable** columns — **Entry #**, **Mead**, **Category** (code only, hover tooltip = full name via
+`setTooltipGenerator`), **Round 1 total** (numeric comparator), **Advanced** (green ✓ icon / `—`), **Medal**
+(🥇🥈🥉 emoji, comparator by `Medal.ordinal`), **BOS place** (numeric comparator) — plus an Action column with a
+per-row **👁 view-scoresheet** (works, navigates) and a **⬇ download** icon. `MyResultsView` gained a
+`ScoresheetPdfService` dep (awards→judging, allowed). 2 new i18n keys × 5 locales (`my-results.search.placeholder`,
+`my-results.download-scoresheet`). +1 test (`shouldRenderSearchFieldAboveResultsGrid`). **1295 green.**
+**Architectural note:** results stay in the awards module — the **entry** module (`MyEntriesView`) is only
+allowed `{competition, identity}`, so it can't read judging/awards data; merging results into the literal entry
+grid isn't possible without denormalization. **DEFERRED (per user):** the scoresheet **PDF download is broken**
+(StreamResource supplier) and the scoresheet view hides **per-criterion comments + advanced** — both deferred;
+the **download icon's functionality + a "Download all scoresheets" button** land with that PDF fix (the icon is
+present now but won't produce a file until then). **STEP 2 (next, not yet done):** make `MyResultsView` the
+**default entrant view after publication** + a **"My Results" sidebar link** (RootView/MainLayout; note the
+multi-division wrinkle — an entrant may have published results in several divisions). Walkthrough §13.4 updated.
+
 **Walkthrough-found enhancement #3 (2026-05-30, NOT yet committed — working tree dirty):** two admin-UX
 polish items raised mid-§12.6.8.1. **(1) Role-phrased round explanation.** `RoundView` + `MedalRoundView`
 showed the same second-person "what the judge does" blurb to everyone; admins observe rather than score,
