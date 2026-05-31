@@ -593,9 +593,15 @@ present now but won't produce a file until then). **STEP 2 — chosen approach "
   `RESULTS_PUBLISHED` division. `/my-entries` single-division forward is **unchanged** (still → MyEntriesView,
   which already has the results banner — so "My Entries" isn't hijacked). 1 new i18n key `overview.view-results`
   × 5 locales; +1 assertion on `EntryServiceTest.shouldReturnEntrantDivisionOverviews`. **1295 green.**
-- **STEP 2b (next, not yet done):** make results the **default entrant landing after publication** (RootView →
-  results when the entrant has a published division: single → that division's `/my-results`, multi → the hub)
-  + a **"My Results" sidebar link** in `MainLayout`. Multi-division resolved via the hub. Walkthrough §13.4 updated.
+- **STEP 2b DONE (2026-05-31):** new shared checker `EntrantResultsChecker` (root interface, impl
+  `EntrantResultsCheckerImpl` in entry.internal — mirrors the `JudgeAssignmentChecker` pattern) →
+  `resultsLandingPath(email)`: empty when no published division, the division's `…/my-results` when exactly one,
+  `my-entries` (hub) when several. **RootView** now forwards an entrant to that path (default landing after
+  publication; `.orElse("my-entries")`). **MainLayout** adds a **"My Results"** SideNavItem (trophy icon,
+  `nav.my-results` × 5 locales) to the same target when the checker returns a path — keeping "My Entries". +3
+  unit tests (`EntrantResultsCheckerImplTest`). **1298 green.** Entrant results redesign (change #33) COMPLETE.
+  Walkthrough §13.4 updated. (Reminder: the scoresheet **PDF download** + on-screen **comments/advanced** remain
+  the open DEFERRED items, along with the "Download all scoresheets" button.)
 
 **Walkthrough-found enhancement #3 (2026-05-30, NOT yet committed — working tree dirty):** two admin-UX
 polish items raised mid-§12.6.8.1. **(1) Role-phrased round explanation.** `RoundView` + `MedalRoundView`

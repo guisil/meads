@@ -31,6 +31,7 @@ public class MainLayout extends AppLayout {
     private final CompetitionAdminChecker competitionAdminChecker;
     private final JudgeAssignmentChecker judgeAssignmentChecker;
     private final StewardChecker stewardChecker;
+    private final EntrantResultsChecker entrantResultsChecker;
     private final UserLocaleResolver userLocaleResolver;
     private final UserLanguageUpdater userLanguageUpdater;
     private final I18NProvider i18nProvider;
@@ -40,6 +41,7 @@ public class MainLayout extends AppLayout {
                        CompetitionAdminChecker competitionAdminChecker,
                        JudgeAssignmentChecker judgeAssignmentChecker,
                        StewardChecker stewardChecker,
+                       EntrantResultsChecker entrantResultsChecker,
                        UserLocaleResolver userLocaleResolver,
                        UserLanguageUpdater userLanguageUpdater,
                        I18NProvider i18nProvider,
@@ -48,6 +50,7 @@ public class MainLayout extends AppLayout {
         this.competitionAdminChecker = competitionAdminChecker;
         this.judgeAssignmentChecker = judgeAssignmentChecker;
         this.stewardChecker = stewardChecker;
+        this.entrantResultsChecker = entrantResultsChecker;
         this.userLocaleResolver = userLocaleResolver;
         this.userLanguageUpdater = userLanguageUpdater;
         this.i18nProvider = i18nProvider;
@@ -124,6 +127,12 @@ public class MainLayout extends AppLayout {
 
         if (authenticationContext.isAuthenticated() && !authenticationContext.hasRole("SYSTEM_ADMIN")) {
             nav.addItem(new SideNavItem(getTranslation("nav.my-entries"), "my-entries", VaadinIcon.LIST.create()));
+            // A "My Results" link appears once any of the entrant's divisions has
+            // published results (single → that division's results, several → the hub).
+            var email = authenticationContext.getPrincipalName().orElse("");
+            entrantResultsChecker.resultsLandingPath(email).ifPresent(path ->
+                    nav.addItem(new SideNavItem(getTranslation("nav.my-results"), path,
+                            VaadinIcon.TROPHY.create())));
         }
 
         if (authenticationContext.isAuthenticated()) {

@@ -2472,8 +2472,11 @@ Steps below are admin-driven unless noted.
   published. View your results" with the second clause as a link.
 - [ ] **(Multi-division entrants)** On the cross-division hub (`/my-entries` when the entrant has entries in
   more than one division), each `RESULTS_PUBLISHED` division row now shows a **"View results"** link
-  (`overview-results-<divShortName>`) alongside the division link. *(STEP 2b — pending: results becoming the
-  default landing after publication + a "My Results" sidebar link.)*
+  (`overview-results-<divShortName>`) alongside the division link.
+- [ ] **(Default landing + sidebar)** After publication, logging in / hitting `/` lands the entrant on their
+  **results** by default (single published division → that division's `/my-results`; several → the entries hub
+  with results links). A **"My Results"** item (trophy icon) appears in the sidebar alongside "My Entries",
+  targeting the same. Both remain available.
 - [ ] Click "View your results".
 - [ ] **Expected:** Navigates to `/competitions/chip-2026/divisions/amadora/my-results`.
 - [ ] **Expected:** Heading "CHIP 2026 — Amadora — Your results".
