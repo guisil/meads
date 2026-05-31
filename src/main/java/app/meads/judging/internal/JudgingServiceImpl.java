@@ -1374,13 +1374,21 @@ public class JudgingServiceImpl implements JudgingService {
         }
         judgingRoundRepository.save(round);
         // A SCORE_BASED medal round owns its scoresheets (finalize submitted
-        // them). Drop them back to FILLED so the scores can be edited again —
-        // the medals stay put for the admin to reassign. COMPARATIVE medal
-        // rounds own no sheets, so findByRoundId returns nothing here.
-        for (var sheet : scoresheetRepository.findByRoundId(roundId)) {
-            if (sheet.getStatus() == ScoresheetStatus.SUBMITTED) {
-                sheet.revertToFilled();
-                scoresheetRepository.save(sheet);
+        // them). Drop them back to FILLED so the scores can be edited again,
+        // and return the auto medals to provisional (unconfirmed) so editing a
+        // score re-ranks them — finalize confirmed them, and autoPopulate's
+        // reconcile only touches unconfirmed awards. COMPARATIVE medal rounds
+        // own no sheets and award medals by hand, so neither loop fires there.
+        if (round.getMedalMode() == MedalRoundMode.SCORE_BASED) {
+            for (var sheet : scoresheetRepository.findByRoundId(roundId)) {
+                if (sheet.getStatus() == ScoresheetStatus.SUBMITTED) {
+                    sheet.revertToFilled();
+                    scoresheetRepository.save(sheet);
+                }
+            }
+            for (var award : medalAwardRepository.findByFinalCategoryId(round.getDivisionCategoryId())) {
+                award.revertConfirmation();
+                medalAwardRepository.save(award);
             }
         }
         eventPublisher.publishEvent(new MedalRoundReopenedEvent(

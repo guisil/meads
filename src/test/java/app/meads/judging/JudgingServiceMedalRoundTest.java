@@ -1192,6 +1192,35 @@ class JudgingServiceMedalRoundTest {
     }
 
     @Test
+    void shouldRevertConfirmedMedalsToProvisionalWhenReopeningScoreBasedMedalRound() {
+        // Finalize confirmed the auto medals (so they became BOS candidates).
+        // Reopen must drop them back to provisional/unconfirmed — otherwise the
+        // autoPopulate reconcile (which only touches unconfirmed awards) won't
+        // re-rank them when a judge edits scores after reopen.
+        var medalRound = new JudgingRound(judging.getId(), "Medal", divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.SCORE_BASED);
+        medalRound.markReady();
+        medalRound.start();
+        medalRound.markComplete();
+        judging.markActive();
+        var confirmedGold = new MedalAward(UUID.randomUUID(), divisionId, divisionCategoryId,
+                Medal.GOLD, adminUserId);
+        confirmedGold.confirm(adminUserId);
+        given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(scoresheetRepository.findByRoundId(medalRound.getId())).willReturn(List.of());
+        given(medalAwardRepository.findByFinalCategoryId(divisionCategoryId))
+                .willReturn(List.of(confirmedGold));
+
+        service.reopenMedalRoundById(medalRound.getId(), adminUserId);
+
+        assertThat(confirmedGold.isConfirmed()).isFalse();
+        then(medalAwardRepository).should().save(confirmedGold);
+    }
+
+    @Test
     void shouldRejectReopenMedalRoundByIdWhenJudgingNotActive() {
         var medalRound = new JudgingRound(judging.getId(), "Medal", divisionCategoryId, null);
         medalRound.convertToMedalRound(MedalRoundMode.COMPARATIVE);

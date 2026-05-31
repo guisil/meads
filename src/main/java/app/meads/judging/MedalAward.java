@@ -76,6 +76,17 @@ public class MedalAward {
         this.confirmedBy = adminUserId;
     }
 
+    /**
+     * Returns the award to provisional (unconfirmed) — used when a SCORE_BASED
+     * medal round is reopened so the score-driven auto-populate can re-rank it.
+     * Confirmation is re-applied when the round is finalized again.
+     */
+    public void revertConfirmation() {
+        this.confirmed = false;
+        this.confirmedAt = null;
+        this.confirmedBy = null;
+    }
+
     @PrePersist
     void onCreate() {
         this.awardedAt = Instant.now();

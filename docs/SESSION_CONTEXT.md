@@ -456,6 +456,18 @@ incomplete, so ranking on partial data would award wrong medals; clearing is cor
 (`JudgingServiceMedalRoundTest.shouldClearUnconfirmedMedalsWhenFilledSheetEditedBackToDraftOnScoreBasedMedalRound`).
 **1282 tests green.** No migration. Walkthrough §12.6.8.1 / §12.11 updated.
 
+**Walkthrough-found change #23 (BUG FIX, 2026-05-31, uncommitted):** reopening a SCORE_BASED medal round
+left its medals **confirmed**, so editing scores after reopen never recomputed them. Finalize calls
+`confirmMedalAwardsForCategory` (so the gold becomes a BOS candidate); `reopenMedalRoundById` reverted the
+sheets to FILLED but kept the awards confirmed — and `autoPopulateMedalsByScore`'s reconcile only touches
+**unconfirmed** awards (confirmed = locked manual decisions), so after reopen the score-driven re-rank was
+dead. Fix: new `MedalAward.revertConfirmation()` (clears confirmed/confirmedAt/confirmedBy); `reopenMedalRoundById`
+now, for SCORE_BASED rounds, returns every award in the category to provisional (the sheet-revert loop is also
+scoped to SCORE_BASED — COMPARATIVE owns no sheets and awards by hand). Medals stay displayed but recompute on
+the next FILLED save; re-Finalize re-confirms. +1 unit test
+(`shouldRevertConfirmedMedalsToProvisionalWhenReopeningScoreBasedMedalRound`). **1283 tests green.** No
+migration. Walkthrough §12.6.8.1 (reopen + recompute-after-reopen steps) updated.
+
 **Walkthrough-found enhancement #3 (2026-05-30, NOT yet committed — working tree dirty):** two admin-UX
 polish items raised mid-§12.6.8.1. **(1) Role-phrased round explanation.** `RoundView` + `MedalRoundView`
 showed the same second-person "what the judge does" blurb to everyone; admins observe rather than score,
