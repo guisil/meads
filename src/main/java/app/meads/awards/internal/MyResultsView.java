@@ -145,28 +145,28 @@ public class MyResultsView extends VerticalLayout implements BeforeEnterObserver
                 .setHeader(getTranslation("my-results.column.category"))
                 .setResizable(true).setSortable(true)
                 .setTooltipGenerator(EntrantResultRow::categoryName)
-                .setWidth("130px").setFlexGrow(0);
+                .setWidth("160px").setFlexGrow(0);
         grid.addColumn(r -> r.round1Total() == null ? "—" : (r.round1Total() + " / 100"))
                 .setHeader(getTranslation("my-results.column.score"))
                 .setResizable(true)
                 .setComparator(Comparator.comparing(EntrantResultRow::round1Total,
                         Comparator.nullsFirst(Comparator.naturalOrder())))
-                .setWidth("100px").setFlexGrow(0);
+                .setWidth("120px").setFlexGrow(0);
         grid.addComponentColumn(this::advancedCell)
                 .setHeader(getTranslation("my-results.column.advanced"))
-                .setResizable(true).setWidth("110px").setFlexGrow(0);
+                .setResizable(true).setWidth("130px").setFlexGrow(0);
         grid.addColumn(r -> formatMedal(r.medal()))
                 .setHeader(getTranslation("my-results.column.medal"))
                 .setResizable(true)
                 .setComparator(Comparator.comparingInt(r ->
                         r.medal() == null ? Integer.MAX_VALUE : r.medal().ordinal()))
-                .setWidth("90px").setFlexGrow(0);
+                .setWidth("110px").setFlexGrow(0);
         grid.addColumn(r -> r.bosPlace() == null ? "—" : String.valueOf(r.bosPlace()))
                 .setHeader(getTranslation("my-results.column.bos"))
                 .setResizable(true)
                 .setComparator(Comparator.comparing(EntrantResultRow::bosPlace,
                         Comparator.nullsLast(Comparator.naturalOrder())))
-                .setWidth("100px").setFlexGrow(0);
+                .setWidth("130px").setFlexGrow(0);
         grid.addComponentColumn(r -> actionsCell(r, compShortName, divShortName, currentUserId))
                 .setHeader(getTranslation("my-results.column.actions"))
                 .setWidth("110px").setFlexGrow(0);
