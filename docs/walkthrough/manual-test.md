@@ -2470,6 +2470,10 @@ Steps below are admin-driven unless noted.
 - [ ] Navigate to `/competitions/chip-2026/divisions/amadora/my-entries`.
 - [ ] **Expected:** A green banner appears at the top: "Results have been
   published. View your results" with the second clause as a link.
+- [ ] **(Multi-division entrants)** On the cross-division hub (`/my-entries` when the entrant has entries in
+  more than one division), each `RESULTS_PUBLISHED` division row now shows a **"View results"** link
+  (`overview-results-<divShortName>`) alongside the division link. *(STEP 2b — pending: results becoming the
+  default landing after publication + a "My Results" sidebar link.)*
 - [ ] Click "View your results".
 - [ ] **Expected:** Navigates to `/competitions/chip-2026/divisions/amadora/my-results`.
 - [ ] **Expected:** Heading "CHIP 2026 — Amadora — Your results".

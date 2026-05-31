@@ -1358,6 +1358,7 @@ class EntryServiceTest {
         assertThat(overview.divisionShortName()).isEqualTo("amadora");
         assertThat(overview.creditBalance()).isEqualTo(3);
         assertThat(overview.activeEntryCount()).isEqualTo(1);
+        assertThat(overview.status()).isEqualTo(division.getStatus());
     }
 
     @Test

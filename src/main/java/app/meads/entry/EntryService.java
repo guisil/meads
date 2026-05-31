@@ -543,7 +543,7 @@ public class EntryService {
                             competition.getId(), competition.getName(),
                             competition.getShortName(),
                             divisionId, division.getName(), division.getShortName(),
-                            creditBalance, entryCount);
+                            creditBalance, entryCount, division.getStatus());
                 })
                 .toList();
     }

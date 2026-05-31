@@ -97,6 +97,19 @@ public class EntrantOverviewView extends VerticalLayout implements BeforeEnterOb
 
         row.add(link, credits, entries);
         row.setFlexGrow(1, link);
+
+        // Once a division's results are published, surface a direct "View
+        // results" link here (string-based to respect the entry -> awards module
+        // boundary). MyEntriesView also shows a results banner.
+        if (overview.status() == app.meads.competition.DivisionStatus.RESULTS_PUBLISHED) {
+            var results = new Anchor(
+                    "competitions/" + overview.competitionShortName()
+                            + "/divisions/" + overview.divisionShortName()
+                            + "/my-results",
+                    getTranslation("overview.view-results"));
+            results.setId("overview-results-" + overview.divisionShortName());
+            row.add(results);
+        }
         return row;
     }
 }

@@ -585,9 +585,17 @@ allowed `{competition, identity}`, so it can't read judging/awards data; merging
 grid isn't possible without denormalization. **DEFERRED (per user):** the scoresheet **PDF download is broken**
 (StreamResource supplier) and the scoresheet view hides **per-criterion comments + advanced** — both deferred;
 the **download icon's functionality + a "Download all scoresheets" button** land with that PDF fix (the icon is
-present now but won't produce a file until then). **STEP 2 (next, not yet done):** make `MyResultsView` the
-**default entrant view after publication** + a **"My Results" sidebar link** (RootView/MainLayout; note the
-multi-division wrinkle — an entrant may have published results in several divisions). Walkthrough §13.4 updated.
+present now but won't produce a file until then). **STEP 2 — chosen approach "reuse the entries hub":**
+- **STEP 2a DONE (2026-05-31):** `EntrantDivisionOverview` gained a `DivisionStatus status` field (builder in
+  `EntryService.findEntrantDivisionOverviews` passes `division.getStatus()`); the entries hub
+  (`EntrantOverviewView`, multi-division view) now renders a per-division **"View results"** link
+  (`overview-results-<divShortName>`, string Anchor → `…/my-results`, entry→awards boundary-safe) for each
+  `RESULTS_PUBLISHED` division. `/my-entries` single-division forward is **unchanged** (still → MyEntriesView,
+  which already has the results banner — so "My Entries" isn't hijacked). 1 new i18n key `overview.view-results`
+  × 5 locales; +1 assertion on `EntryServiceTest.shouldReturnEntrantDivisionOverviews`. **1295 green.**
+- **STEP 2b (next, not yet done):** make results the **default entrant landing after publication** (RootView →
+  results when the entrant has a published division: single → that division's `/my-results`, multi → the hub)
+  + a **"My Results" sidebar link** in `MainLayout`. Multi-division resolved via the hub. Walkthrough §13.4 updated.
 
 **Walkthrough-found enhancement #3 (2026-05-30, NOT yet committed — working tree dirty):** two admin-UX
 polish items raised mid-§12.6.8.1. **(1) Role-phrased round explanation.** `RoundView` + `MedalRoundView`
