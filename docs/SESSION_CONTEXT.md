@@ -568,6 +568,10 @@ confirm) — gave the dialog confirm buttons ids (`bos-{finalize,reset,reopen}-c
 tests to click by id. +1 test (`shouldDefaultToBosTabWhenPhaseIsBos`). **1294 green.** No migration.
 Walkthrough §12.13 updated.
 
+**Walkthrough-found change #32 (fast-cycle, 2026-05-31, uncommitted):** `AwardsAdminView` publication-history
+grid (`awards-publication-history`) — all four columns now `setResizable(true)`; the **Version** column is
+`setSortable(true)`. No new tests (existing `AwardsAdminViewTest` covers structure); **1294 green.** Walkthrough §13.2 updated.
+
 **Walkthrough-found enhancement #3 (2026-05-30, NOT yet committed — working tree dirty):** two admin-UX
 polish items raised mid-§12.6.8.1. **(1) Role-phrased round explanation.** `RoundView` + `MedalRoundView`
 showed the same second-person "what the judge does" blurb to everyone; admins observe rather than score,

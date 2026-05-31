@@ -179,13 +179,17 @@ public class AwardsAdminView extends VerticalLayout implements BeforeEnterObserv
         var grid = new Grid<Publication>();
         grid.setId("awards-publication-history");
         grid.addColumn(Publication::getVersion)
-                .setHeader(getTranslation("awards.admin.history.column.version"));
+                .setHeader(getTranslation("awards.admin.history.column.version"))
+                .setResizable(true).setSortable(true);
         grid.addColumn(p -> formatInstant(p.getPublishedAt()))
-                .setHeader(getTranslation("awards.admin.history.column.published-at"));
+                .setHeader(getTranslation("awards.admin.history.column.published-at"))
+                .setResizable(true);
         grid.addColumn(p -> userService.findById(p.getPublishedBy()).getName())
-                .setHeader(getTranslation("awards.admin.history.column.published-by"));
+                .setHeader(getTranslation("awards.admin.history.column.published-by"))
+                .setResizable(true);
         grid.addColumn(Publication::getJustification)
-                .setHeader(getTranslation("awards.admin.history.column.justification"));
+                .setHeader(getTranslation("awards.admin.history.column.justification"))
+                .setResizable(true);
         grid.setItems(awardsService.getPublicationHistory(division.getId()));
         grid.setAllRowsVisible(true);
         section.add(grid);

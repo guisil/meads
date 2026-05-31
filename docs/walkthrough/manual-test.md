@@ -2425,7 +2425,8 @@ Steps below are admin-driven unless noted.
   actions row (no Re-publish / Send announcement / Revert yet — those only
   appear post-publication).
 - [ ] **Expected:** A "Publication history" section is rendered below with an
-  empty grid (columns: Version, Published at, Published by, Justification).
+  empty grid (columns: Version, Published at, Published by, Justification). All
+  columns are **resizable**; the **Version** column is **sortable**.
 - [ ] Click "Publish results".
 - [ ] **Expected:** Confirmation dialog appears: "Publish results for this
   division?" with body explaining the freeze + advance + no-auto-email.
