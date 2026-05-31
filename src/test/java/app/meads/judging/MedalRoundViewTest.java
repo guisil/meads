@@ -580,49 +580,15 @@ class MedalRoundViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldAllowAdminToChangeMedalRoundModeWhileReady() {
+    void shouldNotShowEditableModeOrTableSelectsInMedalRoundView() {
+        // Round configuration (mode, table, schedule, judges) lives on the
+        // unified Rounds grid now. The MedalRoundView header is read-only — even
+        // at READY it must not render the old mode/table Selects. Mode editing is
+        // covered by JudgingAdminViewTest's grid Edit-dialog test.
         var category = readyMedalRoundNoPhysicalTable();
 
         navigateToMedalRound(category);
 
-        var modeSelect = _get(com.vaadin.flow.component.select.Select.class,
-                spec -> spec.withId("medal-round-mode-select"));
-        @SuppressWarnings("unchecked")
-        var select = (com.vaadin.flow.component.select.Select<MedalRoundMode>) modeSelect;
-        select.setValue(MedalRoundMode.SCORE_BASED);
-
-        var medalRound = judgingService.findMedalRoundByCategoryId(category.getId()).orElseThrow();
-        assertThat(medalRound.getMedalMode()).isEqualTo(MedalRoundMode.SCORE_BASED);
-    }
-
-    @Test
-    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldAllowAdminToAssignPhysicalTableWhileReady() {
-        var category = readyMedalRoundNoPhysicalTable();
-        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
-        var physicalTable = judgingService.createPhysicalTable(division.getId(),
-                "Medal Table", admin.getId());
-
-        navigateToMedalRound(category);
-
-        var ptSelect = _get(com.vaadin.flow.component.select.Select.class,
-                spec -> spec.withId("medal-round-physical-table-select"));
-        @SuppressWarnings("unchecked")
-        var select = (com.vaadin.flow.component.select.Select<PhysicalTable>) ptSelect;
-        select.setValue(physicalTable);
-
-        var medalRound = judgingService.findMedalRoundByCategoryId(category.getId()).orElseThrow();
-        assertThat(medalRound.getPhysicalTableId()).isEqualTo(physicalTable.getId());
-    }
-
-    @Test
-    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
-    void shouldNotShowEditableModeAndPhysicalTableSelectsWhenMedalRoundActive() {
-        var category = activeMedalRoundCategory();
-
-        navigateToMedalRound(category);
-
-        // ACTIVE medal rounds: header shows read-only status/PT info, no editable selects.
         assertThat(com.github.mvysny.kaributesting.v10.LocatorJ._find(
                 com.vaadin.flow.component.select.Select.class,
                 spec -> spec.withId("medal-round-mode-select"))).isEmpty();

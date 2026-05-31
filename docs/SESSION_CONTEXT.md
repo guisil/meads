@@ -493,6 +493,22 @@ materialized and read directly); SCORING rounds keep `getEntries().size()`. The 
 it. +1 UI test (`shouldCountDerivedEntriesForComparativeMedalRoundOnRoundsGrid`, asserts derived count `1`
 while `getEntries()` stays empty). **1286 tests green.** No migration. Walkthrough §12.10.0 updated.
 
+**Walkthrough-found change #26 (2026-05-31, uncommitted):** make MedalRoundView read-only (match scoring
+RoundView) + move medal-mode editing to the grid + default hand-created medal rounds to Score-based.
+**(1)** Removed `MedalRoundView.createEditableConfigRow` (+ `modeLabel`, unused `Select` import) — the header
+now always renders `createReadOnlyConfigLines` (type badge + status left, Table right) + the judges line. No
+more in-view Mode/Table dropdowns. **(2)** `JudgingAdminView.openEditTableDialog` gains a **medal-mode Select**
+(`edit-round-medal-mode`, MEDAL rounds only, enabled PENDING/READY, locked after start via new key
+`judging-admin.rounds.dialog.medal-mode.locked` × 5 locales) → `updateMedalRoundMode` on save. All round
+config (table/mode/schedule/judges) now lives on the unified Rounds grid. **(3)** Add-Round dialog medal-mode
+**default flipped COMPARATIVE → SCORE_BASED** (COMPARATIVE rounds are cascade-auto-created; hand-created ones
+are almost always the small-category Score-based flow). Pruned 4 orphaned i18n keys × 5 locales
+(`medal-round.mode`, `medal-round.mode.updated`, `medal-round.physical-table.updated`,
+`medal-round.physical-table.none-defined`); kept `medal-round.mode.comparative/score-based` +
+`medal-round.physical-table`. Tests: removed 2 MedalRoundView editable-select tests, repurposed 1
+(`shouldNotShowEditableModeOrTableSelectsInMedalRoundView`), added `JudgingAdminViewTest.shouldChangeMedalRoundModeViaEditDialog`.
+**1285 tests green.** No migration. Walkthrough §12.6.1 / §12.6.8 / §12.12.0 / §12.12.0.1 / §12.12.2 updated.
+
 **Walkthrough-found enhancement #3 (2026-05-30, NOT yet committed — working tree dirty):** two admin-UX
 polish items raised mid-§12.6.8.1. **(1) Role-phrased round explanation.** `RoundView` + `MedalRoundView`
 showed the same second-person "what the judge does" blurb to everyone; admins observe rather than score,

@@ -35,7 +35,6 @@ import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.component.select.Select;
 import app.meads.judging.PhysicalTable;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
@@ -243,15 +242,11 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         // and the explanation line.
         header.getStyle().set("gap", "var(--lumo-space-s)");
 
-        boolean editable = isAdmin && medalRound != null
-                && (currentStatus() == JudgingRoundStatus.PENDING
-                        || currentStatus() == JudgingRoundStatus.READY);
-
-        if (editable) {
-            header.add(createEditableConfigRow());
-        } else {
-            header.add(createReadOnlyConfigLines());
-        }
+        // The header is always read-only and mirrors the scoring RoundView:
+        // type badge + status on the left, table on the right. All round
+        // configuration (table, mode, schedule, judges) lives on the unified
+        // Rounds grid's Edit / Assign Judges dialogs (§12.6).
+        header.add(createReadOnlyConfigLines());
 
         // Admins get the assigned-judge roster spelled out — useful once the
         // round is COMPLETE and the Assign Judges dialog is locked.
@@ -337,82 +332,6 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         // Right-aligned on its own line below the info row, under the Table info.
         line.getStyle().set("align-self", "flex-end");
         return line;
-    }
-
-    /**
-     * At PENDING / READY admins can change both the medal-round mode and the
-     * physical table. Particularly important for cascade-auto-created medal
-     * rounds, which inherit COMPARATIVE and have no physical table assigned.
-     */
-    private HorizontalLayout createEditableConfigRow() {
-        var modeSelect = new Select<MedalRoundMode>();
-        modeSelect.setId("medal-round-mode-select");
-        modeSelect.setLabel(getTranslation("medal-round.mode"));
-        modeSelect.setItems(MedalRoundMode.values());
-        modeSelect.setItemLabelGenerator(this::modeLabel);
-        modeSelect.setValue(currentMode());
-        modeSelect.addValueChangeListener(e -> {
-            if (e.getValue() == null || e.getValue() == e.getOldValue()) {
-                return;
-            }
-            try {
-                judgingService.updateMedalRoundMode(medalRound.getId(), e.getValue(), currentUserId);
-                reload();
-                Notification.show(getTranslation("medal-round.mode.updated"))
-                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-            } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
-                modeSelect.setValue(e.getOldValue());
-            }
-        });
-
-        var ptSelect = new Select<PhysicalTable>();
-        ptSelect.setId("medal-round-physical-table-select");
-        ptSelect.setLabel(getTranslation("medal-round.physical-table"));
-        var tables = judgingService.findPhysicalTablesByDivision(division.getId());
-        ptSelect.setItems(tables);
-        ptSelect.setItemLabelGenerator(pt -> pt == null ? "" : pt.getLabel());
-        if (currentPhysicalTableId() != null) {
-            tables.stream()
-                    .filter(pt -> pt.getId().equals(currentPhysicalTableId()))
-                    .findFirst()
-                    .ifPresent(ptSelect::setValue);
-        }
-        if (tables.isEmpty()) {
-            ptSelect.setHelperText(getTranslation("medal-round.physical-table.none-defined"));
-        }
-        ptSelect.addValueChangeListener(e -> {
-            if (e.getValue() == null || e.getValue().equals(e.getOldValue())) {
-                return;
-            }
-            try {
-                judgingService.assignRoundToPhysicalTable(medalRound.getId(),
-                        e.getValue().getId(), currentUserId);
-                reload();
-                Notification.show(getTranslation("medal-round.physical-table.updated"))
-                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-            } catch (BusinessRuleException ex) {
-                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
-                ptSelect.setValue(e.getOldValue());
-            }
-        });
-
-        var statusBadge = new Span(getTranslation("medal-round.status") + ": " + currentStatus().name());
-        statusBadge.setId("medal-round-status-line");
-
-        var row = new HorizontalLayout(ptSelect, modeSelect, statusBadge);
-        row.setDefaultVerticalComponentAlignment(Alignment.END);
-        row.setSpacing(true);
-        return row;
-    }
-
-    private String modeLabel(MedalRoundMode mode) {
-        return switch (mode) {
-            case COMPARATIVE -> getTranslation("medal-round.mode.comparative");
-            case SCORE_BASED -> getTranslation("medal-round.mode.score-based");
-        };
     }
 
     /**

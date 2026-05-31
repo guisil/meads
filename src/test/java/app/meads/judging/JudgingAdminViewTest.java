@@ -748,6 +748,38 @@ class JudgingAdminViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldChangeMedalRoundModeViaEditDialog() {
+        // Medal-mode editing moved off MedalRoundView onto the grid's Edit
+        // dialog (the detail view is read-only now).
+        advanceDivisionToJudging();
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Dry mead category",
+                null, 1, CategoryScope.JUDGING));
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var view = _get(JudgingAdminView.class);
+        var judging = judgingService.ensureJudgingExists(division.getId());
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var medalRound = judgingService.createMedalRound(judging.getId(), category.getId(), admin.getId());
+        assertThat(medalRound.getMedalMode()).isEqualTo(MedalRoundMode.COMPARATIVE);
+
+        view.openEditTableDialog(medalRound);
+
+        var modeSelect = _get(com.vaadin.flow.component.select.Select.class,
+                spec -> spec.withId("edit-round-medal-mode"));
+        @SuppressWarnings("unchecked")
+        var select = (com.vaadin.flow.component.select.Select<MedalRoundMode>) modeSelect;
+        select.setValue(MedalRoundMode.SCORE_BASED);
+
+        _click(_get(Button.class, spec -> spec.withText("Save")));
+
+        var refreshed = judgingService.findMedalRoundByCategoryId(category.getId()).orElseThrow();
+        assertThat(refreshed.getMedalMode()).isEqualTo(MedalRoundMode.SCORE_BASED);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldPrefillCurrentPhysicalTableInEditDialog() {
         advanceDivisionToJudging();
         var category = divisionCategoryRepository.save(new DivisionCategory(

@@ -427,12 +427,36 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
                     getTranslation("judging-admin.tables.dialog.physical-table.locked"));
         }
 
+        // Medal mode lives here now (not in MedalRoundView) — all round config
+        // is on the grid. Editable while PENDING/READY, locked once started.
+        Select<MedalRoundMode> medalModeSelect = null;
+        if (table.getType() == RoundType.MEDAL) {
+            medalModeSelect = new Select<>();
+            medalModeSelect.setId("edit-round-medal-mode");
+            medalModeSelect.setLabel(getTranslation("judging-admin.rounds.dialog.medal-mode"));
+            medalModeSelect.setWidthFull();
+            medalModeSelect.setItems(MedalRoundMode.values());
+            medalModeSelect.setItemLabelGenerator(m -> getTranslation(m == MedalRoundMode.SCORE_BASED
+                    ? "medal-round.mode.score-based" : "medal-round.mode.comparative"));
+            medalModeSelect.setValue(table.getMedalMode());
+            medalModeSelect.setEnabled(tableReassignable);
+            if (!tableReassignable) {
+                medalModeSelect.setHelperText(
+                        getTranslation("judging-admin.rounds.dialog.medal-mode.locked"));
+            }
+        }
+        final Select<MedalRoundMode> modeSelect = medalModeSelect;
+
         var datePicker = new DateTimePicker(getTranslation("judging-admin.tables.dialog.scheduled"));
         datePicker.setId("edit-table-scheduled");
         datePicker.setWidthFull();
         datePicker.setValue(table.getScheduledAt());
 
-        form.add(nameField, physicalTableSelect, datePicker);
+        if (modeSelect != null) {
+            form.add(nameField, physicalTableSelect, modeSelect, datePicker);
+        } else {
+            form.add(nameField, physicalTableSelect, datePicker);
+        }
         dialog.add(form);
 
         var saveButton = new Button(getTranslation("button.save"), e -> {
@@ -450,6 +474,11 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
                 if (tableReassignable && selectedTableId != null
                         && !java.util.Objects.equals(selectedTableId, table.getPhysicalTableId())) {
                     judgingService.assignRoundToPhysicalTable(table.getId(), selectedTableId, currentUserId);
+                }
+                if (modeSelect != null && tableReassignable
+                        && modeSelect.getValue() != null
+                        && modeSelect.getValue() != table.getMedalMode()) {
+                    judgingService.updateMedalRoundMode(table.getId(), modeSelect.getValue(), currentUserId);
                 }
                 if (!java.util.Objects.equals(datePicker.getValue(), table.getScheduledAt())) {
                     judgingService.updateRoundScheduledAt(table.getId(), datePicker.getValue(), currentUserId);
@@ -975,7 +1004,10 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         medalModeSelect.setItems(MedalRoundMode.values());
         medalModeSelect.setItemLabelGenerator(m -> getTranslation(m == MedalRoundMode.SCORE_BASED
                 ? "medal-round.mode.score-based" : "medal-round.mode.comparative"));
-        medalModeSelect.setValue(MedalRoundMode.COMPARATIVE);
+        // Default to Score-based: COMPARATIVE medal rounds are created
+        // automatically by the scoring-round cascade, so a hand-created medal
+        // round is almost always the small-category Score-based flow.
+        medalModeSelect.setValue(MedalRoundMode.SCORE_BASED);
         medalModeSelect.setVisible(false);
 
         var categorySelect = new Select<DivisionCategory>();
