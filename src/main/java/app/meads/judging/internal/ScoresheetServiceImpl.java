@@ -18,6 +18,7 @@ import app.meads.judging.ScoresheetService;
 import app.meads.judging.ScoresheetStatus;
 import app.meads.judging.ScoresheetFilledEvent;
 import app.meads.judging.ScoresheetSubmittedEvent;
+import app.meads.judging.ScoresheetUnfilledEvent;
 import app.meads.judging.RoundCompletedEvent;
 import app.meads.judging.RoundReopenedEvent;
 import lombok.extern.slf4j.Slf4j;
@@ -136,6 +137,7 @@ public class ScoresheetServiceImpl implements ScoresheetService {
         var sheet = requireScoresheet(scoresheetId);
         requireNotFrozenForSheet(sheet);
         enforceCoi(judgeUserId, sheet);
+        boolean wasFilled = sheet.getStatus() == ScoresheetStatus.FILLED;
         try {
             sheet.updateScore(fieldName, value, comment);
         } catch (IllegalStateException e) {
@@ -147,6 +149,7 @@ public class ScoresheetServiceImpl implements ScoresheetService {
             sheet.setFilledBy(judgeUserId);
         }
         scoresheetRepository.save(sheet);
+        publishUnfilledIfDemoted(sheet, wasFilled, judgeUserId);
     }
 
     @Override
@@ -155,6 +158,7 @@ public class ScoresheetServiceImpl implements ScoresheetService {
         var sheet = requireScoresheet(scoresheetId);
         requireNotFrozenForSheet(sheet);
         enforceCoi(judgeUserId, sheet);
+        boolean wasFilled = sheet.getStatus() == ScoresheetStatus.FILLED;
         try {
             sheet.updateOverallComments(comments);
         } catch (IllegalStateException e) {
@@ -164,6 +168,20 @@ public class ScoresheetServiceImpl implements ScoresheetService {
             sheet.setFilledBy(judgeUserId);
         }
         scoresheetRepository.save(sheet);
+        publishUnfilledIfDemoted(sheet, wasFilled, judgeUserId);
+    }
+
+    /**
+     * Fires {@link ScoresheetUnfilledEvent} when an edit dropped a sheet out of
+     * FILLED (back to DRAFT). The SCORE_BASED medal-round listener uses it to
+     * clear the now-stale auto medals; for any other round it's a harmless no-op.
+     */
+    private void publishUnfilledIfDemoted(Scoresheet sheet, boolean wasFilled, UUID judgeUserId) {
+        if (wasFilled && sheet.getStatus() != ScoresheetStatus.FILLED) {
+            eventPublisher.publishEvent(new ScoresheetUnfilledEvent(
+                    sheet.getId(), sheet.getEntryId(), sheet.getRoundId(),
+                    judgeUserId, Instant.now()));
+        }
     }
 
     @Override

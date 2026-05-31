@@ -404,6 +404,32 @@ class JudgingServiceMedalRoundTest {
     }
 
     @Test
+    void shouldClearUnconfirmedMedalsWhenFilledSheetEditedBackToDraftOnScoreBasedMedalRound() {
+        // A judge re-opens a FILLED sheet and edits a score, demoting it to DRAFT
+        // without re-Saving. The panel is no longer complete, so the auto
+        // (unconfirmed) medals — derived from a full FILLED panel — are stale and
+        // must be dropped. Confirmed (manual tie-resolution) awards are deliberate
+        // decisions and are preserved.
+        var medalRound = new JudgingRound(judging.getId(), UUID.randomUUID(), "Medal",
+                divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.SCORE_BASED);
+        var entryA = UUID.randomUUID();
+        var entryB = UUID.randomUUID();
+        var autoGoldA = new MedalAward(entryA, divisionId, divisionCategoryId, Medal.GOLD, adminUserId);
+        var confirmedSilverB = new MedalAward(entryB, divisionId, divisionCategoryId, Medal.SILVER, adminUserId);
+        confirmedSilverB.confirm(adminUserId);
+        given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
+        given(medalAwardRepository.findByFinalCategoryId(divisionCategoryId))
+                .willReturn(List.of(autoGoldA, confirmedSilverB));
+
+        service.onScoresheetUnfilled(new ScoresheetUnfilledEvent(UUID.randomUUID(), entryA,
+                medalRound.getId(), adminUserId, java.time.Instant.now()));
+
+        then(medalAwardRepository).should().deleteAll(List.of(autoGoldA));
+        then(medalAwardRepository).should(never()).save(any(MedalAward.class));
+    }
+
+    @Test
     void shouldNotAutoPopulateMedalsUntilEverySheetFilledOnScoreBasedMedalRound() {
         var medalRound = new JudgingRound(judging.getId(), UUID.randomUUID(), "Medal",
                 divisionCategoryId, null);
@@ -966,7 +992,9 @@ class JudgingServiceMedalRoundTest {
 
         var preview = service.recomputeScorePreview(divisionCategoryId);
 
-        assertThat(preview.tiedSlotCount()).isGreaterThan(0);
+        // The count must reflect the number of TIED entries (2), not the number
+        // of remaining unawarded medal slots (3) — the banner reads this value.
+        assertThat(preview.tiedEntryCount()).isEqualTo(2);
         assertThat(preview.tiedEntryIds())
                 .containsExactlyInAnyOrder(tieA.getId(), tieB.getId());
     }
@@ -996,7 +1024,7 @@ class JudgingServiceMedalRoundTest {
 
         var preview = service.recomputeScorePreview(divisionCategoryId);
 
-        assertThat(preview.tiedSlotCount()).isZero();
+        assertThat(preview.tiedEntryCount()).isZero();
         assertThat(preview.tiedEntryIds()).isEmpty();
     }
 
@@ -1021,7 +1049,7 @@ class JudgingServiceMedalRoundTest {
 
         var preview = service.recomputeScorePreview(divisionCategoryId);
 
-        assertThat(preview.tiedSlotCount()).isZero();
+        assertThat(preview.tiedEntryCount()).isZero();
         assertThat(preview.tiedEntryIds()).isEmpty();
     }
 

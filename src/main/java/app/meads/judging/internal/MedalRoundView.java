@@ -183,16 +183,16 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         removeAll();
         add(createBreadcrumb());
         add(createHeader());
-        if (preview.tiedSlotCount() > 0) {
-            add(createTiesBanner(preview.tiedSlotCount()));
+        if (preview.tiedEntryCount() > 0) {
+            add(createTiesBanner(preview.tiedEntryCount()));
         }
         add(createGrid());
         add(createBackLink());
         refreshSummary();
     }
 
-    private Span createTiesBanner(int tiedSlotCount) {
-        var banner = new Span(getTranslation("medal-round.banner.ties", tiedSlotCount));
+    private Span createTiesBanner(int tiedEntryCount) {
+        var banner = new Span(getTranslation("medal-round.banner.ties", tiedEntryCount));
         banner.setId("medal-round-ties-banner");
         banner.getStyle().set("color", "var(--lumo-error-text-color)")
                 .set("font-weight", "600");

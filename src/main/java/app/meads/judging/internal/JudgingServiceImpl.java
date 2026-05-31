@@ -36,6 +36,7 @@ import app.meads.judging.ScoresheetStatus;
 import app.meads.judging.RoundStartedEvent;
 import app.meads.judging.ScoresheetFilledEvent;
 import app.meads.judging.ScoresheetSubmittedEvent;
+import app.meads.judging.ScoresheetUnfilledEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
@@ -316,6 +317,33 @@ public class JudgingServiceImpl implements JudgingService {
         }
         autoPopulateMedalsByScore(round.getDivisionCategoryId(),
                 judging.getDivisionId(), event.filledByJudgeUserId());
+    }
+
+    /**
+     * Clears the auto-populated (unconfirmed) medals on a SCORE_BASED medal round
+     * when one of its FILLED sheets is edited back to DRAFT. The medals were
+     * ranked from a complete FILLED panel; once a sheet drops out of FILLED that
+     * ranking is stale, so the provisional medals must go (their Total has
+     * already vanished from the grid). Confirmed (manual tie-resolution) awards
+     * are deliberate decisions — preserve them. Medals re-populate via
+     * {@link #onScoresheetFilled} once the whole panel is FILLED again. Public for
+     * direct unit testing.
+     */
+    @EventListener
+    public void onScoresheetUnfilled(ScoresheetUnfilledEvent event) {
+        var round = judgingRoundRepository.findById(event.roundId()).orElse(null);
+        if (round == null
+                || round.getType() != RoundType.MEDAL
+                || round.getMedalMode() != MedalRoundMode.SCORE_BASED) {
+            return;
+        }
+        var toDelete = medalAwardRepository.findByFinalCategoryId(round.getDivisionCategoryId())
+                .stream()
+                .filter(a -> !a.isConfirmed())
+                .toList();
+        if (!toDelete.isEmpty()) {
+            medalAwardRepository.deleteAll(toDelete);
+        }
     }
 
     @EventListener
@@ -1167,7 +1195,11 @@ public class JudgingServiceImpl implements JudgingService {
                 .filter(r -> Objects.equals(r.round1Total(), topScore))
                 .toList();
         if (tied.size() > 1) {
-            return new MedalRoundScorePreview(openSlots, tied.stream()
+            // Report the number of TIED entries blocking the cascade — NOT the
+            // number of remaining medal slots (openSlots). When the tie sits at
+            // the top boundary, openSlots stays at the full count regardless of
+            // how many entries actually tie, so the banner mis-counted.
+            return new MedalRoundScorePreview(tied.size(), tied.stream()
                     .map(MedalRoundEntryRow::entryId)
                     .collect(Collectors.toSet()));
         }
@@ -1267,7 +1299,7 @@ public class JudgingServiceImpl implements JudgingService {
         // A live tie at a medal boundary must be resolved by hand first —
         // auto-populate stops at it, so finalizing would award fewer medals
         // than slots without the judge knowing.
-        if (recomputeScorePreview(round.getDivisionCategoryId()).tiedSlotCount() > 0) {
+        if (recomputeScorePreview(round.getDivisionCategoryId()).tiedEntryCount() > 0) {
             throw new BusinessRuleException("error.medal-round.cannot-finalize-tied");
         }
         // Medals were already populated when the last sheet filled; submit the

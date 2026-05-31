@@ -424,6 +424,38 @@ Watch the COMPARATIVE Assign-Entries icon is disabled on the grid; the scoring�
 duplicate-keys; deleting an in-use judging category gives a clean error; the Total column has no `*`.
 Earlier 2026-05-30 fixes `3313e2c`/`fb35d40` and the whole session's run (`553ac23`..`5ad7a18`) are all pushed.
 
+**Walkthrough-found change #21 (BUG FIX, 2026-05-31, uncommitted):** the SCORE_BASED medal-round ties
+banner mis-counted. `recomputeScorePreview` put **`openSlots`** (the number of *remaining unawarded medal
+slots*) into the count field, but the banner renders it as "{N} … tied" — so when the tie sat at the top
+boundary (no medals awarded yet) it always read "3", regardless of whether 2 or 3 entries actually tied
+(reproduced live: 3 identical sheets → "3"; break it so only 2 tie → still "3"). Fix: return the number of
+**tied entries** (`tied.size()`, which already equals `tiedEntryIds.size()`). Renamed the misleading record
+field `MedalRoundScorePreview.tiedSlotCount` → **`tiedEntryCount`** (the old name is what invited assigning
+`openSlots`); the `finalizeMedalRound` gate (`> 0`) is unaffected. Banner reworded "slots tied" → "entries
+tied" × 5 locales (`medal-round.banner.ties`). RED: strengthened the existing
+`JudgingServiceMedalRoundTest.shouldDetectTiedTopScoresInScoreBasedPreview` from `> 0` to exact `== 2`
+(no test had pinned the value — that's the gap that let it through). **1281 tests green** (count steady — assertion
+strengthened, not added). Walkthrough §12.6.8.1 / §12.12.2 updated.
+
+**Walkthrough-found change #22 (TWO BUG FIXES, 2026-05-31, uncommitted):** both raised live in §12.6.8.1.
+**(1) Stepper clicks didn't auto-save.** `ScoresheetView` score `NumberField`s used `ValueChangeMode.ON_BLUR`;
+Vaadin's +/- step buttons dispatch a `change` event but never `blur`, so clicking them changed the displayed
+value without firing the value-change listener → no `autoSaveField`, no persisted score, no total-preview
+update (typing worked because it blurs). Fix: `ON_CHANGE` (fires on stepper clicks AND on blur-after-typing —
+typed values persist exactly as before). Fast-cycle (the existing `ScoresheetViewTest` auto-save tests cover
+the listener; Karibu `setValue` fires regardless of mode so the mode itself isn't unit-testable).
+**(2) Editing a FILLED sheet left a stale medal.** On a SCORE_BASED medal round, medals auto-populate
+(`confirmed=false`) only when every sheet is FILLED (`onScoresheetFilled`). Re-opening a FILLED sheet and
+editing a score demotes it FILLED→DRAFT (`Scoresheet.demoteFromFilled`), but nothing fired — so the entry's
+Total vanished from the grid while its auto-medal lingered. Fix: new public-API event `ScoresheetUnfilledEvent`
+published by `ScoresheetServiceImpl.{updateScore,updateOverallComments}` when an edit drops a sheet out of
+FILLED (shared `publishUnfilledIfDemoted` helper); new `JudgingServiceImpl.onScoresheetUnfilled` listener
+clears the **unconfirmed** medal awards for the category (confirmed/manual tie-resolution awards preserved).
+Medals re-populate via `onScoresheetFilled` once the panel is all-FILLED again. NOT a re-derive — the panel is
+incomplete, so ranking on partial data would award wrong medals; clearing is correct. +1 unit test
+(`JudgingServiceMedalRoundTest.shouldClearUnconfirmedMedalsWhenFilledSheetEditedBackToDraftOnScoreBasedMedalRound`).
+**1282 tests green.** No migration. Walkthrough §12.6.8.1 / §12.11 updated.
+
 **Walkthrough-found enhancement #3 (2026-05-30, NOT yet committed — working tree dirty):** two admin-UX
 polish items raised mid-§12.6.8.1. **(1) Role-phrased round explanation.** `RoundView` + `MedalRoundView`
 showed the same second-person "what the judge does" blurb to everyone; admins observe rather than score,
