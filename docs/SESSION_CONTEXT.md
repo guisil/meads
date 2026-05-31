@@ -540,6 +540,12 @@ category **code** (e.g. `M1A`); hover tooltip = "Category: code — name". `Roun
 (`should ShowCategoryBadgeOn{Scoring,Medal}Round`). **1289 tests green.** No migration. Walkthrough §12.10 /
 §12.12.0 updated.
 
+**Walkthrough-found change #29 (fast-cycle, 2026-05-31, uncommitted):** `BosView` — both the placements
+(`bos-placements-grid`) and candidates (`bos-candidates-grid`) grids now `setAllRowsVisible(true)` (grow to fit
+rows, no fixed-height scrollbar — matches JudgingAdminView/MedalRoundView) and their data columns are
+`setResizable(true).setSortable(true)` (the placements Action component column is resizable, not sortable). No
+new tests (existing `BosViewTest` covers column structure, unchanged); **1289 green.** Walkthrough §12.13 updated.
+
 **Walkthrough-found enhancement #3 (2026-05-30, NOT yet committed — working tree dirty):** two admin-UX
 polish items raised mid-§12.6.8.1. **(1) Role-phrased round explanation.** `RoundView` + `MedalRoundView`
 showed the same second-person "what the judge does" blurb to everyone; admins observe rather than score,

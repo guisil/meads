@@ -290,14 +290,19 @@ public class BosView extends VerticalLayout implements BeforeEnterObserver {
 
         var grid = new Grid<>(MedalAward.class, false);
         grid.setId("bos-candidates-grid");
+        grid.setAllRowsVisible(true);
         grid.addColumn(a -> entryNumberFor(a.getEntryId()))
-                .setHeader(getTranslation("bos.candidates.column.entry-number"));
+                .setHeader(getTranslation("bos.candidates.column.entry-number"))
+                .setResizable(true).setSortable(true);
         grid.addColumn(a -> entryCodeFor(a.getEntryId()))
-                .setHeader(getTranslation("bos.candidates.column.entry-code"));
+                .setHeader(getTranslation("bos.candidates.column.entry-code"))
+                .setResizable(true).setSortable(true);
         grid.addColumn(a -> meadNameFor(a.getEntryId()))
-                .setHeader(getTranslation("bos.candidates.column.mead"));
+                .setHeader(getTranslation("bos.candidates.column.mead"))
+                .setResizable(true).setSortable(true);
         grid.addColumn(a -> categoryCodeFor(a.getFinalCategoryId()))
-                .setHeader(getTranslation("bos.candidates.column.category"));
+                .setHeader(getTranslation("bos.candidates.column.category"))
+                .setResizable(true).setSortable(true);
 
         var goldAwards = judgingService.findGoldMedalAwardsForDivision(division.getId(), currentUserId);
         var placedEntryIds = placedEntryIds();
@@ -355,18 +360,25 @@ public class BosView extends VerticalLayout implements BeforeEnterObserver {
     private Grid<PlacementSlot> createPlacementsGrid(boolean readOnly) {
         var grid = new Grid<>(PlacementSlot.class, false);
         grid.setId("bos-placements-grid");
-        grid.addColumn(PlacementSlot::place).setHeader(getTranslation("bos.placements.column.place"));
+        grid.setAllRowsVisible(true);
+        grid.addColumn(PlacementSlot::place).setHeader(getTranslation("bos.placements.column.place"))
+                .setResizable(true).setSortable(true);
         grid.addColumn(s -> s.entry() == null ? "" : s.entry().getEntryCode())
-                .setHeader(getTranslation("bos.placements.column.entry"));
+                .setHeader(getTranslation("bos.placements.column.entry"))
+                .setResizable(true).setSortable(true);
         grid.addColumn(s -> s.entry() == null ? "" : s.entry().getMeadName())
-                .setHeader(getTranslation("bos.placements.column.mead"));
+                .setHeader(getTranslation("bos.placements.column.mead"))
+                .setResizable(true).setSortable(true);
         grid.addColumn(s -> s.category() == null ? "" : s.category().getCode())
-                .setHeader(getTranslation("bos.placements.column.category"));
+                .setHeader(getTranslation("bos.placements.column.category"))
+                .setResizable(true).setSortable(true);
         grid.addColumn(s -> s.awardedByUser() == null ? "" : s.awardedByUser().getEmail())
-                .setHeader(getTranslation("bos.placements.column.awarded-by"));
+                .setHeader(getTranslation("bos.placements.column.awarded-by"))
+                .setResizable(true).setSortable(true);
         if (!readOnly) {
             grid.addComponentColumn(this::createPlacementActionsCell)
-                    .setHeader(getTranslation("bos.placements.column.action"));
+                    .setHeader(getTranslation("bos.placements.column.action"))
+                    .setResizable(true);
         }
 
         grid.setItems(loadPlacementSlots());
