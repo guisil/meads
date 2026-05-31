@@ -32,6 +32,7 @@ import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.server.VaadinServletRequest;
@@ -178,6 +179,36 @@ class RoundViewTest {
         var heading = _get(H2.class);
         assertThat(heading.getText()).contains("Amadora");
         assertThat(heading.getText()).contains("Table A");
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldShowAssignedJudgesLineToAdminOnScoringRound() {
+        advanceDivisionToJudging();
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Desc",
+                null, 1, CategoryScope.JUDGING));
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var alice = userRepository.save(new User(
+                "judges-line-alice@example.com", "Alice Judge", UserStatus.ACTIVE, Role.USER));
+        var bob = userRepository.save(new User(
+                "judges-line-bob@example.com", "Bob Judge", UserStatus.ACTIVE, Role.USER));
+        competitionService.addParticipantByEmail(competition.getId(),
+                alice.getEmail(), CompetitionRole.JUDGE, admin.getId());
+        competitionService.addParticipantByEmail(competition.getId(),
+                bob.getEmail(), CompetitionRole.JUDGE, admin.getId());
+        var judging = judgingService.ensureJudgingExists(division.getId());
+        var table = judgingService.createRound(judging.getId(), "Table A",
+                category.getId(), null, admin.getId());
+        judgingService.assignJudge(table.getId(), alice.getId(), admin.getId());
+        judgingService.assignJudge(table.getId(), bob.getId(), admin.getId());
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName()
+                + "/rounds/" + table.getId());
+
+        var judgesLine = _get(Span.class, spec -> spec.withId("round-judges-line"));
+        assertThat(judgesLine.getText()).contains("Judges:", "Alice Judge", "Bob Judge");
     }
 
     @Test

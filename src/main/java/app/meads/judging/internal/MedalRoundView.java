@@ -19,6 +19,7 @@ import app.meads.judging.MedalRoundMode;
 import app.meads.judging.MedalRoundScorePreview;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
+import app.meads.identity.User;
 import app.meads.identity.UserService;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
@@ -47,6 +48,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Shared judge/admin medal-round form for one JUDGING-scope category. Judges and
@@ -251,6 +253,12 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
             header.add(createReadOnlyConfigLines());
         }
 
+        // Admins get the assigned-judge roster spelled out — useful once the
+        // round is COMPLETE and the Assign Judges dialog is locked.
+        if (isAdmin && medalRound != null) {
+            header.add(createJudgesLine());
+        }
+
         header.add(createExplanation());
 
         var actions = createActions();
@@ -310,6 +318,19 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         span.setId("round-explanation");
         span.getStyle().set("color", "var(--lumo-secondary-text-color)");
         return span;
+    }
+
+    /** Admin-only roster of the medal round's assigned judges (names, comma-separated). */
+    private Span createJudgesLine() {
+        var names = judgingService.findJudgeUserIdsForRound(medalRound.getId()).stream()
+                .map(userService::findById)
+                .map(User::getName)
+                .sorted()
+                .collect(Collectors.joining(", "));
+        var line = new Span(getTranslation("round.judges") + ": "
+                + (names.isEmpty() ? "—" : names));
+        line.setId("medal-round-judges-line");
+        return line;
     }
 
     /**

@@ -420,6 +420,33 @@ class MedalRoundViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldShowAssignedJudgesLineToAdminOnMedalRound() {
+        var category = activeMedalRoundCategory();
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var alice = userRepository.save(new User(
+                "mr-judges-alice@example.com", "Alice Judge", UserStatus.ACTIVE, Role.USER));
+        var bob = userRepository.save(new User(
+                "mr-judges-bob@example.com", "Bob Judge", UserStatus.ACTIVE, Role.USER));
+        competitionService.addParticipantByEmail(competition.getId(),
+                alice.getEmail(), CompetitionRole.JUDGE, admin.getId());
+        competitionService.addParticipantByEmail(competition.getId(),
+                bob.getEmail(), CompetitionRole.JUDGE, admin.getId());
+        var judgingId = judgingRepository.findByDivisionId(division.getId()).orElseThrow().getId();
+        var medalRound = judgingRoundRepository.findByJudgingId(judgingId).stream()
+                .filter(r -> r.getType() == RoundType.MEDAL
+                        && category.getId().equals(r.getDivisionCategoryId()))
+                .findFirst().orElseThrow();
+        judgingService.assignJudge(medalRound.getId(), alice.getId(), admin.getId());
+        judgingService.assignJudge(medalRound.getId(), bob.getId(), admin.getId());
+
+        navigateToMedalRound(category);
+
+        var line = _get(Span.class, spec -> spec.withId("medal-round-judges-line"));
+        assertThat(line.getText()).contains("Judges:", "Alice Judge", "Bob Judge");
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldListAdvancedEntriesInComparativeMode() {
         var category = activeMedalRoundCategory();
         var table = tableFor(category);

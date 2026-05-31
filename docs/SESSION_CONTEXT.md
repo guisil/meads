@@ -468,6 +468,17 @@ the next FILLED save; re-Finalize re-confirms. +1 unit test
 (`shouldRevertConfirmedMedalsToProvisionalWhenReopeningScoreBasedMedalRound`). **1283 tests green.** No
 migration. Walkthrough §12.6.8.1 (reopen + recompute-after-reopen steps) updated.
 
+**Walkthrough-found enhancement #24 (2026-05-31, uncommitted):** show the assigned-judge roster in the
+round drill-in views (admin-only), so an admin can see who judged once a round is COMPLETE and the Assign
+Judges dialog is locked. `RoundView` (scoring) and `MedalRoundView` (medal) headers now render a
+**"Judges: name1, name2"** line (`round-judges-line` / `medal-round-judges-line`) between the info row and
+the explanation, shown only when `isAdmin` (and, for medal, `medalRound != null`); `—` when none. Names
+resolved via the existing `JudgingService.findJudgeUserIdsForRound(roundId)` (assignments are EAGER) →
+`UserService.findById`. 1 new i18n key `round.judges` × 5 locales (shared by both views). Full TDD: +2 UI
+tests (`RoundViewTest.shouldShowAssignedJudgesLineToAdminOnScoringRound`,
+`MedalRoundViewTest.shouldShowAssignedJudgesLineToAdminOnMedalRound`). **1285 tests green.** No migration.
+Walkthrough §12.10 / §12.12.0 updated.
+
 **Walkthrough-found enhancement #3 (2026-05-30, NOT yet committed — working tree dirty):** two admin-UX
 polish items raised mid-§12.6.8.1. **(1) Role-phrased round explanation.** `RoundView` + `MedalRoundView`
 showed the same second-person "what the judge does" blurb to everyone; admins observe rather than score,

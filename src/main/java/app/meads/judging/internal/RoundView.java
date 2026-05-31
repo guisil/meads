@@ -651,13 +651,33 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
         titleRow.add(new H2(competition.getName() + " — " + division.getName()
                 + " — " + getTranslation("judge-table.title", table.getName())));
 
-        var header = new VerticalLayout(titleRow, createInfoRow(), createExplanation());
+        var header = new VerticalLayout(titleRow, createInfoRow());
+        // Admins get the assigned-judge roster spelled out — useful once the
+        // round is COMPLETE and the Assign Judges dialog is locked, so there's
+        // no other way to see who judged.
+        if (isAdmin) {
+            header.add(createJudgesLine());
+        }
+        header.add(createExplanation());
         header.setPadding(false);
         header.setSpacing(false);
         // A little breathing room between the title, the info row, and the
         // explanation — matches MedalRoundView's header.
         header.getStyle().set("gap", "var(--lumo-space-s)");
         return header;
+    }
+
+    /** Admin-only roster of the round's assigned judges (names, comma-separated). */
+    private Span createJudgesLine() {
+        var names = judgingService.findJudgeUserIdsForRound(table.getId()).stream()
+                .map(userService::findById)
+                .map(User::getName)
+                .sorted()
+                .collect(Collectors.joining(", "));
+        var line = new Span(getTranslation("round.judges") + ": "
+                + (names.isEmpty() ? "—" : names));
+        line.setId("round-judges-line");
+        return line;
     }
 
     /**
