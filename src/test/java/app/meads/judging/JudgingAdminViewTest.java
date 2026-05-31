@@ -26,6 +26,8 @@ import app.meads.judging.internal.JudgingAdminView;
 import app.meads.judging.internal.JudgingRepository;
 import app.meads.judging.internal.JudgingRoundRepository;
 import app.meads.judging.internal.MedalAwardRepository;
+import app.meads.judging.internal.MjpScoringFieldDefinition;
+import app.meads.judging.internal.ScoresheetRepository;
 import com.github.mvysny.fakeservlet.FakeRequest;
 import com.github.mvysny.kaributesting.v10.MockVaadin;
 import com.github.mvysny.kaributesting.v10.Routes;
@@ -116,6 +118,9 @@ class JudgingAdminViewTest {
 
     @Autowired
     EntryRepository entryRepository;
+
+    @Autowired
+    ScoresheetRepository scoresheetRepository;
 
     private Competition competition;
     private Division division;
@@ -357,6 +362,58 @@ class JudgingAdminViewTest {
 
         var refreshed = judgingService.findRoundsByJudgingId(judging.getId()).get(0);
         assertThat(refreshed.getEntries()).hasSize(3);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldCountDerivedEntriesForComparativeMedalRoundOnRoundsGrid() {
+        // A COMPARATIVE medal round derives its entries from advance-flagged
+        // prelim scoresheets and never materializes round.entries — so the
+        // Rounds-grid count must use the effective (derived) list, not the raw
+        // getEntries().size() (which stays 0).
+        advanceDivisionToJudging();
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Desc",
+                null, 1, CategoryScope.JUDGING));
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var judging = judgingService.ensureJudgingExists(division.getId());
+
+        // Prelim scoring round with one advance-flagged SUBMITTED scoresheet.
+        var scoringRound = judgingService.createRound(judging.getId(), "M1A Panel",
+                category.getId(), null, admin.getId());
+        var entrant = userRepository.save(new User(
+                "mr-count-entrant-" + UUID.randomUUID() + "@example.com",
+                "Entrant", UserStatus.ACTIVE, Role.USER));
+        var entry = new Entry(division.getId(), entrant.getId(), 1, "PRO-1", "Mead",
+                category.getId(), Sweetness.DRY, BigDecimal.valueOf(11.0), Carbonation.STILL,
+                "Honey", null, false, null, null);
+        entry.submit();
+        entry.markReceived();
+        entry.assignFinalCategory(category.getId());
+        entry = entryRepository.save(entry);
+        var sheet = new Scoresheet(scoringRound.getId(), entry.getId());
+        for (var def : MjpScoringFieldDefinition.MJP_FIELDS) {
+            sheet.updateScore(def.fieldName(), def.maxValue(), null);
+        }
+        sheet.setAdvancedToMedalRound(true);
+        sheet.markFilled();
+        sheet.submit();
+        scoresheetRepository.save(sheet);
+
+        // COMPARATIVE medal round with an EMPTY entries set (derivation path).
+        var medalRound = new JudgingRound(judging.getId(), "Medal", category.getId(), null);
+        medalRound.convertToMedalRound(MedalRoundMode.COMPARATIVE);
+        judgingRoundRepository.save(medalRound);
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+        var view = _get(JudgingAdminView.class);
+
+        var refreshedMedal = judgingRoundRepository.findById(medalRound.getId()).orElseThrow();
+        assertThat(refreshedMedal.getEntries())
+                .as("COMPARATIVE medal round keeps an empty entries set").isEmpty();
+        assertThat(view.roundEntryCount(refreshedMedal))
+                .as("grid count derives the advance-flagged entry").isEqualTo(1);
     }
 
     // === Physical Tables tab UI tests ===

@@ -863,7 +863,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         roundsGrid.addColumn(r -> r.getAssignments().size())
                 .setHeader(getTranslation("judging-admin.rounds.column.judges"))
                 .setResizable(true).setSortable(true).setAutoWidth(true);
-        roundsGrid.addColumn(r -> r.getEntries().size())
+        roundsGrid.addColumn(this::roundEntryCount)
                 .setHeader(getTranslation("judging-admin.rounds.column.entries"))
                 .setResizable(true).setSortable(true).setAutoWidth(true);
         roundsGrid.addColumn(r -> r.getScheduledAt() == null ? ""
@@ -1163,6 +1163,23 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
     }
 
     /** Package-public for tests — the inline action set rendered per Rounds-grid row. */
+    /**
+     * Effective entry count for the Rounds grid. A COMPARATIVE medal round does
+     * not materialize its {@code entries} set — it derives entries from the
+     * advance-flagged prelim scoresheets — so the raw {@code getEntries()} stays
+     * 0 even after the scoring rounds finish and MedalRoundView lists the
+     * advanced entries. Mirror that effective list for MEDAL rounds (works for
+     * SCORE_BASED too: its entries set is materialized, and findMedalRoundEntries
+     * reads it directly). Public for testability.
+     */
+    public int roundEntryCount(JudgingRound round) {
+        if (round.getType() == RoundType.MEDAL) {
+            return judgingService.findMedalRoundEntries(
+                    round.getDivisionCategoryId(), round.getMedalMode()).size();
+        }
+        return round.getEntries().size();
+    }
+
     public HorizontalLayout createRoundsActionsCell(JudgingRound round) {
         var openButton = new Button(new Icon(VaadinIcon.ARROW_RIGHT));
         openButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);

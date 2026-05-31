@@ -482,6 +482,17 @@ the **far right** of the info row (`margin-left:auto`; Type badge + Status stay 
 is **right-aligned** below it (`align-self:flex-end`) — both round views. Span ids/text unchanged, so the
 tests still cover them.
 
+**Walkthrough-found change #25 (BUG FIX, 2026-05-31, uncommitted):** the Rounds-grid **Entries** column
+showed **0** for a COMPARATIVE medal round even after its scoring rounds finished and MedalRoundView listed
+the advanced entries. The column used raw `JudgingRound.getEntries().size()`, but a COMPARATIVE medal round
+never materializes its `entries` set — it **derives** entries from advance-flagged prelim scoresheets (the
+same `findMedalRoundEntries` path MedalRoundView uses, with derivation fallback when `entries` is empty).
+Fix: new public `JudgingAdminView.roundEntryCount(round)` — for MEDAL rounds returns
+`findMedalRoundEntries(divisionCategoryId, medalMode).size()` (works for SCORE_BASED too: its entries set is
+materialized and read directly); SCORING rounds keep `getEntries().size()`. The grid Entries column now calls
+it. +1 UI test (`shouldCountDerivedEntriesForComparativeMedalRoundOnRoundsGrid`, asserts derived count `1`
+while `getEntries()` stays empty). **1286 tests green.** No migration. Walkthrough §12.10.0 updated.
+
 **Walkthrough-found enhancement #3 (2026-05-30, NOT yet committed — working tree dirty):** two admin-UX
 polish items raised mid-§12.6.8.1. **(1) Role-phrased round explanation.** `RoundView` + `MedalRoundView`
 showed the same second-person "what the judge does" blurb to everyone; admins observe rather than score,
