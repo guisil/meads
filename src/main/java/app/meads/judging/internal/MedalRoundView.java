@@ -19,6 +19,7 @@ import app.meads.judging.MedalRoundMode;
 import app.meads.judging.MedalRoundScorePreview;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
+import app.meads.entry.EntryService;
 import app.meads.identity.User;
 import app.meads.identity.UserService;
 import com.vaadin.flow.component.button.Button;
@@ -63,6 +64,7 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
     private final UserService userService;
     private final JudgingService judgingService;
     private final ScoresheetRepository scoresheetRepository;
+    private final EntryService entryService;
     private final transient AuthenticationContext authenticationContext;
 
     private Competition competition;
@@ -85,11 +87,13 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
                           UserService userService,
                           JudgingService judgingService,
                           ScoresheetRepository scoresheetRepository,
+                          EntryService entryService,
                           AuthenticationContext authenticationContext) {
         this.competitionService = competitionService;
         this.userService = userService;
         this.judgingService = judgingService;
         this.scoresheetRepository = scoresheetRepository;
+        this.entryService = entryService;
         this.authenticationContext = authenticationContext;
     }
 
@@ -476,21 +480,38 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         return grid;
     }
 
+    /** Opens the read-only mead-details dialog for an entry. Public for testability
+     *  (the per-row eye button lives in a Grid component column). */
+    public void openMeadDetailsDialog(UUID entryId) {
+        new MeadDetailsDialog(entryService.findEntryById(entryId)).open();
+    }
+
     private HorizontalLayout createActionsCell(MedalRoundEntryRow row) {
         var cell = new HorizontalLayout();
         cell.setPadding(false);
         cell.setSpacing(true);
         cell.setDefaultVerticalComponentAlignment(Alignment.CENTER);
 
-        // Open scoresheet drill-in. Admins always get it (view/edit any sheet).
-        // Judges get it only in SCORE_BASED, where they own + score the sheet on
-        // this very round; in COMPARATIVE the sheet belongs to a prelim scoring
-        // round the judge isn't on — ScoresheetView would just forward them away
-        // (and they should award medals by tasting, not by reading the sheet), so
-        // don't show a dead icon.
+        // View mead details (eye) — available to everyone on every row: the
+        // entry's objective characteristics, no scores/comments, no brand name.
+        // Lets a COMPARATIVE judge see what they're tasting without the prelim
+        // scoresheet (which they can't open).
+        var meadDetailsButton = new Button(new Icon(VaadinIcon.EYE));
+        meadDetailsButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+        meadDetailsButton.setId("medal-round-mead-details-" + row.entryId());
+        meadDetailsButton.setTooltipText(getTranslation("round.action.mead-details"));
+        meadDetailsButton.addClickListener(e -> openMeadDetailsDialog(row.entryId()));
+        cell.add(meadDetailsButton);
+
+        // Open scoresheet drill-in (pencil = edit). Admins always get it
+        // (view/edit any sheet). Judges get it only in SCORE_BASED, where they
+        // own + score the sheet on this very round; in COMPARATIVE the sheet
+        // belongs to a prelim scoring round the judge isn't on — ScoresheetView
+        // would just forward them away (and they award medals by tasting, not by
+        // reading the sheet), so don't show a dead icon.
         boolean canOpenScoresheet = isAdmin || currentMode() == MedalRoundMode.SCORE_BASED;
         if (row.scoresheetId() != null && canOpenScoresheet) {
-            var openButton = new Button(new Icon(VaadinIcon.EYE));
+            var openButton = new Button(new Icon(VaadinIcon.PENCIL));
             openButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
             openButton.setId("medal-round-open-scoresheet-" + row.scoresheetId());
             openButton.setTooltipText(getTranslation("medal-round.action.open-scoresheet"));

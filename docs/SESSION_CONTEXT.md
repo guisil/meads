@@ -242,7 +242,7 @@ The 2026-05-28 triage below was assessed. Decisions:
 - **P12 (download-button lifecycle) and P13 (participant counts): DEFERRED** unconditionally — independent of judging, post-v0.4.0.
 - **P15 (bottom-positioned notifications overlap page-bottom content): DEFERRED** (raised 2026-05-30 during the walkthrough; do after the walkthrough, or fold into the scoresheet field-layout redesign). Vaadin `Notification`s sit at the bottom of the viewport and can cover content that lives at the page bottom: the **ScoresheetView Save button** right after saving/entering the next sheet (also a validation-error toast covers Save), and the **last row of a long entry list** for a few seconds after an add/save. Suggested fix: add a bottom spacer / padding on every page (a shared MainLayout content style, or a reusable bottom-gap) so the actionable controls + list tails clear the notification zone; alternatively reposition notifications (e.g. top, or middle) and/or shorten their duration. Affects ScoresheetView + any list/form whose primary action or last item sits at the very bottom — sweep for the pattern when implementing. Not urgent.
 - ~~**P16** (clarify the RoundView Total `*` suffix)~~ — **RESOLVED 2026-05-30 by removing the `*`** (change #16): the Total column now shows the running sum plain (no marker), matching the medal-round grid. SUBMITTED = locked total, BLANK/DRAFT/FILLED = live running sum, "—" when no scores. `RoundView.formatTotalCell`. No test asserted the `*`.
-- **P17 (judge "view mead details" action on the COMPARATIVE medal round): DEFERRED** (raised 2026-05-31; **check when redesigning the scoresheet**). On a COMPARATIVE medal round the judge grid intentionally hides Total/Status and the scoresheet-eye (judges award by tasting, independently of the prelim scores/comments). But a judge may still want the **objective entry details** — category, sweetness/strength/carbonation, ABV, ingredients (honey/other/wood) — without seeing any prior judge's **scores or comments**. Explore adding a per-row icon action (e.g. 👁 "View mead details") opening a **read-only entry-detail dialog** that shows only the entry's declared characteristics (the same fields on the bottle label), explicitly **excluding** scoresheet scores/comments and the entrant/mead brand name (anonymity). Applies at least to the COMPARATIVE medal round (where the eye is currently admin-only); consider whether the SCORE_BASED medal round + scoring RoundView want the same affordance. Source data already exists on `Entry`; no schema change anticipated. Fold into the scoresheet field-layout redesign since both touch what a judge sees.
+- ~~**P17 (judge "view mead details" action on the COMPARATIVE medal round): DEFERRED**~~ — **DONE 2026-05-31 (change #27, pulled forward at the user's request, scope widened to all rounds).** On a COMPARATIVE medal round the judge grid intentionally hides Total/Status and the scoresheet-eye (judges award by tasting, independently of the prelim scores/comments). But a judge may still want the **objective entry details** — category, sweetness/strength/carbonation, ABV, ingredients (honey/other/wood) — without seeing any prior judge's **scores or comments**. Explore adding a per-row icon action (e.g. 👁 "View mead details") opening a **read-only entry-detail dialog** that shows only the entry's declared characteristics (the same fields on the bottle label), explicitly **excluding** scoresheet scores/comments and the entrant/mead brand name (anonymity). Applies at least to the COMPARATIVE medal round (where the eye is currently admin-only); consider whether the SCORE_BASED medal round + scoring RoundView want the same affordance. Source data already exists on `Entry`; no schema change anticipated. Fold into the scoresheet field-layout redesign since both touch what a judge sees.
 
 **✅ (c) is DONE + PUSHED (2026-05-29)** — all 6 phases + the test-only `submit()` retire + the
 walkthrough substep rewrite are committed & pushed on `feature/judging-module` (per-phase record below
@@ -509,6 +509,23 @@ are almost always the small-category Score-based flow). Pruned 4 orphaned i18n k
 `medal-round.physical-table`. Tests: removed 2 MedalRoundView editable-select tests, repurposed 1
 (`shouldNotShowEditableModeOrTableSelectsInMedalRoundView`), added `JudgingAdminViewTest.shouldChangeMedalRoundModeViaEditDialog`.
 **1285 tests green.** No migration. Walkthrough §12.6.1 / §12.6.8 / §12.12.0 / §12.12.0.1 / §12.12.2 updated.
+
+**Walkthrough-found change #27 (FEATURE — P17 pulled forward, 2026-05-31, uncommitted):** per-row **"view
+mead details"** eye action on **all** round views. New `MeadDetailsDialog` (judging.internal) — a read-only
+dialog of an entry's tasting-relevant characteristics (sweetness, strength, ABV, carbonation, honey, other
+ingredients, wood-aged + details, additional info), modelled on the entry-admin "view entry" dialog but
+**omitting mead name, status, entrant, AND category (both initial + final)** — anonymity + category is
+constant per round. Title = the anonymized entry code. Reuses the existing `entry-admin.entries.view.*` field
+labels (DRY); 2 new keys `round.mead-details.title` + `round.action.mead-details` × 5 locales. **Icons:** the
+👁 **eye** now opens mead-details on every row of `RoundView` + `MedalRoundView` (all users — gives a
+COMPARATIVE judge, who can't open the prelim scoresheet, a way to see what they're tasting); the existing
+**scoresheet-open** icon changed **eye → ✏ pencil** (same behavior/visibility — judge+admin on scoring &
+SCORE_BASED, admin-only on COMPARATIVE). `MedalRoundView` gained an `EntryService` dependency. Each view
+exposes a public `openMeadDetailsDialog(entryId)` (the per-row button lives in a Grid component column Karibu
+can't click — same testability pattern as the other dialogs). +2 UI tests
+(`RoundViewTest.shouldOpenMeadDetailsDialogWithoutMeadName`,
+`MedalRoundViewTest.shouldOpenMeadDetailsDialogForJudgeOnComparativeMedalRoundWithoutMeadName`).
+**1287 tests green.** No migration. Walkthrough §12.10 / §12.12.1 updated.
 
 **Walkthrough-found enhancement #3 (2026-05-30, NOT yet committed — working tree dirty):** two admin-UX
 polish items raised mid-§12.6.8.1. **(1) Role-phrased round explanation.** `RoundView` + `MedalRoundView`

@@ -404,14 +404,29 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
         return running.toString();
     }
 
+    /** Opens the read-only mead-details dialog for an entry. Public for testability
+     *  (the per-row eye button lives in a Grid component column). */
+    public void openMeadDetailsDialog(UUID entryId) {
+        new MeadDetailsDialog(entryService.findEntryById(entryId)).open();
+    }
+
     private HorizontalLayout createActionsCell(Scoresheet sheet) {
         var actions = new HorizontalLayout();
         actions.setPadding(false);
         actions.setSpacing(true);
-        // Per-row Open (eye) for judges AND admins — row-click also navigates.
-        // The per-row judge Submit is gone: judges Save each sheet (-> FILLED),
-        // then the round-level Finalize submits them all at once.
-        var openButton = new Button(new Icon(VaadinIcon.EYE));
+        // View mead details (eye) — judges + admins, every row: the entry's
+        // objective characteristics, no scores/comments, no brand name.
+        var meadDetailsButton = new Button(new Icon(VaadinIcon.EYE));
+        meadDetailsButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+        meadDetailsButton.setId("mead-details-" + sheet.getEntryId());
+        meadDetailsButton.setTooltipText(getTranslation("round.action.mead-details"));
+        meadDetailsButton.addClickListener(e -> openMeadDetailsDialog(sheet.getEntryId()));
+        actions.add(meadDetailsButton);
+
+        // Open scoresheet (pencil = edit) for judges AND admins — row-click also
+        // navigates. The per-row judge Submit is gone: judges Save each sheet
+        // (-> FILLED), then the round-level Finalize submits them all at once.
+        var openButton = new Button(new Icon(VaadinIcon.PENCIL));
         openButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
         openButton.setId("open-" + sheet.getId());
         openButton.setTooltipText(getTranslation("table.action.open"));

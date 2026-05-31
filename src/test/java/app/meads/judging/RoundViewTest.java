@@ -34,6 +34,7 @@ import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.select.Select;
+import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.server.VaadinServletRequest;
 import org.junit.jupiter.api.AfterEach;
@@ -179,6 +180,39 @@ class RoundViewTest {
         var heading = _get(H2.class);
         assertThat(heading.getText()).contains("Amadora");
         assertThat(heading.getText()).contains("Table A");
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldOpenMeadDetailsDialogWithoutMeadName() {
+        advanceDivisionToJudging();
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Desc",
+                null, 1, CategoryScope.JUDGING));
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var judging = judgingService.ensureJudgingExists(division.getId());
+        var round = judgingService.createRound(judging.getId(), "Table A",
+                category.getId(), null, admin.getId());
+        var entrant = userRepository.save(new User(
+                "md-entrant-" + UUID.randomUUID() + "@example.com",
+                "Entrant", UserStatus.ACTIVE, Role.USER));
+        var entry = entryRepository.save(new Entry(division.getId(), entrant.getId(), 1,
+                "AMA-50", "Hiveheart Brew", category.getId(), Sweetness.DRY,
+                BigDecimal.valueOf(11.0), Carbonation.STILL, "Wildflower", null, false, null, null));
+        scoresheetRepository.save(new app.meads.judging.Scoresheet(round.getId(), entry.getId()));
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/rounds/" + round.getId());
+
+        // The per-row eye button lives in a Grid component column (Karibu can't
+        // click it); exercise the public open method it delegates to.
+        _get(RoundView.class).openMeadDetailsDialog(entry.getId());
+
+        var dialog = _get(Dialog.class, spec -> spec.withId("mead-details-dialog"));
+        assertThat(dialog.getHeaderTitle()).contains("AMA-50");
+        var values = _find(dialog, TextField.class).stream().map(TextField::getValue).toList();
+        assertThat(values).contains("Dry"); // sweetness is shown
+        assertThat(values).noneMatch(v -> v.contains("Hiveheart")); // mead name is hidden
     }
 
     @Test

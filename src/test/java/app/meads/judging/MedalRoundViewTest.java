@@ -33,6 +33,8 @@ import com.github.mvysny.kaributesting.v10.Routes;
 import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.dialog.Dialog;
+import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Span;
@@ -576,6 +578,42 @@ class MedalRoundViewTest {
         medalRound.markReady();
         judgingRoundRepository.save(medalRound);
         return category;
+    }
+
+    @Test
+    @WithMockUser(username = "md-details-judge@example.com", roles = "USER")
+    void shouldOpenMeadDetailsDialogForJudgeOnComparativeMedalRoundWithoutMeadName() {
+        // P17: the eye "mead details" dialog lets a COMPARATIVE judge see the
+        // entry's characteristics — without the brand name (and without the
+        // prelim scoresheet, which they can't open here).
+        var category = activeMedalRoundCategory();
+        var table = tableFor(category);
+        advancedEntry(category, table, "AMA-1");
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var judge = userRepository.save(new User(
+                "md-details-judge@example.com", "Details Judge", UserStatus.ACTIVE, Role.USER));
+        competitionService.addParticipantByEmail(competition.getId(),
+                judge.getEmail(), CompetitionRole.JUDGE, admin.getId());
+        var judgingId = judgingRepository.findByDivisionId(division.getId()).orElseThrow().getId();
+        var medalRound = judgingRoundRepository.findByJudgingId(judgingId).stream()
+                .filter(r -> r.getType() == RoundType.MEDAL
+                        && category.getId().equals(r.getDivisionCategoryId()))
+                .findFirst().orElseThrow();
+        judgingService.assignJudge(medalRound.getId(), judge.getId(), admin.getId());
+        var entry = entryRepository.findAll().stream()
+                .filter(e -> "AMA-1".equals(e.getEntryCode())).findFirst().orElseThrow();
+
+        navigateToMedalRound(category);
+
+        // The per-row eye button lives in a Grid component column (Karibu can't
+        // click it); exercise the public open method it delegates to.
+        _get(MedalRoundView.class).openMeadDetailsDialog(entry.getId());
+
+        var dialog = _get(Dialog.class, spec -> spec.withId("mead-details-dialog"));
+        assertThat(dialog.getHeaderTitle()).contains("AMA-1");
+        var values = _find(dialog, TextField.class).stream().map(TextField::getValue).toList();
+        assertThat(values).noneMatch(v -> v.contains("Mead")); // brand name "AMA-1 Mead" hidden
+        assertThat(values).isNotEmpty();
     }
 
     @Test
