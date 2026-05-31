@@ -283,7 +283,8 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         var physicalTableLine = new Span(getTranslation("medal-round.physical-table") + ": " + physicalTableLabel);
         physicalTableLine.setId("medal-round-physical-table-line");
 
-        var row = new HorizontalLayout(physicalTableLine, roundTypeBadge());
+        var row = new HorizontalLayout(roundTypeBadge());
+        row.setWidthFull();
         row.setDefaultVerticalComponentAlignment(Alignment.CENTER);
         row.setSpacing(true);
         if (isAdmin) {
@@ -291,6 +292,9 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
             statusBadge.setId("medal-round-status-line");
             row.add(statusBadge);
         }
+        // Table info sits at the far right of the info row.
+        physicalTableLine.getStyle().set("margin-left", "auto");
+        row.add(physicalTableLine);
         return row;
     }
 
@@ -330,6 +334,8 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         var line = new Span(getTranslation("round.judges") + ": "
                 + (names.isEmpty() ? "—" : names));
         line.setId("medal-round-judges-line");
+        // Right-aligned on its own line below the info row, under the Table info.
+        line.getStyle().set("align-self", "flex-end");
         return line;
     }
 

@@ -477,7 +477,10 @@ resolved via the existing `JudgingService.findJudgeUserIdsForRound(roundId)` (as
 `UserService.findById`. 1 new i18n key `round.judges` × 5 locales (shared by both views). Full TDD: +2 UI
 tests (`RoundViewTest.shouldShowAssignedJudgesLineToAdminOnScoringRound`,
 `MedalRoundViewTest.shouldShowAssignedJudgesLineToAdminOnMedalRound`). **1285 tests green.** No migration.
-Walkthrough §12.10 / §12.12.0 updated.
+Walkthrough §12.10 / §12.12.0 updated. **Layout follow-up (fast-cycle):** the **Table** info is pushed to
+the **far right** of the info row (`margin-left:auto`; Type badge + Status stay left) and the **Judges** line
+is **right-aligned** below it (`align-self:flex-end`) — both round views. Span ids/text unchanged, so the
+tests still cover them.
 
 **Walkthrough-found enhancement #3 (2026-05-30, NOT yet committed — working tree dirty):** two admin-UX
 polish items raised mid-§12.6.8.1. **(1) Role-phrased round explanation.** `RoundView` + `MedalRoundView`

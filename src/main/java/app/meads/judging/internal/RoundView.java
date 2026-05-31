@@ -677,6 +677,8 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
         var line = new Span(getTranslation("round.judges") + ": "
                 + (names.isEmpty() ? "—" : names));
         line.setId("round-judges-line");
+        // Right-aligned on its own line below the info row, under the Table info.
+        line.getStyle().set("align-self", "flex-end");
         return line;
     }
 
@@ -698,7 +700,8 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
         badge.setId("round-type-badge");
         badge.getElement().getThemeList().add("badge contrast");
 
-        var row = new HorizontalLayout(tableLine, badge);
+        var row = new HorizontalLayout(badge);
+        row.setWidthFull();
         row.setDefaultVerticalComponentAlignment(Alignment.CENTER);
         row.setSpacing(true);
         if (isAdmin) {
@@ -706,6 +709,9 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
             statusBadge.setId("round-status-line");
             row.add(statusBadge);
         }
+        // Table info sits at the far right of the info row.
+        tableLine.getStyle().set("margin-left", "auto");
+        row.add(tableLine);
         return row;
     }
 
