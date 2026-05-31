@@ -559,6 +559,15 @@ defense-in-depth. AwardsModuleTest unaffected (awards no gold → guard passes);
 (guard sits after `requireNotFrozen`). +4 tests (completeBos reject + allow-when-exhausted, canFinalizeBos,
 JudgingAdminView disabled-button). **1293 green.** No migration. Walkthrough §12.13.4 rewritten (D11 superseded).
 
+**Walkthrough-found change #31 (2026-05-31, uncommitted):** `JudgingAdminView.computeDefaultTabIndex` now opens
+the **BOS tab** by default once `Judging.phase` is `BOS` or `COMPLETE` (BOS-phase branch added first, ahead of
+the Tables/Results/Rounds logic) — so "← Back to dashboard" from the placements form (BosView) returns to BOS,
+not Results. Side-effect: the BOS-tab header buttons are now in the DOM by default, so 3 existing BOS dialog
+tests collided on button text ("Finalize/Reset/Reopen BOS" matched both the header button and the dialog
+confirm) — gave the dialog confirm buttons ids (`bos-{finalize,reset,reopen}-confirm`) and switched those
+tests to click by id. +1 test (`shouldDefaultToBosTabWhenPhaseIsBos`). **1294 green.** No migration.
+Walkthrough §12.13 updated.
+
 **Walkthrough-found enhancement #3 (2026-05-30, NOT yet committed — working tree dirty):** two admin-UX
 polish items raised mid-§12.6.8.1. **(1) Role-phrased round explanation.** `RoundView` + `MedalRoundView`
 showed the same second-person "what the judge does" blurb to everyone; admins observe rather than score,

@@ -1199,6 +1199,26 @@ class JudgingAdminViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldDefaultToBosTabWhenPhaseIsBos() {
+        advanceDivisionToJudging();
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+        var judging = judgingRepository.findByDivisionId(division.getId()).orElseThrow();
+        judging.markActive();
+        judging.startBos();
+        judgingRepository.save(judging);
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        // Once BOS is the active phase, the dashboard opens on the BOS tab (3)
+        // — so "Back to dashboard" from the placements form lands there.
+        assertThat(_get(TabSheet.class).getSelectedIndex()).isEqualTo(3);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     @SuppressWarnings("unchecked")
     void shouldDisableFinalizeBosWhenAConfirmedGoldIsStillUnplaced() {
         advanceDivisionToJudging();
@@ -1254,7 +1274,7 @@ class JudgingAdminViewTest {
         var view = _get(JudgingAdminView.class);
         view.openFinalizeBosDialog();
 
-        _click(_get(Button.class, spec -> spec.withText("Finalize BOS")));
+        _click(_get(Button.class, spec -> spec.withId("bos-finalize-confirm")));
 
         var refreshed = judgingRepository.findByDivisionId(division.getId()).orElseThrow();
         assertThat(refreshed.getPhase()).isEqualTo(JudgingPhase.COMPLETE);
@@ -1279,7 +1299,7 @@ class JudgingAdminViewTest {
         var view = _get(JudgingAdminView.class);
         view.openResetBosDialog();
 
-        _click(_get(Button.class, spec -> spec.withText("Reset BOS")));
+        _click(_get(Button.class, spec -> spec.withId("bos-reset-confirm")));
 
         var refreshed = judgingRepository.findByDivisionId(division.getId()).orElseThrow();
         assertThat(refreshed.getPhase()).isEqualTo(JudgingPhase.ACTIVE);
@@ -1305,7 +1325,7 @@ class JudgingAdminViewTest {
         var view = _get(JudgingAdminView.class);
         view.openReopenBosDialog();
 
-        _click(_get(Button.class, spec -> spec.withText("Reopen BOS")));
+        _click(_get(Button.class, spec -> spec.withId("bos-reopen-confirm")));
 
         var refreshed = judgingRepository.findByDivisionId(division.getId()).orElseThrow();
         assertThat(refreshed.getPhase()).isEqualTo(JudgingPhase.BOS);

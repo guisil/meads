@@ -2234,7 +2234,7 @@ A SCORE_BASED medal round owns its scoresheets (small-category flow, §12.6.8.1)
 - [ ] **Expected:** A placements grid (id `bos-placements-grid`) with N rows (one per slot). Columns: Place, Entry, Mead name, Category, Awarded by, Action. The grid **grows to fit all rows** (no fixed-height scrollbar) and its data columns are **resizable + sortable**.
 - [ ] **Expected:** Empty rows show `[+]` Assign button in the Action column. Filled rows show ✏ Reassign and 🗑 Delete.
 - [ ] **Expected:** A candidates grid (id `bos-candidates-grid`) listing GOLD MedalAwards across all categories where the entry isn't placed yet. Columns: Entry # (prefixed), Code, Mead name, Category. The grid **grows to fit all rows** and its columns are **resizable + sortable**.
-- [ ] **Expected:** "← Back to dashboard" anchor at the bottom returning to JudgingAdmin.
+- [ ] **Expected:** "← Back to dashboard" anchor at the bottom returning to JudgingAdmin. Once the phase is `BOS` (or `COMPLETE`), the dashboard **opens on the BOS tab** (not Results), so Back to dashboard lands you back where you were.
 
 #### 12.13.1 Assign
 

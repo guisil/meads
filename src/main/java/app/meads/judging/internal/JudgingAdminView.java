@@ -220,6 +220,13 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
      * begins.
      */
     private int computeDefaultTabIndex() {
+        // Once BOS is the active (or completed) phase, the work is on the BOS
+        // tab — open there so "Back to dashboard" from the placements form
+        // returns to BOS, not Results.
+        var phase = judging.getPhase();
+        if (phase == JudgingPhase.BOS || phase == JudgingPhase.COMPLETE) {
+            return 3; // BOS
+        }
         var physicalTables = judgingService.findPhysicalTablesByDivision(division.getId());
         if (physicalTables.isEmpty()) {
             return 0; // Tables
@@ -1653,6 +1660,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
                         .addThemeVariants(NotificationVariant.LUMO_ERROR);
             }
         });
+        confirm.setId("bos-finalize-confirm");
         confirm.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         confirm.setDisableOnClick(true);
         var cancel = new Button(getTranslation("button.cancel"), e -> dialog.close());
@@ -1676,6 +1684,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
                         .addThemeVariants(NotificationVariant.LUMO_ERROR);
             }
         });
+        confirm.setId("bos-reopen-confirm");
         confirm.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         confirm.setDisableOnClick(true);
         var cancel = new Button(getTranslation("button.cancel"), e -> dialog.close());
@@ -1699,6 +1708,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
                         .addThemeVariants(NotificationVariant.LUMO_ERROR);
             }
         });
+        confirm.setId("bos-reset-confirm");
         confirm.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
         confirm.setDisableOnClick(true);
         var cancel = new Button(getTranslation("button.cancel"), e -> dialog.close());
