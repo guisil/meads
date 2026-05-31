@@ -1199,6 +1199,43 @@ class JudgingAdminViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    @SuppressWarnings("unchecked")
+    void shouldDisableFinalizeBosWhenAConfirmedGoldIsStillUnplaced() {
+        advanceDivisionToJudging();
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry", "d", null, 1, CategoryScope.JUDGING));
+        var entrant = userRepository.save(new User(
+                "bos-finalize-" + UUID.randomUUID() + "@example.com", "E", UserStatus.ACTIVE, Role.USER));
+        var entry = entryRepository.save(new Entry(division.getId(), entrant.getId(), 1, "PRO-1", "Mead",
+                category.getId(), Sweetness.DRY, BigDecimal.valueOf(11.0), Carbonation.STILL,
+                "Honey", null, false, null, null));
+        var gold = new MedalAward(entry.getId(), division.getId(), category.getId(), Medal.GOLD, admin.getId());
+        gold.confirm(admin.getId());
+        medalAwardRepository.save(gold);
+
+        // Navigate once to materialize the Judging (ensureJudgingExists), then
+        // force phase to BOS.
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+        var judging = judgingRepository.findByDivisionId(division.getId()).orElseThrow();
+        judging.markActive();
+        judging.startBos();
+        judgingRepository.save(judging);
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(3); // BOS tab
+
+        // bosPlaces defaults to 1, 0 placements, one unplaced confirmed gold ->
+        // an empty place is still fillable, so Finalize must be disabled.
+        var finalizeButton = _get(Button.class, spec -> spec.withId("bos-finalize-button"));
+        assertThat(finalizeButton.isEnabled()).isFalse();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldFinalizeBosWhenFinalizeDialogConfirmed() {
         advanceDivisionToJudging();
 

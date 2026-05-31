@@ -233,6 +233,9 @@ public interface JudgingService {
 
     void completeBos(@NotNull UUID divisionId, @NotNull UUID adminUserId);
 
+    /** True when BOS can be finalized — every place filled, or no unplaced GOLD remains to fill an empty one. */
+    boolean canFinalizeBos(@NotNull UUID divisionId, @NotNull UUID adminUserId);
+
     void reopenBos(@NotNull UUID divisionId, @NotNull UUID adminUserId);
 
     void resetBos(@NotNull UUID divisionId, @NotNull UUID adminUserId);

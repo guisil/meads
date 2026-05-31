@@ -1409,6 +1409,11 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
                     e -> openFinalizeBosDialog());
             finalizeButton.setId("bos-finalize-button");
             finalizeButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+            boolean canFinalize = judgingService.canFinalizeBos(division.getId(), currentUserId);
+            finalizeButton.setEnabled(canFinalize);
+            var finalizeWrapper = wrapWithTooltip(finalizeButton, canFinalize
+                    ? getTranslation("judging-admin.bos.action.finalize")
+                    : getTranslation("judging-admin.bos.action.finalize.disabled-tooltip"));
 
             var resetButton = new Button(getTranslation("judging-admin.bos.action.reset"),
                     e -> openResetBosDialog());
@@ -1420,7 +1425,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
             var resetWrapper = wrapWithTooltip(resetButton, placementsExist
                     ? getTranslation("judging-admin.bos.action.reset.disabled-tooltip")
                     : getTranslation("judging-admin.bos.action.reset"));
-            header.add(finalizeButton, resetWrapper);
+            header.add(finalizeWrapper, resetWrapper);
         } else if (phase == JudgingPhase.COMPLETE) {
             var reopenButton = new Button(getTranslation("judging-admin.bos.action.reopen"),
                     e -> openReopenBosDialog());

@@ -341,6 +341,64 @@ class JudgingServiceMedalsBosTest {
     // === BOS placements ===
 
     @Test
+    void shouldRejectCompleteBosWhenAPlaceCouldStillBeFilledByAnUnplacedGold() {
+        judging.markActive();
+        judging.startBos();
+        // bosPlaces = 3 (setUp). One place filled, two empty, and a second
+        // confirmed gold is still unplaced — finalize must be blocked.
+        var placedGold = new MedalAward(entryId, divisionId, divisionCategoryId, Medal.GOLD, adminUserId);
+        placedGold.confirm(adminUserId);
+        var unplacedGold = new MedalAward(UUID.randomUUID(), divisionId, divisionCategoryId,
+                Medal.GOLD, adminUserId);
+        unplacedGold.confirm(adminUserId);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(judgingRepository.findByDivisionId(divisionId)).willReturn(Optional.of(judging));
+        given(bosPlacementRepository.findByDivisionIdOrderByPlace(divisionId))
+                .willReturn(List.of(new BosPlacement(divisionId, entryId, 1, adminUserId)));
+        given(medalAwardRepository.findByDivisionId(divisionId))
+                .willReturn(List.of(placedGold, unplacedGold));
+
+        assertThatThrownBy(() -> service.completeBos(divisionId, adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.bos.cannot-complete-unfilled");
+    }
+
+    @Test
+    void shouldCompleteBosWithEmptyPlacesWhenNoUnplacedGoldRemains() {
+        judging.markActive();
+        judging.startBos();
+        // bosPlaces = 3, only one gold exists and it is placed — the two empty
+        // places can't be filled, so finalize is allowed (short field).
+        var placedGold = new MedalAward(entryId, divisionId, divisionCategoryId, Medal.GOLD, adminUserId);
+        placedGold.confirm(adminUserId);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(judgingRepository.findByDivisionId(divisionId)).willReturn(Optional.of(judging));
+        given(bosPlacementRepository.findByDivisionIdOrderByPlace(divisionId))
+                .willReturn(List.of(new BosPlacement(divisionId, entryId, 1, adminUserId)));
+        given(medalAwardRepository.findByDivisionId(divisionId)).willReturn(List.of(placedGold));
+
+        service.completeBos(divisionId, adminUserId);
+
+        assertThat(judging.getPhase()).isEqualTo(JudgingPhase.COMPLETE);
+    }
+
+    @Test
+    void shouldReportCannotFinalizeBosWhenGoldUnplacedAndPlaceEmpty() {
+        var placedGold = new MedalAward(entryId, divisionId, divisionCategoryId, Medal.GOLD, adminUserId);
+        placedGold.confirm(adminUserId);
+        var unplacedGold = new MedalAward(UUID.randomUUID(), divisionId, divisionCategoryId,
+                Medal.GOLD, adminUserId);
+        unplacedGold.confirm(adminUserId);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(bosPlacementRepository.findByDivisionIdOrderByPlace(divisionId))
+                .willReturn(List.of(new BosPlacement(divisionId, entryId, 1, adminUserId)));
+        given(medalAwardRepository.findByDivisionId(divisionId))
+                .willReturn(List.of(placedGold, unplacedGold));
+
+        assertThat(service.canFinalizeBos(divisionId, adminUserId)).isFalse();
+    }
+
+    @Test
     void shouldRecordBosPlacementWhenEntryHasGoldAndPhaseBos() {
         judging.markActive();
         judging.startBos();

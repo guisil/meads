@@ -2257,10 +2257,12 @@ A SCORE_BASED medal round owns its scoresheets (small-category flow, §12.6.8.1)
 - [ ] Click Delete.
 - [ ] **Expected:** Notification "Placement N removed."; row returns to empty state; candidate returns to the candidates grid.
 
-#### 12.13.4 Empty BOS allowed
+#### 12.13.4 Finalize gate — empty place blocks only while a gold could still fill it
 
-- [ ] Leave at least one place empty and Finalize BOS (from JudgingAdmin BOS tab).
-- [ ] **Expected:** Phase flips to `COMPLETE` without error. Per §2.D D11, empty BOS slots are allowed.
+The old "any empty place allowed" rule (D11) was tightened: **Finalize BOS is blocked while an empty place could still be filled** — i.e. a confirmed GOLD medal hasn't been placed yet. Empty places are allowed only once the candidates are exhausted (a field with fewer golds than `bosPlaces`).
+
+- [ ] With at least one place empty **and** an unplaced gold still in the candidates grid: on the JudgingAdmin **BOS tab**, the **Finalize BOS** button (`bos-finalize-button`) is **disabled** with tooltip *"Assign the remaining Best of Show places first — Gold medals are still unplaced."* (Forcing the service call anyway → error `error.bos.cannot-complete-unfilled`.)
+- [ ] Place all remaining gold candidates (or leave empty places only when **no** unplaced golds remain — e.g. 2 golds but `bosPlaces = 3`). **Expected:** Finalize BOS enables; click it → Phase flips to `COMPLETE` (empty places are fine once nothing can fill them).
 
 #### 12.13.5 Read-only when COMPLETE
 

@@ -546,6 +546,19 @@ rows, no fixed-height scrollbar — matches JudgingAdminView/MedalRoundView) and
 `setResizable(true).setSortable(true)` (the placements Action component column is resizable, not sortable). No
 new tests (existing `BosViewTest` covers column structure, unchanged); **1289 green.** Walkthrough §12.13 updated.
 
+**Walkthrough-found change #30 (BUG FIX / decision reversal, 2026-05-31, uncommitted):** BOS could be finalized
+with empty places even when GOLD candidates were still unplaced (the old D11 "empty BOS allowed"). **Reversed**
+per the user to **"block only if fillable"**: `JudgingServiceImpl.completeBos` now rejects
+(`error.bos.cannot-complete-unfilled` × 5 locales) when an empty place could still be filled — i.e. a confirmed
+GOLD medal isn't placed AND `placements < bosPlaces`. Once candidates are exhausted, empty places are still
+allowed (a field shorter than `bosPlaces`). Extracted private `bosHasFillableEmptyPlace(divisionId)` + new
+public `JudgingService.canFinalizeBos(divisionId, adminUserId)` (single source of truth). UI: the BOS-tab
+**Finalize BOS** button is now **disabled with a tooltip** (`judging-admin.bos.action.finalize.disabled-tooltip`
+× 5 locales) when `!canFinalizeBos`, mirroring the Start/Reset pattern; the service guard remains as
+defense-in-depth. AwardsModuleTest unaffected (awards no gold → guard passes); the freeze test throws earlier
+(guard sits after `requireNotFrozen`). +4 tests (completeBos reject + allow-when-exhausted, canFinalizeBos,
+JudgingAdminView disabled-button). **1293 green.** No migration. Walkthrough §12.13.4 rewritten (D11 superseded).
+
 **Walkthrough-found enhancement #3 (2026-05-30, NOT yet committed — working tree dirty):** two admin-UX
 polish items raised mid-§12.6.8.1. **(1) Role-phrased round explanation.** `RoundView` + `MedalRoundView`
 showed the same second-person "what the judge does" blurb to everyone; admins observe rather than score,

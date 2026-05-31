@@ -1600,6 +1600,12 @@ public class JudgingServiceImpl implements JudgingService {
         requireNotFrozen(divisionId);
         var judging = judgingRepository.findByDivisionId(divisionId)
                 .orElseThrow(() -> new BusinessRuleException("error.judging.not-found"));
+        // Block finalize while an empty place could still be filled — i.e. a
+        // confirmed GOLD medal hasn't been placed yet. Once candidates are
+        // exhausted, empty places are allowed (fields shorter than bosPlaces).
+        if (bosHasFillableEmptyPlace(divisionId)) {
+            throw new BusinessRuleException("error.bos.cannot-complete-unfilled");
+        }
         try {
             judging.completeBos();
         } catch (IllegalStateException e) {
@@ -1610,6 +1616,31 @@ public class JudgingServiceImpl implements JudgingService {
         eventPublisher.publishEvent(new BosCompletedEvent(
                 divisionId, placements.size(), Instant.now()));
         log.info("Completed BOS for division {}", divisionId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean canFinalizeBos(UUID divisionId, UUID adminUserId) {
+        requireAuthorizedForDivision(divisionId, adminUserId);
+        return !bosHasFillableEmptyPlace(divisionId);
+    }
+
+    /**
+     * True when BOS has an empty place that a still-unplaced confirmed GOLD could
+     * fill — the condition that blocks finalize. False once every place is filled
+     * OR no unplaced gold remains (a field shorter than {@code bosPlaces}).
+     */
+    private boolean bosHasFillableEmptyPlace(UUID divisionId) {
+        var placements = bosPlacementRepository.findByDivisionIdOrderByPlace(divisionId);
+        var placedEntryIds = placements.stream()
+                .map(BosPlacement::getEntryId)
+                .collect(Collectors.toSet());
+        boolean unplacedGoldExists = medalAwardRepository.findByDivisionId(divisionId).stream()
+                .filter(a -> a.getMedal() == Medal.GOLD)
+                .filter(MedalAward::isConfirmed)
+                .anyMatch(a -> !placedEntryIds.contains(a.getEntryId()));
+        int bosPlaces = competitionService.findDivisionById(divisionId).getBosPlaces();
+        return placements.size() < bosPlaces && unplacedGoldExists;
     }
 
     @Override
