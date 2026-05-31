@@ -206,12 +206,12 @@ public class AwardsServiceImpl implements AwardsService {
         var entries = entryService.findEntriesByDivisionAndUser(divisionId, userId);
         var rows = new ArrayList<EntrantResultRow>();
         for (var entry : entries) {
-            rows.add(buildEntrantRow(entry));
+            rows.add(buildEntrantRow(entry, division.getEntryPrefix()));
         }
         return rows;
     }
 
-    private EntrantResultRow buildEntrantRow(Entry entry) {
+    private EntrantResultRow buildEntrantRow(Entry entry, String entryPrefix) {
         var categoryInfo = resolveCategoryInfo(entry);
         var sheet = scoresheetService.findByEntryIdOrderBySubmittedAtAsc(entry.getId())
                 .stream().findFirst().orElse(null);
@@ -223,8 +223,13 @@ public class AwardsServiceImpl implements AwardsService {
                 .map(a -> a.getMedal()).orElse(null);
         var bosPlace = judgingService.findBosPlacementByEntryId(entry.getId())
                 .map(p -> p.getPlace()).orElse(null);
+        // Entrants see their own entry NUMBER (prefixed, e.g. PRO-1) — not the
+        // anonymized judging code.
+        var entryNumber = entryPrefix != null && !entryPrefix.isBlank()
+                ? entryPrefix + "-" + entry.getEntryNumber()
+                : String.valueOf(entry.getEntryNumber());
         return new EntrantResultRow(
-                entry.getId(), entry.getEntryCode(), entry.getMeadName(),
+                entry.getId(), entryNumber, entry.getMeadName(),
                 categoryInfo.code(), categoryInfo.name(),
                 entry.getStatus(), total, advanced, medal, bosPlace, sheetId);
     }

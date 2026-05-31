@@ -118,7 +118,13 @@ public class MyResultsView extends VerticalLayout implements BeforeEnterObserver
         search.setValueChangeMode(ValueChangeMode.EAGER);
         search.setWidth("280px");
         search.addValueChangeListener(e -> applyFilter(e.getValue()));
-        add(search);
+
+        var spacer = new Span();
+        var toolbar = new HorizontalLayout(search, spacer, downloadAllComponent(rows, currentUserId));
+        toolbar.setWidthFull();
+        toolbar.setDefaultVerticalComponentAlignment(Alignment.END);
+        toolbar.setFlexGrow(1, spacer);
+        add(toolbar);
 
         grid = new Grid<>();
         grid.setId("my-results-grid");
@@ -126,38 +132,68 @@ public class MyResultsView extends VerticalLayout implements BeforeEnterObserver
 
         grid.addColumn(EntrantResultRow::entryNumber)
                 .setHeader(getTranslation("my-results.column.entry"))
-                .setResizable(true).setSortable(true);
+                .setResizable(true).setSortable(true)
+                .setWidth("110px").setFlexGrow(0);
+        // Mead Name takes the slack so long names fit.
         grid.addColumn(EntrantResultRow::meadName)
                 .setHeader(getTranslation("my-results.column.mead-name"))
-                .setResizable(true).setSortable(true);
+                .setResizable(true).setSortable(true)
+                .setTooltipGenerator(EntrantResultRow::meadName)
+                .setFlexGrow(1);
         // Final category: code only, with the full name in a hover tooltip.
         grid.addColumn(EntrantResultRow::categoryCode)
                 .setHeader(getTranslation("my-results.column.category"))
                 .setResizable(true).setSortable(true)
-                .setTooltipGenerator(EntrantResultRow::categoryName);
+                .setTooltipGenerator(EntrantResultRow::categoryName)
+                .setWidth("130px").setFlexGrow(0);
         grid.addColumn(r -> r.round1Total() == null ? "—" : (r.round1Total() + " / 100"))
                 .setHeader(getTranslation("my-results.column.score"))
                 .setResizable(true)
                 .setComparator(Comparator.comparing(EntrantResultRow::round1Total,
-                        Comparator.nullsFirst(Comparator.naturalOrder())));
+                        Comparator.nullsFirst(Comparator.naturalOrder())))
+                .setWidth("100px").setFlexGrow(0);
         grid.addComponentColumn(this::advancedCell)
                 .setHeader(getTranslation("my-results.column.advanced"))
-                .setResizable(true);
+                .setResizable(true).setWidth("110px").setFlexGrow(0);
         grid.addColumn(r -> formatMedal(r.medal()))
                 .setHeader(getTranslation("my-results.column.medal"))
                 .setResizable(true)
                 .setComparator(Comparator.comparingInt(r ->
-                        r.medal() == null ? Integer.MAX_VALUE : r.medal().ordinal()));
+                        r.medal() == null ? Integer.MAX_VALUE : r.medal().ordinal()))
+                .setWidth("90px").setFlexGrow(0);
         grid.addColumn(r -> r.bosPlace() == null ? "—" : String.valueOf(r.bosPlace()))
                 .setHeader(getTranslation("my-results.column.bos"))
                 .setResizable(true)
                 .setComparator(Comparator.comparing(EntrantResultRow::bosPlace,
-                        Comparator.nullsLast(Comparator.naturalOrder())));
+                        Comparator.nullsLast(Comparator.naturalOrder())))
+                .setWidth("100px").setFlexGrow(0);
         grid.addComponentColumn(r -> actionsCell(r, compShortName, divShortName, currentUserId))
-                .setHeader(getTranslation("my-results.column.actions"));
+                .setHeader(getTranslation("my-results.column.actions"))
+                .setWidth("110px").setFlexGrow(0);
 
         grid.setItems(rows);
         add(grid);
+    }
+
+    private com.vaadin.flow.component.Component downloadAllComponent(List<EntrantResultRow> rows, UUID userId) {
+        var ids = rows.stream()
+                .filter(r -> r.scoresheetId() != null)
+                .map(EntrantResultRow::scoresheetId)
+                .toList();
+        var btn = new Button(getTranslation("my-results.download-all"), new Icon(VaadinIcon.DOWNLOAD_ALT));
+        btn.setId("my-results-download-all");
+        if (ids.isEmpty()) {
+            btn.setEnabled(false);
+            return btn;
+        }
+        var locale = getLocale();
+        var resource = new StreamResource("scoresheets.pdf",
+                () -> new ByteArrayInputStream(scoresheetPdfService.generateBatchPdf(
+                        ids, userId, AnonymizationLevel.ANONYMIZED, locale)));
+        var anchor = new Anchor(resource, "");
+        anchor.add(btn);
+        anchor.getElement().setAttribute("download", true);
+        return anchor;
     }
 
     private void applyFilter(String needle) {
@@ -190,7 +226,8 @@ public class MyResultsView extends VerticalLayout implements BeforeEnterObserver
             return cell;
         }
         var view = new Button(new Icon(VaadinIcon.EYE));
-        view.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+        view.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE,
+                ButtonVariant.LUMO_SMALL);
         view.setId("my-results-view-scoresheet-" + row.entryId());
         view.setTooltipText(getTranslation("my-results.view-scoresheet"));
         view.addClickListener(e -> UI.getCurrent().navigate(
@@ -208,8 +245,11 @@ public class MyResultsView extends VerticalLayout implements BeforeEnterObserver
                         scoresheetId, userId, AnonymizationLevel.ANONYMIZED, locale)));
         var anchor = new Anchor(resource, "");
         anchor.setId("my-results-download-scoresheet-" + scoresheetId);
-        var icon = new Icon(VaadinIcon.DOWNLOAD);
-        icon.getElement().setProperty("title", getTranslation("my-results.download-scoresheet"));
+        // Small inline icon button, matching the entry grid's download-label action.
+        var icon = new Button(new Icon(VaadinIcon.DOWNLOAD_ALT));
+        icon.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE,
+                ButtonVariant.LUMO_SMALL);
+        icon.setTooltipText(getTranslation("my-results.download-scoresheet"));
         anchor.add(icon);
         anchor.getElement().setAttribute("download", true);
         return anchor;

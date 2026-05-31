@@ -98,6 +98,15 @@ class ScoresheetPdfServiceTest {
     }
 
     @Test
+    void shouldGenerateBatchPdfMergingScoresheets() {
+        given(competitionService.isAuthorizedForDivision(divisionId, ownerUserId)).willReturn(false);
+        var pdf = service.generateBatchPdf(java.util.List.of(scoresheetId, scoresheetId),
+                ownerUserId, AnonymizationLevel.ANONYMIZED, Locale.ENGLISH);
+        assertThat(pdf).isNotEmpty();
+        assertThat(new String(pdf, 0, 4)).isEqualTo("%PDF");
+    }
+
+    @Test
     void shouldGenerateFullPdfForAdmin() {
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
         var pdf = service.generatePdf(scoresheetId, adminUserId,

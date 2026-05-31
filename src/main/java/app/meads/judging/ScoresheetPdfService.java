@@ -13,14 +13,17 @@ import org.openpdf.text.Font;
 import org.openpdf.text.PageSize;
 import org.openpdf.text.Paragraph;
 import org.openpdf.text.pdf.BaseFont;
+import org.openpdf.text.pdf.PdfCopy;
 import org.openpdf.text.pdf.PdfPCell;
 import org.openpdf.text.pdf.PdfPTable;
+import org.openpdf.text.pdf.PdfReader;
 import org.openpdf.text.pdf.PdfWriter;
 import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -158,6 +161,37 @@ public class ScoresheetPdfService {
             throw new RuntimeException("Failed to generate scoresheet PDF", e);
         }
         log.info("Generated scoresheet PDF for {} (level={})", scoresheetId, level);
+        return baos.toByteArray();
+    }
+
+    /**
+     * Combines several scoresheet PDFs into one document (one scoresheet per
+     * page). Each is generated via {@link #generatePdf} — so the same auth rules
+     * apply per scoresheet — then merged with {@link PdfCopy}.
+     */
+    public byte[] generateBatchPdf(List<UUID> scoresheetIds, UUID requestingUserId,
+                                   AnonymizationLevel level, Locale locale) {
+        var baos = new ByteArrayOutputStream();
+        var document = new Document();
+        try {
+            var copy = new PdfCopy(document, baos);
+            document.open();
+            for (var id : scoresheetIds) {
+                var single = generatePdf(id, requestingUserId, level, locale);
+                var reader = new PdfReader(single);
+                for (int page = 1; page <= reader.getNumberOfPages(); page++) {
+                    copy.addPage(copy.getImportedPage(reader, page));
+                }
+                reader.close();
+            }
+            document.close();
+        } catch (BusinessRuleException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to generate batch scoresheet PDF", e);
+            throw new RuntimeException("Failed to generate batch scoresheet PDF", e);
+        }
+        log.info("Generated batch scoresheet PDF ({} sheets, level={})", scoresheetIds.size(), level);
         return baos.toByteArray();
     }
 

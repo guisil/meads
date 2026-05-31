@@ -2480,9 +2480,9 @@ Steps below are admin-driven unless noted.
 - [ ] Click "View your results".
 - [ ] **Expected:** Navigates to `/competitions/chip-2026/divisions/amadora/my-results`.
 - [ ] **Expected:** Heading "CHIP 2026 — Amadora — Your results".
-- [ ] **Expected:** An entry-grid-like results grid: a **search field** (filters by mead name) above it; **sortable + resizable** columns: **Entry #**, **Mead**, **Category** (code only, hover tooltip = full name), **Round 1 total** (`N / 100` or `—`), **Advanced** (green ✓ icon when advanced, `—` otherwise), **Medal** (🥇/🥈/🥉 or `—`), **BOS place** (number or `—`), **Action**.
-- [ ] **Expected:** the Action column shows a **👁 eye** (view scoresheet — works; opens the scoresheet view) and a **⬇ download** icon (download the scoresheet PDF). **NOTE — DEFERRED:** the scoresheet **PDF download is currently broken** (and the scoresheet view hides comments/advanced) — fix deferred; the download icon + a future "Download all scoresheets" button land with that PDF fix. The 👁 eye navigation works.
-- [ ] **Expected:** Entries with no medal render as `—` in the Medal column; rows with no SUBMITTED scoresheet show `—` in the Action column.
+- [ ] **Expected:** An entry-grid-styled results grid matching the entry grid's column labels + sizes: a **search field** (filters by mead name) on a toolbar with a **"Download all scoresheets"** button on the right; **sortable + resizable** columns: **Entry #** (the entrant's prefixed entry **number**, e.g. `PRO-1` — *not* the anonymized code; narrow column), **Mead Name** (takes the slack so long names fit), **Final Category** (code only, hover tooltip = full name), **Score** (`N / 100` or `—`), **Advanced** (green ✓ icon when advanced, `—` otherwise), **Medal** (🥇/🥈/🥉 or `—`), **BOS place** (number or `—`), **Actions**.
+- [ ] **Expected:** the Actions column shows a small **👁 eye** (view scoresheet) and a small **⬇ download** icon (download that scoresheet PDF) — sized like the entry grid's inline action buttons. The toolbar **"Download all scoresheets"** button downloads one PDF with all the entrant's submitted scoresheets (disabled when none). *(NOTE: the separate scoresheet **view page** still hides per-criterion comments + the advanced flag — deferred. The downloads themselves generate valid PDFs.)*
+- [ ] **Expected:** Entries with no medal render as `—` in the Medal column; rows with no SUBMITTED scoresheet show `—` in the Actions column.
 
 ### 13.5 Scoresheet drill-in (entrant)
 

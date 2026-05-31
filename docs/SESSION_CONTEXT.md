@@ -600,8 +600,23 @@ present now but won't produce a file until then). **STEP 2 — chosen approach "
   publication; `.orElse("my-entries")`). **MainLayout** adds a **"My Results"** SideNavItem (trophy icon,
   `nav.my-results` × 5 locales) to the same target when the checker returns a path — keeping "My Entries". +3
   unit tests (`EntrantResultsCheckerImplTest`). **1298 green.** Entrant results redesign (change #33) COMPLETE.
-  Walkthrough §13.4 updated. (Reminder: the scoresheet **PDF download** + on-screen **comments/advanced** remain
-  the open DEFERRED items, along with the "Download all scoresheets" button.)
+  Walkthrough §13.4 updated.
+
+**Walkthrough-found change #34 (2026-05-31, uncommitted):** entrant results grid polish + download-all.
+**(bug)** `AwardsServiceImpl.buildEntrantRow` was feeding `entry.getEntryCode()` (anonymized) into the row's
+`entryNumber` — now passes the **prefixed entry number** (`prefix-number`, the entrant's own id). **(styling)**
+`MyResultsView` columns relabeled + sized to match the entry grid: **Entry #** (narrow, fixed), **Mead Name**
+(flex-grows for long names), **Final Category** (code + tooltip), **Score** (was "Round 1 total"), Advanced,
+Medal, BOS, **Actions** — the my-results column-label values were updated × 5 locales to the entry-grid wording;
+the per-row 👁/⬇ buttons are now small inline icon buttons (`LUMO_SMALL`) like the entry grid's, ⬇ uses
+`DOWNLOAD_ALT`. **(feature)** added the **"Download all scoresheets"** toolbar button (`my-results-download-all`,
+disabled when no submitted sheets) → new `ScoresheetPdfService.generateBatchPdf(ids, …)` which generates each
+via `generatePdf` and merges with OpenPDF `PdfCopy`. New keys `my-results.download-all` × 5. +1 test
+(`ScoresheetPdfServiceTest.shouldGenerateBatchPdfMergingScoresheets`); the batch test confirms `generatePdf`
+produces valid `%PDF` bytes server-side — the old "Site wasn't available" was the **old MyScoresheetView**'s
+`getLocale()`-inside-StreamResource-supplier; MyResultsView captures the locale eagerly. **Still DEFERRED:**
+the separate `MyScoresheetView` page hiding per-criterion **comments + advanced** (display gap). **1299 green.**
+No migration. Walkthrough §13.4 updated.
 
 **Walkthrough-found enhancement #3 (2026-05-30, NOT yet committed — working tree dirty):** two admin-UX
 polish items raised mid-§12.6.8.1. **(1) Role-phrased round explanation.** `RoundView` + `MedalRoundView`
