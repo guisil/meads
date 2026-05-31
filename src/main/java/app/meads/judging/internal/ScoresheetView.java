@@ -541,7 +541,11 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
             field.setStep(1);
             field.setStepButtonsVisible(true);
             field.setWidth("8em");
-            field.setValueChangeMode(ValueChangeMode.ON_BLUR);
+            // ON_CHANGE (not ON_BLUR): the +/- step buttons dispatch a `change`
+            // event but never `blur`, so under ON_BLUR a stepper click silently
+            // failed to auto-save. `change` also fires on blur-after-typing, so
+            // typed values still persist the same way.
+            field.setValueChangeMode(ValueChangeMode.ON_CHANGE);
             var existing = existingByField.get(def.fieldName());
             if (existing != null && existing.getValue() != null) {
                 field.setValue(existing.getValue().doubleValue());
