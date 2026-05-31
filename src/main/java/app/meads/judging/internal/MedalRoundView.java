@@ -282,7 +282,11 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         var physicalTableLine = new Span(getTranslation("medal-round.physical-table") + ": " + physicalTableLabel);
         physicalTableLine.setId("medal-round-physical-table-line");
 
-        var row = new HorizontalLayout(roundTypeBadge());
+        var categoryBadge = RoundBadges.categoryBadge(category.getCode(), category.getName(),
+                getTranslation("judging-admin.rounds.column.category"));
+        categoryBadge.setId("medal-round-category-badge");
+
+        var row = new HorizontalLayout(roundTypeBadge(), categoryBadge);
         row.setWidthFull();
         row.setDefaultVerticalComponentAlignment(Alignment.CENTER);
         row.setSpacing(true);

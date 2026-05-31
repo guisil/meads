@@ -618,6 +618,17 @@ class MedalRoundViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldShowCategoryBadgeOnMedalRound() {
+        var category = activeMedalRoundCategory();
+
+        navigateToMedalRound(category);
+
+        var badge = _get(Span.class, spec -> spec.withId("medal-round-category-badge"));
+        assertThat(badge.getText()).isEqualTo("M1A");
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldNotShowEditableModeOrTableSelectsInMedalRoundView() {
         // Round configuration (mode, table, schedule, judges) lives on the
         // unified Rounds grid now. The MedalRoundView header is read-only — even

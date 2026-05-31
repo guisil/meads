@@ -217,6 +217,25 @@ class RoundViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldShowCategoryBadgeOnScoringRound() {
+        advanceDivisionToJudging();
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Desc",
+                null, 1, CategoryScope.JUDGING));
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var judging = judgingService.ensureJudgingExists(division.getId());
+        var round = judgingService.createRound(judging.getId(), "Table A",
+                category.getId(), null, admin.getId());
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/rounds/" + round.getId());
+
+        var badge = _get(Span.class, spec -> spec.withId("round-category-badge"));
+        assertThat(badge.getText()).isEqualTo("M1A");
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldShowAssignedJudgesLineToAdminOnScoringRound() {
         advanceDivisionToJudging();
         var category = divisionCategoryRepository.save(new DivisionCategory(

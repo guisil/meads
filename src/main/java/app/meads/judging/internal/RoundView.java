@@ -715,7 +715,12 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
         badge.setId("round-type-badge");
         badge.getElement().getThemeList().add("badge contrast");
 
-        var row = new HorizontalLayout(badge);
+        var category = competitionService.findDivisionCategoryById(table.getDivisionCategoryId());
+        var categoryBadge = RoundBadges.categoryBadge(category.getCode(), category.getName(),
+                getTranslation("judging-admin.rounds.column.category"));
+        categoryBadge.setId("round-category-badge");
+
+        var row = new HorizontalLayout(badge, categoryBadge);
         row.setWidthFull();
         row.setDefaultVerticalComponentAlignment(Alignment.CENTER);
         row.setSpacing(true);

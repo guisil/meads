@@ -527,6 +527,19 @@ can't click — same testability pattern as the other dialogs). +2 UI tests
 `MedalRoundViewTest.shouldOpenMeadDetailsDialogForJudgeOnComparativeMedalRoundWithoutMeadName`).
 **1287 tests green.** No migration. Walkthrough §12.10 / §12.12.1 updated.
 
+**Walkthrough-found change #28 (2026-05-31, uncommitted):** **category badge** in both round drill-in headers,
+next to the round-type badge, making the **final (judging) category** being evaluated explicit (it was only
+implied in the round title). New `RoundBadges.categoryBadge(code, name, tooltipLabel)` (judging.internal) —
+a **neutral grey pill** (`--lumo-contrast-10pct` bg, secondary text), deliberately *not* a Lumo status colour
+(primary/success/contrast are taken by the type badge) so it reads as a label, not a status. Shows the
+category **code** (e.g. `M1A`); hover tooltip = "Category: code — name". `RoundView` resolves the category via
+`competitionService.findDivisionCategoryById(table.getDivisionCategoryId())` (id `round-category-badge`);
+`MedalRoundView` uses its existing `category` field (id `medal-round-category-badge`). The round's
+`divisionCategoryId` *is* the final/judging category entries were assigned to. Reused the existing
+`judging-admin.rounds.column.category` label (no new i18n). +2 UI tests
+(`should ShowCategoryBadgeOn{Scoring,Medal}Round`). **1289 tests green.** No migration. Walkthrough §12.10 /
+§12.12.0 updated.
+
 **Walkthrough-found enhancement #3 (2026-05-30, NOT yet committed — working tree dirty):** two admin-UX
 polish items raised mid-§12.6.8.1. **(1) Role-phrased round explanation.** `RoundView` + `MedalRoundView`
 showed the same second-person "what the judge does" blurb to everyone; admins observe rather than score,
