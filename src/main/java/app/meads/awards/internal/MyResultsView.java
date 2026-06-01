@@ -160,12 +160,14 @@ public class MyResultsView extends VerticalLayout implements BeforeEnterObserver
                 .setResizable(true)
                 .setComparator(Comparator.comparingInt(r ->
                         r.medal() == null ? Integer.MAX_VALUE : r.medal().ordinal()))
+                .setTooltipGenerator(r -> medalTooltip(r.medal()))
                 .setWidth("110px").setFlexGrow(0);
-        grid.addColumn(r -> r.bosPlace() == null ? "—" : String.valueOf(r.bosPlace()))
+        grid.addColumn(r -> formatBosPlace(r.bosPlace()))
                 .setHeader(getTranslation("my-results.column.bos"))
                 .setResizable(true)
                 .setComparator(Comparator.comparing(EntrantResultRow::bosPlace,
                         Comparator.nullsLast(Comparator.naturalOrder())))
+                .setTooltipGenerator(r -> bosTooltip(r.bosPlace()))
                 .setWidth("130px").setFlexGrow(0);
         grid.addComponentColumn(r -> actionsCell(r, currentUserId))
                 .setHeader(getTranslation("my-results.column.actions"))
@@ -277,6 +279,25 @@ public class MyResultsView extends VerticalLayout implements BeforeEnterObserver
             case GOLD -> "🥇";
             case SILVER -> "🥈";
             case BRONZE -> "🥉";
+        };
+    }
+
+    private String formatBosPlace(Integer place) {
+        return place == null ? "—" : "🏆 " + place;
+    }
+
+    private String bosTooltip(Integer place) {
+        return place == null ? "" : getTranslation("my-results.bos.tooltip", place);
+    }
+
+    private String medalTooltip(Medal medal) {
+        if (medal == null) {
+            return "";
+        }
+        return switch (medal) {
+            case GOLD -> getTranslation("my-results.medal.gold");
+            case SILVER -> getTranslation("my-results.medal.silver");
+            case BRONZE -> getTranslation("my-results.medal.bronze");
         };
     }
 
