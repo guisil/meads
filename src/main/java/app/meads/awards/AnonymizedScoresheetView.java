@@ -16,6 +16,7 @@ public record AnonymizedScoresheetView(
             int judgeOrdinal,
             String commentLanguage,
             Integer totalScore,
+            boolean advanced,
             List<FieldScore> fieldScores,
             String overallComments) {
     }
@@ -24,6 +25,6 @@ public record AnonymizedScoresheetView(
             String fieldName,
             int value,
             int maxValue,
-            String tierLabel) {
+            String comment) {
     }
 }

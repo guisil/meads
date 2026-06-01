@@ -2,7 +2,9 @@ package app.meads.judging;
 
 import app.meads.BusinessRuleException;
 import app.meads.competition.CompetitionService;
+import app.meads.competition.Division;
 import app.meads.competition.DivisionStatus;
+import app.meads.entry.Entry;
 import app.meads.entry.EntryService;
 import app.meads.identity.User;
 import app.meads.identity.UserService;
@@ -98,7 +100,6 @@ public class ScoresheetPdfService {
             }
         }
 
-        int ordinal = computeJudgeOrdinal(sheet);
         var competition = competitionService.findCompetitionById(division.getCompetitionId());
         var categoryId = entry.getFinalCategoryId() != null
                 ? entry.getFinalCategoryId() : entry.getInitialCategoryId();
@@ -117,16 +118,24 @@ public class ScoresheetPdfService {
             var meta = new PdfPTable(2);
             meta.setWidthPercentage(100);
             meta.setWidths(new float[]{1, 3});
-            addCell(meta, msg("scoresheet.pdf.entry-code", locale), FONT_BOLD);
-            addCell(meta, entry.getEntryCode(), FONT_NORMAL);
+            addCell(meta, msg("scoresheet.pdf.entry-number", locale), FONT_BOLD);
+            addCell(meta, formatEntryNumber(entry, division), FONT_NORMAL);
             addCell(meta, msg("scoresheet.pdf.mead-name", locale), FONT_BOLD);
             addCell(meta, entry.getMeadName(), FONT_NORMAL);
             if (category != null) {
                 addCell(meta, msg("scoresheet.pdf.category", locale), FONT_BOLD);
                 addCell(meta, category.getCode() + " — " + category.getName(), FONT_NORMAL);
             }
-            addCell(meta, msg("scoresheet.pdf.judge", locale), FONT_BOLD);
-            addCell(meta, formatJudgeLabel(sheet, ordinal, level, locale), FONT_NORMAL);
+            // Judge identity appears only on the admin (FULL) PDF — the entrant
+            // copy omits it entirely (they know judges evaluated their mead).
+            if (level == AnonymizationLevel.FULL) {
+                int ordinal = computeJudgeOrdinal(sheet);
+                addCell(meta, msg("scoresheet.pdf.judge", locale), FONT_BOLD);
+                addCell(meta, formatJudgeLabel(sheet, ordinal, level, locale), FONT_NORMAL);
+            }
+            addCell(meta, msg("scoresheet.pdf.advanced", locale), FONT_BOLD);
+            addCell(meta, msg(sheet.isAdvancedToMedalRound()
+                    ? "scoresheet.pdf.advanced.yes" : "scoresheet.pdf.advanced.no", locale), FONT_NORMAL);
             if (sheet.getCommentLanguage() != null) {
                 addCell(meta, msg("scoresheet.pdf.comment-language", locale), FONT_BOLD);
                 addCell(meta, sheet.getCommentLanguage(), FONT_NORMAL);
@@ -196,6 +205,13 @@ public class ScoresheetPdfService {
         }
         log.info("Generated batch scoresheet PDF ({} sheets, level={})", scoresheetIds.size(), level);
         return baos.toByteArray();
+    }
+
+    private String formatEntryNumber(Entry entry, Division division) {
+        var prefix = division.getEntryPrefix();
+        return prefix != null && !prefix.isBlank()
+                ? prefix + "-" + entry.getEntryNumber()
+                : String.valueOf(entry.getEntryNumber());
     }
 
     private int computeJudgeOrdinal(Scoresheet target) {

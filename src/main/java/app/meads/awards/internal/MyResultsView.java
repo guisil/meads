@@ -12,7 +12,6 @@ import app.meads.identity.UserService;
 import app.meads.judging.AnonymizationLevel;
 import app.meads.judging.Medal;
 import app.meads.judging.ScoresheetPdfService;
-import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.grid.Grid;
@@ -21,6 +20,7 @@ import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
@@ -167,7 +167,7 @@ public class MyResultsView extends VerticalLayout implements BeforeEnterObserver
                 .setComparator(Comparator.comparing(EntrantResultRow::bosPlace,
                         Comparator.nullsLast(Comparator.naturalOrder())))
                 .setWidth("130px").setFlexGrow(0);
-        grid.addComponentColumn(r -> actionsCell(r, compShortName, divShortName, currentUserId))
+        grid.addComponentColumn(r -> actionsCell(r, currentUserId))
                 .setHeader(getTranslation("my-results.column.actions"))
                 .setWidth("110px").setFlexGrow(0);
 
@@ -215,8 +215,7 @@ public class MyResultsView extends VerticalLayout implements BeforeEnterObserver
         return wrap;
     }
 
-    private HorizontalLayout actionsCell(EntrantResultRow row, String compShortName,
-                                         String divShortName, UUID currentUserId) {
+    private HorizontalLayout actionsCell(EntrantResultRow row, UUID currentUserId) {
         var cell = new HorizontalLayout();
         cell.setPadding(false);
         cell.setSpacing(true);
@@ -230,12 +229,27 @@ public class MyResultsView extends VerticalLayout implements BeforeEnterObserver
                 ButtonVariant.LUMO_SMALL);
         view.setId("my-results-view-scoresheet-" + row.entryId());
         view.setTooltipText(getTranslation("my-results.view-scoresheet"));
-        view.addClickListener(e -> UI.getCurrent().navigate(
-                "competitions/" + compShortName + "/divisions/" + divShortName
-                        + "/my-entries/" + row.entryId() + "/scoresheet"));
+        view.addClickListener(e -> openScoresheetDialog(row.scoresheetId(), currentUserId));
         cell.add(view);
         cell.add(downloadAnchor(row.scoresheetId(), currentUserId));
         return cell;
+    }
+
+    /**
+     * Opens the read-only entrant scoresheet dialog for the given scoresheet.
+     * Public so the per-row eye button (which lives in a Grid component column
+     * Karibu can't click directly) is reachable from tests.
+     */
+    public void openScoresheetDialog(UUID scoresheetId, UUID userId) {
+        if (scoresheetId == null) {
+            return;
+        }
+        try {
+            var view = awardsService.getAnonymizedScoresheet(scoresheetId, userId);
+            new EntrantScoresheetDialog(view).open();
+        } catch (BusinessRuleException e) {
+            Notification.show(getTranslation(e.getMessage()), 4000, Notification.Position.MIDDLE);
+        }
     }
 
     private Anchor downloadAnchor(UUID scoresheetId, UUID userId) {

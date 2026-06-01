@@ -2488,21 +2488,24 @@ Steps below are admin-driven unless noted.
 
 *Stay on MyResultsView.*
 
-- [ ] Click "View scoresheet" on a submitted-scoresheet row.
-- [ ] **Expected:** Navigates to
-  `/competitions/chip-2026/divisions/amadora/my-entries/{entryId}/scoresheet`.
-- [ ] **Expected:** Heading shows entry code + mead name (e.g., `AMA-3 — My
-  Wildflower`). Category line below.
+- [ ] Click the 👁 **view-scoresheet** icon on a submitted-scoresheet row.
+- [ ] **Expected:** A **dialog** opens in place (no navigation). Header shows the
+  entrant's own **entry NUMBER** + mead name (e.g., `AMA-3 — My Wildflower`) —
+  **never the anonymized judging code**. Category line below.
 - [ ] **Expected:** One card per submitted scoresheet (likely just one in dev),
-  headed "Judge 1" — **no judge name or certifications**. Comment language
-  line, then 5 score fields rendered as `field: value / max`, then total, then
-  overall comments (if any).
-- [ ] **Expected:** "Download PDF" anchor is rendered as a download link.
-- [ ] Click "Download PDF".
-- [ ] **Expected:** PDF downloads. Open it: heading "Anonymized Scoresheet",
-  entry/mead/category in a 2-col table, "Judge 1" label (never the real name),
-  scores table, total, overall comments. Liberation Sans font (Unicode-safe).
-- [ ] **Expected:** Back link "Back to results" returns to MyResultsView.
+  with **no "Judge N" / judge label at all**. If the entry advanced to the medal
+  round, an "Advanced to the medal round" line with a green check appears.
+  Comment-language line, then each score field as `field: value / max` **with its
+  per-criterion comment below it**, then total, then overall comments (if any).
+- [ ] **Expected:** A **Close** button in the dialog footer dismisses it back to
+  the grid. (There is no in-dialog PDF download — use the row's ⬇ download icon or
+  the "Download all scoresheets" toolbar button.)
+- [ ] Click the row's ⬇ **download** icon (or "Download all scoresheets").
+- [ ] **Expected:** PDF downloads. Open it: heading **"Scoresheet"** (no
+  "Anonymized"), **entry number** (not code) + mead + category in a 2-col table,
+  an "Advanced to the medal round: Yes/No" row, **no judge row** (the entrant copy
+  omits the judge entirely), scores table with per-criterion comments, total,
+  overall comments. Liberation Sans font (Unicode-safe).
 
 ### 13.6 Freeze guard — judging mutations rejected
 
@@ -2639,10 +2642,11 @@ republish variant. Adjust expectations accordingly.
 *Log in as `entrant1@example.com` and re-run §13.5 against the current
 state.* (After §13.8, that entrant may see a different medal — that's fine.)
 
-- [ ] **Expected:** Scoresheet view still shows "Judge 1" — never the real
-  judge name or certifications.
-- [ ] Download PDF.
-- [ ] **Expected:** PDF body shows "Judge 1" only.
+- [ ] **Expected:** The entrant scoresheet dialog shows **no judge label at all**
+  — never the real judge name or certifications, and not even a "Judge N" ordinal.
+- [ ] Download the scoresheet PDF (row ⬇ icon).
+- [ ] **Expected:** PDF has **no judge row** — the entrant copy omits the judge
+  entirely; the heading reads "Scoresheet" (not "Anonymized Scoresheet").
 
 *Note on the admin path:* admin-side scoresheet surfaces (Manage Judging →
 Tables → a table → a scoresheet) show real judge names, confirming the

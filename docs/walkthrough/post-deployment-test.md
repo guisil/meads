@@ -430,7 +430,7 @@ walkthrough (`docs/walkthrough/manual-test.md` §12) covers exhaustive cases.
 - [ ] Log in as the test entrant → **My Entries**
 - [ ] **Expected:** A **"Results published"** banner is visible at the top, linking to MyResultsView
 - [ ] Click the banner → **Expected:** entrant's per-entry rows with round-1 totals + medal + BOS columns
-- [ ] Click "View scoresheet" on a row → **Expected:** MyScoresheetView shows the anonymized scoresheet (judges shown as "Judge 1", "Judge 2"); PDF download works
+- [ ] Click the 👁 view-scoresheet icon on a row → **Expected:** a dialog opens showing the scoresheet (entry NUMBER in the header, per-criterion comments, advance-to-medal line; **no judge label**); the row ⬇ PDF download works (heading "Scoresheet", no judge row)
 
 ### Freeze guard — judging mutations rejected
 

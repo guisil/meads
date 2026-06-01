@@ -225,9 +225,7 @@ public class AwardsServiceImpl implements AwardsService {
                 .map(p -> p.getPlace()).orElse(null);
         // Entrants see their own entry NUMBER (prefixed, e.g. PRO-1) — not the
         // anonymized judging code.
-        var entryNumber = entryPrefix != null && !entryPrefix.isBlank()
-                ? entryPrefix + "-" + entry.getEntryNumber()
-                : String.valueOf(entry.getEntryNumber());
+        var entryNumber = formatEntryNumber(entry, entryPrefix);
         return new EntrantResultRow(
                 entry.getId(), entryNumber, entry.getMeadName(),
                 categoryInfo.code(), categoryInfo.name(),
@@ -423,8 +421,11 @@ public class AwardsServiceImpl implements AwardsService {
             anonymized.add(buildAnonymizedScoresheet(s, ordinal++));
         }
         var categoryInfo = resolveCategoryInfo(entry);
+        // Entrants see their own prefixed entry NUMBER (e.g. PRO-3), never the
+        // anonymized judging code.
+        var entryNumber = formatEntryNumber(entry, division.getEntryPrefix());
         return new AnonymizedScoresheetView(
-                sheet.getId(), entry.getId(), entry.getEntryCode(),
+                sheet.getId(), entry.getId(), entryNumber,
                 entry.getMeadName(), categoryInfo.code(), categoryInfo.name(), anonymized);
     }
 
@@ -433,11 +434,18 @@ public class AwardsServiceImpl implements AwardsService {
         for (ScoreField f : sheet.getFields()) {
             int value = f.getValue() != null ? f.getValue() : 0;
             fieldScores.add(new AnonymizedScoresheetView.FieldScore(
-                    f.getFieldName(), value, f.getMaxValue(), null));
+                    f.getFieldName(), value, f.getMaxValue(), f.getComment()));
         }
         return new AnonymizedScoresheetView.AnonymizedScoresheet(
                 ordinal, sheet.getCommentLanguage(),
-                sheet.getTotalScore(), fieldScores, sheet.getOverallComments());
+                sheet.getTotalScore(), sheet.isAdvancedToMedalRound(),
+                fieldScores, sheet.getOverallComments());
+    }
+
+    private String formatEntryNumber(Entry entry, String entryPrefix) {
+        return entryPrefix != null && !entryPrefix.isBlank()
+                ? entryPrefix + "-" + entry.getEntryNumber()
+                : String.valueOf(entry.getEntryNumber());
     }
 
     private CategoryInfo resolveCategoryInfo(Entry entry) {

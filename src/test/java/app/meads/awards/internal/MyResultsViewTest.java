@@ -142,6 +142,37 @@ class MyResultsViewTest {
     }
 
     @Test
+    void shouldRenderEntrantScoresheetDialogWithCommentsAndAdvancedButNoJudgeLabel() {
+        var field = new app.meads.awards.AnonymizedScoresheetView.FieldScore(
+                "Aroma", 20, 24, "Lovely floral nose");
+        var sheet = new app.meads.awards.AnonymizedScoresheetView.AnonymizedScoresheet(
+                1, "en", 88, true, java.util.List.of(field), "Well made.");
+        var view = new app.meads.awards.AnonymizedScoresheetView(
+                UUID.randomUUID(), UUID.randomUUID(), "PRO-3", "Golden Hour",
+                "M1A", "Dry Mead", java.util.List.of(sheet));
+
+        var dialog = new EntrantScoresheetDialog(view);
+        dialog.open();
+
+        // Header shows the entrant's own prefixed NUMBER, not the anonymized code.
+        assertThat(dialog.getHeaderTitle()).contains("PRO-3").contains("Golden Hour");
+
+        // Per-criterion comment is shown.
+        var allText = _find(com.vaadin.flow.component.Component.class).stream()
+                .map(c -> c.getElement().getText())
+                .filter(t -> t != null && !t.isBlank())
+                .toList();
+        assertThat(allText).anyMatch(t -> t.contains("Lovely floral nose"));
+
+        // Advance-to-medal info is shown.
+        _get(com.vaadin.flow.component.html.Span.class,
+                spec -> spec.withId("entrant-scoresheet-advanced-1"));
+
+        // No judge identity / "Judge N" labelling anywhere in the dialog.
+        assertThat(allText).noneMatch(t -> t.contains("Judge"));
+    }
+
+    @Test
     @WithMockUser(username = ENTRANT_EMAIL, roles = "USER")
     void shouldRenderSearchFieldAboveResultsGrid() {
         for (int i = 0; i < 5; i++) {

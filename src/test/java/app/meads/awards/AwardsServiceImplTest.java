@@ -285,6 +285,52 @@ class AwardsServiceImplTest {
     }
 
     @Test
+    void shouldBuildAnonymizedScoresheetWithEntryNumberFieldCommentsAndAdvancedFlag() {
+        var service = createService();
+        var sheetId = UUID.randomUUID();
+        var entryId = UUID.randomUUID();
+        var divisionId = UUID.randomUUID();
+        var ownerUserId = UUID.randomUUID();
+        var field = new app.meads.judging.ScoreField("Aroma", 24);
+        field.update(20, "Lovely floral nose");
+        var sheet = mock(app.meads.judging.Scoresheet.class);
+        given(sheet.getId()).willReturn(sheetId);
+        given(sheet.getStatus()).willReturn(app.meads.judging.ScoresheetStatus.SUBMITTED);
+        given(sheet.getEntryId()).willReturn(entryId);
+        given(sheet.getFields()).willReturn(java.util.List.of(field));
+        given(sheet.getTotalScore()).willReturn(88);
+        given(sheet.getCommentLanguage()).willReturn("en");
+        given(sheet.getOverallComments()).willReturn("Well made.");
+        given(sheet.isAdvancedToMedalRound()).willReturn(true);
+        given(scoresheetService.findById(sheetId)).willReturn(Optional.of(sheet));
+        given(scoresheetService.findByEntryIdOrderBySubmittedAtAsc(entryId))
+                .willReturn(java.util.List.of(sheet));
+        var entry = mock(app.meads.entry.Entry.class);
+        given(entry.getId()).willReturn(entryId);
+        given(entry.getDivisionId()).willReturn(divisionId);
+        given(entry.getUserId()).willReturn(ownerUserId);
+        given(entry.getEntryNumber()).willReturn(3);
+        given(entry.getMeadName()).willReturn("Golden Hour");
+        given(entryService.findEntryById(entryId)).willReturn(entry);
+        var division = mock(Division.class);
+        given(division.getStatus()).willReturn(DivisionStatus.RESULTS_PUBLISHED);
+        given(division.getEntryPrefix()).willReturn("PRO");
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(competitionService.isAuthorizedForDivision(divisionId, ownerUserId)).willReturn(false);
+
+        var view = service.getAnonymizedScoresheet(sheetId, ownerUserId);
+
+        // Entrant sees their own prefixed number, never the anonymized judging code.
+        assertThat(view.entryNumber()).isEqualTo("PRO-3");
+        assertThat(view.meadName()).isEqualTo("Golden Hour");
+        assertThat(view.scoresheets()).hasSize(1);
+        var anon = view.scoresheets().get(0);
+        assertThat(anon.advanced()).isTrue();
+        assertThat(anon.fieldScores()).hasSize(1);
+        assertThat(anon.fieldScores().get(0).comment()).isEqualTo("Lovely floral nose");
+    }
+
+    @Test
     void shouldRejectRepublishWhenUnauthorized() {
         var service = createService();
         var divisionId = UUID.randomUUID();
