@@ -413,6 +413,29 @@ class ScoresheetViewTest {
 
     @Test
     @WithMockUser(username = JUDGE_EMAIL, roles = "USER")
+    void shouldRenderMjpRubricBandsRangesAndDescriptions() {
+        var entrant = userRepository.save(new User(
+                "entrant-rubric-" + UUID.randomUUID() + "@example.com",
+                "Entrant", UserStatus.ACTIVE, Role.USER));
+        var sheet = createScoresheetFor(entrant, "AMA-R", "Rubric Mead");
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName()
+                + "/scoresheets/" + sheet.getId());
+
+        var spanTexts = _find(Span.class).stream()
+                .map(Span::getText).filter(t -> t != null).toList();
+        // Shared band names render for the criteria.
+        assertThat(spanTexts).contains("Unacceptable", "Perfect");
+        // Appearance's score ranges (0-2 .. 11-12) render as en-dash ranges.
+        assertThat(spanTexts).anyMatch(t -> t.equals("0–2"));
+        assertThat(spanTexts).anyMatch(t -> t.equals("11–12"));
+        // A per-field band description is shown (Appearance / Unacceptable).
+        assertThat(spanTexts).anyMatch(t -> t.contains("Major faults"));
+    }
+
+    @Test
+    @WithMockUser(username = JUDGE_EMAIL, roles = "USER")
     void shouldRenderFiveScoreNumberFieldsWithMaxValuesAndUpdateLiveTotal() {
         var entrant = userRepository.save(new User(
                 "entrant-ss-fields-" + UUID.randomUUID() + "@example.com",

@@ -2096,26 +2096,34 @@ scoresheet via `JudgingService.assignEntryToRound`.
 - [ ] **Expected:** URL `competitions/.../divisions/.../scoresheets/<id>`.
 - [ ] **Expected:** A **"← Back to round"** anchor (id `scoresheet-back-to-round`) appears at the very top of the view, pointing back at the round's RoundView. One click returns to the scoresheet list.
 - [ ] **Expected:** H2 `Scoresheet — {entryCode}`.
-- [ ] **Expected (judge view):** A read-only entry card showing **only the declared
-  attributes** the judge needs to judge to style — **Initial Category** (code +
-  name, what the entrant registered under) and **Final Category** (code + name,
-  where the admin placed it for judging; both rendered side-by-side on separate
-  lines), sweetness, carbonation, ABV, honey varieties, and (when present) other
-  ingredients, wood ageing details, and additional information. **The mead name
-  is NOT shown to judges** (anonymity rule — judges judge to style, not to a
-  brand). Judges work from poured coded samples, not the labelled bottle, so the
-  declared attributes still matter on screen.
-- [ ] **Expected (admin view):** If a SYSTEM_ADMIN or division admin opens the
-  same URL, the entry card additionally shows the mead name as the first row
-  (admins keep the full context for moderation / results review).
-- [ ] **Expected:** A "Scores" section with five `NumberField`s, one per MJP field. **Each NumberField is followed by a TextArea with id `score-comment-<fieldName>`** for per-criterion judge comments (placeholder *"Comments on this criterion (optional)"*, `maxLength=2000`). The fields are:
-  - `Appearance` (max 12)
-  - `Aroma/Bouquet` (max 30)
-  - `Flavour and Body` (max 32)
-  - `Finish` (max 14)
-  - `Overall Impression` (max 12)
-  Each `NumberField` has `min=0`, `max=<field max>`, **+/- step buttons visible**, and **auto-saves on blur** (`ValueChangeMode.ON_BLUR`) — a small **save-status** Span (`scoresheet-save-status`) shows "Saving…/Draft saved ✓".
-- [ ] **Expected:** A "Current total: N / 100" **H3** (id `scoresheet-total`) below the score fields — sized as `--lumo-font-size-xxl` so it's the loudest thing on the page. Updates as values change.
+- [ ] **Expected (info panel — MJP layout redesign):** Two side-by-side bordered
+  cards (wrapping to a single column on narrow screens): **"Basic information"**
+  (Initial Category, Final Category, Sweetness, **Strength**, Carbonation, ABV) and
+  **"Additional information about the mead"** (honey varieties, other ingredients
+  when present, Wood Aged Yes/No + details when present, additional information).
+  **The mead name is NOT shown to judges** (anonymity — judges judge to style, not
+  a brand); judges work from poured coded samples. *(Strength was previously
+  missing from this card.)*
+- [ ] **Expected (admin view):** A SYSTEM_ADMIN / division admin opening the same
+  URL sees the **mead name** as the first row of the Basic-information card
+  (admins keep full context for moderation / results review).
+- [ ] **Expected (per-criterion rubric cards — MJP layout redesign):** Five bordered
+  cards, one per MJP criterion, each titled with the localized criterion name and
+  split into **two columns** (stacking on narrow screens):
+  - **Left = the MJP descriptor rubric** — the six quality bands
+    (**Unacceptable / Below average / Average / Very good / Excellent / Perfect**),
+    each with its **score range** (e.g. Appearance: 0–2, 3–4, 5–6, 7–8, 9–10, 11–12)
+    and a short **description** (e.g. "Major faults", "Appearance ideal for the style").
+  - **Right = the score input** — a "Your score" `NumberField` (id `score-<fieldName>`,
+    `min=0`, `max=<field max>`, **+/- step buttons**, `ON_CHANGE` auto-save), a
+    "Max: N" caption, and a **per-criterion Comments** `TextArea`
+    (id `score-comment-<fieldName>`, `maxLength=2000`).
+  The five criteria/maxes: Appearance 12, Aroma/Bouquet 30, Flavour and Body 32,
+  Finish 14, Overall Impression 12 (= 100). A small **save-status** Span
+  (`scoresheet-save-status`) shows "Saving…/Saved ✓".
+- [ ] **Expected:** A prominent centered **"Current total: N / 100"** card — an H3
+  (id `scoresheet-total`) sized `--lumo-font-size-xxl` in its own banded card below
+  the criteria. Updates as values change.
 - [ ] **Expected:** An optional **"Additional comments"** `TextArea` (id `overall-comments`, label "Additional comments (optional)", `maxLength=2000`, **no minimum length** — the old required "Overall comments" is gone). Auto-saves on blur.
 - [ ] **Expected:** A "Comment language" `ComboBox` listing all ISO 639-1 languages, sorted by display name in the UI locale. Default: the judge's `JudgeProfile.preferredCommentLanguage` if set, else the judge's `User.preferredLanguage` (UI language) as a sensible fallback, else blank. Judges are free to pick any language — no per-competition restriction.
 - [ ] **Expected:** An "Advance to medal round" `Checkbox`.

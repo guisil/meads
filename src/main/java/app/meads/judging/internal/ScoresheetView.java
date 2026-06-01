@@ -26,6 +26,7 @@ import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
+import com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.NumberField;
@@ -212,7 +213,7 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
                    && (!isAdminView || adminEditMode);
         add(createBackToRoundAnchor());
         add(createHeader());
-        add(createEntryCard());
+        add(createInfoPanel());
         add(createScoreFieldsSection());
         add(createTotalPreview());
         add(createCommentsSection());
@@ -456,12 +457,24 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
         return anchor;
     }
 
-    private VerticalLayout createEntryCard() {
-        var card = new VerticalLayout();
-        card.setPadding(false);
-        card.setSpacing(false);
-        // Anonymity rule: judges judge to style, not to a brand. Mead name is
-        // reserved for admin views (moderation, results review).
+    /**
+     * Two side-by-side info cards (wrapping to a single column on narrow screens):
+     * Basic information about the sample (categories + declared characteristics)
+     * and Additional information about the mead (honey, ingredients, wood, notes).
+     * Anonymity rule: the mead name appears on the Basic card for admins only —
+     * judges judge to style, not to a brand.
+     */
+    private HorizontalLayout createInfoPanel() {
+        var panel = new HorizontalLayout();
+        panel.setWidthFull();
+        panel.setAlignItems(Alignment.STRETCH);
+        panel.getStyle().set("flex-wrap", "wrap").set("gap", "var(--lumo-space-m)");
+        panel.add(createBasicInfoCard(), createMeadInfoCard());
+        return panel;
+    }
+
+    private VerticalLayout createBasicInfoCard() {
+        var card = infoCard("scoresheet.basic-info");
         if (isAdminView) {
             var meadName = new Span(entry.getMeadName());
             meadName.getStyle().set("font-weight", "600");
@@ -473,20 +486,44 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
         card.add(attributeLine("entries.view.final-category", finalCategoryLabel()));
         card.add(attributeLine("entries.view.sweetness",
                 getTranslation("entry.sweetness." + entry.getSweetness().name())));
+        card.add(attributeLine("entries.view.strength",
+                getTranslation("entry.strength." + entry.getStrength().name())));
         card.add(attributeLine("entries.view.carbonation",
                 getTranslation("entry.carbonation." + entry.getCarbonation().name())));
         card.add(attributeLine("entries.view.abv",
                 entry.getAbv() == null ? "—" : entry.getAbv().toPlainString() + "%"));
+        return card;
+    }
+
+    private VerticalLayout createMeadInfoCard() {
+        var card = infoCard("scoresheet.mead-info");
         card.add(attributeLine("entries.view.honey", orDash(entry.getHoneyVarieties())));
         if (StringUtils.hasText(entry.getOtherIngredients())) {
             card.add(attributeLine("entries.view.other-ingredients", entry.getOtherIngredients()));
         }
-        if (entry.isWoodAged()) {
-            card.add(attributeLine("entries.view.wood-details", orDash(entry.getWoodAgeingDetails())));
+        card.add(attributeLine("entries.view.wood-aged",
+                getTranslation(entry.isWoodAged()
+                        ? "entries.view.wood-aged.yes" : "entries.view.wood-aged.no")));
+        if (entry.isWoodAged() && StringUtils.hasText(entry.getWoodAgeingDetails())) {
+            card.add(attributeLine("entries.view.wood-details", entry.getWoodAgeingDetails()));
         }
         if (StringUtils.hasText(entry.getAdditionalInformation())) {
             card.add(attributeLine("entries.view.additional-info", entry.getAdditionalInformation()));
         }
+        return card;
+    }
+
+    private VerticalLayout infoCard(String headerKey) {
+        var card = new VerticalLayout();
+        card.setPadding(true);
+        card.setSpacing(false);
+        card.getStyle().set("border", "1px solid var(--lumo-contrast-20pct)")
+                .set("border-radius", "var(--lumo-border-radius-l)")
+                .set("flex", "1 1 320px");
+        var header = new H3(getTranslation(headerKey));
+        header.getStyle().set("margin", "0 0 var(--lumo-space-s) 0")
+                .set("font-size", "var(--lumo-font-size-m)");
+        card.add(header);
         return card;
     }
 
@@ -517,73 +554,142 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
     private VerticalLayout createScoreFieldsSection() {
         var section = new VerticalLayout();
         section.setPadding(false);
-        section.add(new H3(getTranslation("scoresheet.scores.section")));
+        section.setSpacing(false);
         var existingByField = new HashMap<String, ScoreField>();
         for (var f : scoresheetRepository.findFieldsByScoresheetId(scoresheet.getId())) {
             existingByField.put(f.getFieldName(), f);
         }
         for (var def : MjpScoringFieldDefinition.MJP_FIELDS) {
-            // Each criterion gets a row: full-width label on the left so the
-            // criterion + max read clearly, a narrow NumberField on the right
-            // sized for 2 digits + the step buttons. A previous iteration set
-            // the NumberField itself to full width; that fixed label truncation
-            // but left the input cavernous (cap is 32, so 2 digits is plenty).
-            var row = new HorizontalLayout();
-            row.setWidthFull();
-            row.setAlignItems(com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment.CENTER);
-            row.setSpacing(true);
-            var label = new Span(def.fieldName() + " (max " + def.maxValue() + ")");
-            label.getStyle().set("flex", "1");
-            var field = new NumberField();
-            field.setId("score-" + def.fieldName());
-            field.setMin(0);
-            field.setMax(def.maxValue());
-            field.setStep(1);
-            field.setStepButtonsVisible(true);
-            field.setWidth("8em");
-            // ON_CHANGE (not ON_BLUR): the +/- step buttons dispatch a `change`
-            // event but never `blur`, so under ON_BLUR a stepper click silently
-            // failed to auto-save. `change` also fires on blur-after-typing, so
-            // typed values still persist the same way.
-            field.setValueChangeMode(ValueChangeMode.ON_CHANGE);
-            var existing = existingByField.get(def.fieldName());
-            if (existing != null && existing.getValue() != null) {
-                field.setValue(existing.getValue().doubleValue());
-            }
-            // Listener added AFTER the initial setValue so loading the persisted
-            // value doesn't trigger a spurious auto-save on render.
-            field.addValueChangeListener(e -> {
-                recomputeTotalPreview();
-                autoSaveField(def.fieldName());
-            });
-            scoreFields.put(def.fieldName(), field);
-            row.add(label, field);
-            section.add(row);
-
-            var comment = new TextArea();
-            comment.setId("score-comment-" + def.fieldName());
-            comment.setPlaceholder(getTranslation("scoresheet.scores.comment.placeholder"));
-            comment.setWidthFull();
-            comment.setMaxLength(2000);
-            if (existing != null && existing.getComment() != null) {
-                comment.setValue(existing.getComment());
-            }
-            comment.addValueChangeListener(e -> autoSaveField(def.fieldName()));
-            scoreCommentFields.put(def.fieldName(), comment);
-            section.add(comment);
+            section.add(createCriterionCard(def, existingByField));
         }
         return section;
     }
 
-    private H3 createTotalPreview() {
+    /**
+     * One bordered card per MJP criterion: a title bar, then two columns that
+     * wrap to a single column on narrow screens — the descriptor rubric (the six
+     * quality bands with their score ranges + descriptions) on the left, and the
+     * judge's score input + per-criterion comment on the right.
+     */
+    private VerticalLayout createCriterionCard(MjpScoringFieldDefinition.FieldDefinition def,
+                                               Map<String, ScoreField> existingByField) {
+        var card = new VerticalLayout();
+        card.setPadding(true);
+        card.setSpacing(false);
+        card.getStyle().set("border", "1px solid var(--lumo-contrast-20pct)")
+                .set("border-radius", "var(--lumo-border-radius-l)")
+                .set("margin-bottom", "var(--lumo-space-m)");
+        var title = new H3(getTranslation("scoresheet.criterion." + def.slug()));
+        title.getStyle().set("margin", "0 0 var(--lumo-space-s) 0");
+        card.add(title);
+
+        var columns = new HorizontalLayout();
+        columns.setWidthFull();
+        columns.setAlignItems(Alignment.START);
+        // flex-wrap lets the two columns stack on narrow viewports; each column
+        // keeps a sensible min-width via its flex-basis.
+        columns.getStyle().set("flex-wrap", "wrap").set("gap", "var(--lumo-space-l)");
+        columns.add(createRubricColumn(def), createScoreColumn(def, existingByField));
+        card.add(columns);
+        return card;
+    }
+
+    private VerticalLayout createRubricColumn(MjpScoringFieldDefinition.FieldDefinition def) {
+        var col = new VerticalLayout();
+        col.setPadding(false);
+        col.setSpacing(false);
+        col.getStyle().set("flex", "1 1 280px");
+        for (var b : def.bands()) {
+            var bandRow = new HorizontalLayout();
+            bandRow.setWidthFull();
+            bandRow.getStyle().set("justify-content", "space-between").set("gap", "var(--lumo-space-m)");
+            var name = new Span(getTranslation(b.band().nameKey()));
+            name.getStyle().set("font-weight", "600");
+            var range = new Span(b.low() + "–" + b.high());
+            range.getStyle().set("color", "var(--lumo-secondary-text-color)").set("white-space", "nowrap");
+            bandRow.add(name, range);
+            col.add(bandRow);
+            var desc = new Span(getTranslation(def.descriptionKey(b.band())));
+            desc.getStyle().set("color", "var(--lumo-secondary-text-color)")
+                    .set("font-size", "var(--lumo-font-size-s)")
+                    .set("margin-bottom", "var(--lumo-space-xs)");
+            col.add(desc);
+        }
+        return col;
+    }
+
+    private VerticalLayout createScoreColumn(MjpScoringFieldDefinition.FieldDefinition def,
+                                             Map<String, ScoreField> existingByField) {
+        var col = new VerticalLayout();
+        col.setPadding(false);
+        col.setSpacing(false);
+        col.getStyle().set("flex", "1 1 280px");
+
+        var scoreLabel = new Span(getTranslation("scoresheet.your-score"));
+        scoreLabel.getStyle().set("font-weight", "600");
+        col.add(scoreLabel);
+
+        var field = new NumberField();
+        field.setId("score-" + def.fieldName());
+        field.setMin(0);
+        field.setMax(def.maxValue());
+        field.setStep(1);
+        field.setStepButtonsVisible(true);
+        field.setWidth("10em");
+        // ON_CHANGE (not ON_BLUR): the +/- step buttons dispatch a `change`
+        // event but never `blur`, so under ON_BLUR a stepper click silently
+        // failed to auto-save. `change` also fires on blur-after-typing, so
+        // typed values still persist the same way.
+        field.setValueChangeMode(ValueChangeMode.ON_CHANGE);
+        var existing = existingByField.get(def.fieldName());
+        if (existing != null && existing.getValue() != null) {
+            field.setValue(existing.getValue().doubleValue());
+        }
+        // Listener added AFTER the initial setValue so loading the persisted
+        // value doesn't trigger a spurious auto-save on render.
+        field.addValueChangeListener(e -> {
+            recomputeTotalPreview();
+            autoSaveField(def.fieldName());
+        });
+        scoreFields.put(def.fieldName(), field);
+        col.add(field);
+
+        var max = new Span(getTranslation("scoresheet.max-note", def.maxValue()));
+        max.getStyle().set("color", "var(--lumo-secondary-text-color)")
+                .set("font-size", "var(--lumo-font-size-s)")
+                .set("margin-bottom", "var(--lumo-space-s)");
+        col.add(max);
+
+        var comment = new TextArea(getTranslation("scoresheet.comments.label"));
+        comment.setId("score-comment-" + def.fieldName());
+        comment.setPlaceholder(getTranslation("scoresheet.scores.comment.placeholder"));
+        comment.setWidthFull();
+        comment.setMaxLength(2000);
+        if (existing != null && existing.getComment() != null) {
+            comment.setValue(existing.getComment());
+        }
+        comment.addValueChangeListener(e -> autoSaveField(def.fieldName()));
+        scoreCommentFields.put(def.fieldName(), comment);
+        col.add(comment);
+        return col;
+    }
+
+    private VerticalLayout createTotalPreview() {
         totalPreview = new H3();
         totalPreview.setId("scoresheet-total");
         // Inline styling keeps the running total visually loud — judges glance
-        // at it constantly while filling in scores. Avoid burying it in the
-        // surrounding text rhythm.
-        totalPreview.getStyle().set("font-size", "var(--lumo-font-size-xxl)");
-        totalPreview.getStyle().set("margin", "var(--lumo-space-m) 0");
-        return totalPreview;
+        // at it constantly while filling in scores. Centered in its own banded
+        // card so it reads as the page's running tally, not body text.
+        totalPreview.getStyle().set("font-size", "var(--lumo-font-size-xxl)").set("margin", "0");
+        var card = new VerticalLayout(totalPreview);
+        card.setWidthFull();
+        card.setPadding(true);
+        card.setAlignItems(Alignment.CENTER);
+        card.getStyle().set("border", "1px solid var(--lumo-contrast-20pct)")
+                .set("border-radius", "var(--lumo-border-radius-l)")
+                .set("background", "var(--lumo-contrast-5pct)")
+                .set("margin", "var(--lumo-space-m) 0");
+        return card;
     }
 
     private void recomputeTotalPreview() {
