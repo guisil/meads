@@ -406,9 +406,13 @@ class ScoresheetViewTest {
 
         var spanTexts = _find(Span.class).stream()
                 .map(Span::getText).filter(t -> t != null).toList();
-        assertThat(spanTexts).anyMatch(t -> t.contains("Sweetness") && t.contains("Dry"));
-        assertThat(spanTexts).anyMatch(t -> t.contains("Carbonation") && t.contains("Still"));
-        assertThat(spanTexts).anyMatch(t -> t.contains("Honey") && t.contains("Wildflower"));
+        // Labels and values now render as separate spans (label bold, value plain).
+        assertThat(spanTexts).anyMatch(t -> t.startsWith("Sweetness"));
+        assertThat(spanTexts).contains("Dry");
+        assertThat(spanTexts).anyMatch(t -> t.startsWith("Carbonation"));
+        assertThat(spanTexts).contains("Still");
+        assertThat(spanTexts).anyMatch(t -> t.startsWith("Honey"));
+        assertThat(spanTexts).anyMatch(t -> t != null && t.contains("Wildflower"));
     }
 
     @Test

@@ -2095,15 +2095,16 @@ scoresheet via `JudgingService.assignEntryToRound`.
 
 - [ ] **Expected:** URL `competitions/.../divisions/.../scoresheets/<id>`.
 - [ ] **Expected:** A **"← Back to round"** anchor (id `scoresheet-back-to-round`) appears at the very top of the view, pointing back at the round's RoundView. One click returns to the scoresheet list.
-- [ ] **Expected:** H2 `Scoresheet — {entryCode}`.
+- [ ] **Expected:** H2 `MJP Scoresheet — {entryCode}`.
 - [ ] **Expected (info panel — MJP layout redesign):** Two side-by-side bordered
-  cards (wrapping to a single column on narrow screens): **"Basic information"**
-  (Initial Category, Final Category, Sweetness, **Strength**, Carbonation, ABV) and
-  **"Additional information about the mead"** (honey varieties, other ingredients
-  when present, Wood Aged Yes/No + details when present, additional information).
-  **The mead name is NOT shown to judges** (anonymity — judges judge to style, not
-  a brand); judges work from poured coded samples. *(Strength was previously
-  missing from this card.)*
+  cards (wrapping to a single column on narrow screens) with headers the **same
+  size** as the criterion-card titles, and **bold field labels**: **"Basic
+  information"** (Initial Category, Final Category, Sweetness, **Strength**,
+  Carbonation, ABV) and **"Additional information"** (honey varieties, **all
+  remaining mead fields shown even when empty** — other ingredients, Wood Aged
+  Yes/No, wood details, additional information — each rendered as `—` when blank).
+  **The mead name is NOT shown to judges** (anonymity); judges work from poured
+  coded samples.
 - [ ] **Expected (admin view):** A SYSTEM_ADMIN / division admin opening the same
   URL sees the **mead name** as the first row of the Basic-information card
   (admins keep full context for moderation / results review).
@@ -2112,21 +2113,33 @@ scoresheet via `JudgingService.assignEntryToRound`.
   split into **two columns** (stacking on narrow screens):
   - **Left = the MJP descriptor rubric** — the six quality bands
     (**Unacceptable / Below average / Average / Very good / Excellent / Perfect**),
-    each with its **score range** (e.g. Appearance: 0–2, 3–4, 5–6, 7–8, 9–10, 11–12)
-    and a short **description** (e.g. "Major faults", "Appearance ideal for the style").
-  - **Right = the score input** — a "Your score" `NumberField` (id `score-<fieldName>`,
-    `min=0`, `max=<field max>`, **+/- step buttons**, `ON_CHANGE` auto-save), a
-    "Max: N" caption, and a **per-criterion Comments** `TextArea`
-    (id `score-comment-<fieldName>`, `maxLength=2000`).
+    each with its **score range** sitting **just right of the band name** (aligned in
+    a column, not floating at the far right; e.g. Appearance: 0–2, 3–4, 5–6, 7–8,
+    9–10, 11–12) and a short **description** (e.g. "Major faults", "Appearance ideal
+    for the style").
+  - **Right (pushed to the right edge of the card) = the score input** — a bold
+    **"Your score"** label, a `NumberField` (id `score-<fieldName>`, `min=0`,
+    `max=<field max>`, **+/- step buttons**, `ON_CHANGE` auto-save), a "Max: N"
+    caption, then a **bold "Comments" label** (same style as "Your score") above a
+    per-criterion `TextArea` (id `score-comment-<fieldName>`, `maxLength=2000`, with
+    a **light-grey placeholder** so it doesn't read as pre-filled). The comments
+    field **fills the remaining width and grows to the bottom of the card**;
+    overflowing text **scrolls inside the field** rather than stretching the card.
   The five criteria/maxes: Appearance 12, Aroma/Bouquet 30, Flavour and Body 32,
   Finish 14, Overall Impression 12 (= 100). A small **save-status** Span
   (`scoresheet-save-status`) shows "Saving…/Saved ✓".
-- [ ] **Expected:** A prominent centered **"Current total: N / 100"** card — an H3
+- [ ] **Expected:** A prominent centered **"Total: N / 100"** card — an H3
   (id `scoresheet-total`) sized `--lumo-font-size-xxl` in its own banded card below
   the criteria. Updates as values change.
-- [ ] **Expected:** An optional **"Additional comments"** `TextArea` (id `overall-comments`, label "Additional comments (optional)", `maxLength=2000`, **no minimum length** — the old required "Overall comments" is gone). Auto-saves on blur.
-- [ ] **Expected:** A "Comment language" `ComboBox` listing all ISO 639-1 languages, sorted by display name in the UI locale. Default: the judge's `JudgeProfile.preferredCommentLanguage` if set, else the judge's `User.preferredLanguage` (UI language) as a sensible fallback, else blank. Judges are free to pick any language — no per-competition restriction.
-- [ ] **Expected:** An "Advance to medal round" `Checkbox`.
+- [ ] **Expected (Progression box — SCORING sheets only):** A bordered box titled
+  **"🏅 Progression to Medal Round"** containing the **"Advance to medal round"**
+  `Checkbox` (id `advance-checkbox`). Hidden for medal-round-owned sheets.
+- [ ] **Expected (Other Information box):** A bordered box titled **"Other
+  Information"** containing, in order, the **"Comment language"** `ComboBox`
+  (id `comment-language`, all ISO 639-1 languages sorted by display name; default:
+  `JudgeProfile.preferredCommentLanguage`, else `User.preferredLanguage`, else
+  blank) **above** the optional **"Additional comments"** `TextArea`
+  (id `overall-comments`, `maxLength=2000`, no minimum length).
 - [ ] **Expected:** A single **Save** button (id `save-button`, always enabled) next to the save-status Span. There is **no "Save Draft" and no per-sheet "Submit"** — Save validates the sheet and promotes it DRAFT → **FILLED**; the round-level **Finalize** (§12.10.0) does the submitting.
 
 #### 12.11.1 Auto-save (on blur)

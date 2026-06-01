@@ -460,8 +460,29 @@ ScoresheetView tests stay green. **(Cycle C)** 46 new i18n keys × 5 locales (5 
 names, 30 band descriptions, `your-score`/`max-note`/`comments.label`/`basic-info`/`mead-info`) via one-shot
 script (ASCII-escaped, zero non-ASCII); pruned orphan `scoresheet.scores.section`. EN wording per the user:
 always "within the style", "ideal for the style", "repulsive". PT uses formal "sua"; IT informal "tu".
-**1306 tests green.** Walkthrough §12.11 rewritten. **STILL DEFERRED:** the **visual** rubric styling can be
-tuned later; **P15** (bottom-notification overlap) not yet folded in.
+**1306 tests green.** Walkthrough §12.11 rewritten. **STILL DEFERRED:** **P15** (bottom-notification overlap)
+not yet folded in.
+
+**Change #37 follow-up (visual refinements after the user reviewed it live, 2026-06-01, uncommitted):**
+fast-cycle tweaks to `ScoresheetView` + i18n (no schema, no net new tests — 1 existing test updated for the
+split label span; **1306 green**): title **"MJP Scoresheet — {0}"** (was "Scoresheet"); info-panel field
+labels now **bold**, headers same size as criterion titles; the mead-info card renamed **"Additional
+information"** and now **shows all remaining mead fields even when empty** (`—`); the score column is
+**right-aligned/hugs the right edge** of each criterion card; **"Comments"** is a bold Span label matching
+"Your score" (not the field caption) with a **lighter placeholder**
+(`--vaadin-input-field-placeholder-color` → tertiary); total reads **"Total: …"** (was "Current total");
+**comment language moved above Additional comments**, both inside a new **"Other Information"** box; the
+advance-to-medal checkbox moved into its own **"🏅 Progression to Medal Round"** box below the total. New
+i18n `scoresheet.other-info` + `scoresheet.progression.title` × 5 locales; `scoresheet.title`/`total.format`/
+`mead-info` values changed × 5. **Further layout tweaks (same review, layout-only, no i18n/tests):** in each
+criterion card the rubric column and the score column **share the width ~50/50** (both `flex: 1 1`); the band
+**score range sits well right-of-centre AND aligned across rows** via a fixed-width band-name column
+(`flex: 0 0 68%`, range follows) — note the earlier "flex-basis didn't work" was a stale-build artefact; with
+a fresh build it aligns correctly; the
+per-criterion **comments field fills the (now ~half-width) score column** (columns `align-items: stretch`,
+comment `flex-grow:1` + `height:100%` + `min-height:6em`) so it grows to the bottom of the card and **scrolls
+internally** instead of expanding the card. Score-column contents (Your score label, ticker, Comments label)
+are **left-aligned** (`Alignment.START`) to line up with the left edge of the full-width comments field.
 
 **▶ RESUME HERE (fresh session, 2026-06-01 — uncommitted, working tree dirty):** P18 part 1 (content +
 anonymization, change #36, COMMITTED `279f928`) + medal/BOS grid polish (COMMITTED `6a23388`) + **P18 part 2

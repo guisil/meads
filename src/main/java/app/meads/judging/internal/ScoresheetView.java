@@ -216,15 +216,14 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
         add(createInfoPanel());
         add(createScoreFieldsSection());
         add(createTotalPreview());
-        add(createCommentsSection());
-        add(createCommentLanguageField());
-        // "Advance to medal round" is a SCORING-round concept — judges flag
+        // "Progression to medal round" is a SCORING-round concept — judges flag
         // entries to bring forward. A MEDAL-round-owned sheet (small-category
-        // SCORE_BASED flow) is already at the medal round, so the checkbox is
-        // meaningless. Hide it and skip the corresponding service call below.
+        // SCORE_BASED flow) is already at the medal round, so the box is
+        // meaningless. Hide it (and skip the service call) for medal sheets.
         if (!isMedalRoundSheet()) {
-            add(createAdvanceCheckbox());
+            add(createProgressionCard());
         }
+        add(createOtherInformationCard());
         if (editable) {
             add(createActionBar());
         } else {
@@ -274,12 +273,16 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
         dialog.open();
     }
 
-    private VerticalLayout createCommentsSection() {
-        var section = new VerticalLayout();
-        section.setPadding(false);
-        // "Additional comments" — optional, low-emphasis (no section heading).
-        // The required per-criterion comments carry the judging justification;
-        // this field is just for any closing remarks to the entrant.
+    /**
+     * "Other Information" box — the comment language above the optional
+     * "Additional comments" field, matching the reference MJP layout.
+     */
+    private VerticalLayout createOtherInformationCard() {
+        var card = borderedCard("scoresheet.other-info");
+        card.setWidthFull();
+        var combo = createCommentLanguageField();
+        combo.setWidthFull();
+        card.add(combo);
         commentsArea = new TextArea(getTranslation("scoresheet.additional-comments.label"));
         commentsArea.setId("overall-comments");
         commentsArea.setWidthFull();
@@ -290,8 +293,32 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
         commentsArea.addValueChangeListener(e -> autoSave(() ->
                 scoresheetService.updateOverallComments(scoresheet.getId(),
                         commentsArea.getValue(), currentUserId)));
-        section.add(commentsArea);
-        return section;
+        card.add(commentsArea);
+        return card;
+    }
+
+    /**
+     * "Progression to Medal Round" box (SCORING sheets only) — the judge's
+     * advance-to-medal-round flag in its own labelled card with a medal icon.
+     */
+    private VerticalLayout createProgressionCard() {
+        var card = new VerticalLayout();
+        card.setWidthFull();
+        card.setPadding(true);
+        card.setSpacing(false);
+        card.getStyle().set("border", "1px solid var(--lumo-contrast-20pct)")
+                .set("border-radius", "var(--lumo-border-radius-l)");
+        var header = new H3("🏅 " + getTranslation("scoresheet.progression.title"));
+        header.getStyle().set("margin", "0 0 var(--lumo-space-s) 0");
+        card.add(header);
+        advanceCheckbox = new Checkbox(getTranslation("scoresheet.advance.label"));
+        advanceCheckbox.setId("advance-checkbox");
+        advanceCheckbox.setValue(scoresheet.isAdvancedToMedalRound());
+        advanceCheckbox.addValueChangeListener(e -> autoSave(() ->
+                scoresheetService.setAdvancedToMedalRound(scoresheet.getId(),
+                        advanceCheckbox.getValue(), currentUserId)));
+        card.add(advanceCheckbox);
+        return card;
     }
 
     private ComboBox<String> createCommentLanguageField() {
@@ -325,16 +352,6 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
     private String displayLanguageName(String code) {
         if (code == null) return "";
         return java.util.Locale.of(code).getDisplayLanguage(getLocale());
-    }
-
-    private Checkbox createAdvanceCheckbox() {
-        advanceCheckbox = new Checkbox(getTranslation("scoresheet.advance.label"));
-        advanceCheckbox.setId("advance-checkbox");
-        advanceCheckbox.setValue(scoresheet.isAdvancedToMedalRound());
-        advanceCheckbox.addValueChangeListener(e -> autoSave(() ->
-                scoresheetService.setAdvancedToMedalRound(scoresheet.getId(),
-                        advanceCheckbox.getValue(), currentUserId)));
-        return advanceCheckbox;
     }
 
     private HorizontalLayout createActionBar() {
@@ -496,39 +513,44 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
     }
 
     private VerticalLayout createMeadInfoCard() {
+        // All remaining mead fields are shown, even when empty (rendered as "—"),
+        // so the judge sees a consistent, complete picture per sample.
         var card = infoCard("scoresheet.mead-info");
         card.add(attributeLine("entries.view.honey", orDash(entry.getHoneyVarieties())));
-        if (StringUtils.hasText(entry.getOtherIngredients())) {
-            card.add(attributeLine("entries.view.other-ingredients", entry.getOtherIngredients()));
-        }
+        card.add(attributeLine("entries.view.other-ingredients", orDash(entry.getOtherIngredients())));
         card.add(attributeLine("entries.view.wood-aged",
                 getTranslation(entry.isWoodAged()
                         ? "entries.view.wood-aged.yes" : "entries.view.wood-aged.no")));
-        if (entry.isWoodAged() && StringUtils.hasText(entry.getWoodAgeingDetails())) {
-            card.add(attributeLine("entries.view.wood-details", entry.getWoodAgeingDetails()));
-        }
-        if (StringUtils.hasText(entry.getAdditionalInformation())) {
-            card.add(attributeLine("entries.view.additional-info", entry.getAdditionalInformation()));
-        }
+        card.add(attributeLine("entries.view.wood-details", orDash(entry.getWoodAgeingDetails())));
+        card.add(attributeLine("entries.view.additional-info", orDash(entry.getAdditionalInformation())));
         return card;
     }
 
-    private VerticalLayout infoCard(String headerKey) {
+    /** A bordered card with a (default-size) H3 header. */
+    private VerticalLayout borderedCard(String headerKey) {
         var card = new VerticalLayout();
         card.setPadding(true);
         card.setSpacing(false);
         card.getStyle().set("border", "1px solid var(--lumo-contrast-20pct)")
-                .set("border-radius", "var(--lumo-border-radius-l)")
-                .set("flex", "1 1 320px");
+                .set("border-radius", "var(--lumo-border-radius-l)");
         var header = new H3(getTranslation(headerKey));
-        header.getStyle().set("margin", "0 0 var(--lumo-space-s) 0")
-                .set("font-size", "var(--lumo-font-size-m)");
+        header.getStyle().set("margin", "0 0 var(--lumo-space-s) 0");
         card.add(header);
         return card;
     }
 
+    /** A bordered card sized to sit side-by-side in the wrapping info panel. */
+    private VerticalLayout infoCard(String headerKey) {
+        var card = borderedCard(headerKey);
+        card.getStyle().set("flex", "1 1 320px");
+        return card;
+    }
+
+    /** A label/value line with the label in bold to separate it from the value. */
     private Span attributeLine(String labelKey, String value) {
-        return new Span(getTranslation(labelKey) + ": " + value);
+        var label = new Span(getTranslation(labelKey) + ": ");
+        label.getStyle().set("font-weight", "600");
+        return new Span(label, new Span(value));
     }
 
     private String initialCategoryLabel() {
@@ -585,7 +607,9 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
 
         var columns = new HorizontalLayout();
         columns.setWidthFull();
-        columns.setAlignItems(Alignment.START);
+        // STRETCH so the score column matches the (taller) rubric column height,
+        // giving the comments area room to grow to the bottom of the card.
+        columns.setAlignItems(Alignment.STRETCH);
         // flex-wrap lets the two columns stack on narrow viewports; each column
         // keeps a sensible min-width via its flex-basis.
         columns.getStyle().set("flex-wrap", "wrap").set("gap", "var(--lumo-space-l)");
@@ -602,9 +626,14 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
         for (var b : def.bands()) {
             var bandRow = new HorizontalLayout();
             bandRow.setWidthFull();
-            bandRow.getStyle().set("justify-content", "space-between").set("gap", "var(--lumo-space-m)");
+            bandRow.setPadding(false);
+            bandRow.setSpacing(false);
+            bandRow.getStyle().set("align-items", "baseline").set("gap", "var(--lumo-space-s)");
+            // Fixed-width band-name column so every range starts at the same x —
+            // well right-of-centre AND aligned across the rows.
             var name = new Span(getTranslation(b.band().nameKey()));
-            name.getStyle().set("font-weight", "600");
+            name.getStyle().set("font-weight", "600")
+                    .set("flex-grow", "0").set("flex-shrink", "0").set("flex-basis", "68%");
             var range = new Span(b.low() + "–" + b.high());
             range.getStyle().set("color", "var(--lumo-secondary-text-color)").set("white-space", "nowrap");
             bandRow.add(name, range);
@@ -623,7 +652,12 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
         var col = new VerticalLayout();
         col.setPadding(false);
         col.setSpacing(false);
-        col.getStyle().set("flex", "1 1 280px");
+        // Score column shares the card width ~50/50 with the rubric column (both
+        // grow equally). Contents are left-aligned so the "Your score" label, the
+        // score ticker and the "Comments" label line up with the left edge of the
+        // (full-width) comments field.
+        col.getStyle().set("flex", "1 1 320px");
+        col.setAlignItems(Alignment.START);
 
         var scoreLabel = new Span(getTranslation("scoresheet.your-score"));
         scoreLabel.getStyle().set("font-weight", "600");
@@ -660,17 +694,32 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
                 .set("margin-bottom", "var(--lumo-space-s)");
         col.add(max);
 
-        var comment = new TextArea(getTranslation("scoresheet.comments.label"));
+        // "Comments" label styled exactly like "Your score" (a bold Span), not the
+        // built-in field caption.
+        var commentsLabel = new Span(getTranslation("scoresheet.comments.label"));
+        commentsLabel.getStyle().set("font-weight", "600");
+        col.add(commentsLabel);
+
+        var comment = new TextArea();
         comment.setId("score-comment-" + def.fieldName());
         comment.setPlaceholder(getTranslation("scoresheet.scores.comment.placeholder"));
         comment.setWidthFull();
         comment.setMaxLength(2000);
+        // Lighten the placeholder so it doesn't read like a pre-filled value.
+        comment.getStyle().set("--vaadin-input-field-placeholder-color",
+                "var(--lumo-tertiary-text-color)");
         if (existing != null && existing.getComment() != null) {
             comment.setValue(existing.getComment());
         }
         comment.addValueChangeListener(e -> autoSaveField(def.fieldName()));
         scoreCommentFields.put(def.fieldName(), comment);
         col.add(comment);
+        // The comment fills the remaining width and height of the score column
+        // (down to the bottom of the card); overflowing text scrolls inside the
+        // field rather than stretching the whole card taller.
+        comment.setHeightFull();
+        comment.getStyle().set("min-height", "6em");
+        col.setFlexGrow(1, comment);
         return col;
     }
 
