@@ -586,24 +586,58 @@ comment `flex-grow:1` + `height:100%` + `min-height:6em`) so it grows to the bot
 internally** instead of expanding the card. Score-column contents (Your score label, ticker, Comments label)
 are **left-aligned** (`Alignment.START`) to line up with the left edge of the full-width comments field.
 
-**▶ RESUME HERE (2026-06-02 — WORKING TREE DIRTY, uncommitted P22 manual-COI feature):**
-COMMITTED + pushed on `feature/judging-module` through `93a2855` (Awards admin UX fixes + announcement
-magic-link login fix — the #38/#39 batch). **UNCOMMITTED THIS SESSION:** the **P22 manual-COI feature**
-(see the ✅ DONE P22 block above) — new `ManualCoi` entity + `ManualCoiRepository` + **V32** migration,
-`CoiCheckServiceImpl.check()` consults it, `CoiCheckService.add/remove/findManualCois` + `ManualCoiView`,
-the JudgingAdminView "Conflicts of Interest" tab, 18 i18n keys ×5, and tests (new `ManualCoiRepositoryTest`,
-`ManualCoiIntegrationTest`, +8 `CoiCheckServiceTest`, +3 `JudgingAdminViewTest`). **1321 tests green on JDK 25.**
-Docs updated: CLAUDE.md judging module map, this file, MEMORY (P22 deferred memory deleted). **NEXT:**
-(1) **commit + push the P22 batch** (suggested msg below); (2) **DB was reset this session** — the dev seed
-brings Profissional to JUDGING only, so §13.12 + P21-repro now need the full §12.6→§13 walkthrough to reach
-RESULTS_PUBLISHED; (3) **entrant scoresheet redesign** (view + PDF, task #6 — user flagged it still needs
-work from the entrant's POV); (4) **close §13.12** (anonymity check — needs RESULTS_PUBLISHED); (5) **P21
-entry-stage gating** — FIRST reproduce "create/edit entries worked after RESULTS_PUBLISHED" (investigate
-`DivisionEntryAdminView` admin add/edit path), THEN settle policy + implement; (6) **P20** magic-link
-deep-link redirect; (7) **P15** bottom-notification overlap; (8) then code review → merge to main →
-**v0.4.0 release**. Suggested commit msg for the P22 batch:
-`Add admin-declared manual conflicts of interest (P22)`.
-The earlier resume pointers follow for reference:
+**▶ RESUME HERE (2026-06-02 end of session — WORKING TREE CLEAN, all pushed):**
+COMMITTED + pushed on `feature/judging-module` through `482a865` (**P22 manual-COI feature** — see the
+✅ DONE P22 block above), on top of `93a2855` (#38/#39 Awards admin UX + announcement magic-link fix).
+**1321 tests green on JDK 25.** Docs/memory all updated. Nothing uncommitted.
+
+**⚑ FIRST ACTION NEXT SESSION — run the triage below with the user.** The user explicitly wants, on a clean
+session, to review **all** remaining deferred items and decide which to do **before vs during** the walkthrough
+(some only make sense once the walkthrough has advanced the division to RESULTS_PUBLISHED). Present the catalog,
+let the user pick, then proceed. **Key constraint: the dev DB was reset this session** — the seed
+(`DevDataInitializer`) brings **Profissional to JUDGING only**, NOT to RESULTS_PUBLISHED. So every
+"needs-published" item below first requires re-running the **§12.6 → §13 walkthrough** on Profissional to drive
+it to RESULTS_PUBLISHED (which doubles as release-grade re-validation on the clean DB).
+
+**▶▶ DEFERRED-ITEM TRIAGE CATALOG (all open items as of 2026-06-02):**
+
+*Group A — reset-independent (pure code/UI; can be done NOW, before touching the walkthrough):*
+- **P20 — magic-link deep-link redirect.** Add `&redirect=<safe internal path>` support to
+  `MagicLinkAuthenticationFilter` (URL-encoded, open-redirect-guarded) so emails can land on an exact page
+  instead of bouncing through `/` + `RootView`. Currently all deep-link emails pass the bare link by design
+  (see change #39). Code-only; no published division needed.
+- **P15 — bottom-positioned notifications overlap page-bottom content.** Vaadin `Notification`s cover the
+  ScoresheetView Save button (and validation toasts cover Save) and the last row of long entry lists. Fix:
+  shared bottom spacer/padding (MainLayout content style) or reposition/shorten notifications. Sweep for the
+  pattern. Code/UI-only.
+- **P12 — download-button lifecycle** and **P13 — participant counts.** Deferred unconditionally at the
+  2026-05-29 triage; independent of judging; **post-v0.4.0** unless pulled forward. Code-only.
+
+*Group B — needs the walkthrough advanced to RESULTS_PUBLISHED (do DURING/AFTER the re-walk):*
+- **Entrant scoresheet redesign — view + PDF (task #6 / P18-entrant).** The on-screen `MyScoresheetView`
+  (`awards.internal`) + the downloaded PDF (`ScoresheetPdfService`, ANONYMIZED level) need a redesign from the
+  **entrant's** POV (user flagged 2026-06-02). Only reachable/meaningful **after results are published** (the
+  entrant scoresheet is only visible then). Known issues from the original P18 note: missing per-criterion
+  comments + advancement info on-screen; "Anonymized" wording in the PDF heading; entry **code** shown instead
+  of entry **number**; judge-anonymization decision. User will provide screenshots/examples.
+- **§13.12 — anonymity sanity check.** Final Awards walkthrough step, never reported. Entrant → My Results →
+  👁 scoresheet dialog shows **no judge label**; ⬇ PDF heading "Scoresheet", no judge row, entry **number**
+  (not code), advancement row. Needs RESULTS_PUBLISHED. (Naturally folds into the entrant-scoresheet redesign.)
+- **P21 — entry/category mutations not stage-gated at late stages.** FIRST **reproduce** the user's observation
+  that create/edit entries worked **after** RESULTS_PUBLISHED (investigate the `DivisionEntryAdminView` admin
+  add/edit path — code says `createEntry`/`updateEntry` require `REGISTRATION_OPEN`, so the admin path likely
+  bypasses it). Reproduction needs a RESULTS_PUBLISHED division. THEN settle the policy with the user (see the
+  full P21 audit in the "▶▶ DEFERRED — RESUME NEXT SESSION" block below) and implement. Partly code, but gated
+  on the reproduction + a policy decision.
+
+*Group C — post-v0.4.0 (non-trivial, explicitly deferred):*
+- **Medal-reopen-requires-BOS-reopen ordered dependency.** At DELIBERATION the only editable judging data is
+  BOS; editing a medal needs an ordered reopen (reopen BOS → reopen medal round → edit → finalize medals →
+  finalize BOS → republish). Non-trivial phase-state change; do NOT just relax the medal Reopen gate. See the
+  detail block above (~"reopen must require BOS to be reopened first").
+
+**Then:** code review → merge to main → **v0.4.0 release.** Full P21/§13.12/medal-reopen detail follows in the
+blocks below; the earlier resume pointers follow for reference:
 
 **▶ EARLIER RESUME (2026-06-01 end of session):**
 COMMITTED + pushed on `feature/judging-module`: `279f928` (P18 part 1), `6a23388` (medal/BOS grid polish),
