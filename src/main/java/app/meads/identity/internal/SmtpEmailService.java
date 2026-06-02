@@ -215,7 +215,7 @@ class SmtpEmailService implements EmailService {
                                          EmailService.ResultsAnnouncementType type,
                                          String competitionName, String divisionName,
                                          String customOrJustificationBody,
-                                         String resultsUrl, String contactEmail) {
+                                         String contactEmail) {
         var subjectKey = switch (type) {
             case INITIAL_NO_CUSTOM -> "email.results-published.subject";
             case REPUBLISH_NO_CUSTOM -> "email.results-republished.subject";
@@ -240,6 +240,9 @@ class SmtpEmailService implements EmailService {
                 ? customOrJustificationBody
                 : null;
 
+        // Bare magic link: after login, RootView routes the entrant to their
+        // results page. (Appending a path onto the link previously corrupted the
+        // token and broke login.)
         var link = jwtMagicLinkService.generateLink(recipientEmail, TOKEN_VALIDITY);
         var ctx = new Context();
         ctx.setVariable("subject", subject);
@@ -247,12 +250,12 @@ class SmtpEmailService implements EmailService {
         ctx.setVariable("bodyText", bodyText);
         ctx.setVariable("bodyText2", bodyText2);
         ctx.setVariable("ctaLabel", msg("email.results.cta-label", locale));
-        ctx.setVariable("ctaUrl", link + resultsUrl);
+        ctx.setVariable("ctaUrl", link);
         ctx.setVariable("fallbackText", msg("email.fallback", locale));
         ctx.setVariable("footerText", msg("email.footer", locale));
         ctx.setVariable("contactText", msg("email.contact", locale));
         ctx.setVariable("contactEmail", contactEmail);
-        sendEmail(recipientEmail, subject, ctx, link + resultsUrl);
+        sendEmail(recipientEmail, subject, ctx, link);
     }
 
     @Override

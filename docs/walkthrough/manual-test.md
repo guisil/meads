@@ -2532,19 +2532,27 @@ Steps below are admin-driven unless noted.
 
 *Log back in as `compadmin@example.com`.*
 
-- [ ] Navigate to Amadora → Manage Judging → Rounds tab → set Type filter to `Medal` → click Open on any medal row to land on MedalRoundView.
-- [ ] Try to record / change a medal (e.g., click `🥇` on a row).
-- [ ] **Expected:** Notification with message:
-  *"Results have been published — judging data cannot be modified. Revert
-  the publication first."* (i18n key `error.judging.results-published-frozen`)
-- [ ] Try the same on the Rounds tab (e.g., add a round, assign a judge,
-  start a round).
-- [ ] **Expected:** Same frozen notification.
-- [ ] Try the same in BOS (record/update/delete a placement).
-- [ ] **Expected:** Same frozen notification.
-- [ ] Navigate into a table → ScoresheetView (admin entry) and try to edit a
-  scoresheet (update a score, revert to draft, set comment language).
-- [ ] **Expected:** Same frozen notification on save.
+The freeze is enforced at **two layers**: (1) the service layer — `requireNotFrozen`
+is called on ~46 judging/scoresheet mutators and throws
+`error.judging.results-published-frozen` while the division is RESULTS_PUBLISHED
+(unit-tested in `AwardsModuleTest`); (2) the UI, which at this late stage already
+**hides most mutation controls** for ordinary status reasons (rounds are COMPLETE,
+scoresheets SUBMITTED, BOS phase over). So most mutations are simply **not
+reachable** through the UI — there's nothing to click. Verify the controls are
+absent, then confirm the guard fires on the one path that stays reachable:
+
+- [ ] Manage Judging → Rounds tab → Type filter `Medal` → Open a medal row
+  (MedalRoundView). **Expected:** the 🥇🥈🥉 medal buttons are **not shown** — the
+  round is COMPLETE, not ACTIVE.
+- [ ] Open a round → a scoresheet (admin). **Expected:** **no "Edit on behalf of
+  judge"** button — the sheet is SUBMITTED.
+- [ ] BOS tab. **Expected:** placement add/edit/delete controls are **disabled**
+  (phase is past BOS).
+- [ ] **Reachable guard path:** Rounds tab → **+ Add Round** (no status gate on the
+  button) → fill the dialog (type/category/table) → **Save**. **Expected:** the
+  frozen notification *"Results have been published — judging data cannot be
+  modified. Revert the publication first."* (`error.judging.results-published-frozen`).
+  ✅ confirmed 2026-06-01.
 
 ### 13.7 Revert publication
 
@@ -2562,8 +2570,10 @@ Steps below are admin-driven unless noted.
 - [ ] **Expected:** Notification "Type REVERT exactly to confirm." — the
   publication is NOT reverted.
 - [ ] Type `REVERT` (uppercase) and click again.
-- [ ] **Expected:** Green success notification "Publication reverted."; page
-  reloads. Status reverts to `DELIBERATION`.
+- [ ] **Expected:** Green success notification "Publication reverted."; the view
+  **re-renders in place** (no full browser reload — the toast used to be destroyed
+  by the reload before it could show; fixed 2026-06-01). Status reverts to
+  `DELIBERATION`.
 - [ ] **Expected:** Publication history grid still shows version 1 — the audit
   record is preserved.
 - [ ] Verify the public results page now forwards away (logged-out): visit
@@ -2626,8 +2636,11 @@ republish variant. Adjust expectations accordingly.
 - [ ] **Expected:** Subject "Your CHIP 2026 — Amadora results are available".
 - [ ] **Expected:** Body uses the standard "results published" template:
   heading "Results are available" + intro body + a "View results" CTA
-  button whose link is a magic-link URL that lands on
-  `/competitions/chip-2026/divisions/amadora/my-entries`.
+  button whose link is the **bare magic-link URL** (`…/login/magic?token=…`).
+  Clicking it logs the entrant in and `RootView` routes them to their results
+  page. (The CTA used to append the results path onto the token, which corrupted
+  it and broke login — fixed 2026-06-01, change #39. Deep-link-to-exact-page is
+  deferred as P20.)
 - [ ] **Expected:** Subject + body render in the entrant's `preferredLanguage`
   locale (verify by setting one entrant's preferredLanguage to `pt` and
   re-sending — that recipient gets the PT email).

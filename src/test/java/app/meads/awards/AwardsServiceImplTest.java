@@ -351,13 +351,11 @@ class AwardsServiceImplTest {
         var division = mock(Division.class);
         given(division.getStatus()).willReturn(DivisionStatus.RESULTS_PUBLISHED);
         given(division.getCompetitionId()).willReturn(competitionId);
-        given(division.getShortName()).willReturn("amadora");
         given(division.getName()).willReturn("Amadora");
         given(competitionService.findDivisionById(divisionId)).willReturn(division);
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
         var competition = mock(Competition.class);
         given(competition.getName()).willReturn("CHIP 2026");
-        given(competition.getShortName()).willReturn("chip-2026");
         given(competition.getContactEmail()).willReturn("admin@chip.pt");
         given(competitionService.findCompetitionById(competitionId)).willReturn(competition);
         given(publicationRepository.findTopByDivisionIdOrderByVersionDesc(divisionId))
@@ -379,7 +377,6 @@ class AwardsServiceImplTest {
                 org.mockito.ArgumentMatchers.eq("CHIP 2026"),
                 org.mockito.ArgumentMatchers.eq("Amadora"),
                 org.mockito.ArgumentMatchers.isNull(),
-                org.mockito.ArgumentMatchers.contains("chip-2026/divisions/amadora/my-entries"),
                 org.mockito.ArgumentMatchers.eq("admin@chip.pt"));
         var captor = ArgumentCaptor.forClass(app.meads.awards.AnnouncementSentEvent.class);
         then(eventPublisher).should().publishEvent(captor.capture());
@@ -396,13 +393,11 @@ class AwardsServiceImplTest {
         var division = mock(Division.class);
         given(division.getStatus()).willReturn(DivisionStatus.RESULTS_PUBLISHED);
         given(division.getCompetitionId()).willReturn(competitionId);
-        given(division.getShortName()).willReturn("amadora");
         given(division.getName()).willReturn("Amadora");
         given(competitionService.findDivisionById(divisionId)).willReturn(division);
         given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
         var competition = mock(Competition.class);
         given(competition.getName()).willReturn("CHIP 2026");
-        given(competition.getShortName()).willReturn("chip-2026");
         given(competitionService.findCompetitionById(competitionId)).willReturn(competition);
         var republished = Publication.republish(divisionId, 1,
                 "Corrected silver medal after spreadsheet error.", adminUserId);
@@ -422,7 +417,7 @@ class AwardsServiceImplTest {
                 org.mockito.ArgumentMatchers.eq(EmailService.ResultsAnnouncementType.REPUBLISH_NO_CUSTOM),
                 any(), any(),
                 org.mockito.ArgumentMatchers.eq("Corrected silver medal after spreadsheet error."),
-                any(), any());
+                any());
     }
 
     @Test

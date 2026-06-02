@@ -152,8 +152,6 @@ public class AwardsServiceImpl implements AwardsService {
             type = EmailService.ResultsAnnouncementType.INITIAL_NO_CUSTOM;
             body = null;
         }
-        var resultsUrl = "/competitions/" + competition.getShortName()
-                + "/divisions/" + division.getShortName() + "/my-entries";
         var userIds = entryService.findEntrantUserIdsForDivision(divisionId);
         int sent = 0;
         for (var userId : userIds) {
@@ -171,7 +169,7 @@ public class AwardsServiceImpl implements AwardsService {
             try {
                 emailService.sendResultsAnnouncement(user.getEmail(), locale, type,
                         competition.getName(), division.getName(),
-                        body, resultsUrl, competition.getContactEmail());
+                        body, competition.getContactEmail());
                 sent++;
             } catch (Exception e) {
                 log.error("Failed to send announcement to {} for division {}",

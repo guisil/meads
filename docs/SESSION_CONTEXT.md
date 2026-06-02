@@ -463,6 +463,96 @@ always "within the style", "ideal for the style", "repulsive". PT uses formal "s
 **1306 tests green.** Walkthrough §12.11 rewritten. **STILL DEFERRED:** **P15** (bottom-notification overlap)
 not yet folded in.
 
+**Walkthrough finding — DEFERRED design item (P19, 2026-06-01):** medal awards cannot be corrected once
+judging is COMPLETE. `MedalRoundView` enables **Reopen** only when judging phase == `ACTIVE`
+(`judgingActive`), and reverting the *division* status (RESULTS_PUBLISHED→DELIBERATION→JUDGING) never moves the
+*judging phase* back to ACTIVE — so a COMPLETE medal round is unreopenable post-judging. BOS, by contrast, IS
+correctable at DELIBERATION (its Reopen is enabled at phase `COMPLETE`). So at DELIBERATION the only editable
+judging data is BOS — §13.8's "edit a medal" is not achievable; use a BOS edit instead. **Design constraint
+(user, 2026-06-01):** do NOT just relax the medal Reopen gate — confirmed GOLD medals are the BOS candidates,
+so editing a medal while BOS is finalized would desync BOS. The correct fix is an ordered dependency: medal
+reopen must require **BOS to be reopened/unfinalized first** (reopen BOS → reopen medal round → edit → finalize
+medals → finalize BOS → republish). Non-trivial phase-state change; revisit post-v0.4.0.
+
+**▶▶ DEFERRED — RESUME NEXT SESSION (raised 2026-06-01, NOT started):**
+
+**(P21) Entry/category mutations are not stage-gated for late stages — AUDIT DONE, FIX NOT STARTED, policy
+unconfirmed.** `EntryService` has **no late-stage/freeze guard at all** (the `requireNotFrozen` freeze guard
+only lives in the judging/scoresheet services). Audit of current gating:
+- `createEntry` / `updateEntry`: require `REGISTRATION_OPEN` only (code says blocked after registration).
+- `deleteEntry`: entry must be DRAFT.
+- **Unguarded against late stages (auth-only, no upper status bound):** `advanceEntryStatus`,
+  `revertEntryStatus`, `markReceived`, `withdrawEntry`, `assignFinalCategory`,
+  `assignFinalCategoriesByCode` (auto-assign).
+- `CompetitionService.addJudgingCategory`: gated by `DivisionStatus.allowsJudgingCategoryManagement()` =
+  `ordinal() >= REGISTRATION_CLOSED` — which **includes DELIBERATION + RESULTS_PUBLISHED** (no upper bound).
+- **⚠️ USER OBSERVATION (2026-06-01) CONTRADICTS THE CODE:** the user reported being able to **create AND edit
+  entries after RESULTS_PUBLISHED**, even though `createEntry`/`updateEntry` check `REGISTRATION_OPEN`. **FIRST
+  RESUME STEP:** investigate the admin add/edit path in `DivisionEntryAdminView` (the admin "Add Entry" two-step
+  + Edit dialog) — it likely calls a different service method, or bypasses the `REGISTRATION_OPEN` gate, or the
+  gate isn't reached for admins. Reproduce on Profissional (RESULTS_PUBLISHED) before designing the fix.
+- **Proposed policy (UNCONFIRMED — user paused before answering):** block the unguarded ops once the division
+  is at **DELIBERATION or later** (allowed through JUDGING, so late-RECEIVED + mid-judging category placement
+  still work); cap `allowsJudgingCategoryManagement()` below DELIBERATION. Open question the user wanted to
+  clarify: whether the cutoff is uniform per-op or some ops (e.g. changing final category after a scoresheet
+  exists) should also be blocked during JUDGING; and whether a "reopen-to-edit" model fits better than a hard
+  block. New `EntryService.requireEntryStageMutable(division)` + error key ×5 + UI gating in
+  `DivisionEntryAdminView` + tests. **Do NOT implement until the policy + the create/edit-post-publication
+  reproduction are settled with the user.**
+
+**(P22) Manual COI entry by admin — NEW FEATURE, NOT started (real-world need, 2026-06-01).** Automatic COI
+detection is **account/meadery based**: `CoiCheckService.check(judgeUserId, entryId)` → `CoiResult`
+(`blocking`/`warn`/`clear`), implemented in `CoiCheckServiceImpl` (judge owns the entry → hard block;
+meadery-name match via `MeaderyNameNormalizer` → soft warn). Consumed by `JudgingServiceImpl.assignJudge`
+(hard-COI rejection, `error.coi.assign-hard-block`, ~line 724) + medal recording (~1508). **Gap found in the
+real competition:** a professional entrant registered their meads under the **business email** but registered
+as a **judge under a different email** — two separate accounts for the same person, so `check()` (account-based)
+never matches → no COI is detected and the judge could be assigned to their own meads' category. **Need:** an
+admin-declared **manual COI**. Likely shape: a new table/entity recording a manual COI link (judge `userId` ↔
+entrant `userId`, or judge ↔ entry/category, scoped to division/competition); `CoiCheckServiceImpl.check()`
+consults it (return hardBlock or warn); admin UI to add/remove manual COIs (JudgingAdminView judges area or
+participant management). Decide hard vs soft for manual entries. No code started.
+
+**(§13.12) Anonymity sanity check — NOT YET REPORTED.** Last walkthrough step was presented but the user
+never reported the result. Re-run: entrant (`proentrant1@example.com`) → My Results → 👁 scoresheet dialog
+shows **no judge label**; ⬇ PDF heading "Scoresheet", **no judge row**, entry **number** (not code),
+advancement row. Confirm, then §13 Awards walkthrough is fully done.
+
+**Change #39 (BUG FIX — broken announcement login, walkthrough §13.9–13.11, 2026-06-01, uncommitted):** the
+results-announcement email CTA was unclickable-broken in **production**. `SmtpEmailService.sendResultsAnnouncement`
+built the CTA as `link + resultsUrl` — concatenating `competitions/.../my-entries` **directly onto the magic-link
+token value** (`…/login/magic?token=<JWT>competitions/…`), so `JwtMagicLinkService.extractEmail` failed to parse
+the corrupted JWT → `MagicLinkAuthenticationFilter` fell through to `/login?error`. (The filter also has no
+redirect-target support — it always `sendRedirect("/")`.) **Investigation:** this was the ONLY broken email —
+every other deep-link email (submission confirmation, credit notification, judging table-ready / scoresheet-
+reverted / medal-round-ready, magic login, password setup, MFA reset) passes the **bare** magic link, which
+logs in fine and lands on `/`, where `RootView` routes the user to their default page. Token validity is uniform
+**7 days** across all of them (`TOKEN_VALIDITY`/`LINK_VALIDITY`); only MFA reset is 1h. **Fix (chosen: minimal):**
+the announcement now passes the **bare magic link** too — after login `RootView` routes the entrant to their
+results (the change-#33 `resultsLandingPath`), so the deep-link was unnecessary. Removed the now-dead
+`resultsUrl` param from `EmailService.sendResultsAnnouncement` + impl + `AwardsServiceImpl` (no more
+`/competitions/.../my-entries` build); updated 2 `AwardsServiceImplTest` matchers + dropped 4 now-unused
+`getShortName()` stubs. **1306 green.** **DEFERRED (P20):** proper deep-link redirect support (`&redirect=<safe
+internal path>` on the magic filter, URL-encoded, open-redirect-guarded) so emails can land on an exact page
+rather than bouncing through `/`. Walkthrough §13.9 CTA expectation updated.
+
+**Change #38 (walkthrough §13.7 fix, 2026-06-01, uncommitted):** `AwardsAdminView` publish / republish /
+revert success notifications were never seen — each handler showed the toast then immediately called
+`UI.getCurrent().getPage().reload()`, a full browser reload that tore down the UI (and the toast) before it
+rendered. Fix: new private `refreshPage()` (re-fetches the division + `renderPage()` in the same UI) replaces
+the three `getPage().reload()` calls; the toast now survives and the actions/history re-render in place. `UI`
+import dropped (no longer used). Found running §13.6–13.7 on Profissional. Not Karibu-reproducible (a Karibu
+`getPage().reload()` is a no-op), so fast-cycle; existing `AwardsAdminViewTest` (per-status render) +
+`AwardsModuleTest` stay green. Walkthrough §13.6 (freeze guard — rewritten: controls hidden by status +
+service guard the backstop; only Add-Round save reaches the frozen notification) + §13.7 updated. **Two more
+AwardsAdminView fixes same session:** (a) the Re-publish + announcement **dialogs widened** (`setWidth("36em")`,
+TextArea min-height 120→180px — they were sizing to content); (b) removed `setDisableOnClick(true)` from the
+four actions-row opener buttons (publish/republish/announce/revert) — they disabled on click to open a
+(modal) dialog but never re-enabled on **Cancel**, leaving the button stuck disabled; the in-dialog confirm
+buttons keep disable-on-click as double-submit guards. (c) publication-history grid column proportions:
+**Version** narrowed to 90px fixed, Published-at 200px, Published-by 180px (all `flexGrow 0`), **Justification**
+now `flexGrow 1` (takes the slack) with a **tooltip** showing the full text when truncated.
+
 **Change #37 follow-up (visual refinements after the user reviewed it live, 2026-06-01, uncommitted):**
 fast-cycle tweaks to `ScoresheetView` + i18n (no schema, no net new tests — 1 existing test updated for the
 split label span; **1306 green**): title **"MJP Scoresheet — {0}"** (was "Scoresheet"); info-panel field
@@ -484,13 +574,20 @@ comment `flex-grow:1` + `height:100%` + `min-height:6em`) so it grows to the bot
 internally** instead of expanding the card. Score-column contents (Your score label, ticker, Comments label)
 are **left-aligned** (`Alignment.START`) to line up with the left edge of the full-width comments field.
 
-**▶ RESUME HERE (fresh session, 2026-06-01 — uncommitted, working tree dirty):** P18 part 1 (content +
-anonymization, change #36, COMMITTED `279f928`) + medal/BOS grid polish (COMMITTED `6a23388`) + **P18 part 2
-(judge scoresheet redesign + MJP rubric, change #37 — NOT yet committed)**. **1306 tests green on JDK 25.**
-**NEXT:** (1) review + commit/push change #37; (2) optionally fold in **P15** (bottom-notification overlap)
-+ any visual tuning of the new scoresheet once seen live; (3) the still-unrun **Awards walkthrough §13.6
-onward** (freeze guard → revert → re-publish → announcements → anonymity); (4) then code review → merge to
-main → **v0.4.0 release**. The earlier (2026-05-31) resume pointer follows for reference:
+**▶ RESUME HERE (2026-06-01 end of session — WORKING TREE DIRTY, uncommitted walkthrough fixes):**
+COMMITTED + pushed on `feature/judging-module`: `279f928` (P18 part 1), `6a23388` (medal/BOS grid polish),
+`229bc6a` (P18 part 2 — judge scoresheet redesign + MJP rubric), `0eed06e` (scoresheet layout refinements).
+**UNCOMMITTED** (this session's Awards-walkthrough fixes — see changes #38 + #39 above + the §13.6/§13.7/§13.9
+walkthrough rewrites + the P21/§13.12 deferred block): `AwardsAdminView` reload→in-place-refresh (toast
+survives), dialogs widened, opener buttons no longer stick-disabled on cancel, publication-history column
+proportions + Justification tooltip; **change #39** announcement magic-link login fix (bare link; dropped the
+`resultsUrl` param). **1306 tests green on JDK 25.** **NEXT:** (1) **commit + push the uncommitted #38/#39
+batch** (suggested msg covers AwardsAdminView UX fixes + the announcement magic-link fix); (2) **close §13.12**
+(anonymity check — never reported, see deferred block above); (3) **P21 entry-stage gating** — FIRST reproduce
+the user's "create/edit entries worked after RESULTS_PUBLISHED" observation (investigate `DivisionEntryAdminView`
+admin add/edit path), THEN settle policy + implement (see the ▶▶ DEFERRED block above); (4) **P20** magic-link
+deep-link redirect support; (5) **P15** bottom-notification overlap; (6) then code review → merge to main →
+**v0.4.0 release**. The earlier resume pointers follow for reference:
 
 **▶ EARLIER RESUME (2026-05-31 end of day):** working tree clean, all
 commits through the entrant-results redesign + PDF-download fix are committed AND pushed to

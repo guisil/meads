@@ -10,7 +10,6 @@ import app.meads.competition.Division;
 import app.meads.competition.DivisionStatus;
 import app.meads.identity.Role;
 import app.meads.identity.UserService;
-import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dialog.Dialog;
@@ -107,6 +106,18 @@ public class AwardsAdminView extends VerticalLayout implements BeforeEnterObserv
         add(createPublicationHistory());
     }
 
+    /**
+     * Re-fetches the division (its status changed) and re-renders in place. Used
+     * after publish / republish / revert instead of a full browser reload — a
+     * full reload tears down the UI and destroys the just-shown success
+     * notification before the admin can read it.
+     */
+    private void refreshPage() {
+        competition = competitionService.findCompetitionByShortName(compShortName);
+        division = competitionService.findDivisionByShortName(competition.getId(), divShortName);
+        renderPage();
+    }
+
     private Nav createBreadcrumb() {
         var nav = new Nav();
         var user = userService.findById(currentUserId);
@@ -144,14 +155,12 @@ public class AwardsAdminView extends VerticalLayout implements BeforeEnterObserv
                         e -> openRepublishDialog());
                 republishBtn.setId("awards-republish-button");
                 republishBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-                republishBtn.setDisableOnClick(true);
                 actions.add(republishBtn);
             } else {
                 var publishBtn = new Button(getTranslation("awards.admin.publish"),
                         e -> openPublishDialog());
                 publishBtn.setId("awards-publish-button");
                 publishBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-                publishBtn.setDisableOnClick(true);
                 actions.add(publishBtn);
             }
         } else if (division.getStatus() == DivisionStatus.RESULTS_PUBLISHED) {
@@ -159,14 +168,12 @@ public class AwardsAdminView extends VerticalLayout implements BeforeEnterObserv
                     e -> openAnnouncementDialog());
             announceBtn.setId("awards-announce-button");
             announceBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-            announceBtn.setDisableOnClick(true);
             actions.add(announceBtn);
 
             var revertBtn = new Button(getTranslation("awards.admin.revert"),
                     e -> openRevertDialog());
             revertBtn.setId("awards-revert-button");
             revertBtn.addThemeVariants(ButtonVariant.LUMO_ERROR);
-            revertBtn.setDisableOnClick(true);
             actions.add(revertBtn);
         }
         return actions;
@@ -180,16 +187,22 @@ public class AwardsAdminView extends VerticalLayout implements BeforeEnterObserv
         grid.setId("awards-publication-history");
         grid.addColumn(Publication::getVersion)
                 .setHeader(getTranslation("awards.admin.history.column.version"))
-                .setResizable(true).setSortable(true);
+                .setResizable(true).setSortable(true)
+                .setWidth("90px").setFlexGrow(0);
         grid.addColumn(p -> formatInstant(p.getPublishedAt()))
                 .setHeader(getTranslation("awards.admin.history.column.published-at"))
-                .setResizable(true);
+                .setResizable(true)
+                .setWidth("200px").setFlexGrow(0);
         grid.addColumn(p -> userService.findById(p.getPublishedBy()).getName())
                 .setHeader(getTranslation("awards.admin.history.column.published-by"))
-                .setResizable(true);
+                .setResizable(true)
+                .setWidth("180px").setFlexGrow(0);
+        // Justification takes the remaining width; the full text shows in a
+        // tooltip when it's truncated.
         grid.addColumn(Publication::getJustification)
                 .setHeader(getTranslation("awards.admin.history.column.justification"))
-                .setResizable(true);
+                .setResizable(true).setFlexGrow(1)
+                .setTooltipGenerator(p -> p.getJustification() == null ? "" : p.getJustification());
         grid.setItems(awardsService.getPublicationHistory(division.getId()));
         grid.setAllRowsVisible(true);
         section.add(grid);
@@ -206,7 +219,7 @@ public class AwardsAdminView extends VerticalLayout implements BeforeEnterObserv
                 Notification.show(getTranslation("awards.admin.publish.success"))
                         .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
-                UI.getCurrent().getPage().reload();
+                refreshPage();
             } catch (BusinessRuleException ex) {
                 Notification.show(getTranslation(ex.getMessage(), ex.getParams()))
                         .addThemeVariants(NotificationVariant.LUMO_ERROR);
@@ -222,11 +235,12 @@ public class AwardsAdminView extends VerticalLayout implements BeforeEnterObserv
     private void openRepublishDialog() {
         var dialog = new Dialog();
         dialog.setHeaderTitle(getTranslation("awards.admin.republish.title"));
+        dialog.setWidth("36em");
         var justification = new TextArea(getTranslation("awards.admin.republish.justification.label"));
         justification.setHelperText(getTranslation("awards.admin.republish.justification.helper"));
         justification.setMaxLength(1000);
         justification.setWidthFull();
-        justification.setMinHeight("120px");
+        justification.setMinHeight("180px");
         dialog.add(justification);
         var confirm = new Button(getTranslation("awards.admin.republish"), e -> {
             try {
@@ -234,7 +248,7 @@ public class AwardsAdminView extends VerticalLayout implements BeforeEnterObserv
                 Notification.show(getTranslation("awards.admin.republish.success"))
                         .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
-                UI.getCurrent().getPage().reload();
+                refreshPage();
             } catch (BusinessRuleException ex) {
                 Notification.show(getTranslation(ex.getMessage(), ex.getParams()))
                         .addThemeVariants(NotificationVariant.LUMO_ERROR);
@@ -250,11 +264,12 @@ public class AwardsAdminView extends VerticalLayout implements BeforeEnterObserv
     private void openAnnouncementDialog() {
         var dialog = new Dialog();
         dialog.setHeaderTitle(getTranslation("awards.admin.announce.title"));
+        dialog.setWidth("36em");
         var message = new TextArea(getTranslation("awards.admin.announce.message.label"));
         message.setHelperText(getTranslation("awards.admin.announce.message.helper"));
         message.setMaxLength(2000);
         message.setWidthFull();
-        message.setMinHeight("120px");
+        message.setMinHeight("180px");
         dialog.add(message);
         var send = new Button(getTranslation("awards.admin.send-announcement"), e -> {
             try {
@@ -295,7 +310,7 @@ public class AwardsAdminView extends VerticalLayout implements BeforeEnterObserv
                 Notification.show(getTranslation("awards.admin.revert.success"))
                         .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
-                UI.getCurrent().getPage().reload();
+                refreshPage();
             } catch (BusinessRuleException ex) {
                 Notification.show(getTranslation(ex.getMessage(), ex.getParams()))
                         .addThemeVariants(NotificationVariant.LUMO_ERROR);

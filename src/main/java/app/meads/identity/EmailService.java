@@ -14,7 +14,7 @@ public interface EmailService {
                                   ResultsAnnouncementType type,
                                   String competitionName, String divisionName,
                                   String customOrJustificationBody,
-                                  String resultsUrl, String contactEmail);
+                                  String contactEmail);
 
     void sendMagicLink(String recipientEmail, Locale locale);
 
