@@ -77,7 +77,8 @@ app.meads.entry               ← Entry, JumpsellerOrder/LineItem, ProductMappin
                                 OrderRequiresReviewEvent; allowed = {competition, identity}
 app.meads.judging             ← Judging, JudgingRound (type=SCORING|MEDAL), CategoryJudgingConfig, Scoresheet/
                                 ScoreField, MedalAward, BosPlacement, JudgeProfile, PhysicalTable,
-                                JudgingService, ScoresheetService, JudgeProfileService, CoiCheckService,
+                                JudgingService, ScoresheetService, JudgeProfileService, CoiCheckService
+                                (+ manual COI: ManualCoi in internal, ManualCoiView, add/remove/findManualCois),
                                 ScoresheetPdfService, 13 events, JudgingErrorKeyCoverageTest;
                                 allowed = {competition, entry, identity}
 app.meads.awards              ← Publication (audit), AwardsService, EntrantResultRow, AdminResultsView,

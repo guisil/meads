@@ -1804,6 +1804,21 @@ The dev seed already pre-stages **6 judges** (`judge@`, `judge2@`, …, `judge6@
 - [ ] **Expected:** Notification; count goes back to 0.
 - [ ] Re-select both judges before continuing.
 
+#### 12.6.3.1 Manual conflict of interest (Conflicts of Interest tab)
+
+Automatic COI is account/meadery based, so it misses one real person using **two accounts** (e.g. a meadery
+registered entries under a business email but judges under a personal email). An admin can declare this link
+manually; it then hard-blocks that judge from that entrant's entries exactly like a self-entry.
+
+- [ ] On Judging Admin, open the **"Conflicts of Interest"** tab (5th tab).
+- [ ] **Expected:** a help line explaining manual COI, an **"Add conflict of interest"** button (`add-coi-button`), and an empty grid (`coi-grid`) with columns Judge / Entrant / Actions.
+- [ ] Click **Add conflict of interest**. **Expected:** dialog with two ComboBoxes — **Judge** (`add-coi-judge`, the competition's JUDGE participants) and **Entrant** (`add-coi-entrant`, the competition's ENTRANT participants).
+- [ ] Pick a judge + an entrant (use two accounts that are the *same real person* in your seed, or any judge+entrant pair to exercise the flow), click **Save**.
+- [ ] **Expected:** Notification "Conflict of interest added."; the pair appears in the grid (name + email each).
+- [ ] **Try:** Add the same judge+entrant pair again → **Expected:** error *"This conflict of interest has already been declared."* (key `error.coi.manual.duplicate`).
+- [ ] **Verify the block:** go to Rounds → 👥 Assign Judges on a round in the **entrant's category**. **Expected:** ticking that judge reverts the selection and shows the hard-COI error — the manual COI now behaves like a self-entry. (Same enforcement reaches medal recording, since both funnel through `CoiCheckService.check()`.)
+- [ ] Back on the Conflicts tab, click the 🗑 remove icon on the row → confirm in the dialog (**Remove**). **Expected:** Notification "Conflict of interest removed."; the row disappears and the judge can be assigned again.
+
 #### 12.6.4 Start a scoring round
 
 Scoring rounds require an **explicit entry assignment** before they can start. Use the 📦 Assign Entries button on the row to pick the entries this round will judge (typically all RECEIVED entries with `finalCategoryId = M1A`, but split-category scenarios have a subset — see §12.6.7.1). The earlier "all entries with matching final category" auto-populate fallback was removed in cycle 9 — admin must opt in.

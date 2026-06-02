@@ -122,6 +122,9 @@ class JudgingAdminViewTest {
     @Autowired
     ScoresheetRepository scoresheetRepository;
 
+    @Autowired
+    app.meads.judging.CoiCheckService coiCheckService;
+
     private Competition competition;
     private Division division;
 
@@ -220,7 +223,7 @@ class JudgingAdminViewTest {
         var heading = _get(H2.class);
         assertThat(heading.getText()).contains("Judging Admin");
         var tabSheet = _get(TabSheet.class);
-        assertThat(tabSheet.getTabCount()).isEqualTo(4);
+        assertThat(tabSheet.getTabCount()).isEqualTo(5);
     }
 
     @Test
@@ -236,8 +239,8 @@ class JudgingAdminViewTest {
         assertThat(heading.getText()).contains("Judging Admin");
 
         var tabSheet = _get(TabSheet.class);
-        // Final tab layout after cycle 6c: Physical Tables / Rounds / Results / Best of Show.
-        assertThat(tabSheet.getTabCount()).isEqualTo(4);
+        // Tabs: Physical Tables / Rounds / Results / Best of Show / Conflicts of Interest.
+        assertThat(tabSheet.getTabCount()).isEqualTo(5);
     }
 
     @Test
@@ -1352,5 +1355,81 @@ class JudgingAdminViewTest {
                 .filter(a -> expectedHref.equals(a.getHref()))
                 .findFirst();
         assertThat(managePlacements).as("Manage placements deep link").isPresent();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldRenderConflictsTabWithAddButtonAndGrid() {
+        advanceDivisionToJudging();
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(4); // Conflicts of Interest tab
+
+        var addButton = _get(Button.class, spec -> spec.withId("add-coi-button"));
+        assertThat(addButton).isNotNull();
+        var grid = _get(Grid.class, spec -> spec.withId("coi-grid"));
+        assertThat(grid).isNotNull();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    @SuppressWarnings("unchecked")
+    void shouldAddManualCoiViaDialog() {
+        advanceDivisionToJudging();
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        competitionService.addParticipantByEmail(competition.getId(),
+                "coi-judge@example.com", CompetitionRole.JUDGE, admin.getId());
+        competitionService.addParticipantByEmail(competition.getId(),
+                "coi-entrant@example.com", CompetitionRole.ENTRANT, admin.getId());
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var view = _get(JudgingAdminView.class);
+        view.openAddCoiDialog();
+
+        var judgeSelect = (com.vaadin.flow.component.combobox.ComboBox<User>)
+                _get(com.vaadin.flow.component.combobox.ComboBox.class, spec -> spec.withId("add-coi-judge"));
+        var entrantSelect = (com.vaadin.flow.component.combobox.ComboBox<User>)
+                _get(com.vaadin.flow.component.combobox.ComboBox.class, spec -> spec.withId("add-coi-entrant"));
+        var judge = judgeSelect.getGenericDataView().getItems()
+                .filter(u -> "coi-judge@example.com".equals(u.getEmail())).findFirst().orElseThrow();
+        var entrant = entrantSelect.getGenericDataView().getItems()
+                .filter(u -> "coi-entrant@example.com".equals(u.getEmail())).findFirst().orElseThrow();
+        judgeSelect.setValue(judge);
+        entrantSelect.setValue(entrant);
+
+        _click(_get(Button.class, spec -> spec.withText("Save")));
+
+        var cois = coiCheckService.findManualCois(competition.getId());
+        assertThat(cois).hasSize(1);
+        assertThat(cois.getFirst().judgeEmail()).isEqualTo("coi-judge@example.com");
+        assertThat(cois.getFirst().entrantEmail()).isEqualTo("coi-entrant@example.com");
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldRemoveManualCoiViaDialog() {
+        advanceDivisionToJudging();
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var judge = userRepository.save(new User("coi-rm-judge@example.com", "RM Judge",
+                UserStatus.ACTIVE, Role.USER));
+        var entrant = userRepository.save(new User("coi-rm-entrant@example.com", "RM Entrant",
+                UserStatus.ACTIVE, Role.USER));
+        coiCheckService.addManualCoi(competition.getId(), judge.getId(), entrant.getId(), admin.getId());
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/judging-admin");
+
+        var view = _get(JudgingAdminView.class);
+        var coi = coiCheckService.findManualCois(competition.getId()).getFirst();
+        view.openRemoveCoiDialog(coi);
+
+        _click(_get(Button.class, spec -> spec.withText("Remove")));
+
+        assertThat(coiCheckService.findManualCois(competition.getId())).isEmpty();
     }
 }

@@ -204,6 +204,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         tabSheet.add(getTranslation("judging-admin.tab.rounds"), createRoundsTab());
         tabSheet.add(getTranslation("judging-admin.tab.results"), createResultsTab());
         tabSheet.add(getTranslation("judging-admin.tab.bos"), createBosTab());
+        tabSheet.add(getTranslation("judging-admin.tab.conflicts"), createConflictsTab());
         tabSheet.setSelectedIndex(computeDefaultTabIndex());
         return tabSheet;
     }
@@ -237,6 +238,132 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
             return 2; // Results
         }
         return 1; // Rounds
+    }
+
+    private Grid<app.meads.judging.ManualCoiView> coiGrid;
+
+    private VerticalLayout createConflictsTab() {
+        var tab = new VerticalLayout();
+        tab.setPadding(false);
+
+        var help = new Span(getTranslation("judging-admin.coi.help"));
+        help.setId("coi-help");
+        help.getStyle().set("color", "var(--lumo-secondary-text-color)");
+        tab.add(help);
+
+        var addButton = new Button(getTranslation("judging-admin.coi.add"), e -> openAddCoiDialog());
+        addButton.setId("add-coi-button");
+        addButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        tab.add(addButton);
+
+        coiGrid = new Grid<>(app.meads.judging.ManualCoiView.class, false);
+        coiGrid.setId("coi-grid");
+        coiGrid.setAllRowsVisible(true);
+        coiGrid.addColumn(coi -> coi.judgeName() + " (" + coi.judgeEmail() + ")")
+                .setHeader(getTranslation("judging-admin.coi.column.judge"))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
+        coiGrid.addColumn(coi -> coi.entrantName() + " (" + coi.entrantEmail() + ")")
+                .setHeader(getTranslation("judging-admin.coi.column.entrant"))
+                .setResizable(true).setSortable(true).setAutoWidth(true);
+        coiGrid.addComponentColumn(this::coiActions)
+                .setHeader(getTranslation("judging-admin.coi.column.actions"))
+                .setResizable(true).setAutoWidth(true).setFlexGrow(0);
+        refreshCoiGrid();
+        tab.add(coiGrid);
+        return tab;
+    }
+
+    private void refreshCoiGrid() {
+        if (coiGrid != null) {
+            coiGrid.setItems(coiCheckService.findManualCois(competition.getId()));
+        }
+    }
+
+    private HorizontalLayout coiActions(app.meads.judging.ManualCoiView coi) {
+        var layout = new HorizontalLayout();
+        layout.setPadding(false);
+        var removeButton = new Button(new Icon(VaadinIcon.TRASH));
+        removeButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE,
+                ButtonVariant.LUMO_ERROR);
+        removeButton.setTooltipText(getTranslation("judging-admin.coi.action.remove"));
+        removeButton.addClickListener(e -> openRemoveCoiDialog(coi));
+        layout.add(removeButton);
+        return layout;
+    }
+
+    /** Package-public for tests — wired to the +Add toolbar button on the Conflicts tab. */
+    public void openAddCoiDialog() {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("judging-admin.coi.add"));
+        dialog.setWidth("32em");
+
+        var judgeSelect = new ComboBox<User>(getTranslation("judging-admin.coi.judge"));
+        judgeSelect.setId("add-coi-judge");
+        judgeSelect.setWidthFull();
+        judgeSelect.setItems(competitionService.findUsersByRoleInCompetition(
+                competition.getId(), CompetitionRole.JUDGE));
+        judgeSelect.setItemLabelGenerator(u -> u.getName() + " (" + u.getEmail() + ")");
+
+        var entrantSelect = new ComboBox<User>(getTranslation("judging-admin.coi.entrant"));
+        entrantSelect.setId("add-coi-entrant");
+        entrantSelect.setWidthFull();
+        entrantSelect.setItems(competitionService.findUsersByRoleInCompetition(
+                competition.getId(), CompetitionRole.ENTRANT));
+        entrantSelect.setItemLabelGenerator(u -> u.getName() + " (" + u.getEmail() + ")");
+
+        dialog.add(new VerticalLayout(judgeSelect, entrantSelect));
+
+        var saveBtn = new Button(getTranslation("button.save"), e -> {
+            if (judgeSelect.getValue() == null || entrantSelect.getValue() == null) {
+                Notification.show(getTranslation("judging-admin.coi.select-both"))
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                e.getSource().setEnabled(true);
+                return;
+            }
+            try {
+                coiCheckService.addManualCoi(competition.getId(), judgeSelect.getValue().getId(),
+                        entrantSelect.getValue().getId(), currentUserId);
+                dialog.close();
+                refreshCoiGrid();
+                Notification.show(getTranslation("judging-admin.coi.added"))
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                e.getSource().setEnabled(true);
+            }
+        });
+        saveBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        saveBtn.setDisableOnClick(true);
+        var cancelBtn = new Button(getTranslation("button.cancel"), e -> dialog.close());
+        dialog.getFooter().add(cancelBtn, saveBtn);
+        dialog.open();
+    }
+
+    /** Package-public for tests — wired to the per-row Remove action button. */
+    public void openRemoveCoiDialog(app.meads.judging.ManualCoiView coi) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("judging-admin.coi.remove.title"));
+        dialog.add(new Span(getTranslation("judging-admin.coi.remove.body",
+                coi.judgeName(), coi.entrantName())));
+        var removeBtn = new Button(getTranslation("judging-admin.coi.action.remove"), e -> {
+            try {
+                coiCheckService.removeManualCoi(coi.id(), currentUserId);
+                dialog.close();
+                refreshCoiGrid();
+                Notification.show(getTranslation("judging-admin.coi.removed"))
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                e.getSource().setEnabled(true);
+            }
+        });
+        removeBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
+        removeBtn.setDisableOnClick(true);
+        var cancelBtn = new Button(getTranslation("button.cancel"), e -> dialog.close());
+        dialog.getFooter().add(cancelBtn, removeBtn);
+        dialog.open();
     }
 
     private Grid<app.meads.judging.PhysicalTable> physicalTablesGrid;
