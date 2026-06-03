@@ -1,5 +1,6 @@
 package app.meads;
 
+import com.vaadin.flow.component.HasElement;
 import com.vaadin.flow.component.Text;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.AppLayout;
@@ -170,5 +171,21 @@ public class MainLayout extends AppLayout {
 
         setPrimarySection(Section.DRAWER);
         setDrawerOpened(false);
+    }
+
+    /**
+     * Bottom gap added to every routed view so that primary actions and the tails of long
+     * lists clear the zone where Vaadin renders bottom-positioned {@code Notification}s. Without
+     * it, a success/validation toast can cover the Save button or the last row of a list for the
+     * few seconds it is visible (P15).
+     */
+    private static final String CONTENT_BOTTOM_GAP = "5rem";
+
+    @Override
+    public void showRouterLayoutContent(HasElement content) {
+        super.showRouterLayoutContent(content);
+        if (content != null) {
+            content.getElement().getStyle().set("padding-bottom", CONTENT_BOTTOM_GAP);
+        }
     }
 }

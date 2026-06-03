@@ -405,6 +405,17 @@ Pre-requisite: enable MFA on `admin@example.com` first (see "MFA setup" above).
 - [ ] Click the drawer toggle (hamburger icon)
 - [ ] **Expected:** Sidebar expands, shows: Competitions, Users, and version number at the bottom
 
+### Bottom gap clears notifications (P15)
+
+`MainLayout` adds a ~5rem bottom gap to every routed view so bottom-positioned `Notification`
+toasts don't cover the page's last interactive control or list row.
+
+- [ ] Open a view with a primary action at the very bottom (e.g. a judge's **ScoresheetView**
+  Save button, or a long **My Entries** list) and trigger a notification (save a scoresheet, add
+  an entry).
+- [ ] **Expected:** the success/validation toast appears at the bottom but does **not** overlap the
+  Save button or the last list row — there is visible space below the last control.
+
 ### SYSTEM_ADMIN nav items
 
 - [ ] While logged in as `admin@example.com` (SYSTEM_ADMIN)

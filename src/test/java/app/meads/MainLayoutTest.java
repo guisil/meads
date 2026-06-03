@@ -208,6 +208,18 @@ class MainLayoutTest {
 
     @Test
     @WithMockUser(roles = "USER")
+    void shouldApplyBottomGapToRoutedContentSoNotificationsDoNotOverlap() {
+        UI.getCurrent().navigate("");
+
+        var layout = _get(MainLayout.class);
+        assertThat(layout.getContent().getElement().getStyle().get("padding-bottom"))
+                .as("routed content should carry a bottom gap clearing the notification zone")
+                .isNotNull()
+                .isNotBlank();
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
     void shouldUseHorizontalLayoutInNavbar() {
         UI.getCurrent().navigate("");
 
