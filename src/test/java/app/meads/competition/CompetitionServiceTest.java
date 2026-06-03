@@ -838,6 +838,30 @@ class CompetitionServiceTest {
         then(divisionRepository).should(never()).delete(any());
     }
 
+    // --- findParticipantCountsByRole ---
+
+    @Test
+    void shouldCountParticipantsByRoleWithZeroForUnusedRoles() {
+        var competition = createCompetition();
+        var p1 = new Participant(competition.getId(), UUID.randomUUID());
+        var p2 = new Participant(competition.getId(), UUID.randomUUID());
+        given(participantRepository.findByCompetitionId(competition.getId()))
+                .willReturn(List.of(p1, p2));
+        given(participantRoleRepository.findByParticipantId(p1.getId()))
+                .willReturn(List.of(new ParticipantRole(p1.getId(), CompetitionRole.JUDGE),
+                        new ParticipantRole(p1.getId(), CompetitionRole.ENTRANT)));
+        given(participantRoleRepository.findByParticipantId(p2.getId()))
+                .willReturn(List.of(new ParticipantRole(p2.getId(), CompetitionRole.JUDGE)));
+
+        var counts = competitionService.findParticipantCountsByRole(competition.getId());
+
+        assertThat(counts)
+                .containsEntry(CompetitionRole.JUDGE, 2L)
+                .containsEntry(CompetitionRole.ENTRANT, 1L)
+                .containsEntry(CompetitionRole.STEWARD, 0L)
+                .containsEntry(CompetitionRole.ADMIN, 0L);
+    }
+
     // --- addParticipant ---
 
     @Test

@@ -202,6 +202,27 @@ class CompetitionDetailViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldDisplayParticipantRoleCountSummary() {
+        var judge = userRepository.findByEmail("judge-summary@test.com")
+                .orElseGet(() -> userRepository.save(new User("judge-summary@test.com",
+                        "Judge Summary", UserStatus.ACTIVE, Role.USER)));
+        var participant = participantRepository.save(
+                new Participant(testCompetition.getId(), judge.getId()));
+        participantRoleRepository.save(
+                new ParticipantRole(participant.getId(), CompetitionRole.JUDGE));
+
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName());
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(1); // Participants tab
+
+        var summary = _get(com.vaadin.flow.component.html.Span.class,
+                spec -> spec.withId("participants-role-summary"));
+        assertThat(summary.getText()).contains("Judges: 1");
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldDisplaySettingsTab() {
         UI.getCurrent().navigate("competitions/" + testCompetition.getShortName());
 

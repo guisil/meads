@@ -21,8 +21,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -893,6 +895,21 @@ public class CompetitionService {
         return participants.stream()
                 .flatMap(p -> participantRoleRepository.findByParticipantId(p.getId()).stream())
                 .toList();
+    }
+
+    /**
+     * Aggregate participant counts per role for a competition. Every {@link CompetitionRole} is
+     * present in the result (0 when no participant holds it) so callers can render a stable summary.
+     */
+    public Map<CompetitionRole, Long> findParticipantCountsByRole(@NotNull UUID competitionId) {
+        var counts = new EnumMap<CompetitionRole, Long>(CompetitionRole.class);
+        for (var role : CompetitionRole.values()) {
+            counts.put(role, 0L);
+        }
+        for (var role : findRolesByCompetition(competitionId)) {
+            counts.merge(role.getRole(), 1L, Long::sum);
+        }
+        return counts;
     }
 
     public List<ParticipantRole> findRolesForParticipant(@NotNull UUID participantId) {

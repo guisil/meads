@@ -81,6 +81,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
     private Nav breadcrumb;
     private Grid<Division> divisionsGrid;
     private Grid<Participant> participantsGrid;
+    private Span participantsRoleSummary;
     private Grid<CompetitionDocument> documentsGrid;
     private Map<UUID, User> userMap;
     private Map<UUID, List<ParticipantRole>> rolesMap;
@@ -283,6 +284,11 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         toolbar.setWidthFull();
         toolbar.setFlexGrow(1, filterField);
         tab.add(toolbar);
+
+        participantsRoleSummary = new Span();
+        participantsRoleSummary.setId("participants-role-summary");
+        participantsRoleSummary.getStyle().set("color", "var(--lumo-secondary-text-color)");
+        tab.add(participantsRoleSummary);
 
         participantsGrid = new Grid<>();
         participantsGrid.setAllRowsVisible(true);
@@ -584,6 +590,16 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 .collect(Collectors.toMap(User::getId, Function.identity()));
 
         participantsGrid.setItems(participants);
+
+        if (participantsRoleSummary != null) {
+            var counts = competitionService.findParticipantCountsByRole(competitionId);
+            participantsRoleSummary.setText(getTranslation(
+                    "competition-detail.participants.role-summary",
+                    counts.getOrDefault(CompetitionRole.ENTRANT, 0L),
+                    counts.getOrDefault(CompetitionRole.JUDGE, 0L),
+                    counts.getOrDefault(CompetitionRole.STEWARD, 0L),
+                    counts.getOrDefault(CompetitionRole.ADMIN, 0L)));
+        }
     }
 
     private ComboBox<String> createCountryComboBox() {

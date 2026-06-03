@@ -764,6 +764,9 @@ toasts don't cover the page's last interactive control or list row.
 
 - [ ] Click the "Participants" tab
 - [ ] **Expected:** Filter field with search icon and placeholder "Filter by name or email..."
+- [ ] **Expected:** Above the grid, a role-count summary line (P13) reads e.g. "Entrants: 2 ·
+  Judges: 1 · Stewards: 1 · Admins: 1" (localized; every role shown even when 0). It updates after
+  adding/removing a participant or editing roles.
 - [ ] **Expected:** Grid with columns: Name (sortable), Email (sortable), Meadery (sortable), Country (sortable), Roles (sortable), Access Code, Actions (edit pencil + envelope + remove X icons, header "Actions"). All columns resizable. One row per participant with comma-separated roles.
 - [ ] **Expected:** Rows for compadmin (Admin, no code), judge (Judge, 8-char code), steward (Steward, 8-char code), user (Entrant, no code), entrant (Entrant, no code)
 - [ ] **Expected:** Envelope icon (send login link) shown only for participants without passwords (magic-link-only users)
