@@ -590,12 +590,13 @@ comment `flex-grow:1` + `height:100%` + `min-height:6em`) so it grows to the bot
 internally** instead of expanding the card. Score-column contents (Your score label, ticker, Comments label)
 are **left-aligned** (`Alignment.START`) to line up with the left edge of the full-width comments field.
 
-**▶ RESUME HERE (2026-06-03 — Group A code items ALL DONE + COMMITTED, not pushed):**
+**▶ RESUME HERE (2026-06-03 — Group A + Group B/P21 ALL DONE, committed + PUSHED. Working tree clean.
+1333 tests green on JDK 25.** Branch `feature/judging-module` pushed through `880fdc0`. See the explicit
+**⚑ FIRST ACTION NEXT SESSION** block a few paragraphs down before re-reading the per-item detail.)
 Triage run with the user (2026-06-03): chose **"Group A code first"** — did all reset-independent
-code/UI items (P20, P15, P12, P13) NOW, before re-walking to RESULTS_PUBLISHED for Group B.
-**1329 tests green on JDK 25** (was 1321; +8). Committed on `feature/judging-module` as 4 commits
-(hunk-split so each feature carries its own code+tests+i18n+walkthrough notes): `f4e0dbd` (P20),
-`b69a720` (P15), `914d350` (P12), + P13 (this commit, on top of those) — **NOT pushed yet.** Done this session:
+code/UI items (P20, P15, P12, P13), then Group B/P21. Commits (hunk-split so each feature carries its
+own code+tests+i18n+walkthrough notes): `f4e0dbd` (P20), `b69a720` (P15), `914d350` (P12),
+`cb77364` (P13), `a73512f` (P21), `880fdc0` (P21 doc fix). Done this session:
 - **✅ P20 (magic-link deep-link redirect).** `MagicLinkAuthenticationFilter` now honours an optional
   `&redirect=<same-origin path>` after login, open-redirect-guarded (`safeRedirectTarget` rejects `//`,
   `/\`, `://`, control/whitespace → falls back to `/`). New `JwtMagicLinkService.generateLink(email,
@@ -638,20 +639,63 @@ download stay). +4 tests (2 DivisionStatus, 1 EntryService, 1 UI) + `entry-admin
 ×5. **Delete (DRAFT-only) intentionally left ungated.** EntryServiceTest got a `@BeforeEach` lenient
 default (`findDivisionById`→JUDGING) so the 18 entry-status tests pass without per-test stubs.
 
-**NEXT (Group B remaining, both need a RESULTS_PUBLISHED division → re-walk §12.6→§13):**
-- **Entrant scoresheet redesign (view + PDF)** — awaiting the user's screenshots/examples.
-- **§13.12 anonymity sanity check** — never reported; folds into the redesign.
-Then: commit P21 → code review → merge → **v0.4.0**.
+**⚑ FIRST ACTION NEXT SESSION (decided 2026-06-03, user will do this FIRST on a fresh/cleared DB,
+possibly another machine):** the user starts the app with a **fresh DB** and wants to be **guided through
+the walkthrough to drive Profissional to RESULTS_PUBLISHED** so they can see an **entrant scoresheet**
+(the redesign target — Group B remaining), exercising this session's fixes along the way. Then they will
+**send screenshots of the on-screen `MyScoresheetView` + the downloaded PDF**, and we start the
+**entrant-scoresheet redesign** (P18-entrant / task #6). The condensed roadmap below is the path to walk —
+present it and guide step by step.
 
-The triage catalog + constraints follow (still authoritative for Group B / Group C):
+*Seed facts (from `DevDataInitializer`, verified 2026-06-03):* a fresh DB seeds **CHIP** with two
+divisions. **Amadora = REGISTRATION_OPEN** (11 entries). **Profissional = JUDGING, fully pre-staged**:
+20 RECEIVED entries (final categories assigned) across 4 pro entrants, 5 physical tables, **M1A split into
+Panel A** (judges 1+2, Table 1, 2 entries) **+ Panel B** (judges 4+5, Table 2, 3 entries) — both PENDING
+scoring rounds — and an **M1B COMPARATIVE medal round** (judges 1/2/6, Table 4, PENDING). So Profissional
+**skips walkthrough §12.1–12.5** and starts at **§12.6**. *Logins:* `admin@example.com`/`admin`,
+`compadmin@example.com`/`compadmin`; judges `judge@…`…`judge6@…` and `proentrant1@…`–`proentrant4@…` use
+**magic-link login** (Mailpit `http://localhost:8025`). *Gating reality:* RESULTS_PUBLISHED requires the
+judging **phase = COMPLETE** (`JudgingCompleteAdvanceGuard` blocks JUDGING→DELIBERATION otherwise; manual
+DELIBERATION→RESULTS_PUBLISHED is blocked — must use **Manage Results → Publish**). `startBos` only
+requires **configured** medal rounds COMPLETE (categories w/o a medal round are skipped). Scoresheets come
+from **SCORING** rounds (M1A panels), NOT the COMPARATIVE M1B medal round.
 
-**⚑ FIRST ACTION NEXT SESSION — run the triage below with the user.** The user explicitly wants, on a clean
-session, to review **all** remaining deferred items and decide which to do **before vs during** the walkthrough
-(some only make sense once the walkthrough has advanced the division to RESULTS_PUBLISHED). Present the catalog,
-let the user pick, then proceed. **Key constraint: the dev DB was reset this session** — the seed
-(`DevDataInitializer`) brings **Profissional to JUDGING only**, NOT to RESULTS_PUBLISHED. So every
-"needs-published" item below first requires re-running the **§12.6 → §13 walkthrough** on Profissional to drive
-it to RESULTS_PUBLISHED (which doubles as release-grade re-validation on the clean DB).
+**Condensed Profissional → RESULTS_PUBLISHED roadmap (with session-fix checkpoints):**
+- **Phase 0 (quick wins, no setup):** (a) `compadmin` → CHIP → **Participants tab** → **[P13]** role-count
+  summary span. (b) `proentrant1` magic-link → **My Entries** (Profissional@JUDGING) → **[P12]** per-row
+  label gone + "Download all labels" disabled w/ judging tooltip. (c) in Mailpit, click a magic-link CTA →
+  **[P20]** logs in cleanly (no `/login?error`).
+- **Phase 1 — score M1A (§12.6→§12.11), produces the scoresheets:** `compadmin` → Profissional → Manage
+  Judging → **Rounds tab** → **Start M1A Panel A**. Log in `judge@…` (forwarded to active round, §12.9),
+  open each entry's scoresheet (§12.11), fill 5 MJP fields + per-criterion comments, **Save** →
+  **[P15]** success toast does NOT cover the Save button. Repeat as `judge2@…`. Back as `compadmin`,
+  **Finalize** the round (all FILLED → COMPLETE). (Panel B optional for more scored entries.)
+- **Phase 2 — medal + BOS to reach phase COMPLETE (§12.12→§12.13):** Start the **M1B medal round**, judges
+  1/2/6 award medals, complete it. Then **Best of Show tab** → Start BOS → place GOLD(s) → Finalize BOS →
+  judging phase flips to **COMPLETE**.
+- **Phase 3 — deliberation lock + publish (§13.1→§13.2):** Advance Profissional **JUDGING→DELIBERATION**.
+  **[P21 — headline check]** Entry Admin → Entries: **Add Entry disabled** (locked tooltip), per-row
+  edit/←/→/withdraw disabled (view + ⬇ stay), **Auto-assign hidden**. Then **Manage Results → Publish**
+  (§13.2). **[P20]** **Send announcement** (§13.9) → Mailpit → entrant CTA logs in + lands on results.
+- **Phase 4 — THE GOAL (§13.4→§13.5, §13.12):** log in as the pro entrant owning an **M1A Panel A** entry
+  (`proentrant1@…`) → My Results banner → grid → **👁 view scoresheet** + **⬇ PDF**. **Capture both →**
+  this is the redesign target. Known P18-entrant issues to fix: shows entry **code** not **number**;
+  on-screen view missing per-criterion comments + advancement; **judge label** shown (anonymity);
+  PDF heading reads **"Anonymized Scoresheet"** (drop the word) + uses code not number + no advancement row.
+
+**Offered but DECLINED for now (user may request next session):** a temporary **dev-seed fast-path** that
+drives a small extra division all the way to RESULTS_PUBLISHED with 2 fully-scored entries, so a fresh DB
+lands directly on a published entrant scoresheet — much faster for iterating the redesign than re-walking
+§12 each reset. If the user asks, add it to `DevDataInitializer` (or a dev-only seed) behind the dev profile.
+
+**After the redesign:** §13.12 anonymity sanity check (folds in) → code review → merge to `main` →
+**v0.4.0 release.**
+
+----
+
+The triage catalog below is **historical reference** (the triage was already run + acted on this session —
+Group A + P21 all DONE). **Key constraint still true:** the seed brings **Profissional to JUDGING only**,
+NOT RESULTS_PUBLISHED — the roadmap above is how to drive it the rest of the way.
 
 **▶▶ DEFERRED-ITEM TRIAGE CATALOG (all open items as of 2026-06-02):**
 
