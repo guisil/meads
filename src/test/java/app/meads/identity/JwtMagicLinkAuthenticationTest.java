@@ -19,6 +19,7 @@ import static org.springframework.security.test.web.servlet.response.SecurityMoc
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.unauthenticated;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
@@ -108,6 +109,43 @@ class JwtMagicLinkAuthenticationTest {
         // Then — user should now be ACTIVE
         var activatedUser = userRepository.findByEmail(email).orElseThrow();
         assertThat(activatedUser.getStatus()).isEqualTo(UserStatus.ACTIVE);
+    }
+
+    @Test
+    void shouldRedirectToSafeInternalPathWhenRedirectParamPresent() throws Exception {
+        // Given — an active user and a magic link, plus a safe internal redirect target
+        String email = "redirect-target@example.com";
+        var user = new User(email, "Redirect Target User", UserStatus.ACTIVE, Role.USER);
+        userRepository.save(user);
+
+        String link = jwtMagicLinkService.generateLink(email, Duration.ofDays(7));
+        String token = link.substring(link.indexOf("token=") + "token=".length());
+
+        // When — the magic link is clicked with a redirect param
+        mockMvc.perform(get("/login/magic")
+                        .param("token", token)
+                        .param("redirect", "/competitions/chip/divisions/pro/my-results"))
+                // Then — user is authenticated and lands on the requested page (not "/")
+                .andExpect(authenticated().withUsername(email))
+                .andExpect(redirectedUrl("/competitions/chip/divisions/pro/my-results"));
+    }
+
+    @Test
+    void shouldFallBackToRootWhenRedirectParamIsUnsafe() throws Exception {
+        // Given — an active user and a magic link
+        String email = "open-redirect@example.com";
+        var user = new User(email, "Open Redirect User", UserStatus.ACTIVE, Role.USER);
+        userRepository.save(user);
+
+        String link = jwtMagicLinkService.generateLink(email, Duration.ofDays(7));
+        String token = link.substring(link.indexOf("token=") + "token=".length());
+
+        // When/Then — a protocol-relative open-redirect target is rejected, landing on "/"
+        mockMvc.perform(get("/login/magic")
+                        .param("token", token)
+                        .param("redirect", "//evil.example.com/phish"))
+                .andExpect(authenticated().withUsername(email))
+                .andExpect(redirectedUrl("/"));
     }
 
     @Test

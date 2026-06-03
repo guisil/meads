@@ -106,6 +106,60 @@ CTA button, fallback URL, and optional contact footer.
 | Judging round started (to each assigned judge) | [MEADS] Judging round ready — {round} | Your judging round is ready | Log in to MEADS | No |
 | Submitted scoresheet reopened by an admin (to the judge who filled it) | [MEADS] Scoresheet reopened — {entry code} | A scoresheet needs your attention | Log in to MEADS | No |
 | Medal round activated (to each judge covering that category) | [MEADS] Medal round ready — {category} | A medal round is ready | Log in to MEADS | No |
+| Results announcement (initial / republish / custom, to each entrant) | (varies by type — see §13.9–13.11) | Results are available / Results updated / Announcement | View results | Yes (if competition has contactEmail) |
+
+### Email CTA link regression sweep (all email types)
+
+**Purpose:** catch the **change #39 class of bug** — a CTA whose link is built by concatenating a
+path onto the magic-link **token**, corrupting the JWT so the link fails to log in (and the user
+bounces to `/login?error`). Every email whose CTA is a magic/setup link must produce a **clickable
+link that authenticates and lands on the right page**. Run this sweep whenever an email's link
+construction changes (`SmtpEmailService`, `JwtMagicLinkService`, any `…Url` passed into a `send…`
+method, or `MagicLinkAuthenticationFilter`).
+
+For each row: trigger the email in the listed walkthrough section, open it in Mailpit
+(`http://localhost:8025`), then **click the CTA button** (not just eyeball the URL) and confirm the
+landing. The link must be intact (`…/login/magic?token=<JWT>` with **nothing appended to the
+token**; setup links `…/set-password?token=…`, `…/mfa-reset?token=…`).
+
+| # | Email | Trigger (§) | CTA link type | After clicking CTA — expected landing |
+|---|-------|-------------|---------------|----------------------------------------|
+| 1 | Magic link login | §2 Magic link login | bare `/login/magic?token=` | logged in → `RootView` routes to default page (`/my-entries` for a plain entrant) |
+| 2 | Credentials reminder | §2 Credentials reminder | **no CTA** | n/a — body tells the user to log in with their password |
+| 3 | Forgot-password reset | §2 Forgot password? | `/set-password?token=` | Set-password form opens for that email; can set a new password |
+| 4 | Admin "Password Reset" (key icon) | §3 Users admin | `/set-password?token=` | Set-password form opens |
+| 5 | New SYSTEM_ADMIN created (no password) | §3 Create admin user | `/set-password?token=` | Set-password form opens |
+| 6 | New competition ADMIN added (no password) | §6 Add participant (ADMIN) | `/set-password?token=` | Set-password form; contact footer present if competition has a contactEmail |
+| 7 | MFA reset ("Lost your device?") | §2 MFA email reset | `/mfa-reset?token=` (**1 h** validity) | MFA-reset page; TOTP can be re-enrolled |
+| 8 | Credits awarded (webhook **and** admin grant) | §8 Webhook / admin credits | bare magic link | logged in → entrant's My Entries |
+| 9 | Entries submitted | §9 Submit entries | bare magic link | logged in → entrant's My Entries |
+| 10 | Order requires review | §8 Webhook NEEDS_REVIEW | **no CTA** | n/a — admin-facing alert, lists competition + divisions |
+| 11 | Judging round started | §12.6 Start round | bare magic link | logged in → judge lands on the active round (`MyJudgingView` forward) |
+| 12 | Scoresheet reopened by admin | §12 Revert/reopen a submitted sheet | bare magic link | logged in → judge's active round |
+| 13 | Medal round activated | §12.6.8 Start medal round | bare magic link | logged in → judge's active medal round |
+| 14 | Results announcement — initial | §13.9 | bare magic link | logged in → `RootView` routes the entrant to their results |
+| 15 | Results announcement — republish | §13.10 | bare magic link | same — lands on results |
+| 16 | Results announcement — custom message | §13.11 | bare magic link | same — lands on results |
+
+- [ ] Every CTA above (rows 1, 3–9, 11–16) **logs in successfully** — none bounce to `/login?error`.
+- [ ] No email's CTA URL has anything appended **after** the token value (inspect one link's raw
+  href in Mailpit to confirm it ends at the token).
+
+### Magic-link deep-link redirect (P20)
+
+**Capability** (added 2026-06-03): a magic link may carry an optional `&redirect=<URL-encoded
+same-origin path>` so a future email can land the user on an **exact** page instead of bouncing
+through `/`. `MagicLinkAuthenticationFilter` validates the target against open-redirect before
+honouring it. No production email uses it yet (the announcement still uses the bare link by design —
+`RootView` routing is sufficient), so these checks are constructed by hand:
+
+- [ ] Generate a magic link for a logged-out entrant (§2), then **append**
+  `&redirect=%2Fmy-entries` to the URL and open it.
+- [ ] **Expected:** logged in and landed on `/my-entries` (the exact redirect target), not the
+  default routing.
+- [ ] Repeat with an **unsafe** target `&redirect=//evil.example.com/phish`.
+- [ ] **Expected:** logged in but landed on `/` — the open-redirect target is rejected (not
+  followed off-site). Also try `&redirect=https://evil.example.com` → still lands on `/`.
 
 ---
 
@@ -2654,8 +2708,10 @@ republish variant. Adjust expectations accordingly.
   button whose link is the **bare magic-link URL** (`…/login/magic?token=…`).
   Clicking it logs the entrant in and `RootView` routes them to their results
   page. (The CTA used to append the results path onto the token, which corrupted
-  it and broke login — fixed 2026-06-01, change #39. Deep-link-to-exact-page is
-  deferred as P20.)
+  it and broke login — fixed 2026-06-01, change #39. The proper deep-link
+  capability now exists — P20, a guarded `&redirect=` param on the magic-link
+  filter — but the announcement keeps the bare link by design since `RootView`
+  routing already lands the entrant on their results.)
 - [ ] **Expected:** Subject + body render in the entrant's `preferredLanguage`
   locale (verify by setting one entrant's preferredLanguage to `pt` and
   re-sending — that recipient gets the PT email).

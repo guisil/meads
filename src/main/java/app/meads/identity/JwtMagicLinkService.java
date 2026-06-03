@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
@@ -39,6 +40,20 @@ public class JwtMagicLinkService {
         String token = buildToken(email, validity);
         log.debug("Generated magic link for: {} (validity={})", email, validity);
         return baseUrl + "/login/magic?token=" + token;
+    }
+
+    /**
+     * Generates a magic link that, after successful login, redirects to {@code redirectPath}
+     * (a same-origin absolute path, e.g. {@code /competitions/x/divisions/y/my-results}).
+     * The path is URL-encoded and validated against open-redirect by
+     * {@code MagicLinkAuthenticationFilter} on click. A blank path yields a plain magic link.
+     */
+    public String generateLink(String email, Duration validity, String redirectPath) {
+        String link = generateLink(email, validity);
+        if (redirectPath == null || redirectPath.isBlank()) {
+            return link;
+        }
+        return link + "&redirect=" + URLEncoder.encode(redirectPath.strip(), StandardCharsets.UTF_8);
     }
 
     public String generatePasswordSetupLink(String email, Duration validity) {

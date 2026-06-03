@@ -70,11 +70,47 @@ class MagicLinkAuthenticationFilter extends OncePerRequestFilter {
             // Publish event for UserActivationListener
             eventPublisher.publishEvent(new AuthenticationSuccessEvent(authentication));
 
-            log.info("Magic link authentication successful for: {}", email);
-            response.sendRedirect("/");
+            String target = safeRedirectTarget(request.getParameter("redirect"));
+            log.info("Magic link authentication successful for: {} (redirect: {})", email, target);
+            response.sendRedirect(target);
         } catch (Exception e) {
             log.debug("JWT magic link authentication failed: {}", e.getMessage());
             response.sendRedirect("/login?error");
         }
+    }
+
+    /**
+     * Resolves the post-login landing path from the optional {@code redirect} parameter,
+     * guarding against open-redirect attacks. Only same-origin absolute paths are honoured;
+     * anything that could escape the application (protocol-relative {@code //host},
+     * backslash-prefixed {@code /\host}, absolute URLs with a scheme, or values with control
+     * characters) falls back to the application root.
+     */
+    private String safeRedirectTarget(String redirect) {
+        if (redirect == null || redirect.isBlank()) {
+            return "/";
+        }
+        String candidate = redirect.strip();
+        // Must be an absolute path within this app, never a protocol-relative or backslash escape.
+        if (!candidate.startsWith("/") || candidate.startsWith("//") || candidate.startsWith("/\\")) {
+            log.debug("Rejected unsafe magic-link redirect target: {}", redirect);
+            return "/";
+        }
+        // Reject anything carrying a scheme (e.g. "/x:http://evil") or control/whitespace chars.
+        if (candidate.contains("://") || containsControlOrWhitespace(candidate)) {
+            log.debug("Rejected unsafe magic-link redirect target: {}", redirect);
+            return "/";
+        }
+        return candidate;
+    }
+
+    private boolean containsControlOrWhitespace(String value) {
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (c <= ' ' || Character.isWhitespace(c)) {
+                return true;
+            }
+        }
+        return false;
     }
 }
