@@ -240,6 +240,25 @@ class DivisionEntryAdminViewTest {
         assertThat(downloadBtn).isNotNull();
     }
 
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldDisableAddEntryButtonWhenDivisionPastJudging() {
+        for (int i = 0; i < 4; i++) {
+            division.advanceStatus(); // DRAFT -> ... -> DELIBERATION
+        }
+        division = divisionRepository.save(division);
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/entry-admin");
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(1); // Entries tab
+
+        var addBtn = _get(Button.class, spec -> spec.withId("add-entry-button"));
+        assertThat(addBtn.isEnabled())
+                .as("Add Entry must be disabled once the division is past judging (P21)")
+                .isFalse();
+    }
+
     @SuppressWarnings("unchecked")
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")

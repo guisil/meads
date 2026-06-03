@@ -44,6 +44,26 @@ class DivisionStatusTest {
         assertThat(DivisionStatus.RESULTS_PUBLISHED.getBadgeCssClass()).isEqualTo("badge-results-published");
     }
 
+    @Test
+    void shouldAllowEntryMutationsOnlyThroughJudging() {
+        assertThat(DivisionStatus.DRAFT.allowsEntryMutations()).isTrue();
+        assertThat(DivisionStatus.REGISTRATION_OPEN.allowsEntryMutations()).isTrue();
+        assertThat(DivisionStatus.REGISTRATION_CLOSED.allowsEntryMutations()).isTrue();
+        assertThat(DivisionStatus.JUDGING.allowsEntryMutations()).isTrue();
+        assertThat(DivisionStatus.DELIBERATION.allowsEntryMutations()).isFalse();
+        assertThat(DivisionStatus.RESULTS_PUBLISHED.allowsEntryMutations()).isFalse();
+    }
+
+    @Test
+    void shouldAllowJudgingCategoryManagementOnlyBetweenRegistrationClosedAndJudging() {
+        assertThat(DivisionStatus.DRAFT.allowsJudgingCategoryManagement()).isFalse();
+        assertThat(DivisionStatus.REGISTRATION_OPEN.allowsJudgingCategoryManagement()).isFalse();
+        assertThat(DivisionStatus.REGISTRATION_CLOSED.allowsJudgingCategoryManagement()).isTrue();
+        assertThat(DivisionStatus.JUDGING.allowsJudgingCategoryManagement()).isTrue();
+        assertThat(DivisionStatus.DELIBERATION.allowsJudgingCategoryManagement()).isFalse();
+        assertThat(DivisionStatus.RESULTS_PUBLISHED.allowsJudgingCategoryManagement()).isFalse();
+    }
+
     @ParameterizedTest
     @EnumSource(DivisionStatus.class)
     void shouldHaveNonBlankDisplayNameForAllStatuses(DivisionStatus status) {

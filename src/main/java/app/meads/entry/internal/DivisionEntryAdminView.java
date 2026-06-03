@@ -437,6 +437,11 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         });
 
         var addEntryButton = new Button(getTranslation("entry-admin.entries.add"), e -> openAdminAddEntryConfirmDialog());
+        addEntryButton.setId("add-entry-button");
+        if (!division.getStatus().allowsEntryMutations()) {
+            addEntryButton.setEnabled(false);
+            addEntryButton.setTooltipText(getTranslation("entry-admin.entries.locked.tooltip"));
+        }
 
         var autoAssignBtn = new Button(getTranslation("entry-admin.entries.auto-assign-final-categories"),
                 e -> openAutoAssignFinalCategoriesDialog());
@@ -499,6 +504,10 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         entriesGrid.addColumn(entry -> entry.getStatus().name())
                 .setHeader(getTranslation("entry-admin.entries.column.status")).setSortable(true).setAutoWidth(true);
         entriesGrid.addComponentColumn(entry -> {
+            // P21: from DELIBERATION onward entries are locked; only viewing + label reprint remain.
+            var entriesMutable = division.getStatus().allowsEntryMutations();
+            var lockedTooltip = getTranslation("entry-admin.entries.locked.tooltip");
+
             var viewButton = new Button(new Icon(VaadinIcon.EYE));
             viewButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
             viewButton.setAriaLabel(getTranslation("entry-admin.entries.action.view.tooltip"));
@@ -508,15 +517,16 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             var editButton = new Button(new Icon(VaadinIcon.EDIT));
             editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
             editButton.setAriaLabel(getTranslation("entry-admin.entries.action.edit.tooltip"));
-            editButton.setTooltipText(getTranslation("entry-admin.entries.action.edit.tooltip"));
-            editButton.setEnabled(entry.getStatus() != EntryStatus.WITHDRAWN);
+            editButton.setEnabled(entriesMutable && entry.getStatus() != EntryStatus.WITHDRAWN);
+            editButton.setTooltipText(entriesMutable
+                    ? getTranslation("entry-admin.entries.action.edit.tooltip") : lockedTooltip);
             editButton.addClickListener(e -> openEditEntryDialog(entry));
 
             var revertButton = new Button(new Icon(VaadinIcon.ARROW_LEFT));
             revertButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
             revertButton.setAriaLabel(getTranslation("entry-admin.entries.action.revert.tooltip"));
-            revertButton.setEnabled(entry.getStatus() != EntryStatus.DRAFT);
-            revertButton.setTooltipText(switch (entry.getStatus()) {
+            revertButton.setEnabled(entriesMutable && entry.getStatus() != EntryStatus.DRAFT);
+            revertButton.setTooltipText(!entriesMutable ? lockedTooltip : switch (entry.getStatus()) {
                 case SUBMITTED, WITHDRAWN -> getTranslation("entry-admin.entries.revert.tooltip.to-draft");
                 case RECEIVED -> getTranslation("entry-admin.entries.revert.tooltip.to-submitted");
                 case DRAFT -> getTranslation("entry-admin.entries.revert.tooltip.default");
@@ -526,9 +536,9 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             var advanceButton = new Button(new Icon(VaadinIcon.ARROW_RIGHT));
             advanceButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
             advanceButton.setAriaLabel(getTranslation("entry-admin.entries.action.advance.tooltip"));
-            advanceButton.setEnabled(entry.getStatus() == EntryStatus.DRAFT
-                    || entry.getStatus() == EntryStatus.SUBMITTED);
-            advanceButton.setTooltipText(switch (entry.getStatus()) {
+            advanceButton.setEnabled(entriesMutable && (entry.getStatus() == EntryStatus.DRAFT
+                    || entry.getStatus() == EntryStatus.SUBMITTED));
+            advanceButton.setTooltipText(!entriesMutable ? lockedTooltip : switch (entry.getStatus()) {
                 case DRAFT -> getTranslation("entry-admin.entries.advance.tooltip.submit");
                 case SUBMITTED -> getTranslation("entry-admin.entries.advance.tooltip.received");
                 case RECEIVED, WITHDRAWN -> getTranslation("entry-admin.entries.advance.tooltip.default");
@@ -538,8 +548,9 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
             var withdrawButton = new Button(new Icon(VaadinIcon.BAN));
             withdrawButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
             withdrawButton.setAriaLabel(getTranslation("entry-admin.entries.action.withdraw.tooltip"));
-            withdrawButton.setTooltipText(getTranslation("entry-admin.entries.action.withdraw.tooltip"));
-            withdrawButton.setEnabled(entry.getStatus() != EntryStatus.WITHDRAWN);
+            withdrawButton.setEnabled(entriesMutable && entry.getStatus() != EntryStatus.WITHDRAWN);
+            withdrawButton.setTooltipText(entriesMutable
+                    ? getTranslation("entry-admin.entries.action.withdraw.tooltip") : lockedTooltip);
             withdrawButton.addClickListener(e -> openWithdrawEntryDialog(entry));
 
             var deleteButton = new Button(new Icon(VaadinIcon.TRASH));

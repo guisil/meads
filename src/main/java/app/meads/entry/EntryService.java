@@ -329,6 +329,7 @@ public class EntryService {
         var entry = entryRepository.findById(entryId)
                 .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
         requireAuthorizedForDivision(entry.getDivisionId(), requestingUserId);
+        requireEntryStageMutable(entry.getDivisionId());
         entry.advanceStatus();
         var saved = entryRepository.save(entry);
         log.info("Advanced entry status to {}: #{} ({})", saved.getStatus(), saved.getEntryNumber(), entryId);
@@ -345,6 +346,7 @@ public class EntryService {
         var entry = entryRepository.findById(entryId)
                 .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
         requireAuthorizedForDivision(entry.getDivisionId(), requestingUserId);
+        requireEntryStageMutable(entry.getDivisionId());
         statusRevertGuards.forEach(g -> g.checkRevertAllowed(entryId, entry.getDivisionId()));
         var wasReceived = entry.getStatus() == EntryStatus.RECEIVED;
         entry.revertStatus();
@@ -362,6 +364,7 @@ public class EntryService {
         var entry = entryRepository.findById(entryId)
                 .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
         requireAuthorizedForDivision(entry.getDivisionId(), requestingUserId);
+        requireEntryStageMutable(entry.getDivisionId());
         entry.markReceived();
         var saved = entryRepository.save(entry);
         log.info("Marked entry received: #{} ({})", saved.getEntryNumber(), entryId);
@@ -374,6 +377,7 @@ public class EntryService {
         var entry = entryRepository.findById(entryId)
                 .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
         requireAuthorizedForDivision(entry.getDivisionId(), requestingUserId);
+        requireEntryStageMutable(entry.getDivisionId());
         statusRevertGuards.forEach(g -> g.checkRevertAllowed(entryId, entry.getDivisionId()));
         var wasReceived = entry.getStatus() == EntryStatus.RECEIVED;
         entry.withdraw();
@@ -403,6 +407,7 @@ public class EntryService {
         var entry = entryRepository.findById(entryId)
                 .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
         requireAuthorizedForDivision(entry.getDivisionId(), requestingUserId);
+        requireEntryStageMutable(entry.getDivisionId());
         entry.adminUpdateDetails(meadName, initialCategoryId, sweetness, abv,
                 carbonation, honeyVarieties, otherIngredients, woodAged,
                 woodAgeingDetails, additionalInformation);
@@ -454,6 +459,7 @@ public class EntryService {
         var entry = entryRepository.findById(entryId)
                 .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
         requireAuthorizedForDivision(entry.getDivisionId(), requestingUserId);
+        requireEntryStageMutable(entry.getDivisionId());
         if (finalCategoryId != null) {
             var judgingCategories = competitionService.findJudgingCategories(entry.getDivisionId());
             if (judgingCategories.isEmpty()) {
@@ -487,6 +493,7 @@ public class EntryService {
     public int assignFinalCategoriesByCode(@NotNull UUID divisionId,
                                             @NotNull UUID requestingUserId) {
         requireAuthorizedForDivision(divisionId, requestingUserId);
+        requireEntryStageMutable(divisionId);
         var judgingByCode = competitionService.findJudgingCategories(divisionId).stream()
                 .collect(Collectors.toMap(DivisionCategory::getCode, DivisionCategory::getId));
         if (judgingByCode.isEmpty()) {
@@ -588,6 +595,18 @@ public class EntryService {
     }
 
     // --- Private helpers ---
+
+    /**
+     * Blocks entry-level mutations once the division has moved past JUDGING (P21). From
+     * DELIBERATION onward the results are being computed/published; to change a locked entry an
+     * admin must first revert the division back to JUDGING.
+     */
+    private void requireEntryStageMutable(UUID divisionId) {
+        var division = competitionService.findDivisionById(divisionId);
+        if (!division.getStatus().allowsEntryMutations()) {
+            throw new BusinessRuleException("error.entry.stage-locked");
+        }
+    }
 
     private void requireAuthorizedForDivision(UUID divisionId, UUID userId) {
         var user = userService.findById(userId);
@@ -759,6 +778,9 @@ public class EntryService {
                                   String additionalInformation,
                                   @NotNull UUID adminUserId) {
         var division = competitionService.findDivisionById(divisionId);
+        if (!division.getStatus().allowsEntryMutations()) {
+            throw new BusinessRuleException("error.entry.stage-locked");
+        }
         var targetUser = userService.findByEmail(userEmail);
 
         var entryNumber = entryRepository.findMaxEntryNumberByDivisionId(divisionId) + 1;

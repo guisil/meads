@@ -27,7 +27,17 @@ public enum DivisionStatus {
     }
 
     public boolean allowsJudgingCategoryManagement() {
-        return ordinal() >= REGISTRATION_CLOSED.ordinal();
+        return ordinal() >= REGISTRATION_CLOSED.ordinal() && ordinal() < DELIBERATION.ordinal();
+    }
+
+    /**
+     * Entry-level mutations (admin create/edit, status advance/revert, mark-received, withdraw,
+     * final-category assignment) are allowed only through JUDGING. From DELIBERATION onward the
+     * results are being computed/published, so entries are locked (P21). To change a locked entry
+     * an admin must first revert the division back to JUDGING.
+     */
+    public boolean allowsEntryMutations() {
+        return ordinal() < DELIBERATION.ordinal();
     }
 
     public boolean isResultsFrozen() {

@@ -17,6 +17,7 @@ import app.meads.identity.Role;
 import app.meads.identity.User;
 import app.meads.identity.UserService;
 import app.meads.identity.UserStatus;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -39,6 +40,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 
@@ -74,6 +76,23 @@ class EntryServiceTest {
 
     @org.mockito.Spy
     java.util.List<EntryStatusRevertGuard> statusRevertGuards = new java.util.ArrayList<>();
+
+    @BeforeEach
+    void defaultDivisionIsEntryMutable() {
+        // P21: entry mutations now call requireEntryStageMutable -> findDivisionById. Default to a
+        // mutable (JUDGING) division so entry-status/admin tests pass; tests that need a specific
+        // status (e.g. registration-open, deliberation) override this with their own stub.
+        lenient().when(competitionService.findDivisionById(any())).thenReturn(judgingDivision());
+    }
+
+    private Division judgingDivision() {
+        var division = new Division(UUID.randomUUID(), "Home", "home", ScoringSystem.MJP,
+                LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
+        division.advanceStatus(); // -> REGISTRATION_OPEN
+        division.advanceStatus(); // -> REGISTRATION_CLOSED
+        division.advanceStatus(); // -> JUDGING
+        return division;
+    }
 
     private User createSystemAdmin() {
         return new User("admin@test.com", "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
@@ -1251,6 +1270,34 @@ class EntryServiceTest {
 
         assertThat(result.getMeadName()).isEqualTo("Admin Mead");
         assertThat(result.getInitialCategoryId()).isEqualTo(newCategoryId);
+    }
+
+    // P21: entry mutations blocked from DELIBERATION onward
+
+    @Test
+    void shouldRejectAdminUpdateWhenDivisionAtDeliberation() {
+        var divisionId = UUID.randomUUID();
+        var adminUser = createSystemAdmin();
+        var division = new Division(UUID.randomUUID(), "Home", "home", ScoringSystem.MJP,
+                LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
+        for (int i = 0; i < 4; i++) {
+            division.advanceStatus(); // DRAFT -> ... -> DELIBERATION
+        }
+        var entry = new Entry(divisionId, UUID.randomUUID(), 1, "ABC123",
+                "Old Mead", UUID.randomUUID(), Sweetness.DRY, new BigDecimal("12.5"), Carbonation.STILL,
+                "Wildflower honey", null, false, null, null);
+        entry.submit();
+
+        given(userService.findById(adminUser.getId())).willReturn(adminUser);
+        given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+
+        assertThatThrownBy(() -> entryService.adminUpdateEntry(entry.getId(), "Admin Mead",
+                UUID.randomUUID(), Sweetness.SWEET, new BigDecimal("18.0"),
+                Carbonation.SPARKLING, "Orange blossom", "Spices",
+                true, "Oak barrel", "Notes", adminUser.getId()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.entry.stage-locked");
     }
 
     // Cycle 15: findEntriesByDivisionAndUser

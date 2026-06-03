@@ -1210,7 +1210,8 @@ toasts don't cover the page's last interactive control or list row.
 ### Admin Add Entry (Entries tab)
 
 - [ ] Click the "Entries" tab
-- [ ] **Expected:** "Add Entry" button visible in the toolbar (always enabled regardless of division status)
+- [ ] **Expected:** "Add Entry" button visible in the toolbar, enabled through JUDGING (disabled from
+  DELIBERATION onward — see the P21 lock check below)
 - [ ] Click "Add Entry"
 - [ ] **Expected:** Confirmation dialog: "Add entry without consuming a credit?" with a warning message and "Add Entry"/"Cancel" buttons
 - [ ] Click "Add Entry" to proceed
@@ -1223,6 +1224,28 @@ toasts don't cover the page's last interactive control or list row.
 - [ ] Leave required fields empty and click "Add Entry"
 - [ ] **Expected:** Field-level error messages for missing required fields
 - [ ] Revert Amadora status back to REGISTRATION_OPEN after testing
+
+### Entries lock from DELIBERATION onward (P21)
+
+Entry mutations are allowed only through JUDGING. From DELIBERATION the results are being
+computed/published, so entries are locked; to change one an admin must first revert the division
+back to JUDGING. The block is enforced in `EntryService` (hard `error.entry.stage-locked`) and
+mirrored in the UI.
+
+- [ ] Drive a division (e.g. Profissional) to **DELIBERATION** (or RESULTS_PUBLISHED), open its
+  Entry Admin → Entries tab.
+- [ ] **Expected:** the **"Add Entry"** button is **disabled** with tooltip "Entries are locked once
+  judging is over — revert the division to Judging to make changes".
+- [ ] **Expected:** on every entry row, the **edit (✎), ← revert, → advance, and 🚫 withdraw**
+  icons are **disabled** with the same locked tooltip. The **view (👁)** and **label download (⬇)**
+  icons remain enabled (admin reprints).
+- [ ] **Expected:** the **"Auto-assign final categories"** button is **hidden** (judging-category
+  management is also capped below DELIBERATION).
+- [ ] **Escape hatch:** revert the division back to **JUDGING** (Division Detail → Revert Status, or
+  for a published division use Manage Results → Revert, then revert again). The Add Entry + row
+  actions re-enable; make the change, then re-advance.
+- [ ] **Service backstop:** even if a control were reachable, the service rejects the op with the
+  `error.entry.stage-locked` notification at DELIBERATION+.
 
 ### Orders tab
 
