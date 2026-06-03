@@ -622,7 +622,7 @@ code/UI items (P20, P15, P12, P13) NOW, before re-walking to RESULTS_PUBLISHED f
   "Magic-link deep-link redirect (P20)" check (per user request "meaningful regression tests for all types
   of emails"); plus P15/P12/P13 verification notes; §13.9 P20 note updated.
 
-**✅ Group B — P21 (entry/category stage-gating) DONE 2026-06-03, 1333 tests, NOT yet committed.**
+**✅ Group B — P21 (entry/category stage-gating) DONE 2026-06-03, 1333 tests, committed+pushed `a73512f`.**
 Reproduced at the code level: `adminCreateEntry`/`adminUpdateEntry` had **no status gate** (only the
 entrant `createEntry`/`updateEntry` checked REGISTRATION_OPEN), so admins could create/edit entries at
 any status. Policy settled with the user: **uniform DELIBERATION cutoff** — all entry mutations allowed
