@@ -1586,6 +1586,23 @@ curl -s -o /dev/null -w "%{http_code}" \
 - [ ] **Expected:** Browser downloads `all-labels.pdf` containing one page per SUBMITTED entry
 - [ ] **Expected:** No confirmation dialog for entrants (direct download)
 
+### Entry labels withdrawn once judging starts (entrant — P12)
+
+Labels are only useful before the bottles ship; from **JUDGING** onward the bottles are with judges.
+
+- [ ] Advance the division to **JUDGING** (or use a division already at JUDGING) while at least one
+  entry is still SUBMITTED (admin has not marked it RECEIVED yet).
+- [ ] As the entrant, open My Entries for that division.
+- [ ] **Expected:** the per-row download icon is **gone** on every entry (even SUBMITTED ones).
+- [ ] **Expected:** the "Download all labels" button is **disabled** with tooltip "Labels are
+  unavailable during judging — your bottles are already with the judges".
+- [ ] **Expected:** once results are published, the entrant gets their scoresheet PDFs via the
+  **"View results" banner → My Results** page (per-row ⬇ + "Download all scoresheets"), not from the
+  entries page. (The scoresheet PDF generator lives in the awards module, above `entry` in the
+  module graph, so it is intentionally not surfaced on the entries page.)
+- [ ] **Admin reprints:** on **Entry Admin** the admin "Download all labels" + per-row label
+  downloads stay available at every status (a lost bottle label may need reprinting mid-judging).
+
 ### Meadery name required -- warning and submit blocking
 
 *Pre-requisite: Set `meaderyNameRequired` on a division in DRAFT status, then advance to REGISTRATION_OPEN.

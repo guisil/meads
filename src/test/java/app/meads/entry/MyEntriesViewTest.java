@@ -294,6 +294,33 @@ class MyEntriesViewTest {
 
     @Test
     @WithMockUser(username = ENTRANT_EMAIL, roles = "USER")
+    void shouldDisableLabelDownloadsOnceJudgingStartsEvenWithSubmittedEntries() {
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Dry mead category", null, 1));
+        var entry = entryService.createEntry(division.getId(), entrant.getId(),
+                "Test Mead", category.getId(),
+                Sweetness.DRY, new BigDecimal("12.0"),
+                Carbonation.STILL, "Honey", null, false, null, null);
+        entryService.submitEntry(entry.getId(), entrant.getId());
+
+        // Advance the division into JUDGING (REGISTRATION_OPEN → REGISTRATION_CLOSED → JUDGING).
+        // The entry stays SUBMITTED (admin has not marked it RECEIVED yet) — labels must still be
+        // unavailable because the bottles are already with judges.
+        division.advanceStatus();
+        division.advanceStatus();
+        division = divisionRepository.save(division);
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/my-entries");
+
+        var downloadBtn = _get(Button.class, spec -> spec.withText("Download all labels"));
+        assertThat(downloadBtn.isEnabled())
+                .as("label downloads should be unavailable once bottles are with judges")
+                .isFalse();
+    }
+
+    @Test
+    @WithMockUser(username = ENTRANT_EMAIL, roles = "USER")
     void shouldShowDownloadLabelForSubmittedEntries() {
         // Create a category for entries
         var category = divisionCategoryRepository.save(new DivisionCategory(

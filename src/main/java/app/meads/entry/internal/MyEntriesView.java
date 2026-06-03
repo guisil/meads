@@ -399,13 +399,17 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
             submitButton.setTooltipText(getTranslation("entries.meadery-required.tooltip"));
         }
 
-        // Download all labels (SUBMITTED entries) — only enabled when all entries are submitted
+        // Download all labels (SUBMITTED entries) — enabled when all entries are submitted and
+        // judging has not started yet (labels are useless once the bottles are with judges).
         var downloadAllBtn = new Button(getTranslation("entries.download-all"), new Icon(VaadinIcon.DOWNLOAD_ALT));
         Component downloadAllComponent;
         var hasSubmitted = entries.stream().anyMatch(en -> en.getStatus() == EntryStatus.SUBMITTED);
-        if (hasDrafts || !hasSubmitted) {
+        var labelsAvailable = division.getStatus().allowsLabelDownloads();
+        if (!labelsAvailable || hasDrafts || !hasSubmitted) {
             downloadAllBtn.setEnabled(false);
-            if (hasDrafts) {
+            if (!labelsAvailable) {
+                downloadAllBtn.setTooltipText(getTranslation("entries.download-all.judging-disabled"));
+            } else if (hasDrafts) {
                 downloadAllBtn.setTooltipText(getTranslation("entries.download-all.disabled"));
             }
             downloadAllComponent = downloadAllBtn;
@@ -571,8 +575,8 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                 : getTranslation("entries.action.submit"));
         actions.add(submitBtn);
 
-        // Download label — only SUBMITTED entries
-        if (entry.getStatus() == EntryStatus.SUBMITTED) {
+        // Download label — only SUBMITTED entries, and only before judging starts
+        if (entry.getStatus() == EntryStatus.SUBMITTED && division.getStatus().allowsLabelDownloads()) {
             var category = categoriesById.get(entry.getInitialCategoryId());
             var resource = new StreamResource(
                     "label-" + formatEntryId(entry) + ".pdf",

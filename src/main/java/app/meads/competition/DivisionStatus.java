@@ -34,6 +34,15 @@ public enum DivisionStatus {
         return this == RESULTS_PUBLISHED;
     }
 
+    /**
+     * Bottle labels are only useful before judging starts (entrants print and attach them, then
+     * ship). From JUDGING onward the bottles are already with judges, so entry-label downloads are
+     * withdrawn. Entrants get their (scoresheet) PDFs through the results views once published.
+     */
+    public boolean allowsLabelDownloads() {
+        return ordinal() < JUDGING.ordinal();
+    }
+
     public Optional<DivisionStatus> next() {
         var values = values();
         int nextOrdinal = ordinal() + 1;
