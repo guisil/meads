@@ -590,7 +590,7 @@ comment `flex-grow:1` + `height:100%` + `min-height:6em`) so it grows to the bot
 internally** instead of expanding the card. Score-column contents (Your score label, ticker, Comments label)
 are **left-aligned** (`Alignment.START`) to line up with the left edge of the full-width comments field.
 
-**▶ LATEST (2026-06-04 — multilingual category names/descriptions + edit dialog; 1340 tests green; COMMITTED + PUSHED on `feature/judging-module`).**
+**▶ LATEST (2026-06-04 — multilingual category names/descriptions + edit dialog; 1340 tests green; COMMITTED + PUSHED on `feature/judging-module`, branch head `df022c3` — working tree clean).**
 **⚑ NEXT SESSION (do this FIRST, then resume the walkthrough):** on a fresh/cleared DB, **test this feature**:
 (1) `compadmin` → CHIP → a division's **Categories tab** → **Add Category** (Custom tab) → fill code/name/desc +
 expand "Translations (optional)" → give a **Português** name+description → Save. (2) Switch the UI language
