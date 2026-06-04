@@ -962,6 +962,34 @@ toasts don't cover the page's last interactive control or list row.
 - [ ] **Expected:** Notification "Custom category added" (green)
 - [ ] **Expected:** Custom category appears in the TreeGrid
 
+### Custom category — multilingual name/description
+
+- [ ] Click "Add Category" → "Custom" tab
+- [ ] Enter code `X9Z`, name `Spiced Mead`, description `Mead with spices` (English base)
+- [ ] Expand the **"Translations (optional)"** collapsible section
+- [ ] **Expected:** a Name + Description field per non-English locale, labelled with the native language
+      name (Português, Español, Italiano, Polski). Hint: English is the default; blanks fall back to English.
+- [ ] Fill the **Português** fields: `Hidromel com Especiarias` / `Hidromel com especiarias`
+- [ ] Leave the other languages blank → click "Add"
+- [ ] **Expected:** category saved (green notification)
+- [ ] Switch the UI language to **Português** (top-right language switcher) and revisit the Categories tab /
+      any judge or entrant surface showing this category → **Expected:** it reads `Hidromel com Especiarias`
+- [ ] Switch the UI language to **Italiano** (no translation filled) → **Expected:** falls back to the English
+      `Spiced Mead`
+- [ ] (Same per-locale Name/Description fields appear on the **Judging Categories** tab's "Add" dialog.)
+
+### Edit category (name/description + translations)
+
+- [ ] In the Categories TreeGrid, find `X9Z` → click the **✎ Edit** (pencil) icon in the Actions column
+- [ ] **Expected:** dialog prefilled with the English base code/name/description; the "Translations (optional)"
+      section is **expanded** and the Português Name shows `Hidromel com Especiarias`
+- [ ] Change the English name to `Spiced Mead (Updated)` and the Português Name to `Hidromel Especiado`
+- [ ] Click "Save" → **Expected:** "Category updated" (green); grid shows the new English name
+- [ ] Re-open Edit → **Expected:** the Português Name persisted as `Hidromel Especiado` (no duplicate-key error)
+- [ ] Switch UI language to Português → **Expected:** the category reads `Hidromel Especiado`
+- [ ] (Same ✎ Edit action exists on the **Judging Categories** tab.)
+- [ ] Remove the `X9Z` test category afterwards to restore state
+
 ### Remove category
 
 - [ ] Find the custom category `X1A` in the grid

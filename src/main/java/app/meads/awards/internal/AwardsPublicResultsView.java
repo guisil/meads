@@ -45,7 +45,7 @@ public class AwardsPublicResultsView extends VerticalLayout
             return;
         }
         try {
-            var view = awardsService.getPublicResults(compShortName, divShortName);
+            var view = awardsService.getPublicResults(compShortName, divShortName, getLocale());
             render(view);
         } catch (BusinessRuleException e) {
             event.forwardTo("");
@@ -56,7 +56,7 @@ public class AwardsPublicResultsView extends VerticalLayout
     public void localeChange(LocaleChangeEvent event) {
         if (compShortName != null && divShortName != null) {
             try {
-                render(awardsService.getPublicResults(compShortName, divShortName));
+                render(awardsService.getPublicResults(compShortName, divShortName, getLocale()));
             } catch (BusinessRuleException e) {
                 // Ignore — beforeEnter will have already forwarded on first render.
             }

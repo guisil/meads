@@ -566,7 +566,7 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
             return "—";
         }
         var category = competitionService.findDivisionCategoryById(categoryId);
-        return category.getCode() + " — " + category.getName();
+        return category.getCode() + " — " + category.getName(getLocale());
     }
 
     private String orDash(String value) {

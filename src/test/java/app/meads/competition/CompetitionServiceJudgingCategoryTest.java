@@ -210,6 +210,53 @@ class CompetitionServiceJudgingCategoryTest {
                 .hasMessageContaining("error.category.code-exists");
     }
 
+    @Test
+    void shouldAddJudgingCategoryWithPerLocaleTranslations() {
+        var admin = createAdmin();
+        var competitionId = UUID.randomUUID();
+        var division = createDivisionAtStatus(competitionId, DivisionStatus.REGISTRATION_CLOSED);
+
+        given(divisionRepository.findById(division.getId())).willReturn(Optional.of(division));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(divisionCategoryRepository.existsByDivisionIdAndCodeAndScope(
+                division.getId(), "CX", CategoryScope.JUDGING)).willReturn(false);
+        given(divisionCategoryRepository.save(any(DivisionCategory.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var result = competitionService.addJudgingCategory(
+                division.getId(), "CX", "Combined", "Combined meads", null,
+                java.util.Map.of("pt", new LocalizedText("Combinados", "Hidroméis combinados")),
+                admin.getId());
+
+        assertThat(result.getName(java.util.Locale.forLanguageTag("pt"))).isEqualTo("Combinados");
+        assertThat(result.getDescription(java.util.Locale.forLanguageTag("pt"))).isEqualTo("Hidroméis combinados");
+        assertThat(result.getName(java.util.Locale.ENGLISH)).isEqualTo("Combined");
+    }
+
+    @Test
+    void shouldReplaceTranslationsOnUpdateJudgingCategory() {
+        var admin = createAdmin();
+        var competitionId = UUID.randomUUID();
+        var division = createDivisionAtStatus(competitionId, DivisionStatus.JUDGING);
+        var category = new DivisionCategory(division.getId(), null, "M1", "Old Name", "Old desc",
+                null, 0, CategoryScope.JUDGING);
+        category.setTranslations(java.util.Map.of("pt", new LocalizedText("Antigo", "Velha desc")));
+
+        given(divisionRepository.findById(division.getId())).willReturn(Optional.of(division));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(divisionCategoryRepository.findById(category.getId())).willReturn(Optional.of(category));
+        given(divisionCategoryRepository.save(any(DivisionCategory.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var result = competitionService.updateJudgingCategory(
+                division.getId(), category.getId(), "M1", "New Name", "New desc",
+                java.util.Map.of("es", new LocalizedText("Nuevo", "Nueva desc")),
+                admin.getId());
+
+        assertThat(result.getName(java.util.Locale.forLanguageTag("es"))).isEqualTo("Nuevo");
+        assertThat(result.getName(java.util.Locale.forLanguageTag("pt"))).isEqualTo("New Name");
+    }
+
     // --- updateJudgingCategory ---
 
     @Test

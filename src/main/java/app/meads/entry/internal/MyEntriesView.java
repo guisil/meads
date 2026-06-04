@@ -520,6 +520,12 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
     }
 
     private String translateCategoryName(DivisionCategory cat) {
+        // Admin-provided per-category translation wins (covers custom categories).
+        var localized = cat.getName(getLocale());
+        if (!localized.equals(cat.getName())) {
+            return localized;
+        }
+        // Otherwise fall back to the catalog properties translation, then the English base.
         var key = "category." + cat.getCode() + ".name";
         var translated = getTranslation(key);
         return translated.equals(key) ? cat.getName() : translated;

@@ -245,7 +245,7 @@ class AwardsServiceImplTest {
         given(competitionService.findDivisionByShortName(competitionId, "amateur"))
                 .willReturn(division);
 
-        assertThatThrownBy(() -> service.getPublicResults("test", "amateur"))
+        assertThatThrownBy(() -> service.getPublicResults("test", "amateur", java.util.Locale.ENGLISH))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("error.awards.not-published");
     }
@@ -317,6 +317,7 @@ class AwardsServiceImplTest {
         given(division.getEntryPrefix()).willReturn("PRO");
         given(competitionService.findDivisionById(divisionId)).willReturn(division);
         given(competitionService.isAuthorizedForDivision(divisionId, ownerUserId)).willReturn(false);
+        given(userService.findById(ownerUserId)).willReturn(mock(app.meads.identity.User.class));
 
         var view = service.getAnonymizedScoresheet(sheetId, ownerUserId);
 

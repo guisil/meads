@@ -647,7 +647,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 .orElse(null);
         if (cat == null) return new Span("—");
         var span = new Span(cat.getCode());
-        span.setTitle(cat.getName());
+        span.setTitle(cat.getName(getLocale()));
         return span;
     }
 
@@ -747,7 +747,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 .filter(c -> c.getParentId() != null)
                 .toList();
         categorySelect.setItems(subcategories);
-        categorySelect.setItemLabelGenerator(c -> c.getCode() + " — " + c.getName());
+        categorySelect.setItemLabelGenerator(c -> c.getCode() + " — " + c.getName(getLocale()));
 
         var meadNameField = new TextField(getTranslation("entry-admin.entries.edit.mead-name"));
         meadNameField.setMaxLength(255);
@@ -970,7 +970,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         categorySelect.setLabel(getTranslation("entry-admin.entries.edit.category"));
         categorySelect.setWidthFull();
         categorySelect.setItemLabelGenerator(dc ->
-                dc.getCode() + " — " + dc.getName());
+                dc.getCode() + " — " + dc.getName(getLocale()));
         categorySelect.setItems(competitionService.findRegistrationCategories(divisionId).stream()
                 .filter(dc -> dc.getParentId() != null)
                 .toList());
@@ -1047,7 +1047,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         finalCategorySelect.setEmptySelectionAllowed(true);
         finalCategorySelect.setEmptySelectionCaption(getTranslation("entry-admin.entries.edit.final-category.unset"));
         finalCategorySelect.setItemLabelGenerator(dc ->
-                dc != null ? dc.getCode() + " — " + dc.getName() : "");
+                dc != null ? dc.getCode() + " — " + dc.getName(getLocale()) : "");
         if (leafJudgingCategories.isEmpty()) {
             finalCategorySelect.setEnabled(false);
             finalCategorySelect.setHelperText(

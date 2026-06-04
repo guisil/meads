@@ -509,7 +509,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
             return "";
         }
         return categoriesById().getOrDefault(divisionCategoryId, null) instanceof DivisionCategory dc
-                ? dc.getCode() + " — " + dc.getName()
+                ? dc.getCode() + " — " + dc.getName(getLocale())
                 : "";
     }
 
@@ -1151,7 +1151,7 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         // Only leaf JUDGING categories — parents (e.g. M1) can't host scoresheets/medals.
         var categories = competitionService.findLeafJudgingCategories(division.getId());
         categorySelect.setItems(categories);
-        categorySelect.setItemLabelGenerator(c -> c == null ? "" : c.getCode() + " — " + c.getName());
+        categorySelect.setItemLabelGenerator(c -> c == null ? "" : c.getCode() + " — " + c.getName(getLocale()));
 
         var physicalTableSelect = new Select<app.meads.judging.PhysicalTable>();
         physicalTableSelect.setId("add-round-physical-table");

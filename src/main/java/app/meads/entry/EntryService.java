@@ -1,6 +1,7 @@
 package app.meads.entry;
 
 import app.meads.BusinessRuleException;
+import app.meads.LanguageMapping;
 import app.meads.competition.CategoryScope;
 import app.meads.competition.CompetitionRole;
 import app.meads.competition.CompetitionService;
@@ -750,13 +751,16 @@ public class EntryService {
         }
         var categories = competitionService.findDivisionCategories(divisionId).stream()
                 .collect(Collectors.toMap(DivisionCategory::getId, Function.identity()));
+        var submitter = userService.findById(userId);
+        var locale = LanguageMapping.resolveLocale(
+                submitter.getPreferredLanguage(), submitter.getCountry());
         var entryDetails = submittedEntries.stream()
                 .map(entry -> {
                     var cat = categories.get(entry.getInitialCategoryId());
                     return new EntryDetail(
                             entry.getEntryNumber(), entry.getMeadName(),
                             cat != null ? cat.getCode() : "—",
-                            cat != null ? cat.getName() : "Unknown");
+                            cat != null ? cat.getName(locale) : "Unknown");
                 })
                 .toList();
         eventPublisher.publishEvent(new EntriesSubmittedEvent(divisionId, userId, entryDetails));

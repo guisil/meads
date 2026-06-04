@@ -35,6 +35,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -202,15 +203,16 @@ public class AwardsServiceImpl implements AwardsService {
             throw new BusinessRuleException("error.awards.not-published");
         }
         var entries = entryService.findEntriesByDivisionAndUser(divisionId, userId);
+        var locale = localeForUser(userId);
         var rows = new ArrayList<EntrantResultRow>();
         for (var entry : entries) {
-            rows.add(buildEntrantRow(entry, division.getEntryPrefix()));
+            rows.add(buildEntrantRow(entry, division.getEntryPrefix(), locale));
         }
         return rows;
     }
 
-    private EntrantResultRow buildEntrantRow(Entry entry, String entryPrefix) {
-        var categoryInfo = resolveCategoryInfo(entry);
+    private EntrantResultRow buildEntrantRow(Entry entry, String entryPrefix, Locale locale) {
+        var categoryInfo = resolveCategoryInfo(entry, locale);
         var sheet = scoresheetService.findByEntryIdOrderBySubmittedAtAsc(entry.getId())
                 .stream().findFirst().orElse(null);
         Integer total = sheet != null ? sheet.getTotalScore() : null;
@@ -238,6 +240,7 @@ public class AwardsServiceImpl implements AwardsService {
         }
         var division = competitionService.findDivisionById(divisionId);
         var competition = competitionService.findCompetitionById(division.getCompetitionId());
+        var locale = localeForUser(adminUserId);
         var judgingCategories = competitionService.findJudgingCategories(divisionId);
         var entries = entryService.findEntriesByDivision(divisionId);
         var entriesByCategory = new HashMap<UUID, List<Entry>>();
@@ -258,14 +261,14 @@ public class AwardsServiceImpl implements AwardsService {
                     (AdminResultsView.AdminEntryRow r) -> r.round1Total() == null ? -1 : r.round1Total())
                     .reversed());
             leaderboards.add(new AdminResultsView.AdminCategoryLeaderboard(
-                    category.getId(), category.getCode(), category.getName(), rows));
+                    category.getId(), category.getCode(), category.getName(locale), rows));
         }
         var bosRows = new ArrayList<AdminResultsView.AdminBosRow>();
         var placements = judgingService.findBosPlacementsForDivision(divisionId, adminUserId);
         for (var placement : placements) {
             var entry = entryService.findEntryById(placement.getEntryId());
             var entrant = userService.findById(entry.getUserId());
-            var catInfo = resolveCategoryInfo(entry);
+            var catInfo = resolveCategoryInfo(entry, locale);
             bosRows.add(new AdminResultsView.AdminBosRow(
                     placement.getPlace(), entry.getId(), entry.getEntryCode(),
                     entrant.getName(), entrant.getMeaderyName(), entry.getMeadName(),
@@ -309,7 +312,8 @@ public class AwardsServiceImpl implements AwardsService {
     @Override
     @Transactional(readOnly = true)
     public PublicResultsView getPublicResults(String competitionShortName,
-                                              String divisionShortName) {
+                                              String divisionShortName,
+                                              Locale locale) {
         var competition = competitionService.findCompetitionByShortName(competitionShortName);
         var division = competitionService.findDivisionByShortName(competition.getId(), divisionShortName);
         if (division.getStatus() != DivisionStatus.RESULTS_PUBLISHED) {
@@ -345,7 +349,7 @@ public class AwardsServiceImpl implements AwardsService {
             var bronzes = filterByMedal(entriesByCategory.getOrDefault(category.getId(), List.of()), Medal.BRONZE);
             if (!golds.isEmpty() || !silvers.isEmpty() || !bronzes.isEmpty()) {
                 sections.add(new PublicResultsView.PublicCategorySection(
-                        category.getCode(), category.getName(), golds, silvers, bronzes));
+                        category.getCode(), category.getName(locale), golds, silvers, bronzes));
             }
         }
         var publicBos = new ArrayList<PublicResultsView.PublicBosRow>();
@@ -418,7 +422,7 @@ public class AwardsServiceImpl implements AwardsService {
             }
             anonymized.add(buildAnonymizedScoresheet(s, ordinal++));
         }
-        var categoryInfo = resolveCategoryInfo(entry);
+        var categoryInfo = resolveCategoryInfo(entry, localeForUser(requestingUserId));
         // Entrants see their own prefixed entry NUMBER (e.g. PRO-3), never the
         // anonymized judging code.
         var entryNumber = formatEntryNumber(entry, division.getEntryPrefix());
@@ -446,7 +450,7 @@ public class AwardsServiceImpl implements AwardsService {
                 : String.valueOf(entry.getEntryNumber());
     }
 
-    private CategoryInfo resolveCategoryInfo(Entry entry) {
+    private CategoryInfo resolveCategoryInfo(Entry entry, Locale locale) {
         UUID catId = entry.getFinalCategoryId() != null
                 ? entry.getFinalCategoryId()
                 : entry.getInitialCategoryId();
@@ -454,7 +458,12 @@ public class AwardsServiceImpl implements AwardsService {
             return new CategoryInfo("", "");
         }
         DivisionCategory cat = competitionService.findDivisionCategoryById(catId);
-        return new CategoryInfo(cat.getCode(), cat.getName());
+        return new CategoryInfo(cat.getCode(), cat.getName(locale));
+    }
+
+    private Locale localeForUser(UUID userId) {
+        var user = userService.findById(userId);
+        return LanguageMapping.resolveLocale(user.getPreferredLanguage(), user.getCountry());
     }
 
     private record CategoryInfo(String code, String name) {

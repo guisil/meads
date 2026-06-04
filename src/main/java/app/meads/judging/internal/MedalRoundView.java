@@ -282,7 +282,7 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         var physicalTableLine = new Span(getTranslation("medal-round.physical-table") + ": " + physicalTableLabel);
         physicalTableLine.setId("medal-round-physical-table-line");
 
-        var categoryBadge = RoundBadges.categoryBadge(category.getCode(), category.getName(),
+        var categoryBadge = RoundBadges.categoryBadge(category.getCode(), category.getName(getLocale()),
                 getTranslation("judging-admin.rounds.column.category"));
         categoryBadge.setId("medal-round-category-badge");
 
@@ -734,7 +734,7 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
     }
 
     private String categoryLabel() {
-        return category.getCode() + " " + category.getName();
+        return category.getCode() + " " + category.getName(getLocale());
     }
 
     private String formatEntryNumber(int entryNumber) {

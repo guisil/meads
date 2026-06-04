@@ -497,6 +497,17 @@ public class CompetitionService {
                                                @NotBlank String description,
                                                UUID parentId,
                                                @NotNull UUID requestingUserId) {
+        return addCustomCategory(divisionId, code, name, description, parentId,
+                Map.of(), requestingUserId);
+    }
+
+    public DivisionCategory addCustomCategory(@NotNull UUID divisionId,
+                                               @NotBlank String code,
+                                               @NotBlank String name,
+                                               @NotBlank String description,
+                                               UUID parentId,
+                                               Map<String, LocalizedText> translations,
+                                               @NotNull UUID requestingUserId) {
         var division = divisionRepository.findById(divisionId)
                 .orElseThrow(() -> new BusinessRuleException("error.division.not-found"));
         requireAuthorized(division.getCompetitionId(), requestingUserId);
@@ -511,6 +522,7 @@ public class CompetitionService {
                     .orElseThrow(() -> new BusinessRuleException("error.category.parent-not-found"));
         }
         var dc = new DivisionCategory(divisionId, null, code, name, description, parentId, 0);
+        dc.setTranslations(translations);
         log.debug("Added custom category {} to division {}", code, divisionId);
         return divisionCategoryRepository.save(dc);
     }
@@ -521,6 +533,17 @@ public class CompetitionService {
                                                      @NotBlank String name,
                                                      @NotBlank String description,
                                                      @NotNull UUID requestingUserId) {
+        return updateDivisionCategory(divisionId, categoryId, code, name, description,
+                Map.of(), requestingUserId);
+    }
+
+    public DivisionCategory updateDivisionCategory(@NotNull UUID divisionId,
+                                                     @NotNull UUID categoryId,
+                                                     @NotBlank String code,
+                                                     @NotBlank String name,
+                                                     @NotBlank String description,
+                                                     Map<String, LocalizedText> translations,
+                                                     @NotNull UUID requestingUserId) {
         var division = divisionRepository.findById(divisionId)
                 .orElseThrow(() -> new BusinessRuleException("error.division.not-found"));
         requireAuthorized(division.getCompetitionId(), requestingUserId);
@@ -530,6 +553,7 @@ public class CompetitionService {
         var category = divisionCategoryRepository.findById(categoryId)
                 .orElseThrow(() -> new BusinessRuleException("error.category.not-found"));
         category.updateDetails(code, name, description);
+        category.setTranslations(translations);
         return divisionCategoryRepository.save(category);
     }
 
@@ -619,6 +643,17 @@ public class CompetitionService {
                                                 @NotBlank String description,
                                                 UUID parentId,
                                                 @NotNull UUID requestingUserId) {
+        return addJudgingCategory(divisionId, code, name, description, parentId,
+                Map.of(), requestingUserId);
+    }
+
+    public DivisionCategory addJudgingCategory(@NotNull UUID divisionId,
+                                                @NotBlank String code,
+                                                @NotBlank String name,
+                                                @NotBlank String description,
+                                                UUID parentId,
+                                                Map<String, LocalizedText> translations,
+                                                @NotNull UUID requestingUserId) {
         var division = divisionRepository.findById(divisionId)
                 .orElseThrow(() -> new BusinessRuleException("error.division.not-found"));
         requireAuthorized(division.getCompetitionId(), requestingUserId);
@@ -635,6 +670,7 @@ public class CompetitionService {
         }
         var dc = new DivisionCategory(divisionId, null, code, name, description, parentId, 0,
                 CategoryScope.JUDGING);
+        dc.setTranslations(translations);
         log.debug("Added judging category {} to division {}", code, divisionId);
         return divisionCategoryRepository.save(dc);
     }
@@ -644,6 +680,17 @@ public class CompetitionService {
                                                     @NotBlank String code,
                                                     @NotBlank String name,
                                                     @NotBlank String description,
+                                                    @NotNull UUID requestingUserId) {
+        return updateJudgingCategory(divisionId, categoryId, code, name, description,
+                Map.of(), requestingUserId);
+    }
+
+    public DivisionCategory updateJudgingCategory(@NotNull UUID divisionId,
+                                                    @NotNull UUID categoryId,
+                                                    @NotBlank String code,
+                                                    @NotBlank String name,
+                                                    @NotBlank String description,
+                                                    Map<String, LocalizedText> translations,
                                                     @NotNull UUID requestingUserId) {
         var division = divisionRepository.findById(divisionId)
                 .orElseThrow(() -> new BusinessRuleException("error.division.not-found"));
@@ -655,6 +702,7 @@ public class CompetitionService {
         var category = divisionCategoryRepository.findById(categoryId)
                 .orElseThrow(() -> new BusinessRuleException("error.category.not-found"));
         category.updateDetails(code, name, description);
+        category.setTranslations(translations);
         log.debug("Updated judging category {} in division {}", code, divisionId);
         return divisionCategoryRepository.save(category);
     }

@@ -4,6 +4,7 @@ import app.meads.TestcontainersConfiguration;
 import app.meads.competition.internal.CategoryRepository;
 import app.meads.competition.internal.CompetitionRepository;
 import app.meads.competition.internal.DivisionCategoryRepository;
+import app.meads.competition.internal.DivisionDetailView;
 import app.meads.competition.internal.DivisionRepository;
 import app.meads.competition.internal.ParticipantRepository;
 import app.meads.competition.internal.ParticipantRoleRepository;
@@ -403,6 +404,67 @@ class DivisionDetailViewTest {
         assertThat(categories.getFirst().getCode()).isEqualTo("CUSTOM1");
         assertThat(categories.getFirst().getName()).isEqualTo("Best Local Honey");
         assertThat(categories.getFirst().getCatalogCategoryId()).isNull();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldAddCustomCategoryWithTranslationViaDialog() {
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName() + "/divisions/" + testDivision.getShortName());
+
+        _click(_get(Button.class, spec -> spec.withText("Add Category")));
+
+        var dialog = _get(Dialog.class);
+        _get(dialog, TabSheet.class).setSelectedIndex(1); // Custom tab
+
+        _get(dialog, TextField.class, spec -> spec.withCaption("Code")).setValue("CUSTOM1");
+        _get(dialog, TextField.class, spec -> spec.withCaption("Name")).setValue("Best Local Honey");
+        _get(dialog, TextField.class, spec -> spec.withCaption("Description")).setValue("Mead made with local honey");
+
+        // Portuguese translation fields (under the optional translations section)
+        _get(dialog, TextField.class, spec -> spec.withCaption("Name (Português)"))
+                .setValue("Melhor Mel Local");
+        _get(dialog, TextField.class, spec -> spec.withCaption("Description (Português)"))
+                .setValue("Hidromel feito com mel local");
+
+        _click(_get(dialog, Button.class, spec -> spec.withText("Add")));
+
+        var categories = divisionCategoryRepository.findByDivisionIdOrderByCode(testDivision.getId());
+        assertThat(categories).hasSize(1);
+        var saved = categories.getFirst();
+        assertThat(saved.getName(java.util.Locale.forLanguageTag("pt"))).isEqualTo("Melhor Mel Local");
+        assertThat(saved.getDescription(java.util.Locale.forLanguageTag("pt"))).isEqualTo("Hidromel feito com mel local");
+        assertThat(saved.getName(java.util.Locale.ENGLISH)).isEqualTo("Best Local Honey");
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldEditCustomCategoryNameAndTranslationViaDialog() {
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                testDivision.getId(), null, "X9Z", "Spiced Mead", "Mead with spices", null, 0));
+        category.setTranslations(java.util.Map.of("pt", new LocalizedText("Hidromel Especiado", "Com especiarias")));
+        divisionCategoryRepository.save(category);
+
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName()
+                + "/divisions/" + testDivision.getShortName());
+
+        var view = _get(DivisionDetailView.class);
+        view.openEditCategoryDialog(category);
+
+        var dialog = _get(Dialog.class);
+        // Existing English base values are prefilled
+        var nameField = _get(dialog, TextField.class, spec -> spec.withCaption("Name"));
+        assertThat(nameField.getValue()).isEqualTo("Spiced Mead");
+        nameField.setValue("Spiced Mead v2");
+        // Existing Portuguese translation is prefilled
+        var ptName = _get(dialog, TextField.class, spec -> spec.withCaption("Name (Português)"));
+        assertThat(ptName.getValue()).isEqualTo("Hidromel Especiado");
+        ptName.setValue("Hidromel Especiado v2");
+
+        _click(_get(dialog, Button.class, spec -> spec.withText("Save")));
+
+        var saved = divisionCategoryRepository.findById(category.getId()).orElseThrow();
+        assertThat(saved.getName(java.util.Locale.ENGLISH)).isEqualTo("Spiced Mead v2");
+        assertThat(saved.getName(java.util.Locale.forLanguageTag("pt"))).isEqualTo("Hidromel Especiado v2");
     }
 
     @Test

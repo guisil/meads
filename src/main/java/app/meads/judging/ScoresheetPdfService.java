@@ -124,7 +124,7 @@ public class ScoresheetPdfService {
             addCell(meta, entry.getMeadName(), FONT_NORMAL);
             if (category != null) {
                 addCell(meta, msg("scoresheet.pdf.category", locale), FONT_BOLD);
-                addCell(meta, category.getCode() + " — " + category.getName(), FONT_NORMAL);
+                addCell(meta, category.getCode() + " — " + category.getName(locale), FONT_NORMAL);
             }
             // Judge identity appears only on the admin (FULL) PDF — the entrant
             // copy omits it entirely (they know judges evaluated their mead).

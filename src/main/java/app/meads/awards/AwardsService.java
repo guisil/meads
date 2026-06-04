@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -23,7 +24,8 @@ public interface AwardsService {
 
     AdminResultsView getResultsForAdmin(@NotNull UUID divisionId, @NotNull UUID adminUserId);
 
-    PublicResultsView getPublicResults(@NotBlank String competitionShortName, @NotBlank String divisionShortName);
+    PublicResultsView getPublicResults(@NotBlank String competitionShortName, @NotBlank String divisionShortName,
+                                       @NotNull Locale locale);
 
     AnonymizedScoresheetView getAnonymizedScoresheet(@NotNull UUID scoresheetId, @NotNull UUID requestingUserId);
 }

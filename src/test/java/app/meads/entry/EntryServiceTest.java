@@ -83,6 +83,8 @@ class EntryServiceTest {
         // mutable (JUDGING) division so entry-status/admin tests pass; tests that need a specific
         // status (e.g. registration-open, deliberation) override this with their own stub.
         lenient().when(competitionService.findDivisionById(any())).thenReturn(judgingDivision());
+        // Submission events now resolve the submitter's locale via userService.findById.
+        lenient().when(userService.findById(any())).thenReturn(createSystemAdmin());
     }
 
     private Division judgingDivision() {
@@ -967,7 +969,7 @@ class EntryServiceTest {
         var category = mock(DivisionCategory.class);
         given(category.getId()).willReturn(categoryId);
         given(category.getCode()).willReturn("M1A");
-        given(category.getName()).willReturn("Dry Mead");
+        given(category.getName(any())).willReturn("Dry Mead");
         given(competitionService.findDivisionCategories(divisionId))
                 .willReturn(List.of(category));
 
@@ -1082,7 +1084,7 @@ class EntryServiceTest {
         var category = mock(DivisionCategory.class);
         given(category.getId()).willReturn(categoryId);
         given(category.getCode()).willReturn("M1A");
-        given(category.getName()).willReturn("Traditional Mead (Dry)");
+        given(category.getName(any())).willReturn("Traditional Mead (Dry)");
         given(competitionService.findDivisionCategories(divisionId))
                 .willReturn(List.of(category));
 
@@ -1165,7 +1167,7 @@ class EntryServiceTest {
         var category = mock(DivisionCategory.class);
         given(category.getId()).willReturn(categoryId);
         given(category.getCode()).willReturn("M2C");
-        given(category.getName()).willReturn("Berry Melomel");
+        given(category.getName(any())).willReturn("Berry Melomel");
         given(competitionService.findDivisionCategories(divisionId))
                 .willReturn(List.of(category));
 
@@ -1482,7 +1484,7 @@ class EntryServiceTest {
         var category = mock(DivisionCategory.class);
         given(category.getId()).willReturn(categoryId);
         given(category.getCode()).willReturn("M1A");
-        given(category.getName()).willReturn("Traditional Mead (Dry)");
+        given(category.getName(any())).willReturn("Traditional Mead (Dry)");
         given(competitionService.findDivisionCategories(divisionId)).willReturn(List.of(category));
 
         entryService.advanceEntryStatus(entry.getId(), adminUser.getId());

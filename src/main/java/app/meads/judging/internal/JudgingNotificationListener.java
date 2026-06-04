@@ -64,11 +64,11 @@ public class JudgingNotificationListener {
         var division = competitionService.findDivisionById(event.divisionId());
         var competition = competitionService.findCompetitionById(division.getCompetitionId());
         var category = competitionService.findDivisionCategoryById(event.divisionCategoryId());
-        var categoryLabel = category.getCode() + " — " + category.getName();
 
         for (var assignment : table.getAssignments()) {
             var judge = userService.findById(assignment.getJudgeUserId());
             var locale = LanguageMapping.resolveLocale(judge.getPreferredLanguage(), judge.getCountry());
+            var categoryLabel = category.getCode() + " — " + category.getName(locale);
             var link = jwtMagicLinkService.generateLink(judge.getEmail(), LINK_VALIDITY);
             emailService.sendJudgingTableReady(judge.getEmail(), table.getName(),
                     categoryLabel, competition.getName(), division.getName(), link, locale);
@@ -121,11 +121,11 @@ public class JudgingNotificationListener {
         var division = competitionService.findDivisionById(event.divisionId());
         var competition = competitionService.findCompetitionById(division.getCompetitionId());
         var category = competitionService.findDivisionCategoryById(event.divisionCategoryId());
-        var categoryLabel = category.getCode() + " — " + category.getName();
 
         for (var judgeUserId : judgeUserIds) {
             var judge = userService.findById(judgeUserId);
             var locale = LanguageMapping.resolveLocale(judge.getPreferredLanguage(), judge.getCountry());
+            var categoryLabel = category.getCode() + " — " + category.getName(locale);
             var link = jwtMagicLinkService.generateLink(judge.getEmail(), LINK_VALIDITY);
             emailService.sendMedalRoundReady(judge.getEmail(), categoryLabel,
                     competition.getName(), division.getName(), link, locale);

@@ -105,7 +105,7 @@ public class StewardView extends VerticalLayout implements BeforeEnterObserver {
 
         var category = competitionService.findDivisionCategoryById(table.getDivisionCategoryId());
         var title = new Span(table.getName() + " — " + category.getCode() + " "
-                + category.getName() + " (" + table.getStatus().name() + ")");
+                + category.getName(getLocale()) + " (" + table.getStatus().name() + ")");
         title.getStyle().set("font-weight", "600");
         card.add(title);
 

@@ -69,6 +69,8 @@ app.meads.identity            ← User/Role/UserStatus, UserService, JwtMagicLin
                                 AccessCodeValidator, UserDeletionGuard, LoginView; internal/ = repos,
                                 Spring Security config, MFA (TOTP), auth filters, admin/profile views
 app.meads.competition         ← Competition/Division/Participant/Category/DivisionCategory/CompetitionDocument,
+                                LocalizedText (per-locale category name+desc; DivisionCategory.getName(Locale)/
+                                getDescription(Locale), English base fallback, internal/CategoryTranslation child),
                                 DivisionStatus, CompetitionRole, ScoringSystem, CompetitionService,
                                 Division{Advance,Revert,Deletion}Guard, DivisionStatusAdvancedEvent; allowed = {identity}
 app.meads.entry               ← Entry, JumpsellerOrder/LineItem, ProductMapping, EntryCredit,

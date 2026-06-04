@@ -72,7 +72,7 @@ class JudgingNotificationListenerTest {
 
         var category = mock(DivisionCategory.class);
         given(category.getCode()).willReturn("M1A");
-        given(category.getName()).willReturn("Dry Mead");
+        given(category.getName(any())).willReturn("Dry Mead");
         given(competitionService.findDivisionCategoryById(divisionCategoryId)).willReturn(category);
 
         var judge1 = mock(User.class);
@@ -182,7 +182,7 @@ class JudgingNotificationListenerTest {
 
         var category = mock(DivisionCategory.class);
         given(category.getCode()).willReturn("M1A");
-        given(category.getName()).willReturn("Dry Mead");
+        given(category.getName(any())).willReturn("Dry Mead");
         given(competitionService.findDivisionCategoryById(divisionCategoryId)).willReturn(category);
 
         var judge1 = mock(User.class);
