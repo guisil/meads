@@ -123,6 +123,23 @@ class ScoresheetRepositoryTest {
     }
 
     @Test
+    void shouldReturnScoreFieldsInCanonicalMjpOrder() {
+        var fx = createFixtures();
+        var scoresheet = new Scoresheet(fx.table.getId(), fx.entry.getId());
+        scoresheetRepository.save(scoresheet);
+
+        var found = scoresheetRepository.findById(scoresheet.getId()).orElseThrow();
+
+        // @OrderColumn pins the criteria order deterministically (regardless of
+        // the database's natural row order).
+        assertThat(found.getFields())
+                .extracting(f -> f.getFieldName())
+                .containsExactly(
+                        "Appearance", "Aroma/Bouquet", "Flavour and Body",
+                        "Finish", "Overall Impression");
+    }
+
+    @Test
     void shouldFindByEntryId() {
         var fx = createFixtures();
 

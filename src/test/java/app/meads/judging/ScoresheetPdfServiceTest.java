@@ -78,6 +78,7 @@ class ScoresheetPdfServiceTest {
         var division = mock(Division.class);
         given(division.getName()).willReturn("Amateur");
         given(division.getStatus()).willReturn(DivisionStatus.RESULTS_PUBLISHED);
+        given(division.getScoringSystem()).willReturn(app.meads.competition.ScoringSystem.MJP);
         given(division.getCompetitionId()).willReturn(UUID.randomUUID());
         given(competitionService.findDivisionById(divisionId)).willReturn(division);
         var competition = mock(Competition.class);
@@ -113,6 +114,38 @@ class ScoresheetPdfServiceTest {
                 AnonymizationLevel.FULL, Locale.ENGLISH);
         assertThat(pdf).isNotEmpty();
         assertThat(new String(pdf, 0, 4)).isEqualTo("%PDF");
+    }
+
+    @Test
+    void shouldIncludeMedalBosAndMeadDetailsInPdf() throws Exception {
+        given(competitionService.isAuthorizedForDivision(divisionId, ownerUserId)).willReturn(false);
+        var entry = entryService.findEntryById(entryId);
+        given(entry.getId()).willReturn(entryId);
+        given(entry.getSweetness()).willReturn(app.meads.entry.Sweetness.DRY);
+        given(entry.getStrength()).willReturn(app.meads.entry.Strength.STANDARD);
+        given(entry.getCarbonation()).willReturn(app.meads.entry.Carbonation.STILL);
+        given(entry.getHoneyVarieties()).willReturn("Wildflower honey");
+        var medalAward = mock(MedalAward.class);
+        given(medalAward.getMedal()).willReturn(Medal.GOLD);
+        given(judgingService.findMedalAwardByEntryId(entryId)).willReturn(Optional.of(medalAward));
+        var bos = mock(BosPlacement.class);
+        given(bos.getPlace()).willReturn(1);
+        given(judgingService.findBosPlacementByEntryId(entryId)).willReturn(Optional.of(bos));
+
+        var pdf = service.generatePdf(scoresheetId, ownerUserId,
+                AnonymizationLevel.ANONYMIZED, Locale.ENGLISH);
+
+        // messageSource is stubbed to echo keys, so the rendered text carries them.
+        var reader = new org.openpdf.text.pdf.PdfReader(pdf);
+        var text = new org.openpdf.text.pdf.parser.PdfTextExtractor(reader).getTextFromPage(1);
+        reader.close();
+        assertThat(text).contains("MJP");                          // scoring system before "Scoresheet"
+        assertThat(text).contains("Sample Mead");                  // title (entry number — mead name)
+        assertThat(text).contains("my-results.column.medal");      // Medal label
+        assertThat(text).contains("my-results.medal.gold");        // Medal value
+        assertThat(text).contains("awards.public.bos.heading");    // Best of Show label
+        assertThat(text).contains("entries.view.sweetness");       // mead detail label
+        assertThat(text).contains("Wildflower honey");             // mead detail value
     }
 
     @Test

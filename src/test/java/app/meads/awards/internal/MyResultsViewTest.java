@@ -201,7 +201,7 @@ class MyResultsViewTest {
         // Total is rendered prominently (its own element) and shows the value.
         var total = _get(com.vaadin.flow.component.html.Span.class,
                 spec -> spec.withId("entrant-scoresheet-total-1"));
-        assertThat(total.getText()).contains("88");
+        assertThat(total.getText()).contains("88 / 24"); // score out of the criteria max sum
         assertThat(total.getStyle().get("font-weight")).isEqualTo("700");
 
         // No judge identity / "Judge N" labelling anywhere in the dialog.

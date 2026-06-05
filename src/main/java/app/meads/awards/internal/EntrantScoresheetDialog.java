@@ -211,9 +211,11 @@ class EntrantScoresheetDialog extends Dialog {
         }
         card.add(fields);
 
-        // Total — rendered prominently and separated from the criteria above.
+        // Total — rendered prominently and separated from the criteria above,
+        // shown out of the maximum possible (sum of the criteria max values).
+        int maxTotal = sheet.fieldScores().stream().mapToInt(f -> f.maxValue()).sum();
         var total = new Span(getTranslation("my-scoresheet.total") + ": "
-                + (sheet.totalScore() != null ? sheet.totalScore() : "—"));
+                + (sheet.totalScore() != null ? sheet.totalScore() + " / " + maxTotal : "—"));
         total.setId("entrant-scoresheet-total-" + sheet.judgeOrdinal());
         total.getStyle().set("font-size", "var(--lumo-font-size-xl)")
                 .set("font-weight", "700")

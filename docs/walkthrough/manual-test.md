@@ -2718,17 +2718,29 @@ Steps below are admin-driven unless noted.
   section** (comment language, criteria, total, overall comments). The card holds
   the comment-language line, then each score field as `field: value / max` **with
   its per-criterion comment below it**, then the **total — rendered prominently**
-  (bold, extra-large, separated from the criteria by a top divider line), then
-  overall comments (if any).
+  (bold, extra-large, separated from the criteria by a top divider line), shown as
+  **`N / 100`** (score out of the maximum), then overall comments (if any).
 - [ ] **Expected:** A **Close** button in the dialog footer dismisses it back to
   the grid. (There is no in-dialog PDF download — use the row's ⬇ download icon or
   the "Download all scoresheets" toolbar button.)
 - [ ] Click the row's ⬇ **download** icon (or "Download all scoresheets").
-- [ ] **Expected:** PDF downloads. Open it: heading **"Scoresheet"** (no
-  "Anonymized"), **entry number** (not code) + mead + category in a 2-col table,
-  an "Advanced to the medal round: Yes/No" row, **no judge row** (the entrant copy
-  omits the judge entirely), scores table with per-criterion comments, total,
-  overall comments. Liberation Sans font (Unicode-safe).
+- [ ] **Expected:** PDF downloads, laid out as a **representation of the on-screen dialog**
+  (no "Scores / Field / Value / Comment" table). Open it:
+  - **Header:** the **competition logo** (if any) and the title **on the same line** — title
+    block = "Competition — Division", **"MJP Scoresheet"** (scoring system before "Scoresheet"),
+    and the **entry number (not code) — mead name**;
+  - **Mead details** as `Label: value` lines: Category, Sweetness, Strength, ABV, Carbonation,
+    Honey Varieties, Other Ingredients, Wood Aged, Wood Ageing Details, Additional Information;
+  - a **highlighted outcome box** with **Medal** and **Best of Show** lines (when the entry won
+    them; omitted otherwise);
+  - a green **"Advanced to the medal round"** line **only when advanced** (absent otherwise) —
+    **no judge row** on the entrant copy;
+  - each **criterion** as a bold `Field: value / max` line with its comment in smaller grey text
+    below (no table);
+  - the **total rendered prominently** (large bold) as **`N / 100`**, then overall comments.
+  - Liberation Sans font (Unicode-safe).
+  *(On Fast Track / Mostra, the GOLD entry shows the outcome box + green advanced line;
+  `Mostra Singela` shows neither — compare against the dialog.)*
 
 ### 13.6 Freeze guard — judging mutations rejected
 
@@ -2884,7 +2896,7 @@ state.* (After §13.8, that entrant may see a different medal — that's fine.)
   — never the real judge name or certifications, and not even a "Judge N" ordinal.
 - [ ] Download the scoresheet PDF (row ⬇ icon).
 - [ ] **Expected:** PDF has **no judge row** — the entrant copy omits the judge
-  entirely; the heading reads "Scoresheet" (not "Anonymized Scoresheet").
+  entirely; the heading reads "MJP Scoresheet" (not "Anonymized Scoresheet").
 
 *Note on the admin path:* admin-side scoresheet surfaces (Manage Judging →
 Tables → a table → a scoresheet) show real judge names, confirming the
