@@ -68,7 +68,7 @@ class DevDataInitializerTest {
         assertThat(entryService.getCreditBalance(amadora.getId(), devEntrant.getId())).isEqualTo(3);
 
         // Amadora entries — 5 from user + 3 from entrant + 2 admin-added for buyer1
-        //   + 1 hard-COI entry for judge3 = 11
+        //   + 1 hard-COI entry for judge3 + 1 verbose all-fields demo entry = 12
         var userEntries = entryService.findEntriesByDivisionAndUser(
                 amadora.getId(), devUser.getId());
         assertThat(userEntries).hasSize(5);
@@ -78,7 +78,7 @@ class DevDataInitializerTest {
         assertThat(entrantEntries).hasSize(3);
 
         var allAmadora = entryService.findEntriesByDivision(amadora.getId());
-        assertThat(allAmadora).hasSize(11);
+        assertThat(allAmadora).hasSize(12);
 
         // 6 JUDGE participants in CHIP 2026
         var judgeParticipants = competitionService.findRolesByCompetition(chip.getId()).stream()
@@ -86,13 +86,14 @@ class DevDataInitializerTest {
                 .count();
         assertThat(judgeParticipants).isEqualTo(6L);
 
-        // Profissional — pre-staged at JUDGING with 20 RECEIVED entries
+        // Profissional — pre-staged at JUDGING with 20 entries + 1 verbose
+        // all-fields demo entry = 21 RECEIVED
         var profissional = chipDivisions.stream()
                 .filter(d -> "Profissional".equals(d.getName()))
                 .findFirst().orElseThrow();
         assertThat(profissional.getStatus()).isEqualTo(DivisionStatus.JUDGING);
         var profEntries = entryService.findEntriesByDivision(profissional.getId());
-        assertThat(profEntries).hasSize(20);
+        assertThat(profEntries).hasSize(21);
         assertThat(profEntries).allSatisfy(e -> {
             assertThat(e.getStatus().name()).isEqualTo("RECEIVED");
             assertThat(e.getFinalCategoryId()).isNotNull();
@@ -120,7 +121,7 @@ class DevDataInitializerTest {
         assertThat(mostra.getStatus()).isEqualTo(DivisionStatus.RESULTS_PUBLISHED);
 
         var mostraEntries = entryService.findEntriesByDivision(mostra.getId());
-        assertThat(mostraEntries).hasSize(2);
+        assertThat(mostraEntries).hasSize(3);
         assertThat(mostraEntries).allSatisfy(e -> {
             assertThat(e.getStatus().name()).isEqualTo("RECEIVED");
             assertThat(e.getFinalCategoryId()).isNotNull();
@@ -137,7 +138,7 @@ class DevDataInitializerTest {
         assertThat(awardsService.getLatestPublication(mostra.getId())).isPresent();
         var fastTrackEntrant = userService.findByEmail("entrant@example.com");
         assertThat(awardsService.getResultsForEntrant(fastTrackEntrant.getId(), mostra.getId()))
-                .hasSize(2);
+                .hasSize(3);
     }
 
     @Test

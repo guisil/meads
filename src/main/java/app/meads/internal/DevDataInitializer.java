@@ -32,6 +32,34 @@ class DevDataInitializer {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    // Long free-text values for the "fully-filled, verbose entry" demo entries
+    // seeded into each CHIP 2026 division (one per division) — used to check how
+    // admin and judge views render long mead descriptions. Kept under the entry
+    // form field caps (honey/other/wood ≤ 255 in the admin form, additional info
+    // ≤ 1000) so the entries remain editable without truncation.
+    private static final String LONG_HONEY =
+            "A blend of single-origin orange-blossom honey from the Algarve, high-mountain heather honey "
+            + "from the Serra da Estrela, and a small proportion of raw wildflower honey from the maker's own "
+            + "hives — each from a different harvest to build floral complexity and depth.";
+    private static final String LONG_OTHER =
+            "Hand-zested bergamot and Seville orange peel, one split Madagascar vanilla pod, lightly toasted "
+            + "coriander seed, a pinch of pink peppercorn, and a measured late addition of tartaric acid to "
+            + "balance the residual sweetness of the finished mead.";
+    private static final String LONG_WOOD =
+            "Aged eleven months in a lightly charred French oak barrel that previously held a botrytised "
+            + "dessert wine, then rested six further weeks on medium-plus toast oak spirals to lift the "
+            + "vanilla and baking-spice notes without over-extracting tannin.";
+    private static final String LONG_ADDITIONAL =
+            "Brewing notes: original gravity 1.110, final gravity 1.020, fermented with a Champagne yeast "
+            + "stepped up over three days and kept at a steady 16-18 °C for a slow, clean ferment. Staggered "
+            + "nutrient additions were made over the first third of fermentation, followed by extended lees "
+            + "contact for mouthfeel. Back-sweetened to taste after cold-crashing and stabilising. Bottle-"
+            + "conditioned for a gentle sparkle and cellared for fourteen months before entry. Contains "
+            + "naturally occurring sulphites; suitable for vegetarians but not vegans (honey). Best served "
+            + "lightly chilled at 8-10 °C in a tulip glass to showcase the aromatics. An earlier vintage of "
+            + "this mead placed second in its category at a regional show; this batch is the maker's most "
+            + "refined expression of the recipe to date and is intended as a flagship dessert-style mead.";
+
     private final UserService userService;
     private final CompetitionService competitionService;
     private final EntryService entryService;
@@ -310,7 +338,14 @@ class DevDataInitializer {
         entryService.advanceEntryStatus(judge3Mead.getId(), compAdminId); // RECEIVED
         log.info("Created hard-COI entry for judge3 in Amadora M1A");
 
-        log.info("CHIP Amadora ready: 11 entries (3 DRAFT, 2 SUBMITTED, 5 RECEIVED, 1 WITHDRAWN)");
+        // 12c. Verbose demo entry — every field filled with long free-text, so
+        // admin views (Entry Admin view/edit dialogs, label PDF) can be checked
+        // against long mead descriptions. RECEIVED.
+        createDetailedReceivedEntry(amadora, "buyer1@example.com",
+                "Hidromel de Demonstração — Campos Completos", amaM1A, compAdminId);
+        log.info("Created verbose all-fields demo entry for Amadora M1A");
+
+        log.info("CHIP Amadora ready: 12 entries (3 DRAFT, 2 SUBMITTED, 6 RECEIVED, 1 WITHDRAWN)");
 
         // 13. Physical tables for both Amadora and Profissional, so the admin
         //     can immediately wire rounds to them.
@@ -480,6 +515,17 @@ class DevDataInitializer {
         log.info("Profissional M1A: split into Panel A (2 entries, judges 1+2, Table 1) "
                 + "and Panel B (3 entries, judges 4+5, Table 2)");
 
+        // Verbose all-fields demo entry for Profissional — every field filled with
+        // long free-text, assigned to M1A Panel A so a judge opening scoresheets
+        // (once the admin starts the round) sees long mead descriptions rendered
+        // on the scoresheet. Panel A then holds 3 entries.
+        var proRegM1A = findCategoryByCode(profCategories, "M1A");
+        var verboseProEntry = createDetailedReceivedEntry(profissional, "buyer2@example.com",
+                "Hidromel de Demonstração — Campos Completos", proRegM1A, compAdminId);
+        entryService.assignFinalCategory(verboseProEntry.getId(), proM1AJ.getId(), compAdminId);
+        judgingService.assignEntryToRound(m1aRoundA.getId(), verboseProEntry.getId(), compAdminId);
+        log.info("Profissional M1A Panel A: added verbose all-fields demo entry (now 3 entries)");
+
         // Pre-stage a medal round for M1B with its own judge panel (judges
         // 1, 2, 6 — note judge6 isn't on any M1B scoring panel here; this is
         // the point of independent medal-round judges).
@@ -522,7 +568,7 @@ class DevDataInitializer {
         entryService.advanceEntryStatus(entry.getId(), adminId);
     }
 
-    private void createReceivedProEntry(Division division, app.meads.identity.User entrant,
+    private Entry createReceivedProEntry(Division division, app.meads.identity.User entrant,
                                          UUID adminId, String meadName, DivisionCategory category,
                                          Sweetness sweetness, double abv, Carbonation carbonation,
                                          String honey) {
@@ -531,6 +577,27 @@ class DevDataInitializer {
                 sweetness, BigDecimal.valueOf(abv), carbonation, honey,
                 null, false, null, null);
         advanceToReceived(entry, entrant, adminId);
+        return entry;
+    }
+
+    /**
+     * Admin-creates a fully-populated entry with long free-text in every field
+     * (honey varieties, other ingredients, wood-ageing details, additional
+     * information) and advances it to RECEIVED. Used to seed one verbose demo
+     * entry per CHIP division so admin and judge views can be checked against
+     * long mead descriptions. {@code initialCategory} is a REGISTRATION-scope
+     * category of the division.
+     */
+    private Entry createDetailedReceivedEntry(Division division, String ownerEmail,
+                                              String meadName, DivisionCategory initialCategory,
+                                              UUID adminId) {
+        var entry = entryService.adminCreateEntry(division.getId(), ownerEmail, meadName,
+                initialCategory.getId(), Sweetness.SWEET, BigDecimal.valueOf(13.5),
+                Carbonation.SPARKLING, LONG_HONEY, LONG_OTHER, true, LONG_WOOD,
+                LONG_ADDITIONAL, adminId);
+        entryService.advanceEntryStatus(entry.getId(), adminId); // DRAFT → SUBMITTED
+        entryService.advanceEntryStatus(entry.getId(), adminId); // SUBMITTED → RECEIVED
+        return entry;
     }
 
     private String buildOrderPayload(String orderId, String email, String fullName,
@@ -578,13 +645,15 @@ class DevDataInitializer {
 
     /**
      * Drives a small one-category division all the way to RESULTS_PUBLISHED with
-     * two fully-scored entries, so a fresh dev DB lands directly on a published
+     * three fully-scored entries, so a fresh dev DB lands directly on a published
      * entrant scoresheet — a fast-path for iterating the entrant-scoresheet
      * redesign without re-walking the §12 judging flow on every reset. The
-     * entrant is {@code entrant@example.com}; judges 1 and 2 score the round.
-     * Drives the full pipeline: score round → auto-created medal round (GOLD +
-     * SILVER) → Best of Show (places the GOLD) → phase COMPLETE → DELIBERATION →
-     * publish, all as the competition admin stepping in for the judges.
+     * entrant is {@code entrant@example.com}; judges 1 and 2 score the round. One
+     * entry ("Mostra Loquaz") carries deliberately long comments to stress the
+     * scoresheet layout. Drives the full pipeline: score round → auto-created
+     * medal round (GOLD / SILVER / BRONZE) → Best of Show (places the GOLD) →
+     * phase COMPLETE → DELIBERATION → publish, all as the competition admin
+     * stepping in for the judges.
      */
     private void seedFastTrackPublished(UUID sysAdminId, UUID compAdminId) {
         var fastTrack = competitionService.createCompetition(
@@ -612,15 +681,18 @@ class DevDataInitializer {
         competitionService.addParticipantByEmail(
                 fastTrack.getId(), "judge2@example.com", CompetitionRole.JUDGE, compAdminId);
 
-        // Entrant + 2 RECEIVED entries in M1A.
+        // Entrant + 3 RECEIVED entries in M1A. The third carries deliberately
+        // long per-criterion + overall comments to stress the scoresheet layout.
         var entrant = userService.findByEmail("entrant@example.com");
-        entryService.addCredits(mostra.getId(), entrant.getEmail(), 2, compAdminId);
+        entryService.addCredits(mostra.getId(), entrant.getEmail(), 3, compAdminId);
         var categories = competitionService.findDivisionCategories(mostra.getId());
         var m1a = findCategoryByCode(categories, "M1A");
-        createReceivedProEntry(mostra, entrant, compAdminId, "Mostra Tradicional", m1a,
+        var goldEntry = createReceivedProEntry(mostra, entrant, compAdminId, "Mostra Tradicional", m1a,
                 Sweetness.DRY, 12.0, Carbonation.STILL, "Wildflower honey");
-        createReceivedProEntry(mostra, entrant, compAdminId, "Mostra Reserva", m1a,
+        var silverEntry = createReceivedProEntry(mostra, entrant, compAdminId, "Mostra Reserva", m1a,
                 Sweetness.MEDIUM, 13.0, Carbonation.STILL, "Heather honey");
+        var verboseEntry = createReceivedProEntry(mostra, entrant, compAdminId, "Mostra Loquaz", m1a,
+                Sweetness.SWEET, 14.5, Carbonation.PETILLANT, "Orange blossom honey");
 
         // REGISTRATION_OPEN → REGISTRATION_CLOSED → init judging cats + assign → JUDGING
         competitionService.advanceDivisionStatus(mostra.getId(), compAdminId); // → REGISTRATION_CLOSED
@@ -642,21 +714,25 @@ class DevDataInitializer {
         judgingService.assignRoundToPhysicalTable(round.getId(), table.getId(), compAdminId);
         judgingService.assignJudge(round.getId(), judge1Id, compAdminId);
         judgingService.assignJudge(round.getId(), judge2Id, compAdminId);
-        var entries = entryService.findEntriesByFinalCategoryId(m1aJudging.getId());
-        for (var entry : entries) {
+        for (var entry : entryService.findEntriesByFinalCategoryId(m1aJudging.getId())) {
             judgingService.assignEntryToRound(round.getId(), entry.getId(), compAdminId);
         }
         judgingService.startRound(round.getId(), compAdminId); // creates BLANK scoresheets
 
-        // Fill + finalize: judge1 scores both sheets, then the round is finalized.
+        // Fill + finalize: judge1 scores every sheet, then the round is finalized.
+        // The "Loquaz" entry gets long comments to stress the scoresheet layout.
         for (var sheet : scoresheetService.findByRoundId(round.getId())) {
-            fillScoresheet(sheet.getId(), judge1Id);
+            if (sheet.getEntryId().equals(verboseEntry.getId())) {
+                fillScoresheetVerbose(sheet.getId(), judge1Id);
+            } else {
+                fillScoresheet(sheet.getId(), judge1Id);
+            }
         }
         scoresheetService.finalizeScoringRound(round.getId(), compAdminId); // → COMPLETE, totals locked
 
         // Finalizing the scoring round auto-creates a READY COMPARATIVE medal
         // round for the category. Run it (admin steps in for the judges): award
-        // GOLD + SILVER, then complete it so BOS can start.
+        // GOLD / SILVER / BRONZE, then complete it so BOS can start.
         var medalRound = judgingService.findRoundsByDivisionAndCategory(mostra.getId(), m1aJudging.getId())
                 .stream()
                 .filter(r -> r.getType() == RoundType.MEDAL)
@@ -664,14 +740,15 @@ class DevDataInitializer {
                 .orElseThrow(() -> new IllegalStateException("Expected an auto-created medal round"));
         judgingService.assignRoundToPhysicalTable(medalRound.getId(), table.getId(), compAdminId);
         judgingService.startRound(medalRound.getId(), compAdminId);
-        judgingService.recordMedal(entries.get(0).getId(), Medal.GOLD, compAdminId);
-        judgingService.recordMedal(entries.get(1).getId(), Medal.SILVER, compAdminId);
+        judgingService.recordMedal(goldEntry.getId(), Medal.GOLD, compAdminId);
+        judgingService.recordMedal(silverEntry.getId(), Medal.SILVER, compAdminId);
+        judgingService.recordMedal(verboseEntry.getId(), Medal.BRONZE, compAdminId);
         judgingService.completeMedalRoundById(medalRound.getId(), compAdminId);
 
         // Best of Show: place the confirmed GOLD (bosPlaces defaults to 1), then
         // complete BOS — judging phase flips to COMPLETE.
         judgingService.startBos(mostra.getId(), compAdminId);
-        judgingService.recordBosPlacement(mostra.getId(), entries.get(0).getId(), 1, compAdminId);
+        judgingService.recordBosPlacement(mostra.getId(), goldEntry.getId(), 1, compAdminId);
         judgingService.completeBos(mostra.getId(), compAdminId);
 
         // JUDGING → DELIBERATION → publish (RESULTS_PUBLISHED).
@@ -694,6 +771,69 @@ class DevDataInitializer {
                 "An enjoyable, well-made example of the style.", judgeUserId);
         scoresheetService.updateOverallComments(scoresheetId,
                 "A solid mead overall; a touch more acidity would lift the balance further.",
+                judgeUserId);
+        scoresheetService.markFilled(scoresheetId, judgeUserId);
+    }
+
+    /**
+     * Fills a scoresheet with deliberately long, multi-sentence comments (each
+     * well under the 2000-char column limit) so the entrant-scoresheet redesign
+     * can be checked against verbose judge feedback — wrapping, overflow, and
+     * per-criterion comment height all get exercised.
+     */
+    private void fillScoresheetVerbose(UUID scoresheetId, UUID judgeUserId) {
+        scoresheetService.updateScore(scoresheetId, "Appearance", 11,
+                "Pours a deep, luminous amber with distinct copper highlights when held to the light. "
+                        + "Brilliant clarity throughout, with no haze, sediment, or stray particulates of any kind. "
+                        + "A fine, persistent petillant bead rises steadily from the base of the glass and forms a "
+                        + "delicate collar around the edge. The colour is entirely appropriate to the declared style "
+                        + "and the orange-blossom honey, and the overall visual impression is genuinely inviting.",
+                judgeUserId);
+        scoresheetService.updateScore(scoresheetId, "Aroma/Bouquet", 27,
+                "The nose is expressive and layered, opening with bright orange-blossom and acacia honey notes that "
+                        + "are immediately recognisable and varietally true. Behind the primary honey character sit "
+                        + "secondary aromas of candied citrus peel, chamomile, and a faint waxy floral note that adds "
+                        + "real complexity. There is a gentle warming alcohol presence that frames the bouquet without "
+                        + "ever becoming hot or solventy, and no oxidative, sulphury, or fermentation off-aromas were "
+                        + "detected across repeated nosing. A clean, honest, and very attractive aromatic profile.",
+                judgeUserId);
+        scoresheetService.updateScore(scoresheetId, "Flavour and Body", 28,
+                "Flavour delivery follows the nose closely: forward orange-blossom honey, a sweep of candied citrus, "
+                        + "and a restrained herbal-floral mid-palate that keeps the sweetness from feeling cloying. "
+                        + "The body is full and faintly viscous, consistent with the SWEET designation, yet a lively "
+                        + "petillant lift and moderate acidity carry it and prevent any sense of heaviness. Sweetness, "
+                        + "acidity, tannin, and alcohol are well integrated; the only nitpick is that the finish hints "
+                        + "at a residual sweetness that could be balanced by a touch more perceived acidity. Faults: "
+                        + "none. A confident, generous, and well-constructed palate that rewards slow sipping.",
+                judgeUserId);
+        scoresheetService.updateScore(scoresheetId, "Finish", 12,
+                "Long, clean, and satisfying. The honey character lingers well past the swallow, slowly giving way "
+                        + "to a drying floral and faintly citrus-pith note that invites the next sip. No metallic, "
+                        + "bitter, or hot alcohol tail, and no astringency beyond what the style supports. The "
+                        + "petillant carbonation refreshes the palate on the close, leaving it clean rather than "
+                        + "sticky despite the residual sweetness.",
+                judgeUserId);
+        scoresheetService.updateScore(scoresheetId, "Overall Impression", 11,
+                "A polished, expressive sweet sparkling mead that clearly showcases the orange-blossom honey while "
+                        + "remaining balanced and drinkable. It reads as the work of a careful maker with a clear "
+                        + "stylistic intent, and it would show very well on a competition table. With a marginal "
+                        + "increase in acidity to offset the residual sweetness it would be close to flawless.",
+                judgeUserId);
+        scoresheetService.updateOverallComments(scoresheetId,
+                "Thank you for entering this mead — it was a genuine pleasure to evaluate and it stood out on the "
+                        + "table. To summarise the feedback above: the appearance is excellent, the bouquet is "
+                        + "complex and varietally true, the palate is generous and well integrated, and the finish "
+                        + "is long and clean. The single most useful adjustment you could make is to nudge the "
+                        + "perceived acidity upward slightly; at the current residual sweetness level a little more "
+                        + "acid would sharpen the focus, lengthen the finish further, and make the whole package feel "
+                        + "even more lively. You might achieve this through a small acid addition to taste before "
+                        + "packaging, by blending in a more acidic batch, or by selecting fruit or honey with brighter "
+                        + "natural acidity in future. I would also encourage you to keep the petillant carbonation "
+                        + "exactly where it is — it is doing a lot of quiet work to keep this sweet style refreshing. "
+                        + "Storage and handling appeared faultless: no oxidation, no fermentation off-flavours, and "
+                        + "no packaging taints were evident. This is a strong, confident entry that I scored highly, "
+                        + "and with the minor refinement noted it has clear medal potential at the highest level. "
+                        + "Congratulations on a very well-made mead, and best of luck with this and future batches.",
                 judgeUserId);
         scoresheetService.markFilled(scoresheetId, judgeUserId);
     }

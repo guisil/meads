@@ -68,14 +68,16 @@ including dev user magic links sent by `DevUserInitializer` at startup.
   - `buyer2@example.com` -- ENTRANT (3 credits in Profissional, added via webhook)
   - `proentrant1..4@example.com` -- ENTRANT (5 credits each in Profissional, all credits used)
 - **Product mappings:** CHIP-AMA (Amadora, product ID 1001), CHIP-PRO (Profissional, product ID 1002)
-- **Amadora entries (11 total — 3 DRAFT, 2 SUBMITTED, 5 RECEIVED, 1 WITHDRAWN):**
+- **Amadora entries (12 total — 3 DRAFT, 2 SUBMITTED, 6 RECEIVED, 1 WITHDRAWN):**
   - `user@example.com` (5): Wildflower Traditional (DRAFT, M1A), Blueberry Bliss (SUBMITTED, M2C), Oak-Aged Bochet (DRAFT, M1A), Honey Reserve (RECEIVED, M1B), Strawberry Fields (RECEIVED, M2C)
   - `entrant@example.com` (3): Lavender Metheglin (DRAFT, M3B), Rosemary & Sage (SUBMITTED, M3B), Mountain Honey (RECEIVED, M1B)
   - `buyer1@example.com` (2, admin-added): Apple Mead (RECEIVED, M4A), Sunset Mead (WITHDRAWN, M1A)
   - `judge3@example.com` (1, admin-added): Judge's Secret Mead (RECEIVED, M1A) — hard-COI seed
-- **Profissional entries (20 total — all RECEIVED with final categories assigned, division at JUDGING):**
-  - Split across `proentrant1..4@example.com` (5 each)
-  - Final categories cover M1A (5), M1B (4), M2A (4), M2C (4), M3B (3) — enough density for medal rounds + Best of Show
+  - `buyer1@example.com` (1, admin-added): **Hidromel de Demonstração — Campos Completos** (RECEIVED, M1A) — verbose all-fields demo entry (long descriptions in every field; see §8 "Verbose all-fields entry")
+- **Profissional entries (21 total — all RECEIVED with final categories assigned, division at JUDGING):**
+  - 20 split across `proentrant1..4@example.com` (5 each)
+  - Final categories cover M1A (6, incl. the verbose demo entry), M1B (4), M2A (4), M2C (4), M3B (3) — enough density for medal rounds + Best of Show
+  - `buyer2@example.com` (1, admin-added): **Hidromel de Demonstração — Campos Completos** (RECEIVED, final M1A) — verbose all-fields demo entry, assigned to **M1A Panel A** so a judge sees long descriptions on the scoresheet (see §8 "Verbose all-fields entry" + §12.11)
 - **Webhook orders:**
   - JS-1001: buyer1@example.com (Maria Silva), 2x CHIP-AMA → 2 credits in Amadora, buyer added as ENTRANT
   - JS-1002: buyer2@example.com (João Santos), 3x CHIP-PRO → 3 credits in Profissional, buyer added as ENTRANT
@@ -90,7 +92,7 @@ including dev user magic links sent by `DevUserInitializer` at startup.
 
 - **Competition:** Fast Track 2026 (July 1-2, 2026, Lisboa, Portugal)
 - **Division:** Mostra (`mostra`, prefix `FT`, MJP) — seeded **all the way to RESULTS_PUBLISHED**
-- **Entries:** 2 RECEIVED M1A entries owned by `entrant@example.com` (`Mostra Tradicional` → GOLD + BoS 1st, `Mostra Reserva` → SILVER), both fully scored (~91/100)
+- **Entries:** 3 RECEIVED M1A entries owned by `entrant@example.com` (`Mostra Tradicional` → GOLD + BoS 1st, `Mostra Reserva` → SILVER, `Mostra Loquaz` → BRONZE), all fully scored. **`Mostra Loquaz` carries deliberately long per-criterion + overall comments** to check how the scoresheet handles verbose judge feedback (wrapping/overflow/height).
 - **Purpose:** a fresh dev DB lands directly on a published entrant scoresheet without re-walking the §12 judging flow — for iterating the entrant-scoresheet redesign. Built by `DevDataInitializer.seedFastTrackPublished` (scoring round → auto-created medal round → BoS → publish, all as `compadmin` stepping in for the judges).
 - **To reach it:** log in as `entrant@example.com` (magic link via Mailpit) → **My Entries** → Mostra shows the "View results" banner → **My Results** → 👁 view scoresheet + ⬇ PDF.
 
@@ -1160,6 +1162,20 @@ toasts don't cover the page's last interactive control or list row.
 - [ ] **Expected:** Delete button opens confirmation dialog
 - [ ] **Expected:** Withdraw button opens confirmation dialog
 
+### Verbose all-fields entry — long-description rendering
+
+*Each CHIP division is seeded with one fully-populated demo entry whose every free-text field carries a long, multi-sentence description, named **"Hidromel de Demonstração — Campos Completos"** (owned by buyer1@ in Amadora, buyer2@ in Profissional). This checks how admin and judge views handle long mead descriptions — wrapping, overflow, dialog/card height, and the label PDF.*
+
+**Admin view (Amadora, this Entries tab):**
+- [ ] Filter the grid for "Demonstração" (or sort by Mead Name) to find the entry — Status: RECEIVED
+- [ ] Click the **view** (eye) button → **Expected:** read-only dialog renders the long honey varieties, other ingredients, wood-ageing details (wood aged = yes), and additional information **fully and legibly** — text wraps within the dialog, no clipping/overlap, dialog scrolls if needed
+- [ ] Click **edit** (confirm the dialog) → **Expected:** every long field is editable and shows the full text; the character counters/maxlength do not truncate the seeded values
+- [ ] Click the **label download** (individual) → **Expected:** the PDF label generates; the long ingredient fields wrap to their fixed 2-line height and clip gracefully (no layout break or overrun)
+
+**Judge view (Profissional, via scoresheet — cross-reference §12.11):**
+- [ ] The same verbose entry is assigned to **M1A Panel A** (judges 1 + 2). After the admin starts Panel A (§12.6 → §12.9), log in as `judge@example.com`, open this entry's scoresheet
+- [ ] **Expected:** the scoresheet mead-details card renders the long sweetness/carbonation/honey/other-ingredients/wood-details/additional-information **fully** (mead **name** is hidden from judges by anonymity rule, shown only to admins) — long values wrap inside the card without breaking the scoring form layout
+
 ### Advance entry status (admin)
 
 - [ ] Find a DRAFT entry in the grid (e.g., "Oak-Aged Bochet")
@@ -2030,10 +2046,10 @@ An ACTIVE scoring row exposes a ↶ **Revert** button (between Assign Entries an
 Each scoring round in the new model explicitly owns the set of entries it judges. Entries are 1:1 with scoring rounds — an entry can't be on two rounds at once. The walkthrough uses Profissional (pre-staged at JUDGING) which the seed has split M1A into two scoring rounds.
 
 - [ ] Switch to the Profissional division: navigate to CHIP 2026 → Divisions → Profissional → "Manage Judging" → Rounds tab.
-- [ ] **Expected (from dev seed):** Two PENDING scoring rounds for M1A: `M1A Panel A` (Table 1, 2 judges, 2 entries assigned) and `M1A Panel B` (Table 2, 2 judges, 3 entries assigned). Plus one PENDING medal round for M1B (Table 4, 3 judges).
+- [ ] **Expected (from dev seed):** Two PENDING scoring rounds for M1A: `M1A Panel A` (Table 1, 2 judges, **3 entries** assigned — 2 standard + the verbose all-fields demo entry) and `M1A Panel B` (Table 2, 2 judges, 3 entries assigned). Plus one PENDING medal round for M1B (Table 4, 3 judges).
 - [ ] Click 📦 Assign Entries on the `M1A Panel A` row.
 - [ ] **Expected:** Dialog titled "Assign entries to M1A Panel A" with helper text explaining 1:1 constraint, plus a multi-select grid with columns Entry / Meadery / Current round.
-- [ ] **Expected:** The 5 RECEIVED M1A entries are listed. The 2 pre-assigned to Panel A are pre-selected; the 3 on Panel B show `Current round: M1A Panel B`.
+- [ ] **Expected:** The **6 RECEIVED M1A entries** are listed. The **3 pre-assigned to Panel A** are pre-selected; the 3 on Panel B show `Current round: M1A Panel B`.
 - [ ] Try to also select one of Panel B's entries (a row currently assigned elsewhere) → Save.
 - [ ] **Expected:** Error notification "This entry is already assigned to round 'M1A Panel B'. Remove it from there first." Dialog stays open.
 - [ ] Close. Click 📦 Assign Entries on the `M1A Panel B` row → uncheck one of its entries → Save → notification "Entry assignments updated".
