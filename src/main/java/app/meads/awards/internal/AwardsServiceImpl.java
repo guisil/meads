@@ -426,9 +426,23 @@ public class AwardsServiceImpl implements AwardsService {
         // Entrants see their own prefixed entry NUMBER (e.g. PRO-3), never the
         // anonymized judging code.
         var entryNumber = formatEntryNumber(entry, division.getEntryPrefix());
+        var medal = judgingService.findMedalAwardByEntryId(entry.getId())
+                .map(a -> a.getMedal()).orElse(null);
+        var bosPlace = judgingService.findBosPlacementByEntryId(entry.getId())
+                .map(p -> p.getPlace()).orElse(null);
+        var competition = competitionService.findCompetitionById(division.getCompetitionId());
+        var logoDataUri = competition.hasLogo()
+                ? "data:" + competition.getLogoContentType() + ";base64,"
+                        + java.util.Base64.getEncoder().encodeToString(competition.getLogo())
+                : null;
+        var meadDetails = new AnonymizedScoresheetView.MeadDetails(
+                entry.getSweetness(), entry.getStrength(), entry.getAbv(), entry.getCarbonation(),
+                entry.getHoneyVarieties(), entry.getOtherIngredients(),
+                entry.isWoodAged(), entry.getWoodAgeingDetails(), entry.getAdditionalInformation());
         return new AnonymizedScoresheetView(
                 sheet.getId(), entry.getId(), entryNumber,
-                entry.getMeadName(), categoryInfo.code(), categoryInfo.name(), anonymized);
+                entry.getMeadName(), categoryInfo.code(), categoryInfo.name(),
+                logoDataUri, meadDetails, medal, bosPlace, anonymized);
     }
 
     private AnonymizedScoresheetView.AnonymizedScoresheet buildAnonymizedScoresheet(Scoresheet sheet, int ordinal) {

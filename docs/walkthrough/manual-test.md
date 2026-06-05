@@ -92,7 +92,12 @@ including dev user magic links sent by `DevUserInitializer` at startup.
 
 - **Competition:** Fast Track 2026 (July 1-2, 2026, Lisboa, Portugal)
 - **Division:** Mostra (`mostra`, prefix `FT`, MJP) — seeded **all the way to RESULTS_PUBLISHED**
-- **Entries:** 3 RECEIVED M1A entries owned by `entrant@example.com` (`Mostra Tradicional` → GOLD + BoS 1st, `Mostra Reserva` → SILVER, `Mostra Loquaz` → BRONZE), all fully scored. **`Mostra Loquaz` carries deliberately long per-criterion + overall comments** to check how the scoresheet handles verbose judge feedback (wrapping/overflow/height).
+- **Entries:** 5 RECEIVED M1A entries owned by `entrant@example.com`, chosen to show every scoresheet variation side by side:
+  - `Mostra Tradicional` → advanced, **GOLD + Best of Show 1st**
+  - `Mostra Reserva` → advanced, **SILVER**
+  - `Mostra Loquaz …` → advanced, **BRONZE** — carries deliberately **long per-criterion + overall comments** AND a **very long mead name** (wrapping/overflow checks for both the comments box and the dialog title next to the logo)
+  - `Mostra Finalista` → **advanced to the medal round but won no medal** (shows the green "advanced" line, no outcome banner)
+  - `Mostra Singela` → **did not advance** (no advanced line, no outcome banner)
 - **Purpose:** a fresh dev DB lands directly on a published entrant scoresheet without re-walking the §12 judging flow — for iterating the entrant-scoresheet redesign. Built by `DevDataInitializer.seedFastTrackPublished` (scoring round → auto-created medal round → BoS → publish, all as `compadmin` stepping in for the judges).
 - **To reach it:** log in as `entrant@example.com` (magic link via Mailpit) → **My Entries** → Mostra shows the "View results" banner → **My Results** → 👁 view scoresheet + ⬇ PDF.
 
@@ -2675,7 +2680,7 @@ Steps below are admin-driven unless noted.
   targeting the same. Both remain available.
 - [ ] Click "View your results".
 - [ ] **Expected:** Navigates to `/competitions/chip-2026/divisions/amadora/my-results`.
-- [ ] **Expected:** Heading "CHIP 2026 — Amadora — Your results".
+- [ ] **Expected:** Header shows the **competition logo** (if the competition has one) to the left of the heading "CHIP 2026 — Amadora — Your results" — same as the My Entries header.
 - [ ] **Expected:** An entry-grid-styled results grid matching the entry grid's column labels + sizes: a **search field** (filters by mead name) on a toolbar with a **"Download all scoresheets"** button on the right; **sortable + resizable** columns: **Entry #** (the entrant's prefixed entry **number**, e.g. `PRO-1` — *not* the anonymized code; narrow column), **Mead Name** (takes the slack so long names fit), **Final Category** (code only, hover tooltip = full name), **Score** (`N / 100` or `—`), **Advanced** (green ✓ icon when advanced, `—` otherwise), **Medal** (🥇/🥈/🥉 or `—`; **hover the medal icon for a tooltip naming the medal** — Gold / Silver / Bronze, localized), **BOS place** (`🏆 N` with the place number, or `—`; **hover for a "Best of Show — place N" tooltip**), **Actions**.
 - [ ] **Expected:** the Actions column shows a small **👁 eye** (view scoresheet) and a small **⬇ download** icon (downloads that scoresheet as a PDF) — sized like the entry grid's inline action buttons. The toolbar **"Download all scoresheets"** button downloads one PDF with all the entrant's submitted scoresheets (disabled when none). **Both downloads must actually produce a PDF file** (the generation runs in a read-only transaction so the lazy score fields load even though open-in-view is off). *(NOTE: the separate scoresheet **view page** still hides per-criterion comments + the advanced flag — deferred.)*
 - [ ] **Expected:** Entries with no medal render as `—` in the Medal column; rows with no SUBMITTED scoresheet show `—` in the Actions column.
@@ -2685,14 +2690,36 @@ Steps below are admin-driven unless noted.
 *Stay on MyResultsView.*
 
 - [ ] Click the 👁 **view-scoresheet** icon on a submitted-scoresheet row.
-- [ ] **Expected:** A **dialog** opens in place (no navigation). Header shows the
-  entrant's own **entry NUMBER** + mead name (e.g., `AMA-3 — My Wildflower`) —
-  **never the anonymized judging code**. Category line below.
+- [ ] **Expected:** A **dialog** opens in place (no navigation). The header bar shows,
+  in the **top-left corner**, a **smaller competition logo** (if the competition has
+  one) immediately to the left of the title — the entrant's own **entry NUMBER** +
+  mead name (e.g., `AMA-3 — My Wildflower`), **never the anonymized judging code**.
+  *(On Fast Track / Mostra, `Mostra Loquaz …` has a deliberately very long name — check
+  it wraps cleanly next to the logo.)*
+- [ ] **Expected (mead details):** below the mead name, the dialog shows the **full mead
+  details** — Final Category, Sweetness, Strength, ABV, Carbonation, Honey Varieties,
+  Other Ingredients, Wood Aged (Yes/No), Wood Ageing Details, Additional Information —
+  each as a `Label: value` line (blank values render as `—`), localized to the UI
+  language. *(Previously only the category was shown.)*
+- [ ] **Expected (outcome banner):** if the entry won a medal and/or a Best of
+  Show placement, a **prominent highlighted banner** appears right under the
+  category line showing the **medal** (🥇 Gold / 🥈 Silver / 🥉 Bronze, bold,
+  larger text) and/or **🏆 Best of Show — Place N**. The banner is **omitted
+  entirely** when the entry won neither. *(Check on the Fast Track / Mostra GOLD
+  entry — `Mostra Tradicional` — which has both a Gold medal and BoS 1st.)*
+- [ ] **Expected (advanced indicator):** if the entry advanced to the medal round,
+  an "Advanced to the medal round" line with a green check appears **between the
+  outcome banner and the comments card** (outside the card, not inside it). It is
+  absent when the entry did not advance. *(Compare `Mostra Finalista` — advanced,
+  no medal → green line, no banner — against `Mostra Singela` — not advanced → no
+  line, no banner.)*
 - [ ] **Expected:** One card per submitted scoresheet (likely just one in dev),
-  with **no "Judge N" / judge label at all**. If the entry advanced to the medal
-  round, an "Advanced to the medal round" line with a green check appears.
-  Comment-language line, then each score field as `field: value / max` **with its
-  per-criterion comment below it**, then total, then overall comments (if any).
+  with **no "Judge N" / judge label at all**, and **clear spacing between each
+  section** (comment language, criteria, total, overall comments). The card holds
+  the comment-language line, then each score field as `field: value / max` **with
+  its per-criterion comment below it**, then the **total — rendered prominently**
+  (bold, extra-large, separated from the criteria by a top divider line), then
+  overall comments (if any).
 - [ ] **Expected:** A **Close** button in the dialog footer dismisses it back to
   the grid. (There is no in-dialog PDF download — use the row's ⬇ download icon or
   the "Download all scoresheets" toolbar button.)

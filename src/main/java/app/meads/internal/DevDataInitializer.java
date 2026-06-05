@@ -645,15 +645,16 @@ class DevDataInitializer {
 
     /**
      * Drives a small one-category division all the way to RESULTS_PUBLISHED with
-     * three fully-scored entries, so a fresh dev DB lands directly on a published
+     * five fully-scored entries, so a fresh dev DB lands directly on a published
      * entrant scoresheet — a fast-path for iterating the entrant-scoresheet
      * redesign without re-walking the §12 judging flow on every reset. The
-     * entrant is {@code entrant@example.com}; judges 1 and 2 score the round. One
-     * entry ("Mostra Loquaz") carries deliberately long comments to stress the
-     * scoresheet layout. Drives the full pipeline: score round → auto-created
-     * medal round (GOLD / SILVER / BRONZE) → Best of Show (places the GOLD) →
-     * phase COMPLETE → DELIBERATION → publish, all as the competition admin
-     * stepping in for the judges.
+     * entrant is {@code entrant@example.com}; judges 1 and 2 score the round. The
+     * five entries cover every scoresheet variation: GOLD+BoS, SILVER, BRONZE
+     * (with long comments — layout stress), an entry that <em>advanced</em> to the
+     * medal round but won no medal, and one that did <em>not</em> advance. Drives
+     * the full pipeline: score round → auto-created medal round → Best of Show
+     * (places the GOLD) → phase COMPLETE → DELIBERATION → publish, all as the
+     * competition admin stepping in for the judges.
      */
     private void seedFastTrackPublished(UUID sysAdminId, UUID compAdminId) {
         var fastTrack = competitionService.createCompetition(
@@ -669,7 +670,7 @@ class DevDataInitializer {
         var mostra = competitionService.createDivision(
                 fastTrack.getId(), "Mostra", "mostra", ScoringSystem.MJP,
                 LocalDateTime.of(2026, 7, 31, 23, 59), "Europe/Lisbon", compAdminId);
-        competitionService.updateDivisionEntryLimits(mostra.getId(), 3, 5, 10, compAdminId);
+        competitionService.updateDivisionEntryLimits(mostra.getId(), 5, 5, 10, compAdminId);
         competitionService.updateDivision(mostra.getId(),
                 mostra.getName(), mostra.getShortName(), mostra.getScoringSystem(),
                 "FT", compAdminId);
@@ -681,18 +682,31 @@ class DevDataInitializer {
         competitionService.addParticipantByEmail(
                 fastTrack.getId(), "judge2@example.com", CompetitionRole.JUDGE, compAdminId);
 
-        // Entrant + 3 RECEIVED entries in M1A. The third carries deliberately
-        // long per-criterion + overall comments to stress the scoresheet layout.
+        // Entrant + 5 RECEIVED entries in M1A, chosen to show every scoresheet
+        // variation side by side:
+        //   • Mostra Tradicional — advanced, GOLD + Best of Show
+        //   • Mostra Reserva     — advanced, SILVER
+        //   • Mostra Loquaz      — advanced, BRONZE (long comments — layout stress)
+        //   • Mostra Finalista   — advanced to the medal round, but NO medal
+        //   • Mostra Singela     — did NOT advance to the medal round, no medal
         var entrant = userService.findByEmail("entrant@example.com");
-        entryService.addCredits(mostra.getId(), entrant.getEmail(), 3, compAdminId);
+        entryService.addCredits(mostra.getId(), entrant.getEmail(), 5, compAdminId);
         var categories = competitionService.findDivisionCategories(mostra.getId());
         var m1a = findCategoryByCode(categories, "M1A");
         var goldEntry = createReceivedProEntry(mostra, entrant, compAdminId, "Mostra Tradicional", m1a,
                 Sweetness.DRY, 12.0, Carbonation.STILL, "Wildflower honey");
         var silverEntry = createReceivedProEntry(mostra, entrant, compAdminId, "Mostra Reserva", m1a,
                 Sweetness.MEDIUM, 13.0, Carbonation.STILL, "Heather honey");
-        var verboseEntry = createReceivedProEntry(mostra, entrant, compAdminId, "Mostra Loquaz", m1a,
+        // Deliberately very long mead name too, to check how the scoresheet title
+        // (next to the logo) and grids handle a long name.
+        var verboseEntry = createReceivedProEntry(mostra, entrant, compAdminId,
+                "Mostra Loquaz — Hidromel de Flor de Laranjeira Envelhecido em Barrica de Carvalho "
+                        + "Francês com Notas de Baunilha, Mel Cristalizado e Especiarias de Inverno", m1a,
                 Sweetness.SWEET, 14.5, Carbonation.PETILLANT, "Orange blossom honey");
+        var advancedNoMedalEntry = createReceivedProEntry(mostra, entrant, compAdminId, "Mostra Finalista", m1a,
+                Sweetness.MEDIUM, 11.5, Carbonation.STILL, "Acacia honey");
+        var notAdvancedEntry = createReceivedProEntry(mostra, entrant, compAdminId, "Mostra Singela", m1a,
+                Sweetness.DRY, 10.5, Carbonation.STILL, "Wildflower honey");
 
         // REGISTRATION_OPEN → REGISTRATION_CLOSED → init judging cats + assign → JUDGING
         competitionService.advanceDivisionStatus(mostra.getId(), compAdminId); // → REGISTRATION_CLOSED
@@ -720,12 +734,14 @@ class DevDataInitializer {
         judgingService.startRound(round.getId(), compAdminId); // creates BLANK scoresheets
 
         // Fill + finalize: judge1 scores every sheet, then the round is finalized.
-        // The "Loquaz" entry gets long comments to stress the scoresheet layout.
+        // "Loquaz" gets long comments; "Singela" is the only one NOT flagged to
+        // advance to the medal round (so its scoresheet shows no advanced line).
         for (var sheet : scoresheetService.findByRoundId(round.getId())) {
             if (sheet.getEntryId().equals(verboseEntry.getId())) {
                 fillScoresheetVerbose(sheet.getId(), judge1Id);
             } else {
-                fillScoresheet(sheet.getId(), judge1Id);
+                boolean advanced = !sheet.getEntryId().equals(notAdvancedEntry.getId());
+                fillScoresheet(sheet.getId(), judge1Id, advanced);
             }
         }
         scoresheetService.finalizeScoringRound(round.getId(), compAdminId); // → COMPLETE, totals locked
@@ -754,11 +770,11 @@ class DevDataInitializer {
         // JUDGING → DELIBERATION → publish (RESULTS_PUBLISHED).
         competitionService.advanceDivisionStatus(mostra.getId(), compAdminId);
         awardsService.publish(mostra.getId(), compAdminId);
-        log.info("Fast Track Mostra: published with 2 fully-scored entries "
+        log.info("Fast Track Mostra: published with 5 fully-scored entries "
                 + "(entrant@example.com → My Results → scoresheet + PDF)");
     }
 
-    private void fillScoresheet(UUID scoresheetId, UUID judgeUserId) {
+    private void fillScoresheet(UUID scoresheetId, UUID judgeUserId, boolean advanced) {
         scoresheetService.updateScore(scoresheetId, "Appearance", 10,
                 "Bright and clear with an attractive colour.", judgeUserId);
         scoresheetService.updateScore(scoresheetId, "Aroma/Bouquet", 24,
@@ -772,6 +788,7 @@ class DevDataInitializer {
         scoresheetService.updateOverallComments(scoresheetId,
                 "A solid mead overall; a touch more acidity would lift the balance further.",
                 judgeUserId);
+        scoresheetService.setAdvancedToMedalRound(scoresheetId, advanced, judgeUserId);
         scoresheetService.markFilled(scoresheetId, judgeUserId);
     }
 
@@ -835,6 +852,7 @@ class DevDataInitializer {
                         + "and with the minor refinement noted it has clear medal potential at the highest level. "
                         + "Congratulations on a very well-made mead, and best of luck with this and future batches.",
                 judgeUserId);
+        scoresheetService.setAdvancedToMedalRound(scoresheetId, true, judgeUserId);
         scoresheetService.markFilled(scoresheetId, judgeUserId);
     }
 

@@ -121,7 +121,7 @@ class DevDataInitializerTest {
         assertThat(mostra.getStatus()).isEqualTo(DivisionStatus.RESULTS_PUBLISHED);
 
         var mostraEntries = entryService.findEntriesByDivision(mostra.getId());
-        assertThat(mostraEntries).hasSize(3);
+        assertThat(mostraEntries).hasSize(5);
         assertThat(mostraEntries).allSatisfy(e -> {
             assertThat(e.getStatus().name()).isEqualTo("RECEIVED");
             assertThat(e.getFinalCategoryId()).isNotNull();
@@ -138,7 +138,7 @@ class DevDataInitializerTest {
         assertThat(awardsService.getLatestPublication(mostra.getId())).isPresent();
         var fastTrackEntrant = userService.findByEmail("entrant@example.com");
         assertThat(awardsService.getResultsForEntrant(fastTrackEntrant.getId(), mostra.getId()))
-                .hasSize(3);
+                .hasSize(5);
     }
 
     @Test

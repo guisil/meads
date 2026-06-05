@@ -142,34 +142,88 @@ class MyResultsViewTest {
     }
 
     @Test
-    void shouldRenderEntrantScoresheetDialogWithCommentsAndAdvancedButNoJudgeLabel() {
+    void shouldRenderEntrantScoresheetDialogWithCommentsAdvancedMedalBosAndNoJudgeLabel() {
         var field = new app.meads.awards.AnonymizedScoresheetView.FieldScore(
                 "Aroma", 20, 24, "Lovely floral nose");
         var sheet = new app.meads.awards.AnonymizedScoresheetView.AnonymizedScoresheet(
                 1, "en", 88, true, java.util.List.of(field), "Well made.");
+        var meadDetails = new app.meads.awards.AnonymizedScoresheetView.MeadDetails(
+                app.meads.entry.Sweetness.DRY, app.meads.entry.Strength.STANDARD,
+                java.math.BigDecimal.valueOf(12.5), app.meads.entry.Carbonation.STILL,
+                "Wildflower honey", "Orange peel", true, "French oak 6 months",
+                "Bottle conditioned");
         var view = new app.meads.awards.AnonymizedScoresheetView(
                 UUID.randomUUID(), UUID.randomUUID(), "PRO-3", "Golden Hour",
-                "M1A", "Dry Mead", java.util.List.of(sheet));
+                "M1A", "Dry Mead", "data:image/png;base64,iVBORw0KGgo=", meadDetails,
+                app.meads.judging.Medal.GOLD, 1,
+                java.util.List.of(sheet));
 
         var dialog = new EntrantScoresheetDialog(view);
         dialog.open();
 
-        // Header shows the entrant's own prefixed NUMBER, not the anonymized code.
-        assertThat(dialog.getHeaderTitle()).contains("PRO-3").contains("Golden Hour");
-
-        // Per-criterion comment is shown.
         var allText = _find(com.vaadin.flow.component.Component.class).stream()
                 .map(c -> c.getElement().getText())
                 .filter(t -> t != null && !t.isBlank())
                 .toList();
+
+        // Header title shows the entrant's own prefixed NUMBER, not the anonymized code.
+        var title = _get(com.vaadin.flow.component.html.Span.class,
+                spec -> spec.withId("entrant-scoresheet-title"));
+        assertThat(title.getText()).contains("PRO-3").contains("Golden Hour");
+
+        // Competition logo is shown in the dialog header (top-left, by the title).
+        _get(com.vaadin.flow.component.html.Image.class,
+                spec -> spec.withId("entrant-scoresheet-logo"));
+
+        // Full mead details are shown below the mead name.
+        _get(com.vaadin.flow.component.orderedlayout.VerticalLayout.class,
+                spec -> spec.withId("entrant-scoresheet-mead-details"));
+        assertThat(allText).anyMatch(t -> t.contains("Wildflower honey"));
+        assertThat(allText).anyMatch(t -> t.contains("French oak 6 months"));
+
+        // Per-criterion comment is shown.
         assertThat(allText).anyMatch(t -> t.contains("Lovely floral nose"));
 
-        // Advance-to-medal info is shown.
+        // Advance-to-medal info is shown (outside the comments card).
         _get(com.vaadin.flow.component.html.Span.class,
-                spec -> spec.withId("entrant-scoresheet-advanced-1"));
+                spec -> spec.withId("entrant-scoresheet-advanced"));
+
+        // Outcome banner: medal won + Best of Show placement.
+        _get(com.vaadin.flow.component.orderedlayout.HorizontalLayout.class,
+                spec -> spec.withId("entrant-scoresheet-outcome"));
+        var medal = _get(com.vaadin.flow.component.html.Span.class,
+                spec -> spec.withId("entrant-scoresheet-medal"));
+        assertThat(medal.getText()).contains("Gold");
+        var bos = _get(com.vaadin.flow.component.html.Span.class,
+                spec -> spec.withId("entrant-scoresheet-bos"));
+        assertThat(bos.getText()).contains("Best of Show").contains("1");
+
+        // Total is rendered prominently (its own element) and shows the value.
+        var total = _get(com.vaadin.flow.component.html.Span.class,
+                spec -> spec.withId("entrant-scoresheet-total-1"));
+        assertThat(total.getText()).contains("88");
+        assertThat(total.getStyle().get("font-weight")).isEqualTo("700");
 
         // No judge identity / "Judge N" labelling anywhere in the dialog.
         assertThat(allText).noneMatch(t -> t.contains("Judge"));
+    }
+
+    @Test
+    void shouldNotRenderOutcomeBannerWhenNoMedalOrBos() {
+        var field = new app.meads.awards.AnonymizedScoresheetView.FieldScore(
+                "Aroma", 18, 24, "Pleasant nose");
+        var sheet = new app.meads.awards.AnonymizedScoresheetView.AnonymizedScoresheet(
+                1, "en", 75, false, java.util.List.of(field), "Decent.");
+        var view = new app.meads.awards.AnonymizedScoresheetView(
+                UUID.randomUUID(), UUID.randomUUID(), "PRO-4", "Quiet One",
+                "M1A", "Dry Mead", null, null, null, null, java.util.List.of(sheet));
+
+        var dialog = new EntrantScoresheetDialog(view);
+        dialog.open();
+
+        assertThat(_find(com.vaadin.flow.component.orderedlayout.HorizontalLayout.class).stream()
+                .anyMatch(h -> "entrant-scoresheet-outcome".equals(h.getId().orElse(""))))
+                .isFalse();
     }
 
     @Test

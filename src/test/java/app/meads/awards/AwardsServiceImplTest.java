@@ -315,7 +315,12 @@ class AwardsServiceImplTest {
         var division = mock(Division.class);
         given(division.getStatus()).willReturn(DivisionStatus.RESULTS_PUBLISHED);
         given(division.getEntryPrefix()).willReturn("PRO");
+        var competitionId = UUID.randomUUID();
+        given(division.getCompetitionId()).willReturn(competitionId);
         given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        var competition = mock(Competition.class);
+        given(competition.hasLogo()).willReturn(false);
+        given(competitionService.findCompetitionById(competitionId)).willReturn(competition);
         given(competitionService.isAuthorizedForDivision(divisionId, ownerUserId)).willReturn(false);
         given(userService.findById(ownerUserId)).willReturn(mock(app.meads.identity.User.class));
 
@@ -329,6 +334,54 @@ class AwardsServiceImplTest {
         assertThat(anon.advanced()).isTrue();
         assertThat(anon.fieldScores()).hasSize(1);
         assertThat(anon.fieldScores().get(0).comment()).isEqualTo("Lovely floral nose");
+    }
+
+    @Test
+    void shouldIncludeMedalAndBosPlacementInAnonymizedScoresheet() {
+        var service = createService();
+        var sheetId = UUID.randomUUID();
+        var entryId = UUID.randomUUID();
+        var divisionId = UUID.randomUUID();
+        var ownerUserId = UUID.randomUUID();
+        var sheet = mock(app.meads.judging.Scoresheet.class);
+        given(sheet.getId()).willReturn(sheetId);
+        given(sheet.getStatus()).willReturn(app.meads.judging.ScoresheetStatus.SUBMITTED);
+        given(sheet.getEntryId()).willReturn(entryId);
+        given(sheet.getFields()).willReturn(java.util.List.of());
+        given(sheet.getTotalScore()).willReturn(91);
+        given(sheet.isAdvancedToMedalRound()).willReturn(false);
+        given(scoresheetService.findById(sheetId)).willReturn(Optional.of(sheet));
+        given(scoresheetService.findByEntryIdOrderBySubmittedAtAsc(entryId))
+                .willReturn(java.util.List.of(sheet));
+        var entry = mock(app.meads.entry.Entry.class);
+        given(entry.getId()).willReturn(entryId);
+        given(entry.getDivisionId()).willReturn(divisionId);
+        given(entry.getUserId()).willReturn(ownerUserId);
+        given(entry.getEntryNumber()).willReturn(3);
+        given(entry.getMeadName()).willReturn("Golden Hour");
+        given(entryService.findEntryById(entryId)).willReturn(entry);
+        var division = mock(Division.class);
+        given(division.getStatus()).willReturn(DivisionStatus.RESULTS_PUBLISHED);
+        given(division.getEntryPrefix()).willReturn("PRO");
+        var competitionId = UUID.randomUUID();
+        given(division.getCompetitionId()).willReturn(competitionId);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        var competition = mock(Competition.class);
+        given(competition.hasLogo()).willReturn(false);
+        given(competitionService.findCompetitionById(competitionId)).willReturn(competition);
+        given(competitionService.isAuthorizedForDivision(divisionId, ownerUserId)).willReturn(false);
+        given(userService.findById(ownerUserId)).willReturn(mock(app.meads.identity.User.class));
+        var medalAward = mock(app.meads.judging.MedalAward.class);
+        given(medalAward.getMedal()).willReturn(app.meads.judging.Medal.GOLD);
+        given(judgingService.findMedalAwardByEntryId(entryId)).willReturn(Optional.of(medalAward));
+        var bos = mock(app.meads.judging.BosPlacement.class);
+        given(bos.getPlace()).willReturn(1);
+        given(judgingService.findBosPlacementByEntryId(entryId)).willReturn(Optional.of(bos));
+
+        var view = service.getAnonymizedScoresheet(sheetId, ownerUserId);
+
+        assertThat(view.medal()).isEqualTo(app.meads.judging.Medal.GOLD);
+        assertThat(view.bosPlace()).isEqualTo(1);
     }
 
     @Test

@@ -17,6 +17,7 @@ import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
@@ -109,7 +110,16 @@ public class MyResultsView extends VerticalLayout implements BeforeEnterObserver
         var heading = new H2(competition.getName() + " — " + division.getName()
                 + " — " + getTranslation("my-results.title"));
         heading.setId("my-results-heading");
-        add(heading);
+        var header = new HorizontalLayout();
+        header.setDefaultVerticalComponentAlignment(Alignment.CENTER);
+        if (competition.hasLogo()) {
+            var logo = new Image(logoDataUri(competition), competition.getName() + " logo");
+            logo.setId("my-results-logo");
+            logo.setHeight("64px");
+            header.add(logo);
+        }
+        header.add(heading);
+        add(header);
 
         var search = new TextField();
         search.setId("my-results-search");
@@ -252,6 +262,11 @@ public class MyResultsView extends VerticalLayout implements BeforeEnterObserver
         } catch (BusinessRuleException e) {
             Notification.show(getTranslation(e.getMessage()), 4000, Notification.Position.MIDDLE);
         }
+    }
+
+    private static String logoDataUri(Competition competition) {
+        return "data:" + competition.getLogoContentType() + ";base64,"
+                + java.util.Base64.getEncoder().encodeToString(competition.getLogo());
     }
 
     private Anchor downloadAnchor(UUID scoresheetId, UUID userId) {
