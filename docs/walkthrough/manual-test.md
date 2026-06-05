@@ -86,6 +86,14 @@ including dev user magic links sent by `DevUserInitializer` at startup.
 - **Division:** Open (MJP, DRAFT, full catalog)
 - **Participants:** `compadmin@example.com` -- ADMIN
 
+### Third competition (fast-path to a published scoresheet)
+
+- **Competition:** Fast Track 2026 (July 1-2, 2026, Lisboa, Portugal)
+- **Division:** Mostra (`mostra`, prefix `FT`, MJP) — seeded **all the way to RESULTS_PUBLISHED**
+- **Entries:** 2 RECEIVED M1A entries owned by `entrant@example.com` (`Mostra Tradicional` → GOLD + BoS 1st, `Mostra Reserva` → SILVER), both fully scored (~91/100)
+- **Purpose:** a fresh dev DB lands directly on a published entrant scoresheet without re-walking the §12 judging flow — for iterating the entrant-scoresheet redesign. Built by `DevDataInitializer.seedFastTrackPublished` (scoring round → auto-created medal round → BoS → publish, all as `compadmin` stepping in for the judges).
+- **To reach it:** log in as `entrant@example.com` (magic link via Mailpit) → **My Entries** → Mostra shows the "View results" banner → **My Results** → 👁 view scoresheet + ⬇ PDF.
+
 ### Email types (Mailpit reference)
 
 All emails use the Thymeleaf template `email/email-base.html` — dark header with MEADS logo,

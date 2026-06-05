@@ -4,9 +4,13 @@ import app.meads.competition.*;
 import app.meads.entry.*;
 import app.meads.identity.UserService;
 import app.meads.judging.Certification;
+import app.meads.awards.AwardsService;
 import app.meads.judging.JudgeProfileService;
 import app.meads.judging.JudgingService;
+import app.meads.judging.Medal;
 import app.meads.judging.MedalRoundMode;
+import app.meads.judging.RoundType;
+import app.meads.judging.ScoresheetService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -34,19 +38,25 @@ class DevDataInitializer {
     private final WebhookService webhookService;
     private final JudgeProfileService judgeProfileService;
     private final JudgingService judgingService;
+    private final ScoresheetService scoresheetService;
+    private final AwardsService awardsService;
 
     DevDataInitializer(UserService userService,
                        CompetitionService competitionService,
                        EntryService entryService,
                        WebhookService webhookService,
                        JudgeProfileService judgeProfileService,
-                       JudgingService judgingService) {
+                       JudgingService judgingService,
+                       ScoresheetService scoresheetService,
+                       AwardsService awardsService) {
         this.userService = userService;
         this.competitionService = competitionService;
         this.entryService = entryService;
         this.webhookService = webhookService;
         this.judgeProfileService = judgeProfileService;
         this.judgingService = judgingService;
+        this.scoresheetService = scoresheetService;
+        this.awardsService = awardsService;
     }
 
     @Order(2)
@@ -67,6 +77,7 @@ class DevDataInitializer {
         seedUserProfiles();
         seedChip2026(sysAdminId, compAdminId);
         seedTestCompetition(sysAdminId, compAdminId);
+        seedFastTrackPublished(sysAdminId, compAdminId);
 
         log.info("Dev data initialization complete");
     }
@@ -563,6 +574,128 @@ class DevDataInitializer {
                 LocalDateTime.of(2026, 12, 31, 23, 59), "UTC", compAdminId);
 
         log.info("Created competition: {} with Open division", test.getName());
+    }
+
+    /**
+     * Drives a small one-category division all the way to RESULTS_PUBLISHED with
+     * two fully-scored entries, so a fresh dev DB lands directly on a published
+     * entrant scoresheet — a fast-path for iterating the entrant-scoresheet
+     * redesign without re-walking the §12 judging flow on every reset. The
+     * entrant is {@code entrant@example.com}; judges 1 and 2 score the round.
+     * Drives the full pipeline: score round → auto-created medal round (GOLD +
+     * SILVER) → Best of Show (places the GOLD) → phase COMPLETE → DELIBERATION →
+     * publish, all as the competition admin stepping in for the judges.
+     */
+    private void seedFastTrackPublished(UUID sysAdminId, UUID compAdminId) {
+        var fastTrack = competitionService.createCompetition(
+                "Fast Track 2026",
+                "fast-track-2026",
+                java.time.LocalDate.of(2026, 7, 1),
+                java.time.LocalDate.of(2026, 7, 2),
+                "Lisboa, Portugal",
+                sysAdminId);
+        competitionService.addParticipantByEmail(
+                fastTrack.getId(), "compadmin@example.com", CompetitionRole.ADMIN, sysAdminId);
+
+        var mostra = competitionService.createDivision(
+                fastTrack.getId(), "Mostra", "mostra", ScoringSystem.MJP,
+                LocalDateTime.of(2026, 7, 31, 23, 59), "Europe/Lisbon", compAdminId);
+        competitionService.updateDivisionEntryLimits(mostra.getId(), 3, 5, 10, compAdminId);
+        competitionService.updateDivision(mostra.getId(),
+                mostra.getName(), mostra.getShortName(), mostra.getScoringSystem(),
+                "FT", compAdminId);
+        competitionService.advanceDivisionStatus(mostra.getId(), compAdminId); // → REGISTRATION_OPEN
+
+        // Judges (must not own entries — entrant@ owns them, so COI is clear).
+        competitionService.addParticipantByEmail(
+                fastTrack.getId(), "judge@example.com", CompetitionRole.JUDGE, compAdminId);
+        competitionService.addParticipantByEmail(
+                fastTrack.getId(), "judge2@example.com", CompetitionRole.JUDGE, compAdminId);
+
+        // Entrant + 2 RECEIVED entries in M1A.
+        var entrant = userService.findByEmail("entrant@example.com");
+        entryService.addCredits(mostra.getId(), entrant.getEmail(), 2, compAdminId);
+        var categories = competitionService.findDivisionCategories(mostra.getId());
+        var m1a = findCategoryByCode(categories, "M1A");
+        createReceivedProEntry(mostra, entrant, compAdminId, "Mostra Tradicional", m1a,
+                Sweetness.DRY, 12.0, Carbonation.STILL, "Wildflower honey");
+        createReceivedProEntry(mostra, entrant, compAdminId, "Mostra Reserva", m1a,
+                Sweetness.MEDIUM, 13.0, Carbonation.STILL, "Heather honey");
+
+        // REGISTRATION_OPEN → REGISTRATION_CLOSED → init judging cats + assign → JUDGING
+        competitionService.advanceDivisionStatus(mostra.getId(), compAdminId); // → REGISTRATION_CLOSED
+        competitionService.initializeJudgingCategories(mostra.getId(), compAdminId);
+        var m1aJudging = findCategoryByCode(
+                competitionService.findJudgingCategories(mostra.getId()), "M1A");
+        for (var entry : entryService.findEntriesByDivision(mostra.getId())) {
+            entryService.assignFinalCategory(entry.getId(), m1aJudging.getId(), compAdminId);
+        }
+        competitionService.advanceDivisionStatus(mostra.getId(), compAdminId); // → JUDGING
+
+        // Scoring round: physical table + 2 judges + both entries.
+        var judging = judgingService.ensureJudgingExists(mostra.getId());
+        var table = judgingService.createPhysicalTable(mostra.getId(), "Table 1", compAdminId);
+        var judge1Id = userService.findByEmail("judge@example.com").getId();
+        var judge2Id = userService.findByEmail("judge2@example.com").getId();
+        var round = judgingService.createRound(
+                judging.getId(), "Mostra M1A", m1aJudging.getId(), null, compAdminId);
+        judgingService.assignRoundToPhysicalTable(round.getId(), table.getId(), compAdminId);
+        judgingService.assignJudge(round.getId(), judge1Id, compAdminId);
+        judgingService.assignJudge(round.getId(), judge2Id, compAdminId);
+        var entries = entryService.findEntriesByFinalCategoryId(m1aJudging.getId());
+        for (var entry : entries) {
+            judgingService.assignEntryToRound(round.getId(), entry.getId(), compAdminId);
+        }
+        judgingService.startRound(round.getId(), compAdminId); // creates BLANK scoresheets
+
+        // Fill + finalize: judge1 scores both sheets, then the round is finalized.
+        for (var sheet : scoresheetService.findByRoundId(round.getId())) {
+            fillScoresheet(sheet.getId(), judge1Id);
+        }
+        scoresheetService.finalizeScoringRound(round.getId(), compAdminId); // → COMPLETE, totals locked
+
+        // Finalizing the scoring round auto-creates a READY COMPARATIVE medal
+        // round for the category. Run it (admin steps in for the judges): award
+        // GOLD + SILVER, then complete it so BOS can start.
+        var medalRound = judgingService.findRoundsByDivisionAndCategory(mostra.getId(), m1aJudging.getId())
+                .stream()
+                .filter(r -> r.getType() == RoundType.MEDAL)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("Expected an auto-created medal round"));
+        judgingService.assignRoundToPhysicalTable(medalRound.getId(), table.getId(), compAdminId);
+        judgingService.startRound(medalRound.getId(), compAdminId);
+        judgingService.recordMedal(entries.get(0).getId(), Medal.GOLD, compAdminId);
+        judgingService.recordMedal(entries.get(1).getId(), Medal.SILVER, compAdminId);
+        judgingService.completeMedalRoundById(medalRound.getId(), compAdminId);
+
+        // Best of Show: place the confirmed GOLD (bosPlaces defaults to 1), then
+        // complete BOS — judging phase flips to COMPLETE.
+        judgingService.startBos(mostra.getId(), compAdminId);
+        judgingService.recordBosPlacement(mostra.getId(), entries.get(0).getId(), 1, compAdminId);
+        judgingService.completeBos(mostra.getId(), compAdminId);
+
+        // JUDGING → DELIBERATION → publish (RESULTS_PUBLISHED).
+        competitionService.advanceDivisionStatus(mostra.getId(), compAdminId);
+        awardsService.publish(mostra.getId(), compAdminId);
+        log.info("Fast Track Mostra: published with 2 fully-scored entries "
+                + "(entrant@example.com → My Results → scoresheet + PDF)");
+    }
+
+    private void fillScoresheet(UUID scoresheetId, UUID judgeUserId) {
+        scoresheetService.updateScore(scoresheetId, "Appearance", 10,
+                "Bright and clear with an attractive colour.", judgeUserId);
+        scoresheetService.updateScore(scoresheetId, "Aroma/Bouquet", 24,
+                "Pleasant honey character, clean and inviting.", judgeUserId);
+        scoresheetService.updateScore(scoresheetId, "Flavour and Body", 26,
+                "Well balanced flavour with a satisfying medium body.", judgeUserId);
+        scoresheetService.updateScore(scoresheetId, "Finish", 11,
+                "Clean lingering finish with no off-flavours.", judgeUserId);
+        scoresheetService.updateScore(scoresheetId, "Overall Impression", 10,
+                "An enjoyable, well-made example of the style.", judgeUserId);
+        scoresheetService.updateOverallComments(scoresheetId,
+                "A solid mead overall; a touch more acidity would lift the balance further.",
+                judgeUserId);
+        scoresheetService.markFilled(scoresheetId, judgeUserId);
     }
 
     private void removeCategory(UUID divisionId, String code, UUID compAdminId) {

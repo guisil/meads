@@ -28,11 +28,13 @@ class DevDataInitializerTest {
     @Autowired UserService userService;
     @Autowired JudgeProfileService judgeProfileService;
     @Autowired app.meads.judging.JudgingService judgingService;
+    @Autowired app.meads.judging.ScoresheetService scoresheetService;
+    @Autowired app.meads.awards.AwardsService awardsService;
 
     @Test
     void shouldSeedDevDataOnStartup() {
         var competitions = competitionService.findAllCompetitions();
-        assertThat(competitions).hasSize(2);
+        assertThat(competitions).hasSize(3);
 
         // CHIP 2026
         var chip = competitions.stream()
@@ -104,16 +106,48 @@ class DevDataInitializerTest {
         assertThat(testDivisions).hasSize(1);
         assertThat(testDivisions.getFirst().getName()).isEqualTo("Open");
         assertThat(testDivisions.getFirst().getStatus()).isEqualTo(DivisionStatus.DRAFT);
+
+        // Fast Track 2026 — driven all the way to RESULTS_PUBLISHED with two
+        // fully-scored entries, so a fresh dev DB lands directly on a published
+        // entrant scoresheet (fast-path for iterating the scoresheet redesign).
+        var fastTrack = competitions.stream()
+                .filter(c -> "Fast Track 2026".equals(c.getName()))
+                .findFirst().orElseThrow();
+        var fastTrackDivisions = competitionService.findDivisionsByCompetition(fastTrack.getId());
+        assertThat(fastTrackDivisions).hasSize(1);
+        var mostra = fastTrackDivisions.getFirst();
+        assertThat(mostra.getName()).isEqualTo("Mostra");
+        assertThat(mostra.getStatus()).isEqualTo(DivisionStatus.RESULTS_PUBLISHED);
+
+        var mostraEntries = entryService.findEntriesByDivision(mostra.getId());
+        assertThat(mostraEntries).hasSize(2);
+        assertThat(mostraEntries).allSatisfy(e -> {
+            assertThat(e.getStatus().name()).isEqualTo("RECEIVED");
+            assertThat(e.getFinalCategoryId()).isNotNull();
+        });
+
+        // Each entry has a SUBMITTED scoresheet carrying a total score.
+        assertThat(mostraEntries).allSatisfy(e -> {
+            var sheets = scoresheetService.findByEntryIdOrderBySubmittedAtAsc(e.getId());
+            assertThat(sheets).hasSize(1);
+            assertThat(sheets.getFirst().getTotalScore()).isNotNull();
+        });
+
+        // A publication exists and the entrant can read their results.
+        assertThat(awardsService.getLatestPublication(mostra.getId())).isPresent();
+        var fastTrackEntrant = userService.findByEmail("entrant@example.com");
+        assertThat(awardsService.getResultsForEntrant(fastTrackEntrant.getId(), mostra.getId()))
+                .hasSize(2);
     }
 
     @Test
     void shouldBeIdempotent() {
         // DevDataInitializer already ran on startup.
         // Running it again should not create duplicate data.
-        var initializer = new DevDataInitializer(userService, competitionService, entryService, webhookService, judgeProfileService, judgingService);
+        var initializer = new DevDataInitializer(userService, competitionService, entryService, webhookService, judgeProfileService, judgingService, scoresheetService, awardsService);
         initializer.initializeDevData();
 
         var competitions = competitionService.findAllCompetitions();
-        assertThat(competitions).hasSize(2);
+        assertThat(competitions).hasSize(3);
     }
 }
