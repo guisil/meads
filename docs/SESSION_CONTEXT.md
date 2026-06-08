@@ -590,6 +590,41 @@ comment `flex-grow:1` + `height:100%` + `min-height:6em`) so it grows to the bot
 internally** instead of expanding the card. Score-column contents (Your score label, ticker, Comments label)
 are **left-aligned** (`Alignment.START`) to line up with the left edge of the full-width comments field.
 
+**▶ WALKTHROUGH IN PROGRESS (2026-06-08 — resume here). Full manual walkthrough being run from the
+beginning, guided step by step. Branch `feature/judging-module`, 1344 tests, head `82d38cc` + 1 uncommitted-then-
+committed walkthrough doc commit (this session changed ONLY `docs/walkthrough/manual-test.md`; no code).**
+- **Pacing agreed with the user:** §2–§11 (up to REGISTRATION_CLOSED) = *report-only-issues*; §12 Judging + §13
+  Awards = *section-by-section*; recently-fixed items + the entrant-scoresheet redesign (§13.5/§13.12) +
+  §12.10.3/§12.11 = *subsection-by-subsection*.
+- **✅ PASSED so far (all clean / confirmed):** §2 Auth · §3 Nav (incl. **P15** bottom-gap) · §4 Users · §5
+  Competitions · §6 Comp detail (incl. **P13** role counts) · §7 (catalog/settings; **7a/7b multilingual category
+  display DEFERRED to entrant-side testing, 7c judging-cat translations DONE here**) · §8 Entry Admin (incl. verbose
+  all-fields entry) · §9 Webhook · §10/§11 entrant view (incl. **P12** label withdrawal, verified on Profissional) ·
+  §12.1/12.1.1/12.2 · §12.4/12.4.1/12.4.2 + **7c** · §12.5/12.5.0/12.5.1/12.5.2.
+- **⏸ RESUME POINT: §12.6 Rounds tab.** Batch 1 (§12.6 header + §12.6.0 Tables + §12.6.1 Add round + §12.6.2 Edit
+  round) was just **handed to the user but NOT yet reported back** — re-confirm it, then continue with
+  **§12.6.3 Assign judges + COI badges → §12.6.3.1 Manual COI → §12.6.4 Start round (advance Amadora to JUDGING) →
+  §12.6.4.1 Revert → 12.6.5/6 min-judge locks → 12.6.7/7.1 delete + split-category entries (Profissional) →
+  12.6.8/8.1 medal rounds → 12.6.9/10 filters/open.** **Deferred within §12.6:** §12.6.0.1 cross-division shared-
+  tables busy-check (needs an ACTIVE round — do right after §12.6.4 starts the first round).
+- **State of the app DB:** the user advanced **Amadora REGISTRATION_OPEN → REGISTRATION_CLOSED**, initialized
+  judging categories, assigned final categories, set **BOS places = 3 / min judges = 2**, and created a scoring round
+  **`M1A Panel A`** (Table 1, PENDING). Amadora is **still REGISTRATION_CLOSED** (advances to JUDGING at §12.6.4.0).
+  Some throwaway entries may exist from §11 limit-testing. `user@example.com` was made **ADMIN of Test Competition**
+  (so it now shows "My Competitions" in the sidebar — intended, password setup pending).
+- **Deferred follow-ups to circle back to during/after the walkthrough:** §7 **7a/7b** (verify multilingual category
+  *display* from the entrant side, then remove the `X9Z`/`X1A`/catalog test categories) · §8 **P21** entry-lock
+  (needs a DELIBERATION division — test on Profissional in §13).
+- **Walkthrough doc fixes made this session (committed):** (1) §13.5 — added an explicit **criteria-order (V34)**
+  check (verify Appearance→Aroma→Flavour→Finish→Overall, esp. on `Mostra Loquaz`). (2) NEW **§12.10.3 Multi-judge
+  edge cases** — one shared scoresheet per entry (not per judge), `filledBy` = first scorer, no-duplicate-creation
+  (findByEntryId guard + DB UNIQUE backstop), second-judge-edit un-fills a FILLED sheet, concurrent-edit =
+  last-write-wins (no `@Version`), entry on only one scoring round (`error.entry.already-on-round`), own-entry COI
+  still blocks. (3) §8 Entries tab — fixed **stale "4 entries" → "12 entries"** with the correct 3/2/6/1 status spread
+  (matched `DevDataInitializer` line 348).
+- **AFTER the walkthrough:** the **judge tasting-label PDF** feature (see the ⚑⚑ block just below) + §13.12 anonymity
+  → code review → merge to `main` → **v0.4.0 release**.
+
 **⚑⚑ ASK THE USER AT THE START OF NEXT SESSION (requested 2026-06-06):** investigate a **judge tasting-label PDF** — printing, **available at REGISTRATION_CLOSED and JUDGING** (i.e. before/during judging), a sheet of **physical labels (PDF of specific dimensions), one per entry**, each showing the **judge-facing code** the judges use to identify the mead (the anonymized code, NOT the entrant entry number/name). Intent: print real labels to tape onto the tasting glasses. Open questions to settle with the user: label dimensions / sheet layout (e.g. Avery template, N-up grid); what each label shows (just the code? + category? + a QR/barcode of the code?); which entries (all RECEIVED in the division? per round/table?); where the action lives (judging admin view). This is a NEW feature — start with the usual full TDD. Possibly tackle **after** the full walkthrough. (Note: `LabelPdfService` in the *entry* module already makes entrant shipping labels with QR — different audience/data; the judge label uses the anonymized judging code from the *judging* side.)
 
 **▶ LATEST (2026-06-06 — entrant scoresheet **PDF** restyled as a representation of the dialog; 1344 tests green; COMMITTED + PUSHED — working tree clean after this commit).**

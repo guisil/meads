@@ -1151,16 +1151,23 @@ toasts don't cover the page's last interactive control or list row.
 - [ ] **Expected:** Grid with columns: Entry # (with AMA prefix, e.g. "AMA-1"), Code, Mead Name, Category (code with tooltip for full name), Final Category (code with tooltip, or "—" if not set), Entrant, Meadery, Country, Status, Actions (view/edit/←/→/withdraw/delete icons)
 - [ ] **Expected:** Meadery column shows user's meadery name (or empty if not set)
 - [ ] **Expected:** Country column shows the display name based on the user's ISO country code, localized to the current UI language (e.g. "Portugal" in English, "Portogallo" in Italian) — switch the language in the top-right menu to confirm the column updates
-- [ ] **Expected:** 4 entries total (3 from user@example.com, 1 from entrant@example.com), sorted by entry number
-- [ ] **Expected:** Wildflower Traditional and Blueberry Bliss -- Status: SUBMITTED
-- [ ] **Expected:** Oak-Aged Bochet and Lavender Metheglin -- Status: DRAFT
+- [ ] **Expected:** 12 entries total, sorted by entry number — 5 from `user@example.com`, 3 from
+  `entrant@example.com`, 2 admin-added for `buyer1@example.com` (Apple Mead, Sunset Mead), 1
+  admin-added for `judge3@example.com` (Judge's Secret Mead — hard-COI seed), and 1 verbose all-fields
+  demo for `buyer1@example.com` (Hidromel de Demonstração — Campos Completos)
+- [ ] **Expected:** Status spread (3 DRAFT, 2 SUBMITTED, 6 RECEIVED, 1 WITHDRAWN):
+  - **DRAFT:** Wildflower Traditional (M1A), Oak-Aged Bochet (M1A), Lavender Metheglin (M3B)
+  - **SUBMITTED:** Blueberry Bliss (M2C), Rosemary & Sage (M3B)
+  - **RECEIVED:** Honey Reserve (M1B), Strawberry Fields (M2C), Mountain Honey (M1B), Apple Mead (M4A),
+    Judge's Secret Mead (M1A), Hidromel de Demonstração — Campos Completos (M1A)
+  - **WITHDRAWN:** Sunset Mead (M1A)
 - [ ] **Expected:** Columns are sortable
 - [ ] **Expected:** Delete button (trash, rightmost) only enabled for DRAFT entries
 - [ ] **Expected:** Withdraw button (ban) disabled for WITHDRAWN entries
 - [ ] **Expected:** `←` (revert) button disabled for DRAFT entries; `→` (advance) button disabled for RECEIVED and WITHDRAWN entries
 - [ ] **Expected:** `←` tooltip: "← Revert to Draft" for SUBMITTED/WITHDRAWN, "← Revert to Submitted" for RECEIVED
 - [ ] **Expected:** `→` tooltip: "→ Submit" for DRAFT, "→ Mark as Received" for SUBMITTED
-- [ ] **Expected:** Summary row below the grid shows "Credits balance: N  |  Total entries: 4 (Draft: 2, Submitted: 2, Received: 0, Withdrawn: 0)"
+- [ ] **Expected:** Summary row below the grid shows "Credits balance: N  |  Total entries: 12 (Draft: 3, Submitted: 2, Received: 6, Withdrawn: 1)"
 - [ ] **Expected:** View button (eye) opens read-only dialog showing all entry fields, status, and entrant email
 - [ ] **Expected:** Edit button opens confirmation dialog ("Are you sure you want to edit this entry's data?"), then full edit dialog with all fields (mead name, category, sweetness, strength (read-only, auto-derived from ABV), ABV, carbonation, honey, other ingredients, wood aged, wood ageing details, additional info)
 - [ ] **Expected:** Edit works for entries in any status except WITHDRAWN
@@ -2265,6 +2272,52 @@ scoresheet via `JudgingService.assignEntryToRound`.
 - [ ] If the entry has no final category, assign one (Final Category column on Entry Admin).
 - [ ] Manage Judging → Rounds → **Assign Entries** on the round of your choice → tick the entry → save. **Expected:** the entry now appears in the round's entries; if the round is ACTIVE and SCORING, a DRAFT scoresheet is visible in RoundView's scoresheets grid.
 
+#### 12.10.3 Multi-judge edge cases (shared per-entry scoresheets, duplicate prevention, concurrent edits)
+
+The data model is **one scoresheet per entry** (`scoresheets.entry_id` is **UNIQUE**),
+not one per judge. A scoring round/table has several judges who **share** that single
+set of per-entry sheets — they split the entries between them rather than each filling
+their own copy. `filledByJudgeUserId` records **which judge first scored** a given
+sheet. These checks verify that shared model and that no duplicate sheet can ever be
+created, even with two judges acting at once.
+
+*Best run on **Profissional → M1A Panel A** (seeded with **judge@** + **judge2@**, Table 1,
+3 RECEIVED entries). Start the round (§12.6.4) so it is ACTIVE with 3 BLANK scoresheets.*
+
+- [ ] **One shared sheet per entry (not per judge).** As `judge@example.com`, open Panel A's
+  RoundView → **Expected:** the scoresheets grid has exactly **3 rows** (one per entry), **not 6**.
+  Log in as `judge2@example.com`, open the same round → **Expected:** the **same 3 rows** — both
+  judges see and act on the same shared sheets.
+- [ ] **`Filled by` = the first judge to score that entry.** As `judge@`, score + **Save** entry
+  #1 (§12.11) → its row shows **Filled by: Dev Judge**. As `judge2@`, score entries #2 and #3 →
+  those rows show **Filled by: Dev Judge 2**. The panel splits the entries; each sheet credits the
+  judge who first filled it.
+- [ ] **No duplicate sheet is ever created (idempotency).** As `compadmin@`, Manage Judging →
+  Rounds → **Assign Entries** on Panel A and re-confirm the same entries (or just re-open the
+  round) → **Expected:** still exactly **3 rows** — re-assigning an already-assigned entry is a
+  no-op, never a second sheet. *(Backstop: `createScoresheetsForTable`, `ensureScoresheetForEntry`,
+  and `ensureScoresheetForRound` all guard with a `findByEntryId` existence check before inserting,
+  and `scoresheets.entry_id` is UNIQUE at the DB — so even two judges/admins acting simultaneously
+  cannot produce a duplicate; the second insert would be rejected.)*
+- [ ] **A second judge editing an already-FILLED sheet un-fills it.** `judge@` Saves entry #1 →
+  status **FILLED**. Now `judge2@` opens entry #1's sheet and changes any score → **Expected:** the
+  sheet drops back to **DRAFT** (the round-level **Finalize** disables again until it is re-Saved),
+  and **Filled by stays "Dev Judge"** (the first editor — it does **not** flip to Dev Judge 2). The
+  panel must re-Save to re-validate. *(This is the `demoteFromFilled` rule — any content edit on a
+  FILLED sheet requires a fresh Save.)*
+- [ ] **Concurrent edit = last write wins (no lock / no conflict dialog).** Open entry #1's sheet
+  as `judge@` in one browser and as `judge2@` in another; both change the same field and Save.
+  **Expected:** no error, no optimistic-lock/version conflict, no merge prompt — the **later Save
+  simply overwrites** the earlier one (the entity has no `@Version`). Documented behaviour, not a
+  bug — panels are expected to coordinate verbally; the app does not arbitrate simultaneous edits.
+- [ ] **An entry can be on only ONE scoring round.** As `compadmin@`, try to **Assign** an entry
+  that is already on Panel A to **Panel B** (the other M1A scoring round) → **Expected:** rejected
+  with *"This entry is already assigned to round 'M1A Panel A'. Remove it from there first."*
+  (`error.entry.already-on-round`) — enforced before the DB UNIQUE on `judging_round_entries.entry_id`.
+- [ ] **Own-entry COI still blocks a shared sheet (cross-ref §12.11.3).** If an assigned judge owns
+  one of the entries on the table, opening/saving that entry's (existing) sheet is **rejected** by
+  the hard-COI guard even though the sheet exists — the shared-sheet model does not bypass COI.
+
 ### 12.11 ScoresheetView (judge form)
 
 > **(c) redesign:** "Save Draft" + per-sheet "Submit" are gone. Fields auto-save on
@@ -2720,6 +2773,11 @@ Steps below are admin-driven unless noted.
   its per-criterion comment below it**, then the **total — rendered prominently**
   (bold, extra-large, separated from the criteria by a top divider line), shown as
   **`N / 100`** (score out of the maximum), then overall comments (if any).
+- [ ] **Expected (criteria order — V34 fix):** the five criteria appear in
+  **canonical MJP order** — Appearance, Aroma/Bouquet, Flavour and Body, Finish,
+  Overall Impression — **never shuffled**. *(Check specifically on `Mostra Loquaz`,
+  the long-comment entry where the out-of-order bug used to surface; confirm the
+  same order in the downloaded PDF below.)*
 - [ ] **Expected:** A **Close** button in the dialog footer dismisses it back to
   the grid. (There is no in-dialog PDF download — use the row's ⬇ download icon or
   the "Download all scoresheets" toolbar button.)
