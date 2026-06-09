@@ -22,6 +22,7 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.grid.GridSortOrderBuilder;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
@@ -236,7 +237,7 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
                             }))
                     .setResizable(true).setSortable(true);
         }
-        scoresheetsGrid.addColumn(s -> entryCode(entriesById.get(s.getEntryId())))
+        var codeColumn = scoresheetsGrid.addColumn(s -> entryCode(entriesById.get(s.getEntryId())))
                 .setHeader(getTranslation("table.column.entry-code"))
                 .setResizable(true).setSortable(true);
         // Mead name is the entrant's brand label. Anonymity rule: judges judge
@@ -266,6 +267,15 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
                 .setResizable(true).setFlexGrow(0);
 
         scoresheetsGrid.setItems(allSheets);
+        // Pin a deterministic default sort (entry code ascending). The backing
+        // query has no ORDER BY, so without this a row would jump when its sheet
+        // is edited (a status UPDATE relocates the DB tuple). Multi-sort stays on
+        // so a judge/admin can compose their own column sorts; a header click
+        // overrides this default.
+        scoresheetsGrid.setMultiSort(true);
+        scoresheetsGrid.sort(new GridSortOrderBuilder<Scoresheet>()
+                .thenAsc(codeColumn)
+                .build());
         // Single-select (with toggle-off) so clicking a row just highlights it —
         // useful to keep track of which row's icons you're clicking in a large grid.
         // Opening a scoresheet stays on the explicit ✏ icon (no row-click navigation),

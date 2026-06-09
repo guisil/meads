@@ -649,6 +649,10 @@ committed walkthrough doc commit (this session changed ONLY `docs/walkthrough/ma
   into `JudgingNotificationListener` (+ test n/a) and `AwardsServiceImpl` (AwardsServiceImplTest got a `@Mock MessageSource`)**;
   `ScoresheetPdfService` reused its existing `msg()` helper. De-dups MyEntriesView + ScoresheetView. Full suite **1349**
   (1344 + 5). The gap that was flagged open is now closed everywhere.
+- **Scoresheets grid default sort (§12.10.1, 2026-06-09, DONE — fast cycle):** same class of bug as the rounds grid —
+  `RoundView`'s scoresheets grid had no default sort and `findByRoundId` has no `ORDER BY`, so filling/saving a sheet
+  (status UPDATE → tuple relocate) made the row jump. Set `setMultiSort(true)` + default **entry code ascending** (via
+  `GridSortOrderBuilder`, matching MedalRoundView's entry-code ordering). Walkthrough §12.10.1 updated. 1351 green.
 - **Rounds grid default multi-sort (§12.6.1, 2026-06-09, DONE — fast cycle):** `JudgingAdminView` rounds grid had no
   default sort and `findByJudgingId` has no `ORDER BY`, so starting a round made its row jump (status UPDATE relocates
   the Postgres tuple). Set `roundsGrid.setMultiSort(true)` + a default sort via `GridSortOrderBuilder`: **Scheduled asc
