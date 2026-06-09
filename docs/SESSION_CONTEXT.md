@@ -621,6 +621,18 @@ committed walkthrough doc commit (this session changed ONLY `docs/walkthrough/ma
   `RoundViewTest.shouldNavigateToScoresheetViewWhenGridRowClicked`. Walkthrough §12.10.1 + §12.10.6 updated. Test
   count 1344 → **1343** (full suite green). Branch still `feature/judging-module`; this is uncommitted code +
   walkthrough/doc edits.
+- **Judge scoresheet category not localized (§12.6.8.1, 2026-06-09, FIXED — full cycle):** the judge `ScoresheetView`
+  showed catalog categories (M1, M1A, …) in English even when the entrant saw them localized. Root cause:
+  `DivisionCategory.getName(Locale)` only resolves **admin per-category translation rows**; catalog category names
+  live in `messages_*.properties` as `category.<code>.name`. The entrant views (`MyEntriesView.translateCategoryName`)
+  do a **two-tier** resolution (per-category translation → catalog properties key → English base); the judge view did
+  only tier 1. Replicated `translateCategoryName` into `ScoresheetView.categoryLabelFor`. New test
+  `ScoresheetViewTest.shouldTranslateCatalogCategoryNameToJudgeLocale` (drives locale via `judge.updatePreferredLanguage("pt")`
+  since MainLayout overrides UI locale from the user on navigate). 1343 → **1344**. **⚠ SAME GAP STILL OPEN elsewhere
+  (catalog fallback missing — sweep candidate):** `RoundView:741`, `MedalRoundView:285,737`, `JudgingAdminView:514,1169`,
+  `StewardView:108`, `JudgingNotificationListener:71,128` (judge emails), `ScoresheetPdfService:172`,
+  `AwardsServiceImpl:264,352,475` (public/entrant results). Real fix = a shared two-tier helper (the logic is
+  duplicated in MyEntriesView + now ScoresheetView). Decide scope/timing with the user.
 - **Rounds grid default multi-sort (§12.6.1, 2026-06-09, DONE — fast cycle):** `JudgingAdminView` rounds grid had no
   default sort and `findByJudgingId` has no `ORDER BY`, so starting a round made its row jump (status UPDATE relocates
   the Postgres tuple). Set `roundsGrid.setMultiSort(true)` + a default sort via `GridSortOrderBuilder`: **Scheduled asc

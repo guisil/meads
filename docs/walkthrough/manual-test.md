@@ -2339,6 +2339,7 @@ created, even with two judges acting at once.
   Yes/No, wood details, additional information — each rendered as `—` when blank).
   **The mead name is NOT shown to judges** (anonymity); judges work from poured
   coded samples.
+- [ ] **Expected (category localized):** the Initial/Final Category values are shown in the **judge's UI language**, matching what the entrant sees. Standard catalog categories (M1, M1A, …) resolve via the catalog i18n keys (`category.<code>.name`); custom categories via their admin-entered per-locale translation; English base only when neither exists. (Earlier the judge scoresheet always showed catalog categories in English even when localized elsewhere.)
 - [ ] **Expected (admin view):** A SYSTEM_ADMIN / division admin opening the same
   URL sees the **mead name** as the first row of the Basic-information card
   (admins keep full context for moderation / results review).

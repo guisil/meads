@@ -241,6 +241,51 @@ class ScoresheetViewTest {
     }
 
     @Test
+    @WithMockUser(username = JUDGE_EMAIL, roles = "USER")
+    void shouldTranslateCatalogCategoryNameToJudgeLocale() {
+        // Catalog categories (e.g. "M1") carry their localized names in the
+        // messages.properties files (category.M1.name), not as per-category
+        // translation rows. The judge scoresheet must apply the same two-tier
+        // resolution the entrant views use, so a judge viewing in Portuguese
+        // sees "Hidromel Tradicional", not the English base "Traditional Mead".
+        var catalogCategory = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1", "Traditional Mead", "Desc",
+                null, 1, CategoryScope.JUDGING));
+        var judging = judgingService.ensureJudgingExists(division.getId());
+        var round = judgingService.createRound(judging.getId(), "Table T1",
+                catalogCategory.getId(), null, admin.getId());
+        judgingService.assignJudge(round.getId(), judge.getId(), admin.getId());
+        round.markReady();
+        round.start();
+        judgingRoundRepository.save(round);
+
+        var entrant = userRepository.save(new User(
+                "entrant-cat-i18n-" + UUID.randomUUID() + "@example.com",
+                "Entrant", UserStatus.ACTIVE, Role.USER));
+        var entry = new Entry(division.getId(), entrant.getId(), 1, "AMA-7",
+                "Cat I18n Mead", catalogCategory.getId(), Sweetness.DRY,
+                BigDecimal.valueOf(11.0), Carbonation.STILL,
+                "Wildflower", null, false, null, null);
+        entry.assignFinalCategory(catalogCategory.getId());
+        entry = entryRepository.save(entry);
+        var sheet = scoresheetRepository.save(new Scoresheet(round.getId(), entry.getId()));
+
+        // MainLayout sets the UI locale from the judge's preference on navigate,
+        // so drive the locale through the user (a bare UI.setLocale gets overwritten).
+        judge.updatePreferredLanguage("pt");
+        userRepository.save(judge);
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName()
+                + "/scoresheets/" + sheet.getId());
+
+        var spanTexts = _find(Span.class).stream().map(Span::getText).toList();
+        assertThat(spanTexts.stream().anyMatch(t -> t != null && t.contains("Hidromel Tradicional")))
+                .as("judge must see the catalog category translated to their locale").isTrue();
+        assertThat(spanTexts.stream().anyMatch(t -> t != null && t.contains("Traditional Mead")))
+                .as("English base name must not leak when a translation exists").isFalse();
+    }
+
+    @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldShowMeadNameWhenAdminOpensTheScoresheet() {
         // Admins (system admin or division admin) DO see the mead name — they
