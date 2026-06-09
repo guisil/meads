@@ -1271,6 +1271,39 @@ class JudgingServiceMedalRoundTest {
     }
 
     @Test
+    void shouldKeepWithheldMedalConfirmedWhenReopeningScoreBasedMedalRound() {
+        // A deliberate withhold (confirmed null medal) must survive reopen —
+        // otherwise it would be un-confirmed and the autoPopulate reconcile would
+        // re-derive a medal for that entry on the next save.
+        var medalRound = new JudgingRound(judging.getId(), "Medal", divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.SCORE_BASED);
+        medalRound.markReady();
+        medalRound.start();
+        medalRound.markComplete();
+        judging.markActive();
+        var confirmedGold = new MedalAward(UUID.randomUUID(), divisionId, divisionCategoryId,
+                Medal.GOLD, adminUserId);
+        confirmedGold.confirm(adminUserId);
+        var withheldBronze = new MedalAward(UUID.randomUUID(), divisionId, divisionCategoryId,
+                null, adminUserId);
+        withheldBronze.confirm(adminUserId);
+        given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(scoresheetRepository.findByRoundId(medalRound.getId())).willReturn(List.of());
+        given(medalAwardRepository.findByFinalCategoryId(divisionCategoryId))
+                .willReturn(List.of(confirmedGold, withheldBronze));
+
+        service.reopenMedalRoundById(medalRound.getId(), adminUserId);
+
+        assertThat(confirmedGold.isConfirmed()).isFalse();   // awarded medal → provisional
+        assertThat(withheldBronze.isConfirmed()).isTrue();   // withhold survives
+        then(medalAwardRepository).should().save(confirmedGold);
+        then(medalAwardRepository).should(never()).save(withheldBronze);
+    }
+
+    @Test
     void shouldRejectReopenMedalRoundByIdWhenJudgingNotActive() {
         var medalRound = new JudgingRound(judging.getId(), "Medal", divisionCategoryId, null);
         medalRound.convertToMedalRound(MedalRoundMode.COMPARATIVE);

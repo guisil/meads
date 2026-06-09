@@ -622,6 +622,13 @@ committed walkthrough doc commit (this session changed ONLY `docs/walkthrough/ma
   `RoundViewTest.shouldNavigateToScoresheetViewWhenGridRowClicked`. Walkthrough §12.10.1 + §12.10.6 updated. Test
   count 1344 → **1343** (full suite green). Branch still `feature/judging-module`; this is uncommitted code +
   walkthrough/doc edits.
+- **Withheld medal reappeared after reopen+save (§12.6.8.1, 2026-06-09, FIXED — full cycle):** `reopenMedalRoundById`
+  un-confirmed ALL awards via `revertConfirmation()`, including a withhold (confirmed null medal). Once unconfirmed,
+  the next save's autoPopulate deleted it and re-derived the medal. Fix: skip null-medal awards in the reopen
+  un-confirm loop — a deliberate withhold stays confirmed (autoPopulate keeps the entry "taken"); only awarded
+  (non-null) medals go provisional so score edits re-rank them. +1 test
+  `JudgingServiceMedalRoundTest.shouldKeepWithheldMedalConfirmedWhenReopeningScoreBasedMedalRound`. 1359 → **1360**.
+  Walkthrough §12.6.8.1 reopen bullet updated.
 - **Medal-round-ready email spammed prelim-panel judges (§12.12, 2026-06-09, FIXED — full cycle):** starting a
   COMPARATIVE medal round emailed EVERY judge in the category — including the preliminary SCORING panels' judges
   (e.g. M1A Panel A=judge1,2 + Panel B=judge4,5; medal round=judge1,2 → all 4 emailed). `JudgingNotificationListener.on(MedalRoundActivatedEvent)`

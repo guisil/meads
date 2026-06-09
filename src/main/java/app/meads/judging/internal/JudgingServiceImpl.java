@@ -1387,6 +1387,14 @@ public class JudgingServiceImpl implements JudgingService {
                 }
             }
             for (var award : medalAwardRepository.findByFinalCategoryId(round.getDivisionCategoryId())) {
+                // A deliberate withhold (confirmed null medal) is a manual "no
+                // medal" decision — keep it confirmed so the autoPopulate reconcile
+                // still treats the entry as taken and won't re-derive a medal for
+                // it. Only awarded (non-null) medals go back to provisional so
+                // score edits can re-rank them.
+                if (award.getMedal() == null) {
+                    continue;
+                }
                 award.revertConfirmation();
                 medalAwardRepository.save(award);
             }
