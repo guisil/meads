@@ -5,6 +5,7 @@ import app.meads.MainLayout;
 import app.meads.awards.AwardsService;
 import app.meads.awards.PublicResultsView;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Paragraph;
@@ -34,8 +35,6 @@ public class AwardsPublicResultsView extends VerticalLayout
         this.awardsService = awardsService;
         setSizeFull();
         setPadding(true);
-        // Breathing room at the bottom so the last category isn't flush against the edge.
-        getStyle().set("padding-bottom", "var(--lumo-space-xl)");
     }
 
     @Override
@@ -108,6 +107,14 @@ public class AwardsPublicResultsView extends VerticalLayout
             footer.setId("awards-public-last-updated");
             add(footer);
         }
+
+        // The view is setSizeFull, so a CSS padding-bottom sits at the viewport
+        // edge and overflowing content spills past it. A real trailing element
+        // guarantees visible breathing room after the last category when scrolled.
+        var bottomSpacer = new Div();
+        bottomSpacer.setHeight("4rem");
+        bottomSpacer.getStyle().set("flex", "0 0 auto");
+        add(bottomSpacer);
     }
 
     private void renderMedalGroup(java.util.List<PublicResultsView.PublicMedalRow> rows, String labelKey) {
