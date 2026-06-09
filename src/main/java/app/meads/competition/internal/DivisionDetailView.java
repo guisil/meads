@@ -40,6 +40,7 @@ import org.springframework.util.StringUtils;
 
 import java.time.ZoneId;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -200,9 +201,10 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         // categories already exist — past judging it renders read-only (no
         // Add/Edit/Remove) since the data still backs the published results.
         boolean canManageJudging = division.getStatus().allowsJudgingCategoryManagement();
-        boolean hasJudgingCategories = !competitionService.findJudgingCategories(divisionId).isEmpty();
-        if (canManageJudging || hasJudgingCategories) {
-            tabSheet.add(getTranslation("division-detail.tab.judging-categories"), createJudgingCategoriesSection());
+        var judgingCategories = competitionService.findJudgingCategories(divisionId);
+        if (canManageJudging || !judgingCategories.isEmpty()) {
+            tabSheet.add(getTranslation("division-detail.tab.judging-categories"),
+                    createJudgingCategoriesSection(judgingCategories));
             if (canManageJudging) {
                 tabSheet.setSelectedIndex(1);
             }
@@ -259,11 +261,9 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         return tab;
     }
 
-    private VerticalLayout createJudgingCategoriesSection() {
+    private VerticalLayout createJudgingCategoriesSection(List<DivisionCategory> judgingCategories) {
         var section = new VerticalLayout();
         section.setPadding(false);
-
-        var judgingCategories = competitionService.findJudgingCategories(divisionId);
 
         if (judgingCategories.isEmpty()) {
             var initButton = new Button(getTranslation("division-detail.judging.initialize"), e -> {

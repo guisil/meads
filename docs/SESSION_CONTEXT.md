@@ -601,6 +601,11 @@ committed walkthrough doc commit (this session changed ONLY `docs/walkthrough/ma
   display DEFERRED to entrant-side testing, 7c judging-cat translations DONE here**) · §8 Entry Admin (incl. verbose
   all-fields entry) · §9 Webhook · §10/§11 entrant view (incl. **P12** label withdrawal, verified on Profissional) ·
   §12.1/12.1.1/12.2 · §12.4/12.4.1/12.4.2 + **7c** · §12.5/12.5.0/12.5.1/12.5.2.
+- **Code review (this session's diff `2f62893..HEAD`) DONE 2026-06-09.** 3 findings: (1) PDF scores box could clip long
+  comments → **box removed, spacing kept** (commit pending); (2) `producerLabel` "null" for a meadery-required entry
+  lacking a meadery name → **left as-is** (rare; the new results-preview lets admins fix the meadery first); (3)
+  `DivisionDetailView` fetched judging categories twice per render → **deduped** (fetch once, pass into the section).
+  No correctness regressions in the judging/awards logic. THEN merge → v0.4.0.
 - **⏸ RESUME POINT: WALKTHROUGH COMPLETE (2026-06-09). Next = post-walkthrough items → v0.4.0.** §2–§13 all walked
   (clean, with the many fixes committed this session). **Skipped by user (acknowledged):** §12.9–§12.12 interactive
   judge/scoring/medal views (exercised live during Amadora/Profissional round progression; this-session fixes —
@@ -645,10 +650,10 @@ committed walkthrough doc commit (this session changed ONLY `docs/walkthrough/ma
   `buildResultsView`. New **"Preview results"** Anchor (`awards-preview-results-link`, target=_blank) in `AwardsAdminView`
   actions. 3 i18n keys ×5 (`awards.admin.preview-results`, `awards.preview.banner`, `error.awards.preview-not-ready`).
   +2 guard tests. 1360 → **1362**. Walkthrough §13.1.4 added.
-- **Scoresheet PDF scores box + spacing (§13.5, 2026-06-09, DONE — fast cycle):** wrapped comment-language + criteria +
-  total + overall comments in a **bordered box** (`PdfPTable` single cell, `CARD_BORDER` 0.8pt, padding 10, `setSplitLate(false)`
-  so long comments flow across pages) mirroring the dialog's bordered card; added a **gap before the box** so the
-  outcome/advanced lines are separated from it. Judge line (FULL) stays above the box. 1360 green.
+- **Scoresheet PDF spacing between outcome and scores (§13.5, 2026-06-09, DONE — fast cycle):** added a gap separating
+  the medal/outcome + advanced lines from the comment-language + scores block. *(A bordered box was briefly tried but
+  REMOVED in code review — a single tall composite `PdfPCell` risked clipping very long comments across pages; content
+  now flows directly with just the gap. `CARD_BORDER` color removed.)* 1363 green.
 - **Scoresheet PDF comment-language → full name (§13.5, 2026-06-09, DONE — fast cycle):** `ScoresheetPdfService`
   showed the raw ISO code (e.g. "en"); now shows the localized full language name ("English") via
   `languageDisplayName(code, locale)` (+ blank guard). Shared service → applies to entrant + judge/admin PDFs. No test
