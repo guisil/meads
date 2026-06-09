@@ -2,6 +2,7 @@ package app.meads.competition.internal;
 
 import app.meads.BusinessRuleException;
 import app.meads.MainLayout;
+import app.meads.MeadsI18NProvider;
 import app.meads.competition.*;
 import app.meads.identity.Role;
 import app.meads.identity.UserService;
@@ -10,6 +11,7 @@ import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.datetimepicker.DateTimePicker;
+import com.vaadin.flow.component.details.Details;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
@@ -37,6 +39,9 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.util.StringUtils;
 
 import java.time.ZoneId;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Route(value = "competitions/:compShortName/divisions/:divShortName", layout = MainLayout.class)
@@ -165,6 +170,14 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                                 + "/divisions/" + division.getShortName() + "/entry-admin")));
         header.add(manageEntriesButton);
 
+        if (division.getStatus().ordinal() >= DivisionStatus.REGISTRATION_CLOSED.ordinal()) {
+            var manageJudgingButton = new Button(getTranslation("division-detail.manage-judging"), e ->
+                    getUI().ifPresent(ui -> ui.navigate(
+                            "competitions/" + competition.getShortName()
+                                    + "/divisions/" + division.getShortName() + "/judging-admin")));
+            header.add(manageJudgingButton);
+        }
+
         if (division.getStatus() != DivisionStatus.DRAFT) {
             var revertButton = new Button(getTranslation("division-detail.revert-status"), e -> revertStatus());
             header.add(revertButton);
@@ -183,9 +196,18 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         tabSheet.setWidthFull();
 
         tabSheet.add(getTranslation("division-detail.tab.categories"), createCategoriesTab());
-        if (division.getStatus().allowsJudgingCategoryManagement()) {
-            tabSheet.add(getTranslation("division-detail.tab.judging-categories"), createJudgingCategoriesSection());
-            tabSheet.setSelectedIndex(1);
+        // Show the Judging Categories tab while management is allowed
+        // (REGISTRATION_CLOSED..JUDGING) AND afterwards (DELIBERATION+) whenever
+        // categories already exist — past judging it renders read-only (no
+        // Add/Edit/Remove) since the data still backs the published results.
+        boolean canManageJudging = division.getStatus().allowsJudgingCategoryManagement();
+        var judgingCategories = competitionService.findJudgingCategories(divisionId);
+        if (canManageJudging || !judgingCategories.isEmpty()) {
+            tabSheet.add(getTranslation("division-detail.tab.judging-categories"),
+                    createJudgingCategoriesSection(judgingCategories));
+            if (canManageJudging) {
+                tabSheet.setSelectedIndex(1);
+            }
         }
         tabSheet.add(getTranslation("division-detail.tab.settings"), createSettingsTab());
 
@@ -216,13 +238,21 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                 .setTooltipGenerator(DivisionCategory::getDescription);
 
         categoriesGrid.addComponentColumn(dc -> {
+            var editButton = new Button(new Icon(VaadinIcon.EDIT));
+            editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+            editButton.setAriaLabel(getTranslation("division-detail.categories.action.edit"));
+            editButton.setTooltipText(getTranslation("division-detail.categories.action.edit"));
+            editButton.addClickListener(e -> openEditCategoryDialog(dc));
+            editButton.setEnabled(allowModification);
             var removeButton = new Button(new Icon(VaadinIcon.CLOSE));
             removeButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
             removeButton.setAriaLabel(getTranslation("division-detail.categories.action.remove"));
             removeButton.setTooltipText(getTranslation("division-detail.categories.action.remove"));
             removeButton.addClickListener(e -> openRemoveCategoryDialog(dc));
             removeButton.setEnabled(allowModification);
-            return removeButton;
+            var actionButtons = new HorizontalLayout(editButton, removeButton);
+            actionButtons.setSpacing(false);
+            return actionButtons;
         }).setHeader(getTranslation("division-detail.categories.column.actions")).setAutoWidth(true);
 
         refreshCategoriesGrid();
@@ -231,11 +261,9 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         return tab;
     }
 
-    private VerticalLayout createJudgingCategoriesSection() {
+    private VerticalLayout createJudgingCategoriesSection(List<DivisionCategory> judgingCategories) {
         var section = new VerticalLayout();
         section.setPadding(false);
-
-        var judgingCategories = competitionService.findJudgingCategories(divisionId);
 
         if (judgingCategories.isEmpty()) {
             var initButton = new Button(getTranslation("division-detail.judging.initialize"), e -> {
@@ -252,11 +280,16 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
             initButton.setDisableOnClick(true);
             section.add(initButton);
         } else {
-            var judgingActions = new HorizontalLayout();
-            var addJudgingButton = new Button(getTranslation("division-detail.judging.add-button"),
-                    e -> openAddJudgingCategoryDialog());
-            judgingActions.add(addJudgingButton);
-            section.add(judgingActions);
+            // Management (Add / Edit / Remove) is only offered while the division
+            // is in the judging-setup window; at DELIBERATION+ the tab is read-only.
+            boolean canManage = division.getStatus().allowsJudgingCategoryManagement();
+            if (canManage) {
+                var judgingActions = new HorizontalLayout();
+                var addJudgingButton = new Button(getTranslation("division-detail.judging.add-button"),
+                        e -> openAddJudgingCategoryDialog());
+                judgingActions.add(addJudgingButton);
+                section.add(judgingActions);
+            }
 
             judgingCategoriesGrid = new TreeGrid<>(DivisionCategory.class, false);
             judgingCategoriesGrid.setAllRowsVisible(true);
@@ -270,12 +303,21 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                     .setHeader(getTranslation("division-detail.judging.column.description"))
                     .setFlexGrow(2);
 
-            judgingCategoriesGrid.addComponentColumn(dc -> {
-                var removeButton = new Button(new Icon(VaadinIcon.CLOSE));
-                removeButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-                removeButton.addClickListener(ev -> openRemoveJudgingCategoryDialog(dc));
-                return removeButton;
-            }).setHeader(getTranslation("division-detail.judging.column.actions")).setAutoWidth(true);
+            if (canManage) {
+                judgingCategoriesGrid.addComponentColumn(dc -> {
+                    var editButton = new Button(new Icon(VaadinIcon.EDIT));
+                    editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+                    editButton.setAriaLabel(getTranslation("division-detail.judging.action.edit"));
+                    editButton.setTooltipText(getTranslation("division-detail.judging.action.edit"));
+                    editButton.addClickListener(ev -> openEditJudgingCategoryDialog(dc));
+                    var removeButton = new Button(new Icon(VaadinIcon.CLOSE));
+                    removeButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+                    removeButton.addClickListener(ev -> openRemoveJudgingCategoryDialog(dc));
+                    var actionButtons = new HorizontalLayout(editButton, removeButton);
+                    actionButtons.setSpacing(false);
+                    return actionButtons;
+                }).setHeader(getTranslation("division-detail.judging.column.actions")).setAutoWidth(true);
+            }
 
             refreshJudgingCategoriesGrid();
             section.add(judgingCategoriesGrid);
@@ -312,13 +354,15 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         parentSelect.setLabel(getTranslation("division-detail.judging.add.parent"));
         parentSelect.setEmptySelectionAllowed(true);
         parentSelect.setEmptySelectionCaption(getTranslation("division-detail.judging.add.parent.none"));
-        parentSelect.setItemLabelGenerator(dc -> dc != null ? dc.getCode() + " — " + dc.getName() : "");
+        parentSelect.setItemLabelGenerator(dc -> dc != null ? dc.getCode() + " — " + dc.getName(getLocale()) : "");
         var topLevelJudging = competitionService.findJudgingCategories(divisionId).stream()
                 .filter(dc -> dc.getParentId() == null)
                 .toList();
         parentSelect.setItems(topLevelJudging);
 
-        var content = new VerticalLayout(codeField, nameField, descriptionField, parentSelect);
+        var translationFields = createTranslationFields();
+        var content = new VerticalLayout(codeField, nameField, descriptionField, parentSelect,
+                translationFields.component());
         content.setPadding(false);
 
         var addButton = new Button(getTranslation("division-detail.judging.add.button"), e -> {
@@ -347,7 +391,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                         codeField.getValue().trim(),
                         nameField.getValue().trim(),
                         descriptionField.getValue().trim(),
-                        parentId, getCurrentUserId());
+                        parentId, translationFields.collect(), getCurrentUserId());
                 refreshJudgingCategoriesGrid();
                 var notification = Notification.show(getTranslation("division-detail.judging.added"));
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
@@ -369,7 +413,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         var dialog = new Dialog();
         dialog.setHeaderTitle(getTranslation("division-detail.judging.remove.title"));
         dialog.add(getTranslation("division-detail.judging.remove.confirm",
-                category.getCode(), category.getName()));
+                category.getCode(), category.getName(getLocale())));
 
         var confirmButton = new Button(getTranslation("division-detail.judging.remove.button"), e -> {
             try {
@@ -406,7 +450,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
     private void openRemoveCategoryDialog(DivisionCategory category) {
         var dialog = new Dialog();
         dialog.setHeaderTitle(getTranslation("division-detail.categories.remove.title"));
-        dialog.add(getTranslation("division-detail.categories.remove.confirm", category.getCode(), category.getName()));
+        dialog.add(getTranslation("division-detail.categories.remove.confirm", category.getCode(), category.getName(getLocale())));
 
         var confirmButton = new Button(getTranslation("division-detail.categories.remove.button"), e -> {
             try {
@@ -431,6 +475,119 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
         dialog.getFooter().add(cancelButton, confirmButton);
         dialog.open();
+    }
+
+    /** Edit an existing registration category's code/name/description + per-locale translations. */
+    public void openEditCategoryDialog(DivisionCategory category) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("division-detail.categories.edit.title"));
+
+        var codeField = new TextField(getTranslation("division-detail.categories.add.custom.code"));
+        codeField.setMaxLength(50);
+        codeField.setValue(category.getCode());
+        var nameField = new TextField(getTranslation("division-detail.categories.add.custom.name"));
+        nameField.setMaxLength(255);
+        nameField.setValue(category.getName());
+        var descriptionField = new TextField(getTranslation("division-detail.categories.add.custom.description"));
+        descriptionField.setMaxLength(255);
+        descriptionField.setValue(category.getDescription());
+
+        var translationFields = createTranslationFields();
+        translationFields.prefill(category.getTranslations());
+
+        var content = new VerticalLayout(codeField, nameField, descriptionField,
+                translationFields.component());
+        content.setPadding(false);
+
+        var saveButton = new Button(getTranslation("division-detail.categories.edit.button"), e -> {
+            if (!StringUtils.hasText(codeField.getValue())
+                    || !StringUtils.hasText(nameField.getValue())
+                    || !StringUtils.hasText(descriptionField.getValue())) {
+                markBlankInvalid(codeField, "division-detail.categories.add.custom.code.error");
+                markBlankInvalid(nameField, "division-detail.categories.add.custom.name.error");
+                markBlankInvalid(descriptionField, "division-detail.categories.add.custom.description.error");
+                e.getSource().setEnabled(true);
+                return;
+            }
+            try {
+                competitionService.updateDivisionCategory(divisionId, category.getId(),
+                        codeField.getValue().trim(), nameField.getValue().trim(),
+                        descriptionField.getValue().trim(), translationFields.collect(), getCurrentUserId());
+                refreshCategoriesGrid();
+                var notification = Notification.show(getTranslation("division-detail.categories.edit.saved"));
+                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                dialog.close();
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+                e.getSource().setEnabled(true);
+            }
+        });
+        saveButton.setDisableOnClick(true);
+
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
+        dialog.add(content);
+        dialog.getFooter().add(cancelButton, saveButton);
+        dialog.open();
+    }
+
+    /** Edit an existing judging category's code/name/description + per-locale translations. */
+    public void openEditJudgingCategoryDialog(DivisionCategory category) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("division-detail.judging.edit.title"));
+
+        var codeField = new TextField(getTranslation("division-detail.judging.add.code"));
+        codeField.setMaxLength(50);
+        codeField.setValue(category.getCode());
+        var nameField = new TextField(getTranslation("division-detail.judging.add.name"));
+        nameField.setMaxLength(255);
+        nameField.setValue(category.getName());
+        var descriptionField = new TextField(getTranslation("division-detail.judging.add.description"));
+        descriptionField.setMaxLength(255);
+        descriptionField.setValue(category.getDescription());
+
+        var translationFields = createTranslationFields();
+        translationFields.prefill(category.getTranslations());
+
+        var content = new VerticalLayout(codeField, nameField, descriptionField,
+                translationFields.component());
+        content.setPadding(false);
+
+        var saveButton = new Button(getTranslation("division-detail.judging.edit.button"), e -> {
+            if (!StringUtils.hasText(codeField.getValue())
+                    || !StringUtils.hasText(nameField.getValue())
+                    || !StringUtils.hasText(descriptionField.getValue())) {
+                markBlankInvalid(codeField, "division-detail.judging.add.code.error");
+                markBlankInvalid(nameField, "division-detail.judging.add.name.error");
+                markBlankInvalid(descriptionField, "division-detail.judging.add.description.error");
+                e.getSource().setEnabled(true);
+                return;
+            }
+            try {
+                competitionService.updateJudgingCategory(divisionId, category.getId(),
+                        codeField.getValue().trim(), nameField.getValue().trim(),
+                        descriptionField.getValue().trim(), translationFields.collect(), getCurrentUserId());
+                refreshJudgingCategoriesGrid();
+                var notification = Notification.show(getTranslation("division-detail.judging.edit.saved"));
+                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                dialog.close();
+            } catch (BusinessRuleException ex) {
+                Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()));
+                e.getSource().setEnabled(true);
+            }
+        });
+        saveButton.setDisableOnClick(true);
+
+        var cancelButton = new Button(getTranslation("button.cancel"), e -> dialog.close());
+        dialog.add(content);
+        dialog.getFooter().add(cancelButton, saveButton);
+        dialog.open();
+    }
+
+    private void markBlankInvalid(TextField field, String errorKey) {
+        if (!StringUtils.hasText(field.getValue())) {
+            field.setInvalid(true);
+            field.setErrorMessage(getTranslation(errorKey));
+        }
     }
 
     private void openAddCategoryDialog() {
@@ -490,11 +647,13 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         parentSelect.setEmptySelectionAllowed(true);
         parentSelect.setEmptySelectionCaption(getTranslation("division-detail.categories.add.custom.parent.none"));
         parentSelect.setItemLabelGenerator(dc ->
-                dc != null ? dc.getCode() + " — " + dc.getName() : "");
+                dc != null ? dc.getCode() + " — " + dc.getName(getLocale()) : "");
         var topLevel = competitionService.findRegistrationCategories(divisionId).stream()
                 .filter(dc -> dc.getParentId() == null)
                 .toList();
         parentSelect.setItems(topLevel);
+
+        var customTranslationFields = createTranslationFields();
 
         var customAddButton = new Button(getTranslation("division-detail.categories.add.custom.button"), e -> {
             if (!StringUtils.hasText(codeField.getValue())
@@ -522,7 +681,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                         divisionId, codeField.getValue().trim(),
                         nameField.getValue().trim(),
                         descriptionField.getValue().trim(),
-                        parentId, getCurrentUserId());
+                        parentId, customTranslationFields.collect(), getCurrentUserId());
                 refreshCategoriesGrid();
                 var notification = Notification.show(getTranslation("division-detail.categories.add.custom.added"));
                 notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
@@ -534,7 +693,8 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         });
         customAddButton.setDisableOnClick(true);
 
-        customLayout.add(codeField, nameField, descriptionField, parentSelect);
+        customLayout.add(codeField, nameField, descriptionField, parentSelect,
+                customTranslationFields.component());
         var customTabLabel = getTranslation("division-detail.categories.add.tab.custom");
         dialogTabs.add(customTabLabel, customLayout);
 
@@ -631,6 +791,37 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         statusField.setValue(division.getStatus().getDisplayName());
         statusField.setReadOnly(true);
 
+        var judgingSection = new Span(getTranslation("division-detail.settings.judging.section"));
+        judgingSection.addClassName("field-label");
+
+        boolean canEditBosPlaces = division.getStatus().ordinal() < DivisionStatus.JUDGING.ordinal();
+        var bosPlacesField = new IntegerField(
+                getTranslation("division-detail.settings.bos-places"));
+        bosPlacesField.setId("bos-places-field");
+        bosPlacesField.setMin(1);
+        bosPlacesField.setStepButtonsVisible(true);
+        bosPlacesField.setValue(division.getBosPlaces());
+        bosPlacesField.setHelperText(getTranslation("division-detail.settings.bos-places.help"));
+        bosPlacesField.setWidth("200px");
+        bosPlacesField.setReadOnly(!canEditBosPlaces);
+        if (!canEditBosPlaces) {
+            bosPlacesField.setTooltipText(getTranslation("division-detail.settings.bos-places.locked"));
+        }
+
+        boolean minJudgesLocked = competitionService.isMinJudgesPerRoundLocked(divisionId);
+        var minJudgesField = new IntegerField(
+                getTranslation("division-detail.settings.min-judges"));
+        minJudgesField.setId("min-judges-field");
+        minJudgesField.setMin(1);
+        minJudgesField.setStepButtonsVisible(true);
+        minJudgesField.setValue(division.getMinJudgesPerRound());
+        minJudgesField.setHelperText(getTranslation("division-detail.settings.min-judges.help"));
+        minJudgesField.setWidth("200px");
+        minJudgesField.setReadOnly(minJudgesLocked);
+        if (minJudgesLocked) {
+            minJudgesField.setTooltipText(getTranslation("division-detail.settings.min-judges.locked"));
+        }
+
         var saveButton = new Button(getTranslation("button.save"), e -> {
             if (!StringUtils.hasText(nameField.getValue())) {
                 nameField.setInvalid(true);
@@ -663,10 +854,18 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                     competitionService.updateDivisionMeaderyNameRequired(
                             divisionId, meaderyRequiredCheckbox.getValue(), getCurrentUserId());
                 }
-                if (deadlinePicker.getValue() != null && timezoneCombo.getValue() != null) {
+                if (canEditDeadline && deadlinePicker.getValue() != null && timezoneCombo.getValue() != null) {
                     competitionService.updateDivisionDeadline(
                             divisionId, deadlinePicker.getValue(),
                             timezoneCombo.getValue(), getCurrentUserId());
+                }
+                if (canEditBosPlaces && bosPlacesField.getValue() != null) {
+                    division = competitionService.updateDivisionBosPlaces(
+                            divisionId, bosPlacesField.getValue(), getCurrentUserId());
+                }
+                if (!minJudgesLocked && minJudgesField.getValue() != null) {
+                    division = competitionService.updateDivisionMinJudgesPerRound(
+                            divisionId, minJudgesField.getValue(), getCurrentUserId());
                 }
                 refreshBreadcrumbAndHeader();
                 var notification = Notification.show(getTranslation("division-detail.settings.saved"));
@@ -685,7 +884,7 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         tab.add(nameField, shortNameField, entryPrefixField, scoringSelect,
                 maxPerSubcategoryField, maxPerMainCategoryField, maxTotalField,
                 meaderyRequiredCheckbox, deadlinePicker, timezoneCombo,
-                statusField, saveButton);
+                statusField, judgingSection, bosPlacesField, minJudgesField, saveButton);
         return tab;
     }
 
@@ -759,5 +958,71 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                 .map(UserDetails::getUsername)
                 .orElseThrow();
         return userService.findByEmail(email).getId();
+    }
+
+    /**
+     * Optional per-language name/description inputs shown under the English base fields in a
+     * category add dialog. English is the default; any field left blank falls back to English.
+     */
+    private CategoryTranslationFields createTranslationFields() {
+        return new CategoryTranslationFields();
+    }
+
+    private final class CategoryTranslationFields {
+        private final Map<String, TextField> nameFields = new LinkedHashMap<>();
+        private final Map<String, TextField> descriptionFields = new LinkedHashMap<>();
+        private final Details section;
+
+        private CategoryTranslationFields() {
+            var content = new VerticalLayout();
+            content.setPadding(false);
+            content.setSpacing(false);
+            content.add(new Span(getTranslation("division-detail.categories.translation.hint")));
+            MeadsI18NProvider.getSupportedLanguageCodes().stream()
+                    .filter(lang -> !"en".equals(lang))
+                    .forEach(lang -> {
+                        var label = MeadsI18NProvider.getLanguageLabel(lang);
+                        var nameField = new TextField(
+                                getTranslation("division-detail.categories.translation.name", label));
+                        nameField.setMaxLength(255);
+                        var descriptionField = new TextField(
+                                getTranslation("division-detail.categories.translation.description", label));
+                        descriptionField.setMaxLength(255);
+                        nameFields.put(lang, nameField);
+                        descriptionFields.put(lang, descriptionField);
+                        content.add(nameField, descriptionField);
+                    });
+            section = new Details(getTranslation("division-detail.categories.translation.section"), content);
+        }
+
+        private Details component() {
+            return section;
+        }
+
+        private void prefill(Map<String, LocalizedText> existing) {
+            existing.forEach((lang, text) -> {
+                if (nameFields.containsKey(lang)) {
+                    nameFields.get(lang).setValue(text.name() == null ? "" : text.name());
+                    descriptionFields.get(lang).setValue(text.description() == null ? "" : text.description());
+                }
+            });
+            if (!existing.isEmpty()) {
+                section.setOpened(true);
+            }
+        }
+
+        private Map<String, LocalizedText> collect() {
+            var result = new LinkedHashMap<String, LocalizedText>();
+            nameFields.forEach((lang, nameField) -> {
+                var name = nameField.getValue();
+                var description = descriptionFields.get(lang).getValue();
+                if (StringUtils.hasText(name) || StringUtils.hasText(description)) {
+                    result.put(lang, new LocalizedText(
+                            name == null ? "" : name.trim(),
+                            description == null ? "" : description.trim()));
+                }
+            });
+            return result;
+        }
     }
 }

@@ -1,0 +1,622 @@
+package app.meads.awards;
+
+import app.meads.BusinessRuleException;
+import app.meads.awards.internal.AwardsServiceImpl;
+import app.meads.awards.internal.PublicationRepository;
+import app.meads.competition.Competition;
+import app.meads.competition.CompetitionService;
+import app.meads.competition.Division;
+import app.meads.competition.DivisionStatus;
+import app.meads.competition.ScoringSystem;
+import app.meads.entry.EntryService;
+import app.meads.identity.EmailService;
+import app.meads.identity.Role;
+import app.meads.identity.User;
+import app.meads.identity.UserService;
+import app.meads.identity.UserStatus;
+import app.meads.judging.JudgingService;
+import app.meads.judging.ScoresheetService;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
+
+import java.time.LocalDateTime;
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.mock;
+
+@ExtendWith(MockitoExtension.class)
+class AwardsServiceImplTest {
+
+    @Mock PublicationRepository publicationRepository;
+    @Mock CompetitionService competitionService;
+    @Mock EntryService entryService;
+    @Mock JudgingService judgingService;
+    @Mock ScoresheetService scoresheetService;
+    @Mock UserService userService;
+    @Mock EmailService emailService;
+    @Mock ApplicationEventPublisher eventPublisher;
+    @Mock org.springframework.context.MessageSource messageSource;
+
+    @Test
+    void shouldPublishInitialResults() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var adminUserId = UUID.randomUUID();
+        var division = mock(Division.class);
+        given(division.getStatus()).willReturn(DivisionStatus.DELIBERATION);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(publicationRepository.existsByDivisionId(divisionId)).willReturn(false);
+        given(publicationRepository.save(any(Publication.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var publication = service.publish(divisionId, adminUserId);
+
+        assertThat(publication.getVersion()).isEqualTo(1);
+        assertThat(publication.isInitial()).isTrue();
+        then(competitionService).should().publishDivision(divisionId, adminUserId);
+        var captor = ArgumentCaptor.forClass(ResultsPublishedEvent.class);
+        then(eventPublisher).should().publishEvent(captor.capture());
+        assertThat(captor.getValue().divisionId()).isEqualTo(divisionId);
+        assertThat(captor.getValue().version()).isEqualTo(1);
+    }
+
+    @Test
+    void shouldRejectPublishWhenStatusNotDeliberation() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var adminUserId = UUID.randomUUID();
+        var division = mock(Division.class);
+        given(division.getStatus()).willReturn(DivisionStatus.JUDGING);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+
+        assertThatThrownBy(() -> service.publish(divisionId, adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.awards.publish-wrong-status");
+    }
+
+    @Test
+    void shouldRejectPublishWhenUnauthorized() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var adminUserId = UUID.randomUUID();
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(false);
+
+        assertThatThrownBy(() -> service.publish(divisionId, adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.awards.unauthorized");
+    }
+
+    @Test
+    void shouldRejectPublishWhenAlreadyPublished() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var adminUserId = UUID.randomUUID();
+        var division = mock(Division.class);
+        given(division.getStatus()).willReturn(DivisionStatus.DELIBERATION);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(publicationRepository.existsByDivisionId(divisionId)).willReturn(true);
+
+        assertThatThrownBy(() -> service.publish(divisionId, adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.awards.already-published");
+    }
+
+    @Test
+    void shouldRepublishWithIncrementedVersion() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var adminUserId = UUID.randomUUID();
+        var division = mock(Division.class);
+        given(division.getStatus()).willReturn(DivisionStatus.DELIBERATION);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        var existing = new Publication(divisionId, adminUserId);
+        given(publicationRepository.findTopByDivisionIdOrderByVersionDesc(divisionId))
+                .willReturn(Optional.of(existing));
+        given(publicationRepository.save(any(Publication.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var publication = service.republish(divisionId,
+                "Fixed gold medal in M1A — judge re-scored after spreadsheet error.", adminUserId);
+
+        assertThat(publication.getVersion()).isEqualTo(2);
+        assertThat(publication.isInitial()).isFalse();
+        assertThat(publication.getJustification()).contains("Fixed gold medal");
+        then(competitionService).should().publishDivision(divisionId, adminUserId);
+
+        var captor = ArgumentCaptor.forClass(ResultsRepublishedEvent.class);
+        then(eventPublisher).should().publishEvent(captor.capture());
+        assertThat(captor.getValue().version()).isEqualTo(2);
+    }
+
+    @Test
+    void shouldRejectRepublishWhenStatusNotDeliberation() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var adminUserId = UUID.randomUUID();
+        var division = mock(Division.class);
+        given(division.getStatus()).willReturn(DivisionStatus.RESULTS_PUBLISHED);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+
+        assertThatThrownBy(() -> service.republish(divisionId, "valid justification text here", adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.awards.republish-wrong-status");
+    }
+
+    @Test
+    void shouldRejectRepublishWithJustificationTooShort() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var adminUserId = UUID.randomUUID();
+        var division = mock(Division.class);
+        given(division.getStatus()).willReturn(DivisionStatus.DELIBERATION);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+
+        assertThatThrownBy(() -> service.republish(divisionId, "short", adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.awards.justification-too-short");
+    }
+
+    @Test
+    void shouldRejectRepublishWithJustificationTooLong() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var adminUserId = UUID.randomUUID();
+        var division = mock(Division.class);
+        given(division.getStatus()).willReturn(DivisionStatus.DELIBERATION);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+
+        var tooLong = "x".repeat(1001);
+        assertThatThrownBy(() -> service.republish(divisionId, tooLong, adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.awards.justification-too-long");
+    }
+
+    @Test
+    void shouldReturnEmptyOptionalWhenNoPublication() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        given(publicationRepository.findTopByDivisionIdOrderByVersionDesc(divisionId))
+                .willReturn(Optional.empty());
+
+        assertThat(service.getLatestPublication(divisionId)).isEmpty();
+    }
+
+    @Test
+    void shouldReturnLatestPublicationWhenPresent() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var publication = new Publication(divisionId, UUID.randomUUID());
+        given(publicationRepository.findTopByDivisionIdOrderByVersionDesc(divisionId))
+                .willReturn(Optional.of(publication));
+
+        assertThat(service.getLatestPublication(divisionId)).contains(publication);
+    }
+
+    @Test
+    void shouldReturnPublicationHistoryOrderedByVersion() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var p1 = new Publication(divisionId, UUID.randomUUID());
+        var p2 = Publication.republish(divisionId, 1, "first revision applied to gold list", UUID.randomUUID());
+        given(publicationRepository.findByDivisionIdOrderByVersionAsc(divisionId))
+                .willReturn(java.util.List.of(p1, p2));
+
+        var history = service.getPublicationHistory(divisionId);
+        assertThat(history).hasSize(2);
+        assertThat(history.get(0).getVersion()).isEqualTo(1);
+        assertThat(history.get(1).getVersion()).isEqualTo(2);
+    }
+
+    @Test
+    void shouldRejectGetResultsForEntrantWhenDivisionNotPublished() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var userId = UUID.randomUUID();
+        var division = mock(Division.class);
+        given(division.getStatus()).willReturn(DivisionStatus.DELIBERATION);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+
+        assertThatThrownBy(() -> service.getResultsForEntrant(userId, divisionId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.awards.not-published");
+    }
+
+    @Test
+    void shouldRejectGetPublicResultsWhenNotPublished() {
+        var service = createService();
+        var competitionId = UUID.randomUUID();
+        var competition = mock(app.meads.competition.Competition.class);
+        given(competition.getId()).willReturn(competitionId);
+        var division = mock(Division.class);
+        given(division.getStatus()).willReturn(DivisionStatus.JUDGING);
+        given(competitionService.findCompetitionByShortName("test")).willReturn(competition);
+        given(competitionService.findDivisionByShortName(competitionId, "amateur"))
+                .willReturn(division);
+
+        assertThatThrownBy(() -> service.getPublicResults("test", "amateur", java.util.Locale.ENGLISH))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.awards.not-published");
+    }
+
+    @Test
+    void shouldRejectResultsPreviewWhenNotAuthorized() {
+        var service = createService();
+        var competitionId = UUID.randomUUID();
+        var divisionId = UUID.randomUUID();
+        var adminUserId = UUID.randomUUID();
+        var competition = mock(app.meads.competition.Competition.class);
+        given(competition.getId()).willReturn(competitionId);
+        var division = mock(Division.class);
+        given(division.getId()).willReturn(divisionId);
+        given(competitionService.findCompetitionByShortName("test")).willReturn(competition);
+        given(competitionService.findDivisionByShortName(competitionId, "amateur")).willReturn(division);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(false);
+
+        assertThatThrownBy(() -> service.getResultsPreview("test", "amateur",
+                java.util.Locale.ENGLISH, adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.awards.unauthorized");
+    }
+
+    @Test
+    void shouldRejectResultsPreviewBeforeDeliberation() {
+        var service = createService();
+        var competitionId = UUID.randomUUID();
+        var divisionId = UUID.randomUUID();
+        var adminUserId = UUID.randomUUID();
+        var competition = mock(app.meads.competition.Competition.class);
+        given(competition.getId()).willReturn(competitionId);
+        var division = mock(Division.class);
+        given(division.getId()).willReturn(divisionId);
+        given(division.getStatus()).willReturn(DivisionStatus.JUDGING);
+        given(competitionService.findCompetitionByShortName("test")).willReturn(competition);
+        given(competitionService.findDivisionByShortName(competitionId, "amateur")).willReturn(division);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+
+        assertThatThrownBy(() -> service.getResultsPreview("test", "amateur",
+                java.util.Locale.ENGLISH, adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.awards.preview-not-ready");
+    }
+
+    private Division divisionWithMeaderyRequired(boolean required) {
+        var d = new Division(UUID.randomUUID(), "Div", "div", ScoringSystem.MJP,
+                LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
+        if (required) {
+            d.updateMeaderyNameRequired(true);
+        }
+        return d;
+    }
+
+    private User entrant(String name, String meadery, String country) {
+        var u = new User("e-" + UUID.randomUUID() + "@example.com", name,
+                UserStatus.ACTIVE, Role.USER);
+        if (meadery != null) {
+            u.updateMeaderyName(meadery);
+        }
+        if (country != null) {
+            u.updateCountry(country);
+        }
+        return u;
+    }
+
+    @Test
+    void producerLabelShowsMeadmakerWithCountryWhenMeaderyNotRequired() {
+        var u = entrant("Jane Maker", null, "PT");
+        assertThat(AwardsServiceImpl.producerLabel(u, divisionWithMeaderyRequired(false),
+                java.util.Locale.ENGLISH)).isEqualTo("Jane Maker (Portugal)");
+    }
+
+    @Test
+    void producerLabelShowsMeaderyWithCountryWhenMeaderyRequired() {
+        var u = entrant("Jane Maker", "Hidromel Co", "PT");
+        assertThat(AwardsServiceImpl.producerLabel(u, divisionWithMeaderyRequired(true),
+                java.util.Locale.ENGLISH)).isEqualTo("Hidromel Co (Portugal)");
+    }
+
+    @Test
+    void producerLabelOmitsCountrySuffixWhenEntrantHasNoCountry() {
+        var u = entrant("Jane Maker", null, null);
+        assertThat(AwardsServiceImpl.producerLabel(u, divisionWithMeaderyRequired(false),
+                java.util.Locale.ENGLISH)).isEqualTo("Jane Maker");
+    }
+
+    @Test
+    void shouldRejectGetAnonymizedScoresheetWhenScoresheetNotFound() {
+        var service = createService();
+        var sheetId = UUID.randomUUID();
+        given(scoresheetService.findById(sheetId)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.getAnonymizedScoresheet(sheetId, UUID.randomUUID()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.awards.scoresheet-not-found");
+    }
+
+    @Test
+    void shouldRejectGetAnonymizedScoresheetWhenNotAdminAndNotOwner() {
+        var service = createService();
+        var sheetId = UUID.randomUUID();
+        var entryId = UUID.randomUUID();
+        var divisionId = UUID.randomUUID();
+        var requestingUserId = UUID.randomUUID();
+        var ownerUserId = UUID.randomUUID();
+        var sheet = mock(app.meads.judging.Scoresheet.class);
+        given(sheet.getStatus()).willReturn(app.meads.judging.ScoresheetStatus.SUBMITTED);
+        given(sheet.getEntryId()).willReturn(entryId);
+        given(scoresheetService.findById(sheetId)).willReturn(Optional.of(sheet));
+        var entry = mock(app.meads.entry.Entry.class);
+        given(entry.getDivisionId()).willReturn(divisionId);
+        given(entry.getUserId()).willReturn(ownerUserId);
+        given(entryService.findEntryById(entryId)).willReturn(entry);
+        given(competitionService.isAuthorizedForDivision(divisionId, requestingUserId)).willReturn(false);
+
+        assertThatThrownBy(() -> service.getAnonymizedScoresheet(sheetId, requestingUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.awards.unauthorized");
+    }
+
+    @Test
+    void shouldBuildAnonymizedScoresheetWithEntryNumberFieldCommentsAndAdvancedFlag() {
+        var service = createService();
+        var sheetId = UUID.randomUUID();
+        var entryId = UUID.randomUUID();
+        var divisionId = UUID.randomUUID();
+        var ownerUserId = UUID.randomUUID();
+        var field = new app.meads.judging.ScoreField("Aroma", 24);
+        field.update(20, "Lovely floral nose");
+        var sheet = mock(app.meads.judging.Scoresheet.class);
+        given(sheet.getId()).willReturn(sheetId);
+        given(sheet.getStatus()).willReturn(app.meads.judging.ScoresheetStatus.SUBMITTED);
+        given(sheet.getEntryId()).willReturn(entryId);
+        given(sheet.getFields()).willReturn(java.util.List.of(field));
+        given(sheet.getTotalScore()).willReturn(88);
+        given(sheet.getCommentLanguage()).willReturn("en");
+        given(sheet.getOverallComments()).willReturn("Well made.");
+        given(sheet.isAdvancedToMedalRound()).willReturn(true);
+        given(scoresheetService.findById(sheetId)).willReturn(Optional.of(sheet));
+        given(scoresheetService.findByEntryIdOrderBySubmittedAtAsc(entryId))
+                .willReturn(java.util.List.of(sheet));
+        var entry = mock(app.meads.entry.Entry.class);
+        given(entry.getId()).willReturn(entryId);
+        given(entry.getDivisionId()).willReturn(divisionId);
+        given(entry.getUserId()).willReturn(ownerUserId);
+        given(entry.getEntryNumber()).willReturn(3);
+        given(entry.getMeadName()).willReturn("Golden Hour");
+        given(entryService.findEntryById(entryId)).willReturn(entry);
+        var division = mock(Division.class);
+        given(division.getStatus()).willReturn(DivisionStatus.RESULTS_PUBLISHED);
+        given(division.getEntryPrefix()).willReturn("PRO");
+        var competitionId = UUID.randomUUID();
+        given(division.getCompetitionId()).willReturn(competitionId);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        var competition = mock(Competition.class);
+        given(competition.hasLogo()).willReturn(false);
+        given(competitionService.findCompetitionById(competitionId)).willReturn(competition);
+        given(competitionService.isAuthorizedForDivision(divisionId, ownerUserId)).willReturn(false);
+        given(userService.findById(ownerUserId)).willReturn(mock(app.meads.identity.User.class));
+
+        var view = service.getAnonymizedScoresheet(sheetId, ownerUserId);
+
+        // Entrant sees their own prefixed number, never the anonymized judging code.
+        assertThat(view.entryNumber()).isEqualTo("PRO-3");
+        assertThat(view.meadName()).isEqualTo("Golden Hour");
+        assertThat(view.scoresheets()).hasSize(1);
+        var anon = view.scoresheets().get(0);
+        assertThat(anon.advanced()).isTrue();
+        assertThat(anon.fieldScores()).hasSize(1);
+        assertThat(anon.fieldScores().get(0).comment()).isEqualTo("Lovely floral nose");
+    }
+
+    @Test
+    void shouldIncludeMedalAndBosPlacementInAnonymizedScoresheet() {
+        var service = createService();
+        var sheetId = UUID.randomUUID();
+        var entryId = UUID.randomUUID();
+        var divisionId = UUID.randomUUID();
+        var ownerUserId = UUID.randomUUID();
+        var sheet = mock(app.meads.judging.Scoresheet.class);
+        given(sheet.getId()).willReturn(sheetId);
+        given(sheet.getStatus()).willReturn(app.meads.judging.ScoresheetStatus.SUBMITTED);
+        given(sheet.getEntryId()).willReturn(entryId);
+        given(sheet.getFields()).willReturn(java.util.List.of());
+        given(sheet.getTotalScore()).willReturn(91);
+        given(sheet.isAdvancedToMedalRound()).willReturn(false);
+        given(scoresheetService.findById(sheetId)).willReturn(Optional.of(sheet));
+        given(scoresheetService.findByEntryIdOrderBySubmittedAtAsc(entryId))
+                .willReturn(java.util.List.of(sheet));
+        var entry = mock(app.meads.entry.Entry.class);
+        given(entry.getId()).willReturn(entryId);
+        given(entry.getDivisionId()).willReturn(divisionId);
+        given(entry.getUserId()).willReturn(ownerUserId);
+        given(entry.getEntryNumber()).willReturn(3);
+        given(entry.getMeadName()).willReturn("Golden Hour");
+        given(entryService.findEntryById(entryId)).willReturn(entry);
+        var division = mock(Division.class);
+        given(division.getStatus()).willReturn(DivisionStatus.RESULTS_PUBLISHED);
+        given(division.getEntryPrefix()).willReturn("PRO");
+        var competitionId = UUID.randomUUID();
+        given(division.getCompetitionId()).willReturn(competitionId);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        var competition = mock(Competition.class);
+        given(competition.hasLogo()).willReturn(false);
+        given(competitionService.findCompetitionById(competitionId)).willReturn(competition);
+        given(competitionService.isAuthorizedForDivision(divisionId, ownerUserId)).willReturn(false);
+        given(userService.findById(ownerUserId)).willReturn(mock(app.meads.identity.User.class));
+        var medalAward = mock(app.meads.judging.MedalAward.class);
+        given(medalAward.getMedal()).willReturn(app.meads.judging.Medal.GOLD);
+        given(judgingService.findMedalAwardByEntryId(entryId)).willReturn(Optional.of(medalAward));
+        var bos = mock(app.meads.judging.BosPlacement.class);
+        given(bos.getPlace()).willReturn(1);
+        given(judgingService.findBosPlacementByEntryId(entryId)).willReturn(Optional.of(bos));
+
+        var view = service.getAnonymizedScoresheet(sheetId, ownerUserId);
+
+        assertThat(view.medal()).isEqualTo(app.meads.judging.Medal.GOLD);
+        assertThat(view.bosPlace()).isEqualTo(1);
+    }
+
+    @Test
+    void shouldRejectRepublishWhenUnauthorized() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var adminUserId = UUID.randomUUID();
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(false);
+
+        assertThatThrownBy(() -> service.republish(divisionId, "valid justification text here", adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.awards.unauthorized");
+    }
+
+    @Test
+    void shouldSendInitialAnnouncementWithDefaultTemplate() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var adminUserId = UUID.randomUUID();
+        var competitionId = UUID.randomUUID();
+        var division = mock(Division.class);
+        given(division.getStatus()).willReturn(DivisionStatus.RESULTS_PUBLISHED);
+        given(division.getCompetitionId()).willReturn(competitionId);
+        given(division.getName()).willReturn("Amadora");
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        var competition = mock(Competition.class);
+        given(competition.getName()).willReturn("CHIP 2026");
+        given(competition.getContactEmail()).willReturn("admin@chip.pt");
+        given(competitionService.findCompetitionById(competitionId)).willReturn(competition);
+        given(publicationRepository.findTopByDivisionIdOrderByVersionDesc(divisionId))
+                .willReturn(Optional.of(new Publication(divisionId, adminUserId)));
+        var user1 = UUID.randomUUID();
+        given(entryService.findEntrantUserIdsForDivision(divisionId))
+                .willReturn(java.util.List.of(user1));
+        var u1 = mock(User.class);
+        given(u1.getEmail()).willReturn("entrant@test.com");
+        given(u1.getPreferredLanguage()).willReturn("en");
+        given(userService.findById(user1)).willReturn(u1);
+
+        service.sendAnnouncement(divisionId, null, adminUserId);
+
+        then(emailService).should().sendResultsAnnouncement(
+                org.mockito.ArgumentMatchers.eq("entrant@test.com"),
+                any(),
+                org.mockito.ArgumentMatchers.eq(EmailService.ResultsAnnouncementType.INITIAL_NO_CUSTOM),
+                org.mockito.ArgumentMatchers.eq("CHIP 2026"),
+                org.mockito.ArgumentMatchers.eq("Amadora"),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.eq("admin@chip.pt"));
+        var captor = ArgumentCaptor.forClass(app.meads.awards.AnnouncementSentEvent.class);
+        then(eventPublisher).should().publishEvent(captor.capture());
+        assertThat(captor.getValue().recipientCount()).isEqualTo(1);
+        assertThat(captor.getValue().usedCustomMessage()).isFalse();
+    }
+
+    @Test
+    void shouldSendRepublishAnnouncementWithJustification() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var adminUserId = UUID.randomUUID();
+        var competitionId = UUID.randomUUID();
+        var division = mock(Division.class);
+        given(division.getStatus()).willReturn(DivisionStatus.RESULTS_PUBLISHED);
+        given(division.getCompetitionId()).willReturn(competitionId);
+        given(division.getName()).willReturn("Amadora");
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        var competition = mock(Competition.class);
+        given(competition.getName()).willReturn("CHIP 2026");
+        given(competitionService.findCompetitionById(competitionId)).willReturn(competition);
+        var republished = Publication.republish(divisionId, 1,
+                "Corrected silver medal after spreadsheet error.", adminUserId);
+        given(publicationRepository.findTopByDivisionIdOrderByVersionDesc(divisionId))
+                .willReturn(Optional.of(republished));
+        var user1 = UUID.randomUUID();
+        given(entryService.findEntrantUserIdsForDivision(divisionId))
+                .willReturn(java.util.List.of(user1));
+        var u1 = mock(User.class);
+        given(u1.getEmail()).willReturn("a@test.com");
+        given(userService.findById(user1)).willReturn(u1);
+
+        service.sendAnnouncement(divisionId, null, adminUserId);
+
+        then(emailService).should().sendResultsAnnouncement(
+                any(), any(),
+                org.mockito.ArgumentMatchers.eq(EmailService.ResultsAnnouncementType.REPUBLISH_NO_CUSTOM),
+                any(), any(),
+                org.mockito.ArgumentMatchers.eq("Corrected silver medal after spreadsheet error."),
+                any());
+    }
+
+    @Test
+    void shouldSendCustomAnnouncementWhenMessageProvided() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var adminUserId = UUID.randomUUID();
+        var competitionId = UUID.randomUUID();
+        var division = mock(Division.class);
+        given(division.getStatus()).willReturn(DivisionStatus.RESULTS_PUBLISHED);
+        given(division.getCompetitionId()).willReturn(competitionId);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        var competition = mock(Competition.class);
+        given(competitionService.findCompetitionById(competitionId)).willReturn(competition);
+        given(publicationRepository.findTopByDivisionIdOrderByVersionDesc(divisionId))
+                .willReturn(Optional.of(new Publication(divisionId, adminUserId)));
+        given(entryService.findEntrantUserIdsForDivision(divisionId))
+                .willReturn(java.util.List.of());
+
+        service.sendAnnouncement(divisionId, "Thanks to all entrants!", adminUserId);
+
+        var captor = ArgumentCaptor.forClass(app.meads.awards.AnnouncementSentEvent.class);
+        then(eventPublisher).should().publishEvent(captor.capture());
+        assertThat(captor.getValue().usedCustomMessage()).isTrue();
+    }
+
+    @Test
+    void shouldRejectSendAnnouncementWhenStatusNotPublished() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var adminUserId = UUID.randomUUID();
+        var division = mock(Division.class);
+        given(division.getStatus()).willReturn(DivisionStatus.DELIBERATION);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+
+        assertThatThrownBy(() -> service.sendAnnouncement(divisionId, null, adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.awards.announcement-wrong-status");
+    }
+
+    @Test
+    void shouldRejectSendAnnouncementWhenUnauthorized() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var adminUserId = UUID.randomUUID();
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(false);
+
+        assertThatThrownBy(() -> service.sendAnnouncement(divisionId, null, adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.awards.unauthorized");
+    }
+
+    private AwardsServiceImpl createService() {
+        return new AwardsServiceImpl(publicationRepository, competitionService,
+                entryService, judgingService, scoresheetService, userService, emailService,
+                eventPublisher, messageSource);
+    }
+}

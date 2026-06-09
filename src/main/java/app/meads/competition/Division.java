@@ -57,6 +57,12 @@ public class Division {
     @Column(name = "registration_deadline_timezone", nullable = false, length = 50)
     private String registrationDeadlineTimezone;
 
+    @Column(name = "bos_places", nullable = false)
+    private int bosPlaces;
+
+    @Column(name = "min_judges_per_round", nullable = false)
+    private int minJudgesPerRound;
+
     private Instant updatedAt;
 
     protected Division() {} // JPA
@@ -74,6 +80,8 @@ public class Division {
         this.meaderyNameRequired = false;
         this.registrationDeadline = registrationDeadline;
         this.registrationDeadlineTimezone = registrationDeadlineTimezone;
+        this.bosPlaces = 1;
+        this.minJudgesPerRound = 2;
     }
 
     @PrePersist
@@ -128,6 +136,31 @@ public class Division {
         }
         this.registrationDeadline = deadline;
         this.registrationDeadlineTimezone = timezone;
+    }
+
+    public void updateBosPlaces(int bosPlaces) {
+        if (bosPlaces < 1) {
+            throw new IllegalArgumentException("BOS places must be >= 1, got: " + bosPlaces);
+        }
+        if (status.ordinal() >= DivisionStatus.JUDGING.ordinal()) {
+            throw new IllegalStateException(
+                    "BOS places can only be changed before judging starts");
+        }
+        this.bosPlaces = bosPlaces;
+    }
+
+    public void updateMinJudgesPerRound(int minJudgesPerRound) {
+        if (minJudgesPerRound < 1) {
+            throw new IllegalArgumentException(
+                    "Min judges per table must be >= 1, got: " + minJudgesPerRound);
+        }
+        if (status != DivisionStatus.DRAFT
+                && status != DivisionStatus.REGISTRATION_OPEN
+                && status != DivisionStatus.REGISTRATION_CLOSED) {
+            throw new IllegalStateException(
+                    "Min judges per table can only be changed in DRAFT, REGISTRATION_OPEN, or REGISTRATION_CLOSED");
+        }
+        this.minJudgesPerRound = minJudgesPerRound;
     }
 
     public void updateDetails(String name, String shortName, ScoringSystem scoringSystem,

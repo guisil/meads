@@ -152,6 +152,48 @@ class DivisionCategoryRepositoryTest {
     }
 
     @Test
+    void shouldPersistAndResolvePerLocaleTranslations() {
+        var competition = createAndSaveCompetition();
+        var division = createAndSaveDivision(competition.getId());
+
+        var cat = new DivisionCategory(division.getId(), null,
+                "M1A", "Traditional Mead", "Honey and water", null, 1);
+        cat.setTranslations(java.util.Map.of(
+                "pt", new LocalizedText("Hidromel Tradicional", "Mel e água"),
+                "it", new LocalizedText("Idromele Tradizionale", "Miele e acqua")));
+        divisionCategoryRepository.save(cat);
+
+        var found = divisionCategoryRepository.findById(cat.getId()).orElseThrow();
+
+        assertThat(found.getTranslations()).hasSize(2);
+        assertThat(found.getName(java.util.Locale.forLanguageTag("pt"))).isEqualTo("Hidromel Tradicional");
+        assertThat(found.getDescription(java.util.Locale.ITALIAN)).isEqualTo("Miele e acqua");
+        assertThat(found.getName(java.util.Locale.forLanguageTag("es"))).isEqualTo("Traditional Mead");
+    }
+
+    @Test
+    void shouldReplaceTranslationsOnUpdate() {
+        var competition = createAndSaveCompetition();
+        var division = createAndSaveDivision(competition.getId());
+
+        var cat = new DivisionCategory(division.getId(), null,
+                "M1A", "Traditional Mead", "Honey and water", null, 1);
+        cat.setTranslations(java.util.Map.of(
+                "pt", new LocalizedText("Hidromel Tradicional", "Mel e água")));
+        divisionCategoryRepository.save(cat);
+
+        var reloaded = divisionCategoryRepository.findById(cat.getId()).orElseThrow();
+        reloaded.setTranslations(java.util.Map.of(
+                "es", new LocalizedText("Hidromiel Tradicional", "Miel y agua")));
+        divisionCategoryRepository.save(reloaded);
+
+        var found = divisionCategoryRepository.findById(cat.getId()).orElseThrow();
+        assertThat(found.getTranslations()).containsOnlyKeys("es");
+        assertThat(found.getName(java.util.Locale.forLanguageTag("pt"))).isEqualTo("Traditional Mead");
+        assertThat(found.getName(java.util.Locale.forLanguageTag("es"))).isEqualTo("Hidromiel Tradicional");
+    }
+
+    @Test
     void shouldFindByParentId() {
         var competition = createAndSaveCompetition();
         var division = createAndSaveDivision(competition.getId());

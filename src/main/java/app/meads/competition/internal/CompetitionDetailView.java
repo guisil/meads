@@ -81,6 +81,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
     private Nav breadcrumb;
     private Grid<Division> divisionsGrid;
     private Grid<Participant> participantsGrid;
+    private Span participantsRoleSummary;
     private Grid<CompetitionDocument> documentsGrid;
     private Map<UUID, User> userMap;
     private Map<UUID, List<ParticipantRole>> rolesMap;
@@ -283,6 +284,11 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         toolbar.setWidthFull();
         toolbar.setFlexGrow(1, filterField);
         tab.add(toolbar);
+
+        participantsRoleSummary = new Span();
+        participantsRoleSummary.setId("participants-role-summary");
+        participantsRoleSummary.getStyle().set("color", "var(--lumo-secondary-text-color)");
+        tab.add(participantsRoleSummary);
 
         participantsGrid = new Grid<>();
         participantsGrid.setAllRowsVisible(true);
@@ -584,6 +590,16 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                 .collect(Collectors.toMap(User::getId, Function.identity()));
 
         participantsGrid.setItems(participants);
+
+        if (participantsRoleSummary != null) {
+            var counts = competitionService.findParticipantCountsByRole(competitionId);
+            participantsRoleSummary.setText(getTranslation(
+                    "competition-detail.participants.role-summary",
+                    counts.getOrDefault(CompetitionRole.ENTRANT, 0L),
+                    counts.getOrDefault(CompetitionRole.JUDGE, 0L),
+                    counts.getOrDefault(CompetitionRole.STEWARD, 0L),
+                    counts.getOrDefault(CompetitionRole.ADMIN, 0L)));
+        }
     }
 
     private ComboBox<String> createCountryComboBox() {
@@ -665,6 +681,11 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         websiteField.setMaxLength(500);
         websiteField.setHelperText(getTranslation("competition-detail.settings.website.helper"));
         websiteField.setClearButtonVisible(true);
+
+        var sharedTablesCheckbox = new Checkbox(
+                getTranslation("competition-detail.settings.shared-tables"));
+        sharedTablesCheckbox.setValue(competition.isSharedTables());
+        sharedTablesCheckbox.setHelperText(getTranslation("competition-detail.settings.shared-tables.helper"));
 
         var logoData = new byte[1][];
         var logoContentType = new String[1];
@@ -755,6 +776,8 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
                         ? websiteField.getValue().trim() : null;
                 competitionService.updateCompetitionShippingDetails(
                         competitionId, shippingAddress, phoneNumber, website, getCurrentUserId());
+                competitionService.updateCompetitionSharedTables(
+                        competitionId, sharedTablesCheckbox.getValue(), getCurrentUserId());
                 if (logoData[0] != null) {
                     competitionService.updateCompetitionLogo(
                             competitionId, logoData[0], logoContentType[0],
@@ -772,7 +795,7 @@ public class CompetitionDetailView extends VerticalLayout implements BeforeEnter
         });
         saveButton.setDisableOnClick(true);
 
-        tab.add(nameField, shortNameField, startDatePicker, endDatePicker, locationField, contactEmailField, shippingAddressField, phoneNumberField, websiteField, logoLabel, logoSection, saveButton);
+        tab.add(nameField, shortNameField, startDatePicker, endDatePicker, locationField, contactEmailField, shippingAddressField, phoneNumberField, websiteField, sharedTablesCheckbox, logoLabel, logoSection, saveButton);
         return tab;
     }
 

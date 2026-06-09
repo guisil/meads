@@ -12,6 +12,7 @@ public interface DivisionCategoryRepository extends JpaRepository<DivisionCatego
     List<DivisionCategory> findByDivisionIdAndScopeOrderByCode(UUID divisionId, CategoryScope scope);
     boolean existsByDivisionIdAndCode(UUID divisionId, String code);
     boolean existsByDivisionIdAndCodeAndScope(UUID divisionId, String code, CategoryScope scope);
+    boolean existsByDivisionIdAndScope(UUID divisionId, CategoryScope scope);
     boolean existsByDivisionIdAndCatalogCategoryId(UUID divisionId, UUID catalogCategoryId);
     List<DivisionCategory> findByParentId(UUID parentId);
 }

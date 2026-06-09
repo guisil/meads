@@ -10,7 +10,7 @@
     <springProfile name="dev">
         <logger name="app.meads" level="DEBUG"/>
         <logger name="org.springframework" level="INFO"/>
-        <logger name="org.hibernate.SQL" level="DEBUG"/>
+        <logger name="org.hibernate" level="WARN"/>
         <logger name="com.vaadin" level="INFO"/>
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>

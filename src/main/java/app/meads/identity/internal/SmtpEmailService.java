@@ -210,6 +210,108 @@ class SmtpEmailService implements EmailService {
         sendEmail(recipientEmail, subject, ctx, myEntriesUrl);
     }
 
+    @Override
+    public void sendResultsAnnouncement(String recipientEmail, Locale locale,
+                                         EmailService.ResultsAnnouncementType type,
+                                         String competitionName, String divisionName,
+                                         String customOrJustificationBody,
+                                         String contactEmail) {
+        var subjectKey = switch (type) {
+            case INITIAL_NO_CUSTOM -> "email.results-published.subject";
+            case REPUBLISH_NO_CUSTOM -> "email.results-republished.subject";
+            case CUSTOM_MESSAGE -> "email.custom-announcement.subject";
+        };
+        var headingKey = switch (type) {
+            case INITIAL_NO_CUSTOM -> "email.results-published.heading";
+            case REPUBLISH_NO_CUSTOM -> "email.results-republished.heading";
+            case CUSTOM_MESSAGE -> "email.custom-announcement.heading";
+        };
+        var bodyKey = switch (type) {
+            case INITIAL_NO_CUSTOM -> "email.results-published.body";
+            case REPUBLISH_NO_CUSTOM -> "email.results-republished.intro";
+            case CUSTOM_MESSAGE -> null;
+        };
+        var subject = msg(subjectKey, locale, competitionName, divisionName);
+        var heading = msg(headingKey, locale, competitionName, divisionName);
+        var bodyText = type == EmailService.ResultsAnnouncementType.CUSTOM_MESSAGE
+                ? customOrJustificationBody
+                : msg(bodyKey, locale, competitionName, divisionName);
+        var bodyText2 = type == EmailService.ResultsAnnouncementType.REPUBLISH_NO_CUSTOM
+                ? customOrJustificationBody
+                : null;
+
+        // Bare magic link: after login, RootView routes the entrant to their
+        // results page. (Appending a path onto the link previously corrupted the
+        // token and broke login.)
+        var link = jwtMagicLinkService.generateLink(recipientEmail, TOKEN_VALIDITY);
+        var ctx = new Context();
+        ctx.setVariable("subject", subject);
+        ctx.setVariable("heading", heading);
+        ctx.setVariable("bodyText", bodyText);
+        ctx.setVariable("bodyText2", bodyText2);
+        ctx.setVariable("ctaLabel", msg("email.results.cta-label", locale));
+        ctx.setVariable("ctaUrl", link);
+        ctx.setVariable("fallbackText", msg("email.fallback", locale));
+        ctx.setVariable("footerText", msg("email.footer", locale));
+        ctx.setVariable("contactText", msg("email.contact", locale));
+        ctx.setVariable("contactEmail", contactEmail);
+        sendEmail(recipientEmail, subject, ctx, link);
+    }
+
+    @Override
+    public void sendJudgingTableReady(String recipientEmail, String tableName,
+                                      String categoryLabel, String competitionName,
+                                      String divisionName, String myJudgingUrl, Locale locale) {
+        var subject = msg("email.judging-table-ready.subject", locale, tableName);
+        var ctx = new Context();
+        ctx.setVariable("subject", subject);
+        ctx.setVariable("heading", msg("email.judging-table-ready.heading", locale));
+        ctx.setVariable("bodyText", msg("email.judging-table-ready.body", locale,
+                tableName, categoryLabel, divisionName, competitionName));
+        ctx.setVariable("ctaLabel", msg("email.judging.cta", locale));
+        ctx.setVariable("ctaUrl", myJudgingUrl);
+        ctx.setVariable("fallbackText", msg("email.fallback", locale));
+        ctx.setVariable("footerText", msg("email.footer", locale));
+        ctx.setVariable("contactEmail", null);
+        sendEmail(recipientEmail, subject, ctx, myJudgingUrl);
+    }
+
+    @Override
+    public void sendScoresheetReverted(String recipientEmail, String entryLabel,
+                                       String competitionName, String divisionName,
+                                       String myJudgingUrl, Locale locale) {
+        var subject = msg("email.scoresheet-reverted.subject", locale, entryLabel);
+        var ctx = new Context();
+        ctx.setVariable("subject", subject);
+        ctx.setVariable("heading", msg("email.scoresheet-reverted.heading", locale));
+        ctx.setVariable("bodyText", msg("email.scoresheet-reverted.body", locale,
+                entryLabel, divisionName, competitionName));
+        ctx.setVariable("ctaLabel", msg("email.judging.cta", locale));
+        ctx.setVariable("ctaUrl", myJudgingUrl);
+        ctx.setVariable("fallbackText", msg("email.fallback", locale));
+        ctx.setVariable("footerText", msg("email.footer", locale));
+        ctx.setVariable("contactEmail", null);
+        sendEmail(recipientEmail, subject, ctx, myJudgingUrl);
+    }
+
+    @Override
+    public void sendMedalRoundReady(String recipientEmail, String categoryLabel,
+                                    String competitionName, String divisionName,
+                                    String myJudgingUrl, Locale locale) {
+        var subject = msg("email.medal-round-ready.subject", locale, categoryLabel);
+        var ctx = new Context();
+        ctx.setVariable("subject", subject);
+        ctx.setVariable("heading", msg("email.medal-round-ready.heading", locale));
+        ctx.setVariable("bodyText", msg("email.medal-round-ready.body", locale,
+                categoryLabel, divisionName, competitionName));
+        ctx.setVariable("ctaLabel", msg("email.judging.cta", locale));
+        ctx.setVariable("ctaUrl", myJudgingUrl);
+        ctx.setVariable("fallbackText", msg("email.fallback", locale));
+        ctx.setVariable("footerText", msg("email.footer", locale));
+        ctx.setVariable("contactEmail", null);
+        sendEmail(recipientEmail, subject, ctx, myJudgingUrl);
+    }
+
     private String msg(String key, Locale locale, Object... args) {
         return messageSource.getMessage(key, args, key, locale);
     }

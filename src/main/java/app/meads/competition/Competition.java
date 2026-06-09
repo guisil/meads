@@ -53,6 +53,9 @@ public class Competition {
     @Column(name = "website", length = 500)
     private String website;
 
+    @Column(name = "shared_tables", nullable = false)
+    private boolean sharedTables = true;
+
     @Column(nullable = false)
     private Instant createdAt;
 
@@ -69,6 +72,7 @@ public class Competition {
         this.startDate = startDate;
         this.endDate = endDate;
         this.location = location;
+        this.sharedTables = true;
     }
 
     @PrePersist
@@ -133,4 +137,9 @@ public class Competition {
         this.phoneNumber = phoneNumber;
         this.website = website;
     }
+
+    public void updateSharedTables(boolean sharedTables) {
+        this.sharedTables = sharedTables;
+    }
+
 }

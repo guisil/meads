@@ -2,76 +2,45 @@
 
 ## Project Overview
 
-**MEADS (Mead Evaluation and Awards Data System)** is a Spring Boot 4 web application for
-managing mead competitions — from registration through judging and results. Built with
-Vaadin 25 (Java Flow, server-side), PostgreSQL 18 (Flyway-managed), and Spring Modulith
-for modular DDD architecture. The `identity`, `competition`, and `entry` modules are the
-reference implementations; future modules will follow the same patterns.
-
----
+**MEADS (Mead Evaluation and Awards Data System)** — Spring Boot 4 / Vaadin 25 (Java Flow, server-side) / PostgreSQL 18 app for managing mead competitions: registration → judging → results. Spring Modulith for modular DDD. Five modules: `identity`, `competition`, `entry`, `judging`, `awards`. See `docs/SESSION_CONTEXT.md` for current state.
 
 ## Tech Stack
 
-- **Java 25**, Spring Boot 4.0.6, Spring Modulith 2.0.6, Jakarta Bean Validation (`spring-boot-starter-validation`)
+- **Java 25**, Spring Boot 4.0.6, Spring Modulith 2.0.6, Jakarta Bean Validation
 - **Vaadin 25.1.5** (Java Flow — server-side, NOT React/Hilla)
 - **PostgreSQL 18**, Flyway (managed by Boot)
-- **Testcontainers 2.0.5**, Karibu Testing 2.7.0, Mockito, Awaitility 4.3.0
+- **Testcontainers 2.0.5**, Karibu Testing 2.7.0, Mockito, Awaitility 4.3.0, JUnit 5, AssertJ
 - **jjwt 0.13.0** (JWT magic link tokens)
-- **spring-boot-starter-mail** + **spring-boot-starter-thymeleaf** (SMTP email with HTML templates)
-- **JUnit 5**, AssertJ, Spring Security 7.0.2
+- **spring-boot-starter-mail** + **spring-boot-starter-thymeleaf** (SMTP + HTML email)
+- **Spring Security 7.0.2**
 
 ---
 
 ## Workflow — TWO-TIER TDD
 
-Before starting any code change, read `.claude/skills/tdd-cycle.md` and follow its steps.
-Choose the right cycle based on whether the change introduces new behavior.
-
-### Choosing the Cycle
+Before starting any code change, read `.claude/skills/tdd-cycle.md`. Choose the cycle based on whether the change introduces new behavior.
 
 | | Full Cycle | Fast Cycle |
 |---|---|---|
 | **When** | New behavior, no existing test covers it | Existing tests already cover the change |
 | **Examples** | New features, bug fixes, new entities/services | Button variants, renames, layout tweaks, config changes |
-| **Responses** | 3 separate responses with confirmation gates | Single response |
 | **Decision rule** | Can you point to an existing test that would catch a regression? **No** → full cycle | **Yes** → fast cycle |
 
 When uncertain, default to **full cycle**.
 
 ### Full Cycle (3 responses)
 
-**Step 1: RED** — Write one failing test
-- Decide which test type fits (see Testing Strategy below).
-- Read the matching example from `docs/examples/` before writing.
-- Write ONE test method. No production code.
-- Run: `mvn test -Dtest=ClassName#methodName -Dsurefire.useFile=false`
-- **STOP. Wait for confirmation before Step 2.**
-
-**Step 2: GREEN** — Minimum code to pass
-- Write the LEAST production code that makes the test pass.
-- If a Flyway migration is needed, create it now.
-- Run: `mvn test -Dtest=ClassName -Dsurefire.useFile=false`
-- **STOP. Wait for confirmation before Step 3.**
-
-**Step 3: REFACTOR**
-- Review both test and production code.
-- Run: `mvn test -Dsurefire.useFile=false` (full suite)
-- **Update all affected docs before suggesting a commit message** (see Commit Hygiene):
-  1. `docs/SESSION_CONTEXT.md` — test count, module status, what's next
-  2. `docs/walkthrough/manual-test.md` — if any UI changed
-  3. `CLAUDE.md` — if conventions, patterns, or migrations changed
-  4. Clean up completed plans/specs
-- Suggest a commit message. State what to test next.
-- **STOP. Wait for confirmation before next cycle.**
+1. **RED** — write ONE failing test (no production code). Choose the test type (see Testing). Read the matching `docs/examples/`. Run `mvn test -Dtest=Class#method -Dsurefire.useFile=false`. **STOP for confirmation.**
+2. **GREEN** — minimum production code to pass. Create the Flyway migration here if needed. Run `mvn test -Dtest=Class`. **STOP for confirmation.**
+3. **REFACTOR** — review test + production code. Run full suite. **Update affected docs** (see Commit Hygiene) *before* suggesting a commit message. **STOP for confirmation.**
 
 ### Fast Cycle (1 response)
 
 1. State which existing test(s) cover the change.
 2. Make the change.
-3. Run: `mvn test -Dsurefire.useFile=false` (full suite)
-4. If any test breaks, stop and escalate to full cycle.
-5. **Update all affected docs** (see Commit Hygiene).
-6. Suggest a commit message.
+3. Run full suite. If anything breaks, stop and escalate to full cycle.
+4. Update affected docs.
+5. Suggest a commit message.
 
 Multiple related fast-cycle changes can be batched in one response.
 
@@ -79,291 +48,153 @@ Multiple related fast-cycle changes can be batched in one response.
 
 - NEVER create production code in Step 1 (full cycle). The test must fail first.
 - NEVER write multiple tests before making them pass. One test per cycle.
-- NEVER skip Step 3 (full cycle). Always review, always run the full suite.
-- NEVER use fast cycle for genuinely new behavior. When in doubt, full cycle.
+- NEVER skip Step 3. Always review, always run the full suite.
+- NEVER use fast cycle for genuinely new behavior.
 - If a step produces unexpected results, investigate before moving on.
 
 ---
 
 ## Architecture — Spring Modulith + DDD
 
-### Actual Package Layout
+### Module Layout
+
+Each direct sub-package of `app.meads` is an **application module**:
 
 ```
-app.meads                                ← @SpringBootApplication (root module)
-├── MeadsApplication.java               ← Entry point
-├── MainLayout.java                      ← AppLayout wrapper (public API — shared by all views, includes language switcher + "My Profile" nav + version display)
-├── BusinessRuleException.java           ← Exception with message key + params (replaces IllegalArgumentException in services)
-├── MeadsI18NProvider.java               ← Vaadin I18NProvider backed by Spring MessageSource + getPlural() for CLDR-aware pluralization
-├── PluralRules.java                     ← CLDR plural category resolution (one/few/many/other) per locale
-├── LanguageMapping.java                 ← Country → language mapping + locale resolution
-├── CountryDisplay.java                  ← ISO 3166-1 country code → display name localized to the current UI locale
-├── CompetitionAdminChecker.java         ← Interface (avoids circular dependency root ↔ competition)
-├── UserLocaleResolver.java              ← Interface (avoids circular dependency root ↔ identity)
-├── UserLanguageUpdater.java             ← Interface (avoids circular dependency root ↔ identity)
-└── internal/
-    └── RootView.java                    ← Root route, redirects by role (login/competitions/my-competitions/my-entries)
-
-app.meads.identity                       ← Identity module public API
-├── package-info.java                    ← @ApplicationModule(allowedDependencies = {})
-├── User.java                           ← JPA entity / aggregate root
-├── UserStatus.java                      ← Enum: PENDING, ACTIVE, DISABLED, LOCKED
-├── Role.java                            ← Enum: USER, SYSTEM_ADMIN
-├── UserService.java                     ← Application service (public API)
-├── JwtMagicLinkService.java            ← JWT token generation + validation (public API)
-├── EmailService.java                    ← Email sending interface (public API)
-├── AccessCodeValidator.java             ← Interface for access code validation (public API)
-├── UserDeletionGuard.java               ← Guard interface for blocking unsafe user deletions (public API)
-├── LoginView.java                       ← Vaadin login view (public — referenced by SecurityConfig)
-└── internal/                            ← Module-private
-    ├── UserRepository.java              ← JPA repository
-    ├── SmtpEmailService.java            ← SMTP email implementation (JavaMailSender + Thymeleaf, per-user rate limiting)
-    ├── SecurityConfig.java              ← Spring Security filter chain (formLogin + JWT filter)
-    ├── MagicLinkAuthenticationFilter.java ← JWT magic link authentication filter
-    ├── AccessCodeAuthenticationProvider.java ← Access code authentication provider
-    ├── AccessCodeAuthenticationToken.java ← Access code authentication token
-    ├── DatabaseUserDetailsService.java  ← Spring Security UserDetailsService
-    ├── UserListView.java                ← Admin CRUD view (@RolesAllowed("SYSTEM_ADMIN"))
-    ├── AdminInitializer.java            ← Seeds initial admin with password on startup
-    ├── DevUserInitializer.java          ← Seeds dev users (dev profile only)
-    ├── SetPasswordView.java              ← Set password via token (@AnonymousAllowed)
-    ├── ProfileView.java                  ← User profile self-edit + language dropdown + MFA section for SYSTEM_ADMIN (@PermitAll)
-    ├── MfaVerifyView.java               ← TOTP code entry after password login for MFA-enabled admins (@AnonymousAllowed, /mfa)
-    ├── MfaAuthenticationSuccessHandler.java ← After form login, redirects MFA-enabled users to /mfa (sets MFA_PENDING_EMAIL session attr)
-    ├── TotpService.java                 ← TOTP implementation: generateSecret, verifyCode (±1 window), generateQrUri, Base32 encode/decode
-    ├── UserLocaleResolverImpl.java      ← UserLocaleResolver implementation
-    ├── UserLanguageUpdaterImpl.java     ← UserLanguageUpdater implementation
-    └── UserActivationListener.java      ← PENDING → ACTIVE on first login
-
-app.meads.competition                    ← Competition module public API
-├── package-info.java                    ← @ApplicationModule(allowedDependencies = {"identity"})
-├── Competition.java                     ← JPA entity / aggregate root (top-level)
-├── Division.java                        ← JPA entity (sub-level, belongs to competition)
-├── Participant.java                     ← JPA entity (competition-scoped, holds access code)
-├── ParticipantRole.java                 ← JPA entity (references Participant, competition-scoped role)
-├── Category.java                        ← JPA entity (read-only reference data)
-├── DivisionCategory.java               ← JPA entity (per-division category, optional parent for hierarchy)
-├── DivisionStatus.java                  ← Enum: DRAFT → REGISTRATION_OPEN → ... → RESULTS_PUBLISHED
-├── CompetitionRole.java                 ← Enum: JUDGE, STEWARD, ENTRANT, ADMIN
-├── ScoringSystem.java                   ← Enum: MJP
-├── CompetitionService.java              ← Application service (public API)
-├── DivisionRevertGuard.java             ← Guard interface for blocking unsafe status reverts
-├── DivisionDeletionGuard.java           ← Guard interface for blocking unsafe division deletions
-├── DivisionStatusAdvancedEvent.java     ← Spring application event
-├── CompetitionDocument.java             ← JPA entity (competition-scoped document, PDF or link, optional language filter)
-├── DocumentType.java                    ← Enum: PDF, LINK
-└── internal/                            ← Module-private
-    ├── CompetitionRepository.java       ← JPA repository
-    ├── DivisionRepository.java          ← JPA repository
-    ├── ParticipantRepository.java       ← JPA repository
-    ├── ParticipantRoleRepository.java   ← JPA repository
-    ├── CategoryRepository.java          ← JPA repository
-    ├── DivisionCategoryRepository.java  ← JPA repository
-    ├── CompetitionDocumentRepository.java ← JPA repository
-    ├── CompetitionAccessCodeValidator.java  ← AccessCodeValidator implementation
-    ├── CompetitionUserDeletionGuard.java    ← UserDeletionGuard impl (blocks user delete with participants)
-    ├── CompetitionListView.java         ← Competitions CRUD view (@RolesAllowed("SYSTEM_ADMIN"))
-    ├── CompetitionDetailView.java       ← Competition detail with Divisions/Participants/Settings/Documents tabs (@PermitAll + beforeEnter auth)
-    ├── DivisionDetailView.java          ← Division detail with Categories/Settings tabs, breadcrumb (@PermitAll + beforeEnter auth)
-    └── MyCompetitionsView.java          ← Competitions where user is ADMIN (@PermitAll)
-app.meads.entry                              ← Entry module public API
-├── package-info.java                        ← @ApplicationModule(allowedDependencies = {"competition", "identity"})
-├── ProductMapping.java                      ← JPA entity (product-to-division mapping)
-├── JumpsellerOrder.java                     ← JPA entity (webhook order storage, idempotency)
-├── JumpsellerOrderLineItem.java             ← JPA entity (individual line items)
-├── EntryCredit.java                         ← JPA entity (credits per user per division, append-only ledger)
-├── Entry.java                               ← JPA entity / aggregate root (mead entry)
-├── EntryStatus.java                         ← Enum: DRAFT, SUBMITTED, RECEIVED, WITHDRAWN
-├── Sweetness.java                           ← Enum: DRY, MEDIUM, SWEET
-├── Strength.java                            ← Enum: HYDROMEL, STANDARD, SACK + fromAbv() auto-derivation
-├── Carbonation.java                         ← Enum: STILL, PETILLANT, SPARKLING
-├── OrderStatus.java                         ← Enum: PROCESSED, PARTIALLY_PROCESSED, NEEDS_REVIEW, UNPROCESSED
-├── LineItemStatus.java                      ← Enum: PROCESSED, NEEDS_REVIEW, IGNORED, UNPROCESSED
-├── EntryService.java                        ← Application service (public API)
-├── WebhookService.java                      ← Webhook processing service (public API)
-├── LabelPdfService.java                     ← PDF label generation (OpenPDF + ZXing QR codes)
-├── CreditsAwardedEvent.java                 ← Spring application event (record)
-├── EntriesSubmittedEvent.java               ← Spring application event (record)
-├── OrderRequiresReviewEvent.java            ← Spring application event (record)
-├── EntrantCreditSummary.java                ← DTO record (userId, email, name, creditBalance, entryCount)
-└── internal/                                ← Module-private
-    ├── ProductMappingRepository.java        ← JPA repository
-    ├── JumpsellerOrderRepository.java       ← JPA repository
-    ├── JumpsellerOrderLineItemRepository.java ← JPA repository
-    ├── EntryCreditRepository.java           ← JPA repository
-    ├── EntryRepository.java                 ← JPA repository
-    ├── JumpsellerWebhookController.java     ← @RestController (webhook endpoint)
-    ├── EntryDivisionRevertGuard.java        ← DivisionRevertGuard impl (blocks revert to DRAFT with entries)
-    ├── EntryDivisionDeletionGuard.java     ← DivisionDeletionGuard impl (blocks deletion with entries/credits/products)
-    ├── EntryJudgingCategoryDeletionGuard.java ← JudgingCategoryDeletionGuard impl (blocks deletion when finalCategoryId references it)
-    ├── RegistrationClosedListener.java      ← @ApplicationModuleListener (DivisionStatusAdvancedEvent)
-    ├── OrderReviewNotificationListener.java ← @ApplicationModuleListener (OrderRequiresReviewEvent → admin emails)
-    ├── SubmissionConfirmationListener.java  ← @ApplicationModuleListener (EntriesSubmittedEvent → entrant email)
-    ├── CreditNotificationListener.java      ← @ApplicationModuleListener (CreditsAwardedEvent → entrant email)
-    ├── EntrantOverviewView.java             ← Cross-competition entrant hub (/my-entries, @PermitAll)
-    ├── MyEntriesView.java                   ← Entrant-facing view (@PermitAll + beforeEnter auth)
-    └── DivisionEntryAdminView.java          ← Admin view with Credits/Entries/Products/Orders tabs
+app.meads                     ← root: MeadsApplication, MainLayout, shared interfaces (CompetitionAdminChecker,
+                                JudgeAssignmentChecker, StewardChecker, UserLocaleResolver, UserLanguageUpdater),
+                                BusinessRuleException, MeadsI18NProvider, PluralRules, LanguageMapping,
+                                CountryDisplay, internal/RootView
+app.meads.identity            ← User/Role/UserStatus, UserService, JwtMagicLinkService, EmailService,
+                                AccessCodeValidator, UserDeletionGuard, LoginView; internal/ = repos,
+                                Spring Security config, MFA (TOTP), auth filters, admin/profile views
+app.meads.competition         ← Competition/Division/Participant/Category/DivisionCategory/CompetitionDocument,
+                                LocalizedText (per-locale category name+desc; DivisionCategory.getName(Locale)/
+                                getDescription(Locale), English base fallback, internal/CategoryTranslation child),
+                                CategoryDisplay (shared two-tier category-name localization: per-category translation →
+                                catalog properties key `category.<code>.name` → English base; ALL category displays must
+                                use it, passing getTranslation or a key-default MessageSource as the translator),
+                                DivisionStatus, CompetitionRole, ScoringSystem, CompetitionService,
+                                Division{Advance,Revert,Deletion}Guard, DivisionStatusAdvancedEvent; allowed = {identity}
+app.meads.entry               ← Entry, JumpsellerOrder/LineItem, ProductMapping, EntryCredit,
+                                Sweetness/Strength/Carbonation/EntryStatus, EntryService, WebhookService,
+                                LabelPdfService, CreditsAwardedEvent, EntriesSubmittedEvent,
+                                OrderRequiresReviewEvent; allowed = {competition, identity}
+app.meads.judging             ← Judging, JudgingRound (type=SCORING|MEDAL), CategoryJudgingConfig, Scoresheet/
+                                ScoreField, MedalAward, BosPlacement, JudgeProfile, PhysicalTable,
+                                JudgingService, ScoresheetService, JudgeProfileService, CoiCheckService
+                                (+ manual COI: ManualCoi in internal, ManualCoiView, add/remove/findManualCois),
+                                ScoresheetPdfService, 13 events, JudgingErrorKeyCoverageTest;
+                                allowed = {competition, entry, identity}
+app.meads.awards              ← Publication (audit), AwardsService, EntrantResultRow, AdminResultsView,
+                                PublicResultsView, AnonymizedScoresheetView, ResultsPublishedEvent,
+                                ResultsRepublishedEvent, AnnouncementSentEvent;
+                                allowed = {judging, competition, entry, identity}
 ```
 
 ### Module Rules
 
-- Each direct sub-package of `app.meads` is an **application module**.
-- Module root package = **public API**. Other modules can reference these classes.
-- `internal/` sub-package = **module-private**. No outside access.
-- Inter-module communication = **Spring application events**, not direct calls to internals.
-- Verify with `ApplicationModules.of(MeadsApplication.class).verify()` (in `ModulithStructureTest`).
-- `MainLayout` lives in root `app.meads` package because all module views reference it via
-  `@Route(layout = MainLayout.class)`.
+- Module root package = **public API**. Other modules can reference these.
+- `internal/` = **module-private**. No outside access. Verify with `ApplicationModules.verify()` in `ModulithStructureTest`.
+- Inter-module communication = **Spring application events**, not direct calls into internals.
+- `MainLayout` lives in root `app.meads` because every module view references it via `@Route(layout = MainLayout.class)`.
 
 ### Creating a New Module
 
-Read `.claude/skills/new-module.md` before creating a module.
+Read `.claude/skills/new-module.md`. Then:
 
 1. Create package under `app.meads.<modulename>/`.
 2. Add `package-info.java` with `@ApplicationModule(allowedDependencies = {...})`.
-3. Public API (entities, services, events) in root; implementation in `internal/`.
-4. Run `ModulithStructureTest` — it must pass.
-5. Write a `@ApplicationModuleTest` for the module.
+3. Public API (entities, services, events) in root; impl in `internal/`.
+4. Run `ModulithStructureTest`.
+5. Add an `@ApplicationModuleTest`.
 
 ---
 
-## Module Map
+## Code Conventions
 
-| Module | Status | Description |
-|--------|--------|-------------|
-| `identity` | **Exists** | User management, authentication (JWT magic links, admin passwords, access codes), roles, admin CRUD |
-| `competition` | **Exists** | Events, competitions, scoring systems (MJP), categories, participants, access codes, status workflow, competition admin authorization |
-| `entry` | **Exists** | Jumpseller webhook, entry credits (ledger), mead entry registration, entry limits, admin management. Design: `docs/plans/2026-03-02-entry-module-design.md` |
-| `judging` | Planned | Judging sessions, tables, judge assignments, scoresheets, conflict of interest. Reference: `docs/reference/chip-competition-rules.md` |
-| `awards` | Planned | Score aggregation, rankings, medal determination (withholding), BOS (variable places), results publication. Reference: `docs/reference/chip-competition-rules.md` |
+### Entity Pattern (reference: `User.java`, `Competition.java`)
 
----
+- JPA `@Entity` with explicit `@Table(name = "...")`.
+- `UUID` primary key, self-generated in constructor (not passed in).
+- `@Getter` (Lombok) only — no manual getters. **No `@Data`, `@Builder`, `@Setter`.**
+- Enums via `@Enumerated(EnumType.STRING)`.
+- `Instant` timestamps with `TIMESTAMP WITH TIME ZONE` in DB.
+- `@PrePersist` / `@PreUpdate` for auto timestamps.
+- Protected no-arg constructor for JPA; public constructor with required business fields.
+- State changes via domain methods (`activate()`, `advanceStatus()`), never setters.
 
-## Code Conventions (from identity and competition modules)
+### Repository Pattern (reference: `UserRepository.java`)
 
-### Entity Pattern
-**Reference:** `User.java`, `Competition.java`
-- JPA `@Entity` with `@Table(name = "...")` — explicit table naming
-- `UUID` primary key, self-generated in constructor via `UUID.randomUUID()` (not passed as parameter)
-- `@Getter` (Lombok) for accessor methods — no manual getters
-- Enums stored as `@Enumerated(EnumType.STRING)`
-- `Instant` for timestamps (`createdAt`, `updatedAt`) with `TIMESTAMP WITH TIME ZONE` in DB
-- `@PrePersist` / `@PreUpdate` for automatic timestamps
-- Protected no-arg constructor for JPA
-- Public constructor with required business fields (not including `id` — self-generated)
-- Domain methods on the entity (e.g., `activate()`, `updateDetails()`, `advanceStatus()`)
-- No setters — state changes via domain methods only
+- Interface extending `JpaRepository<Entity, UUID>`.
+- Package-private in `internal/`. Never referenced outside the module.
+- Spring Data derived query methods.
 
-### Repository Pattern
-**Reference:** `UserRepository.java`
-- Interface extending `JpaRepository<Entity, UUID>`
-- Package-private (in `internal/`) — never accessed outside the module
-- Spring Data derived query methods (e.g., `findByEmail()`, `existsByRole()`)
+### Service Pattern (reference: `UserService.java`)
 
-### Service Pattern
-**Reference:** `UserService.java`
-- `@Service` + `@Transactional` + `@Validated` at class level
-- Public class in module root (part of public API)
-- Constructor injection (no `@Autowired` field injection)
-- Throws `IllegalArgumentException` for business rule violations
-- Package-private constructor where appropriate
+- `@Service` + `@Transactional` + `@Validated` at class level. Constructor injection (no field injection).
+- Public class in module root.
+- Validation: `@Email` / `@NotBlank` / `@NotNull` on method parameters for format/presence; manual checks + `BusinessRuleException` for business rules (uniqueness, status guards). `@Validated` **constraints belong on the interface**, not the impl — putting them on impl overrides triggers HV000151 (CGLIB proxy + LSP). Reference: `AwardsService`.
+- Views keep basic blank checks for UX feedback but delegate enforcement to services.
 
-### Validation Pattern
-**Reference:** `UserService.java`
-- Add `@Validated` to service classes that need input validation
-- Use `@Email`, `@NotBlank`, `@NotNull` on method parameters for format/presence checks
-- Use manual checks + `IllegalArgumentException` for business rules (uniqueness, self-referential edits)
-- Bean Validation throws `ConstraintViolationException`; business rules throw `IllegalArgumentException`
-- Views keep basic blank checks for UX (immediate field-level feedback) but delegate enforcement to services
+### View Pattern (reference: `UserListView.java`, `LoginView.java`)
 
-### View Pattern
-**Reference:** `UserListView.java`, `LoginView.java`
-- `@Route(value = "path", layout = MainLayout.class)` for protected views
-- `@RolesAllowed("ROLE_NAME")` for simple role-based access control
-- `@PermitAll` + `beforeEnter()` auth check for finer-grained authorization (e.g., per-competition).
-  Use a service-level boolean helper (e.g., `isAuthorizedForCompetition()`). Forward unauthorized
-  users to `""` (root). Reference: `CompetitionDetailView.java`, `CompetitionListView.java`.
-- `@AnonymousAllowed` for public views (LoginView, RootView)
-- `transient AuthenticationContext` field for Spring Security context
-- Dialog-based forms for create/edit operations
-- `Notification` with `NotificationVariant.LUMO_SUCCESS` for success feedback
-- **Always use Vaadin's built-in components** before writing custom code. Use the Vaadin MCP
-  tools (`search_vaadin_docs`, `get_component_java_api`, `get_components_by_version`) to check
-  what's available. Examples: `LoginForm` for login pages (handles CSRF, form POST, error
-  display automatically), `Grid` for data tables, `Dialog` for modals, `Upload` for file uploads.
-- **Never use `executeJs()` to do what a Vaadin component already does.** Custom JavaScript
-  bypasses Vaadin's server-side model (CSRF handling, accessibility, theming, i18n) and
-  is fragile. Use `executeJs()` only for browser APIs with no Vaadin equivalent.
-
-### Auth-Coupled Code (NOT reference patterns for other modules)
-The following are specific to the authentication mechanism and should NOT be
-treated as canonical patterns for other modules:
-- `LoginView.java` — auth-mechanism-specific UI (email + magic link, collapsible credentials + forgot password)
-- `SetPasswordView.java` — token-based password setup (`@AnonymousAllowed`)
-- `SecurityConfig.java` — formLogin + JWT filter + access code provider configuration
-- `JwtMagicLinkService.java` — JWT token generation/validation
-- `MagicLinkAuthenticationFilter.java` — JWT magic link filter
-- `AccessCodeAuthenticationProvider.java`, `AccessCodeAuthenticationToken.java` — access code auth
-- `DatabaseUserDetailsService.java` — UserDetails mapping (returns password hash when present)
-
-Auth-agnostic patterns that ARE canonical: `User.java`, `Role.java`, `UserStatus.java`,
-`UserService.java`, `UserListView.java`, `AdminInitializer.java`, `UserActivationListener.java`.
+- `@Route(value = "path", layout = MainLayout.class)` + role-based annotation:
+  - `@RolesAllowed("...")` for simple role gates.
+  - `@PermitAll` + `beforeEnter()` for fine-grained per-entity auth (use a service helper like `isAuthorizedForCompetition()`; forward unauthorized users to `""`).
+  - `@AnonymousAllowed` for public views.
+- `transient AuthenticationContext` for Spring Security.
+- Dialog-based create/edit forms (combine modes: `openDialog(Entity existing)` where `null` = create).
+- `Notification` with `NotificationVariant.LUMO_SUCCESS` for success.
+- **Always use built-in Vaadin components first.** Use the Vaadin MCP tools (`search_vaadin_docs`, `get_component_java_api`, `get_components_by_version`) to check what exists.
+- **Never use `executeJs()` to do what a Vaadin component already does.** Custom JS bypasses CSRF, theming, accessibility, i18n. Only use `executeJs()` for browser APIs with no Vaadin equivalent.
+- Views must NEVER mutate detached entities and assume persistence. Always go through a service method.
 
 ### Enum Pattern
-**Reference:** `CompetitionStatus.java`
-- `@Getter` + `@RequiredArgsConstructor` (Lombok) for enums with fields
-- Display/UI methods on the enum (e.g., `getDisplayName()`, `getBadgeCssClass()`)
-- State machine helpers (e.g., `next()` returning `Optional`) for display; enforcement via entity domain methods
 
-### View Dialog Pattern
-**Reference:** `MeadEventListView.openMeadEventDialog()`
-- Combine create/edit dialogs into one method: `openDialog(Entity existing)` where `null` = create mode
-- Same pattern as `UserListView`
+`@Getter` + `@RequiredArgsConstructor` for enums with fields. Display/UI helpers on the enum (`getDisplayName()`, etc.). State-machine helpers (`next()` returning `Optional`) for display; enforcement via entity domain methods.
 
-### View-to-Service Persistence
-- Views must NEVER mutate detached entities and assume persistence
-- Always call a service method (e.g., `competitionService.updateCompetition(...)`) for state changes
-- Views keep basic `StringUtils.hasText()` checks for UX; delegate enforcement to services
+### Auth-coupled code (NOT canonical patterns)
+
+`LoginView`, `SetPasswordView`, `SecurityConfig`, `JwtMagicLinkService`, `MagicLinkAuthenticationFilter`, `AccessCodeAuthenticationProvider`/`Token`, `DatabaseUserDetailsService` are specific to the auth mechanism. Don't copy them into other modules as templates. Canonical patterns: `User`, `Role`, `UserStatus`, `UserService`, `UserListView`, `AdminInitializer`, `UserActivationListener`.
 
 ### Imports — no inline fully-qualified names
-- Always import the type/method and reference it by its simple name. Never use
-  `org.assertj.core.api.Assertions.assertThatThrownBy(...)` or
-  `} catch (jakarta.validation.ConstraintViolationException ex) {` inline.
-- Applies to types (`catch`, declarations, generics) and statics (assertions, matchers, factories).
-- Exceptions:
-  - When the simple name collides with another already-imported type in the same file (e.g. Spring's `org.springframework.security.core.userdetails.User` vs. domain `app.meads.identity.User`), keep the inline FQN rather than renaming the imported type.
-  - `package-info.java` annotations (e.g. `@org.springframework.modulith.ApplicationModule`) must be fully qualified — imports can't precede the package declaration.
+
+Always import the type/method and reference it by its simple name. Never `org.assertj.core.api.Assertions.assertThatThrownBy(...)` or `} catch (jakarta.validation.ConstraintViolationException ex) {` inline. Applies to types (`catch`, declarations, generics) and statics (assertions, matchers, factories).
+
+Exceptions:
+
+- Simple-name collision with another imported type in the same file (e.g. Spring's `User` vs domain `app.meads.identity.User`) — keep the inline FQN.
+- `package-info.java` annotations (`@org.springframework.modulith.ApplicationModule`) — imports can't precede the package declaration.
 
 ---
 
 ## Testing Conventions
 
 ### Test Types
+
 Choose the test type BEFORE writing. Read the matching example from `docs/examples/`.
 
-| Test Type | Annotation / Tool | When | Example File |
+| Test Type | Annotation / Tool | When | Example |
 |---|---|---|---|
-| Unit test | `@ExtendWith(MockitoExtension.class)` | Domain logic, no Spring context | `UnitTestExample.java` |
-| Repository test | `@SpringBootTest` + `@Transactional` | Persistence, schema correctness | `RepositoryTestExample.java` |
-| Module integration test | `@ApplicationModuleTest` | One module with Spring context + DB | `ModuleIntegrationTestExample.java` |
-| Vaadin UI test | `@SpringBootTest` + Karibu | View rendering, form actions | `VaadinUITestExample.java` |
-| Modulith structure test | `ApplicationModules.verify()` | Module boundary validation | `ModulithStructureTestExample.java` |
-| Async event test | `Scenario` or `Awaitility` | Event publication & cross-module handling | `AsyncEventTestExample.java` |
+| Unit | `@ExtendWith(MockitoExtension.class)` | Domain logic, no Spring context | `UnitTestExample.java` |
+| Repository | `@SpringBootTest` + `@Transactional` | Persistence, schema | `RepositoryTestExample.java` |
+| Module integration | `@ApplicationModuleTest` | One module with Spring context + DB | `ModuleIntegrationTestExample.java` |
+| Vaadin UI | `@SpringBootTest` + Karibu | View rendering, form actions | `VaadinUITestExample.java` |
+| Modulith structure | `ApplicationModules.verify()` | Module boundaries | `ModulithStructureTestExample.java` |
+| Async event | `Scenario` or `Awaitility` | Cross-module event handling | `AsyncEventTestExample.java` |
 
-**Note:** In practice, the identity module uses `@SpringBootTest` + `@Transactional` for
-repository tests rather than `@DataJpaTest`. Both work; be consistent within a module.
+The identity module uses `@SpringBootTest` + `@Transactional` for repository tests rather than `@DataJpaTest`. Both work; be consistent within a module.
 
-### Test Naming
-`should{Behavior}When{Condition}` — e.g., `shouldSoftDeleteUserWhenStatusIsNotDisabled()`
+### Naming
 
-### Testcontainers Setup
-**Reference:** `TestcontainersConfiguration.java`
-- `@TestConfiguration(proxyBeanMethods = false)` with `@ServiceConnection`
-- PostgreSQL 18 Alpine container, shared across test classes
-- Import via `@Import(TestcontainersConfiguration.class)` on integration tests
+`should{Behavior}When{Condition}` — e.g. `shouldSoftDeleteUserWhenStatusIsNotDisabled()`.
 
-### Karibu Testing Setup
-**Reference:** `UserListViewTest.java`, `MainLayoutTest.java`
+### Testcontainers (reference: `TestcontainersConfiguration.java`)
+
+`@TestConfiguration(proxyBeanMethods = false)` with `@ServiceConnection`. PostgreSQL 18 Alpine container, shared across test classes. Import via `@Import(TestcontainersConfiguration.class)` on integration tests.
+
+### Karibu (reference: `UserListViewTest.java`, `MainLayoutTest.java`)
 
 ```java
 @BeforeEach
@@ -371,8 +202,7 @@ void setup(TestInfo testInfo) {
     var routes = new Routes().autoDiscoverViews("app.meads");
     var servlet = new MockSpringServlet(routes, ctx, UI::new);
     MockVaadin.setup(UI::new, servlet);
-    // Resolve @WithMockUser and propagate to Vaadin security context
-    // (see resolveAuthentication + propagateSecurityContext helpers)
+    // resolve @WithMockUser, propagate to Vaadin security context — see UserListViewTest
 }
 
 @AfterEach
@@ -382,31 +212,51 @@ void tearDown() {
 }
 ```
 
-**Key Karibu patterns:** `_get(Component.class)`, `_find(Component.class)`, `_click(button)`
+Key patterns: `_get(Component.class)`, `_find(Component.class)`, `_click(button)`.
 
 ### Mocking Strategy
-- **Unit tests:** `@Mock` + `@InjectMocks`, BDDMockito (`given(...).willReturn(...)`)
-- **Integration tests:** Real beans, real DB (Testcontainers), no mocks
-- **UI tests:** Real Spring context + real DB + MockVaadin (no browser)
 
-### Important Test Quirks
-- `AuthenticationContext` in Vaadin views must be `transient`
-- `@WithMockUser` context can be lost when `VaadinAwareSecurityContextHolderStrategy`
-  is active — use the `resolveAuthentication()` helper pattern from `UserListViewTest`
-- Notification text is stored under element property `"text"` — assert via:
-  `notification.getElement().getProperty("text")`
-- Use `@DirtiesContext` on tests that modify application state or security context strategy
+- **Unit tests:** `@Mock` + `@InjectMocks`, BDDMockito (`given(...).willReturn(...)`).
+- **Integration tests:** real beans, real DB (Testcontainers), no mocks.
+- **UI tests:** real Spring context + real DB + MockVaadin (no browser).
+
+### Important quirks
+
+- `AuthenticationContext` in views must be `transient`.
+- `@WithMockUser` context can be lost when `VaadinAwareSecurityContextHolderStrategy` is active — use the `resolveAuthentication()` helper pattern from `UserListViewTest`.
+- Notification text lives at element property `"text"` — assert via `notification.getElement().getProperty("text")`.
+- Use `@DirtiesContext` on tests that modify application state or security context strategy.
+- `@WebMvcTest` doesn't work in this Vaadin project (auto-config conflicts → 404). Use `MockMvcBuilders.standaloneSetup(controller)` with `@ExtendWith(MockitoExtension.class)` for controller tests.
 
 ---
 
 ## Database & Migrations
 
-- **Location:** `src/main/resources/db/migration/V{N}__{description}.sql`
-- **Current highest version:** V19 (`V19__add_mfa_to_users.sql`). V2 includes users + meadery_name. V3–V8 are competition module (V3 includes contact_email + shipping_address + phone_number, V4 includes entry limits + prefix). V9–V13 are entry module. V14 is competition documents. V15 adds website to competitions. V16 adds preferred_language to users (i18n). V17 is document language filtering. V18 adds `scope` column to `division_categories` and updates unique constraint to `(division_id, code, scope)`. V19 adds `totp_secret` and `mfa_enabled` columns to `users`.
-- **Naming:** `V{next}__{snake_case_description}.sql` (double underscore)
-- Migrations are created in **Step 2** (GREEN), when a repository test needs a table.
-- **Never edit existing migrations.** Always create new ones.
-- Spring Modulith event publication table is `V1` — every project needs it.
+- **Location:** `src/main/resources/db/migration/V{N}__{description}.sql`.
+- **Naming:** `V{next}__{snake_case_description}.sql` (double underscore). Latest version is whatever the most recently added file is — `ls db/migration/` to check.
+- Created in **Step 2** (GREEN), when a repository test needs the table.
+- **Never edit existing migrations.** Always create new ones. App is in production — backward-compatible migrations only (see `docs/plans/deployment-checklist.md`).
+- Spring Modulith event publication table is `V1`.
+- Use `VARCHAR(N)` in migrations, never `CHAR(N)` — PostgreSQL `CHAR(N)` maps to `bpchar`, Hibernate expects `varchar(N)`.
+
+---
+
+## i18n (properties files)
+
+All non-ASCII characters in `src/main/resources/messages*.properties` (EN/ES/IT/PL/PT) MUST be `\uXXXX` escapes, never raw UTF-8. The convention is uniform across all five locales — keeps diffs and review readable. This applies to em dash `—` (`—`), ellipsis `…` (`…`), smart quotes `“`/`”` (`“`/`”`), low-9 quote `„` (`„`), and every accented letter.
+
+**Verify after every edit:** `grep -nP "[^\x00-\x7F]" src/main/resources/messages*.properties` — must return zero hits.
+
+**Tooling gotcha:** the Edit tool is inconsistent here — sometimes converts raw UTF-8 to escapes on write, sometimes stores the raw bytes (observed on the same multi-locale edit). Always re-verify with the grep above.
+
+**Batch edits across 5 locales:** drop a one-shot Python script that reads UTF-8 and writes ASCII with `\uXXXX`. Pattern:
+```python
+def escape(s):
+    return ''.join(c if ord(c) < 128 else f'\\u{ord(c):04x}' for c in s)
+```
+Insert each key after an anchor key (`existing.key=`). Run, grep-verify zero non-ASCII, delete the script.
+
+**Single-char fix** if the Edit tool slipped on one char: `perl -i -pe 's/\xc3\xa8/\\u00e8/g' messages_it.properties` (è = `è`).
 
 ---
 
@@ -428,160 +278,70 @@ Test with `PublishedEvents` (synchronous) or `Scenario` (cross-module workflows)
 
 ## Sequencing for Multi-Layer Features
 
-When a feature needs new UI, service, entity, and database table, work in this order.
-Each item below is a **full RED-GREEN-REFACTOR cycle** (multiple responses).
+When a feature needs new UI + service + entity + DB table, work in this order. Each item is a **full RED-GREEN-REFACTOR cycle**:
 
-1. **Unit test** for domain logic (service behavior with mocks).
-2. **Repository test** for persistence (drives entity + Flyway migration creation).
-3. **Module integration test** for the wired-up module (verifies events if any).
-4. **UI test** for the Vaadin view (Karibu).
+1. Unit test for domain logic (service behavior with mocks).
+2. Repository test for persistence (drives entity + Flyway migration).
+3. Module integration test for the wired-up module (verifies events if any).
+4. UI test for the Vaadin view (Karibu).
 
 Do not jump ahead. Complete cycle N before starting cycle N+1.
 
----
-
-## Bug Fix Sequence
-
-1. **Step 1 (RED):** Write a test that reproduces the bug — it asserts correct behavior
-   and fails against current code.
-2. **Step 2 (GREEN):** Fix the production code with minimum change.
-3. **Step 3 (REFACTOR):** Review, run full suite, check for related edge cases.
-
----
-
-## Workflow Modes
-
-### /architect
-Focus on domain modeling, module boundaries, event contracts, and API design.
-Output: spec files, interfaces, record types, skeleton classes.
-Do NOT write implementation logic or test assertions.
-
-### /build
-Follow the module spec. Work in TDD cycles: test → implement → verify.
-Do NOT change module boundaries, event contracts, or public API signatures
-unless explicitly discussed.
-Stay within the current module's package.
-
----
-
-## Do NOT List
-
-- **No cross-module repository access.** Repositories are `internal/`. Use events or services.
-- **No `@Autowired` field injection.** Use constructor injection only.
-- **No `@Data` or `@Builder` on entities.** Use `@Getter` only. No setters — state changes via domain methods.
-- **No `@Setter` on entities.** State changes via domain methods only.
-- **No Selenium/browser-based UI tests.** Use Karibu Testing.
-- **No mocking the database in integration tests.** Use Testcontainers.
-- **No making `internal/` classes public for test access.** Test through the module's public API.
-- **No `@Modulithic` annotation.** The project uses plain `@SpringBootApplication`.
-- **No React/Hilla views.** This project uses Vaadin Java Flow exclusively.
-- **No custom JavaScript (`executeJs`) when a Vaadin component exists.** Check the Vaadin component
-  catalog and docs first. Custom JS bypasses CSRF, theming, accessibility, and i18n.
-- **No editing existing Flyway migrations.** Always create new versioned files.
-- **No production code in TDD Step 1.** The test must fail first.
-- **No multiple tests before making them pass.** One test per TDD cycle.
+For bug fixes: RED test reproducing the bug → GREEN fix → REFACTOR review.
 
 ---
 
 ## Commands
 
-**Always pipe mvn test through `2>&1 | tail -50` (or more) when running in the terminal.**
-Short tails cut off error details and force a second run just to find the failure.
+**Always pipe `mvn test` through `2>&1 | tail -50` (or more).** Short tails cut off error details.
 
 ```bash
-# TDD workflow
-mvn test -Dtest=Class#method -Dsurefire.useFile=false 2>&1 | tail -50   # one test (Step 1/2)
+mvn test -Dtest=Class#method -Dsurefire.useFile=false 2>&1 | tail -50   # one test
 mvn test -Dtest=Class -Dsurefire.useFile=false 2>&1 | tail -50           # one class
-mvn test -Dsurefire.useFile=false 2>&1 | tail -50                         # full suite (Step 3)
-
-# Module-scoped
-mvn test -Dtest="app.meads.identity.**" -Dsurefire.useFile=false  # identity module
-
-# Build & verify
-mvn verify                                                # compile + test + package
-mvn clean test                                            # clean rebuild
-
-# Architecture
-mvn test -Dtest=ModulithStructureTest -Dsurefire.useFile=false  # module boundaries
-
-# Development
-mvn spring-boot:run                                       # start app (needs PostgreSQL)
-# Or use docker-compose up -d for PostgreSQL, then mvn spring-boot:run
+mvn test -Dsurefire.useFile=false 2>&1 | tail -50                         # full suite
+mvn test -Dtest="app.meads.identity.**" -Dsurefire.useFile=false         # module-scoped
+mvn test -Dtest=ModulithStructureTest -Dsurefire.useFile=false           # module boundaries
+mvn verify                                                                # compile + test + package
+mvn spring-boot:run                                                       # start app (needs PostgreSQL)
 ```
 
 ---
 
-## Resuming Work (New Session or New Machine)
+## Do NOT List
 
-The project is designed so that work can be resumed from any machine with a cleared context,
-as long as the repository is up to date. On a new session:
-
-1. **Read `docs/SESSION_CONTEXT.md` first** — this is the primary bootstrap file. It contains
-   the current state of all modules, what's done, what's next, in-progress work details,
-   and key technical notes. Everything needed to continue is here.
-2. **`CLAUDE.md`** (this file) is auto-loaded and provides conventions, architecture, and
-   workflow rules.
-3. No other files need to be read to resume — all accumulated knowledge is captured in
-   these two files plus the codebase itself.
-
----
-
-## Commit Hygiene — Documentation Freshness & Session Portability
-
-Doc updates are part of Step 3 (REFACTOR) and Fast Cycle step 5 — not a post-commit task.
-**Do NOT suggest a commit message until all affected docs are updated.** The goal is
-**session portability**: after every commit-and-push, anyone (including the same developer
-on a different machine with a cleared context) must be able to resume work with no loss of
-context by reading `docs/SESSION_CONTEXT.md` and `CLAUDE.md`.
-
-Checklist — update each if affected:
-
-1. **`docs/SESSION_CONTEXT.md`** — The most critical file. Update:
-   - Test count (run `mvn test -Dsurefire.useFile=false` and record the number)
-   - Module status changes (new entities, services, views added)
-   - "What's Next" section (reorder or add items as work progresses)
-   - **In-progress work** — If the commit is mid-feature, document what's done and what
-     remains with enough detail to continue without prior conversation context. Include
-     the current TDD step (RED/GREEN/REFACTOR), which test is being worked on, and any
-     decisions or blockers discovered during the session.
-   - Documentation structure (if files were added or removed)
-2. **`CLAUDE.md`** — Update if conventions, module map, package layout, or migration versions
-   changed. Any new pattern or quirk discovered during development should be added to the
-   relevant section (Testing Conventions, Code Conventions, Common Pitfalls) so it's available
-   in future sessions.
-3. **Module specs** (`docs/specs/`) — Update if the committed work changes or completes a
-   planned feature. Delete specs for completed modules (the implementation is the source of
-   truth). Keep specs for unimplemented modules current with the latest naming and conventions.
-4. **Design docs** (`docs/plans/`) — Delete design docs for fully implemented features.
-   Only keep active/in-progress plans. The codebase is the source of truth for completed work.
-5. **Walkthrough** (`docs/walkthrough/manual-test.md`) — **Must be updated with every UI or
-   API change.** This is a living document: add test steps for new features, update existing
-   steps if behavior changed, and keep the coverage mapping appendix current. The walkthrough
-   must always be executable end-to-end against the current codebase.
-6. **Example files** (`docs/examples/`) — Update if testing or domain model conventions changed.
-   Examples must always reflect the actual patterns used in the codebase.
-
-**Cleanup rule:** Documentation for completed work should be removed rather than left to go stale.
-The entry module design doc (`docs/plans/2026-03-02-entry-module-design.md`) is retained as
-a reference for how to structure future module designs.
-
-**Self-check before committing:** _"If I clear my context right now and start fresh on another
-machine, can I resume this work by reading `docs/SESSION_CONTEXT.md`?"_ If no, update it.
+- **No `@Autowired` field injection.** Use constructor injection.
+- **No `@Data`, `@Builder`, `@Setter` on entities.** `@Getter` only; state changes via domain methods.
+- **No cross-module repository access.** Repos are `internal/`. Use events or public services.
+- **No making `internal/` classes public for test access.** Test through the module's public API.
+- **No `@Modulithic` annotation** — plain `@SpringBootApplication`.
+- **No React/Hilla views.** Vaadin Java Flow only.
+- **No custom JavaScript (`executeJs`) when a Vaadin component exists.** Check the Vaadin catalog first.
+- **No Selenium / browser-based UI tests.** Karibu Testing only.
+- **No mocking the database in integration tests.** Testcontainers only.
+- **No editing existing Flyway migrations.** Always create new versioned files.
+- **No production code in TDD Step 1.** The test must fail first.
+- **No multiple tests before making them pass.** One per cycle.
+- **No treating auth-coupled code as canonical** (`LoginView`, `SecurityConfig`, `JwtMagicLinkService`, `MagicLinkAuthenticationFilter`).
 
 ---
 
-## Common Pitfalls
+## Commit Hygiene — Session Portability
 
-- Creating production classes during Step 1. **The test must fail first.**
-- Writing multiple tests before making any pass. **One per cycle.**
-- Skipping Step 3. **Always refactor and run full suite.**
-- Making internal classes public for tests. Test through the module's public API.
-- Referencing another module's `internal` package. Use events.
-- Mocking the database in integration tests. Use Testcontainers.
-- Using Selenium for Vaadin tests. Use Karibu Testing.
-- Mutating a detached entity in a view and assuming it persists. **Always call a service method.**
-- Using generic Spring/Vaadin patterns instead of checking what the existing modules actually do.
-- Treating auth-coupled code (LoginView, SecurityConfig, JwtMagicLinkService, MagicLinkAuthenticationFilter) as canonical patterns.
-- Reinventing Vaadin components in JavaScript. **Always check the Vaadin component catalog first** —
-  e.g., use `LoginForm` instead of building a form POST with `executeJs()`, use `Upload` instead of
-  custom file input JS. Custom JS bypasses CSRF, theming, accessibility, and i18n.
+Doc updates are part of Step 3 (REFACTOR) and Fast Cycle step 4 — not a post-commit task. **Do NOT suggest a commit message until all affected docs are updated.** Goal: after every commit-and-push, anyone (including the same developer on a different machine with a cleared context) must be able to resume work by reading `docs/SESSION_CONTEXT.md` and `CLAUDE.md`.
+
+Update each if affected:
+
+1. **`docs/SESSION_CONTEXT.md`** (most critical) — test count, module status, "What's Next", in-progress work (current TDD step, which test, blockers).
+2. **`CLAUDE.md`** — if conventions, module map, or patterns changed.
+3. **`docs/walkthrough/manual-test.md`** — required on every UI/API change. Must always be executable end-to-end.
+4. **`docs/specs/`** — update if the commit changes or completes a planned feature. Delete specs for completed modules.
+5. **`docs/plans/`** — delete design docs for fully implemented features. Only keep active/in-progress plans.
+6. **`docs/examples/`** — update if testing or domain conventions changed.
+
+**Self-check before committing:** *"If I clear my context right now and start fresh on another machine, can I resume by reading `SESSION_CONTEXT.md`?"* If no, update it first.
+
+---
+
+## Resuming Work
+
+On a new session: read `docs/SESSION_CONTEXT.md` first (primary bootstrap). `CLAUDE.md` (this file) is auto-loaded. The codebase + `git log` complete the picture. No other files needed.

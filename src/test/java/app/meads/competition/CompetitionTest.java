@@ -106,4 +106,5 @@ class CompetitionTest {
         assertThat(competition.getPhoneNumber()).isNull();
         assertThat(competition.getWebsite()).isNull();
     }
+
 }

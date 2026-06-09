@@ -70,6 +70,8 @@ class CompetitionServiceTest {
     @Mock
     ApplicationEventPublisher eventPublisher;
 
+    List<DivisionAdvanceGuard> advanceGuards = new ArrayList<>();
+
     List<DivisionRevertGuard> revertGuards = new ArrayList<>();
 
     List<DivisionDeletionGuard> deletionGuards = new ArrayList<>();
@@ -78,6 +80,8 @@ class CompetitionServiceTest {
 
     List<JudgingCategoryDeletionGuard> judgingCategoryDeletionGuards = new ArrayList<>();
 
+    List<MinJudgesPerRoundLockGuard> minJudgesPerRoundLockGuards = new ArrayList<>();
+
     @BeforeEach
     void setUp() {
         competitionService = new CompetitionService(
@@ -85,8 +89,8 @@ class CompetitionServiceTest {
                 participantRepository, participantRoleRepository,
                 divisionCategoryRepository, categoryRepository,
                 competitionDocumentRepository, userService,
-                eventPublisher, revertGuards, deletionGuards, removalCleanups,
-                judgingCategoryDeletionGuards);
+                eventPublisher, advanceGuards, revertGuards, deletionGuards, removalCleanups,
+                judgingCategoryDeletionGuards, minJudgesPerRoundLockGuards);
     }
 
     private Competition createCompetition() {
@@ -267,6 +271,104 @@ class CompetitionServiceTest {
 
         assertThat(result.getContactEmail()).isEqualTo("organizer@example.com");
         then(competitionRepository).should().save(competition);
+    }
+
+    // --- updateDivisionBosPlaces / updateDivisionMinJudgesPerRound ---
+
+    private Division createDraftDivision(UUID competitionId) {
+        return new Division(competitionId, "Amateur", "amateur",
+                ScoringSystem.MJP,
+                LocalDateTime.of(2026, 6, 1, 23, 59),
+                "Europe/Lisbon");
+    }
+
+    @Test
+    void shouldUpdateDivisionBosPlacesWhenAuthorized() {
+        var admin = createAdmin();
+        var competition = createCompetition();
+        var division = createDraftDivision(competition.getId());
+        given(divisionRepository.findById(division.getId())).willReturn(Optional.of(division));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(divisionRepository.save(any(Division.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var result = competitionService.updateDivisionBosPlaces(division.getId(), 3, admin.getId());
+
+        assertThat(result.getBosPlaces()).isEqualTo(3);
+    }
+
+    @Test
+    void shouldRejectUpdateBosPlacesWhenLessThanOne() {
+        var admin = createAdmin();
+        var competition = createCompetition();
+        var division = createDraftDivision(competition.getId());
+        given(divisionRepository.findById(division.getId())).willReturn(Optional.of(division));
+        given(userService.findById(admin.getId())).willReturn(admin);
+
+        assertThatThrownBy(() -> competitionService.updateDivisionBosPlaces(
+                division.getId(), 0, admin.getId()))
+                .isInstanceOf(BusinessRuleException.class);
+    }
+
+    @Test
+    void shouldUpdateDivisionMinJudgesPerTableWhenNotLocked() {
+        var admin = createAdmin();
+        var competition = createCompetition();
+        var division = createDraftDivision(competition.getId());
+        var unlockedGuard = mock(MinJudgesPerRoundLockGuard.class);
+        given(unlockedGuard.isLocked(division.getId())).willReturn(false);
+        minJudgesPerRoundLockGuards.add(unlockedGuard);
+        given(divisionRepository.findById(division.getId())).willReturn(Optional.of(division));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        given(divisionRepository.save(any(Division.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        var result = competitionService.updateDivisionMinJudgesPerRound(
+                division.getId(), 3, admin.getId());
+
+        assertThat(result.getMinJudgesPerRound()).isEqualTo(3);
+    }
+
+    @Test
+    void shouldRejectUpdateMinJudgesPerTableWhenLockedByGuard() {
+        var admin = createAdmin();
+        var competition = createCompetition();
+        var division = createDraftDivision(competition.getId());
+        var lockedGuard = mock(MinJudgesPerRoundLockGuard.class);
+        given(lockedGuard.isLocked(division.getId())).willReturn(true);
+        minJudgesPerRoundLockGuards.add(lockedGuard);
+        given(divisionRepository.findById(division.getId())).willReturn(Optional.of(division));
+        given(userService.findById(admin.getId())).willReturn(admin);
+
+        assertThatThrownBy(() -> competitionService.updateDivisionMinJudgesPerRound(
+                division.getId(), 3, admin.getId()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.division.min-judges-locked");
+
+        then(divisionRepository).should(never()).save(any(Division.class));
+    }
+
+    @Test
+    void shouldReportMinJudgesLockedWhenAnyGuardSaysSo() {
+        var divisionId = UUID.randomUUID();
+        var unlocked = mock(MinJudgesPerRoundLockGuard.class);
+        given(unlocked.isLocked(divisionId)).willReturn(false);
+        var locked = mock(MinJudgesPerRoundLockGuard.class);
+        given(locked.isLocked(divisionId)).willReturn(true);
+        minJudgesPerRoundLockGuards.add(unlocked);
+        minJudgesPerRoundLockGuards.add(locked);
+
+        assertThat(competitionService.isMinJudgesPerRoundLocked(divisionId)).isTrue();
+    }
+
+    @Test
+    void shouldReportMinJudgesUnlockedWhenAllGuardsAgree() {
+        var divisionId = UUID.randomUUID();
+        var unlocked = mock(MinJudgesPerRoundLockGuard.class);
+        given(unlocked.isLocked(divisionId)).willReturn(false);
+        minJudgesPerRoundLockGuards.add(unlocked);
+
+        assertThat(competitionService.isMinJudgesPerRoundLocked(divisionId)).isFalse();
     }
 
     // --- updateCompetitionShippingDetails ---
@@ -531,6 +633,31 @@ class CompetitionServiceTest {
         then(eventPublisher).should().publishEvent(any(DivisionStatusAdvancedEvent.class));
     }
 
+    @Test
+    void shouldRejectAdvanceWhenGuardBlocks() {
+        var guard = mock(DivisionAdvanceGuard.class);
+        advanceGuards.add(guard);
+
+        var admin = createAdmin();
+        var division = new Division(UUID.randomUUID(),
+                "Home", "home", ScoringSystem.MJP,
+                LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
+        given(divisionRepository.findById(division.getId()))
+                .willReturn(Optional.of(division));
+        given(userService.findById(admin.getId())).willReturn(admin);
+        willThrow(new BusinessRuleException("error.test.guard-blocked"))
+                .given(guard).checkAdvanceAllowed(division.getId(),
+                        DivisionStatus.DRAFT, DivisionStatus.REGISTRATION_OPEN);
+
+        assertThatThrownBy(() -> competitionService.advanceDivisionStatus(
+                division.getId(), admin.getId()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.test.guard-blocked");
+
+        then(divisionRepository).should(never()).save(any());
+        then(eventPublisher).should(never()).publishEvent(any());
+    }
+
     // --- revertDivisionStatus ---
 
     @Test
@@ -709,6 +836,30 @@ class CompetitionServiceTest {
                 .hasMessageContaining("error.division.cannot-delete-has-entries");
 
         then(divisionRepository).should(never()).delete(any());
+    }
+
+    // --- findParticipantCountsByRole ---
+
+    @Test
+    void shouldCountParticipantsByRoleWithZeroForUnusedRoles() {
+        var competition = createCompetition();
+        var p1 = new Participant(competition.getId(), UUID.randomUUID());
+        var p2 = new Participant(competition.getId(), UUID.randomUUID());
+        given(participantRepository.findByCompetitionId(competition.getId()))
+                .willReturn(List.of(p1, p2));
+        given(participantRoleRepository.findByParticipantId(p1.getId()))
+                .willReturn(List.of(new ParticipantRole(p1.getId(), CompetitionRole.JUDGE),
+                        new ParticipantRole(p1.getId(), CompetitionRole.ENTRANT)));
+        given(participantRoleRepository.findByParticipantId(p2.getId()))
+                .willReturn(List.of(new ParticipantRole(p2.getId(), CompetitionRole.JUDGE)));
+
+        var counts = competitionService.findParticipantCountsByRole(competition.getId());
+
+        assertThat(counts)
+                .containsEntry(CompetitionRole.JUDGE, 2L)
+                .containsEntry(CompetitionRole.ENTRANT, 1L)
+                .containsEntry(CompetitionRole.STEWARD, 0L)
+                .containsEntry(CompetitionRole.ADMIN, 0L);
     }
 
     // --- addParticipant ---
@@ -1232,6 +1383,34 @@ class CompetitionServiceTest {
         assertThat(result).containsExactlyInAnyOrder(judgeRole, entrantRole);
     }
 
+    // --- findUsersByRoleInCompetition ---
+
+    @Test
+    void shouldFindUsersByRoleInCompetition() {
+        var competition = createCompetition();
+        var judge1 = new User("j1@example.com", "Judge One", UserStatus.ACTIVE, Role.USER);
+        var judge2 = new User("j2@example.com", "Judge Two", UserStatus.ACTIVE, Role.USER);
+        var entrant = new User("e@example.com", "Entrant", UserStatus.ACTIVE, Role.USER);
+        var p1 = new Participant(competition.getId(), judge1.getId());
+        var p2 = new Participant(competition.getId(), judge2.getId());
+        var p3 = new Participant(competition.getId(), entrant.getId());
+        given(participantRepository.findByCompetitionId(competition.getId()))
+                .willReturn(List.of(p1, p2, p3));
+        given(participantRoleRepository.existsByParticipantIdAndRole(p1.getId(), CompetitionRole.JUDGE))
+                .willReturn(true);
+        given(participantRoleRepository.existsByParticipantIdAndRole(p2.getId(), CompetitionRole.JUDGE))
+                .willReturn(true);
+        given(participantRoleRepository.existsByParticipantIdAndRole(p3.getId(), CompetitionRole.JUDGE))
+                .willReturn(false);
+        given(userService.findAllByIds(List.of(judge1.getId(), judge2.getId())))
+                .willReturn(List.of(judge1, judge2));
+
+        var result = competitionService.findUsersByRoleInCompetition(
+                competition.getId(), CompetitionRole.JUDGE);
+
+        assertThat(result).containsExactlyInAnyOrder(judge1, judge2);
+    }
+
     // --- addParticipantByEmail ---
 
     @Test
@@ -1338,6 +1517,23 @@ class CompetitionServiceTest {
         var result = competitionService.findCompetitionsByAdmin(user.getId());
 
         assertThat(result).isEmpty();
+    }
+
+    @Test
+    void shouldFindCompetitionsWhereUserIsSteward() {
+        var user = createRegularUser();
+        var comp = createCompetition();
+        var participant = new Participant(comp.getId(), user.getId());
+        given(participantRepository.findByUserId(user.getId()))
+                .willReturn(List.of(participant));
+        given(participantRoleRepository.existsByParticipantIdAndRole(
+                participant.getId(), CompetitionRole.STEWARD)).willReturn(true);
+        given(competitionRepository.findById(comp.getId()))
+                .willReturn(Optional.of(comp));
+
+        var result = competitionService.findCompetitionsBySteward(user.getId());
+
+        assertThat(result).containsExactly(comp);
     }
 
     // --- findDivisionsByCompetition ---

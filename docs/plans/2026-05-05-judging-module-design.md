@@ -60,14 +60,93 @@ Once a phase is complete, its open questions should all have decisions or be exp
 
 ## Next Session: Start Here
 
-**Phase 4 ✅ COMPLETE (2026-05-09).** All 10 items + §Q15 closed in a
-single session after a branch-reconciliation pass. New §Q16 + §Q17
-deferred. Project-wide policy refinements landed: judges see no COI
-indicators during scoring (admin vets at table-assignment time);
-soft-COI warnings are admin-only; URLs follow the fully-scoped
-`/competitions/:c/divisions/:d/...` convention; sidebar "My Judging"
-link gated by `hasAnyJudgeAssignment`. See sections in Decisions /
-Open Questions.
+**Phase 5 ✅ COMPLETE (2026-05-09).** Services layer + cross-module
+guards done. **Phase 6 IN PROGRESS (`feature/judging-module`).**
+
+**Current state (2026-05-12, 975 tests passing — all Phase 6 views complete; service-error i18n complete):**
+- ✅ JudgingAdminView at `/competitions/:c/divisions/:d/judging-admin`
+- ✅ Tab 1 Tables: full CRUD + per-row actions (Edit / Start / Assign
+  Judges with COI chips / Delete) + scoresheets count column
+- ✅ Tab 2 Medal Rounds: full grid (Category / Mode / Status / Tables
+  / Awards) + per-row actions (Start / Finalize / Reopen / Reset
+  with type-RESET strong-confirm)
+- ✅ Tab 3 BOS: phase indicator + GOLD candidates list + placements
+  grid (empty-slot rendering, Add/Edit/Delete per row) +
+  Start/Finalize/Reopen/Reset BOS actions
+- ✅ Settings extensions (§4.F): `Competition.commentLanguages`
+  MultiSelectComboBox on CompetitionDetailView; `Division.bosPlaces`
+  + `Division.minJudgesPerTable` IntegerFields on DivisionDetailView
+  with status-based + cross-module-guard locking
+- ✅ Unified `TableView` (§4.D / §4.G) — skeleton (route +
+  role-aware auth + breadcrumb + header), scoresheets grid (Entry /
+  Mead name / Status / Total / Filled by / Actions), filter bar
+  (Status `Select` All/Draft/Submitted + Search `TextField` EAGER
+  with client-side filter), admin-only Revert (SUBMITTED → DRAFT,
+  hard-blocked when medalRoundStatus ∈ {ACTIVE, COMPLETE}), admin-
+  only Move-to-table (DRAFT only; ROUND_1 targets in same category;
+  category-mismatch enforced server-side). Remaining: table info
+  card + row click → `ScoresheetView` (waits on §4.C view itself)
+- ✅ `MyJudgingView` (§4.D) — judge hub at `/my-judging`. Header,
+  Resume Next Draft anchor (visible when DRAFT exists), tables grouped
+  by competition (H3 per comp + Division/Table name + Open-table
+  link), Medal Rounds section (visible when any ACTIVE config covers
+  the judge's tables), empty-state with CTAs. Sidebar entry in
+  `MainLayout` (gavel icon) gated by new `JudgeAssignmentChecker`
+  interface.
+- ✅ `ScoresheetView` (§4.C) — full-page route
+  `/competitions/:c/divisions/:d/scoresheets/:scoresheetId`. Three-tier
+  auth (SYSTEM_ADMIN / division ADMIN / assigned judge) with hard COI
+  page-level rejection (judge cannot judge own entry). Entry header,
+  5 score `NumberField`s with max-value bounds and live "Current total"
+  preview, overall comments `TextArea`, comment-language `ComboBox`
+  sourced from `competition.commentLanguages ∪ judge.preferredCommentLanguage`,
+  advance-to-medal-round `Checkbox`, Save Draft + Submit (with
+  confirmation Dialog). Submit enabled only when all 5 fields filled
+  in-memory. Read-only mode when scoresheet status = SUBMITTED.
+- ✅ `TableView` row click → `ScoresheetView` (Phase 6.25)
+- ✅ Dedicated `BosView` (§4.H) — admin-only route
+  `/competitions/:c/divisions/:d/bos` gated to `Judging.phase ∈ {BOS,
+  COMPLETE}`. Placements grid with all `bosPlaces` slots rendered
+  (empty rows show `[+]` button, filled rows show edit/delete).
+  Candidates grid lists unplaced GOLD MedalAwards. Assign dialog
+  (`Select<MedalAward>`, helper text), Reassign dialog (delete-then-
+  record entry switch), Delete confirmation. Read-only mode when
+  `Judging.phase = COMPLETE` (banner + candidates hidden + action
+  column hidden). Drag-and-drop primary affordance deferred per design
+  note — `[+]` dialog handles touch/keyboard cases for v1.
+  "Manage placements →" deep link wired from JudgingAdminView BOS tab.
+- 🟡 Dedicated `BosView` (drag-and-drop): deferred ("Manage placements →"
+  navigation stub from Tab 3 not yet wired)
+- ✅ Event listeners (2026-05-20): `JudgingNotificationListener` consumes
+  `TableStartedEvent`, `ScoresheetRevertedEvent`, `MedalRoundActivatedEvent`
+  (emails the affected judges). The other 10 events are admin-triggered
+  state transitions, intentionally left unconsumed.
+- 🟡 ScoresheetPdfService: not started
+- ✅ Service-error i18n cleanup: every `error.judging-*` key thrown by
+  judging services now has an EN + PT translation. Guarded by
+  `JudgingErrorKeyCoverageTest`, which scans the module source and
+  fails on any new key without a translation.
+
+**Recommended next-session order (matches design §4 ordering for
+remaining work):**
+1. View drill-in (§4.B Item 2 / §4.G unified TableView) — admin per-
+   table scoresheet management. Could be folded with judge-side
+   `TableView` per §4.D since the design says they share a route.
+2. Judge hub `MyJudgingView` (§4.D) + sidebar entry gating.
+3. `ScoresheetView` (§4.C) — largest single view (5 fields, COI,
+   comment-language flow). Plan as 1-2 cycles.
+4. `MedalRoundView` (§4.E) — shared judge/admin form.
+5. `BosView` (§4.H) — admin-only, drag-and-drop primary; wire
+   "Manage placements →" deep link from Tab 3.
+6. Event listeners (§3.6) + ScoresheetPdfService (§4.J).
+7. Service-error i18n cleanup batched.
+8. Manual walkthrough additions in `docs/walkthrough/manual-test.md`.
+
+### Suggested start prompt for next session
+> "Read `docs/SESSION_CONTEXT.md` and the **Next Session: Start Here**
+> section of `docs/plans/2026-05-05-judging-module-design.md`. Continue
+> Phase 6 with the unified TableView drill-in (§4.G + §4.D). Confirm
+> 950 tests pass first, then start a TDD cycle."
 
 ### Phase 4 status
 
@@ -87,51 +166,52 @@ Open Questions.
 | §Q16 | Per-entry tasting-label PDF variant (wine-glass tags) | 🟡 Open — deferred; not blocking judging implementation |
 | §Q17 | Mobile / touch UX review for judging surfaces | 🟡 Open — deferred; touches BosView, ScoresheetView, MedalRoundView, TableView |
 
-### What next session should address — Phase 5 implementation kick-off
+### Phase 5 status — COMPLETE 2026-05-09
+All services layer (`JudgingService`, `ScoresheetService`,
+`JudgeProfileService`, `CoiCheckService`, `MeaderyNameNormalizer`),
+all 7 aggregates, V20–V27 migrations, 13 events (published — not
+consumed yet), 2 cross-module guards, and `CompetitionService`
+extensions. See `docs/SESSION_CONTEXT.md` "What's done" section.
 
-All design decisions are pinned. Phase 5 implementation order:
-
-1. **Module skeleton** — create `app.meads.judging` package +
-   `package-info.java` with `@ApplicationModule(allowedDependencies =
-   {"competition", "entry", "identity"})`. Verify `ModulithStructureTest`
-   passes.
-2. **V20 migration** — schema per §2.G (judging tables) + §2.H
-   (`competition_comment_languages`, scoresheet/judgeprofile language
-   columns) + Division.bosPlaces / minJudgesPerTable.
-3. **Entities** (judging-module aggregates per §2.G): `Judging`,
-   `JudgingTable` (+ `JudgeAssignment`), `CategoryJudgingConfig`,
-   `Scoresheet` (+ `ScoreField`), `MedalAward`, `BosPlacement`,
-   `JudgeProfile`. Plus competition-module changes:
-   `Competition.commentLanguages`, `Division.bosPlaces`,
-   `Division.minJudgesPerTable`. TDD: repository tests first per
-   the entry-module pattern.
-4. **Services** (per §3.2–§3.5): `JudgingService`,
-   `ScoresheetService`, `JudgeProfileService`, plus
-   `CompetitionService.updateCommentLanguages` /
-   `updateDivisionBosPlaces` / `updateDivisionMinJudgesPerTable`.
-   Module-integration tests (`@ApplicationModuleTest`).
-5. **Cross-module guards**: `JudgingDivisionStatusRevertGuard`,
-   `JudgingMinJudgesLockGuard`. Wire into existing competition-module
-   guard registration plumbing.
-6. **Events** (per §3.6): 13 records in `app.meads.judging`. Listener
-   stubs (or mark for awards module to come).
-7. **Views** (per §4.B–§4.J): `JudgingAdminView`, `MyJudgingView`,
-   `TableView`, `ScoresheetView`, `MedalRoundView`, `BosView`, plus
-   extensions to `CompetitionDetailView` / `DivisionDetailView` /
-   `UserListView` / `ProfileView` / `MainLayout`.
-8. **`ScoresheetPdfService`** (per §4.J) + UI hooks on 4 surfaces.
-9. **i18n keys** (per §4.K) with PT translations alongside.
-10. **Integration tests** + manual walkthrough updates
-    (`docs/walkthrough/manual-test.md`).
+### Phase 6 status — IN PROGRESS on `feature/judging-module`
+- Phase 6.1 (2026-05-10) — JudgingAdminView skeleton + Tables tab grid + Add Table dialog ✅
+- Phase 6.2 prereq (2026-05-10) — `CompetitionService.findUsersByRoleInCompetition` ✅
+- Phase 6.2 (2026-05-10) — Tables tab per-row actions (Edit / Start / Assign Judges + COI / Delete) ✅
+- Phase 6.3 (2026-05-10) — `ScoresheetService.countByTableIdAndStatus` + Tables tab Scoresheets column ✅
+- Phase 6.4 (2026-05-10) — `JudgingService.findCategoryConfigsForDivision` + Medal Rounds tab basic grid ✅
+- Phase 6.5 (2026-05-10) — Medal Rounds Awards counts + per-row actions (Start / Finalize / Reopen / Reset) ✅
+- Phase 6.6 (2026-05-11) — BOS tab on JudgingAdminView: phase indicator + GOLD candidates + placements grid (empty-slot rendering + Add/Edit/Delete per row) + Start/Finalize/Reopen/Reset BOS actions; +10 tests ✅
+- Phase 6.7 (2026-05-11) — Settings extensions (§4.F): commentLanguages MultiSelectComboBox + Division.bosPlaces / minJudgesPerTable IntegerFields with locking; +7 tests ✅
+- Phase 6.8 (2026-05-12) — Unified `TableView` skeleton (§4.D / §4.G): route `/competitions/:c/divisions/:d/tables/:tableId`, role-aware auth (SYSTEM_ADMIN / division ADMIN / assigned judge), breadcrumb + header; new `JudgingService.findTableById` + `isJudgeAssignedToTable`; +1 test ✅
+- Phase 6.9 (2026-05-12) — `TableView` scoresheets grid: columns Entry / Mead name / Status / Total / Filled by / Actions; new `ScoresheetService.findByTableId`; +1 test ✅
+- Phase 6.10 (2026-05-12) — `TableView` filter bar: Status `Select` (All/Draft/Submitted) + Search `TextField` (EAGER, mead name / entry code); client-side in-memory filtering; +1 test ✅
+- Phase 6.11 (2026-05-12) — `TableView` admin Revert action (SUBMITTED → DRAFT, Tier 0 retreat): per-row Revert button on SUBMITTED rows, hard-blocked with tooltip when `medalRoundStatus ∈ {ACTIVE, COMPLETE}`; confirmation dialog explains the implicit Tier 1 table reopen; new `JudgingService.findCategoryConfigByDivisionCategoryId`; +1 test ✅
+- Phase 6.12 (2026-05-12) — `TableView` admin Move-to-table action: per-row Move button on DRAFT rows; dialog with `Select<JudgingTable>` populated from new `JudgingService.findTablesByDivisionAndCategory` (excluding current table, ROUND_1 only); empty-state messaging + Save disabled when no candidates; +1 test ✅
+- Phase 6.13 (2026-05-12) — `MyJudgingView` skeleton (`/my-judging`) + empty state with profile + competitions CTAs ✅
+- Phase 6.14 (2026-05-12) — `MyJudgingView` tables list grouped by competition (H3 per competition, Division + Table Spans, Open-table anchor); uses `findTablesByJudgeUserId` + cross-module category/division/competition lookups ✅
+- Phase 6.15 (2026-05-12) — `MyJudgingView` Resume Next Draft anchor; new `ScoresheetService.findNextDraftForJudge` (oldest DRAFT across assigned tables, ordered by scheduledDate then table name then createdAt) + `ScoresheetService.findById` ✅
+- Phase 6.16 (2026-05-12) — `MyJudgingView` Medal Rounds section (visible only when at least one ACTIVE `CategoryJudgingConfig` covers the judge's tables); new `JudgingService.findActiveCategoryConfigsForJudge` ✅
+- Phase 6.17 (2026-05-12) — `MainLayout` sidebar entry for `/my-judging` (gavel icon), gated by new `JudgeAssignmentChecker` interface in root package (implemented in judging module, mirrors `CompetitionAdminChecker` pattern to avoid circular deps) ✅
+- Phase 6.18 (2026-05-12) — `ScoresheetView` skeleton at `/competitions/:c/divisions/:d/scoresheets/:scoresheetId`: three-tier auth (SYSTEM_ADMIN / division ADMIN / assigned judge) + hard COI page-level rejection (judge cannot judge own entry) + entry header card ✅
+- Phase 6.19 (2026-05-12) — 5 score field `NumberField`s (Appearance/Aroma+Bouquet/Flavour+Body/Finish/Overall Impression) with max-value bounds + live "Current total: N / 100" preview; new repo query `ScoresheetRepository.findFieldsByScoresheetId` (JPQL) to avoid `LazyInitializationException` on `Scoresheet.fields` outside transaction ✅
+- Phase 6.20 (2026-05-12) — Overall comments `TextArea` + Save Draft button that persists scores via `ScoresheetService.updateScore` and comments via `updateOverallComments` ✅
+- Phase 6.21 (2026-05-12) — Comment language `ComboBox` items sourced from `competition.commentLanguages ∪ judge.preferredCommentLanguage`, sorted by display name in UI locale; persisted via `ScoresheetService.setCommentLanguage` on Save Draft ✅
+- Phase 6.22 (2026-05-12) — Advance-to-medal-round `Checkbox` persisted via `ScoresheetService.setAdvancedToMedalRound` on Save Draft ✅
+- Phase 6.23 (2026-05-12) — Submit button with confirmation Dialog; enabled only when all 5 in-memory NumberFields have values; submits via `ScoresheetService.submit` then reloads view ✅
+- Phase 6.24 (2026-05-12) — Read-only mode for SUBMITTED scoresheets: all fields/combos/checkbox become `setReadOnly(true)`; Save Draft and Submit buttons hidden ✅
+- Phase 6.25 (2026-05-12) — `TableView` grid row selection navigates to the corresponding `ScoresheetView` ✅
+- Phase 6.26 (2026-05-12) — `BosView` skeleton at `/competitions/:c/divisions/:d/bos`: admin-only auth + phase gate (BOS or COMPLETE only) + header + back link ✅
+- Phase 6.27 (2026-05-12) — `BosView` placements grid with all `bosPlaces` slots rendered (empty rows show `[+]` button via `PlacementSlot` record); columns Place / Entry / Mead name / Category / Awarded by / Action ✅
+- Phase 6.28 (2026-05-12) — `BosView` candidates grid lists GOLD MedalAwards not yet placed ✅
+- Phase 6.29 (2026-05-12) — `BosView` Assign dialog (`Select<MedalAward>`, helper text, empty-state when no candidates); saves via `JudgingService.recordBosPlacement` ✅
+- Phase 6.30 (2026-05-12) — `BosView` Reassign dialog (preselects current entry; delete-then-record switch) + Delete confirmation dialog ✅
+- Phase 6.31 (2026-05-12) — `BosView` read-only mode when `Judging.phase = COMPLETE`: candidates section hidden + action column hidden + "BOS is COMPLETE" banner ✅
+- Phase 6.32 (2026-05-12) — "Manage placements →" deep link added to JudgingAdminView BOS tab ✅
+- Phase 6.33 (2026-05-12) — Service-error i18n cleanup: 23 previously-missing `error.judging-*` keys (category-config, coi, division.cannot-revert, judge-assignment, judge-profile, medal-round.*, medal.*, scoresheet.*) added in both EN and PT; new `JudgingErrorKeyCoverageTest` lint scans the judging module for `BusinessRuleException` constructor calls and fails if any key lacks a translation in EN or PT ✅
+- Remaining: see "Recommended next-session order" above.
 
 §Q17 (mobile / touch UX review) and §Q16 (tasting-label PDF) revisit
-during or after Phase 5, with real device testing.
-
-### Suggested start prompt for next session
-> "Read `docs/plans/2026-05-05-judging-module-design.md` (Phase 5
-> implementation order at top) and `docs/SESSION_CONTEXT.md`. Begin
-> Phase 5 — start with the module skeleton + V20 migration, then
-> first repository TDD cycle for `Judging`."
+after Phase 6, with real device testing.
 
 ---
 

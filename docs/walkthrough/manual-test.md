@@ -4,8 +4,10 @@ Comprehensive manual test plan for MEADS. Covers every user-facing behavior and 
 endpoint across identity, competition, and entry modules. Organized by workflow area
 with checkboxes for progress tracking.
 
-**Date:** 2026-03-10
+**Date:** 2026-05-12
 **Seeded data:** Dev profile (`spring.profiles.active=dev`)
+
+> Section 12 (Judging Module) drives Amadora through `REGISTRATION_OPEN → REGISTRATION_CLOSED → JUDGING`. Section 12.18 explains how to clean up afterwards if you want Amadora to remain testable for entry-side flows; alternatively, run §12 against Amadora last or use the seeded `Test Competition 2026 > Open` division for further entry-side experiments.
 
 ---
 
@@ -32,27 +34,50 @@ including dev user magic links sent by `DevUserInitializer` at startup.
 | `user@example.com` | Dev User | USER | ACTIVE | Magic link (see Mailpit) |
 | `pending@example.com` | Pending User | USER | PENDING | Magic link (see Mailpit) |
 | `judge@example.com` | Dev Judge | USER | ACTIVE | Magic link (see Mailpit) |
+| `judge2@example.com` | Dev Judge 2 | USER | ACTIVE | Magic link (see Mailpit) |
+| `judge3@example.com` | Dev Judge 3 | USER | ACTIVE | Magic link (see Mailpit) |
+| `judge4@example.com` | Dev Judge 4 | USER | ACTIVE | Magic link (see Mailpit) |
+| `judge5@example.com` | Dev Judge 5 | USER | ACTIVE | Magic link (see Mailpit) |
+| `judge6@example.com` | Dev Judge 6 | USER | ACTIVE | Magic link (see Mailpit) |
 | `steward@example.com` | Dev Steward | USER | ACTIVE | Magic link (see Mailpit) |
 | `entrant@example.com` | Dev Entrant | USER | ACTIVE | Magic link (see Mailpit) |
+| `proentrant1@example.com` | Pro Entrant 1 | USER | ACTIVE | Magic link (see Mailpit) |
+| `proentrant2@example.com` | Pro Entrant 2 | USER | ACTIVE | Magic link (see Mailpit) |
+| `proentrant3@example.com` | Pro Entrant 3 | USER | ACTIVE | Magic link (see Mailpit) |
+| `proentrant4@example.com` | Pro Entrant 4 | USER | ACTIVE | Magic link (see Mailpit) |
 
 ### Seeded competition data (CHIP 2026)
 
 - **Competition:** CHIP 2026 (June 11-14, 2026, Amarante, Portugal)
-- **Divisions:** Amadora (Amateur) and Profissional (Commercial) -- both REGISTRATION_OPEN, MJP scoring
+- **Divisions:** Amadora (Amateur, REGISTRATION_OPEN) and Profissional (Commercial, **pre-staged at JUDGING** so an admin can jump straight into §12.6+ without the registration ramp-up)
 - **Entry limits:** 3 per subcategory, 5 per main category (both divisions)
 - **Entry prefixes:** Amadora = "AMA", Profissional = "PRO"
-- **Categories:** Full MJP catalog minus M4B and M4D
+- **Categories:** Full MJP catalog minus M4B and M4D (Profissional also has JUDGING-scope categories cloned from REGISTRATION)
 - **Participants:**
   - `compadmin@example.com` -- ADMIN
-  - `judge@example.com` -- JUDGE (has access code)
+  - `judge@example.com` -- JUDGE (has access code; MJP cert, preferred language `pt`)
+  - `judge2@example.com` -- JUDGE (meadery name "Hidroméis do Minho" — matches `user@example.com`'s meadery, **triggers soft-COI** badge on `user@`'s entries in §12.6.3)
+  - `judge3@example.com` -- JUDGE + ENTRANT (1 RECEIVED entry "Judge's Secret Mead" in Amadora M1A — **triggers hard-COI** block in §12.6.3 + §12.11.3)
+  - `judge4@example.com` -- JUDGE (MJP + BJCP certs, preferred `es`)
+  - `judge5@example.com` -- JUDGE (OTHER cert, "WSET Level 3", preferred `it`)
+  - `judge6@example.com` -- JUDGE (no profile certs, preferred `en`)
   - `steward@example.com` -- STEWARD (has access code)
-  - `user@example.com` -- ENTRANT (5 credits in Amadora)
+  - `user@example.com` -- ENTRANT (5 credits in Amadora, meadery "Hidroméis do Minho")
   - `entrant@example.com` -- ENTRANT (3 credits in Amadora)
   - `buyer1@example.com` -- ENTRANT (2 credits in Amadora, added via webhook)
   - `buyer2@example.com` -- ENTRANT (3 credits in Profissional, added via webhook)
+  - `proentrant1..4@example.com` -- ENTRANT (5 credits each in Profissional, all credits used)
 - **Product mappings:** CHIP-AMA (Amadora, product ID 1001), CHIP-PRO (Profissional, product ID 1002)
-- **Entries for `user@example.com`:** Wildflower Traditional (SUBMITTED, M1A), Blueberry Bliss (SUBMITTED, M2C), Oak-Aged Bochet (DRAFT, M1A)
-- **Entries for `entrant@example.com`:** Lavender Metheglin (DRAFT, M3B)
+- **Amadora entries (12 total — 3 DRAFT, 2 SUBMITTED, 6 RECEIVED, 1 WITHDRAWN):**
+  - `user@example.com` (5): Wildflower Traditional (DRAFT, M1A), Blueberry Bliss (SUBMITTED, M2C), Oak-Aged Bochet (DRAFT, M1A), Honey Reserve (RECEIVED, M1B), Strawberry Fields (RECEIVED, M2C)
+  - `entrant@example.com` (3): Lavender Metheglin (DRAFT, M3B), Rosemary & Sage (SUBMITTED, M3B), Mountain Honey (RECEIVED, M1B)
+  - `buyer1@example.com` (2, admin-added): Apple Mead (RECEIVED, M4A), Sunset Mead (WITHDRAWN, M1A)
+  - `judge3@example.com` (1, admin-added): Judge's Secret Mead (RECEIVED, M1A) — hard-COI seed
+  - `buyer1@example.com` (1, admin-added): **Hidromel de Demonstração — Campos Completos** (RECEIVED, M1A) — verbose all-fields demo entry (long descriptions in every field; see §8 "Verbose all-fields entry")
+- **Profissional entries (21 total — all RECEIVED with final categories assigned, division at JUDGING):**
+  - 20 split across `proentrant1..4@example.com` (5 each)
+  - Final categories cover M1A (6, incl. the verbose demo entry), M1B (4), M2A (4), M2C (4), M3B (3) — enough density for medal rounds + Best of Show
+  - `buyer2@example.com` (1, admin-added): **Hidromel de Demonstração — Campos Completos** (RECEIVED, final M1A) — verbose all-fields demo entry, assigned to **M1A Panel A** so a judge sees long descriptions on the scoresheet (see §8 "Verbose all-fields entry" + §12.11)
 - **Webhook orders:**
   - JS-1001: buyer1@example.com (Maria Silva), 2x CHIP-AMA → 2 credits in Amadora, buyer added as ENTRANT
   - JS-1002: buyer2@example.com (João Santos), 3x CHIP-PRO → 3 credits in Profissional, buyer added as ENTRANT
@@ -62,6 +87,19 @@ including dev user magic links sent by `DevUserInitializer` at startup.
 - **Competition:** Test Competition 2026 (September 1-30, 2026, Porto, Portugal)
 - **Division:** Open (MJP, DRAFT, full catalog)
 - **Participants:** `compadmin@example.com` -- ADMIN
+
+### Third competition (fast-path to a published scoresheet)
+
+- **Competition:** Fast Track 2026 (July 1-2, 2026, Lisboa, Portugal)
+- **Division:** Mostra (`mostra`, prefix `FT`, MJP) — seeded **all the way to RESULTS_PUBLISHED**
+- **Entries:** 5 RECEIVED M1A entries owned by `entrant@example.com`, chosen to show every scoresheet variation side by side:
+  - `Mostra Tradicional` → advanced, **GOLD + Best of Show 1st**
+  - `Mostra Reserva` → advanced, **SILVER**
+  - `Mostra Loquaz …` → advanced, **BRONZE** — carries deliberately **long per-criterion + overall comments** AND a **very long mead name** (wrapping/overflow checks for both the comments box and the dialog title next to the logo)
+  - `Mostra Finalista` → **advanced to the medal round but won no medal** (shows the green "advanced" line, no outcome banner)
+  - `Mostra Singela` → **did not advance** (no advanced line, no outcome banner)
+- **Purpose:** a fresh dev DB lands directly on a published entrant scoresheet without re-walking the §12 judging flow — for iterating the entrant-scoresheet redesign. Built by `DevDataInitializer.seedFastTrackPublished` (scoring round → auto-created medal round → BoS → publish, all as `compadmin` stepping in for the judges).
+- **To reach it:** log in as `entrant@example.com` (magic link via Mailpit) → **My Entries** → Mostra shows the "View results" banner → **My Results** → 👁 view scoresheet + ⬇ PDF.
 
 ### Email types (Mailpit reference)
 
@@ -80,6 +118,63 @@ CTA button, fallback URL, and optional contact footer.
 | Admin manually adds credits | [MEADS] Entry credits received — {division} | Entry Credits Received | View My Entries | Yes (if competition has contactEmail) |
 | Entrant submits entries | [MEADS] Entries submitted — {division} | Entries Submitted | View My Entries | No |
 | Order requires manual review | [MEADS] Order requires review — {competition} | Order Requires Review | (none) | No |
+| Judging round started (to each assigned judge) | [MEADS] Judging round ready — {round} | Your judging round is ready | Log in to MEADS | No |
+| Submitted scoresheet reopened by an admin (to the judge who filled it) | [MEADS] Scoresheet reopened — {entry code} | A scoresheet needs your attention | Log in to MEADS | No |
+| Medal round activated (to each judge covering that category) | [MEADS] Medal round ready — {category} | A medal round is ready | Log in to MEADS | No |
+| Results announcement (initial / republish / custom, to each entrant) | (varies by type — see §13.9–13.11) | Results are available / Results updated / Announcement | View results | Yes (if competition has contactEmail) |
+
+### Email CTA link regression sweep (all email types)
+
+**Purpose:** catch the **change #39 class of bug** — a CTA whose link is built by concatenating a
+path onto the magic-link **token**, corrupting the JWT so the link fails to log in (and the user
+bounces to `/login?error`). Every email whose CTA is a magic/setup link must produce a **clickable
+link that authenticates and lands on the right page**. Run this sweep whenever an email's link
+construction changes (`SmtpEmailService`, `JwtMagicLinkService`, any `…Url` passed into a `send…`
+method, or `MagicLinkAuthenticationFilter`).
+
+For each row: trigger the email in the listed walkthrough section, open it in Mailpit
+(`http://localhost:8025`), then **click the CTA button** (not just eyeball the URL) and confirm the
+landing. The link must be intact (`…/login/magic?token=<JWT>` with **nothing appended to the
+token**; setup links `…/set-password?token=…`, `…/mfa-reset?token=…`).
+
+| # | Email | Trigger (§) | CTA link type | After clicking CTA — expected landing |
+|---|-------|-------------|---------------|----------------------------------------|
+| 1 | Magic link login | §2 Magic link login | bare `/login/magic?token=` | logged in → `RootView` routes to default page (`/my-entries` for a plain entrant) |
+| 2 | Credentials reminder | §2 Credentials reminder | **no CTA** | n/a — body tells the user to log in with their password |
+| 3 | Forgot-password reset | §2 Forgot password? | `/set-password?token=` | Set-password form opens for that email; can set a new password |
+| 4 | Admin "Password Reset" (key icon) | §3 Users admin | `/set-password?token=` | Set-password form opens |
+| 5 | New SYSTEM_ADMIN created (no password) | §3 Create admin user | `/set-password?token=` | Set-password form opens |
+| 6 | New competition ADMIN added (no password) | §6 Add participant (ADMIN) | `/set-password?token=` | Set-password form; contact footer present if competition has a contactEmail |
+| 7 | MFA reset ("Lost your device?") | §2 MFA email reset | `/mfa-reset?token=` (**1 h** validity) | MFA-reset page; TOTP can be re-enrolled |
+| 8 | Credits awarded (webhook **and** admin grant) | §8 Webhook / admin credits | bare magic link | logged in → entrant's My Entries |
+| 9 | Entries submitted | §9 Submit entries | bare magic link | logged in → entrant's My Entries |
+| 10 | Order requires review | §8 Webhook NEEDS_REVIEW | **no CTA** | n/a — admin-facing alert, lists competition + divisions |
+| 11 | Judging round started | §12.6 Start round | bare magic link | logged in → judge lands on the active round (`MyJudgingView` forward) |
+| 12 | Scoresheet reopened by admin | §12 Revert/reopen a submitted sheet | bare magic link | logged in → judge's active round |
+| 13 | Medal round activated | §12.6.8 Start medal round | bare magic link | logged in → judge's active medal round |
+| 14 | Results announcement — initial | §13.9 | bare magic link | logged in → `RootView` routes the entrant to their results |
+| 15 | Results announcement — republish | §13.10 | bare magic link | same — lands on results |
+| 16 | Results announcement — custom message | §13.11 | bare magic link | same — lands on results |
+
+- [ ] Every CTA above (rows 1, 3–9, 11–16) **logs in successfully** — none bounce to `/login?error`.
+- [ ] No email's CTA URL has anything appended **after** the token value (inspect one link's raw
+  href in Mailpit to confirm it ends at the token).
+
+### Magic-link deep-link redirect (P20)
+
+**Capability** (added 2026-06-03): a magic link may carry an optional `&redirect=<URL-encoded
+same-origin path>` so a future email can land the user on an **exact** page instead of bouncing
+through `/`. `MagicLinkAuthenticationFilter` validates the target against open-redirect before
+honouring it. No production email uses it yet (the announcement still uses the bare link by design —
+`RootView` routing is sufficient), so these checks are constructed by hand:
+
+- [ ] Generate a magic link for a logged-out entrant (§2), then **append**
+  `&redirect=%2Fmy-entries` to the URL and open it.
+- [ ] **Expected:** logged in and landed on `/my-entries` (the exact redirect target), not the
+  default routing.
+- [ ] Repeat with an **unsafe** target `&redirect=//evil.example.com/phish`.
+- [ ] **Expected:** logged in but landed on `/` — the open-redirect target is rejected (not
+  followed off-site). Also try `&redirect=https://evil.example.com` → still lands on `/`.
 
 ---
 
@@ -324,6 +419,17 @@ Pre-requisite: enable MFA on `admin@example.com` first (see "MFA setup" above).
 - [ ] **Expected:** Left sidebar (drawer) starts collapsed
 - [ ] Click the drawer toggle (hamburger icon)
 - [ ] **Expected:** Sidebar expands, shows: Competitions, Users, and version number at the bottom
+
+### Bottom gap clears notifications (P15)
+
+`MainLayout` adds a ~5rem bottom gap to every routed view so bottom-positioned `Notification`
+toasts don't cover the page's last interactive control or list row.
+
+- [ ] Open a view with a primary action at the very bottom (e.g. a judge's **ScoresheetView**
+  Save button, or a long **My Entries** list) and trigger a notification (save a scoresheet, add
+  an entry).
+- [ ] **Expected:** the success/validation toast appears at the bottom but does **not** overlap the
+  Save button or the last list row — there is visible space below the last control.
 
 ### SYSTEM_ADMIN nav items
 
@@ -640,12 +746,14 @@ Pre-requisite: enable MFA on `admin@example.com` first (see "MFA setup" above).
 
 ### Advance division status
 
-- [ ] Find `Test Division` (status: Draft)
+- [ ] Find `Test Division` (status: Draft, no categories yet)
 - [ ] Click the forward icon button (tooltip: "Advance Status")
 - [ ] **Expected:** Confirmation dialog: "Advance division 'Test Division' from Draft to Registration Open?"
 - [ ] Click "Advance"
-- [ ] **Expected:** Notification "Status advanced successfully" (green)
-- [ ] **Expected:** Status badge changes to "Registration Open"
+- [ ] **Expected:** Error notification — `RegistrationCategoryAdvanceGuard` blocks the advance because no REGISTRATION categories exist. Message: *"Cannot open registration: add at least one registration category first"* (key `error.division.cannot-open-registration-without-categories`).
+- [ ] Navigate into the division → Categories tab → add at least one catalog or custom category (covered in §7).
+- [ ] Return to the Divisions grid and retry "Advance Status".
+- [ ] **Expected:** Notification "Status advanced successfully" (green); status badge changes to "Registration Open".
 
 ### Delete division -- success (no entries/credits/products)
 
@@ -671,6 +779,9 @@ Pre-requisite: enable MFA on `admin@example.com` first (see "MFA setup" above).
 
 - [ ] Click the "Participants" tab
 - [ ] **Expected:** Filter field with search icon and placeholder "Filter by name or email..."
+- [ ] **Expected:** Above the grid, a role-count summary line (P13) reads e.g. "Entrants: 2 ·
+  Judges: 1 · Stewards: 1 · Admins: 1" (localized; every role shown even when 0). It updates after
+  adding/removing a participant or editing roles.
 - [ ] **Expected:** Grid with columns: Name (sortable), Email (sortable), Meadery (sortable), Country (sortable), Roles (sortable), Access Code, Actions (edit pencil + envelope + remove X icons, header "Actions"). All columns resizable. One row per participant with comma-separated roles.
 - [ ] **Expected:** Rows for compadmin (Admin, no code), judge (Judge, 8-char code), steward (Steward, 8-char code), user (Entrant, no code), entrant (Entrant, no code)
 - [ ] **Expected:** Envelope icon (send login link) shown only for participants without passwords (magic-link-only users)
@@ -727,9 +838,10 @@ Pre-requisite: enable MFA on `admin@example.com` first (see "MFA setup" above).
 ### Settings tab
 
 - [ ] Click the "Settings" tab
-- [ ] **Expected:** Form with: Name, Short Name, Start Date, End Date, Location, Contact Email, Logo label ("Logo") above upload field (max 2.5 MB, PNG/JPEG), Save button
+- [ ] **Expected:** Form with: Name, Short Name, Start Date, End Date, Location, Contact Email, Shipping Address, Phone, Website, Shared tables checkbox, Logo label ("Logo") above upload field (max 2.5 MB, PNG/JPEG), Save button
 - [ ] **Expected:** Fields pre-populated with CHIP 2026 data
 - [ ] **Expected:** Contact Email field with helper text "Shown in emails sent to competition participants" and clear button
+- [ ] **Expected:** Shared tables checkbox label "Shared tables across divisions" + helper "When on, starting a round at e.g. \"Table 1\" locks \"Table 1\" in every other division of this competition until the round completes. Turn off if each division has its own independent physical setup." Default ON for new competitions. (Effect tested in §12.6.0.1.)
 - [ ] Enter contact email: `organizer@chip.com`
 - [ ] Change location to `Porto, Portugal`
 - [ ] Click "Save"
@@ -865,6 +977,34 @@ Pre-requisite: enable MFA on `admin@example.com` first (see "MFA setup" above).
 - [ ] **Expected:** Notification "Custom category added" (green)
 - [ ] **Expected:** Custom category appears in the TreeGrid
 
+### Custom category — multilingual name/description
+
+- [ ] Click "Add Category" → "Custom" tab
+- [ ] Enter code `X9Z`, name `Spiced Mead`, description `Mead with spices` (English base)
+- [ ] Expand the **"Translations (optional)"** collapsible section
+- [ ] **Expected:** a Name + Description field per non-English locale, labelled with the native language
+      name (Português, Español, Italiano, Polski). Hint: English is the default; blanks fall back to English.
+- [ ] Fill the **Português** fields: `Hidromel com Especiarias` / `Hidromel com especiarias`
+- [ ] Leave the other languages blank → click "Add"
+- [ ] **Expected:** category saved (green notification)
+- [ ] Switch the UI language to **Português** (top-right language switcher) and revisit the Categories tab /
+      any judge or entrant surface showing this category → **Expected:** it reads `Hidromel com Especiarias`
+- [ ] Switch the UI language to **Italiano** (no translation filled) → **Expected:** falls back to the English
+      `Spiced Mead`
+- [ ] (Same per-locale Name/Description fields appear on the **Judging Categories** tab's "Add" dialog.)
+
+### Edit category (name/description + translations)
+
+- [ ] In the Categories TreeGrid, find `X9Z` → click the **✎ Edit** (pencil) icon in the Actions column
+- [ ] **Expected:** dialog prefilled with the English base code/name/description; the "Translations (optional)"
+      section is **expanded** and the Português Name shows `Hidromel com Especiarias`
+- [ ] Change the English name to `Spiced Mead (Updated)` and the Português Name to `Hidromel Especiado`
+- [ ] Click "Save" → **Expected:** "Category updated" (green); grid shows the new English name
+- [ ] Re-open Edit → **Expected:** the Português Name persisted as `Hidromel Especiado` (no duplicate-key error)
+- [ ] Switch UI language to Português → **Expected:** the category reads `Hidromel Especiado`
+- [ ] (Same ✎ Edit action exists on the **Judging Categories** tab.)
+- [ ] Remove the `X9Z` test category afterwards to restore state
+
 ### Remove category
 
 - [ ] Find the custom category `X1A` in the grid
@@ -948,6 +1088,7 @@ Pre-requisite: enable MFA on `admin@example.com` first (see "MFA setup" above).
 - [ ] **Assign Final Category on an entry:** go to Entries tab on Entry Admin → edit a SUBMITTED entry → **Expected:** the primary **Category** dropdown lists each subcategory exactly once (no duplicates from the cloned JUDGING-scope rows). Final Category dropdown lists JUDGING-scope **leaves only** — e.g. M1A/M1B/M1C are shown but M1 (the parent) is not; a standalone custom judging category with no children IS shown. Clearable; pick one, Save; entry's Final Category column updates from "—" to the picked code
 - [ ] **Deletion guard (leaf):** try to remove the judging category assigned to the entry — **Expected:** error notification "Cannot remove judging category: it is referenced by one or more entries"; row stays
 - [ ] **Deletion guard (parent of referenced child):** try to remove the PARENT of the assigned judging category — **Expected:** same friendly error notification (NOT a stack trace or silent failure); row stays
+- [ ] **Deletion guard (in judging use, no entries):** try to remove a judging category that has **no entries** but is already in judging use — i.e. it has a scoring/medal configuration, rounds, or awards (e.g. a category you created a medal round for) — **Expected:** friendly error *"Cannot remove this category: it is in use for judging…"* (`error.category.judging-in-use`), **not** a raw FK `DataIntegrityViolationException`. (The entry guard alone misses this case because no entry references the category.)
 - [ ] **Cleanup:** clear the Final Category on the entry (set to empty, Save), then re-attempt the leaf remove → success
 
 ---
@@ -1010,21 +1151,42 @@ Pre-requisite: enable MFA on `admin@example.com` first (see "MFA setup" above).
 - [ ] **Expected:** Grid with columns: Entry # (with AMA prefix, e.g. "AMA-1"), Code, Mead Name, Category (code with tooltip for full name), Final Category (code with tooltip, or "—" if not set), Entrant, Meadery, Country, Status, Actions (view/edit/←/→/withdraw/delete icons)
 - [ ] **Expected:** Meadery column shows user's meadery name (or empty if not set)
 - [ ] **Expected:** Country column shows the display name based on the user's ISO country code, localized to the current UI language (e.g. "Portugal" in English, "Portogallo" in Italian) — switch the language in the top-right menu to confirm the column updates
-- [ ] **Expected:** 4 entries total (3 from user@example.com, 1 from entrant@example.com), sorted by entry number
-- [ ] **Expected:** Wildflower Traditional and Blueberry Bliss -- Status: SUBMITTED
-- [ ] **Expected:** Oak-Aged Bochet and Lavender Metheglin -- Status: DRAFT
+- [ ] **Expected:** 12 entries total, sorted by entry number — 5 from `user@example.com`, 3 from
+  `entrant@example.com`, 2 admin-added for `buyer1@example.com` (Apple Mead, Sunset Mead), 1
+  admin-added for `judge3@example.com` (Judge's Secret Mead — hard-COI seed), and 1 verbose all-fields
+  demo for `buyer1@example.com` (Hidromel de Demonstração — Campos Completos)
+- [ ] **Expected:** Status spread (3 DRAFT, 2 SUBMITTED, 6 RECEIVED, 1 WITHDRAWN):
+  - **DRAFT:** Wildflower Traditional (M1A), Oak-Aged Bochet (M1A), Lavender Metheglin (M3B)
+  - **SUBMITTED:** Blueberry Bliss (M2C), Rosemary & Sage (M3B)
+  - **RECEIVED:** Honey Reserve (M1B), Strawberry Fields (M2C), Mountain Honey (M1B), Apple Mead (M4A),
+    Judge's Secret Mead (M1A), Hidromel de Demonstração — Campos Completos (M1A)
+  - **WITHDRAWN:** Sunset Mead (M1A)
 - [ ] **Expected:** Columns are sortable
 - [ ] **Expected:** Delete button (trash, rightmost) only enabled for DRAFT entries
 - [ ] **Expected:** Withdraw button (ban) disabled for WITHDRAWN entries
 - [ ] **Expected:** `←` (revert) button disabled for DRAFT entries; `→` (advance) button disabled for RECEIVED and WITHDRAWN entries
 - [ ] **Expected:** `←` tooltip: "← Revert to Draft" for SUBMITTED/WITHDRAWN, "← Revert to Submitted" for RECEIVED
 - [ ] **Expected:** `→` tooltip: "→ Submit" for DRAFT, "→ Mark as Received" for SUBMITTED
-- [ ] **Expected:** Summary row below the grid shows "Credits balance: N  |  Total entries: 4 (Draft: 2, Submitted: 2, Received: 0, Withdrawn: 0)"
+- [ ] **Expected:** Summary row below the grid shows "Credits balance: N  |  Total entries: 12 (Draft: 3, Submitted: 2, Received: 6, Withdrawn: 1)"
 - [ ] **Expected:** View button (eye) opens read-only dialog showing all entry fields, status, and entrant email
 - [ ] **Expected:** Edit button opens confirmation dialog ("Are you sure you want to edit this entry's data?"), then full edit dialog with all fields (mead name, category, sweetness, strength (read-only, auto-derived from ABV), ABV, carbonation, honey, other ingredients, wood aged, wood ageing details, additional info)
 - [ ] **Expected:** Edit works for entries in any status except WITHDRAWN
 - [ ] **Expected:** Delete button opens confirmation dialog
 - [ ] **Expected:** Withdraw button opens confirmation dialog
+
+### Verbose all-fields entry — long-description rendering
+
+*Each CHIP division is seeded with one fully-populated demo entry whose every free-text field carries a long, multi-sentence description, named **"Hidromel de Demonstração — Campos Completos"** (owned by buyer1@ in Amadora, buyer2@ in Profissional). This checks how admin and judge views handle long mead descriptions — wrapping, overflow, dialog/card height, and the label PDF.*
+
+**Admin view (Amadora, this Entries tab):**
+- [ ] Filter the grid for "Demonstração" (or sort by Mead Name) to find the entry — Status: RECEIVED
+- [ ] Click the **view** (eye) button → **Expected:** read-only dialog renders the long honey varieties, other ingredients, wood-ageing details (wood aged = yes), and additional information **fully and legibly** — text wraps within the dialog, no clipping/overlap, dialog scrolls if needed
+- [ ] Click **edit** (confirm the dialog) → **Expected:** every long field is editable and shows the full text; the character counters/maxlength do not truncate the seeded values
+- [ ] Click the **label download** (individual) → **Expected:** the PDF label generates; the long ingredient fields wrap to their fixed 2-line height and clip gracefully (no layout break or overrun)
+
+**Judge view (Profissional, via scoresheet — cross-reference §12.11):**
+- [ ] The same verbose entry is assigned to **M1A Panel A** (judges 1 + 2). After the admin starts Panel A (§12.6 → §12.9), log in as `judge@example.com`, open this entry's scoresheet
+- [ ] **Expected:** the scoresheet mead-details card renders the long sweetness/carbonation/honey/other-ingredients/wood-details/additional-information **fully** (mead **name** is hidden from judges by anonymity rule, shown only to admins) — long values wrap inside the card without breaking the scoring form layout
 
 ### Advance entry status (admin)
 
@@ -1112,7 +1274,8 @@ Pre-requisite: enable MFA on `admin@example.com` first (see "MFA setup" above).
 ### Admin Add Entry (Entries tab)
 
 - [ ] Click the "Entries" tab
-- [ ] **Expected:** "Add Entry" button visible in the toolbar (always enabled regardless of division status)
+- [ ] **Expected:** "Add Entry" button visible in the toolbar, enabled through JUDGING (disabled from
+  DELIBERATION onward — see the P21 lock check below)
 - [ ] Click "Add Entry"
 - [ ] **Expected:** Confirmation dialog: "Add entry without consuming a credit?" with a warning message and "Add Entry"/"Cancel" buttons
 - [ ] Click "Add Entry" to proceed
@@ -1125,6 +1288,28 @@ Pre-requisite: enable MFA on `admin@example.com` first (see "MFA setup" above).
 - [ ] Leave required fields empty and click "Add Entry"
 - [ ] **Expected:** Field-level error messages for missing required fields
 - [ ] Revert Amadora status back to REGISTRATION_OPEN after testing
+
+### Entries lock from DELIBERATION onward (P21)
+
+Entry mutations are allowed only through JUDGING. From DELIBERATION the results are being
+computed/published, so entries are locked; to change one an admin must first revert the division
+back to JUDGING. The block is enforced in `EntryService` (hard `error.entry.stage-locked`) and
+mirrored in the UI.
+
+- [ ] Drive a division (e.g. Profissional) to **DELIBERATION** (or RESULTS_PUBLISHED), open its
+  Entry Admin → Entries tab.
+- [ ] **Expected:** the **"Add Entry"** button is **disabled** with tooltip "Entries are locked once
+  judging is over — revert the division to Judging to make changes".
+- [ ] **Expected:** on every entry row, the **edit (✎), ← revert, → advance, and 🚫 withdraw**
+  icons are **disabled** with the same locked tooltip. The **view (👁)** and **label download (⬇)**
+  icons remain enabled (admin reprints).
+- [ ] **Expected:** the **"Auto-assign final categories"** button is **hidden** (judging-category
+  management is also capped below DELIBERATION).
+- [ ] **Escape hatch:** revert the division back to **JUDGING** (Division Detail → Revert Status, or
+  for a published division use Manage Results → Revert, then revert again). The Add Entry + row
+  actions re-enable; make the change, then re-advance.
+- [ ] **Service backstop:** even if a control were reachable, the service rejects the op with the
+  `error.entry.stage-locked` notification at DELIBERATION+.
 
 ### Orders tab
 
@@ -1491,6 +1676,23 @@ curl -s -o /dev/null -w "%{http_code}" \
 - [ ] **Expected:** Browser downloads `all-labels.pdf` containing one page per SUBMITTED entry
 - [ ] **Expected:** No confirmation dialog for entrants (direct download)
 
+### Entry labels withdrawn once judging starts (entrant — P12)
+
+Labels are only useful before the bottles ship; from **JUDGING** onward the bottles are with judges.
+
+- [ ] Advance the division to **JUDGING** (or use a division already at JUDGING) while at least one
+  entry is still SUBMITTED (admin has not marked it RECEIVED yet).
+- [ ] As the entrant, open My Entries for that division.
+- [ ] **Expected:** the per-row download icon is **gone** on every entry (even SUBMITTED ones).
+- [ ] **Expected:** the "Download all labels" button is **disabled** with tooltip "Labels are
+  unavailable during judging — your bottles are already with the judges".
+- [ ] **Expected:** once results are published, the entrant gets their scoresheet PDFs via the
+  **"View results" banner → My Results** page (per-row ⬇ + "Download all scoresheets"), not from the
+  entries page. (The scoresheet PDF generator lives in the awards module, above `entry` in the
+  module graph, so it is intentionally not surfaced on the entries page.)
+- [ ] **Admin reprints:** on **Entry Admin** the admin "Download all labels" + per-row label
+  downloads stay available at every status (a lost bottle label may need reprinting mid-judging).
+
 ### Meadery name required -- warning and submit blocking
 
 *Pre-requisite: Set `meaderyNameRequired` on a division in DRAFT status, then advance to REGISTRATION_OPEN.
@@ -1527,7 +1729,1297 @@ Or use a test division where the flag is already set.*
 
 ---
 
-## 12. Cross-cutting Concerns
+## 12. Judging Module
+
+**Covers:** `JudgingAdminViewTest`, `RoundViewTest`, `ScoresheetViewTest`,
+`MyJudgingViewTest`, `MedalRoundViewTest`, `BosViewTest`, `JudgingServiceTest`,
+`JudgingServiceMedalRoundTest`, `ScoresheetServiceTest`,
+`JudgeProfileServiceTest`, `MeaderyNameNormalizerTest`, `CoiCheckServiceTest`,
+`JudgingDivisionStatusRevertGuardTest`, `JudgingMinJudgesLockGuardTest`,
+`JudgingErrorKeyCoverageTest`, `JudgingNotificationListenerTest`. Plus the seven aggregate repository tests
+(`JudgingRepositoryTest`, `JudgingRoundRepositoryTest`,
+`CategoryJudgingConfigRepositoryTest`, `ScoresheetRepositoryTest`,
+`MedalAwardRepositoryTest`, `BosPlacementRepositoryTest`,
+`JudgeProfileRepositoryTest`).
+
+This section assumes Amadora has been walked through Sections 6–11 already.
+The judging flow advances Amadora to JUDGING for the duration of this section
+and can be reverted afterwards if you want the entry-side flows to remain
+testable. Steps below are admin-driven unless noted.
+
+### 12.1 Prerequisites — advance Amadora to REGISTRATION_CLOSED
+
+*Log in as `compadmin@example.com`.*
+
+- [ ] Navigate to CHIP 2026 → Amadora division detail.
+- [ ] **Verify:** Current status is `REGISTRATION_OPEN`.
+- [ ] Click "Advance Status" → confirm "Advance from Registration Open to Registration Closed?".
+- [ ] **Expected:** Status badge updates to `REGISTRATION_CLOSED`.
+- [ ] **Expected:** A new "Judging Categories" tab appears between "Categories" and "Settings".
+
+#### 12.1.1 Advance-to-judging guard (no judging categories yet)
+
+- [ ] Click "Advance Status" → confirm "Advance from Registration Closed to Judging?".
+- [ ] **Expected:** Error notification — `JudgingCategoryAdvanceGuard` blocks because judging categories haven't been initialized yet. Message: *"Cannot start judging: initialize judging categories first"* (key `error.division.cannot-start-judging-without-categories`).
+- [ ] **Expected:** Status stays at `REGISTRATION_CLOSED`.
+- [ ] Leave the division at `REGISTRATION_CLOSED` — §12.4 initializes the judging categories, then §12.4.x advances to JUDGING.
+
+### 12.2 Division Settings — judging fields
+
+*Stay on Amadora division detail, Settings tab.*
+
+- [ ] **Expected:** A "Judging" sub-section appears at the bottom of Settings with two `IntegerField`s:
+  - **BOS places** (defaults to 1, helper text "Number of Best of Show placements awarded for this division.")
+  - **Minimum judges per round** (defaults to 2, helper text "Hard minimum enforced when starting a round.")
+- [ ] **Expected:** Both fields are editable at REGISTRATION_CLOSED — judging hasn't started yet so neither lock applies. BOS places locks at JUDGING (`Division.updateBosPlaces` rejects when `status.ordinal() >= JUDGING.ordinal()`); minimum judges locks once a round has `status != PENDING` (cross-module `MinJudgesPerTableLockGuard`).
+- [ ] Change "BOS places" from 1 to 3, click "Save".
+- [ ] **Expected:** Notification "Settings saved successfully".
+- [ ] Refresh — value persists at 3.
+- [ ] Change "Minimum judges per round" from 2 to 3, click "Save".
+- [ ] **Expected:** Notification "Settings saved successfully".
+- [ ] Refresh — value persists at 3.
+- [ ] Change minimum judges back to 2 and save. (Leave BOS places at 3 for the rest of §12 — Amadora awards 3 BOS placements.)
+
+### 12.4 Initialize judging categories
+
+*Back on Amadora division detail → Judging Categories tab (now the default tab for status ≥ REGISTRATION_CLOSED).*
+
+- [ ] **Expected:** Empty state with an "Initialize Judging Categories" button.
+- [ ] Click "Initialize Judging Categories".
+- [ ] **Expected:** All REGISTRATION-scope categories are cloned into JUDGING scope (same codes, names, descriptions, hierarchy).
+- [ ] **Expected:** Grid appears with columns: Code, Name, Description, (Remove icon).
+- [ ] **Expected:** "Add Judging Category" button replaces the "Initialize" button.
+
+#### 12.4.1 Add / remove judging category
+
+- [ ] Click "Add Judging Category" → enter Code `X9A`, Name `Test Combo`, Description `Combined for judging`, leave Parent empty → Save.
+- [ ] **Expected:** Row appears in the JUDGING grid.
+- [ ] Click the Remove (X) icon on `X9A` → confirm.
+- [ ] **Expected:** Row removed.
+- [ ] **Try:** Add a judging category with a code that already exists in the JUDGING grid (e.g. `M1A`).
+- [ ] **Expected:** **Rejected** — `UNIQUE(division_id, code, scope)` blocks duplicates *within* a scope. The fact that `M1A` already exists in both REGISTRATION and JUDGING (cloned by Initialize) is the proof that the constraint allows the same code across *different* scopes.
+
+#### 12.4.2 Stay at REGISTRATION_CLOSED — judging setup happens here
+
+`JudgingAdminView` is accessible starting at `REGISTRATION_CLOSED`. Admins set up
+rounds, judges, entries, and judging-category configs at REG_CLOSED, then advance
+the division to `JUDGING` only when they're ready to actually start judging. The
+`startRound` service method requires `>= JUDGING` (key
+`error.round.cannot-start-before-judging`) — that's the only setup op gated to
+JUDGING+; everything else on the Judging Admin view works at REG_CLOSED.
+
+- [ ] Confirm Amadora is still at `REGISTRATION_CLOSED` — **do not** click Advance yet.
+- [ ] **Expected:** A "Manage Judging" button is visible in the division header (alongside "Manage Entries"). This is new — pre-cycle 10 the button only appeared at JUDGING+. (Confirms the lowered gate; full setup walk follows in §12.6.)
+
+### 12.5 Assign final categories to entries
+
+For an entry to be judged it must (a) be in **RECEIVED** status — the bottle has
+physically arrived and been checked in — and (b) have `finalCategoryId` set to a
+JUDGING-scope category. Entries that are still SUBMITTED (bottle not arrived) or
+WITHDRAWN get **no scoresheet** when a table starts (see §12.6.4).
+
+The new `EntryFinalCategoryAdvanceGuard` (entry.internal) blocks the
+`REGISTRATION_CLOSED → JUDGING` advance whenever any SUBMITTED or RECEIVED entry in
+the division still has no `finalCategoryId` — admins must assign them all before
+entering judging.
+
+*Navigate to Amadora → Entry Admin → Entries tab.*
+
+- [ ] Mark at least 2 entries as **RECEIVED** using the `→` advance arrows
+  (DRAFT → SUBMITTED → RECEIVED). Leave one entry SUBMITTED (not received) so you
+  can confirm it is excluded from judging.
+- [ ] For each RECEIVED **and** SUBMITTED entry that you want judged: click the Edit
+  (pencil) icon → confirm in the warning dialog.
+- [ ] **Expected:** The edit dialog includes a "Final Category" Select (clearable, populated from JUDGING-scope categories).
+- [ ] Pick a category (e.g. `M1A — Traditional Mead (Dry)`), Save.
+- [ ] **Expected:** Notification "Entry updated"; Final Category column shows the chosen value.
+- [ ] **Leave one RECEIVED entry without a final category** for the §12.5.1 guard rejection check.
+
+#### 12.5.0 Bulk auto-assign final categories (convenience)
+
+Once judging categories exist (`allowsJudgingCategoryManagement()`), the Entries
+tab toolbar shows an **"Auto-assign final categories"** button (id
+`auto-assign-final-categories-button`). It runs
+`EntryService.assignFinalCategoriesByCode`, which sets `finalCategoryId` on every
+SUBMITTED/RECEIVED entry that still has none, matching the entry's
+initialCategory **code** to a JUDGING-scope category with the same code.
+
+- [ ] On Amadora's Entry Admin → Entries tab, click **"Auto-assign final categories"**.
+- [ ] **Expected:** Confirmation dialog explains the scope (SUBMITTED/RECEIVED entries only; DRAFT and WITHDRAWN skipped; existing assignments untouched). Click **"Assign now"**.
+- [ ] **Expected:** Green notification "Assigned N final category/categories." with N = number actually modified.
+- [ ] **Expected:** The Final Category column populates for all eligible entries whose codes match.
+- [ ] Entries whose initial-category code has no matching JUDGING category remain unassigned and must be set manually via the Edit dialog.
+
+#### 12.5.1 Advance-to-judging guard rejection (entries missing final category)
+
+- [ ] Go back to Amadora division header. Click "Advance Status" → confirm.
+- [ ] **Expected:** Error notification — `EntryFinalCategoryAdvanceGuard` blocks
+  because at least one SUBMITTED/RECEIVED entry has no final category. Message
+  names the count: *"Cannot start judging: {N} submitted or received entry/entries
+  still have no final category. Assign them in the Entry Admin view first."* (key
+  `error.division.cannot-start-judging-entries-without-final-category`).
+- [ ] **Expected:** Status stays at `REGISTRATION_CLOSED`.
+- [ ] Return to Entry Admin → assign the last entry's final category.
+- [ ] **Do not advance to JUDGING yet** — the next step (§12.6) sets up rounds at
+  REGISTRATION_CLOSED. We advance to JUDGING in §12.6.4 right before starting the
+  first round.
+
+#### 12.5.2 Defense-in-depth — the JudgingAdminView warning
+
+The `JudgingAdminView` "{N} entries have no judging category…" warning still
+exists for defense-in-depth (e.g., if a final category gets cleared during JUDGING,
+or you bypass the guard by `assignFinalCategory(null)` later). It should normally
+show 0 here.
+
+- [ ] On Judging Admin, confirm no red warning line appears below the header.
+
+### 12.6 JudgingAdminView — Rounds tab
+
+> **⚠ The (c) round-admin + scoresheet redesign landed (v0.4.0). Some detailed
+> substeps in §12.6–§12.12 below predate it — follow this summary wherever they
+> differ:**
+> - **Unified Rounds grid:** medal rows now carry the SAME inline action icons as
+>   scoring rows — ✏ Edit · 👥 Assign Judges · 📦 Assign Entries · ▶ Start · ↶ Revert ·
+>   🗑 Delete · 👁 Open. On a **COMPLETE** round, ✏ Edit and 👥 Assign Judges are
+>   **disabled** (nothing left to edit; judges can't be reassigned) — only 👁 Open (and
+>   ↶ Revert/Reopen where applicable) remain meaningful. The **Type** column is a colored
+>   badge (`Scoring` / `Medal — Comparative` / `Medal — Score-based`). A **Status**
+>   multi-select filter (every status selected by default) sits next to the Type filter.
+> - **Add Round dialog:** choosing Type = MEDAL reveals a **medal-mode** Select
+>   (Comparative / Score-based) — the mode is now chosen at create time. The
+>   **Scheduled** field is a **date + time** picker (`yyyy-MM-dd HH:mm`), and is
+>   available on medal rounds too.
+> - **Scoresheet (ScoresheetView):** no "Save Draft" and no per-sheet "Submit".
+>   Fields **auto-save on blur** (a "Saving…/Draft saved ✓" indicator shows); a single
+>   validating **Save** button promotes the sheet DRAFT → **FILLED** (requires all 5
+>   scores + each per-criterion comment ≥ 15 chars). The former "Overall comments" is
+>   now the optional **"Additional comments"**.
+> - **Finishing a scoring round:** a round-level **Finalize** button on RoundView
+>   (judge *or* admin; enabled only when every scoresheet is FILLED) submits them all
+>   and completes the round. Admins get **Reopen** on a COMPLETE round (drops its
+>   sheets back to FILLED).
+> - **Medal rounds:** Start + Revert live on the grid now (medal Revert clears the
+>   round's awards). MedalRoundView keeps the per-row medal actions, **Finalize** (lists
+>   the medals being committed **and how many entries get no medal** — finalize never
+>   blocks on undecided entries; there is no Withhold), and **Reopen**. The old **Reset**
+>   button is gone.
+
+*Amadora is still at `REGISTRATION_CLOSED`. Click "Manage Judging" on Amadora
+division detail. (This button is visible from REGISTRATION_CLOSED onwards — see
+§12.4.2.)*
+
+- [ ] **Expected:** URL is `/competitions/chip-2026/divisions/amadora/judging-admin`.
+- [ ] **Expected:** Breadcrumb: `My Competitions / CHIP 2026 / Amadora / Judging Admin`.
+- [ ] **Expected:** H2 header `CHIP 2026 — Amadora — Judging Admin` with competition logo.
+- [ ] **Expected:** TabSheet with **five** tabs in this order: `Conflicts of Interest`, `Tables`, `Rounds`, `Results`, `Best of Show`. (The "Tables" tab is labelled "Tables" but the underlying entity, i18n keys, grid id, and route segments are still `physical-tables*`. Conflicts of Interest sits first — declare COIs before assigning judges, per the judging-prep checklist.)
+- [ ] **Expected default tab:** `computeDefaultTabIndex()` picks the tab based on state — *no tables yet* → Tables; *all rounds COMPLETE* → Results; otherwise → **Rounds**. Since the dev seed pre-creates 3 tables for Amadora, the default here is **Rounds**. Click the **Tables** tab to walk §12.6.0.
+
+#### 12.6.0 Tables tab
+
+A table is a fixed station within the division ("Table 1", "Table 2"). Multiple rounds can run at the same table over time, but only one round can be **active** there simultaneously. The dev seed pre-creates 3 tables for Amadora and 5 for Profissional — admins can add more.
+
+- [ ] On the Tables tab, **Expected**: grid with columns Label, Actions. Actions column sits at the right (auto-width, flex-grow 0). Grid auto-sizes its height to fit all rows. All columns are sortable + resizable. Shows the seeded `Table 1` / `Table 2` / `Table 3` for Amadora.
+- [ ] **Expected (when competition.sharedTables is ON):** A banner above the **+ Add Table** button reads "Shared tables is ON for this competition — starting a round here also locks the same-label table in other divisions." Set in the competition's Settings tab — see §11 (CompetitionDetailView Settings → "Shared tables across divisions" checkbox, default ON for new competitions).
+- [ ] Click **"+ Add Table"** → enter label `Test Table` → Save → notification "Table added"; row appears.
+- [ ] Edit the new row → change to `Test Table A` → Save → notification "Table updated".
+- [ ] **Try** to add another with label `Test Table A` → **Expected**: error "A table named 'Test Table A' already exists in this division." (key `error.physical-table.label-duplicate`).
+- [ ] Delete `Test Table A` → confirm → notification "Table deleted".
+
+##### 12.6.0.1 Cross-division shared-tables busy-check (sharedTables=true)
+
+`competition.sharedTables` (default `true` for new competitions) makes the busy-check span all divisions of the competition. When ON: starting a round at, say, Amadora's `Table 1` also locks Profissional's `Table 1` for as long as the round is ACTIVE. Matching is by label across the competition's per-division table records. (Turn off in competition settings if each division has its own independent physical setup.)
+
+- [ ] Verify CHIP 2026 has Shared tables ON (Competition Detail → Settings → "Shared tables across divisions" checkbox ticked).
+- [ ] On Amadora, start any scoring round at `Table 1` (set up entries + 2 judges first, advance Amadora to JUDGING per §12.4.2 / §12.6.4.0 — once Amadora has an ACTIVE round at `Table 1`, this check fires across to Profissional).
+- [ ] Switch to Profissional → Manage Judging → Rounds. **Try** to start a round at Profissional's `Table 1` (any pre-staged round there).
+- [ ] **Expected:** Error notification *"Table 'Table 1' is already in use by an active round in another division of this competition. Stop that round before starting this one (or turn off Shared tables in competition settings)."* (key `error.round.physical-table-busy-shared`).
+- [ ] Either revert/finish the Amadora round OR turn off Shared tables, then re-try the Profissional start → **Expected:** success.
+- [ ] (Note) The judge active-conflict check has always been cross-competition (uses `findAll()`); the shared-tables flag only governs physical-table label matching across divisions.
+
+#### 12.6.1 Add a scoring round
+
+*Switch to the **Rounds** tab.*
+
+- [ ] **Expected:** Toolbar with a **"+ Add Round"** button, a **Type filter** ComboBox (All / Scoring / Medal; default All), and a **Status filter** `CheckboxGroup` (`rounds-status-filter`) listing PENDING / READY / ACTIVE / COMPLETE — **every status ticked by default** (unticking everything is treated as "show all"). The two filters compose.
+- [ ] **Expected:** Grid columns: **Type** (a colored Lumo **badge** — `Scoring` / `Medal — Comparative` / `Medal — Score-based`), Name, **Category** (the **code only**, e.g. `M1A`; hover the cell for a tooltip with the full `code — name`), Table (label or "—"), Status, Judges (count), **Entries (count)**, **Scheduled** (`yyyy-MM-dd HH:mm`, blank if unset; column is fixed-width so the full date+time always fits), Actions. The Entries column shows how many entries are assigned (via 📦 Assign Entries).
+- [ ] **Expected (default sort is stable):** the grid is **multi-sort** and ships with a default sort of **Scheduled ascending (rounds with no scheduled date sort last), then Name ascending** as a tiebreaker. Starting a round must **not** reorder the grid (the backing query has no `ORDER BY`, so without this default the started row would jump around as the DB tuple order shifts). Clicking column headers re-sorts; shift-click adds secondary sort columns.
+- [ ] **Status semantics (scoring rounds):** the Status column flips automatically between `PENDING` and `READY` as configuration changes. A scoring round is `READY` when **all** of: (a) physical table assigned, (b) ≥ Minimum judges per round, (c) ≥ 1 entry assigned, (d) division is at JUDGING. Any other state shows `PENDING` — the row tells admins what is and isn't ready to start. Dynamic conflicts (table busy elsewhere, judge on another active round) are **not** part of READY — they remain Start-time errors so the message can be specific. Medal rounds use a separate `READY` semantics: the cascade flips a medal round to `READY` when every scoring round in its category COMPLETEs.
+- [ ] Click "+ Add Round".
+- [ ] **Expected:** Dialog with Type Select (default `SCORING`), Name text field, Category Select (filtered to JUDGING-scope categories), Table Select (populated from the Tables tab), and a **Scheduled date + time picker** (`DateTimePicker`). When Type = `MEDAL`, the Name field hides and a **Medal mode Select** (`add-round-medal-mode`: Comparative / Score-based) appears, **defaulting to Score-based** (COMPARATIVE medal rounds are created automatically by the scoring-round cascade, so a hand-created one is almost always the small-category Score-based flow) — see §12.6.8.
+- [ ] Leave Type = `SCORING`, leave Name blank → Save.
+- [ ] **Expected:** Inline error "Name is required" on the field.
+- [ ] Enter Name = `M1A Panel`, leave Category empty → Save.
+- [ ] **Expected:** Inline error "Category is required".
+- [ ] Pick Category = `M1A — Traditional Mead (Dry)`, leave Table empty → Save.
+- [ ] **Expected:** Inline error "Table is required."
+- [ ] Pick Table = `Table 1`, set Scheduled = today + 7 days at e.g. 14:00 → Save.
+- [ ] **Expected:** Notification "Round added"; row appears in the grid with Type = `Scoring`, Status = `PENDING` (not READY yet — judges + entries still missing, and Amadora is still at REGISTRATION_CLOSED).
+
+#### 12.6.2 Edit a scoring round
+
+- [ ] Click ✏ Edit on the new row.
+- [ ] **Expected:** Dialog with Name, **Table** (a `Select` of the division's physical tables, `edit-table-physical-table`), and **Scheduled** (a date + time picker). Category is not editable after creation. (Medal rounds open the same Edit dialog — name + table + date/time.)
+- [ ] **Expected (table reassignment):** the Table Select is enabled while the round is PENDING/READY and pre-selects the round's current table. Pick a different table → Save → **Expected:** the round's physical table changes (verify on the grid's Table column). Once the round is ACTIVE or later, the Select is disabled with helper text *"The table can only be changed before the round starts."* (key `judging-admin.tables.dialog.physical-table.locked`).
+- [ ] Change name to `M1A Panel A`, Save.
+- [ ] **Expected:** Notification "Round updated"; grid reflects new name.
+
+#### 12.6.3 Assign judges (with COI badges)
+
+The dev seed already pre-stages **6 judges** (`judge@`, `judge2@`, …, `judge6@`) as JUDGE participants in CHIP 2026, all with JudgeProfiles + assorted certifications. It also pre-stages a soft-COI: `judge@` + `judge2@` share meadery `Hidroméis do Minho`, matching one of `user@`'s Amadora entries. So no setup needed for the COI badges — just open the dialog.
+
+- [ ] On Judging Admin → Rounds tab → click 👥 Assign Judges on the scoring row.
+- [ ] **Expected:** Dialog with a multi-select `Grid<User>` titled `assign-judges-grid`. Columns: Name, Meadery, Country, Conflict of Interest. All 6 seeded judges visible.
+- [ ] **Expected (soft COI):** rows for `judge@` and `judge2@` show an orange **"Similar meadery to entry #N"** badge for `user@`'s M1A entry.
+- [ ] **Expected (hard COI):** if any seeded judge happens to have a self-entry in M1A, a red **"Self-entry — cannot judge"** badge appears. (Not in the default seed — to exercise this manually you'd add credits to a judge + submit + assign final category M1A.) Attempting to tick the hard-COI row reverts the selection and shows error *"Judge "{name}" cannot be assigned: they own entry #{N} in this category."* (key `error.coi.assign-hard-block`). The service rejects the same way as a defense-in-depth check if the UI is bypassed.
+- [ ] Select 2 judges (e.g. `judge3@` + `judge4@` — they have no COI on M1A), click Save.
+- [ ] **Expected:** Notification "Judge assignments updated"; row's `Judges` count shows `2`.
+- [ ] **Try:** Open dialog again and uncheck both judges → Save.
+- [ ] **Expected:** Notification; count goes back to 0.
+- [ ] Re-select both judges before continuing.
+
+#### 12.6.3.1 Manual conflict of interest (Conflicts of Interest tab)
+
+Automatic COI is account/meadery based, so it misses one real person using **two accounts** (e.g. a meadery
+registered entries under a business email but judges under a personal email). An admin can declare this link
+manually; it then hard-blocks that judge from that entrant's entries exactly like a self-entry.
+
+- [ ] On Judging Admin, open the **"Conflicts of Interest"** tab (**first** tab).
+- [ ] **Expected:** a help line explaining manual COI, an **"Add conflict of interest"** button (`add-coi-button`), and an empty grid (`coi-grid`) with columns Judge / Entrant / Actions.
+- [ ] Click **Add conflict of interest**. **Expected:** dialog with two ComboBoxes — **Judge** (`add-coi-judge`, the competition's JUDGE participants) and **Entrant** (`add-coi-entrant`, the competition's ENTRANT participants).
+- [ ] Pick a judge + an entrant (use two accounts that are the *same real person* in your seed, or any judge+entrant pair to exercise the flow), click **Save**.
+- [ ] **Expected:** Notification "Conflict of interest added."; the pair appears in the grid (name + email each).
+- [ ] **Try:** Add the same judge+entrant pair again → **Expected:** error *"This conflict of interest has already been declared."* (key `error.coi.manual.duplicate`).
+- [ ] **Verify the block:** go to Rounds → 👥 Assign Judges on a round in the **entrant's category**. **Expected:** ticking that judge reverts the selection and shows the hard-COI error — the manual COI now behaves like a self-entry. (Same enforcement reaches medal recording, since both funnel through `CoiCheckService.check()`.)
+- [ ] Back on the Conflicts tab, click the 🗑 remove icon on the row → confirm in the dialog (**Remove**). **Expected:** Notification "Conflict of interest removed."; the row disappears and the judge can be assigned again.
+
+#### 12.6.4 Start a scoring round
+
+Scoring rounds require an **explicit entry assignment** before they can start. Use the 📦 Assign Entries button on the row to pick the entries this round will judge (typically all RECEIVED entries with `finalCategoryId = M1A`, but split-category scenarios have a subset — see §12.6.7.1). The earlier "all entries with matching final category" auto-populate fallback was removed in cycle 9 — admin must opt in.
+
+- [ ] Click 📦 **Assign Entries** on the row → multi-select grid → pick at least 1 entry → Save → notification *"Entry assignments updated"*.
+- [ ] (Try) Click ▶ **Start** without first assigning entries on a new round → **Expected:** error *"Assign at least one entry to this round before starting it. Use the Assign Entries button."*
+
+##### 12.6.4.0 Start is gated to JUDGING — advance Amadora now
+
+Amadora is still at `REGISTRATION_CLOSED`. `startRound` is the one judging op that
+requires `DivisionStatus >= JUDGING`; everything else (rounds, judges, entries,
+medal-round setup) is fine at REG_CLOSED.
+
+- [ ] (Try) Click ▶ **Start** on a round with entries assigned while still at REG_CLOSED.
+- [ ] **Expected:** Error notification *"Advance the division to Judging before starting rounds. Setup is allowed at Registration Closed; starting is not."* (key `error.round.cannot-start-before-judging`). Status stays `PENDING`.
+- [ ] Navigate back to the Amadora division header (open in a new tab or use the breadcrumb) → click "Advance Status" → confirm "Advance from Registration Closed to Judging?".
+- [ ] **Expected:** Status badge updates to `JUDGING` (both the `JudgingCategoryAdvanceGuard` and `EntryFinalCategoryAdvanceGuard` are satisfied — judging categories exist (§12.4) and every SUBMITTED/RECEIVED entry has a final category (§12.5)).
+- [ ] Return to the Judging Admin view → continue below.
+
+- [ ] Click ▶ Start on the round (with entries assigned).
+- [ ] **Expected:** Confirmation dialog body explains scoresheet creation.
+- [ ] Click Start.
+- [ ] **Expected:** Notification "Round started"; Status column changes from `PENDING` to `ACTIVE`.
+- [ ] (Try starting a *second* scoring round at the same table — Add Round → pick a different category, same Table `Table 1`, assign 2 judges → Start. **Expected**: error "This table already has an active round…")
+- [ ] (Try assigning one of `M1A Panel`'s judges to a new round at a *different* table, then start that new round. **Expected**: error "One or more assigned judges … are already on another active round.")
+- [ ] **Expected:** A scoresheet is auto-created per **RECEIVED** entry in the round's category — SUBMITTED-but-not-received and WITHDRAWN entries are skipped.
+- [ ] **Expected:** ▶ Start button becomes disabled (already started).
+- [ ] **Expected:** 🗑 Delete button is disabled with tooltip "Cannot delete a started round or one with assigned judges".
+- [ ] **Check Mailpit:** each assigned judge receives a "Judging round ready" email, subject "[MEADS] Judging round ready — {round}", heading "Your judging round is ready", body names the round, category, division and competition, CTA button "Log in to MEADS" (magic link). `JudgingNotificationListener` handles `RoundStartedEvent`.
+
+#### 12.6.4.1 Revert an ACTIVE scoring round (mistake correction)
+
+An ACTIVE scoring row exposes a ↶ **Revert** button (between Assign Entries and Delete). It returns the round to `READY` and deletes every BLANK scoresheet, so the admin can fix a mistake (wrong table started, wrong entries assigned, wrong judges) and start again. It is blocked as soon as **any** judge has touched a scoresheet — DRAFT (judge saved at least once) or SUBMITTED (key `error.round.cannot-revert-touched-scoresheets`) — because that content represents real judging work that revert would destroy. To clear the block, admins delete each touched scoresheet via the per-row 🗑 button on the round drill-in first, then revert.
+
+- [ ] On the ACTIVE `M1A Panel A` row, **Expected:** ↶ Revert button is enabled (tooltip: *"Revert"*); PENDING/READY/COMPLETE rows show the button disabled (tooltip: *"Only ACTIVE rounds can be reverted."*).
+- [ ] Click ↶ **Revert** → confirmation dialog *"Revert round M1A Panel A?"*, body warns it returns the round to READY + deletes drafts + only for mistake correction.
+- [ ] Click **Revert** to confirm.
+- [ ] **Expected:** Notification *"Round reverted"*; row's Status flips `ACTIVE` → `READY`; draft scoresheets are gone (verify on Round drill-in if curious).
+- [ ] ▶ Start the round again to put it back into ACTIVE for the rest of §12.6 — entries/judges/table are still assigned, so it starts straight away.
+- [ ] **(Optional — verify the touched-scoresheets guard.)** Skip this for now and revisit after §12.10–§12.11: once any judge has saved scores on a scoresheet (DRAFT) or submitted one, try ↶ Revert. **Expected:** error *"Cannot revert: {N} scoresheet(s) have judging work in progress (saved as draft or submitted). Delete or revert those scoresheets first if you really need to roll back the round."* The block fires the moment a judge enters any score (auto-save promotes the sheet BLANK → DRAFT) — they don't need to Save or finalize.
+
+#### 12.6.5 minJudgesPerRound lock — verify settings tab
+
+- [ ] Navigate back to Amadora division detail → Settings.
+- [ ] **Expected:** "Minimum judges per round" is now `setReadOnly(true)` — locked because a round has `status != PENDING`.
+- [ ] **Expected:** Tooltip on the field explains the lock.
+
+#### 12.6.6 Try to remove a judge below the minimum
+
+*From Rounds tab → 👥 Assign Judges on the started scoring round.*
+
+- [ ] Uncheck both judges, click Save.
+- [ ] **Expected:** Error "Removing this judge would drop the round below the required minimum of 2 judges."
+- [ ] Close — both judges remain assigned.
+
+#### 12.6.7 Delete a not-started, no-judges scoring round (negative + positive)
+
+- [ ] Add a second scoring round (`Throwaway`, category `M2A — Pome Fruit Melomel`, Table `Table 2`, no Scheduled).
+- [ ] **Expected:** New row, Status = `PENDING`.
+- [ ] Click 🗑 Delete → confirm.
+- [ ] **Expected:** Notification "Round deleted"; row removed.
+
+#### 12.6.7.1 Assign entries to a scoring round (split-category demo)
+
+Each scoring round in the new model explicitly owns the set of entries it judges. Entries are 1:1 with scoring rounds — an entry can't be on two rounds at once. The walkthrough uses Profissional (pre-staged at JUDGING) which the seed has split M1A into two scoring rounds.
+
+- [ ] Switch to the Profissional division: navigate to CHIP 2026 → Divisions → Profissional → "Manage Judging" → Rounds tab.
+- [ ] **Expected (from dev seed):** Two PENDING scoring rounds for M1A: `M1A Panel A` (Table 1, 2 judges, **3 entries** assigned — 2 standard + the verbose all-fields demo entry) and `M1A Panel B` (Table 2, 2 judges, 3 entries assigned). Plus one PENDING medal round for M1B (Table 4, 3 judges).
+- [ ] Click 📦 Assign Entries on the `M1A Panel A` row.
+- [ ] **Expected:** Dialog titled "Assign entries to M1A Panel A" with helper text explaining 1:1 constraint, plus a multi-select grid with columns Entry / Meadery / Current round.
+- [ ] **Expected:** The **6 RECEIVED M1A entries** are listed. The **3 pre-assigned to Panel A** are pre-selected; the 3 on Panel B show `Current round: M1A Panel B`.
+- [ ] Try to also select one of Panel B's entries (a row currently assigned elsewhere) → Save.
+- [ ] **Expected:** Error notification "This entry is already assigned to round 'M1A Panel B'. Remove it from there first." Dialog stays open.
+- [ ] Close. Click 📦 Assign Entries on the `M1A Panel B` row → uncheck one of its entries → Save → notification "Entry assignments updated".
+- [ ] Back on `M1A Panel A`: open Assign Entries again → the newly-freed entry shows `Current round: — Unassigned —`. Select it → Save → assignments updated.
+- [ ] Re-balance to whatever you prefer before continuing.
+- [ ] (Try) Start one of the M1A rounds → then open Assign Entries on it. **Expected:** dialog still opens (entry assignments are editable through ACTIVE). On ACTIVE rounds, adding an entry auto-creates its BLANK scoresheet; removing an entry deletes the scoresheet if it's still BLANK, but is blocked if the scoresheet is already SUBMITTED (key `error.entry.cannot-unassign-submitted`). After the round reaches COMPLETE the 📦 button disables with tooltip *"Entry assignments are locked once the round is COMPLETE."* (key `error.entry.cannot-change-on-complete-round` defends the same at the service level).
+- [ ] (Try) After reverting an ACTIVE round (see §12.6.4.1), open 📦 Assign Entries on the now-READY row. **Expected:** dialog opens and current assignments are editable — useful for fixing the mistake that prompted the revert.
+
+#### 12.6.8 Add a medal round
+
+Medal rounds are auto-created by the scoring-completion cascade — when every scoring round in a category reaches COMPLETE, a medal `JudgingRound` (type=MEDAL) appears in the grid at status `READY`. You can also add one explicitly via the Add Round dialog if you want to pre-stage with a custom table or before any scoring rounds finish.
+
+- [ ] Click "+ Add Round" → switch Type to `MEDAL`.
+- [ ] **Expected:** Name field disappears (medal rounds are auto-named `Medal — {category code}`, e.g. `Medal — M1B`) and a **Medal mode Select** appears (`add-round-medal-mode`, **default Score-based**). The mode is chosen **at create time** (and is editable afterward via the grid's ✏ Edit dialog while PENDING/READY) — the old post-create header switch is gone. The **Scheduled date+time picker stays available for medal rounds** — set it here and it persists on the new row (it is no longer dropped at create time).
+- [ ] Pick Category = `M1B — Traditional Mead (Semi-Sweet)`, leave Mode = `Comparative`, Table = `Table 2`, Save.
+- [ ] **Expected:** Notification "Round added"; new row with the Type badge = `Medal — Comparative`, Status = `PENDING`, Name = `Medal — M1B`.
+- [ ] **Try** to add a second medal round for the same category → **Expected:** error *"A medal round for this category already exists. Only one medal round per category is allowed."* (One medal round per category — redesign decision #5.)
+- [ ] **Expected (unified actions):** the medal row now carries the **same inline action set as a scoring row** — ✏ Edit (name + table + date/time), 👥 Assign Judges, 📦 Assign Entries, ▶ Start, ↶ Revert, 🗑 Delete, 👁 Open. ↶ Revert on a medal round returns it to READY **and clears its medal awards** (the medal-only "Reset" is gone — Revert covers it; confirm body warns the awards are cleared and the scoresheets are kept). 🗑 Delete is enabled only while PENDING with no judges and no medal awards. The per-row 🥇🥈🥉 medal-awarding + Finalize/Reopen live in the `MedalRoundView` drill-in (👁 Open) — see §12.12.
+- [ ] **Expected (📦 on a COMPARATIVE medal row is disabled):** for a **COMPARATIVE** medal round the 📦 Assign Entries icon is **disabled** with a tooltip explaining the candidates come from the judges' "advance to medal round" flags on the scoring sheets (they can't be hand-assigned — the entries live in their scoring rounds, and an entry can be on only one round). It stays **enabled** on SCORING rows and on **SCORE_BASED** medal rows (where it opens the read-only Sync dialog, §12.6.8.1).
+- [ ] **Note:** A pre-staged COMPARATIVE medal round shows an empty entries grid until scoring rounds in its category COMPLETE (its pool is the advance-flagged sheets). To award medals before scoring completes, use a SCORE_BASED medal round (§12.6.8.1) or the dev-seeded Profissional M1B medal round once Profissional scoring rounds are finalized.
+
+#### 12.6.8.1 Small-category flow — SCORE_BASED medal round runs scoring directly
+
+When a category has few entries and you want to skip the preliminary scoring round entirely, a SCORE_BASED medal round can own the scoresheets directly. It acts like a hybrid: scoring happens at the medal round itself, and medals come from those scoresheets at the end (gold/silver/bronze by total, stop on tie).
+
+**Force-all invariant (Cycle A):** Every RECEIVED entry in the category MUST be on the medal round, and nothing else. Partial assignment doesn't make sense when the medal round IS the only judging venue. The Assign Entries dialog is read-only (no checkboxes); the "Sync now" footer button reconciles in both directions — adds any missing RECEIVED entries AND removes zombies (entries no longer RECEIVED: withdrawn, reverted, moved category). Subsequent state changes auto-sync via an `EntryReceivedEvent` listener (fires on RECEIVED transitions in OR out of that state). Manual unassign of a RECEIVED entry is rejected (`error.entry.cannot-unassign-from-score-based`); the only ways to drop a RECEIVED entry are to withdraw it (auto-sync removes the zombie) or move its final category. Non-RECEIVED entries can be manually unassigned as an escape hatch. Entries with a SUBMITTED scoresheet on the round are never auto-removed (committed work isn't silently dropped — sync logs a warning and skips).
+
+- [ ] Pick (or create) a small category with no scoring rounds yet — e.g., a new judging category with 3 RECEIVED entries.
+- [ ] Click "+ Add Round" → Type = `MEDAL` → **Mode = `Score-based`** → Category = the small one → Table = any → Save. (Mode is set at create time; the row's Type badge reads `Medal — Score-based`.)
+- [ ] Click 📦 **Assign Entries** on the medal row (grid) — the dialog is mode-aware; for SCORE_BASED it is **read-only + a "Sync now" footer** (the same flow is also reachable inside MedalRoundView via 👁 Open).
+- [ ] **Expected:** Dialog is a **read-only preview** (no checkboxes — selection mode NONE). Lists every RECEIVED entry in the category. The Total column shows `—` for entries with no sheet yet. Helper text reads "Every RECEIVED entry in this category is automatically part of this medal round…". Footer button reads "Sync now" (not "Save").
+- [ ] Click **Sync now** → notification "Medal-round entries updated"; the round now contains all 3 entries.
+- [ ] (Optional regression check — auto-sync add) Without closing the page, in another tab / as `compadmin@`, mark a NEW entry as RECEIVED in the same category. **Expected:** within a few seconds the new entry is automatically added to the medal round (via `EntryReceivedEvent` → `MedalRoundAutoSyncListener` → `syncScoreBasedMedalRoundEntries`). Re-open the Assign Entries dialog to confirm the count grew.
+- [ ] (Optional regression check — auto-sync cleanup) Withdraw one of the assigned entries (Entry Admin → ✖ Withdraw). **Expected:** within a few seconds the withdrawn entry is automatically removed from the medal round (zombie cleanup path on the same listener). Re-open the dialog to confirm the count dropped.
+- [ ] (Try) Attempt a manual unassign of a RECEIVED entry via direct API. **Expected:** rejected with `error.entry.cannot-unassign-from-score-based` ("Can't remove an entry from a SCORE_BASED medal round manually — every RECEIVED entry in the category is assigned automatically. Withdraw the entry or change its final category to remove it.")
+- [ ] (Try) Attempt a manual unassign of a NON-RECEIVED (e.g. WITHDRAWN) entry via direct API. **Expected:** succeeds — escape hatch lets admin clean stale zombie data manually.
+- [ ] Click **Assign Judges** → pick at least minJudgesPerRound judges → Save.
+- [ ] **Expected:** Round status auto-flips PENDING → READY once table + judges (≥ minJudgesPerRound) + entries (≥ 1) + division ≥ JUDGING are all satisfied.
+- [ ] Click ▶ **Start** on the medal row (grid) → confirmation → notification "Round started"; status → ACTIVE.
+- [ ] **Expected:** BLANK scoresheets are created for every assigned entry (mirroring how a scoring round behaves at start).
+- [ ] Log in as one of the assigned judges → land directly on the medal round (Cycle C redirect).
+- [ ] **Expected:** Judges see the standard ScoresheetView form (per-criterion scores + comments) for each assigned entry. Score each and click **Save** (sheet → FILLED). The medal grid now carries a **Status** column (next to Total) that tracks each sheet's scoresheet status — `BLANK` → `FILLED` → `SUBMITTED` (`—` for an entry with no sheet yet) — so the scoring progress of a medal round is visible at a glance, just like a scoring round. The grid **Total** column fills in alongside it as each sheet is saved (no need to submit first).
+- [ ] **(Stepper auto-save.)** Set at least one score using the field's **+ / − step buttons** (not by typing). **Expected:** the running total preview updates and the value persists on its own (auto-save fires on the `change` the stepper emits — previously, under `ON_BLUR`, stepper clicks silently failed to save).
+- [ ] When the **last** sheet is FILLED (none BLANK/DRAFT left), the system auto-populates medals from the FILLED totals — 🥇🥈🥉 appear in the grid's Current medal column. If two entries tie at a medal boundary, the ties banner shows ("{N} entries tied…") and the medals for the tied slot are left for manual resolution (use the per-row medal buttons). **{N} counts the tied entries** — if all 3 sheets are identical it reads `3`; adjust one so only 2 still tie and it must read `2` (it previously mis-reported the open-slot count).
+- [ ] **(Recompute on edit — verifies the auto-populate reconcile.)** Before finalizing, re-open one entry's scoresheet, change its scores so the ranking flips (e.g. push the current silver above the current gold), Save (→ FILLED). **Expected:** back on the medal grid the medals **recompute** from the new totals — the medals swap to match the new order. Now edit again so two entries **tie** at a medal boundary, Save → **Expected:** the tied slot's medals clear and the ties banner appears (Finalize disables). Resolve by awarding the medal to one tied entry (a manual award is preserved across later auto-recomputes).
+- [ ] **(Edit-without-resave clears the stale medal.)** After medals have auto-populated, open a medaled entry's scoresheet, change a score (the sheet auto-saves → demotes FILLED→DRAFT) and **navigate back without clicking Save**. **Expected:** on the medal grid that entry's **Total disappears AND its medal is cleared** (the auto medals are dropped while the panel is incomplete — previously the medal lingered with no total). Re-open the sheet and **Save** (→ FILLED) so the panel is all-FILLED again → the medals re-populate. (A *confirmed* manual tie-resolution award would survive the clear.) The button is enabled only once every sheet is FILLED and no tie is open (otherwise it's disabled with a tooltip explaining why). The confirm dialog lists the actual medal counts (not zeros) plus the bold "no medal" count. **For a judge it does NOT claim the round can be reopened** (Reopen is admin-only) — that reassurance + the admin warning show only to admins.
+- [ ] **(Clearing a medal sticks through finalize — verifies the withhold fix.)** With medals auto-populated (e.g. 2 entries → gold + silver), click 🗑 **Clear** (confirm) on the **silver** row → its medal shows **none**. Now **Finalize**. **Expected:** the silver does **not** come back — the cleared entry stays medal-less (only the gold is committed). *(On a SCORE_BASED round, Clear records a deliberate "no medal" — a confirmed null award — so the score-driven auto-populate that re-runs at finalize treats the entry as decided and won't re-derive a medal. Previously Clear hard-deleted the award, so finalize re-derived the silver. To bring a medal back, click a medal button; to return to fully auto, revert/reopen the round.)*
+- [ ] **Expected:** Confirm → all sheets submitted, medals committed, round → COMPLETE in one step. An admin *can* Finalize too, but isn't required.
+- [ ] **(Reopen reverts sheets — verifies the SCORE_BASED reopen fix.)** As **`compadmin@`**, on the now-COMPLETE round click **Reopen** (admin-only) → **Expected:** round → ACTIVE and its **SUBMITTED scoresheets drop back to FILLED** (editable again; opening one and editing demotes it to DRAFT). The **awarded** medals are kept (still shown) but **returned to provisional/unconfirmed** so score edits re-rank them again. (Before the fix the sheets stayed locked; before a later fix the medals stayed *confirmed* so editing scores after reopen never recomputed them.)
+- [ ] **(Withheld medal survives reopen — verifies the withhold/reopen fix.)** Before finalizing, **Clear** one medal (e.g. bronze) so the entry is deliberately medal-less, Finalize, then **Reopen** and **Save** without changing scores. **Expected:** the cleared medal does **NOT** reappear — a withhold (a confirmed "no medal" decision) is preserved across reopen, unlike awarded medals which go provisional. (Before the fix, reopen un-confirmed the withhold too, so the next save re-derived the bronze from the score.)
+- [ ] **(Recompute after reopen.)** Still ACTIVE after reopen, as a judge edit the **silver** entry's score so it now beats the gold, Save (→ FILLED). **Expected:** the medals **swap** (the higher total takes gold) — because reopen un-confirmed them, the score-driven auto-populate is back in control. Re-Finalize to re-confirm (the gold becomes a BOS candidate again).
+
+#### 12.6.9 Type + Status filters
+
+- [ ] Set the Type filter to `Scoring` → **Expected:** only the scoring rows remain in the grid.
+- [ ] Set the Type filter to `Medal` → **Expected:** only the medal rows remain.
+- [ ] Set the Type filter back to `All` → **Expected:** all rows visible.
+- [ ] In the **Status filter** (`rounds-status-filter`), untick `PENDING` → **Expected:** PENDING rows disappear; other statuses remain. Re-tick it.
+- [ ] Untick **every** status → **Expected:** all rows still show (empty selection = "no constraint", not "hide everything").
+- [ ] Combine: Type = `Medal` + only `ACTIVE` ticked → **Expected:** just active medal rounds. Reset both filters before continuing.
+
+#### 12.6.10 Open buttons drill into per-round views
+
+- [ ] Click the Open button on a Scoring row → **Expected:** navigates to `RoundView` (`/competitions/.../divisions/.../rounds/{roundId}`) — see §12.10.
+- [ ] Click the Open button on a Medal row → **Expected:** navigates to `MedalRoundView` (`/competitions/.../divisions/.../medal-rounds/{divisionCategoryId}`) — see §12.12.
+
+### 12.7 JudgingAdminView — Results tab
+
+*Click "Results" tab.*
+
+The Results tab is a read-only summary of every round that has reached COMPLETE status. Before any rounds complete, it shows an empty-state caption "No completed rounds yet."
+
+- [ ] **Expected (initially):** Empty-state caption "No completed rounds yet." (no scoring rounds are COMPLETE — the Round 1 cascade fires only after every scoresheet in the round is SUBMITTED).
+- [ ] After completing scoresheets in §12.10–12.11 (M1A Panel A goes COMPLETE), come back to the Results tab.
+- [ ] **Expected:** Grid columns: Type, Name, Category, Table, Outcome, Actions.
+- [ ] **Expected:** The COMPLETE scoring row shows Outcome = `{N} scoresheets submitted` where N = the count of submitted scoresheets at the round.
+- [ ] After a medal round goes COMPLETE (§12.12), come back here.
+- [ ] **Expected:** The COMPLETE medal row shows Outcome as one glyph per medal slot (no counts — each medal is unique per category): `🥇 🥈 🥉` when all three are awarded, with `🚫` standing in for any medal that was not awarded (e.g. `🥇 🚫 🥉` = no silver).
+- [ ] Click the Open button on a COMPLETE row → **Expected:** navigates to the same per-round view as the Rounds tab (RoundView for SCORING, MedalRoundView for MEDAL).
+
+### 12.8 JudgingAdminView — Best of Show tab
+
+*Click "Best of Show" tab.*
+
+- [ ] **Expected (Judging.phase = ACTIVE):** Phase badge `Phase: Active`, configured BOS places line, "Manage placements →" anchor, and three sections: header, GOLD candidates (empty until medal rounds complete), placements (1 empty row).
+- [ ] **Expected (GOLD candidates grid columns):** `Entry #` (prefixed, e.g. `PRO-1`), `Code`, `Mead`, `Category` — the entry number and the code are now separate columns (the code used to sit alone under an "Entry" header).
+- [ ] **(Awards confirmed on finalize — verifies the BOS-candidate fix.)** After finalizing the M3B (SCORE_BASED) and M1A (COMPARATIVE) medal rounds, return here → **Expected:** their golds appear in the GOLD candidates grid. Before the fix, an auto-populated SCORE_BASED gold stayed `confirmed=false` and never showed ("No GOLD medals were awarded"); finalizing now confirms the awards.
+- [ ] **(Empty / un-judged categories don't block — verifies the config/BOS-gate fix.)** Profissional has JUDGING categories with **no entries** (e.g. M4-series) and categories with entries but **no medal round set up** (M2A, M2C if you didn't run them). **Expected:** these do **not** block "Start BOS" — only categories that actually have a medal round must be COMPLETE. (Before the fix, merely opening this tab created a config for every category and required each to have a COMPLETE medal round, so Start BOS could never enable.)
+- [ ] **(Empty category is deletable — verifies the deletion guard + no-eager-config.)** On a fresh DB, an entry-less judging category (e.g. M4S) has no config/round/award → DivisionDetail → Judging Categories → remove it → **Expected:** succeeds (no `category_judging_configs` FK crash). A category that *is* in judging use (has a config / round / award) instead gives the clean error *"Cannot remove this category: it is in use for judging…"* (§12.4.1).
+- [ ] **Expected:** "Start BOS" button is disabled with tooltip "All medal rounds must be COMPLETE before BOS can start." until every medal `JudgingRound` in the division is `COMPLETE` (categories with no medal round are ignored — they don't block).
+- [ ] After all medal rounds COMPLETE, click "Start BOS" → confirm.
+- [ ] **Expected:** Notification "BOS started"; phase badge updates to `Phase: BOS`; "Finalize BOS" and "Reset BOS" appear.
+- [ ] **(Edit a placement's place onto an occupied slot — clean rejection.)** With at least two placements filled (e.g. 1st and 3rd), edit the 3rd-place row (✏, `bos-edit-place-field`) and set the place to `1` (already taken) → Save. **Expected:** a clean error notification *"Place 1 is already assigned. Free that place first or pick another."* (key `error.bos.place-taken`); **positions are unchanged** (no swap). Previously this surfaced a raw `bos_placements_division_id_place_key` constraint exception. (Same guard protects the BosView reassign path.)
+
+### 12.9 MyJudgingView (Cycle C: redirect-or-stub)
+
+**Design (Cycle C):** A judge has at most one ACTIVE round at any time (enforced by `JudgingService.assignJudge`'s active-conflict check). MyJudgingView reflects that:
+- If the judge has an ACTIVE round → forward directly to RoundView (for SCORING) or MedalRoundView (for MEDAL).
+- If none → show a bare "No active round right now" message.
+
+There is no hub view, no "Resume next draft" shortcut, and no list of upcoming / past rounds. Judges land where they need to work, or are told there's nothing live.
+
+Additionally, **RootView** now redirects judges (any user with a `JudgeAssignment`) to `/my-judging` after login, which then applies the redirect logic above. This makes the "log in → see your live work" UX automatic.
+
+Access tightening: judges can only open **ACTIVE** rounds. RoundView, MedalRoundView, and ScoresheetView all gate non-admin access by `round.status == ACTIVE`; PENDING/READY/COMPLETE rounds forward unauthorized judges to `""` (root → re-redirects).
+
+*Log out as compadmin, log in as `judge@example.com` (use the magic link from Mailpit; access code also works).*
+
+- [ ] After login, you should land **directly** on the ACTIVE round you're assigned to (RoundView for SCORING, MedalRoundView for MEDAL). The sidebar "My Judging" entry is visible (gavel icon).
+- [ ] Manually type `/my-judging` in the URL bar → **Expected:** same forward — you end up at the same active-round view.
+- [ ] Manually type a different round URL the judge ISN'T assigned to (e.g. a sibling scoring round) → **Expected:** forwarded to root, ends back at the active round or stub.
+- [ ] Manually type the URL of a PENDING/READY/COMPLETE round the judge IS assigned to (if any) → **Expected:** same forward (judges only see ACTIVE rounds).
+
+#### 12.9.1 No-active-round stub
+
+- [ ] If the judge has no ACTIVE round (e.g. all their rounds are still PENDING/READY, or all are COMPLETE), the `/my-judging` page shows H2 "My Judging" plus a Span with id `my-judging-empty` reading *"No active round right now. The admin will let you know when judging starts."*
+- [ ] To test deliberately: log in as a judge whose round is still PENDING (e.g. before admin clicks Start). Sidebar still shows "My Judging"; click it → the stub renders.
+
+#### 12.9.2 Non-judge user — no sidebar entry
+
+- [ ] Log out, log in as `entrant@example.com` (regular entrant with no judge assignment).
+- [ ] **Expected (sidebar):** "My Judging" entry is *not* present (gated by `JudgeAssignmentChecker.hasAnyJudgeAssignment`).
+- [ ] Manually navigate to `/my-judging` → **Expected:** MyJudgingView renders with the empty-state stub (no active round). The view itself is `@PermitAll` so it doesn't 403; the sidebar gating is the discoverability cue.
+
+### 12.10 TableView (per-table)
+
+*Back as `judge@example.com`. Per Cycle C, `/my-judging` auto-forwards to the started M1A table — you should already be on RoundView. If not, login again or navigate to `/my-judging`.*
+
+- [ ] **Expected:** URL is `competitions/chip-2026/divisions/amadora/rounds/<roundId>`.
+- [ ] **Expected:** Breadcrumb begins with "My Judging" (judge path) or "My Competitions / CHIP 2026 / Amadora / Judging Admin" (admin path).
+- [ ] **Expected:** H2 `CHIP 2026 — Amadora — Table: M1A Panel A`.
+- [ ] **Expected:** the info row has the scoring **Type badge** (contrast) followed by a **neutral grey category badge** (`round-category-badge`) showing the final/judging category **code** (e.g. `M1A`; hover shows code — name) — a label colour distinct from the type badge.
+- [ ] **Expected:** A one-line **explanation** (`round-explanation`) below the header, **role-phrased** like the medal round (§12.12): judges see "Score each entry against the MJP criteria and save every scoresheet…"; admins see the third-person "Judges score each entry against the MJP criteria and save their scoresheets…". The title / info row / explanation have the same vertical breathing room as the medal round (not crammed together).
+- [ ] **Expected (admin only):** between the info row and the explanation, a **right-aligned "Judges: …" line** (`round-judges-line`, sitting under the Table info) lists the round's assigned judges by name (comma-separated, `—` when none). It shows at **every** status — crucially on a **COMPLETE** round, where the Assign Judges dialog is locked and this is the only way to see who judged. Judges don't see this line.
+- [ ] **Expected:** Filter bar with a `Status` Select (options: All, Draft, Submitted; default All) and a `Search` `TextField` (`ValueChangeMode.EAGER`). Placeholder is **"Mead name or entry code"** for admins, **"Entry code"** for judges (anonymity rule — judges can't search by mead name either).
+- [ ] **Expected (admin):** A `Grid<Scoresheet>` with columns Entry # *(e.g. "PRO-1", cross-reference back to Entry Admin)*, Code, Mead Name, Status, **Total**, **Advances**, Filled by, Actions.
+- [ ] **Expected (judge):** Same grid with **Entry # and Mead Name hidden** (anonymity rule — judges judge to style, not to a brand, and don't see the internal cross-reference either). Visible columns: Code, Status, Total, Advances, Filled by, Actions.
+  - **Total column** shows the locked total for SUBMITTED sheets and the live running sum for BLANK/DRAFT/FILLED sheets (judging in progress), or "—" for sheets with no scores entered yet. The running sum is computed live, so admins can see panel progress without opening each scoresheet. (No `*` marker — matches the medal-round grid.)
+  - **Advances column** shows ✓ when the judge marked "Advance to medal round", — otherwise.
+- [ ] **Status filter** options: `All`, `Blank` (created, no judge touched yet), `Draft` (judge saved at least once), `Submitted`. Apply filter Status = Draft → grid narrows to DRAFT rows only.
+- [ ] Type part of a mead name in Search → grid filters client-side; clearing the field restores all rows.
+
+#### 12.10.0 Round-level Finalize / Reopen
+
+- [ ] **Expected:** above the grid an ACTIVE round shows a **Finalize** button (`round-finalize-button`, visible to judge + admin) — **enabled only when every scoresheet on the round is FILLED** (otherwise disabled, with a tooltip to save all scoresheets first). A COMPLETE round instead shows an admin-only **Reopen** button (`round-reopen-button`).
+- [ ] (Once all sheets are FILLED — see §12.11) click **Finalize** → confirm dialog states **"N entries advancing to the medal round"**, shows a prominent **zero-advance warning** if none are flagged, and (for admins) an extra "you're finalizing on behalf of the judges" warning. Confirm → all sheets submit (totals computed), round → COMPLETE, and the category's medal-round cascade fires.
+- [ ] **(Split-category cascade — verifies the duplicate-key fix.)** For the M1A split (Panel A + Panel B, §12.6.7.1), score + Finalize **both** panels, flagging some entries "Advance to medal round" (§12.11). **Expected:** finalizing the **second** panel (the one that makes *all* M1A scoring rounds COMPLETE) **does not crash** — before the fix it threw `judging_round_entries_entry_id_key`. The cascade auto-creates **`Medal — M1A` (COMPARATIVE)** at READY, and 👁 Open shows the advance-flagged entries as candidates (derived from the scoresheets — the medal round does not own an `entries` set). **The Rounds-grid Entries column reflects this derived count** (e.g. shows `3` once three entries advanced) — not `0` — even though a COMPARATIVE medal round never materializes its `entries` set.
+- [ ] (Admin, on a COMPLETE round) click **Reopen** → confirm → round → ACTIVE; its SUBMITTED sheets drop back to **FILLED** (editing one demotes it to DRAFT, so the round has to be re-finalized).
+
+#### 12.10.1 Per-row Open → ScoresheetView
+
+- [ ] **Expected (row-select highlights, no navigation):** the grid is single-select (`SelectionMode.SINGLE`) — clicking a row **highlights** it (click again to toggle it off) to help track which row's icons you're clicking in a large grid. It does **not** navigate. Opening a scoresheet is done via the ✏ pencil icon only (the row already carries dedicated icons, so a row-click open would be redundant).
+- [ ] **Expected (sortable + resizable columns):** every data column (Entry #, Code, Mead name, Status, Total, Advances, Filled by) is **sortable** and **resizable** like the other judging grids. Entry # and Total sort **numerically** (Total with blank "—" cells sorting last), not lexically. The Actions column is resizable but not sortable.
+- [ ] **Expected (default sort is stable):** the grid is **multi-sort** with a default of **entry code ascending**. Filling/saving a scoresheet must **not** reorder the grid (the backing query has no `ORDER BY`, so without this default the edited row would jump as the DB tuple order shifts). Header clicks re-sort; shift-click adds secondary columns.
+- [ ] **Expected (per-row actions):** every row shows a 👁 **eye** = **View mead details** (`mead-details-<entryId>`) → a read-only dialog of the entry's characteristics (sweetness, strength, ABV, carbonation, honey, etc.) with **no mead name, status, entrant or category** (anonymity); and a ✏ **pencil** = **Open scoresheet** (`open-<sheetId>`) that navigates to `competitions/.../scoresheets/<id>`. Both judges and admins see both. The old per-row 📨 Submit is **gone** — judges Save each sheet (→ FILLED), then the round-level **Finalize** (§12.10.0) submits them all at once. Admins additionally see Revert / Move / Delete (§12.10.2).
+- [ ] **Expected (judge):** form opens in edit mode — a single **Save** button (id `save-button`) is visible, fields editable and **auto-saving on blur** (a "Saving…/Draft saved ✓" status shows). No "Save Draft", no per-sheet "Submit".
+- [ ] **Expected (admin):** form opens **read-only** (no **Save** button, score fields + comments / language / advance checkbox all marked read-only). Below the read-only form, an **"Edit on behalf of judge"** button (id `admin-edit-scoresheet`) is visible.
+- [ ] (As admin) Click "Edit on behalf of judge" → **Expected:** ConfirmDialog *"Edit scoresheet?"* — body warns the action should only be used in exceptional situations (judge left mid-round, correct an obvious typo) and that the admin is not silently overriding the judge's assessment. Buttons: Cancel + "Edit anyway".
+- [ ] Cancel → form stays read-only. Re-open the dialog, click "Edit anyway" → form re-renders editable; the **Save** button appears.
+- [ ] **Visibility tightening:** a judge who is **not** assigned to the round must not be able to open scoresheets at that round, even by knowing the URL. Try copying a scoresheet URL while logged in as `compadmin@`, log out, log back in as a judge who is NOT on this round (e.g. `judge6@` if you've only assigned `judge3@`/`judge4@`), paste the URL → **Expected:** redirect to root (`/`); ScoresheetView not rendered.
+
+#### 12.10.2 Admin-only actions (Revert, Move)
+
+*Log back in as `compadmin@example.com` and revisit the same TableView URL.*
+
+- [ ] **Expected:** Rows in SUBMITTED show an `arrow-backward` icon (Revert) tooltip "Revert to draft" (or "Cannot revert while medal round is active or complete for this category." when locked).
+- [ ] **Expected:** Rows in **DRAFT or FILLED** (pre-submit) show an `exchange` icon (Move) tooltip "Move to another table".
+- [ ] **Expected:** Neither button is visible for `judge@example.com` (admin-only).
+
+##### Revert
+
+- [ ] On a SUBMITTED row (you'll need to submit a scoresheet first — see §12.11) click Revert.
+- [ ] **Expected:** Confirmation dialog body explains the scoresheet returns to DRAFT, total score is cleared, and if it was the last submitted at the round, round status reopens to ACTIVE.
+- [ ] Click Revert.
+- [ ] **Expected:** Notification "Reverted scoresheet for {entryCode} to draft."; row Status changes; round Status (visible in JudgingAdmin Rounds grid) returns to ACTIVE if applicable.
+- [ ] **Check Mailpit:** the judge who filled that scoresheet receives a "Scoresheet reopened" email, subject "[MEADS] Scoresheet reopened — {entryCode}", heading "A scoresheet needs your attention", CTA button "Log in to MEADS". `JudgingNotificationListener` handles `ScoresheetRevertedEvent`. (No email if the scoresheet was reverted before any judge had filled it.)
+
+##### Move to another table
+
+For this you need a *second* ACTIVE scoring round in the same JUDGING category. Create one via JudgingAdminView → Rounds tab if needed, then Start it (assigning ≥ minJudgesPerRound judges).
+
+- [ ] On a DRAFT row click Move.
+- [ ] **Expected:** Dialog with a `Select<JudgingRound>` (target rounds filtered to ACTIVE and same category, excluding current).
+- [ ] If no candidate rounds exist: **Expected** the empty-state message "No other ACTIVE rounds cover this category. Add a round first." and a disabled Save button.
+- [ ] Pick a target, click Save.
+- [ ] **Expected:** Notification "Moved scoresheet to {targetName}."; row disappears from this table's grid (reload to re-render).
+
+##### Delete scoresheet (cleanup before reverting entry status)
+
+Admins occasionally need to revert an entry's status (RECEIVED → SUBMITTED) or
+withdraw it after judging has begun (e.g., bottle pulled mid-competition because of
+a defect spotted later). The `EntryStatusRevertGuard` in the entry module rejects
+those status changes whenever a scoresheet exists for the entry, so admins must
+delete the scoresheet from its round first.
+
+- [ ] On any row, click 🗑 **Delete scoresheet** (tooltip "Delete scoresheet" — admin-only).
+- [ ] **Expected:** Confirmation dialog *"Delete scoresheet for {entryCode}?"* explaining the scoresheet (and any draft scores/comments) will be permanently removed; the entry stays at its current status.
+- [ ] Click **Delete**. **Expected:** notification "Deleted scoresheet for {entryCode}."; row disappears.
+- [ ] **Expected:** The delete button is disabled with the tooltip *"Cannot delete the scoresheet while the medal round is active or complete for this category."* once the category's medal round has started — same rule as Revert.
+- [ ] (Test the EntryService side) Back on Entry Admin, try to revert the same RECEIVED entry to SUBMITTED (`←` arrow). **Expected:** error notification *"Cannot change the entry's status: a scoresheet already exists on a round…"* if a scoresheet still exists; succeeds after deletion.
+
+##### Late RECEIVED during JUDGING (manual assignment)
+
+When an entry transitions to RECEIVED *during* JUDGING (e.g., the bottle arrived late
+and was checked in after the round started), no scoresheet is created automatically.
+The admin marks the entry RECEIVED, assigns its final category if needed, then uses
+Manage Judging → Rounds tab → **Assign Entries** on the chosen round to add it. That
+flow writes `round.entries` and (for ACTIVE scoring rounds) creates the DRAFT
+scoresheet via `JudgingService.assignEntryToRound`.
+
+- [ ] On Entry Admin, pick a SUBMITTED entry → click the `→` advance arrow to mark it RECEIVED. **Expected:** status becomes RECEIVED; no scoresheet is created yet.
+- [ ] If the entry has no final category, assign one (Final Category column on Entry Admin).
+- [ ] Manage Judging → Rounds → **Assign Entries** on the round of your choice → tick the entry → save. **Expected:** the entry now appears in the round's entries; if the round is ACTIVE and SCORING, a DRAFT scoresheet is visible in RoundView's scoresheets grid.
+
+#### 12.10.3 Multi-judge edge cases (shared per-entry scoresheets, duplicate prevention, concurrent edits)
+
+The data model is **one scoresheet per entry** (`scoresheets.entry_id` is **UNIQUE**),
+not one per judge. A scoring round/table has several judges who **share** that single
+set of per-entry sheets — they split the entries between them rather than each filling
+their own copy. `filledByJudgeUserId` records **which judge last validated (Saved)** a
+given sheet — in the normal split, one judge per entry, so it just credits that judge.
+These checks verify that shared model and that no duplicate sheet can ever be created,
+even with two judges acting at once.
+
+*Best run on **Profissional → M1A Panel A** (seeded with **judge@** + **judge2@**, Table 1,
+3 RECEIVED entries). Start the round (§12.6.4) so it is ACTIVE with 3 BLANK scoresheets.*
+
+- [ ] **One shared sheet per entry (not per judge).** As `judge@example.com`, open Panel A's
+  RoundView → **Expected:** the scoresheets grid has exactly **3 rows** (one per entry), **not 6**.
+  Log in as `judge2@example.com`, open the same round → **Expected:** the **same 3 rows** — both
+  judges see and act on the same shared sheets.
+- [ ] **`Filled by` = the judge who Saved that entry.** As `judge@`, score + **Save** entry
+  #1 (§12.11) → its row shows **Filled by: Dev Judge**. As `judge2@`, score entries #2 and #3 →
+  those rows show **Filled by: Dev Judge 2**. The panel splits the entries; each sheet credits the
+  judge who validated it.
+- [ ] **No duplicate sheet is ever created (idempotency).** As `compadmin@`, Manage Judging →
+  Rounds → **Assign Entries** on Panel A and re-confirm the same entries (or just re-open the
+  round) → **Expected:** still exactly **3 rows** — re-assigning an already-assigned entry is a
+  no-op, never a second sheet. *(Backstop: `createScoresheetsForTable`, `ensureScoresheetForEntry`,
+  and `ensureScoresheetForRound` all guard with a `findByEntryId` existence check before inserting,
+  and `scoresheets.entry_id` is UNIQUE at the DB — so even two judges/admins acting simultaneously
+  cannot produce a duplicate; the second insert would be rejected.)*
+- [ ] **A second judge editing an already-FILLED sheet un-fills it, and re-Save reassigns `Filled by`.**
+  `judge@` Saves entry #1 → status **FILLED**, Filled by **Dev Judge**. Now `judge2@` opens entry #1's
+  sheet and changes any score → **Expected:** the sheet drops back to **DRAFT** (the round-level
+  **Finalize** disables again) and Filled by **stays Dev Judge** while it is an unsaved DRAFT. When
+  `judge2@` clicks **Save** → **Expected:** status returns to **FILLED** and **Filled by now flips to
+  Dev Judge 2** — `filledBy` follows the **last judge to validate**. *(An admin editing on behalf via
+  "Edit on behalf of judge" is **not** an assigned judge, so re-Saving keeps the existing judge as
+  Filled by, never the admin.)* *(This is the `demoteFromFilled` rule — any content edit on a FILLED
+  sheet requires a fresh Save.)*
+- [ ] **Concurrent edit = last write wins (no lock / no conflict dialog).** Open entry #1's sheet
+  as `judge@` in one browser and as `judge2@` in another; both change the same field and Save.
+  **Expected:** no error, no optimistic-lock/version conflict, no merge prompt — the **later Save
+  simply overwrites** the earlier one (the entity has no `@Version`). Documented behaviour, not a
+  bug — panels are expected to coordinate verbally; the app does not arbitrate simultaneous edits.
+- [ ] **An entry can be on only ONE scoring round.** As `compadmin@`, try to **Assign** an entry
+  that is already on Panel A to **Panel B** (the other M1A scoring round) → **Expected:** rejected
+  with *"This entry is already assigned to round 'M1A Panel A'. Remove it from there first."*
+  (`error.entry.already-on-round`) — enforced before the DB UNIQUE on `judging_round_entries.entry_id`.
+- [ ] **Own-entry COI still blocks a shared sheet (cross-ref §12.11.3).** If an assigned judge owns
+  one of the entries on the table, opening/saving that entry's (existing) sheet is **rejected** by
+  the hard-COI guard even though the sheet exists — the shared-sheet model does not bypass COI.
+
+### 12.11 ScoresheetView (judge form)
+
+> **(c) redesign:** "Save Draft" + per-sheet "Submit" are gone. Fields auto-save on
+> blur; the **Save** button validates the sheet → FILLED; the round-level **Finalize**
+> (on RoundView, §12.10.0) submits all FILLED sheets at once.
+
+*As `judge@example.com`, open any DRAFT scoresheet from `/my-judging` → "Open table" → ✏ pencil (Open scoresheet) on the row.*
+
+- [ ] **Expected:** URL `competitions/.../divisions/.../scoresheets/<id>`.
+- [ ] **Expected:** A **"← Back to round"** anchor (id `scoresheet-back-to-round`) appears at the very top of the view, pointing back at the round's RoundView. One click returns to the scoresheet list.
+- [ ] **Expected:** H2 `MJP Scoresheet — {entryCode}`.
+- [ ] **Expected (info panel — MJP layout redesign):** Two side-by-side bordered
+  cards (wrapping to a single column on narrow screens) with headers the **same
+  size** as the criterion-card titles, and **bold field labels**: **"Basic
+  information"** (Initial Category, Final Category, Sweetness, **Strength**,
+  Carbonation, ABV) and **"Additional information"** (honey varieties, **all
+  remaining mead fields shown even when empty** — other ingredients, Wood Aged
+  Yes/No, wood details, additional information — each rendered as `—` when blank).
+  **The mead name is NOT shown to judges** (anonymity); judges work from poured
+  coded samples.
+- [ ] **Expected (category localized):** the Initial/Final Category values are shown in the **judge's UI language**, matching what the entrant sees. Standard catalog categories (M1, M1A, …) resolve via the catalog i18n keys (`category.<code>.name`); custom categories via their admin-entered per-locale translation; English base only when neither exists. (Earlier the judge scoresheet always showed catalog categories in English even when localized elsewhere.)
+- [ ] **Expected (admin view):** A SYSTEM_ADMIN / division admin opening the same
+  URL sees the **mead name** as the first row of the Basic-information card
+  (admins keep full context for moderation / results review).
+- [ ] **Expected (per-criterion rubric cards — MJP layout redesign):** Five bordered
+  cards, one per MJP criterion, each titled with the localized criterion name and
+  split into **two columns** (stacking on narrow screens):
+  - **Left = the MJP descriptor rubric** — the six quality bands
+    (**Unacceptable / Below average / Average / Very good / Excellent / Perfect**),
+    each with its **score range** sitting **just right of the band name** (aligned in
+    a column, not floating at the far right; e.g. Appearance: 0–2, 3–4, 5–6, 7–8,
+    9–10, 11–12) and a short **description** (e.g. "Major faults", "Appearance ideal
+    for the style").
+  - **Right (pushed to the right edge of the card) = the score input** — a bold
+    **"Your score"** label, a `NumberField` (id `score-<fieldName>`, `min=0`,
+    `max=<field max>`, **+/- step buttons**, `ON_CHANGE` auto-save), a "Max: N"
+    caption, then a **bold "Comments" label** (same style as "Your score") above a
+    per-criterion `TextArea` (id `score-comment-<fieldName>`, `maxLength=2000`, with
+    a **light-grey placeholder** so it doesn't read as pre-filled). The comments
+    field **fills the remaining width and grows to the bottom of the card**;
+    overflowing text **scrolls inside the field** rather than stretching the card.
+  The five criteria/maxes: Appearance 12, Aroma/Bouquet 30, Flavour and Body 32,
+  Finish 14, Overall Impression 12 (= 100). A small **save-status** Span
+  (`scoresheet-save-status`) shows "Saving…/Saved ✓".
+- [ ] **Expected:** A prominent centered **"Total: N / 100"** card — an H3
+  (id `scoresheet-total`) sized `--lumo-font-size-xxl` in its own banded card below
+  the criteria. Updates as values change.
+- [ ] **Expected (Progression box — SCORING sheets only):** A bordered box titled
+  **"🏅 Progression to Medal Round"** containing the **"Advance to medal round"**
+  `Checkbox` (id `advance-checkbox`). Hidden for medal-round-owned sheets.
+- [ ] **Expected (Other Information box):** A bordered box titled **"Other
+  Information"** containing, in order, the **"Comment language"** `ComboBox`
+  (id `comment-language`, all ISO 639-1 languages sorted by display name; default:
+  `JudgeProfile.preferredCommentLanguage`, else `User.preferredLanguage`, else
+  blank) **above** the optional **"Additional comments"** `TextArea`
+  (id `overall-comments`, `maxLength=2000`, no minimum length).
+- [ ] **Expected:** A single **Save** button (id `save-button`, always enabled) next to the save-status Span. There is **no "Save Draft" and no per-sheet "Submit"** — Save validates the sheet and promotes it DRAFT → **FILLED**; the round-level **Finalize** (§12.10.0) does the submitting.
+
+#### 12.11.1 Auto-save (on blur)
+
+- [ ] Enter a score in a field, then tab/click away (blur). **Expected:** the save-status Span flashes "Saving…" then "Saved ✓"; the value persists (refresh to verify) with no button click. The sheet is now `DRAFT`.
+- [ ] Now change a score with the **+ / − step buttons** (no typing, no blur). **Expected:** it auto-saves the same way (the field uses `ON_CHANGE`, so the stepper's `change` event triggers the save — under the old `ON_BLUR` this silently did nothing).
+- [ ] Enter a per-criterion comment (e.g. *"Bright with a slight haze."* in `score-comment-Appearance`), an Additional-comments value, pick a Comment language, tick Advance to medal round — each auto-saves on blur/change. Refresh: all persist (each comment shows back in its `score-comment-<field>` TextArea).
+
+#### 12.11.2 Save → FILLED (validation)
+
+- [ ] **Comment requirement (server-enforced):** every per-criterion comment ≥ **15** characters, and all 5 fields scored. The old required overall-comment minimum is gone (Additional comments is optional).
+- [ ] (Try) Click **Save** with a field unscored or a too-short per-criterion comment → **Expected:** error notification *"Comment on \"{field}\" must be at least 15 characters…"* (key `error.scoresheet.field-comment-too-short`) or *"Scoresheet cannot be submitted: …"* (key `error.scoresheet.incomplete`). The sheet stays `DRAFT`.
+- [ ] Fill all 5 scores + a ≥15-char comment per criterion, then click **Save**.
+- [ ] **Expected:** Notification *"Scoresheet saved — ready to finalize."*; the sheet is now **FILLED** and you return to the round (RoundView). Re-editing any score/comment demotes it back to DRAFT (re-Save to re-validate).
+- [ ] Repeat for every scoresheet on the round (all judges). Once **all** are FILLED, the round's **Finalize** (§12.10.0) enables → Finalize submits them all + computes totals; the TableView Total column then shows each locked total.
+
+#### 12.11.3 Hard COI page-level rejection (judge can't judge own entry)
+
+- [ ] As `compadmin`, ensure an entry exists in Amadora where `entry.userId = judge@example.com`'s user id, with `finalCategoryId` = a JUDGING category the judge is assigned to.
+- [ ] As `judge@example.com`, navigate directly to the URL of that entry's scoresheet (you can find the id via DB or by opening a TableView that includes it).
+- [ ] **Expected:** Forward to `/my-judging`; no scoresheet form rendered (hard COI block per §3.7).
+
+#### 12.11.4 Authorization rejection (judge not assigned to this table)
+
+- [ ] As `judge@example.com`, navigate to a scoresheet on a *different* table the judge isn't assigned to.
+- [ ] **Expected:** Forward to `""`.
+
+### 12.12 MedalRoundView
+
+> **(c) redesign + 2026-05-30 follow-up:** Start, Revert, **Assign Judges and Assign
+> Entries** all moved to the unified Rounds grid (§12.6); medal Revert clears the
+> round's awards (replacing the old Reset). MedalRoundView keeps only the per-row
+> medal actions, **Finalize**, and admin **Reopen**. For a **SCORE_BASED** round
+> Finalize is available to the **judge and** admin (judge runs it end-to-end); for
+> **COMPARATIVE** it stays admin-only.
+
+The scoring-completion cascade auto-creates a medal `JudgingRound` (type = MEDAL) and marks it READY once every scoring round in the category reaches COMPLETE. From there an admin opens MedalRoundView and clicks **Start** to transition READY → ACTIVE.
+
+*Pre-req: M1A's scoring round (`M1A Panel A` from §12.6) is COMPLETE — finish the scoresheets in §12.10–12.11 first. The cascade will have auto-created a medal `JudgingRound` for M1A with no table assigned and inherited mode `COMPARATIVE` from the category config.*
+
+#### 12.12.0 Open MedalRoundView at READY status
+
+- [ ] As `compadmin@example.com`, navigate to JudgingAdmin → Rounds tab → set Type filter to `Medal` → click Open on the M1A row.
+- [ ] **Expected:** URL `competitions/.../divisions/.../medal-rounds/<divisionCategoryId>`.
+- [ ] **Expected (header, ACTIVE/read-only):** title, then an info row with a colored **Type badge** (`Medal — Comparative` / `Medal — Score-based`, matching the grid), a **neutral grey category badge** right after it (`medal-round-category-badge`, showing the final/judging category **code** e.g. `M1A`; hover shows code — name) — deliberately *not* a status colour so it reads as a label, and **Status** (shown to **admins only**) on the left, and the **Table** info pushed to the **far right** of the row, then a one-line **explanation of the round** (id `round-explanation`). The explanation is **role-phrased**: judges see a second-person instruction ("Score each entry…" / "Compare the entries…"), while admins — who observe rather than score — see a third-person variant ("Judges score each entry…" / "Judges compare the entries…"). **The header is read-only at every status** (like the scoring RoundView) — there are **no Mode/Table dropdowns here anymore**. All round configuration (table, mode, schedule, judges) is done on the unified Rounds grid (Edit / Assign Judges dialogs, §12.6).
+- [ ] **Expected:** The header lines (title → table/type/status row → explanation) have a little vertical breathing room between them (not crammed together).
+- [ ] **Expected (admin only):** a **right-aligned "Judges: …" line** (`medal-round-judges-line`, under the Table info) between the config row and the explanation lists the medal round's assigned judges by name (comma-separated, `—` when none). It shows at every status, including **COMPLETE** when the grid's Assign Judges dialog is locked. Judges don't see this line.
+- [ ] **Expected:** Action row: `Finalize` and `Reopen` (admin, enabled only at COMPLETE), with the **bold medal-tally summary right-aligned on the same row** (§12.12.1). **No Assign Judges / Assign Entries here** — those are inline on the unified Rounds grid (§12.6), alongside Start and Revert. For SCORE_BASED, Finalize is disabled with a tooltip until every sheet is FILLED and no tie is open.
+- [ ] **Expected:** The entries grid **grows to fit all rows** (no fixed-height internal scrollbar) — a category with many entries expands the grid rather than capping it.
+- [ ] **If no table assigned:** assign one via the grid's ✏ **Edit** dialog (§12.12.0.1) before starting from the grid — `startRound` requires a physical table.
+
+#### 12.12.0.1 Change mode + table on a cascade-auto-created medal round (on the Rounds grid)
+
+Configuration moved off MedalRoundView onto the unified Rounds grid's ✏ **Edit** dialog — the detail view is read-only now.
+
+- [ ] On the Rounds tab, click ✏ **Edit** on the M1A medal row (READY, no PT, mode COMPARATIVE). **Expected:** the Edit dialog shows Name, **Physical table** Select, a **Medal mode** Select (`edit-round-medal-mode`, MEDAL rows only), and the Scheduled date+time picker. Both the table and mode Selects are **enabled while PENDING/READY** (disabled with a helper text once the round has started).
+- [ ] Pick `Table 1` in the Physical table Select, switch **Medal mode** to `Score-based`, click **Save** → notification "Round updated"; the grid Type badge flips to `Medal — Score-based` and the row can now Start. (Service-side, `JudgingRound.medalMode` is now `SCORE_BASED`; the round will own its scoresheets and auto-populate medals from the FILLED totals — see §12.12.2.)
+- [ ] Re-open ✏ Edit, switch the Mode back to `Comparative`, Save — for the rest of the walkthrough.
+- [ ] **Expected:** Once the round is started, re-opening ✏ Edit shows the Mode + Table Selects **disabled** with a "can only be changed before the round starts" helper text (mode/table are locked beyond READY). Service errors if forced anyway: `error.medal-round.mode-locked-after-start` / `error.round.cannot-reassign-physical-table-after-start`.
+
+#### 12.12.0.2 Assign Judges to the medal round (on the Rounds grid)
+
+Medal-round judges are **independent** of scoring-round judges for the same category (redesign decision #5) — could be the same panel, could be different (head judges only). The Profissional M1B medal round is pre-seeded with judges 1+2+6 to demonstrate this — judge6 isn't on any M1B scoring panel. **Assign Judges now lives on the unified Rounds grid**, not inside MedalRoundView.
+
+- [ ] Switch to Profissional → Rounds tab → Type filter `Medal` → click 👥 **Assign Judges** on the M1B row.
+- [ ] **Expected:** Dialog "Assign Judges" with a multi-select grid (columns: Name, Meadery, Country). Judges 1, 2, and 6 are pre-checked.
+- [ ] Uncheck judge6, check judge3 → Save → notification "Judge assignments updated"; dialog closes; grid refreshes.
+- [ ] **Expected:** the grid's 👥 Assign Judges stays available through PENDING → READY → ACTIVE — mid-deliberation panel adjustments are allowed; only locked at COMPLETE. Removing a judge mid-ACTIVE does not undo any medals they already awarded (those carry their own `awardedBy`); it just stops further awards from that judge. The min-judges-per-round check (which applies to scoring rounds) is **skipped for medal rounds** — you can drop a medal-round panel even to zero if needed.
+
+#### 12.12.1 Start medal round — COMPARATIVE mode
+
+- [ ] **Start the medal round from the unified Rounds grid** (§12.6): Rounds tab → ▶ Start on the medal row → confirm → notification "Round started". The MedalRoundView status line flips to `Status: ACTIVE`. (Start is no longer a button inside MedalRoundView.)
+- [ ] **Check Mailpit:** each judge with a scoring assignment in this category receives a "Medal round ready" email, subject "[MEADS] Medal round ready — {category}", heading "A medal round is ready", CTA "Log in to MEADS". `JudgingNotificationListener` handles `MedalRoundActivatedEvent`.
+- [ ] As `judge@example.com`, navigate via `/my-judging` → Medal Rounds section → "Open medal round →".
+- [ ] **Expected:** Entries with a SUBMITTED scoresheet flagged `advancedToMedalRound = true` for this category are listed (eligibility refined per §1.9).
+- [ ] **Expected (COMPARATIVE column visibility):** judges award medals by tasting, **independently of the prelim scores**, so on a COMPARATIVE round the grid hides the **Total** column from judges (admins keep it for context) and hides the **Status** column from everyone (the prelim sheets are always SUBMITTED here — the column is noise). A SCORE_BASED round, where the medal round owns the sheets, shows both (§12.6.8.1).
+- [ ] **Expected:** Per-row controls — 👁 View mead details · 🥇 · 🥈 · 🥉 · 🗑 Clear, all inline icon buttons (no "More ▾" dropdown). **There is no Withhold action** — an entry with no medal simply isn't awarded one; finalize leaves it without a medal. The 👁 **eye** = **View mead details** (`medal-round-mead-details-<entryId>`) is shown to **everyone on every row** — a read-only dialog of the entry's characteristics with **no mead name, status, entrant or category** (so a COMPARATIVE judge, who can't open the prelim sheet, can still see what they're tasting). The separate ✏ **pencil** = **Open scoresheet** is shown only to **admins** on a COMPARATIVE round (the sheet belongs to a prelim scoring round the judge isn't on); on a SCORE_BASED round judges get it too (they own the sheet).
+- [ ] Click `🥇` on a row.
+- [ ] **Expected:** Notification or live update; the Current medal column shows `🥇 Gold` (the medal icon precedes the label, matching the award buttons).
+- [ ] **Expected:** The medal-tally summary "Summary: 1 Gold · 0 Silver · 0 Bronze · {N} no medal" updates live (the last bucket counts every entry without a medal — there's no separate Withhold count anymore). It sits **above the grid**, right-aligned on the **same row as the Finalize button**, in **bold**.
+- [ ] Click 🗑 **Clear** on a row with a medal (icon disabled when no award row exists).
+- [ ] **Expected:** ConfirmDialog "Delete medal record?" body explains the medal award is deleted and the entry will receive no medal unless awarded again. Footer: Cancel + Delete record.
+- [ ] Cancel → no change. Re-open, click Delete record → row reverts to no medal.
+
+#### 12.12.2 SCORE_BASED mode — medals auto-populate as sheets are filled
+
+A SCORE_BASED medal round owns its scoresheets (small-category flow, §12.6.8.1). **Medals are no longer auto-filled at Start** (at Start the sheets are still BLANK). Instead they populate from the **FILLED** totals as judges score.
+
+- [ ] Set up + Start the SCORE_BASED medal round from the Rounds grid (mode chosen at create time, or via the grid's ✏ **Edit** dialog while PENDING/READY — §12.12.0.1). At Start, BLANK scoresheets are created; no medals yet.
+- [ ] As the judges, score each entry and click **Save** (sheet → FILLED). The grid **Status** column tracks each sheet (`BLANK` → `FILLED` → `SUBMITTED`) and the **Total** column fills in per sheet as you go.
+- [ ] **Expected:** Once **every** sheet on the round is FILLED, the top-3 entries (by total, walking gold → silver → bronze, stopping on the first tie within a slot) are auto-populated as MedalAwards. They render with their medal badge.
+- [ ] **Expected:** A tie banner at the top when ties exist (red text: "{N} entries tied — resolve before finalizing."). **{N} is the number of tied entries** (e.g. 2 when two entries tie at the top), **not** the number of remaining medal slots — change two of three identical sheets so only two still tie and confirm the count reads `2`, not `3`. Tied rows are flagged with a `⚠` marker in the Code column. Resolve a tie by awarding the medal to one tied entry (or clearing awards) until the tie is broken — the view recomputes the cascade live on every action.
+- [ ] **Finalize (judge or admin):** when every sheet is FILLED and no tie is open, click **Finalize** (§12.6.8.1) → the sheets are submitted, the medals locked, and the round → COMPLETE in one step. See §12.6.8.1 for the full end-to-end flow.
+
+#### 12.12.3 COMPARATIVE Finalize / Reopen
+
+*(The COMPARATIVE finalize path, where the judges award each medal by hand. **Finalize is judge-or-admin** — the assigned judges who awarded the medals can commit them, and an admin may step in too. **Reopen is admin-only.** The SCORE_BASED judge-driven Finalize is in §12.12.2 / §12.6.8.1.)*
+
+- [ ] On the ACTIVE COMPARATIVE medal round, as **either an assigned judge or `compadmin@example.com`**.
+- [ ] **Expected:** A **Finalize** button (visible to judge + admin, enabled while ACTIVE). An admin additionally sees **Reopen** (admin-only, enabled only at COMPLETE). Start + Reset are gone (Start is on the grid; the old Reset is replaced by the grid's ↶ Revert).
+- [ ] Award medals to the entries you want (🥇🥈🥉) and **leave the rest with no medal** — there is no requirement to decide every entry (the old undecided-entries guard and the Withhold action are gone).
+- [ ] Click **Finalize** → **Expected:** confirm dialog **lists the medals being committed** (Gold / Silver / Bronze counts) **and, in bold, how many entries will receive no medal** (e.g. "3 entries in this category will receive no medal."). Admins additionally see the "you can reopen later" reassurance + the finalize-warning; a judge sees neither (Reopen is admin-only). Click Finalize → notification "Medal round complete"; status → `COMPLETE`; per-row buttons disappear (read-only).
+- [ ] Click **Reopen** → confirm → status back to `ACTIVE`; existing MedalAwards preserved (admin can reassign them). For a **SCORE_BASED** medal round (which owns its scoresheets), reopening also drops its **SUBMITTED scoresheets back to FILLED** so the scores can be edited again — without this the medals were reassignable but the sheets stayed locked. (A COMPARATIVE medal round owns no scoresheets, so only the medals are affected.)
+- [ ] **To wipe the awards + return the round to READY**, use the unified Rounds grid (§12.6) → ↶ **Revert** on the medal row (confirm body warns the awards are cleared, scoresheets kept). The in-view Reset button is gone.
+
+### 12.13 BosView (dedicated admin form)
+
+*Pre-req: `Judging.phase ∈ {BOS, COMPLETE}` — start BOS from the JudgingAdmin BOS tab after all medal rounds are COMPLETE.*
+
+- [ ] As `compadmin@example.com`, click "Manage placements →" in the JudgingAdmin → BOS tab.
+- [ ] **Expected:** URL `competitions/.../divisions/.../bos`.
+- [ ] **Expected:** H2 `Best of Show — Amadora`. Header shows `Phase: BOS` and `Places: N` (where N = `Division.bosPlaces`).
+- [ ] **Expected:** A placements grid (id `bos-placements-grid`) with N rows (one per slot). Columns: Place, Entry, Mead name, Category, Awarded by, Action. The grid **grows to fit all rows** (no fixed-height scrollbar) and its data columns are **resizable + sortable**.
+- [ ] **Expected:** Empty rows show `[+]` Assign button in the Action column. Filled rows show ✏ Reassign and 🗑 Delete.
+- [ ] **Expected:** A candidates grid (id `bos-candidates-grid`) listing GOLD MedalAwards across all categories where the entry isn't placed yet. Columns: Entry # (prefixed), Code, Mead name, Category. The grid **grows to fit all rows** and its columns are **resizable + sortable**.
+- [ ] **Expected:** "← Back to dashboard" anchor at the bottom returning to JudgingAdmin. Once the phase is `BOS` (or `COMPLETE`), the dashboard **opens on the BOS tab** (not Results), so Back to dashboard lands you back where you were.
+
+#### 12.13.1 Assign
+
+- [ ] Click `[+]` on Place 1.
+- [ ] **Expected:** Dialog "Assign place 1" with a `Select<MedalAward>` of unplaced GOLD candidates. Items labelled `{entryCode} · {meadName} · {categoryCode}`. Helper text "Only Gold medal entries are eligible for BOS."
+- [ ] Pick a candidate → Save.
+- [ ] **Expected:** Notification "Placement 1 recorded."; placements grid row 1 fills in; candidates grid removes that entry.
+
+#### 12.13.2 Reassign
+
+- [ ] Click ✏ on a filled row.
+- [ ] **Expected:** Dialog with the current entry preselected in the `Select<MedalAward>`. Available candidates = unplaced GOLDs + current entry.
+- [ ] Pick a different entry → Save.
+- [ ] **Expected:** Notification "Placement N updated."; row updates; previous entry returns to candidates list.
+
+#### 12.13.3 Delete
+
+- [ ] Click 🗑 on a filled row.
+- [ ] **Expected:** Dialog body "Remove {entryCode} from place N?".
+- [ ] Click Delete.
+- [ ] **Expected:** Notification "Placement N removed."; row returns to empty state; candidate returns to the candidates grid.
+
+#### 12.13.4 Finalize gate — empty place blocks only while a gold could still fill it
+
+The old "any empty place allowed" rule (D11) was tightened: **Finalize BOS is blocked while an empty place could still be filled** — i.e. a confirmed GOLD medal hasn't been placed yet. Empty places are allowed only once the candidates are exhausted (a field with fewer golds than `bosPlaces`).
+
+- [ ] With at least one place empty **and** an unplaced gold still in the candidates grid: on the JudgingAdmin **BOS tab**, the **Finalize BOS** button (`bos-finalize-button`) is **disabled** with tooltip *"Assign the remaining Best of Show places first — Gold medals are still unplaced."* (Forcing the service call anyway → error `error.bos.cannot-complete-unfilled`.)
+- [ ] Place all remaining gold candidates (or leave empty places only when **no** unplaced golds remain — e.g. 2 golds but `bosPlaces = 3`). **Expected:** Finalize BOS enables; click it → Phase flips to `COMPLETE` (empty places are fine once nothing can fill them).
+
+#### 12.13.5 Read-only when COMPLETE
+
+- [ ] Re-open `/competitions/.../bos` after Finalize.
+- [ ] **Expected:** A banner Span (id `bos-complete-banner`) reads "BOS is COMPLETE. Reopen on the dashboard to edit."
+- [ ] **Expected:** The candidates section is hidden entirely.
+- [ ] **Expected:** The placements grid's Action column is absent (no `[+]`/✏/🗑 buttons).
+- [ ] Click `← Back to dashboard` → click "Reopen BOS" → confirm.
+- [ ] **Expected:** Phase returns to `BOS`; `/bos` becomes editable again.
+
+#### 12.13.6 Authorization
+
+- [ ] As `judge@example.com`, navigate directly to `/competitions/chip-2026/divisions/amadora/bos`.
+- [ ] **Expected:** Forward to `""` (BOS is admin-only per §4.A).
+- [ ] As `entrant@example.com`, navigate to the same URL.
+- [ ] **Expected:** Forward to `""`.
+
+### 12.14 JudgeProfile editor
+
+*From `/profile` as `judge@example.com`.*
+
+- [ ] **Expected:** A "Judge profile" section (visible to any user with at least one JudgeAssignment) with:
+  - Certifications `MultiSelectComboBox` (options: `MJP`, `BJCP`, `OTHER`)
+  - Qualification details `TextField` (e.g. for WSET specifics if `OTHER` selected)
+  - Preferred comment language `ComboBox` (same source as ScoresheetView's language ComboBox)
+- [ ] Pick `MJP` + `BJCP`, enter qualification text "Judging since 2018", pick `pt` as preferred → Save.
+- [ ] **Expected:** Notification; values persist after refresh.
+
+*From `/users` as `admin@example.com` → edit `judge@example.com` user dialog.*
+
+- [ ] **Expected:** A "Judge profile" section in the edit dialog mirroring the self-edit fields.
+
+### 12.15 Cross-module guard — block status revert only when judging is in progress
+
+The `JudgingDivisionStatusRevertGuard` blocks the JUDGING → REGISTRATION_CLOSED revert only when an **ACTIVE or COMPLETE** round exists. Rounds still in PENDING / READY (set up but not started) don't block — admins who advanced to JUDGING and then realised they want to tweak a REG_CLOSED-only setting (BOS places, sharedTables flag, etc.) can revert freely.
+
+- [ ] As `compadmin@example.com`, with Amadora at JUDGING and at least one ACTIVE round, navigate to Amadora division detail.
+- [ ] Click "Revert Status" → confirm "Revert from Judging to Registration Closed?".
+- [ ] **Expected:** Error notification — *"Cannot revert to REGISTRATION_CLOSED while an active or completed round exists. Revert or reset those rounds first. Rounds still in PENDING or READY don't block the revert — they survive the trip back."* (`error.division.cannot-revert-has-judging`). Status remains `JUDGING`.
+- [ ] **Allowed-path check:** Revert the active round back to READY (per §12.6.4.1), then revert the division. **Expected:** revert succeeds; division returns to REGISTRATION_CLOSED with rounds intact (still READY/PENDING) so the admin's setup work is preserved.
+
+### 12.16 StewardView (read-only steward hub)
+
+**Covers:** `StewardViewTest`, `CompetitionServiceTest` (`findCompetitionsBySteward`).
+
+*Pre-req: a user with the STEWARD role in CHIP 2026 — add one via CHIP 2026 →
+Participants → Add Participant, role STEWARD (e.g. `steward@example.com`).*
+
+- [ ] Log in as the steward (access code or magic link).
+- [ ] **Expected (sidebar):** A "My Stewarding" entry (clipboard icon) appears —
+  gated by `StewardChecker.isStewardSomewhere`. Only visible because the user holds
+  a STEWARD role somewhere.
+- [ ] Click "My Stewarding" (URL `/my-stewarding`).
+- [ ] **Expected:** H2 "My Stewarding". For each competition the user stewards, an
+  `H3` with the competition name; under it, each JUDGING-or-later division as an
+  `H4`, then one card per round.
+- [ ] **Expected (per round card):** round name + category (code + name) + status;
+  a "Judges: …" line (names, or "—" when none assigned); one `•` line per entry on
+  the round showing entry code + mead name.
+- [ ] **Expected:** The view is entirely **read-only** — no buttons, no edit actions.
+- [ ] **Expected:** A division with no rounds shows "No rounds yet."
+
+#### 12.16.1 Empty-state for a non-steward
+
+- [ ] Log in as a user with no STEWARD role (e.g. `entrant@example.com`).
+- [ ] **Expected (sidebar):** "My Stewarding" is *not* present.
+- [ ] Navigate directly to `/my-stewarding`.
+- [ ] **Expected:** H2 "My Stewarding" + an empty-state message ("You have no
+  stewarding assignments yet.").
+
+### 12.17 i18n sanity (judging surfaces only)
+
+*Switch UI language via the language switcher in the user menu (top-right).*
+
+- [ ] For each of `pt`, `es`, `it`, `pl`:
+  - Visit JudgingAdminView, TableView, ScoresheetView, MyJudgingView, MedalRoundView, BosView, StewardView.
+  - **Expected:** No raw `error.…`, `judging-admin.…`, `medal-round.…` or `steward.…` keys leaking through. Header labels, tab names, column headers, dialog titles, button text, notifications all render in the chosen language.
+  - **Expected:** Date/time fields use locale-aware format (DatePicker, NumberField step buttons localized).
+  - **Expected:** All score-field labels use canonical English names regardless of UI locale (`Appearance`, `Aroma/Bouquet`, `Flavour and Body`, `Finish`, `Overall Impression`) — these are stored as i18n keys but the canonical English is what's used in `ScoreField.fieldName`.
+
+> The ES/IT/PL translations are draft-quality and intended for native-speaker review. Note any awkward phrasing or terminology disagreements for later correction.
+
+### 12.18 Restore Amadora state (optional cleanup)
+
+- [ ] If you want Amadora to remain testable for entry-side flows, you'll need to remove judging data first:
+  - Reset BOS, reset all medal rounds, then delete all scoring rounds (each must be at status `PENDING` with no assignments — uncheck judges via Assign Judges dialog, then delete from the Rounds tab).
+  - Once no rounds exist and `Judging.phase = NOT_STARTED`, the `JudgingDivisionStatusRevertGuard` will permit revert.
+  - Revert Amadora: JUDGING → REGISTRATION_CLOSED → REGISTRATION_OPEN.
+- [ ] **Alternative:** Leave Amadora in JUDGING and use the seeded `Test Competition 2026 > Open` division for further entry-side experiments.
+
+---
+
+## 13. Awards Module
+
+**Covers:** `AwardsServiceImplTest`, `AwardsPublicResultsViewTest`,
+`AwardsAdminViewTest`, `MyResultsViewTest`, `AwardsModuleTest`,
+`PublicationTest`, `PublicationRepositoryTest`,
+`JudgingServiceFreezeGuardTest`, `ScoresheetServiceFreezeGuardTest`,
+`ScoresheetPdfServiceTest`.
+
+This section assumes Section 12 left Amadora deep in the judging flow,
+with at least one COMPLETE category medal round and ideally one
+BosPlacement. If you reset everything at the end of §12 to keep
+Amadora reusable, use the seeded `Test Competition 2026 > Open`
+division for §13 instead — or re-run a thin slice of §12 first
+(start a table, advance the medal round, record one GOLD, finalize the
+medal round, place that entry in BOS, complete BOS).
+
+The awards flow advances the division `DELIBERATION → RESULTS_PUBLISHED`.
+Steps below are admin-driven unless noted.
+
+### 13.1 Prerequisites — advance to DELIBERATION
+
+*Log in as `compadmin@example.com`.*
+
+- [ ] Navigate to CHIP 2026 → Amadora.
+- [ ] **Verify:** Current status is `JUDGING`.
+
+#### 13.1.1 Advance-to-deliberation guard (judging not yet COMPLETE)
+
+- [ ] **Precondition:** §12.13.4 BOS has not been finalized yet (or §12 was reset). `Judging.phase` is `BOS` or earlier.
+- [ ] In the division header, click "Advance Status" → confirm
+  "Advance from Judging to Deliberation?".
+- [ ] **Expected:** Error notification — `JudgingCompleteAdvanceGuard` blocks
+  because `Judging.phase != COMPLETE`. Message: *"Cannot move to DELIBERATION
+  while judging is in progress. Finalize Best of Show first."* (key
+  `error.division.cannot-deliberate-judging-incomplete`).
+- [ ] **Expected:** Status stays at `JUDGING`.
+- [ ] Complete §12.13.4 (Finalize BOS) — `Judging.phase` flips to `COMPLETE`.
+
+#### 13.1.2 Advance to DELIBERATION (judging COMPLETE)
+
+- [ ] Click "Advance Status" again → confirm.
+- [ ] **Expected:** Status badge updates to `DELIBERATION`.
+- [ ] **Expected (Judging Categories tab stays, read-only):** on the division detail TabSheet the **Judging Categories** tab is **still present** (it no longer disappears at DELIBERATION) but is **read-only** — the category tree shows, with **no** "Add Judging Category" button and **no** per-row Edit/Remove actions. (Management is locked past JUDGING; the data still backs the published results, so it stays viewable. Same at RESULTS_PUBLISHED.)
+- [ ] Navigate to Manage Judging.
+- [ ] **Expected:** A new "Manage Results" button appears in the JudgingAdminView
+  header (between the title and the tabs).
+
+#### 13.1.3 Manual advance to RESULTS_PUBLISHED is blocked
+
+- [ ] Back on the Amadora division detail, click "Advance Status" → confirm
+  "Advance from Deliberation to Results Published?".
+- [ ] **Expected:** Error notification — `BlockManualPublishAdvanceGuard`
+  rejects the manual advance. Message: *"Use 'Publish results' in the Results
+  admin view instead of the manual status advance"* (key
+  `error.division.use-publish-results-instead`).
+- [ ] **Expected:** Status stays at `DELIBERATION`. The only way to reach
+  `RESULTS_PUBLISHED` is through `AwardsService.publish()` (§13.2) or
+  `republish()` (§13.8), both of which create a Publication audit row.
+
+#### 13.1.4 Preview public results before publishing (admin-only)
+
+- [ ] On Manage Results (DELIBERATION), **Expected:** a **"Preview results"** link
+  (`awards-preview-results-link`) in the actions row. Click it → opens the public
+  results page (`/competitions/.../results`) **in a new tab**.
+- [ ] **Expected:** the page renders exactly as the public will see it (BoS + per-category
+  medal blocks, producer labels), topped by a **preview banner** (`awards-preview-banner`)
+  *"Preview — these results are not published yet."* — even though the division is still
+  `DELIBERATION` (not published).
+- [ ] **Expected (no leak):** open the same `/results` URL **logged out** (or as a
+  non-admin entrant) while still DELIBERATION → forwards to root (only an admin authorized
+  for the division sees the preview; everyone else is blocked until publication).
+- [ ] (Sanity) Before DELIBERATION the preview isn't available — `getResultsPreview` rejects
+  with `error.awards.preview-not-ready` (the admin link only appears in the Results admin
+  view, which itself is DELIBERATION+).
+
+### 13.2 Publish — first publication
+
+*Stay on the Amadora JudgingAdminView header.*
+
+- [ ] Click "Manage Results".
+- [ ] **Expected:** Navigates to `/competitions/chip-2026/divisions/amadora/results-admin`
+  with breadcrumb `Competitions / CHIP 2026 / Amadora / Results admin`.
+- [ ] **Expected:** Page shows "CHIP 2026 — Amadora — Results admin" heading.
+- [ ] **Expected:** A single "Publish results" primary button is visible in the
+  actions row (no Re-publish / Send announcement / Revert yet — those only
+  appear post-publication).
+- [ ] **Expected:** A "Publication history" section is rendered below with an
+  empty grid (columns: Version, Published at, Published by, Justification). All
+  columns are **resizable**; the **Version** column is **sortable**.
+- [ ] Click "Publish results".
+- [ ] **Expected:** Confirmation dialog appears: "Publish results for this
+  division?" with body explaining the freeze + advance + no-auto-email.
+- [ ] Click "Publish results" in the dialog.
+- [ ] **Expected:** Green success notification: "Results published
+  successfully."; page reloads.
+- [ ] **Expected:** Status of the division is now `RESULTS_PUBLISHED` (verify
+  on DivisionDetailView or RootView redirect).
+- [ ] **Expected:** Mailpit at `http://localhost:8025` shows **no new mail**
+  (publish never sends emails).
+- [ ] **Expected:** Publication history grid now has one row: version `1`,
+  current timestamp, "compadmin" (or admin's display name), justification
+  empty.
+
+### 13.3 Public results page
+
+*Open an incognito / logged-out browser window.*
+
+- [ ] Visit `http://localhost:8080/competitions/chip-2026/divisions/amadora/results`.
+- [ ] **Expected:** Page renders without requiring login (`@AnonymousAllowed`).
+- [ ] **Expected:** Heading "CHIP 2026 — Amadora — Results".
+- [ ] **Expected:** "Best of Show" section visible only when at least one
+  BosPlacement exists; columns: Place, Mead, and a **producer** column (no entry IDs).
+- [ ] **Expected (producer label):** the producer is `Mead name — {producer}` where
+  `{producer}` is the **meadery name** in a meadery-required division (e.g. Profissional)
+  or the **meadmaker's name** in an amateur division (e.g. Amadora) — **and in both cases
+  suffixed with ` (Country)`** when the entrant has a country set (e.g. `Jane Maker (Portugal)`
+  or `Hidromel Co (Portugal)`). It must **never render `null`** when no meadery was given.
+  The **BOS producer column header** is "Meadery" in a meadery-required division and "Maker"
+  in an amateur division (`awards.public.bos.maker-name`).
+- [ ] **Expected:** Per-category sections rendered for each category that has
+  at least one medal awarded. Within each section, separate blocks for Gold /
+  Silver / Bronze, listing `Mead name — {producer}` only (no entry IDs).
+- [ ] **Expected (spacing):** the medal label (Gold/Silver/Bronze) sits **tight** above its
+  entries; there is **extra space before each category title**; and the page has **bottom
+  padding** so the last category isn't flush against the edge.
+- [ ] **Expected:** Entries without a medal are **not** rendered in the medal blocks (only Gold/Silver/Bronze entries appear).
+- [ ] Hard refresh the page in a logged-out window for a division still in
+  `REGISTRATION_OPEN` (e.g., another division of CHIP 2026 you haven't published):
+  `/competitions/chip-2026/divisions/amadora-old/results`.
+- [ ] **Expected:** View forwards back to root — no leak of unpublished results.
+- [ ] **(Optional, language switch)** Change the navbar language (or open in a
+  different browser locale) and reload — labels translate per locale.
+
+### 13.4 Entrant view — banner + results
+
+*Log in as an entrant who has entries in Amadora.* For dev: `entrant1@example.com`
+(magic-link login via Mailpit).
+
+- [ ] Navigate to `/competitions/chip-2026/divisions/amadora/my-entries`.
+- [ ] **Expected:** A green banner appears at the top: "Results have been
+  published. View your results" with the second clause as a link.
+- [ ] **(Multi-division entrants)** On the cross-division hub (`/my-entries` when the entrant has entries in
+  more than one division), each `RESULTS_PUBLISHED` division row now shows a **"View results"** link
+  (`overview-results-<divShortName>`) alongside the division link.
+- [ ] **(Default landing + sidebar)** After publication, logging in / hitting `/` lands the entrant on their
+  **results** by default (single published division → that division's `/my-results`; several → the entries hub
+  with results links). A **"My Results"** item (trophy icon) appears in the sidebar alongside "My Entries",
+  targeting the same. Both remain available.
+- [ ] Click "View your results".
+- [ ] **Expected:** Navigates to `/competitions/chip-2026/divisions/amadora/my-results`.
+- [ ] **Expected:** Header shows the **competition logo** (if the competition has one) to the left of the heading "CHIP 2026 — Amadora — Your results" — same as the My Entries header.
+- [ ] **Expected:** An entry-grid-styled results grid matching the entry grid's column labels + sizes: a **search field** (filters by mead name) on a toolbar with a **"Download all scoresheets"** button on the right; **sortable + resizable** columns: **Entry #** (the entrant's prefixed entry **number**, e.g. `PRO-1` — *not* the anonymized code; narrow column), **Mead Name** (takes the slack so long names fit), **Final Category** (code only, hover tooltip = full name), **Score** (`N / 100` or `—`), **Advanced** (green ✓ icon when advanced, `—` otherwise), **Medal** (🥇/🥈/🥉 or `—`; **hover the medal icon for a tooltip naming the medal** — Gold / Silver / Bronze, localized), **BOS place** (`🏆 N` with the place number, or `—`; **hover for a "Best of Show — place N" tooltip**), **Actions**.
+- [ ] **Expected:** the Actions column shows a small **👁 eye** (view scoresheet) and a small **⬇ download** icon (downloads that scoresheet as a PDF) — sized like the entry grid's inline action buttons. The toolbar **"Download all scoresheets"** button downloads one PDF with all the entrant's submitted scoresheets (disabled when none). **Both downloads must actually produce a PDF file** (the generation runs in a read-only transaction so the lazy score fields load even though open-in-view is off). *(NOTE: the separate scoresheet **view page** still hides per-criterion comments + the advanced flag — deferred.)*
+- [ ] **Expected:** Entries with no medal render as `—` in the Medal column; rows with no SUBMITTED scoresheet show `—` in the Actions column.
+
+### 13.5 Scoresheet drill-in (entrant)
+
+*Stay on MyResultsView.*
+
+- [ ] Click the 👁 **view-scoresheet** icon on a submitted-scoresheet row.
+- [ ] **Expected:** A **dialog** opens in place (no navigation). The header bar shows,
+  in the **top-left corner**, a **smaller competition logo** (if the competition has
+  one) immediately to the left of the title — the entrant's own **entry NUMBER** +
+  mead name (e.g., `AMA-3 — My Wildflower`), **never the anonymized judging code**.
+  *(On Fast Track / Mostra, `Mostra Loquaz …` has a deliberately very long name — check
+  it wraps cleanly next to the logo.)*
+- [ ] **Expected (mead details):** below the mead name, the dialog shows the **full mead
+  details** — Final Category, Sweetness, Strength, ABV, Carbonation, Honey Varieties,
+  Other Ingredients, Wood Aged (Yes/No), Wood Ageing Details, Additional Information —
+  each as a `Label: value` line (blank values render as `—`), localized to the UI
+  language. *(Previously only the category was shown.)*
+- [ ] **Expected (outcome banner):** if the entry won a medal and/or a Best of
+  Show placement, a **prominent highlighted banner** appears right under the
+  category line showing the **medal** (🥇 Gold / 🥈 Silver / 🥉 Bronze, bold,
+  larger text) and/or **🏆 Best of Show — Place N**. The banner is **omitted
+  entirely** when the entry won neither. *(Check on the Fast Track / Mostra GOLD
+  entry — `Mostra Tradicional` — which has both a Gold medal and BoS 1st.)*
+- [ ] **Expected (advanced indicator):** if the entry advanced to the medal round,
+  an "Advanced to the medal round" line with a green check appears **between the
+  outcome banner and the comments card** (outside the card, not inside it). It is
+  absent when the entry did not advance. *(Compare `Mostra Finalista` — advanced,
+  no medal → green line, no banner — against `Mostra Singela` — not advanced → no
+  line, no banner.)*
+- [ ] **Expected:** One card per submitted scoresheet (likely just one in dev),
+  with **no "Judge N" / judge label at all**, and **clear spacing between each
+  section** (comment language, criteria, total, overall comments). The card holds
+  the comment-language line (a **bold-labelled** "Comment language: {localized
+  language name}", e.g. "Comment language: Português" — id
+  `entrant-scoresheet-comment-language`; shown only when the judge set one), then
+  each score field as `field: value / max` **with
+  its per-criterion comment below it**, then the **total — rendered prominently**
+  (bold, extra-large, separated from the criteria by a top divider line), shown as
+  **`N / 100`** (score out of the maximum), then overall comments (if any).
+- [ ] **Expected (criteria order — V34 fix):** the five criteria appear in
+  **canonical MJP order** — Appearance, Aroma/Bouquet, Flavour and Body, Finish,
+  Overall Impression — **never shuffled**. *(Check specifically on `Mostra Loquaz`,
+  the long-comment entry where the out-of-order bug used to surface; confirm the
+  same order in the downloaded PDF below.)*
+- [ ] **Expected:** A **Close** button in the dialog footer dismisses it back to
+  the grid. (There is no in-dialog PDF download — use the row's ⬇ download icon or
+  the "Download all scoresheets" toolbar button.)
+- [ ] Click the row's ⬇ **download** icon (or "Download all scoresheets").
+- [ ] **Expected:** PDF downloads, laid out as a **representation of the on-screen dialog**
+  (no "Scores / Field / Value / Comment" table). Open it:
+  - **Header:** the **competition logo** (if any) and the title **on the same line** — title
+    block = "Competition — Division", **"MJP Scoresheet"** (scoring system before "Scoresheet"),
+    and the **entry number (not code) — mead name**;
+  - **Mead details** as `Label: value` lines: Category, Sweetness, Strength, ABV, Carbonation,
+    Honey Varieties, Other Ingredients, Wood Aged, Wood Ageing Details, Additional Information;
+  - a **highlighted outcome box** with **Medal** and **Best of Show** lines (when the entry won
+    them; omitted otherwise);
+  - a green **"Advanced to the medal round"** line **only when advanced** (absent otherwise) —
+    **no judge row** on the entrant copy;
+  - each **criterion** as a bold `Field: value / max` line with its comment in smaller grey text
+    below (no table);
+  - the **total rendered prominently** (large bold) as **`N / 100`**, then overall comments.
+  - Liberation Sans font (Unicode-safe).
+  *(On Fast Track / Mostra, the GOLD entry shows the outcome box + green advanced line;
+  `Mostra Singela` shows neither — compare against the dialog.)*
+
+### 13.6 Freeze guard — judging mutations rejected
+
+*Log back in as `compadmin@example.com`.*
+
+The freeze is enforced at **two layers**: (1) the service layer — `requireNotFrozen`
+is called on ~46 judging/scoresheet mutators and throws
+`error.judging.results-published-frozen` while the division is RESULTS_PUBLISHED
+(unit-tested in `AwardsModuleTest`); (2) the UI, which at this late stage already
+**hides most mutation controls** for ordinary status reasons (rounds are COMPLETE,
+scoresheets SUBMITTED, BOS phase over). So most mutations are simply **not
+reachable** through the UI — there's nothing to click. Verify the controls are
+absent, then confirm the guard fires on the one path that stays reachable:
+
+- [ ] Manage Judging → Rounds tab → Type filter `Medal` → Open a medal row
+  (MedalRoundView). **Expected:** the 🥇🥈🥉 medal buttons are **not shown** — the
+  round is COMPLETE, not ACTIVE.
+- [ ] Open a round → a scoresheet (admin). **Expected:** **no "Edit on behalf of
+  judge"** button — the sheet is SUBMITTED.
+- [ ] BOS tab. **Expected:** placement add/edit/delete controls are **disabled**
+  (phase is past BOS).
+- [ ] **Reachable guard path:** Rounds tab → **+ Add Round** (no status gate on the
+  button) → fill the dialog (type/category/table) → **Save**. **Expected:** the
+  frozen notification *"Results have been published — judging data cannot be
+  modified. Revert the publication first."* (`error.judging.results-published-frozen`).
+  ✅ confirmed 2026-06-01.
+
+### 13.7 Revert publication
+
+*Navigate to Manage Results.*
+
+- [ ] **Expected:** Two buttons in the actions row: "Send announcement"
+  (primary), "Revert publication" (error variant). (At RESULTS_PUBLISHED there
+  is no "Re-publish" button — re-publishing requires reverting first so the
+  judging data unfreezes for edits.)
+- [ ] Click "Revert publication".
+- [ ] **Expected:** Dialog with body explaining roll-back to DELIBERATION,
+  audit-log preservation. Below the body, a TextField "Type REVERT to confirm".
+- [ ] Leave the field empty (or type something else like `revert`) and click
+  the in-dialog "Revert publication" button.
+- [ ] **Expected:** Notification "Type REVERT exactly to confirm." — the
+  publication is NOT reverted.
+- [ ] Type `REVERT` (uppercase) and click again.
+- [ ] **Expected:** Green success notification "Publication reverted."; the view
+  **re-renders in place** (no full browser reload — the toast used to be destroyed
+  by the reload before it could show; fixed 2026-06-01). Status reverts to
+  `DELIBERATION`.
+- [ ] **Expected:** Publication history grid still shows version 1 — the audit
+  record is preserved.
+- [ ] Verify the public results page now forwards away (logged-out): visit
+  `/competitions/chip-2026/divisions/amadora/results` → redirects to root.
+- [ ] Verify the entrant banner is gone on `/my-entries`.
+
+### 13.8 Edit judging data + re-publish
+
+*Stay on Manage Results — status is now `DELIBERATION`.*
+
+- [ ] **Expected:** The actions row now shows a single "Re-publish" primary
+  button (because a prior Publication exists, the view shows "Re-publish"
+  instead of "Publish results" at DELIBERATION).
+- [ ] Navigate to Manage Judging → Rounds tab → set Type filter to `Medal` → click Open on the M1A medal row to land on MedalRoundView.
+- [ ] Pick a medal in some category and change its value (e.g., SILVER →
+  BRONZE on one entry) by clicking the new medal button on the row.
+- [ ] **Expected:** Save succeeds (no frozen notification — data is editable
+  again in DELIBERATION).
+- [ ] Navigate to Manage Results → click "Re-publish".
+- [ ] **Expected:** Dialog with title "Re-publish results" and a TextArea
+  labeled "Justification (required)" with helper text about the 20-char
+  minimum.
+- [ ] **Leave the justification blank** and click the in-dialog "Re-publish".
+- [ ] **Expected:** a clean inline **field error** on the justification TextArea
+  (no raw `ConstraintViolationException`/error page); the dialog stays open and
+  nothing is published. (UI blank-check; the service's `@NotBlank` is the
+  defense-in-depth backstop.)
+- [ ] Type a short string (e.g., `oops`) and click the in-dialog "Re-publish".
+- [ ] **Expected:** Error notification ending with
+  `error.awards.justification-too-short` (locale-dependent text); dialog stays
+  open.
+- [ ] Replace with a real justification: `Corrected silver to bronze in M1A
+  after spreadsheet error.` and click "Re-publish".
+- [ ] **Expected:** Green success notification "Results re-published
+  successfully. You may now send an announcement."; page reloads.
+- [ ] **Expected:** Status flips to `RESULTS_PUBLISHED` (republish advances
+  the status itself via `CompetitionService.publishDivision` — no separate
+  manual advance needed).
+- [ ] **Expected:** Publication history now has two rows (version 1 and
+  version 2 with the justification populated).
+- [ ] **Expected:** No email sent (verify Mailpit empty).
+
+### 13.9 Send announcement — initial template
+
+*Revert your dev state so the latest publication is version 1* (or
+work against another division at its first publication).
+For this step, the script below assumes you're at version 1 — if you ran
+13.8 you'll be at version 2, which is fine but the email type will be the
+republish variant. Adjust expectations accordingly.
+
+*From Manage Results, version 1 case:*
+
+- [ ] Click "Send announcement".
+- [ ] **Expected:** Dialog "Send results announcement" with a TextArea
+  labeled "Optional custom message" + helper text about leaving empty for
+  defaults.
+- [ ] Leave the message blank and click "Send announcement".
+- [ ] **Expected:** Green success notification "Announcement queued for
+  delivery."; dialog closes.
+- [ ] Open Mailpit at `http://localhost:8025`.
+- [ ] **Expected:** One email per entrant in the division (each entrant gets
+  a single email — even those without entries don't, since the recipient
+  list comes from distinct entry `userId`s).
+- [ ] Open one email.
+- [ ] **Expected:** Subject "Your CHIP 2026 — Amadora results are available".
+- [ ] **Expected:** Body uses the standard "results published" template:
+  heading "Results are available" + intro body + a "View results" CTA
+  button whose link is the **bare magic-link URL** (`…/login/magic?token=…`).
+  Clicking it logs the entrant in and `RootView` routes them to their results
+  page. (The CTA used to append the results path onto the token, which corrupted
+  it and broke login — fixed 2026-06-01, change #39. The proper deep-link
+  capability now exists — P20, a guarded `&redirect=` param on the magic-link
+  filter — but the announcement keeps the bare link by design since `RootView`
+  routing already lands the entrant on their results.)
+- [ ] **Expected:** Subject + body render in the entrant's `preferredLanguage`
+  locale (verify by setting one entrant's preferredLanguage to `pt` and
+  re-sending — that recipient gets the PT email).
+
+### 13.10 Send announcement — republish template
+
+*Repeat against a division at version ≥ 2 (use the state from 13.8).*
+
+- [ ] Click "Send announcement" → leave message blank → submit.
+- [ ] **Expected:** Mailpit shows one email per entrant.
+- [ ] **Expected:** Subject "CHIP 2026 — Amadora results have been updated".
+- [ ] **Expected:** Body uses the republish template: heading "Results
+  updated", intro line *"The results for CHIP 2026 — Amadora have been
+  updated. Reason given by the administrator:"*, followed by the justification
+  from the latest publication as a second paragraph (`bodyText2`).
+- [ ] **Expected:** CTA still goes to the entrant's My Entries (magic link).
+
+### 13.11 Send announcement — custom message
+
+*From Manage Results.*
+
+- [ ] Click "Send announcement".
+- [ ] In the TextArea type: `Thank you for participating! Awards ceremony
+  is this Saturday at 19:00.` and click "Send announcement".
+- [ ] **Expected:** Green success; Mailpit shows one email per entrant.
+- [ ] Open one email.
+- [ ] **Expected:** Subject "Update from CHIP 2026 — Amadora".
+- [ ] **Expected:** Heading "Announcement"; body is exactly the typed
+  message (no justification, no default template body).
+
+### 13.12 Anonymity sanity check
+
+*Log in as `entrant1@example.com` and re-run §13.5 against the current
+state.* (After §13.8, that entrant may see a different medal — that's fine.)
+
+- [ ] **Expected:** The entrant scoresheet dialog shows **no judge label at all**
+  — never the real judge name or certifications, and not even a "Judge N" ordinal.
+- [ ] Download the scoresheet PDF (row ⬇ icon).
+- [ ] **Expected:** PDF has **no judge row** — the entrant copy omits the judge
+  entirely; the heading reads "MJP Scoresheet" (not "Anonymized Scoresheet").
+
+*Note on the admin path:* admin-side scoresheet surfaces (Manage Judging →
+Tables → a table → a scoresheet) show real judge names, confirming the
+non-anonymized path. There is currently **no admin-facing FULL-mode PDF
+download** — `ScoresheetPdfService`'s `AnonymizationLevel.FULL` is implemented
+and unit-tested but has no UI caller. The only scoresheet PDF download in the
+app is the entrant's ANONYMIZED one (§13.5). Wiring a FULL-mode admin download
+is a deferred post-v0.4.0 item.
+
+### 13.13 Cleanup
+
+*If you want Amadora to remain testable for re-runs:*
+
+- [ ] Revert the publication (§13.7 procedure) until status is DELIBERATION.
+- [ ] Manually revert further status changes (DELIBERATION → JUDGING) as
+  desired. Note: the `JudgingDivisionStatusRevertGuard` may block further
+  reverts depending on judging state.
+
+---
+
+## 14. Cross-cutting Concerns
 
 ### Mutual exclusivity (end-to-end)
 
@@ -1590,7 +3082,7 @@ Or use a test division where the flag is already set.*
 
 ---
 
-## 13. Multi-Role & Cross-Competition Edge Cases
+## 15. Multi-Role & Cross-Competition Edge Cases
 
 **Goal:** Test combinations of roles across competitions and identify gaps in
 credential management and authorization. Some of these are exploratory — note
@@ -1647,7 +3139,7 @@ may be invited as a competition ADMIN for a different competition.
 
 ---
 
-## 14. Security Testing
+## 16. Security Testing
 
 **Goal:** Verify the application is resilient to common web attacks (OWASP Top 10)
 across all input surfaces. Use browser dev tools, Mailpit, and direct HTTP requests.
@@ -1885,9 +3377,12 @@ curl -X PUT http://localhost:8080/api/webhooks/jumpseller/order-paid \
 | 7. Division Detail | `DivisionDetailViewTest`, `CompetitionServiceTest`, `DivisionCategoryRepositoryTest`, `CategoryRepositoryTest`, `DivisionStatusTest`, `EntryDivisionRevertGuardTest` |
 | 8. Entry Admin | `DivisionEntryAdminViewTest`, `EntryServiceTest`, `ProductMappingRepositoryTest`, `JumpsellerOrderRepositoryTest` |
 | 9. Webhook | `JumpsellerWebhookControllerTest`, `WebhookServiceTest`, `JumpsellerOrderTest`, `JumpsellerOrderLineItemTest` |
-| 10. My Entries | `MyEntriesViewTest`, `EntryServiceTest`, `EntryTest`, `EntryCreditRepositoryTest`, `EntryRepositoryTest` |
-| 11. Cross-cutting | `EntryServiceTest`, `DevDataInitializerTest`, `EntryModuleTest`, `CompetitionModuleTest`, `ModulithStructureTest` |
-| 14. Security | `SecurityConfigTest`, `JumpsellerWebhookControllerTest`, `SmtpEmailServiceTest`, `JwtMagicLinkServiceTest`, `LoginViewTest` |
+| 10–11. My Entries | `MyEntriesViewTest`, `EntryServiceTest`, `EntryTest`, `EntryCreditRepositoryTest`, `EntryRepositoryTest` |
+| 12. Judging Module | `JudgingAdminViewTest`, `RoundViewTest`, `ScoresheetViewTest`, `MyJudgingViewTest`, `BosViewTest`, `JudgingServiceTest`, `ScoresheetServiceTest`, `JudgeProfileServiceTest`, `MeaderyNameNormalizerTest`, `CoiCheckServiceTest`, `JudgingDivisionStatusRevertGuardTest`, `JudgingMinJudgesLockGuardTest`, `JudgingErrorKeyCoverageTest`, `JudgingNotificationListenerTest`, `JudgingRepositoryTest`, `JudgingRoundRepositoryTest`, `CategoryJudgingConfigRepositoryTest`, `ScoresheetRepositoryTest`, `MedalAwardRepositoryTest`, `BosPlacementRepositoryTest`, `JudgeProfileRepositoryTest` |
+| 13. Awards Module | `AwardsServiceImplTest`, `AwardsPublicResultsViewTest`, `AwardsAdminViewTest`, `MyResultsViewTest`, `AwardsModuleTest`, `PublicationTest`, `PublicationRepositoryTest`, `JudgingServiceFreezeGuardTest`, `ScoresheetServiceFreezeGuardTest`, `ScoresheetPdfServiceTest` |
+| 14. Cross-cutting | `EntryServiceTest`, `DevDataInitializerTest`, `EntryModuleTest`, `CompetitionModuleTest`, `ModulithStructureTest` |
+| 15. Multi-Role | (exploratory; no dedicated automated tests — covered indirectly by service-level role-combination tests in `CompetitionServiceTest` and `EntryServiceTest`) |
+| 16. Security | `SecurityConfigTest`, `JumpsellerWebhookControllerTest`, `SmtpEmailServiceTest`, `JwtMagicLinkServiceTest`, `LoginViewTest` |
 
 ### Tests without direct manual coverage
 

@@ -32,7 +32,7 @@ class DevUserInitializerTest {
     @Mock PasswordEncoder passwordEncoder;
 
     @Test
-    void shouldCreateSevenDevUsersWhenDevProfileActive() {
+    void shouldCreateAllDevUsersWhenDevProfileActive() {
         given(userRepository.existsByEmail(any())).willReturn(false);
         given(passwordEncoder.encode("admin")).willReturn("$2a$10$adminHash");
         given(passwordEncoder.encode("compadmin")).willReturn("$2a$10$compadminHash");
@@ -40,7 +40,7 @@ class DevUserInitializerTest {
         devUserInitializer.initializeDevUsers();
 
         var captor = ArgumentCaptor.forClass(User.class);
-        then(userRepository).should(times(7)).save(captor.capture());
+        then(userRepository).should(times(16)).save(captor.capture());
         List<User> savedUsers = captor.getAllValues();
 
         // Admin user
@@ -90,6 +90,15 @@ class DevUserInitializerTest {
         given(userRepository.existsByEmail("judge@example.com")).willReturn(true);
         given(userRepository.existsByEmail("steward@example.com")).willReturn(true);
         given(userRepository.existsByEmail("entrant@example.com")).willReturn(true);
+        given(userRepository.existsByEmail("proentrant1@example.com")).willReturn(true);
+        given(userRepository.existsByEmail("proentrant2@example.com")).willReturn(true);
+        given(userRepository.existsByEmail("proentrant3@example.com")).willReturn(true);
+        given(userRepository.existsByEmail("proentrant4@example.com")).willReturn(true);
+        given(userRepository.existsByEmail("judge2@example.com")).willReturn(true);
+        given(userRepository.existsByEmail("judge3@example.com")).willReturn(true);
+        given(userRepository.existsByEmail("judge4@example.com")).willReturn(true);
+        given(userRepository.existsByEmail("judge5@example.com")).willReturn(true);
+        given(userRepository.existsByEmail("judge6@example.com")).willReturn(true);
 
         devUserInitializer.initializeDevUsers();
 

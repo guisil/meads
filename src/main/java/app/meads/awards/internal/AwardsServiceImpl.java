@@ -1,0 +1,526 @@
+package app.meads.awards.internal;
+
+import app.meads.BusinessRuleException;
+import app.meads.LanguageMapping;
+import app.meads.awards.AdminResultsView;
+import app.meads.awards.AnnouncementSentEvent;
+import app.meads.awards.AnonymizedScoresheetView;
+import app.meads.awards.AwardsService;
+import app.meads.awards.EntrantResultRow;
+import app.meads.awards.PublicResultsView;
+import app.meads.awards.Publication;
+import app.meads.awards.ResultsPublishedEvent;
+import app.meads.awards.ResultsRepublishedEvent;
+import app.meads.CountryDisplay;
+import app.meads.competition.CategoryDisplay;
+import app.meads.competition.Competition;
+import app.meads.competition.CompetitionService;
+import app.meads.competition.Division;
+import app.meads.competition.DivisionCategory;
+import app.meads.competition.DivisionStatus;
+import app.meads.entry.Entry;
+import app.meads.entry.EntryService;
+import app.meads.identity.EmailService;
+import app.meads.identity.User;
+import app.meads.identity.UserService;
+import app.meads.judging.JudgingService;
+import app.meads.judging.Medal;
+import app.meads.judging.ScoreField;
+import app.meads.judging.Scoresheet;
+import app.meads.judging.ScoresheetService;
+import app.meads.judging.ScoresheetStatus;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.MessageSource;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.annotation.Validated;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+
+@Slf4j
+@Service
+@Transactional
+@Validated
+public class AwardsServiceImpl implements AwardsService {
+
+    private static final int JUSTIFICATION_MIN_LENGTH = 20;
+    private static final int JUSTIFICATION_MAX_LENGTH = 1000;
+
+    private final PublicationRepository publicationRepository;
+    private final CompetitionService competitionService;
+    private final EntryService entryService;
+    private final JudgingService judgingService;
+    private final ScoresheetService scoresheetService;
+    private final UserService userService;
+    private final EmailService emailService;
+    private final ApplicationEventPublisher eventPublisher;
+    private final MessageSource messageSource;
+
+    public AwardsServiceImpl(PublicationRepository publicationRepository,
+                             CompetitionService competitionService,
+                             EntryService entryService,
+                             JudgingService judgingService,
+                             ScoresheetService scoresheetService,
+                             UserService userService,
+                             EmailService emailService,
+                             ApplicationEventPublisher eventPublisher,
+                             MessageSource messageSource) {
+        this.publicationRepository = publicationRepository;
+        this.competitionService = competitionService;
+        this.entryService = entryService;
+        this.judgingService = judgingService;
+        this.scoresheetService = scoresheetService;
+        this.userService = userService;
+        this.emailService = emailService;
+        this.eventPublisher = eventPublisher;
+        this.messageSource = messageSource;
+    }
+
+    /** Localized category name with the catalog-properties fallback (see CategoryDisplay). */
+    private String categoryName(DivisionCategory category, Locale locale) {
+        return CategoryDisplay.name(category, locale,
+                key -> messageSource.getMessage(key, null, key, locale));
+    }
+
+    @Override
+    public Publication publish(UUID divisionId, UUID adminUserId) {
+        if (!competitionService.isAuthorizedForDivision(divisionId, adminUserId)) {
+            throw new BusinessRuleException("error.awards.unauthorized");
+        }
+        var division = competitionService.findDivisionById(divisionId);
+        if (division.getStatus() != DivisionStatus.DELIBERATION) {
+            throw new BusinessRuleException("error.awards.publish-wrong-status");
+        }
+        if (publicationRepository.existsByDivisionId(divisionId)) {
+            throw new BusinessRuleException("error.awards.already-published");
+        }
+        var publication = publicationRepository.save(new Publication(divisionId, adminUserId));
+        competitionService.publishDivision(divisionId, adminUserId);
+        eventPublisher.publishEvent(new ResultsPublishedEvent(
+                divisionId, publication.getId(), publication.getVersion(),
+                publication.getPublishedAt(), publication.getPublishedBy()));
+        log.info("Published results for division {} (version {})", divisionId, publication.getVersion());
+        return publication;
+    }
+
+    @Override
+    public Publication republish(UUID divisionId,
+                                  String justification,
+                                  UUID adminUserId) {
+        if (!competitionService.isAuthorizedForDivision(divisionId, adminUserId)) {
+            throw new BusinessRuleException("error.awards.unauthorized");
+        }
+        var division = competitionService.findDivisionById(divisionId);
+        if (division.getStatus() != DivisionStatus.DELIBERATION) {
+            throw new BusinessRuleException("error.awards.republish-wrong-status");
+        }
+        var trimmed = justification.trim();
+        if (trimmed.length() < JUSTIFICATION_MIN_LENGTH) {
+            throw new BusinessRuleException("error.awards.justification-too-short");
+        }
+        if (trimmed.length() > JUSTIFICATION_MAX_LENGTH) {
+            throw new BusinessRuleException("error.awards.justification-too-long");
+        }
+        var previous = publicationRepository.findTopByDivisionIdOrderByVersionDesc(divisionId)
+                .orElseThrow(() -> new BusinessRuleException("error.awards.no-prior-publication"));
+        var publication = publicationRepository.save(
+                Publication.republish(divisionId, previous.getVersion(), trimmed, adminUserId));
+        competitionService.publishDivision(divisionId, adminUserId);
+        eventPublisher.publishEvent(new ResultsRepublishedEvent(
+                divisionId, publication.getId(), publication.getVersion(),
+                publication.getPublishedAt(), publication.getPublishedBy(), trimmed));
+        log.info("Republished results for division {} (version {})", divisionId, publication.getVersion());
+        return publication;
+    }
+
+    @Override
+    public void sendAnnouncement(UUID divisionId, String customMessage,
+                                  UUID adminUserId) {
+        if (!competitionService.isAuthorizedForDivision(divisionId, adminUserId)) {
+            throw new BusinessRuleException("error.awards.unauthorized");
+        }
+        var division = competitionService.findDivisionById(divisionId);
+        if (division.getStatus() != DivisionStatus.RESULTS_PUBLISHED) {
+            throw new BusinessRuleException("error.awards.announcement-wrong-status");
+        }
+        var latest = publicationRepository.findTopByDivisionIdOrderByVersionDesc(divisionId)
+                .orElseThrow(() -> new BusinessRuleException("error.awards.no-prior-publication"));
+        var competition = competitionService.findCompetitionById(division.getCompetitionId());
+        boolean useCustom = customMessage != null && !customMessage.isBlank();
+        EmailService.ResultsAnnouncementType type;
+        String body;
+        if (useCustom) {
+            type = EmailService.ResultsAnnouncementType.CUSTOM_MESSAGE;
+            body = customMessage.trim();
+        } else if (latest.getVersion() > 1) {
+            type = EmailService.ResultsAnnouncementType.REPUBLISH_NO_CUSTOM;
+            body = latest.getJustification();
+        } else {
+            type = EmailService.ResultsAnnouncementType.INITIAL_NO_CUSTOM;
+            body = null;
+        }
+        var userIds = entryService.findEntrantUserIdsForDivision(divisionId);
+        int sent = 0;
+        for (var userId : userIds) {
+            User user;
+            try {
+                user = userService.findById(userId);
+            } catch (Exception e) {
+                log.warn("Skipping user {} for announcement: {}", userId, e.getMessage());
+                continue;
+            }
+            if (user == null || user.getEmail() == null || user.getEmail().isBlank()) {
+                continue;
+            }
+            var locale = LanguageMapping.resolveLocale(user.getPreferredLanguage(), user.getCountry());
+            try {
+                emailService.sendResultsAnnouncement(user.getEmail(), locale, type,
+                        competition.getName(), division.getName(),
+                        body, competition.getContactEmail());
+                sent++;
+            } catch (Exception e) {
+                log.error("Failed to send announcement to {} for division {}",
+                        user.getEmail(), divisionId, e);
+            }
+        }
+        eventPublisher.publishEvent(new AnnouncementSentEvent(
+                divisionId, latest.getId(), sent, useCustom));
+        log.info("Sent {} results announcements for division {} (publication v{}, type={})",
+                sent, divisionId, latest.getVersion(), type);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Publication> getLatestPublication(UUID divisionId) {
+        return publicationRepository.findTopByDivisionIdOrderByVersionDesc(divisionId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Publication> getPublicationHistory(UUID divisionId) {
+        return publicationRepository.findByDivisionIdOrderByVersionAsc(divisionId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<EntrantResultRow> getResultsForEntrant(UUID userId, UUID divisionId) {
+        var division = competitionService.findDivisionById(divisionId);
+        if (division.getStatus() != DivisionStatus.RESULTS_PUBLISHED) {
+            throw new BusinessRuleException("error.awards.not-published");
+        }
+        var entries = entryService.findEntriesByDivisionAndUser(divisionId, userId);
+        var locale = localeForUser(userId);
+        var rows = new ArrayList<EntrantResultRow>();
+        for (var entry : entries) {
+            rows.add(buildEntrantRow(entry, division.getEntryPrefix(), locale));
+        }
+        return rows;
+    }
+
+    private EntrantResultRow buildEntrantRow(Entry entry, String entryPrefix, Locale locale) {
+        var categoryInfo = resolveCategoryInfo(entry, locale);
+        var sheet = scoresheetService.findByEntryIdOrderBySubmittedAtAsc(entry.getId())
+                .stream().findFirst().orElse(null);
+        Integer total = sheet != null ? sheet.getTotalScore() : null;
+        boolean advanced = sheet != null && sheet.isAdvancedToMedalRound();
+        UUID sheetId = sheet != null && sheet.getStatus() == ScoresheetStatus.SUBMITTED
+                ? sheet.getId() : null;
+        var medal = judgingService.findMedalAwardByEntryId(entry.getId())
+                .map(a -> a.getMedal()).orElse(null);
+        var bosPlace = judgingService.findBosPlacementByEntryId(entry.getId())
+                .map(p -> p.getPlace()).orElse(null);
+        // Entrants see their own entry NUMBER (prefixed, e.g. PRO-1) — not the
+        // anonymized judging code.
+        var entryNumber = formatEntryNumber(entry, entryPrefix);
+        return new EntrantResultRow(
+                entry.getId(), entryNumber, entry.getMeadName(),
+                categoryInfo.code(), categoryInfo.name(),
+                entry.getStatus(), total, advanced, medal, bosPlace, sheetId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AdminResultsView getResultsForAdmin(UUID divisionId, UUID adminUserId) {
+        if (!competitionService.isAuthorizedForDivision(divisionId, adminUserId)) {
+            throw new BusinessRuleException("error.awards.unauthorized");
+        }
+        var division = competitionService.findDivisionById(divisionId);
+        var competition = competitionService.findCompetitionById(division.getCompetitionId());
+        var locale = localeForUser(adminUserId);
+        var judgingCategories = competitionService.findJudgingCategories(divisionId);
+        var entries = entryService.findEntriesByDivision(divisionId);
+        var entriesByCategory = new HashMap<UUID, List<Entry>>();
+        for (var entry : entries) {
+            if (entry.getFinalCategoryId() != null) {
+                entriesByCategory.computeIfAbsent(entry.getFinalCategoryId(), k -> new ArrayList<>())
+                        .add(entry);
+            }
+        }
+        var leaderboards = new ArrayList<AdminResultsView.AdminCategoryLeaderboard>();
+        for (var category : judgingCategories) {
+            var catEntries = entriesByCategory.getOrDefault(category.getId(), List.of());
+            var rows = new ArrayList<AdminResultsView.AdminEntryRow>();
+            for (var entry : catEntries) {
+                rows.add(buildAdminEntryRow(entry));
+            }
+            rows.sort(Comparator.comparing(
+                    (AdminResultsView.AdminEntryRow r) -> r.round1Total() == null ? -1 : r.round1Total())
+                    .reversed());
+            leaderboards.add(new AdminResultsView.AdminCategoryLeaderboard(
+                    category.getId(), category.getCode(), categoryName(category, locale), rows));
+        }
+        var bosRows = new ArrayList<AdminResultsView.AdminBosRow>();
+        var placements = judgingService.findBosPlacementsForDivision(divisionId, adminUserId);
+        for (var placement : placements) {
+            var entry = entryService.findEntryById(placement.getEntryId());
+            var entrant = userService.findById(entry.getUserId());
+            var catInfo = resolveCategoryInfo(entry, locale);
+            bosRows.add(new AdminResultsView.AdminBosRow(
+                    placement.getPlace(), entry.getId(), entry.getEntryCode(),
+                    entrant.getName(), entrant.getMeaderyName(), entry.getMeadName(),
+                    catInfo.code()));
+        }
+        var history = publicationRepository.findByDivisionIdOrderByVersionAsc(divisionId)
+                .stream()
+                .map(p -> new AdminResultsView.PublicationSummary(
+                        p.getVersion(), p.getPublishedAt(),
+                        userService.findById(p.getPublishedBy()).getName(),
+                        p.getJustification(), p.isInitial()))
+                .toList();
+        return new AdminResultsView(
+                divisionId, division.getName(), competition.getName(),
+                division.getStatus().name(), leaderboards, bosRows, history);
+    }
+
+    private AdminResultsView.AdminEntryRow buildAdminEntryRow(Entry entry) {
+        var entrant = userService.findById(entry.getUserId());
+        var sheet = scoresheetService.findByEntryIdOrderBySubmittedAtAsc(entry.getId())
+                .stream().findFirst().orElse(null);
+        Integer total = sheet != null ? sheet.getTotalScore() : null;
+        boolean advanced = sheet != null && sheet.isAdvancedToMedalRound();
+        var medalAward = judgingService.findMedalAwardByEntryId(entry.getId()).orElse(null);
+        var medalLabel = formatAdminMedalLabel(medalAward);
+        var bosPlace = judgingService.findBosPlacementByEntryId(entry.getId())
+                .map(p -> p.getPlace()).orElse(null);
+        return new AdminResultsView.AdminEntryRow(
+                entry.getId(), entry.getEntryCode(), entrant.getName(),
+                entrant.getMeaderyName(), entry.getMeadName(),
+                total, advanced, medalLabel, bosPlace);
+    }
+
+    private String formatAdminMedalLabel(app.meads.judging.MedalAward award) {
+        if (award == null || award.getMedal() == null) {
+            return "—";
+        }
+        return award.getMedal().name();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PublicResultsView getPublicResults(String competitionShortName,
+                                              String divisionShortName,
+                                              Locale locale) {
+        var competition = competitionService.findCompetitionByShortName(competitionShortName);
+        var division = competitionService.findDivisionByShortName(competition.getId(), divisionShortName);
+        if (division.getStatus() != DivisionStatus.RESULTS_PUBLISHED) {
+            throw new BusinessRuleException("error.awards.not-published");
+        }
+        return buildResultsView(competition, division, locale);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PublicResultsView getResultsPreview(String competitionShortName,
+                                               String divisionShortName,
+                                               Locale locale,
+                                               UUID adminUserId) {
+        var competition = competitionService.findCompetitionByShortName(competitionShortName);
+        var division = competitionService.findDivisionByShortName(competition.getId(), divisionShortName);
+        if (!competitionService.isAuthorizedForDivision(division.getId(), adminUserId)) {
+            throw new BusinessRuleException("error.awards.unauthorized");
+        }
+        // Results data (finalized medals + BOS) exists from DELIBERATION onward —
+        // admins can preview the public page before publishing.
+        if (division.getStatus().ordinal() < DivisionStatus.DELIBERATION.ordinal()) {
+            throw new BusinessRuleException("error.awards.preview-not-ready");
+        }
+        return buildResultsView(competition, division, locale);
+    }
+
+    private PublicResultsView buildResultsView(Competition competition, Division division, Locale locale) {
+        var judgingCategories = competitionService.findJudgingCategories(division.getId());
+        var entries = entryService.findEntriesByDivision(division.getId());
+        var entriesByCategory = new HashMap<UUID, List<Entry>>();
+        for (var entry : entries) {
+            if (entry.getFinalCategoryId() != null) {
+                entriesByCategory.computeIfAbsent(entry.getFinalCategoryId(), k -> new ArrayList<>())
+                        .add(entry);
+            }
+        }
+        var sections = new ArrayList<PublicResultsView.PublicCategorySection>();
+        for (var category : judgingCategories) {
+            var golds = filterByMedal(entriesByCategory.getOrDefault(category.getId(), List.of()),
+                    Medal.GOLD, division, locale);
+            var silvers = filterByMedal(entriesByCategory.getOrDefault(category.getId(), List.of()),
+                    Medal.SILVER, division, locale);
+            var bronzes = filterByMedal(entriesByCategory.getOrDefault(category.getId(), List.of()),
+                    Medal.BRONZE, division, locale);
+            if (!golds.isEmpty() || !silvers.isEmpty() || !bronzes.isEmpty()) {
+                sections.add(new PublicResultsView.PublicCategorySection(
+                        category.getCode(), categoryName(category, locale), golds, silvers, bronzes));
+            }
+        }
+        var publicBos = new ArrayList<PublicResultsView.PublicBosRow>();
+        var placements = publicBosPlacements(division.getId());
+        for (var placement : placements) {
+            var entry = entryService.findEntryById(placement.getEntryId());
+            var entrant = userService.findById(entry.getUserId());
+            publicBos.add(new PublicResultsView.PublicBosRow(
+                    placement.getPlace(), entry.getMeadName(),
+                    producerLabel(entrant, division, locale)));
+        }
+        var history = publicationRepository.findByDivisionIdOrderByVersionAsc(division.getId());
+        var latest = history.isEmpty() ? null : history.get(history.size() - 1);
+        return new PublicResultsView(
+                competition.getName(), division.getName(),
+                latest != null ? latest.getPublishedAt() : null,
+                history.size() > 1, sections, publicBos, division.isMeaderyNameRequired());
+    }
+
+    /**
+     * Public-facing producer label, always suffixed with the entrant's country when
+     * set: in a meadery-required division (e.g. commercial) the meadery name is
+     * shown; otherwise (e.g. amateur) the meadmaker's name — never a bare
+     * {@code null} when no meadery was given.
+     */
+    public static String producerLabel(User entrant, Division division, Locale locale) {
+        var primary = division.isMeaderyNameRequired()
+                ? entrant.getMeaderyName()
+                : entrant.getName();
+        var country = entrant.getCountry();
+        return (country != null && !country.isBlank())
+                ? primary + " (" + CountryDisplay.name(country, locale) + ")"
+                : primary;
+    }
+
+    private List<PublicResultsView.PublicMedalRow> filterByMedal(List<Entry> entries, Medal medal,
+                                                                 Division division, Locale locale) {
+        var rows = new ArrayList<PublicResultsView.PublicMedalRow>();
+        for (var entry : entries) {
+            var award = judgingService.findMedalAwardByEntryId(entry.getId()).orElse(null);
+            if (award != null && award.getMedal() == medal) {
+                var entrant = userService.findById(entry.getUserId());
+                rows.add(new PublicResultsView.PublicMedalRow(entry.getMeadName(),
+                        producerLabel(entrant, division, locale)));
+            }
+        }
+        return rows;
+    }
+
+    private List<app.meads.judging.BosPlacement> publicBosPlacements(UUID divisionId) {
+        // Fetch via internal repo path; we need a non-auth-gated version
+        var placements = new ArrayList<app.meads.judging.BosPlacement>();
+        for (var entry : entryService.findEntriesByDivision(divisionId)) {
+            judgingService.findBosPlacementByEntryId(entry.getId()).ifPresent(placements::add);
+        }
+        placements.sort(Comparator.comparingInt(app.meads.judging.BosPlacement::getPlace));
+        return placements;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AnonymizedScoresheetView getAnonymizedScoresheet(UUID scoresheetId,
+                                                              UUID requestingUserId) {
+        var sheet = scoresheetService.findById(scoresheetId)
+                .orElseThrow(() -> new BusinessRuleException("error.awards.scoresheet-not-found"));
+        if (sheet.getStatus() != ScoresheetStatus.SUBMITTED) {
+            throw new BusinessRuleException("error.awards.scoresheet-not-found");
+        }
+        var entry = entryService.findEntryById(sheet.getEntryId());
+        var division = competitionService.findDivisionById(entry.getDivisionId());
+        boolean isAdmin = competitionService.isAuthorizedForDivision(entry.getDivisionId(), requestingUserId);
+        boolean isOwner = entry.getUserId().equals(requestingUserId);
+        if (!isAdmin && !isOwner) {
+            throw new BusinessRuleException("error.awards.unauthorized");
+        }
+        if (!isAdmin && division.getStatus() != DivisionStatus.RESULTS_PUBLISHED) {
+            throw new BusinessRuleException("error.awards.not-published");
+        }
+        var sheets = scoresheetService.findByEntryIdOrderBySubmittedAtAsc(sheet.getEntryId());
+        var anonymized = new ArrayList<AnonymizedScoresheetView.AnonymizedScoresheet>();
+        int ordinal = 1;
+        for (var s : sheets) {
+            if (s.getStatus() != ScoresheetStatus.SUBMITTED) {
+                continue;
+            }
+            anonymized.add(buildAnonymizedScoresheet(s, ordinal++));
+        }
+        var categoryInfo = resolveCategoryInfo(entry, localeForUser(requestingUserId));
+        // Entrants see their own prefixed entry NUMBER (e.g. PRO-3), never the
+        // anonymized judging code.
+        var entryNumber = formatEntryNumber(entry, division.getEntryPrefix());
+        var medal = judgingService.findMedalAwardByEntryId(entry.getId())
+                .map(a -> a.getMedal()).orElse(null);
+        var bosPlace = judgingService.findBosPlacementByEntryId(entry.getId())
+                .map(p -> p.getPlace()).orElse(null);
+        var competition = competitionService.findCompetitionById(division.getCompetitionId());
+        var logoDataUri = competition.hasLogo()
+                ? "data:" + competition.getLogoContentType() + ";base64,"
+                        + java.util.Base64.getEncoder().encodeToString(competition.getLogo())
+                : null;
+        var meadDetails = new AnonymizedScoresheetView.MeadDetails(
+                entry.getSweetness(), entry.getStrength(), entry.getAbv(), entry.getCarbonation(),
+                entry.getHoneyVarieties(), entry.getOtherIngredients(),
+                entry.isWoodAged(), entry.getWoodAgeingDetails(), entry.getAdditionalInformation());
+        return new AnonymizedScoresheetView(
+                sheet.getId(), entry.getId(), entryNumber,
+                entry.getMeadName(), categoryInfo.code(), categoryInfo.name(),
+                logoDataUri, meadDetails, medal, bosPlace, anonymized);
+    }
+
+    private AnonymizedScoresheetView.AnonymizedScoresheet buildAnonymizedScoresheet(Scoresheet sheet, int ordinal) {
+        var fieldScores = new ArrayList<AnonymizedScoresheetView.FieldScore>();
+        for (ScoreField f : sheet.getFields()) {
+            int value = f.getValue() != null ? f.getValue() : 0;
+            fieldScores.add(new AnonymizedScoresheetView.FieldScore(
+                    f.getFieldName(), value, f.getMaxValue(), f.getComment()));
+        }
+        return new AnonymizedScoresheetView.AnonymizedScoresheet(
+                ordinal, sheet.getCommentLanguage(),
+                sheet.getTotalScore(), sheet.isAdvancedToMedalRound(),
+                fieldScores, sheet.getOverallComments());
+    }
+
+    private String formatEntryNumber(Entry entry, String entryPrefix) {
+        return entryPrefix != null && !entryPrefix.isBlank()
+                ? entryPrefix + "-" + entry.getEntryNumber()
+                : String.valueOf(entry.getEntryNumber());
+    }
+
+    private CategoryInfo resolveCategoryInfo(Entry entry, Locale locale) {
+        UUID catId = entry.getFinalCategoryId() != null
+                ? entry.getFinalCategoryId()
+                : entry.getInitialCategoryId();
+        if (catId == null) {
+            return new CategoryInfo("", "");
+        }
+        DivisionCategory cat = competitionService.findDivisionCategoryById(catId);
+        return new CategoryInfo(cat.getCode(), categoryName(cat, locale));
+    }
+
+    private Locale localeForUser(UUID userId) {
+        var user = userService.findById(userId);
+        return LanguageMapping.resolveLocale(user.getPreferredLanguage(), user.getCountry());
+    }
+
+    private record CategoryInfo(String code, String name) {
+    }
+}

@@ -17,6 +17,7 @@ import app.meads.identity.Role;
 import app.meads.identity.User;
 import app.meads.identity.UserService;
 import app.meads.identity.UserStatus;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -39,6 +40,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 
@@ -71,6 +73,28 @@ class EntryServiceTest {
 
     @Mock
     ApplicationEventPublisher eventPublisher;
+
+    @org.mockito.Spy
+    java.util.List<EntryStatusRevertGuard> statusRevertGuards = new java.util.ArrayList<>();
+
+    @BeforeEach
+    void defaultDivisionIsEntryMutable() {
+        // P21: entry mutations now call requireEntryStageMutable -> findDivisionById. Default to a
+        // mutable (JUDGING) division so entry-status/admin tests pass; tests that need a specific
+        // status (e.g. registration-open, deliberation) override this with their own stub.
+        lenient().when(competitionService.findDivisionById(any())).thenReturn(judgingDivision());
+        // Submission events now resolve the submitter's locale via userService.findById.
+        lenient().when(userService.findById(any())).thenReturn(createSystemAdmin());
+    }
+
+    private Division judgingDivision() {
+        var division = new Division(UUID.randomUUID(), "Home", "home", ScoringSystem.MJP,
+                LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
+        division.advanceStatus(); // -> REGISTRATION_OPEN
+        division.advanceStatus(); // -> REGISTRATION_CLOSED
+        division.advanceStatus(); // -> JUDGING
+        return division;
+    }
 
     private User createSystemAdmin() {
         return new User("admin@test.com", "Admin", UserStatus.ACTIVE, Role.SYSTEM_ADMIN);
@@ -945,7 +969,7 @@ class EntryServiceTest {
         var category = mock(DivisionCategory.class);
         given(category.getId()).willReturn(categoryId);
         given(category.getCode()).willReturn("M1A");
-        given(category.getName()).willReturn("Dry Mead");
+        given(category.getName(any())).willReturn("Dry Mead");
         given(competitionService.findDivisionCategories(divisionId))
                 .willReturn(List.of(category));
 
@@ -1060,7 +1084,7 @@ class EntryServiceTest {
         var category = mock(DivisionCategory.class);
         given(category.getId()).willReturn(categoryId);
         given(category.getCode()).willReturn("M1A");
-        given(category.getName()).willReturn("Traditional Mead (Dry)");
+        given(category.getName(any())).willReturn("Traditional Mead (Dry)");
         given(competitionService.findDivisionCategories(divisionId))
                 .willReturn(List.of(category));
 
@@ -1143,7 +1167,7 @@ class EntryServiceTest {
         var category = mock(DivisionCategory.class);
         given(category.getId()).willReturn(categoryId);
         given(category.getCode()).willReturn("M2C");
-        given(category.getName()).willReturn("Berry Melomel");
+        given(category.getName(any())).willReturn("Berry Melomel");
         given(competitionService.findDivisionCategories(divisionId))
                 .willReturn(List.of(category));
 
@@ -1174,6 +1198,7 @@ class EntryServiceTest {
         var result = entryService.markReceived(entry.getId(), adminUser.getId());
 
         assertThat(result.getStatus()).isEqualTo(EntryStatus.RECEIVED);
+        then(eventPublisher).should().publishEvent(any(EntryReceivedEvent.class));
     }
 
     // Cycle 13: withdrawEntry — admin only
@@ -1195,6 +1220,32 @@ class EntryServiceTest {
         var result = entryService.withdrawEntry(entry.getId(), adminUser.getId());
 
         assertThat(result.getStatus()).isEqualTo(EntryStatus.WITHDRAWN);
+        // No EntryReceivedEvent fired — entry was SUBMITTED (not RECEIVED) at
+        // withdraw time, so no zombie cleanup needed.
+        then(eventPublisher).should(never()).publishEvent(any(EntryReceivedEvent.class));
+    }
+
+    @Test
+    void shouldPublishEntryReceivedEventOnWithdrawWhenEntryWasReceived() {
+        // Zombie-cleanup trigger: withdrawing a RECEIVED entry re-fires
+        // EntryReceivedEvent so the medal-round listener drops the zombie
+        // from any SCORE_BASED round in the entry's category.
+        var divisionId = UUID.randomUUID();
+        var adminUser = createSystemAdmin();
+        var entry = new Entry(divisionId, UUID.randomUUID(), 1, "ABC123",
+                "My Mead", UUID.randomUUID(), Sweetness.DRY,  new BigDecimal("12.5"), Carbonation.STILL,
+                "Wildflower honey", null, false, null, null);
+        entry.submit();
+        entry.markReceived(); // RECEIVED
+
+        given(userService.findById(adminUser.getId())).willReturn(adminUser);
+        given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
+        given(entryRepository.save(any(Entry.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        entryService.withdrawEntry(entry.getId(), adminUser.getId());
+
+        then(eventPublisher).should().publishEvent(any(EntryReceivedEvent.class));
     }
 
     // Cycle 14: adminUpdateEntry — any non-WITHDRAWN
@@ -1221,6 +1272,34 @@ class EntryServiceTest {
 
         assertThat(result.getMeadName()).isEqualTo("Admin Mead");
         assertThat(result.getInitialCategoryId()).isEqualTo(newCategoryId);
+    }
+
+    // P21: entry mutations blocked from DELIBERATION onward
+
+    @Test
+    void shouldRejectAdminUpdateWhenDivisionAtDeliberation() {
+        var divisionId = UUID.randomUUID();
+        var adminUser = createSystemAdmin();
+        var division = new Division(UUID.randomUUID(), "Home", "home", ScoringSystem.MJP,
+                LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
+        for (int i = 0; i < 4; i++) {
+            division.advanceStatus(); // DRAFT -> ... -> DELIBERATION
+        }
+        var entry = new Entry(divisionId, UUID.randomUUID(), 1, "ABC123",
+                "Old Mead", UUID.randomUUID(), Sweetness.DRY, new BigDecimal("12.5"), Carbonation.STILL,
+                "Wildflower honey", null, false, null, null);
+        entry.submit();
+
+        given(userService.findById(adminUser.getId())).willReturn(adminUser);
+        given(entryRepository.findById(entry.getId())).willReturn(Optional.of(entry));
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+
+        assertThatThrownBy(() -> entryService.adminUpdateEntry(entry.getId(), "Admin Mead",
+                UUID.randomUUID(), Sweetness.SWEET, new BigDecimal("18.0"),
+                Carbonation.SPARKLING, "Orange blossom", "Spices",
+                true, "Oak barrel", "Notes", adminUser.getId()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.entry.stage-locked");
     }
 
     // Cycle 15: findEntriesByDivisionAndUser
@@ -1328,6 +1407,7 @@ class EntryServiceTest {
         assertThat(overview.divisionShortName()).isEqualTo("amadora");
         assertThat(overview.creditBalance()).isEqualTo(3);
         assertThat(overview.activeEntryCount()).isEqualTo(1);
+        assertThat(overview.status()).isEqualTo(division.getStatus());
     }
 
     @Test
@@ -1404,7 +1484,7 @@ class EntryServiceTest {
         var category = mock(DivisionCategory.class);
         given(category.getId()).willReturn(categoryId);
         given(category.getCode()).willReturn("M1A");
-        given(category.getName()).willReturn("Traditional Mead (Dry)");
+        given(category.getName(any())).willReturn("Traditional Mead (Dry)");
         given(competitionService.findDivisionCategories(divisionId)).willReturn(List.of(category));
 
         entryService.advanceEntryStatus(entry.getId(), adminUser.getId());
@@ -1738,5 +1818,82 @@ class EntryServiceTest {
                 entry.getId(), UUID.randomUUID(), regularUser.getId()))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("error.auth.unauthorized");
+    }
+
+    @Test
+    void shouldBulkAssignFinalCategoriesByMatchingCode() {
+        var competitionId = UUID.randomUUID();
+        var division = createRegistrationClosedDivision(competitionId);
+        var adminUser = createSystemAdmin();
+        var regM1A = new DivisionCategory(division.getId(), null,
+                "M1A", "Traditional Mead", "desc", null, 1, CategoryScope.REGISTRATION);
+        var regM2C = new DivisionCategory(division.getId(), null,
+                "M2C", "Berry Melomel", "desc", null, 2, CategoryScope.REGISTRATION);
+        var judM1A = new DivisionCategory(division.getId(), null,
+                "M1A", "Traditional Mead", "desc", null, 1, CategoryScope.JUDGING);
+        var judM2C = new DivisionCategory(division.getId(), null,
+                "M2C", "Berry Melomel", "desc", null, 2, CategoryScope.JUDGING);
+
+        var entry1 = new Entry(division.getId(), UUID.randomUUID(), 1, "AMA-1",
+                "Mead A", regM1A.getId(), Sweetness.DRY, new BigDecimal("12.0"),
+                Carbonation.STILL, "Wildflower honey", null, false, null, null);
+        entry1.submit(); // → SUBMITTED, no finalCategoryId
+        var entry2 = new Entry(division.getId(), UUID.randomUUID(), 2, "AMA-2",
+                "Mead B", regM2C.getId(), Sweetness.MEDIUM, new BigDecimal("12.0"),
+                Carbonation.STILL, "Acacia honey", null, false, null, null);
+        entry2.submit();
+        entry2.markReceived(); // → RECEIVED, no finalCategoryId
+        var entry3 = new Entry(division.getId(), UUID.randomUUID(), 3, "AMA-3",
+                "Draft Mead", regM1A.getId(), Sweetness.DRY, new BigDecimal("12.0"),
+                Carbonation.STILL, "Wildflower honey", null, false, null, null);
+        // stays DRAFT → should be skipped
+
+        given(userService.findById(adminUser.getId())).willReturn(adminUser);
+        given(competitionService.findJudgingCategories(division.getId()))
+                .willReturn(List.of(judM1A, judM2C));
+        given(competitionService.findRegistrationCategories(division.getId()))
+                .willReturn(List.of(regM1A, regM2C));
+        given(entryRepository.findByDivisionId(division.getId()))
+                .willReturn(List.of(entry1, entry2, entry3));
+        given(entryRepository.save(any(Entry.class))).willAnswer(inv -> inv.getArgument(0));
+
+        var assigned = entryService.assignFinalCategoriesByCode(division.getId(), adminUser.getId());
+
+        assertThat(assigned).isEqualTo(2);
+        assertThat(entry1.getFinalCategoryId()).isEqualTo(judM1A.getId());
+        assertThat(entry2.getFinalCategoryId()).isEqualTo(judM2C.getId());
+        assertThat(entry3.getFinalCategoryId()).isNull(); // DRAFT — not touched
+    }
+
+    @Test
+    void shouldReturnZeroFromBulkAssignWhenNoJudgingCategoriesExist() {
+        var competitionId = UUID.randomUUID();
+        var division = createRegistrationClosedDivision(competitionId);
+        var adminUser = createSystemAdmin();
+
+        given(userService.findById(adminUser.getId())).willReturn(adminUser);
+        given(competitionService.findJudgingCategories(division.getId())).willReturn(List.of());
+
+        assertThat(entryService.assignFinalCategoriesByCode(division.getId(), adminUser.getId())).isZero();
+    }
+
+    @Test
+    void shouldCountEntriesNeedingFinalCategory() {
+        var divisionId = UUID.randomUUID();
+        var needsReceived = mock(Entry.class);
+        given(needsReceived.getFinalCategoryId()).willReturn(null);
+        given(needsReceived.getStatus()).willReturn(EntryStatus.RECEIVED);
+        var needsSubmitted = mock(Entry.class);
+        given(needsSubmitted.getFinalCategoryId()).willReturn(null);
+        given(needsSubmitted.getStatus()).willReturn(EntryStatus.SUBMITTED);
+        var alreadyAssigned = mock(Entry.class);
+        given(alreadyAssigned.getFinalCategoryId()).willReturn(UUID.randomUUID());
+        var withdrawn = mock(Entry.class);
+        given(withdrawn.getFinalCategoryId()).willReturn(null);
+        given(withdrawn.getStatus()).willReturn(EntryStatus.WITHDRAWN);
+        given(entryRepository.findByDivisionId(divisionId))
+                .willReturn(List.of(needsReceived, needsSubmitted, alreadyAssigned, withdrawn));
+
+        assertThat(entryService.countEntriesNeedingFinalCategory(divisionId)).isEqualTo(2L);
     }
 }

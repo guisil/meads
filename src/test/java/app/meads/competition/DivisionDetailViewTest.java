@@ -4,6 +4,7 @@ import app.meads.TestcontainersConfiguration;
 import app.meads.competition.internal.CategoryRepository;
 import app.meads.competition.internal.CompetitionRepository;
 import app.meads.competition.internal.DivisionCategoryRepository;
+import app.meads.competition.internal.DivisionDetailView;
 import app.meads.competition.internal.DivisionRepository;
 import app.meads.competition.internal.ParticipantRepository;
 import app.meads.competition.internal.ParticipantRoleRepository;
@@ -407,6 +408,67 @@ class DivisionDetailViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldAddCustomCategoryWithTranslationViaDialog() {
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName() + "/divisions/" + testDivision.getShortName());
+
+        _click(_get(Button.class, spec -> spec.withText("Add Category")));
+
+        var dialog = _get(Dialog.class);
+        _get(dialog, TabSheet.class).setSelectedIndex(1); // Custom tab
+
+        _get(dialog, TextField.class, spec -> spec.withCaption("Code")).setValue("CUSTOM1");
+        _get(dialog, TextField.class, spec -> spec.withCaption("Name")).setValue("Best Local Honey");
+        _get(dialog, TextField.class, spec -> spec.withCaption("Description")).setValue("Mead made with local honey");
+
+        // Portuguese translation fields (under the optional translations section)
+        _get(dialog, TextField.class, spec -> spec.withCaption("Name (Português)"))
+                .setValue("Melhor Mel Local");
+        _get(dialog, TextField.class, spec -> spec.withCaption("Description (Português)"))
+                .setValue("Hidromel feito com mel local");
+
+        _click(_get(dialog, Button.class, spec -> spec.withText("Add")));
+
+        var categories = divisionCategoryRepository.findByDivisionIdOrderByCode(testDivision.getId());
+        assertThat(categories).hasSize(1);
+        var saved = categories.getFirst();
+        assertThat(saved.getName(java.util.Locale.forLanguageTag("pt"))).isEqualTo("Melhor Mel Local");
+        assertThat(saved.getDescription(java.util.Locale.forLanguageTag("pt"))).isEqualTo("Hidromel feito com mel local");
+        assertThat(saved.getName(java.util.Locale.ENGLISH)).isEqualTo("Best Local Honey");
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldEditCustomCategoryNameAndTranslationViaDialog() {
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                testDivision.getId(), null, "X9Z", "Spiced Mead", "Mead with spices", null, 0));
+        category.setTranslations(java.util.Map.of("pt", new LocalizedText("Hidromel Especiado", "Com especiarias")));
+        divisionCategoryRepository.save(category);
+
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName()
+                + "/divisions/" + testDivision.getShortName());
+
+        var view = _get(DivisionDetailView.class);
+        view.openEditCategoryDialog(category);
+
+        var dialog = _get(Dialog.class);
+        // Existing English base values are prefilled
+        var nameField = _get(dialog, TextField.class, spec -> spec.withCaption("Name"));
+        assertThat(nameField.getValue()).isEqualTo("Spiced Mead");
+        nameField.setValue("Spiced Mead v2");
+        // Existing Portuguese translation is prefilled
+        var ptName = _get(dialog, TextField.class, spec -> spec.withCaption("Name (Português)"));
+        assertThat(ptName.getValue()).isEqualTo("Hidromel Especiado");
+        ptName.setValue("Hidromel Especiado v2");
+
+        _click(_get(dialog, Button.class, spec -> spec.withText("Save")));
+
+        var saved = divisionCategoryRepository.findById(category.getId()).orElseThrow();
+        assertThat(saved.getName(java.util.Locale.ENGLISH)).isEqualTo("Spiced Mead v2");
+        assertThat(saved.getName(java.util.Locale.forLanguageTag("pt"))).isEqualTo("Hidromel Especiado v2");
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldExcludeJudgingScopeCategoriesFromCustomCategoryParentSelect() {
         // REGISTRATION-scope top-level category
         divisionCategoryRepository.save(new DivisionCategory(
@@ -446,6 +508,40 @@ class DivisionDetailViewTest {
                 .filter(b -> b.getText().equals("Manage Entries"))
                 .findFirst();
         assertThat(manageEntries).isPresent();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldDisplayManageJudgingButtonWhenDivisionInJudgingStatus() {
+        testDivision.advanceStatus(); // DRAFT → REGISTRATION_OPEN
+        testDivision.advanceStatus(); // → REGISTRATION_CLOSED
+        testDivision.advanceStatus(); // → JUDGING
+        divisionRepository.save(testDivision);
+
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName()
+                + "/divisions/" + testDivision.getShortName());
+
+        var buttons = _find(Button.class);
+        var manageJudging = buttons.stream()
+                .filter(b -> b.getText().equals("Manage Judging"))
+                .findFirst();
+        assertThat(manageJudging).isPresent();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldHideManageJudgingButtonWhenDivisionBelowJudgingStatus() {
+        testDivision.advanceStatus(); // DRAFT → REGISTRATION_OPEN
+        divisionRepository.save(testDivision);
+
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName()
+                + "/divisions/" + testDivision.getShortName());
+
+        var buttons = _find(Button.class);
+        var manageJudging = buttons.stream()
+                .filter(b -> b.getText().equals("Manage Judging"))
+                .findFirst();
+        assertThat(manageJudging).isNotPresent();
     }
 
     @Test
@@ -568,6 +664,174 @@ class DivisionDetailViewTest {
                 .toList();
         assertThat(rootItems).hasSize(1);
         assertThat(rootItems.getFirst().getCode()).isEqualTo("CX1");
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldShowJudgingCategoriesTabReadOnlyAtDeliberation() {
+        // Past JUDGING the categories can't be managed, but they still back the
+        // results — keep the tab visible (read-only): grid present, no Add /
+        // Edit / Remove controls.
+        testDivision.advanceStatus(); // → REGISTRATION_OPEN
+        testDivision.advanceStatus(); // → REGISTRATION_CLOSED
+        testDivision.advanceStatus(); // → JUDGING
+        testDivision.advanceStatus(); // → DELIBERATION
+        divisionRepository.save(testDivision);
+        divisionCategoryRepository.save(new DivisionCategory(
+                testDivision.getId(), null, "CX1", "Combined Category", "desc", null, 0,
+                CategoryScope.JUDGING));
+
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName()
+                + "/divisions/" + testDivision.getShortName());
+
+        // Judging Categories tab still at index 1 (Categories · Judging Categories · Settings).
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(1);
+
+        @SuppressWarnings("unchecked")
+        var judgingGrid = (TreeGrid<DivisionCategory>) _get(TreeGrid.class,
+                spec -> spec.withId("judging-categories-grid"));
+        assertThat(judgingGrid).isNotNull();
+
+        var buttons = _find(Button.class);
+        assertThat(buttons).noneMatch(b -> b.getText().equals("Add Judging Category"));
+        assertThat(buttons).noneMatch(b -> b.getText().equals("Initialize Judging Categories"));
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldDisplayBosPlacesIntegerFieldInSettingsTab() {
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName()
+                + "/divisions/" + testDivision.getShortName());
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(1); // Settings
+
+        var bosField = _get(com.vaadin.flow.component.textfield.IntegerField.class,
+                spec -> spec.withId("bos-places-field"));
+        assertThat(bosField.getValue()).isEqualTo(1); // default
+        assertThat(bosField.isReadOnly()).isFalse(); // DRAFT allows editing
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldKeepBosPlacesFieldEditableInRegistrationClosed() {
+        testDivision.advanceStatus(); // → REGISTRATION_OPEN
+        testDivision.advanceStatus(); // → REGISTRATION_CLOSED
+        divisionRepository.save(testDivision);
+
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName()
+                + "/divisions/" + testDivision.getShortName());
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(2); // Settings (index shifts when judging categories tab added)
+
+        var bosField = _get(com.vaadin.flow.component.textfield.IntegerField.class,
+                spec -> spec.withId("bos-places-field"));
+        assertThat(bosField.isReadOnly()).isFalse();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldLockBosPlacesFieldWhenJudging() {
+        testDivision.advanceStatus(); // → REGISTRATION_OPEN
+        testDivision.advanceStatus(); // → REGISTRATION_CLOSED
+        testDivision.advanceStatus(); // → JUDGING
+        divisionRepository.save(testDivision);
+
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName()
+                + "/divisions/" + testDivision.getShortName());
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(2); // Settings
+
+        var bosField = _get(com.vaadin.flow.component.textfield.IntegerField.class,
+                spec -> spec.withId("bos-places-field"));
+        assertThat(bosField.isReadOnly()).isTrue();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldPersistBosPlacesWhenSettingsSaved() {
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName()
+                + "/divisions/" + testDivision.getShortName());
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(1);
+
+        var bosField = _get(com.vaadin.flow.component.textfield.IntegerField.class,
+                spec -> spec.withId("bos-places-field"));
+        bosField.setValue(5);
+
+        _click(_get(Button.class, spec -> spec.withText("Save")));
+
+        var refreshed = divisionRepository.findById(testDivision.getId()).orElseThrow();
+        assertThat(refreshed.getBosPlaces()).isEqualTo(5);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldSaveBosPlacesSuccessfullyWhenStatusIsRegistrationClosed() {
+        // Reproduces a bug where saving settings at REGISTRATION_CLOSED showed
+        // "settings cannot be changed in the current state" because the view
+        // unconditionally re-sent the existing deadline value to
+        // CompetitionService.updateDivisionDeadline, which rejects past
+        // REGISTRATION_OPEN. The BOS-places save itself succeeded.
+        testDivision.advanceStatus(); // → REGISTRATION_OPEN
+        testDivision.advanceStatus(); // → REGISTRATION_CLOSED
+        divisionRepository.save(testDivision);
+
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName()
+                + "/divisions/" + testDivision.getShortName());
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(2); // Settings (Judging Categories tab is index 1 here)
+
+        var bosField = _get(com.vaadin.flow.component.textfield.IntegerField.class,
+                spec -> spec.withId("bos-places-field"));
+        bosField.setValue(3);
+
+        _click(_get(Button.class, spec -> spec.withText("Save")));
+
+        var notification = _get(com.vaadin.flow.component.notification.Notification.class);
+        assertThat(notification.getElement().getProperty("text"))
+                .doesNotContain("cannot be changed");
+        var refreshed = divisionRepository.findById(testDivision.getId()).orElseThrow();
+        assertThat(refreshed.getBosPlaces()).isEqualTo(3);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldDisplayMinJudgesPerTableIntegerFieldInSettingsTab() {
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName()
+                + "/divisions/" + testDivision.getShortName());
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(1);
+
+        var minJudgesField = _get(com.vaadin.flow.component.textfield.IntegerField.class,
+                spec -> spec.withId("min-judges-field"));
+        assertThat(minJudgesField.getValue()).isEqualTo(2); // default
+        assertThat(minJudgesField.isReadOnly()).isFalse();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldPersistMinJudgesPerTableWhenSettingsSaved() {
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName()
+                + "/divisions/" + testDivision.getShortName());
+
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(1);
+
+        var minJudgesField = _get(com.vaadin.flow.component.textfield.IntegerField.class,
+                spec -> spec.withId("min-judges-field"));
+        minJudgesField.setValue(3);
+
+        _click(_get(Button.class, spec -> spec.withText("Save")));
+
+        var refreshed = divisionRepository.findById(testDivision.getId()).orElseThrow();
+        assertThat(refreshed.getMinJudgesPerRound()).isEqualTo(3);
     }
 
     @Test

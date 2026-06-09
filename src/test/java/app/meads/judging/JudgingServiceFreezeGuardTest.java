@@ -1,0 +1,243 @@
+package app.meads.judging;
+
+import app.meads.BusinessRuleException;
+import app.meads.competition.CompetitionService;
+import app.meads.competition.Division;
+import app.meads.competition.DivisionCategory;
+import app.meads.competition.DivisionStatus;
+import app.meads.entry.Entry;
+import app.meads.entry.EntryService;
+import app.meads.judging.internal.BosPlacementRepository;
+import app.meads.judging.internal.CategoryJudgingConfigRepository;
+import app.meads.judging.internal.JudgingRepository;
+import app.meads.judging.internal.JudgingServiceImpl;
+import app.meads.judging.internal.JudgingRoundRepository;
+import app.meads.judging.internal.MedalAwardRepository;
+import app.meads.judging.internal.ScoresheetRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.quality.Strictness;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.springframework.context.ApplicationEventPublisher;
+
+import java.time.LocalDateTime;
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
+
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
+class JudgingServiceFreezeGuardTest {
+
+    @InjectMocks JudgingServiceImpl service;
+
+    @Mock JudgingRepository judgingRepository;
+    @Mock JudgingRoundRepository judgingRoundRepository;
+    @Mock ScoresheetRepository scoresheetRepository;
+    @Mock CategoryJudgingConfigRepository categoryConfigRepository;
+    @Mock MedalAwardRepository medalAwardRepository;
+    @Mock CompetitionService competitionService;
+    @Mock JudgeProfileService judgeProfileService;
+    @Mock ScoresheetService scoresheetService;
+    @Mock BosPlacementRepository bosPlacementRepository;
+    @Mock EntryService entryService;
+    @Mock CoiCheckService coiCheckService;
+    @Mock ApplicationEventPublisher eventPublisher;
+
+    UUID divisionId;
+    UUID adminUserId;
+    UUID judgeUserId;
+    UUID divisionCategoryId;
+    UUID roundId;
+    UUID entryId;
+    Division frozenDivision;
+    Judging judging;
+    JudgingRound table;
+
+    @BeforeEach
+    void setUp() {
+        divisionId = UUID.randomUUID();
+        adminUserId = UUID.randomUUID();
+        judgeUserId = UUID.randomUUID();
+        divisionCategoryId = UUID.randomUUID();
+        entryId = UUID.randomUUID();
+        frozenDivision = mock(Division.class);
+        given(frozenDivision.getStatus()).willReturn(DivisionStatus.RESULTS_PUBLISHED);
+        given(competitionService.findDivisionById(divisionId)).willReturn(frozenDivision);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        judging = new Judging(divisionId);
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(judgingRepository.findByDivisionId(divisionId)).willReturn(Optional.of(judging));
+        table = new JudgingRound(judging.getId(), "T1", divisionCategoryId, null);
+        roundId = table.getId();
+        given(judgingRoundRepository.findById(roundId)).willReturn(Optional.of(table));
+        var cat = mock(DivisionCategory.class);
+        given(cat.getDivisionId()).willReturn(divisionId);
+        given(competitionService.findDivisionCategoryById(divisionCategoryId)).willReturn(cat);
+    }
+
+    private void assertFrozen(ThrowingRunnable action) {
+        assertThatThrownBy(action::run)
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.judging.results-published-frozen");
+    }
+
+    @FunctionalInterface
+    interface ThrowingRunnable {
+        void run();
+    }
+
+    @Test
+    void shouldRejectCreateTableWhenResultsPublished() {
+        assertFrozen(() -> service.createRound(judging.getId(), "Table 1",
+                divisionCategoryId, LocalDateTime.of(2026, 7, 1, 0, 0), adminUserId));
+    }
+
+    @Test
+    void shouldRejectUpdateTableNameWhenResultsPublished() {
+        assertFrozen(() -> service.updateRoundName(roundId, "New", adminUserId));
+    }
+
+    @Test
+    void shouldRejectUpdateTableScheduledDateWhenResultsPublished() {
+        assertFrozen(() -> service.updateRoundScheduledAt(roundId, LocalDateTime.now(), adminUserId));
+    }
+
+    @Test
+    void shouldRejectDeleteTableWhenResultsPublished() {
+        assertFrozen(() -> service.deleteRound(roundId, adminUserId));
+    }
+
+    @Test
+    void shouldRejectAssignJudgeWhenResultsPublished() {
+        assertFrozen(() -> service.assignJudge(roundId, judgeUserId, adminUserId));
+    }
+
+    @Test
+    void shouldRejectRemoveJudgeWhenResultsPublished() {
+        assertFrozen(() -> service.removeJudge(roundId, judgeUserId, adminUserId));
+    }
+
+    @Test
+    void shouldRejectStartTableWhenResultsPublished() {
+        assertFrozen(() -> service.startRound(roundId, adminUserId));
+    }
+
+    @Test
+    void shouldRejectConfigureCategoryMedalRoundWhenResultsPublished() {
+        assertFrozen(() -> service.configureCategoryMedalRound(
+                divisionCategoryId, MedalRoundMode.COMPARATIVE, adminUserId));
+    }
+
+    @Test
+    void shouldRejectCompleteMedalRoundByIdWhenResultsPublished() {
+        var medalRoundId = UUID.randomUUID();
+        var medalRound = mock(JudgingRound.class);
+        given(medalRound.getType()).willReturn(RoundType.MEDAL);
+        given(medalRound.getJudgingId()).willReturn(judging.getId());
+        given(judgingRoundRepository.findById(medalRoundId)).willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        assertFrozen(() -> service.completeMedalRoundById(medalRoundId, adminUserId));
+    }
+
+    @Test
+    void shouldRejectReopenMedalRoundByIdWhenResultsPublished() {
+        var medalRoundId = UUID.randomUUID();
+        var medalRound = mock(JudgingRound.class);
+        given(medalRound.getType()).willReturn(RoundType.MEDAL);
+        given(medalRound.getJudgingId()).willReturn(judging.getId());
+        given(judgingRoundRepository.findById(medalRoundId)).willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        assertFrozen(() -> service.reopenMedalRoundById(medalRoundId, adminUserId));
+    }
+
+    @Test
+    void shouldRejectResetMedalRoundByIdWhenResultsPublished() {
+        var medalRoundId = UUID.randomUUID();
+        var medalRound = mock(JudgingRound.class);
+        given(medalRound.getType()).willReturn(RoundType.MEDAL);
+        given(medalRound.getJudgingId()).willReturn(judging.getId());
+        given(judgingRoundRepository.findById(medalRoundId)).willReturn(Optional.of(medalRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        assertFrozen(() -> service.resetMedalRoundById(medalRoundId, adminUserId));
+    }
+
+    @Test
+    void shouldRejectRecordMedalWhenResultsPublished() {
+        var entry = mock(Entry.class);
+        given(entry.getDivisionId()).willReturn(divisionId);
+        given(entry.getFinalCategoryId()).willReturn(divisionCategoryId);
+        given(entryService.findEntryById(entryId)).willReturn(entry);
+        assertFrozen(() -> service.recordMedal(entryId, Medal.GOLD, judgeUserId));
+    }
+
+    @Test
+    void shouldRejectUpdateMedalWhenResultsPublished() {
+        var awardId = UUID.randomUUID();
+        var award = mock(MedalAward.class);
+        given(award.getDivisionId()).willReturn(divisionId);
+        given(award.getFinalCategoryId()).willReturn(divisionCategoryId);
+        given(medalAwardRepository.findById(awardId)).willReturn(Optional.of(award));
+        assertFrozen(() -> service.updateMedal(awardId, Medal.SILVER, judgeUserId));
+    }
+
+    @Test
+    void shouldRejectDeleteMedalAwardWhenResultsPublished() {
+        var awardId = UUID.randomUUID();
+        var award = mock(MedalAward.class);
+        given(award.getDivisionId()).willReturn(divisionId);
+        given(award.getFinalCategoryId()).willReturn(divisionCategoryId);
+        given(medalAwardRepository.findById(awardId)).willReturn(Optional.of(award));
+        assertFrozen(() -> service.deleteMedalAward(awardId, judgeUserId));
+    }
+
+    @Test
+    void shouldRejectStartBosWhenResultsPublished() {
+        assertFrozen(() -> service.startBos(divisionId, adminUserId));
+    }
+
+    @Test
+    void shouldRejectCompleteBosWhenResultsPublished() {
+        assertFrozen(() -> service.completeBos(divisionId, adminUserId));
+    }
+
+    @Test
+    void shouldRejectReopenBosWhenResultsPublished() {
+        assertFrozen(() -> service.reopenBos(divisionId, adminUserId));
+    }
+
+    @Test
+    void shouldRejectResetBosWhenResultsPublished() {
+        assertFrozen(() -> service.resetBos(divisionId, adminUserId));
+    }
+
+    @Test
+    void shouldRejectRecordBosPlacementWhenResultsPublished() {
+        assertFrozen(() -> service.recordBosPlacement(divisionId, entryId, 1, adminUserId));
+    }
+
+    @Test
+    void shouldRejectUpdateBosPlacementWhenResultsPublished() {
+        var placementId = UUID.randomUUID();
+        var placement = mock(BosPlacement.class);
+        given(placement.getDivisionId()).willReturn(divisionId);
+        given(bosPlacementRepository.findById(placementId)).willReturn(Optional.of(placement));
+        assertFrozen(() -> service.updateBosPlacement(placementId, 1, adminUserId));
+    }
+
+    @Test
+    void shouldRejectDeleteBosPlacementWhenResultsPublished() {
+        var placementId = UUID.randomUUID();
+        var placement = mock(BosPlacement.class);
+        given(placement.getDivisionId()).willReturn(divisionId);
+        given(bosPlacementRepository.findById(placementId)).willReturn(Optional.of(placement));
+        assertFrozen(() -> service.deleteBosPlacement(placementId, adminUserId));
+    }
+}

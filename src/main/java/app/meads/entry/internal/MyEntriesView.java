@@ -4,6 +4,7 @@ import app.meads.BusinessRuleException;
 import app.meads.LanguageMapping;
 import app.meads.MainLayout;
 import app.meads.PluralRules;
+import app.meads.competition.CategoryDisplay;
 import app.meads.competition.Competition;
 import app.meads.competition.CompetitionService;
 import app.meads.competition.Division;
@@ -148,6 +149,9 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         removeAll();
         add(createBreadcrumb());
         add(createHeader());
+        if (division.getStatus() == DivisionStatus.RESULTS_PUBLISHED) {
+            add(createResultsBanner());
+        }
         if (division.isMeaderyNameRequired()) {
             if (meaderyNameMissing) {
                 add(createMeaderyWarning());
@@ -258,6 +262,24 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
         warning.add(userIcon);
         warning.add(new Span(getTranslation("entries.meadery-warning.part2")));
         return warning;
+    }
+
+    private Div createResultsBanner() {
+        var banner = new Div();
+        banner.setId("results-published-banner");
+        banner.getStyle()
+                .set("background-color", "var(--lumo-success-color-10pct)")
+                .set("color", "var(--lumo-success-text-color)")
+                .set("padding", "var(--lumo-space-m)")
+                .set("border-radius", "var(--lumo-border-radius-m)")
+                .set("margin-bottom", "var(--lumo-space-m)");
+        banner.add(new Span(getTranslation("entries.results-published.banner") + " "));
+        var link = new com.vaadin.flow.component.html.Anchor(
+                "competitions/" + compShortName + "/divisions/" + divShortName + "/my-results",
+                getTranslation("entries.results-published.link"));
+        link.setId("view-results-link");
+        banner.add(link);
+        return banner;
     }
 
     private Div createMeaderyConfirmation() {
@@ -378,13 +400,17 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
             submitButton.setTooltipText(getTranslation("entries.meadery-required.tooltip"));
         }
 
-        // Download all labels (SUBMITTED entries) — only enabled when all entries are submitted
+        // Download all labels (SUBMITTED entries) — enabled when all entries are submitted and
+        // judging has not started yet (labels are useless once the bottles are with judges).
         var downloadAllBtn = new Button(getTranslation("entries.download-all"), new Icon(VaadinIcon.DOWNLOAD_ALT));
         Component downloadAllComponent;
         var hasSubmitted = entries.stream().anyMatch(en -> en.getStatus() == EntryStatus.SUBMITTED);
-        if (hasDrafts || !hasSubmitted) {
+        var labelsAvailable = division.getStatus().allowsLabelDownloads();
+        if (!labelsAvailable || hasDrafts || !hasSubmitted) {
             downloadAllBtn.setEnabled(false);
-            if (hasDrafts) {
+            if (!labelsAvailable) {
+                downloadAllBtn.setTooltipText(getTranslation("entries.download-all.judging-disabled"));
+            } else if (hasDrafts) {
                 downloadAllBtn.setTooltipText(getTranslation("entries.download-all.disabled"));
             }
             downloadAllComponent = downloadAllBtn;
@@ -462,7 +488,9 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                 return new Span(getTranslation("entries.column.final-category.none"));
             }
             return createCategorySpan(entry.getFinalCategoryId());
-        }).setHeader(getTranslation("entries.column.final-category")).setSortable(true);
+        }).setHeader(getTranslation("entries.column.final-category")).setSortable(true)
+                .setComparator((a, b) -> resolveCategoryCode(a.getFinalCategoryId())
+                        .compareTo(resolveCategoryCode(b.getFinalCategoryId())));
 
         // 2. Status badge — styled like DivisionStatus
         entriesGrid.addComponentColumn(this::createStatusBadge)
@@ -493,9 +521,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
     }
 
     private String translateCategoryName(DivisionCategory cat) {
-        var key = "category." + cat.getCode() + ".name";
-        var translated = getTranslation(key);
-        return translated.equals(key) ? cat.getName() : translated;
+        return CategoryDisplay.name(cat, getLocale(), this::getTranslation);
     }
 
     private String resolveCategoryCodeAndName(UUID categoryId) {
@@ -548,8 +574,8 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
                 : getTranslation("entries.action.submit"));
         actions.add(submitBtn);
 
-        // Download label — only SUBMITTED entries
-        if (entry.getStatus() == EntryStatus.SUBMITTED) {
+        // Download label — only SUBMITTED entries, and only before judging starts
+        if (entry.getStatus() == EntryStatus.SUBMITTED && division.getStatus().allowsLabelDownloads()) {
             var category = categoriesById.get(entry.getInitialCategoryId());
             var resource = new StreamResource(
                     "label-" + formatEntryId(entry) + ".pdf",

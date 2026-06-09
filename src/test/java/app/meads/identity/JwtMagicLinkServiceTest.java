@@ -30,6 +30,27 @@ class JwtMagicLinkServiceTest {
     }
 
     @Test
+    void shouldAppendUrlEncodedRedirectParamWhenRedirectPathGiven() {
+        // Act
+        String link = jwtMagicLinkService.generateLink(
+                "user@example.com", Duration.ofDays(7), "/competitions/chip/divisions/pro/my-results");
+
+        // Assert — token first, then a URL-encoded redirect param; token still extractable
+        assertThat(link).startsWith(BASE_URL + "/login/magic?token=");
+        assertThat(link).contains("&redirect=%2Fcompetitions%2Fchip%2Fdivisions%2Fpro%2Fmy-results");
+        String token = link.substring(link.indexOf("token=") + "token=".length(), link.indexOf("&redirect="));
+        assertThat(jwtMagicLinkService.extractEmail(token)).isEqualTo("user@example.com");
+    }
+
+    @Test
+    void shouldOmitRedirectParamWhenRedirectPathBlank() {
+        String link = jwtMagicLinkService.generateLink("user@example.com", Duration.ofDays(7), "  ");
+
+        assertThat(link).startsWith(BASE_URL + "/login/magic?token=");
+        assertThat(link).doesNotContain("&redirect=");
+    }
+
+    @Test
     void shouldValidateAndExtractEmailFromToken() {
         // Arrange
         String link = jwtMagicLinkService.generateLink("user@example.com", Duration.ofDays(7));

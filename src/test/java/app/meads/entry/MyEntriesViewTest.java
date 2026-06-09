@@ -25,6 +25,7 @@ import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.select.Select;
+import com.vaadin.flow.data.provider.SortDirection;
 import com.vaadin.flow.server.VaadinServletRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -293,6 +294,33 @@ class MyEntriesViewTest {
 
     @Test
     @WithMockUser(username = ENTRANT_EMAIL, roles = "USER")
+    void shouldDisableLabelDownloadsOnceJudgingStartsEvenWithSubmittedEntries() {
+        var category = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Dry mead category", null, 1));
+        var entry = entryService.createEntry(division.getId(), entrant.getId(),
+                "Test Mead", category.getId(),
+                Sweetness.DRY, new BigDecimal("12.0"),
+                Carbonation.STILL, "Honey", null, false, null, null);
+        entryService.submitEntry(entry.getId(), entrant.getId());
+
+        // Advance the division into JUDGING (REGISTRATION_OPEN → REGISTRATION_CLOSED → JUDGING).
+        // The entry stays SUBMITTED (admin has not marked it RECEIVED yet) — labels must still be
+        // unavailable because the bottles are already with judges.
+        division.advanceStatus();
+        division.advanceStatus();
+        division = divisionRepository.save(division);
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/my-entries");
+
+        var downloadBtn = _get(Button.class, spec -> spec.withText("Download all labels"));
+        assertThat(downloadBtn.isEnabled())
+                .as("label downloads should be unavailable once bottles are with judges")
+                .isFalse();
+    }
+
+    @Test
+    @WithMockUser(username = ENTRANT_EMAIL, roles = "USER")
     void shouldShowDownloadLabelForSubmittedEntries() {
         // Create a category for entries
         var category = divisionCategoryRepository.save(new DivisionCategory(
@@ -455,5 +483,55 @@ class MyEntriesViewTest {
 
         var submitButton = _get(Button.class, spec -> spec.withText("Submit All Drafts"));
         assertThat(submitButton.isEnabled()).isTrue();
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    @Test
+    @WithMockUser(username = ENTRANT_EMAIL, roles = "USER")
+    void shouldSortEntriesByFinalCategoryCode() {
+        var registrationCategory = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Dry mead", null, 1));
+        var aaaCategory = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "AAA", "Alpha", "Alpha judging", null, 1,
+                CategoryScope.JUDGING));
+        var zzzCategory = divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "ZZZ", "Omega", "Omega judging", null, 2,
+                CategoryScope.JUDGING));
+
+        var aaaEntry = entryService.createEntry(division.getId(), entrant.getId(),
+                "Alpha Mead", registrationCategory.getId(),
+                Sweetness.DRY, new BigDecimal("12.0"),
+                Carbonation.STILL, "Honey", null, false, null, null);
+        var zzzEntry = entryService.createEntry(division.getId(), entrant.getId(),
+                "Omega Mead", registrationCategory.getId(),
+                Sweetness.DRY, new BigDecimal("12.0"),
+                Carbonation.STILL, "Honey", null, false, null, null);
+        entryService.assignFinalCategory(aaaEntry.getId(), aaaCategory.getId(), admin.getId());
+        entryService.assignFinalCategory(zzzEntry.getId(), zzzCategory.getId(), admin.getId());
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/my-entries");
+
+        var grids = _find(Grid.class);
+        assertThat(grids).as("entries grid present").isNotEmpty();
+        Grid<Entry> entriesGrid = grids.getFirst();
+
+        Grid.Column<Entry> finalCategoryColumn = entriesGrid.getColumns().stream()
+                .filter(c -> "Final Category".equals(c.getHeaderText()))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Final Category column not found"));
+
+        var comparator = finalCategoryColumn.getComparator(SortDirection.ASCENDING);
+        assertThat(comparator).as("Final Category column must have a comparator").isNotNull();
+
+        var refreshedAaa = entriesGrid.getGenericDataView().getItems()
+                .filter(e -> e.getId().equals(aaaEntry.getId())).findFirst().orElseThrow();
+        var refreshedZzz = entriesGrid.getGenericDataView().getItems()
+                .filter(e -> e.getId().equals(zzzEntry.getId())).findFirst().orElseThrow();
+
+        assertThat(comparator.compare(refreshedAaa, refreshedZzz))
+                .as("AAA must sort before ZZZ ascending").isNegative();
+        assertThat(comparator.compare(refreshedZzz, refreshedAaa))
+                .as("ZZZ must sort after AAA ascending").isPositive();
     }
 }

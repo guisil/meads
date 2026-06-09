@@ -262,6 +262,13 @@ Domain status in DO goes through: Pending → Configuring → Active. This can t
 
 ## Phase 6: Verification
 
+> **Right after deploy:** run the appropriate post-deployment walkthrough.
+>
+> - **Fresh deploy** (no production data yet) → [`docs/walkthrough/post-deployment-test.md`](../walkthrough/post-deployment-test.md). Full Stage 1 + Stage 2 (infrastructure, user/competition/division CRUD, Jumpseller webhook, entrant flow, **judging + awards** smoke tests).
+> - **Upgrade of an already-deployed install** → use the **version-specific** check for the release being deployed (e.g. `docs/walkthrough/post-deployment-v0.4.0.md` for v0.4.0). These are short, focused on the release deltas (new migrations, new settings, new admin surfaces) and assume the competition / divisions / entries already exist.
+>
+> The quick checks below are a fallback if you only have a few minutes.
+
 ### 6.1 Application smoke test
 
 - Open `https://meads.app` — should redirect to login page
@@ -381,15 +388,18 @@ CI only updates the image tag on each release.
 3. Tag: `git tag -a vX.Y.Z -m "vX.Y.Z — description"`
 4. Push: `git push && git push origin vX.Y.Z`
 5. CI automatically: runs tests → builds image → pushes to GHCR → updates DO app
-6. Create GitHub release: `gh release create vX.Y.Z --title "..." --notes "..."`
-7. Bump version to next `-SNAPSHOT` and push
-8. Monitor: App Platform → Activity → current deployment
+6. Monitor: App Platform → Activity → current deployment until healthy
+7. **Walk the right post-deployment doc:**
+   - First production deploy or full-environment verification → [`docs/walkthrough/post-deployment-test.md`](../walkthrough/post-deployment-test.md)
+   - Upgrading an already-deployed install → the **version-specific** check for this release (e.g. `docs/walkthrough/post-deployment-vX.Y.Z.md`). Create one if the release adds new admin-facing settings / migrations / surfaces; skip if the release is a pure bugfix/refactor with no new admin actions.
+8. Create GitHub release: `gh release create vX.Y.Z --title "..." --notes "..."`
+9. Bump version to next `-SNAPSHOT` and push
 
 ### Standard update (code-only)
 
 1. Follow the release process above
 2. Monitor: App Platform → Activity → current deployment
-3. Verify: app loads, quick smoke test, check runtime logs
+3. Verify: walk the relevant section(s) of [`docs/walkthrough/post-deployment-test.md`](../walkthrough/post-deployment-test.md), check runtime logs
 
 ### Update with Flyway migration
 

@@ -1,5 +1,6 @@
 package app.meads;
 
+import com.vaadin.flow.component.HasElement;
 import com.vaadin.flow.component.Text;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.AppLayout;
@@ -29,6 +30,9 @@ public class MainLayout extends AppLayout {
 
     private final transient AuthenticationContext authenticationContext;
     private final CompetitionAdminChecker competitionAdminChecker;
+    private final JudgeAssignmentChecker judgeAssignmentChecker;
+    private final StewardChecker stewardChecker;
+    private final EntrantResultsChecker entrantResultsChecker;
     private final UserLocaleResolver userLocaleResolver;
     private final UserLanguageUpdater userLanguageUpdater;
     private final I18NProvider i18nProvider;
@@ -36,12 +40,18 @@ public class MainLayout extends AppLayout {
 
     public MainLayout(AuthenticationContext authenticationContext,
                        CompetitionAdminChecker competitionAdminChecker,
+                       JudgeAssignmentChecker judgeAssignmentChecker,
+                       StewardChecker stewardChecker,
+                       EntrantResultsChecker entrantResultsChecker,
                        UserLocaleResolver userLocaleResolver,
                        UserLanguageUpdater userLanguageUpdater,
                        I18NProvider i18nProvider,
                        @Nullable BuildProperties buildProperties) {
         this.authenticationContext = authenticationContext;
         this.competitionAdminChecker = competitionAdminChecker;
+        this.judgeAssignmentChecker = judgeAssignmentChecker;
+        this.stewardChecker = stewardChecker;
+        this.entrantResultsChecker = entrantResultsChecker;
         this.userLocaleResolver = userLocaleResolver;
         this.userLanguageUpdater = userLanguageUpdater;
         this.i18nProvider = i18nProvider;
@@ -118,6 +128,24 @@ public class MainLayout extends AppLayout {
 
         if (authenticationContext.isAuthenticated() && !authenticationContext.hasRole("SYSTEM_ADMIN")) {
             nav.addItem(new SideNavItem(getTranslation("nav.my-entries"), "my-entries", VaadinIcon.LIST.create()));
+            // A "My Results" link appears once any of the entrant's divisions has
+            // published results (single → that division's results, several → the hub).
+            var email = authenticationContext.getPrincipalName().orElse("");
+            entrantResultsChecker.resultsLandingPath(email).ifPresent(path ->
+                    nav.addItem(new SideNavItem(getTranslation("nav.my-results"), path,
+                            VaadinIcon.TROPHY.create())));
+        }
+
+        if (authenticationContext.isAuthenticated()) {
+            var email = authenticationContext.getPrincipalName().orElse("");
+            if (judgeAssignmentChecker.hasAnyJudgeAssignment(email)) {
+                nav.addItem(new SideNavItem(getTranslation("my-judging.nav.my-judging"),
+                        "my-judging", VaadinIcon.GAVEL.create()));
+            }
+            if (stewardChecker.isStewardSomewhere(email)) {
+                nav.addItem(new SideNavItem(getTranslation("steward.title"),
+                        "my-stewarding", VaadinIcon.CLIPBOARD.create()));
+            }
         }
 
         var drawerContent = new Div();
@@ -143,5 +171,21 @@ public class MainLayout extends AppLayout {
 
         setPrimarySection(Section.DRAWER);
         setDrawerOpened(false);
+    }
+
+    /**
+     * Bottom gap added to every routed view so that primary actions and the tails of long
+     * lists clear the zone where Vaadin renders bottom-positioned {@code Notification}s. Without
+     * it, a success/validation toast can cover the Save button or the last row of a list for the
+     * few seconds it is visible (P15).
+     */
+    private static final String CONTENT_BOTTOM_GAP = "5rem";
+
+    @Override
+    public void showRouterLayoutContent(HasElement content) {
+        super.showRouterLayoutContent(content);
+        if (content != null) {
+            content.getElement().getStyle().set("padding-bottom", CONTENT_BOTTOM_GAP);
+        }
     }
 }

@@ -3,6 +3,7 @@ package app.meads.competition;
 import app.meads.BusinessRuleException;
 import app.meads.competition.internal.*;
 import app.meads.identity.Role;
+import app.meads.identity.User;
 import app.meads.identity.UserService;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -20,8 +21,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -48,10 +51,12 @@ public class CompetitionService {
     private final UserService userService;
     private final ApplicationEventPublisher eventPublisher;
     private final CompetitionDocumentRepository competitionDocumentRepository;
+    private final List<DivisionAdvanceGuard> advanceGuards;
     private final List<DivisionRevertGuard> revertGuards;
     private final List<DivisionDeletionGuard> deletionGuards;
     private final List<ParticipantRemovalCleanup> removalCleanups;
     private final List<JudgingCategoryDeletionGuard> judgingCategoryDeletionGuards;
+    private final List<MinJudgesPerRoundLockGuard> minJudgesPerRoundLockGuards;
 
     CompetitionService(CompetitionRepository competitionRepository,
                        DivisionRepository divisionRepository,
@@ -62,10 +67,12 @@ public class CompetitionService {
                        CompetitionDocumentRepository competitionDocumentRepository,
                        UserService userService,
                        ApplicationEventPublisher eventPublisher,
+                       List<DivisionAdvanceGuard> advanceGuards,
                        List<DivisionRevertGuard> revertGuards,
                        List<DivisionDeletionGuard> deletionGuards,
                        List<ParticipantRemovalCleanup> removalCleanups,
-                       List<JudgingCategoryDeletionGuard> judgingCategoryDeletionGuards) {
+                       List<JudgingCategoryDeletionGuard> judgingCategoryDeletionGuards,
+                       List<MinJudgesPerRoundLockGuard> minJudgesPerRoundLockGuards) {
         this.competitionRepository = competitionRepository;
         this.divisionRepository = divisionRepository;
         this.participantRepository = participantRepository;
@@ -75,10 +82,12 @@ public class CompetitionService {
         this.competitionDocumentRepository = competitionDocumentRepository;
         this.userService = userService;
         this.eventPublisher = eventPublisher;
+        this.advanceGuards = advanceGuards;
         this.revertGuards = revertGuards;
         this.deletionGuards = deletionGuards;
         this.removalCleanups = removalCleanups;
         this.judgingCategoryDeletionGuards = judgingCategoryDeletionGuards;
+        this.minJudgesPerRoundLockGuards = minJudgesPerRoundLockGuards;
     }
 
     // --- Competition methods (were MeadEvent methods) ---
@@ -117,6 +126,16 @@ public class CompetitionService {
         return participantRepository.findByUserId(userId).stream()
                 .filter(p -> participantRoleRepository.existsByParticipantIdAndRole(
                         p.getId(), CompetitionRole.ADMIN))
+                .map(p -> competitionRepository.findById(p.getCompetitionId()))
+                .flatMap(Optional::stream)
+                .toList();
+    }
+
+    /** Competitions where the user holds the STEWARD role — backs the steward view. */
+    public List<Competition> findCompetitionsBySteward(@NotNull UUID userId) {
+        return participantRepository.findByUserId(userId).stream()
+                .filter(p -> participantRoleRepository.existsByParticipantIdAndRole(
+                        p.getId(), CompetitionRole.STEWARD))
                 .map(p -> competitionRepository.findById(p.getCompetitionId()))
                 .flatMap(Optional::stream)
                 .toList();
@@ -174,6 +193,17 @@ public class CompetitionService {
         requireAuthorized(competitionId, requestingUserId);
         competition.updateShippingDetails(shippingAddress, phoneNumber, website);
         log.info("Updated shipping details for competition: {}", competitionId);
+        return competitionRepository.save(competition);
+    }
+
+    public Competition updateCompetitionSharedTables(@NotNull UUID competitionId,
+                                                       boolean sharedTables,
+                                                       @NotNull UUID requestingUserId) {
+        var competition = competitionRepository.findById(competitionId)
+                .orElseThrow(() -> new BusinessRuleException("error.competition.not-found"));
+        requireAuthorized(competitionId, requestingUserId);
+        competition.updateSharedTables(sharedTables);
+        log.info("Updated sharedTables for competition {} → {}", competitionId, sharedTables);
         return competitionRepository.save(competition);
     }
 
@@ -243,9 +273,38 @@ public class CompetitionService {
                 .orElseThrow(() -> new BusinessRuleException("error.division.not-found"));
         requireAuthorized(division.getCompetitionId(), requestingUserId);
         var previousStatus = division.getStatus();
+        var targetStatus = previousStatus.next()
+                .orElseThrow(() -> new BusinessRuleException("error.division.cannot-advance-past-results-published"));
+        advanceGuards.forEach(guard ->
+                guard.checkAdvanceAllowed(divisionId, previousStatus, targetStatus));
         division.advanceStatus();
         var saved = divisionRepository.save(division);
         log.info("Advanced division status: {} ({} → {})", divisionId, previousStatus, saved.getStatus());
+        eventPublisher.publishEvent(new DivisionStatusAdvancedEvent(
+                divisionId, previousStatus, saved.getStatus()));
+        return saved;
+    }
+
+    /**
+     * Advances a division from DELIBERATION to RESULTS_PUBLISHED on behalf of the awards module.
+     * Bypasses {@link DivisionAdvanceGuard}s (which intentionally block manual advance to
+     * RESULTS_PUBLISHED so admins must go through {@code AwardsService.publish()} /
+     * {@code republish()}, which create a {@code Publication} audit row).
+     * <p>
+     * Only {@code AwardsService} should call this method.
+     */
+    public Division publishDivision(@NotNull UUID divisionId,
+                                     @NotNull UUID requestingUserId) {
+        var division = divisionRepository.findById(divisionId)
+                .orElseThrow(() -> new BusinessRuleException("error.division.not-found"));
+        requireAuthorized(division.getCompetitionId(), requestingUserId);
+        var previousStatus = division.getStatus();
+        if (previousStatus != DivisionStatus.DELIBERATION) {
+            throw new BusinessRuleException("error.division.publish-wrong-status");
+        }
+        division.advanceStatus();
+        var saved = divisionRepository.save(division);
+        log.info("Published division (DELIBERATION → RESULTS_PUBLISHED): {}", divisionId);
         eventPublisher.publishEvent(new DivisionStatusAdvancedEvent(
                 divisionId, previousStatus, saved.getStatus()));
         return saved;
@@ -335,6 +394,48 @@ public class CompetitionService {
         return divisionRepository.save(division);
     }
 
+    public Division updateDivisionBosPlaces(@NotNull UUID divisionId,
+                                            int bosPlaces,
+                                            @NotNull UUID requestingUserId) {
+        var division = findDivisionById(divisionId);
+        requireAuthorized(division.getCompetitionId(), requestingUserId);
+        try {
+            division.updateBosPlaces(bosPlaces);
+        } catch (IllegalArgumentException e) {
+            throw new BusinessRuleException("error.division.invalid-bos-places", String.valueOf(bosPlaces));
+        } catch (IllegalStateException e) {
+            throw new BusinessRuleException("error.division.bos-places-locked", division.getStatus().getDisplayName());
+        }
+        log.info("Updated bosPlaces for division {} → {}", divisionId, bosPlaces);
+        return divisionRepository.save(division);
+    }
+
+    public Division updateDivisionMinJudgesPerRound(@NotNull UUID divisionId,
+                                                     int minJudgesPerRound,
+                                                     @NotNull UUID requestingUserId) {
+        var division = findDivisionById(divisionId);
+        requireAuthorized(division.getCompetitionId(), requestingUserId);
+        if (isMinJudgesPerRoundLocked(divisionId)) {
+            throw new BusinessRuleException("error.division.min-judges-locked");
+        }
+        try {
+            division.updateMinJudgesPerRound(minJudgesPerRound);
+        } catch (IllegalArgumentException e) {
+            throw new BusinessRuleException("error.division.invalid-min-judges",
+                    String.valueOf(minJudgesPerRound));
+        } catch (IllegalStateException e) {
+            throw new BusinessRuleException("error.division.min-judges-status-locked",
+                    division.getStatus().getDisplayName());
+        }
+        log.info("Updated minJudgesPerRound for division {} → {}", divisionId, minJudgesPerRound);
+        return divisionRepository.save(division);
+    }
+
+    public boolean isMinJudgesPerRoundLocked(@NotNull UUID divisionId) {
+        return minJudgesPerRoundLockGuards.stream()
+                .anyMatch(g -> g.isLocked(divisionId));
+    }
+
     public Division updateDivisionMeaderyNameRequired(@NotNull UUID divisionId,
                                                        boolean meaderyNameRequired,
                                                        @NotNull UUID requestingUserId) {
@@ -349,6 +450,11 @@ public class CompetitionService {
 
     public List<DivisionCategory> findDivisionCategories(@NotNull UUID divisionId) {
         return divisionCategoryRepository.findByDivisionIdOrderByCode(divisionId);
+    }
+
+    public DivisionCategory findDivisionCategoryById(@NotNull UUID categoryId) {
+        return divisionCategoryRepository.findById(categoryId)
+                .orElseThrow(() -> new BusinessRuleException("error.category.not-found"));
     }
 
     public List<DivisionCategory> findRegistrationCategories(@NotNull UUID divisionId) {
@@ -391,6 +497,17 @@ public class CompetitionService {
                                                @NotBlank String description,
                                                UUID parentId,
                                                @NotNull UUID requestingUserId) {
+        return addCustomCategory(divisionId, code, name, description, parentId,
+                Map.of(), requestingUserId);
+    }
+
+    public DivisionCategory addCustomCategory(@NotNull UUID divisionId,
+                                               @NotBlank String code,
+                                               @NotBlank String name,
+                                               @NotBlank String description,
+                                               UUID parentId,
+                                               Map<String, LocalizedText> translations,
+                                               @NotNull UUID requestingUserId) {
         var division = divisionRepository.findById(divisionId)
                 .orElseThrow(() -> new BusinessRuleException("error.division.not-found"));
         requireAuthorized(division.getCompetitionId(), requestingUserId);
@@ -405,6 +522,7 @@ public class CompetitionService {
                     .orElseThrow(() -> new BusinessRuleException("error.category.parent-not-found"));
         }
         var dc = new DivisionCategory(divisionId, null, code, name, description, parentId, 0);
+        dc.setTranslations(translations);
         log.debug("Added custom category {} to division {}", code, divisionId);
         return divisionCategoryRepository.save(dc);
     }
@@ -415,6 +533,17 @@ public class CompetitionService {
                                                      @NotBlank String name,
                                                      @NotBlank String description,
                                                      @NotNull UUID requestingUserId) {
+        return updateDivisionCategory(divisionId, categoryId, code, name, description,
+                Map.of(), requestingUserId);
+    }
+
+    public DivisionCategory updateDivisionCategory(@NotNull UUID divisionId,
+                                                     @NotNull UUID categoryId,
+                                                     @NotBlank String code,
+                                                     @NotBlank String name,
+                                                     @NotBlank String description,
+                                                     Map<String, LocalizedText> translations,
+                                                     @NotNull UUID requestingUserId) {
         var division = divisionRepository.findById(divisionId)
                 .orElseThrow(() -> new BusinessRuleException("error.division.not-found"));
         requireAuthorized(division.getCompetitionId(), requestingUserId);
@@ -424,6 +553,7 @@ public class CompetitionService {
         var category = divisionCategoryRepository.findById(categoryId)
                 .orElseThrow(() -> new BusinessRuleException("error.category.not-found"));
         category.updateDetails(code, name, description);
+        category.setTranslations(translations);
         return divisionCategoryRepository.save(category);
     }
 
@@ -513,6 +643,17 @@ public class CompetitionService {
                                                 @NotBlank String description,
                                                 UUID parentId,
                                                 @NotNull UUID requestingUserId) {
+        return addJudgingCategory(divisionId, code, name, description, parentId,
+                Map.of(), requestingUserId);
+    }
+
+    public DivisionCategory addJudgingCategory(@NotNull UUID divisionId,
+                                                @NotBlank String code,
+                                                @NotBlank String name,
+                                                @NotBlank String description,
+                                                UUID parentId,
+                                                Map<String, LocalizedText> translations,
+                                                @NotNull UUID requestingUserId) {
         var division = divisionRepository.findById(divisionId)
                 .orElseThrow(() -> new BusinessRuleException("error.division.not-found"));
         requireAuthorized(division.getCompetitionId(), requestingUserId);
@@ -529,6 +670,7 @@ public class CompetitionService {
         }
         var dc = new DivisionCategory(divisionId, null, code, name, description, parentId, 0,
                 CategoryScope.JUDGING);
+        dc.setTranslations(translations);
         log.debug("Added judging category {} to division {}", code, divisionId);
         return divisionCategoryRepository.save(dc);
     }
@@ -538,6 +680,17 @@ public class CompetitionService {
                                                     @NotBlank String code,
                                                     @NotBlank String name,
                                                     @NotBlank String description,
+                                                    @NotNull UUID requestingUserId) {
+        return updateJudgingCategory(divisionId, categoryId, code, name, description,
+                Map.of(), requestingUserId);
+    }
+
+    public DivisionCategory updateJudgingCategory(@NotNull UUID divisionId,
+                                                    @NotNull UUID categoryId,
+                                                    @NotBlank String code,
+                                                    @NotBlank String name,
+                                                    @NotBlank String description,
+                                                    Map<String, LocalizedText> translations,
                                                     @NotNull UUID requestingUserId) {
         var division = divisionRepository.findById(divisionId)
                 .orElseThrow(() -> new BusinessRuleException("error.division.not-found"));
@@ -549,6 +702,7 @@ public class CompetitionService {
         var category = divisionCategoryRepository.findById(categoryId)
                 .orElseThrow(() -> new BusinessRuleException("error.category.not-found"));
         category.updateDetails(code, name, description);
+        category.setTranslations(translations);
         log.debug("Updated judging category {} in division {}", code, divisionId);
         return divisionCategoryRepository.save(category);
     }
@@ -791,8 +945,32 @@ public class CompetitionService {
                 .toList();
     }
 
+    /**
+     * Aggregate participant counts per role for a competition. Every {@link CompetitionRole} is
+     * present in the result (0 when no participant holds it) so callers can render a stable summary.
+     */
+    public Map<CompetitionRole, Long> findParticipantCountsByRole(@NotNull UUID competitionId) {
+        var counts = new EnumMap<CompetitionRole, Long>(CompetitionRole.class);
+        for (var role : CompetitionRole.values()) {
+            counts.put(role, 0L);
+        }
+        for (var role : findRolesByCompetition(competitionId)) {
+            counts.merge(role.getRole(), 1L, Long::sum);
+        }
+        return counts;
+    }
+
     public List<ParticipantRole> findRolesForParticipant(@NotNull UUID participantId) {
         return participantRoleRepository.findByParticipantId(participantId);
+    }
+
+    public List<User> findUsersByRoleInCompetition(@NotNull UUID competitionId,
+                                                     @NotNull CompetitionRole role) {
+        var userIds = participantRepository.findByCompetitionId(competitionId).stream()
+                .filter(p -> participantRoleRepository.existsByParticipantIdAndRole(p.getId(), role))
+                .map(Participant::getUserId)
+                .toList();
+        return userService.findAllByIds(userIds);
     }
 
     public boolean hasIncompatibleRolesForEntrant(@NotNull UUID competitionId, @NotNull UUID userId) {

@@ -1,6 +1,7 @@
 package app.meads.entry;
 
 import app.meads.BusinessRuleException;
+import app.meads.LanguageMapping;
 import app.meads.competition.CategoryScope;
 import app.meads.competition.CompetitionRole;
 import app.meads.competition.CompetitionService;
@@ -27,6 +28,7 @@ import java.math.BigDecimal;
 import java.security.SecureRandom;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -49,6 +51,7 @@ public class EntryService {
     private final CompetitionService competitionService;
     private final UserService userService;
     private final ApplicationEventPublisher eventPublisher;
+    private final List<EntryStatusRevertGuard> statusRevertGuards;
 
     EntryService(ProductMappingRepository productMappingRepository,
                  EntryCreditRepository creditRepository,
@@ -57,7 +60,8 @@ public class EntryService {
                  JumpsellerOrderLineItemRepository lineItemRepository,
                  CompetitionService competitionService,
                  UserService userService,
-                 ApplicationEventPublisher eventPublisher) {
+                 ApplicationEventPublisher eventPublisher,
+                 List<EntryStatusRevertGuard> statusRevertGuards) {
         this.productMappingRepository = productMappingRepository;
         this.creditRepository = creditRepository;
         this.entryRepository = entryRepository;
@@ -66,6 +70,7 @@ public class EntryService {
         this.competitionService = competitionService;
         this.userService = userService;
         this.eventPublisher = eventPublisher;
+        this.statusRevertGuards = statusRevertGuards;
     }
 
     // --- Product Mapping methods ---
@@ -325,11 +330,15 @@ public class EntryService {
         var entry = entryRepository.findById(entryId)
                 .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
         requireAuthorizedForDivision(entry.getDivisionId(), requestingUserId);
+        requireEntryStageMutable(entry.getDivisionId());
         entry.advanceStatus();
         var saved = entryRepository.save(entry);
         log.info("Advanced entry status to {}: #{} ({})", saved.getStatus(), saved.getEntryNumber(), entryId);
         if (saved.getStatus() == EntryStatus.SUBMITTED) {
             publishSubmissionEventIfComplete(saved.getDivisionId(), saved.getUserId());
+        } else if (saved.getStatus() == EntryStatus.RECEIVED) {
+            eventPublisher.publishEvent(new EntryReceivedEvent(
+                    saved.getId(), saved.getDivisionId(), requestingUserId));
         }
         return saved;
     }
@@ -338,27 +347,50 @@ public class EntryService {
         var entry = entryRepository.findById(entryId)
                 .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
         requireAuthorizedForDivision(entry.getDivisionId(), requestingUserId);
+        requireEntryStageMutable(entry.getDivisionId());
+        statusRevertGuards.forEach(g -> g.checkRevertAllowed(entryId, entry.getDivisionId()));
+        var wasReceived = entry.getStatus() == EntryStatus.RECEIVED;
         entry.revertStatus();
-        log.info("Reverted entry status to {}: #{} ({})", entry.getStatus(), entry.getEntryNumber(), entryId);
-        return entryRepository.save(entry);
+        var saved = entryRepository.save(entry);
+        log.info("Reverted entry status to {}: #{} ({})", saved.getStatus(), saved.getEntryNumber(), entryId);
+        // If the entry just left RECEIVED, trigger medal-round zombie cleanup.
+        if (wasReceived && saved.getStatus() != EntryStatus.RECEIVED) {
+            eventPublisher.publishEvent(new EntryReceivedEvent(
+                    saved.getId(), saved.getDivisionId(), requestingUserId));
+        }
+        return saved;
     }
 
     public Entry markReceived(@NotNull UUID entryId, @NotNull UUID requestingUserId) {
         var entry = entryRepository.findById(entryId)
                 .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
         requireAuthorizedForDivision(entry.getDivisionId(), requestingUserId);
+        requireEntryStageMutable(entry.getDivisionId());
         entry.markReceived();
-        log.info("Marked entry received: #{} ({})", entry.getEntryNumber(), entryId);
-        return entryRepository.save(entry);
+        var saved = entryRepository.save(entry);
+        log.info("Marked entry received: #{} ({})", saved.getEntryNumber(), entryId);
+        eventPublisher.publishEvent(new EntryReceivedEvent(
+                saved.getId(), saved.getDivisionId(), requestingUserId));
+        return saved;
     }
 
     public Entry withdrawEntry(@NotNull UUID entryId, @NotNull UUID requestingUserId) {
         var entry = entryRepository.findById(entryId)
                 .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
         requireAuthorizedForDivision(entry.getDivisionId(), requestingUserId);
+        requireEntryStageMutable(entry.getDivisionId());
+        statusRevertGuards.forEach(g -> g.checkRevertAllowed(entryId, entry.getDivisionId()));
+        var wasReceived = entry.getStatus() == EntryStatus.RECEIVED;
         entry.withdraw();
-        log.info("Withdrew entry: #{} ({})", entry.getEntryNumber(), entryId);
-        return entryRepository.save(entry);
+        var saved = entryRepository.save(entry);
+        log.info("Withdrew entry: #{} ({})", saved.getEntryNumber(), entryId);
+        // Withdrawing a RECEIVED entry leaves a zombie on any SCORE_BASED
+        // medal round in the entry's category — re-fire the sync trigger.
+        if (wasReceived) {
+            eventPublisher.publishEvent(new EntryReceivedEvent(
+                    saved.getId(), saved.getDivisionId(), requestingUserId));
+        }
+        return saved;
     }
 
     public Entry adminUpdateEntry(@NotNull UUID entryId,
@@ -376,6 +408,7 @@ public class EntryService {
         var entry = entryRepository.findById(entryId)
                 .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
         requireAuthorizedForDivision(entry.getDivisionId(), requestingUserId);
+        requireEntryStageMutable(entry.getDivisionId());
         entry.adminUpdateDetails(meadName, initialCategoryId, sweetness, abv,
                 carbonation, honeyVarieties, otherIngredients, woodAged,
                 woodAgeingDetails, additionalInformation);
@@ -385,6 +418,19 @@ public class EntryService {
 
     public List<Entry> findEntriesByDivision(@NotNull UUID divisionId) {
         return entryRepository.findByDivisionId(divisionId);
+    }
+
+    /**
+     * Counts entries that still need a judging (final) category — non-withdrawn,
+     * non-draft entries with no {@code finalCategoryId}. Surfaced as a warning in
+     * the judging admin view so no paid entry is silently left unjudged.
+     */
+    public long countEntriesNeedingFinalCategory(@NotNull UUID divisionId) {
+        return entryRepository.findByDivisionId(divisionId).stream()
+                .filter(e -> e.getFinalCategoryId() == null)
+                .filter(e -> e.getStatus() == EntryStatus.SUBMITTED
+                        || e.getStatus() == EntryStatus.RECEIVED)
+                .count();
     }
 
     public List<Entry> findEntriesByDivisionAndUser(@NotNull UUID divisionId,
@@ -397,11 +443,24 @@ public class EntryService {
                 .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
     }
 
+    public Optional<Entry> findById(@NotNull UUID entryId) {
+        return entryRepository.findById(entryId);
+    }
+
+    public List<Entry> findEntriesByFinalCategoryId(@NotNull UUID finalCategoryId) {
+        return entryRepository.findByFinalCategoryId(finalCategoryId);
+    }
+
+    public List<UUID> findEntrantUserIdsForDivision(@NotNull UUID divisionId) {
+        return entryRepository.findDistinctUserIdsByDivisionId(divisionId);
+    }
+
     public Entry assignFinalCategory(@NotNull UUID entryId, UUID finalCategoryId,
                                       @NotNull UUID requestingUserId) {
         var entry = entryRepository.findById(entryId)
                 .orElseThrow(() -> new BusinessRuleException("error.entry.not-found"));
         requireAuthorizedForDivision(entry.getDivisionId(), requestingUserId);
+        requireEntryStageMutable(entry.getDivisionId());
         if (finalCategoryId != null) {
             var judgingCategories = competitionService.findJudgingCategories(entry.getDivisionId());
             if (judgingCategories.isEmpty()) {
@@ -415,7 +474,59 @@ public class EntryService {
         }
         entry.assignFinalCategory(finalCategoryId);
         log.debug("Assigned final category {} to entry {}", finalCategoryId, entryId);
-        return entryRepository.save(entry);
+        var saved = entryRepository.save(entry);
+        // Re-publish for medal-round auto-sync: a newly-assigned (or changed)
+        // final category on a RECEIVED entry may make it newly eligible for a
+        // SCORE_BASED medal round in the new category.
+        if (saved.getStatus() == EntryStatus.RECEIVED && finalCategoryId != null) {
+            eventPublisher.publishEvent(new EntryReceivedEvent(
+                    saved.getId(), saved.getDivisionId(), requestingUserId));
+        }
+        return saved;
+    }
+
+    /**
+     * Assigns a final category to every SUBMITTED/RECEIVED entry that has none,
+     * by matching the entry's initial-category code against a JUDGING-scope
+     * category with the same code in the same division. Returns the number of
+     * entries actually modified.
+     */
+    public int assignFinalCategoriesByCode(@NotNull UUID divisionId,
+                                            @NotNull UUID requestingUserId) {
+        requireAuthorizedForDivision(divisionId, requestingUserId);
+        requireEntryStageMutable(divisionId);
+        var judgingByCode = competitionService.findJudgingCategories(divisionId).stream()
+                .collect(Collectors.toMap(DivisionCategory::getCode, DivisionCategory::getId));
+        if (judgingByCode.isEmpty()) {
+            return 0;
+        }
+        var registrationCodeById = competitionService.findRegistrationCategories(divisionId).stream()
+                .collect(Collectors.toMap(DivisionCategory::getId, DivisionCategory::getCode));
+        var candidates = entryRepository.findByDivisionId(divisionId).stream()
+                .filter(e -> e.getFinalCategoryId() == null)
+                .filter(e -> e.getStatus() == EntryStatus.SUBMITTED
+                        || e.getStatus() == EntryStatus.RECEIVED)
+                .toList();
+        int assigned = 0;
+        for (var entry : candidates) {
+            var code = registrationCodeById.get(entry.getInitialCategoryId());
+            if (code == null) {
+                continue;
+            }
+            var judgingId = judgingByCode.get(code);
+            if (judgingId == null) {
+                continue;
+            }
+            entry.assignFinalCategory(judgingId);
+            var saved = entryRepository.save(entry);
+            assigned++;
+            if (saved.getStatus() == EntryStatus.RECEIVED) {
+                eventPublisher.publishEvent(new EntryReceivedEvent(
+                        saved.getId(), saved.getDivisionId(), requestingUserId));
+            }
+        }
+        log.info("Bulk-assigned final categories to {} entries in division {}", assigned, divisionId);
+        return assigned;
     }
 
     public long countActiveEntries(@NotNull UUID divisionId, @NotNull UUID userId) {
@@ -440,7 +551,7 @@ public class EntryService {
                             competition.getId(), competition.getName(),
                             competition.getShortName(),
                             divisionId, division.getName(), division.getShortName(),
-                            creditBalance, entryCount);
+                            creditBalance, entryCount, division.getStatus());
                 })
                 .toList();
     }
@@ -485,6 +596,18 @@ public class EntryService {
     }
 
     // --- Private helpers ---
+
+    /**
+     * Blocks entry-level mutations once the division has moved past JUDGING (P21). From
+     * DELIBERATION onward the results are being computed/published; to change a locked entry an
+     * admin must first revert the division back to JUDGING.
+     */
+    private void requireEntryStageMutable(UUID divisionId) {
+        var division = competitionService.findDivisionById(divisionId);
+        if (!division.getStatus().allowsEntryMutations()) {
+            throw new BusinessRuleException("error.entry.stage-locked");
+        }
+    }
 
     private void requireAuthorizedForDivision(UUID divisionId, UUID userId) {
         var user = userService.findById(userId);
@@ -628,13 +751,16 @@ public class EntryService {
         }
         var categories = competitionService.findDivisionCategories(divisionId).stream()
                 .collect(Collectors.toMap(DivisionCategory::getId, Function.identity()));
+        var submitter = userService.findById(userId);
+        var locale = LanguageMapping.resolveLocale(
+                submitter.getPreferredLanguage(), submitter.getCountry());
         var entryDetails = submittedEntries.stream()
                 .map(entry -> {
                     var cat = categories.get(entry.getInitialCategoryId());
                     return new EntryDetail(
                             entry.getEntryNumber(), entry.getMeadName(),
                             cat != null ? cat.getCode() : "—",
-                            cat != null ? cat.getName() : "Unknown");
+                            cat != null ? cat.getName(locale) : "Unknown");
                 })
                 .toList();
         eventPublisher.publishEvent(new EntriesSubmittedEvent(divisionId, userId, entryDetails));
@@ -656,6 +782,9 @@ public class EntryService {
                                   String additionalInformation,
                                   @NotNull UUID adminUserId) {
         var division = competitionService.findDivisionById(divisionId);
+        if (!division.getStatus().allowsEntryMutations()) {
+            throw new BusinessRuleException("error.entry.stage-locked");
+        }
         var targetUser = userService.findByEmail(userEmail);
 
         var entryNumber = entryRepository.findMaxEntryNumberByDivisionId(divisionId) + 1;

@@ -14,8 +14,8 @@ needed to continue even without memory files or prior conversation history.
 Modulith for modular DDD architecture, Flyway for migrations, Testcontainers +
 Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
-**Branch:** `main` at `0.3.1-SNAPSHOT` (v0.3.0 released 2026-05-18)
-**Tests:** 802 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-20
+**Branch:** `feature/judging-module` at `0.4.0-SNAPSHOT` — **Awards module COMPLETE** (2026-05-12, all 13 tasks done). Judging Phase 6 views also complete. **Judging event listeners complete (2026-05-20)** — `JudgingNotificationListener` emails judges on table start / scoresheet revert / medal-round activation; the judging module is now functionally complete. Architecture: `Publication` audit-trail aggregate + freeze-in-place via `DivisionStatus.isResultsFrozen()` guard on every judging mutator. Decoupled publish/republish/announcement: only `sendAnnouncement` triggers emails. Per the plan's open question, chose option B for entrant-facing scoresheet drill-in (new `MyResultsView` + `MyScoresheetView` in awards module + banner-link from `MyEntriesView`) to keep dependency direction unidirectional (awards → entry). **Merged main 2026-05-16** to pick up the v0.3.0 bug fixes (credits-grid refresh, webhook post-registration guard, judging-category parent-delete guard), MFA email reset flow, codebase-wide inline-FQN cleanup + CLAUDE.md rule, and i18n cleanup (sidebar nav, Final Category, dialog buttons). Post-merge: caught up ES/IT/PL with the 14 new keys that main only added to EN/PT. **Merged main again 2026-05-19** to pick up the v0.3.0 release commits + 6 mid-walkthrough fixes (MFA verify Enter shortcut, Final Category picker disabled until init, primary-category dropdowns filtered to REGISTRATION scope, leaf-only judging categories in Final Category picker, Categories tab + parent select filter to REGISTRATION, entrant updateEntry enforces entry limits on category change). **Merged main again 2026-05-20** to pick up v0.3.1 (country names localized to the current UI language — `app.meads.CountryDisplay`) and then **v0.3.2** (European Portuguese country names — `pt` pinned to `pt-PT`; CI moved off the deprecated Node 20 runtime; Vaadin 25.1.5 / OpenPDF 3.0.4 bumps).
+**Tests:** 1344 passing on JDK 25 as of 2026-06-06 (**scoresheet criteria order pinned** via `@OrderColumn` + V34 migration — fixes out-of-order criteria seen on the long-comment entry in the dialog + PDF; total now shows `N / 100` in both; +1 test). 1343 earlier 2026-06-05 (**entrant scoresheet PDF mirrors the redesigned dialog** — competition logo, medal/BoS lines, full mead details, prominent total; +1 PDF text-extraction test; see the ▶ LATEST block). 1342 earlier (**entrant "View scoresheet" dialog redesign** — prominent total + section spacing + medal/BOS outcome banner + logo + full mead details; `AnonymizedScoresheetView` gained `medal`/`bosPlace`/`competitionLogoDataUri`/`MeadDetails`; committed `1c000f2`). 1340 earlier 2026-06-05 (**dev-seed fast-path + verbose demo entries** — `DevDataInitializer.seedFastTrackPublished` builds a third competition **Fast Track 2026 / Mostra** driven all the way to RESULTS_PUBLISHED with 3 fully-scored entries owned by `entrant@example.com` (one with long comments), so a fresh dev DB lands directly on a published entrant scoresheet; PLUS a verbose all-fields demo entry in each CHIP division for admin/judge long-description rendering checks; count steady, assertions added to `DevDataInitializerTest`; see the ▶ LATEST block). 1340 earlier 2026-06-04 (**multilingual category names/descriptions + edit dialog** — admins can give custom/any categories per-locale ES/IT/PL/PT name+description at creation AND edit them later via a new ✎ Edit dialog on both Categories grids; every display surface resolves to the viewer's locale with English fallback; see the ✅ block "▶ LATEST" just above "▶ RESUME HERE"). 1333 earlier 2026-06-03 (Group B item **P21** — entry mutations hard-locked at DELIBERATION+; see the ✅ P21 block in "▶ RESUME HERE"); 1329 earlier 2026-06-03 (Group A deferred items P20/P15/P12/P13 — see the ✅ block in "▶ RESUME HERE"; +8 over 1321); 1321 as of 2026-06-02 (P22 manual COI — admin-declared per-competition judge↔entrant hard-block COI; see the ✅ DONE P22 block under "What's Next" + "▶ RESUME HERE"); 1306 earlier on 2026-06-01 (P18 part 2 — judge scoresheet field-layout redesign + MJP rubric, change #37, see "▶ RESUME HERE"); 1301 earlier 2026-06-01 (P18 part 1 — change #36 + medal/BOS grid polish); 1299 as of 2026-05-31 (changes #21–#35); 1281 as of 2026-05-30; 1275 as of 2026-05-29 after the **(c) unified round-admin + scoresheet redesign (Phases 1-5 committed; see "(c) PROGRESS" under What's Next + "State on disk")**. Pre-(c) baseline: 1243 passing (`mvn test -Dsurefire.useFile=false`) — verified 2026-05-27 evening after **Cycle C (MyJudgingView → redirect-or-stub + judge access tightened to ACTIVE rounds)**: judge UX collapsed around the "1 active round per judge at any time" invariant. **(C1)** new `JudgingService.findActiveRoundForJudge(userId)` returns the single ACTIVE round (or empty), logs WARN if >1 (shouldn't happen per active-conflict guard). **(C2)** `MyJudgingView` rewritten: drop the hub of all assignments + the "Resume next draft" shortcut + the medal-rounds section; `beforeEnter` forwards to RoundView (SCORING) or MedalRoundView (MEDAL) when active, else renders a bare "No active round right now" stub (id `my-judging-empty`). 7 obsolete i18n keys pruned (`my-judging.{empty,empty.cta-profile,empty.cta-competitions,table.open,resume,medal-rounds.section,medal-rounds.open}`); new key `my-judging.empty.no-active-round` × 5 locales. **(C3)** `RootView` redirect adds: any user with a `JudgeAssignment` defaults to `/my-judging` (which itself handles the round forward) — sits between the comp-admin and entrant fallbacks. **(C4)** `RoundView` / `MedalRoundView` / `ScoresheetView` `beforeEnter` tightens: non-admin judges can only open rounds in ACTIVE status; PENDING/READY/COMPLETE → forwarded away. Admins still have full access at any status. Existing UI tests that created PENDING rounds for judge access (ScoresheetView batch, RoundView judge-submit shortcut) now bypass service preconds via direct entity `markReady() + start()` to make rounds ACTIVE for the test. New `MyJudgingViewTest` rewritten with 5 tests covering empty-state (no assignments, only PENDING, only COMPLETE) + forwarding (active SCORING → RoundView, active MEDAL → MedalRoundView). Per-test fresh judge emails to sidestep class-level `@DirtiesContext` accumulation. Walkthrough §12.9 rewritten + §12.10 entry note updated. Earlier 2026-05-27 evening after **Cycle B (Withhold / Clear inline icons + ConfirmDialogs)**: `MedalRoundView.createActionsCell` drops the "More ▾" MenuBar; in its place 🚫 Withhold (`VaadinIcon.BAN`) and 🗑 Clear (`VaadinIcon.TRASH`) icon buttons sit inline alongside the medal icons. Both gate their service calls behind a `Dialog`-based confirmation — Withhold's body explains the audit semantic (`MedalAward.medal = null` is a deliberate "no medal" decision counted in the round summary); Clear's body warns that the audit row is deleted entirely and points to Withhold as the safer alternative. New public `openWithholdConfirmDialog(row)` and `openClearConfirmDialog(row)` methods (testability mirrors the existing `openFinalizeDialog` / `openReopenDialog` pattern). 6 new i18n keys × 5 locales (`{withhold,clear}.confirm.{title,body,proceed}`); orphan `medal-round.action.more` removed. +2 UI tests (`shouldGate{Withhold,Clear}BehindConfirmDialog`) verify the service is NOT called until the confirm button is clicked. Test-helper drift fix: `MedalRoundViewTest.{submittedScoreBased,advanced}Entry` now bypass `entryService.assignFinalCategory` (using direct entity mutation) so they don't fire the Cycle A auto-sync listener — these tests pre-create their own Scoresheets on a separate scoring round and depend on the legacy derivation fallback in `findMedalRoundEntries`. Walkthrough §12.12.1 refreshed to describe the new 5-icon actions cell. Earlier 2026-05-27 evening after **Cycle A (force-all-entries on SCORE_BASED medal rounds)**: five sub-cycles answering the end-of-day Q1 design question. **(A1)** New `JudgingService.syncScoreBasedMedalRoundEntries(roundId, adminUserId)` — idempotent reconcile that adds every RECEIVED entry in the category and removes zombies (non-RECEIVED entries still on the round). Rejects when called on a non-SCORE_BASED-MEDAL round (`error.medal-round.sync-score-based-only` × 5 locales). SUBMITTED scoresheets on zombies are logged-and-skipped, not silently dropped. **(A2)** `MedalRoundView.openAssignEntriesDialog` branches on mode — SCORE_BASED renders a read-only Grid (`Grid.SelectionMode.NONE`) + "Sync now" footer button calling sync; COMPARATIVE keeps the multi-select checkbox flow. Helper text reworded × 5 locales to reflect force-all semantics; new key `medal-round.assign-entries.sync` × 5 locales. **(A3)** Service-level enforcement: `unassignEntryFromRound` rejects manual removal of a RECEIVED entry from a SCORE_BASED medal round (`error.entry.cannot-unassign-from-score-based` × 5 locales). **(A3.1)** Refinement after user flagged risk of locking admins out: block fires only when entry status IS currently RECEIVED — non-RECEIVED entries (withdrawn / reverted) are an admin escape hatch. Sync extended to also REMOVE zombies (mirrors the SCORING-dialog accidental cleanup behavior, made explicit). Listener no longer early-returns on non-RECEIVED status — fires sync regardless so cleanup runs. **(A4)** Resurrected `EntryReceivedEvent(entryId, divisionId, triggeredByUserId)` — fires from `EntryService.markReceived` / `advanceEntryStatus(→ RECEIVED)` / `assignFinalCategory` (when RECEIVED) / `assignFinalCategoriesByCode` (per RECEIVED entry) / `withdrawEntry` (when was RECEIVED) / `revertEntryStatus` (when leaving RECEIVED). Listener `MedalRoundAutoSyncListener` (`@ApplicationModuleListener`, public for tests) looks up entry's current category → finds SCORE_BASED medal round (skips COMPLETE) → calls sync. New `EntryService.findById(UUID)` returns `Optional<Entry>` for non-throwing lookups (the existing `findEntryById` keeps its throw-on-missing contract). +13 tests across `JudgingServiceRoundTest`, `JudgingServiceMedalRoundTest`, `MedalRoundViewTest`, `MedalRoundAutoSyncListenerTest` (new file), `EntryServiceTest`. Walkthrough §12.6.8.1 expanded with the new force-all flow, auto-sync regression checks (add + cleanup paths), and manual-unassign edge cases. No schema change. Earlier 2026-05-26 evening after **eight Option A follow-up commits** uncovered during manual walkthrough of the no-prelim small-category flow: **(ab4f3bc)** MedalRoundView UX polish — helper text per mode (SCORE_BASED variant explains "medal round owns the scoresheets"), per-row 👁 Open scoresheet drill-in (eye icon → ScoresheetView; admin can edit via the existing "Edit on behalf" path), medal buttons disabled when `round1Total == null` in SCORE_BASED (premature medals on unscored entries → wrong), `scoresheetId` added to `MedalRoundEntryRow`. **(86f26c5)** `JudgingServiceImpl.createMedalRound` auto-creates `CategoryJudgingConfig` with default COMPARATIVE when missing (no-prelim flow was blocked by the orElseThrow — admin had no path to seed the config) + EN typo `category''s` → `category's` (no params → MessageFormat doesn't unescape). **(dd36342)** Start button unblocked when `judging.phase == NOT_STARTED` (the small-category medal round IS the first round; chicken-and-egg deadlock otherwise) + `recomputeScorePreview` short-circuits when `topScore == null` (phantom "X slots tied" banner because `Objects.equals(null, null) == true`). **(0ebacff)** ScoresheetView NumberField narrowed to 8em; criterion label moved to a horizontal row Span (flex: 1) — earlier full-width was cavernous for 2-digit max. **(1971c77)** `ScoresheetServiceImpl.setAdvancedToMedalRound` no-ops for medal-owned sheets (every saveDraft was tripping `error.scoresheet.medal-round-active` because, well, the medal round IS active) + UI hides the advance checkbox + skips the call when the round is MEDAL. **(ef0c973)** `openSubmitDialog` flushes form to draft via shared `syncFormStateToDraft()` before invoking `submit` (validation used to read persisted state, so longer comments typed since last Save Draft were missed) + post-submit navigates to the round instead of reloading the sheet. **(6494b39)** `ScoresheetView.roundViewUrl()` routes by round type — `MEDAL` → `/medal-rounds/{divisionCategoryId}` (MedalRoundView), `SCORING` → `/tables/{roundId}` (RoundView); fixes both the "Back to round" anchor and the post-submit navigation for medal-owned sheets. **(33b0ddc)** Three follow-ups: comment placeholder `scoresheet.scores.comment.placeholder` dropped the now-incorrect "(optional)" hint × 5 locales; `ScoresheetServiceImpl.submit`'s auto-COMPLETE cascade restricted to SCORING rounds (MEDAL rounds owning sheets must NOT auto-COMPLETE on last submit — kills medal-button actions before admin can resolve ties); MedalRoundView grid columns now resizable + sortable with explicit record-field-aware comparators (`"—"` placeholder otherwise sorts lexically), and `findMedalRoundRowsFromExplicitEntries` defaults to entry-code order — `recomputeScorePreview` sorts unresolved by score internally where rank order is load-bearing. **(e260aa2)** Strict 1-each-medal-type cap per category — new helper `requireUniqueMedalTypeInCategory` rejects when another entry in the same category already holds the chosen medal (admin-chosen policy; autoPopulate already respects this by construction, only the manual `recordMedal`/`updateMedal` paths were unconstrained); new key `error.medal.duplicate-type` × 5 locales; null medal (withhold) is exempt. Earlier 2026-05-26 daytime: **Option A: SCORE_BASED medal round can own scoresheets (no-prelim small-category flow)**. Seven cycles across `JudgingServiceImpl` + `ScoresheetServiceImpl` + `MedalRoundView` + i18n (no migration). The MEDAL — SCORING use case (small category, admin skips a preliminary scoring round and runs scoring directly at the medal round) now works end-to-end. Cycles: **(1)** new `ScoresheetService.ensureScoresheetForRound(entryId, roundId)` pinning the round explicitly (vs. `ensureScoresheetForEntry`'s ACTIVE-by-category lookup). `JudgingServiceImpl.assignEntryToRound` extends its mid-round BLANK-sheet creation branch from SCORING+ACTIVE to also fire on MEDAL+SCORE_BASED+ACTIVE. **(2)** Symmetric `unassignEntryFromRound` BLANK/DRAFT cleanup extended to medal+SCORE_BASED+ACTIVE (SUBMITTED still blocks via `error.entry.cannot-unassign-submitted`). **(3)** `startRound` extends the no-entries-assigned guard to SCORE_BASED medal rounds; calls `createScoresheetsForTable` for SCORE_BASED medal rounds before `autoPopulateMedalsByScore`; `autoPopulateMedalsByScore` sources sheets from both SCORING rounds and SCORE_BASED medal rounds in the category (advance-flag filter only applies to SCORING-round sheets — medal-round-owned sheets are unconditionally eligible). **(3b)** New `@EventListener public void onScoresheetSubmitted(ScoresheetSubmittedEvent event)` re-runs autoPopulate once all sheets on a SCORE_BASED medal round are SUBMITTED — idempotent. **(4)** Auto-readiness for SCORE_BASED medal rounds: `recomputeScoringRoundReadiness` now applies to MEDAL+SCORE_BASED too (PENDING ↔ READY on table + ≥ minJudgesPerRound judges + ≥ 1 entry + division ≥ JUDGING); COMPARATIVE keeps cascade-driven readiness. **(5)** `MedalRoundView.openAssignEntriesDialog` drops the SUBMITTED-scoresheet eligibility filter for SCORE_BASED mode — shows all RECEIVED entries in category. **(6)** `findMedalRoundRowsFromExplicitEntries` relaxes the SUBMITTED-only filter for SCORE_BASED so admin sees assigned-but-unscored entries (BLANK/DRAFT → null total, advanced=false). **(7)** Walkthrough §12.6.8.1 documents the new flow; i18n key `medal-round.start.confirm.body.score-based` re-worded across 5 locales ("from each entry's scoresheet total" instead of "from Round 1 totals" — covers both prelim and no-prelim paths). No schema change — `scoresheet.round_id` already FK's to `judging_rounds` regardless of `type`. Earlier 2026-05-25 (1200) verified 2026-05-25 after **relaxing `JudgingDivisionStatusRevertGuard`**: the JUDGING → REGISTRATION_CLOSED revert is now blocked only when an ACTIVE or COMPLETE round exists. Rounds still in PENDING/READY (set up but never started) don't block — admins who advanced to JUDGING and realised they want to fix a REG_CLOSED-only setting (BOS places, sharedTables flag) can revert without losing setup work. The old `judging.phase != NOT_STARTED OR any round exists` check was too coarse. Guard now uses `findByJudgingId(...).stream().anyMatch(r -> ACTIVE || COMPLETE)`. Error message refreshed × 5 locales to mention the actual rule. Test count steady (2 obsolete tests deleted, 2 new added, 1 renamed). Earlier 2026-05-25 (1200): **Group D of the scoresheet polish batch (RoundView list polish)**. Two cycles: (D1) new "Advances" column (✓/—) next to Total; Total cell now shows the live running sum for BLANK/DRAFT sheets (with " *" suffix to distinguish from a SUBMITTED total) — computed via new `ScoresheetService.runningTotalsByRoundId(roundId)` so the lazy `Scoresheet.fields` collection is fetched inside the service's read transaction; status-filter ComboBox grows a "Blank" option. (D2) Judges get per-row Open (eye icon, navigates to ScoresheetView) + Submit (paperplane, DRAFT only) shortcuts in the actions column; row-click navigation unchanged; admin actions (Revert/Move/Delete) unchanged. New i18n keys `table.column.advances`, `table.filter.status.option.blank`, `table.action.open`, `table.action.submit` × 5 locales. New `RoundView.openJudgeSubmitDialog` (public for testability). Two new tests on `RoundViewTest`; 1 existing test updated (column-headers list, filter options). Earlier 2026-05-25 (1199): **Group C of the scoresheet polish batch (form polish + required comments)**. Two cycles: (C1) `ScoresheetServiceImpl.submit` now enforces minimum comment lengths — `Scoresheet.MIN_PER_FIELD_COMMENT_LENGTH=3` per criterion, `Scoresheet.MIN_OVERALL_COMMENT_LENGTH=20` for the overall comment. New error keys `error.scoresheet.overall-comment-too-short` and `error.scoresheet.field-comment-too-short` × 5 locales. Drafts stay permissive. (C2) NumberFields now show +/- step buttons + full width (label truncation gone); the running total is rendered as an H3 sized at `--lumo-font-size-xxl` (was an inconspicuous Span); a `← Back to round` Anchor (id `scoresheet-back-to-round`) sits at the top of the form. New i18n key `scoresheet.back-to-round` × 5 locales. Two new tests on ScoresheetServiceTest + ScoresheetViewTest; 6 existing tests updated to satisfy the new comment requirements (incl. `AwardsModuleTest.fillAndSubmit` helper). Earlier 2026-05-25 (1197): **Group B of the scoresheet polish batch (admin edit gating + judge visibility)**. ScoresheetView now opens read-only for admins by default; an "Edit on behalf of judge" button (id `admin-edit-scoresheet`) replaces Save Draft / Submit. Clicking it fires a ConfirmDialog ("Editing a scoresheet on behalf of a judge should only be done in exceptional situations…") — on confirm, `adminEditMode` latches true and the form re-renders editable. Judges always go straight to the edit form (unchanged). The judge-visibility check that already existed in `beforeEnter` (only assigned judges + admins can open a sheet; outsiders forwarded to "") is now locked in with a regression test. Four new i18n keys × 5 locales (`scoresheet.admin.edit.button/confirm.title/body/proceed`). Two new UI tests; 0 existing tests broken. Earlier 2026-05-25 (1195): **scoresheet BLANK status + revert-broadening** (Group A of a 4-group scoresheet polish batch). New `ScoresheetStatus.BLANK` is the initial state of freshly-created scoresheets; first successful `updateScore`/`updateOverallComments` promotes BLANK → DRAFT via a private `promoteFromBlank()` helper. `requireDraft` is split: edit-content methods (updateScore, updateOverallComments, setFilledBy, moveToRound, setCommentLanguage) now use `requireMutable` (allows BLANK or DRAFT); `submit()` stays DRAFT-only. `revertScoringRound` broadens its block from "any SUBMITTED" to "any non-BLANK" (new error key `error.round.cannot-revert-touched-scoresheets` × 5 locales replaces the older `cannot-revert-submitted-scoresheets`). New `ScoresheetService.countByRoundIdAndStatusNot(roundId, status)` + matching repo method. `ScoresheetView` editable when BLANK or DRAFT (not only DRAFT). `findNextDraftForJudge` returns the oldest non-SUBMITTED sheet (BLANK or DRAFT). Two new tests (`ScoresheetTest`, `JudgingServiceRoundTest`). No migration needed (judging module not yet in prod). Earlier 2026-05-25 (1193): **scoring-round auto-readiness** lands: scoring rounds now flip PENDING ↔ READY automatically based on configuration (physical table + ≥ minJudgesPerRound judges + ≥1 entry) AND division ≥ JUDGING. New private helpers `recomputeScoringRoundReadiness` + `isScoringRoundReadyToStart` in `JudgingServiceImpl`; called from `assignJudge`, `removeJudge`, `assignEntryToRound`, `unassignEntryFromRound`, `assignRoundToPhysicalTable`. New public `JudgingService.recomputeReadinessForDivision(divisionId)` + `@EventListener onDivisionStatusAdvanced` recompute everything in a division when it crosses into JUDGING. Dynamic cross-round conflicts (table-busy elsewhere, judge active conflict) stay as Start-time errors. Medal rounds untouched (cascade-driven READY). Three new unit tests on `JudgingServiceRoundTest`. Earlier 2026-05-25 (1190): **Entries-count column on the Rounds grid**, sitting between Judges (count) and Scheduled. Single new key `judging-admin.rounds.column.entries` × 5 locales (Entries / Inscrições / Inscripciones / Iscrizioni / Zgłoszenia). One new UI test (`JudgingAdminViewTest.shouldRenderEntriesCountColumnNextToJudgesOnRoundsGrid`) + headers list updated on `shouldRenderRoundsGridAndTypeFilterOnRoundsTab`. Earlier 2026-05-25 (1189) after **deferred item #3: medal-round redesign**. Three commits: (A) V31 partial unique index `idx_judging_rounds_one_medal_per_category` on `(judging_id, division_category_id) WHERE type = 'MEDAL'` backstops the one-medal-round-per-category rule at the DB; SCORING rounds in the same category still allowed (split-category). (B) Cascade auto-population: when the scoring-round cascade fires and the medal round transitions to READY, populate `medalRound.entries` from the eligible set per mode (COMPARATIVE → advance-flag only; SCORE_BASED → all SUBMITTED). `findMedalRoundEntries` now reads from `round.entries` when populated, falls back to derivation otherwise. (C) `MedalRoundView` gains "Assign Entries" button + dialog mirroring the Rounds-tab equivalent — enabled at PENDING/READY/ACTIVE, locked at COMPLETE. New i18n keys (8 for the dialog + button) × 5 locales. Earlier 2026-05-25 (1185): **deferred item #4: scoresheet improvements**. Three sub-changes: (a) `ScoresheetView` hides `meadName` from judges (anonymity rule — judges judge to style, not to a brand); admins still see it. New `isAdminView` field set in `beforeEnter`. (b) Per-item comment text area per MJP scoresheet field (`score-comment-<fieldName>` TextArea after each NumberField). `score_fields.comment` column already existed; `saveDraft` now passes the comment value to `ScoresheetService.updateScore` (signature already accepted it). New i18n key `scoresheet.scores.comment.placeholder` × 5 locales. (c) Comment language Select falls back to `User.preferredLanguage` after the existing `JudgeProfile.preferredCommentLanguage` lookup. Three new tests + walkthrough §12.11 refresh. Earlier 2026-05-25 (1182): **deferred item #2: cross-division shared tables flag**. New `Competition.sharedTables` boolean (default TRUE for new competitions, V30 migration `competitions.shared_tables BOOLEAN NOT NULL DEFAULT TRUE`); `JudgingService.startRound` gains a cross-division busy-check that matches by physical-table label across all divisions of the competition when the flag is ON (new key `error.round.physical-table-busy-shared` × 5 locales). UI: "Shared tables across divisions" checkbox on CompetitionDetailView Settings tab; banner above + Add Table on JudgingAdminView Physical Tables tab when the flag is ON. Three new tests on `JudgingServicePhysicalTableTest`: cross-division shared busy reject, sharedTables=false same-label allowed, and a regression test for the long-standing cross-division judge active-conflict (which already worked via `findAll()` — now covered). Earlier 2026-05-25 (1179): **deferred item #5: i18n cleanup sweep** (finish Table → Round rename in EN + PT/ES/IT/PL; 15 keys × 5 locales + `judge-table.title` + 2 comment lines; UI now uses "Round" for JudgingRound, reserves "Table" for PhysicalTable; min-judges label and table-ready emails renamed; walkthrough cleaned). Earlier 2026-05-25 (1179): **deferred item #1: judging setup allowed at REGISTRATION_CLOSED**. Three changes: `JudgingAdminView.beforeEnter` gate lowered from `< JUDGING` to `< REGISTRATION_CLOSED`; `DivisionDetailView` "Manage Judging" button now appears starting at REGISTRATION_CLOSED; new service gate on `JudgingService.startRound` requiring `>= JUDGING` (new key `error.round.cannot-start-before-judging` × 5 locales). Setup ops (rounds, judges, entries, medal-round CRUD, physical tables, judging categories) all work at REGISTRATION_CLOSED — `startRound` is the only op gated to JUDGING+. New tests: `JudgingServicePhysicalTableTest.shouldRejectStartRoundWhenDivisionNotYetInJudging` + `JudgingAdminViewTest.shouldRenderViewAtRegistrationClosedSoAdminsCanSetUpBeforeJudgingStarts`. Walkthrough §12.4.2 / §12.5.1 / §12.6 / §12.6.4 updated to set up at REG_CLOSED, then advance to JUDGING right before starting the first round. Earlier 2026-05-25 (1177): removed the late-RECEIVED auto-path: deleted `EntryReceivedScoresheetListener`, `EntryReceivedEvent` record, and the two publication points in `EntryService.markReceived` / `advanceEntryStatus(SUBMITTED→RECEIVED)`. Late-arriving entries now go RECEIVED only (no scoresheet auto-creation); admin assigns final category + uses Rounds → Assign Entries to add the entry to a round of their choice (manual path via `JudgingService.assignEntryToRound` still creates the DRAFT scoresheet when the round is ACTIVE SCORING). Earlier 2026-05-24 (1178): loosening the entry-assignment lock (entries can now be added/removed at PENDING, READY, and ACTIVE; on ACTIVE the service creates the scoresheet on add via `ensureScoresheetForEntry` and deletes the DRAFT scoresheet on remove via `deleteScoresheet`; SUBMITTED scoresheets block the remove path with `error.entry.cannot-unassign-submitted`; COMPLETE rounds block both with `error.entry.cannot-change-on-complete-round`; 4 new tests + 2 new i18n keys × 5 locales + tooltip rewording). Earlier 2026-05-24 (1174): mid-walkthrough scoring-round revert flow (`JudgingService.revertScoringRound` returns an ACTIVE scoring round to READY and wipes its scoresheets; blocked when any scoresheet is SUBMITTED via `error.round.cannot-revert-submitted-scoresheets`; medal rounds keep using `resetMedalRoundById` per `error.round.revert-scoring-only`; new ↶ Revert button on the Rounds tab with confirmation dialog; new `ScoresheetService.deleteAllForRound` helper; 4 new unit tests on `JudgingServiceRoundTest`; 8 new i18n keys × 5 locales). Earlier 2026-05-24 (1170): mid-walkthrough hard-COI assignment fix (`JudgingService.assignJudge` now rejects when the candidate judge owns any entry in the round's category; new key `error.coi.assign-hard-block` in all 5 locales; `JudgingAdminView` assign-judges dialog also reverts hard-COI selections client-side via a selection listener; one new unit test on `JudgingServiceRoundTest`). Earlier 2026-05-24 (1169): cycle 9 (both walkthrough-noted gaps closed — see "Cycle 9" entry below for header mode/PT pickers + ACTIVE-reassignable medal-round judges). Earlier same-day: cycles 6a–c (UI restructure to Physical Tables/Rounds/Results/BOS) + cycle 7 (MedalRoundView migration + V22 contraction deleting legacy CJC.medalRoundStatus + physicalTableId + 5 legacy service methods + MedalRoundStatus enum) + cycle 8 (Start button on MedalRoundView with SCORE_BASED auto-fill, walkthrough §12.6–§12.8 + §12.12 rewrite, Assign Entries dialog on the Rounds tab + Assign Judges button on MedalRoundView, dev seed split-category demo for Profissional M1A + pre-staged medal round with independent judges for M1B). Earlier 2026-05-23 verified at 1161 after the **JudgingTable → JudgingRound rename + new PhysicalTable entity (per-division)** refactor: V21–V27 SQL renamed in-place + V29 adds `physical_tables` + nullable `physical_table_id` FKs; new `PhysicalTable` entity / repo / 6 service methods (create/edit/delete/findByDivision/findById/assignRoundToPhysicalTable + assignMedalRoundToPhysicalTable); validations at `startRound` (round must have a physical table; physical table not busy with another ROUND_1; no assigned judge on another active round) and at `assignJudge` (same judge-conflict check when adding to a ROUND_1 round); new "Physical Tables" tab in `JudgingAdminView` + Add-Round dialog requires picking a physical table; medal-round physical-table assignment surfaced as a per-row Select in JudgingAdminView Medal Rounds tab + MedalRoundView header; dev seed creates 3 physical tables for Amadora + 5 for Profissional. `JudgingServicePhysicalTableTest` (15 tests) covers all CRUD + validation rejection paths; `JudgingAdminViewTest` (+6 UI tests) covers Physical Tables tab dialogs (add happy/duplicate-error, edit happy, delete happy/in-use-error, grid+button rendering). Also earlier in the session: `DivisionAdvanceGuard` family + `EntryFinalCategoryAdvanceGuard`, `AwardsService.republish` refactor, BOS-places lock at JUDGING, comment-languages restriction removed (ISO 639-1), Amadora 11 entries + 6 judges + soft/hard COI seed, `assignFinalCategoriesByCode` bulk button, `EntryReceivedEvent`/listener for late-RECEIVED scoresheet sync, `EntryStatusRevertGuard` + `JudgingScoresheetEntryRevertGuard`, LazyInit fix on `JudgingRound.assignments`.
 **TDD workflow:** Two-tier (Full Cycle / Fast Cycle) — see `CLAUDE.md`
 
 ---
@@ -143,6 +143,56 @@ Karibu Testing for tests. Full conventions in `CLAUDE.md` at project root.
 
 #### Migrations: V9–V13
 
+### awards module (`app.meads.awards`) — COMPLETE
+
+- **Depends on:** judging, competition, entry, identity
+- **Status:** All 13 plan tasks complete (2026-05-12). Design + plan: `docs/plans/2026-05-12-awards-module-{design,plan}.md`
+
+#### Entities (public API)
+| Entity | Table | Migration | Description |
+|--------|-------|-----------|-------------|
+| `Publication` | `publications` | V28 | Audit-only aggregate: divisionId, version (unique per division), publishedAt, publishedBy FK, justification (nullable for v1), initial boolean |
+
+#### Service — `AwardsService` (public API)
+- `publish(divisionId, adminUserId)` — DELIBERATION → RESULTS_PUBLISHED, creates Publication v1
+- `republish(divisionId, justification, adminUserId)` — creates Publication v(n+1); justification 20-1000 chars, required
+- `sendAnnouncement(divisionId, customMessage, adminUserId)` — emails all entrants in their preferred locale; picks template by publication version + custom-message presence
+- `getLatestPublication / getPublicationHistory` — repo wrappers
+- `getResultsForEntrant(userId, divisionId)` — per-entry rows (round-1 total, medal, BOS, scoresheet drill-in); requires RESULTS_PUBLISHED
+- `getResultsForAdmin(divisionId, adminUserId)` — full leaderboard + BOS + publication history
+- `getPublicResults(competitionShortName, divisionShortName)` — anonymized public view by short names; requires RESULTS_PUBLISHED
+- `getAnonymizedScoresheet(scoresheetId, requestingUserId)` — admin OR entry owner auth; "Judge N" anonymization; entrant access requires RESULTS_PUBLISHED
+- Revert: admin view calls `competitionService.revertDivisionStatus(...)` directly (asymmetric — no awards-owned data to roll back; publication record kept in audit log)
+
+#### Events
+- `ResultsPublishedEvent(divisionId, publicationId, version, publishedAt, publishedBy)`
+- `ResultsRepublishedEvent(...same + justification)`
+- `AnnouncementSentEvent(divisionId, publicationId, recipientCount, usedCustomMessage)`
+
+#### DTOs (public records)
+- `EntrantResultRow`, `AdminResultsView` (+ inner: AdminCategoryLeaderboard, AdminEntryRow, AdminBosRow, PublicationSummary), `PublicResultsView` (+ inner: PublicCategorySection, PublicMedalRow, PublicBosRow), `AnonymizedScoresheetView` (+ inner: AnonymizedScoresheet, FieldScore)
+
+#### Views
+- `AwardsPublicResultsView` (`/competitions/:c/divisions/:d/results`, `@AnonymousAllowed`) — anonymized public results
+- `AwardsAdminView` (`/competitions/:c/divisions/:d/results-admin`, `@PermitAll` + auth) — publish/republish/announce/revert + publication history grid
+- `MyResultsView` (`/competitions/:c/divisions/:d/my-results`, `@PermitAll`) — entrant-facing results grid + "View scoresheet" drill-in
+- `MyScoresheetView` (`/competitions/:c/divisions/:d/my-entries/:entryId/scoresheet`) — anonymized scoresheet display + PDF download
+- Banner added to `MyEntriesView` when status = RESULTS_PUBLISHED, linking to `MyResultsView`
+- "Manage results" button added to `JudgingAdminView` header when status >= DELIBERATION
+
+#### Cross-cutting changes
+- `DivisionStatus.isResultsFrozen()` helper — true iff RESULTS_PUBLISHED
+- `JudgingServiceImpl` + `ScoresheetServiceImpl` — every mutator (~30) calls `requireNotFrozen(divisionId)` before mutation, throwing `BusinessRuleException("error.judging.results-published-frozen")`
+- `JudgingService` gained `findMedalAwardByEntryId`, `findBosPlacementByEntryId`
+- `ScoresheetService` gained `findByEntryIdOrderBySubmittedAtAsc` (single derived query — entry_id is UNIQUE on scoresheets so the list is 0 or 1)
+- `ScoreField` moved from `judging.internal` to `judging` public API (needed for awards anonymized score-field rendering; Scoresheet.getFields() was already public)
+- `EmailService.sendResultsAnnouncement` + new `ResultsAnnouncementType` enum (INITIAL_NO_CUSTOM, REPUBLISH_NO_CUSTOM, CUSTOM_MESSAGE); `SmtpEmailService` reuses the existing `email-base.html` template with type-specific subject/heading/body keys
+- `EntryService.findEntrantUserIdsForDivision` (delegates new `EntryRepository.findDistinctUserIdsByDivisionId`)
+- `ScoresheetPdfService` in judging public API — A4 portrait PDF generation with `AnonymizationLevel.ANONYMIZED` (Judge N) and `AnonymizationLevel.FULL` (judge name) modes; mirrors `LabelPdfService` pattern
+- Validation constraints (`@NotNull`, `@NotBlank`) declared on `AwardsService` interface, not impl (CGLIB proxy + HV000151 LSP — per [project memory](memory/project_validated_interface_constraints.md))
+
+#### Migrations: V28
+
 ### Cross-cutting
 
 - **Comprehensive logging** added across all 3 modules (INFO for actions, DEBUG for queries/settings, WARN for blocked operations, ERROR for failures)
@@ -162,6 +212,8 @@ docs/
 │   ├── 2026-03-10-i18n-design.md          ← i18n design (implementation deferred)
 │   ├── 2026-03-10-deployment-design.md    ← Deployment options evaluation (decision: DO App Platform)
 │   ├── 2026-05-05-judging-module-design.md ← Judging module design (in progress, multi-session)
+│   ├── 2026-05-12-awards-module-design.md  ← Awards module design (complete, ready for impl)
+│   ├── 2026-05-12-awards-module-plan.md    ← Awards module implementation plan (13 TDD tasks)
 │   └── deployment-checklist.md           ← Deployment reference: setup, release process, redeployment, rollback
 ├── reference/
 │   ├── chip-competition-rules.md          ← CHIP competition rules (active reference)
@@ -173,530 +225,1359 @@ docs/
 │   └── awards.md                          ← Preliminary spec (post-rework naming)
 └── walkthrough/
     ├── manual-test.md                  ← Dev environment test plan (seeded data, comprehensive)
-    └── post-deployment-test.md         ← Production test plan (clean database, end-to-end workflow)
+    ├── post-deployment-test.md         ← Production fresh-deploy test plan (clean DB, Stage 1 + Stage 2; includes judging + awards smoke tests)
+    └── post-deployment-v0.4.0.md       ← Version-specific upgrade check for v0.4.0 (assumes prod data exists; verifies V28–V31 migrations + new settings + pre-judging setup against existing competition)
 ```
 
 ---
 
 ## What's Next
 
-### Priority 1: Manual walkthrough — COMPLETE
-All 14 sections completed with fixes along the way.
+### TRIAGE OUTCOME (2026-05-29) — decisions made
 
-**Changes made during Section 12–13 walkthrough:**
-- **Participant grid refactoring** — One row per participant with comma-separated roles column, edit button (pencil icon) with role checkboxes + name/meadery/country fields, remove button removes entire participant
-- **Role combination validation** — Only JUDGE + ENTRANT allowed in same competition. Enforced in `CompetitionService.validateRoleCombination()`, `ensureEntrantParticipant()`, `WebhookService`, and `EntryService.addCredits()`
-- **Password requirement for comp admins** — `beforeEnter()` checks in MyCompetitionsView, CompetitionDetailView, DivisionDetailView, DivisionEntryAdminView. RootView prevents redirect loop for passwordless comp admins.
-- **Role conflict checks in credit paths** — `hasIncompatibleRolesForEntrant()` check in WebhookService (marks NEEDS_REVIEW) and EntryService (throws exception)
-- **Orders grid improvements** — Review Reason column + tooltips on Customer email and Review Reason columns
-- **New service methods** — `removeParticipantRole()`, `findRolesForParticipant()`, `validateRoleCombination()`, `hasIncompatibleRolesForEntrant()`
-- **Bug fix** — `removeParticipant()` now also deletes the Participant entity (was only deleting roles)
-- **Access code scoping** — Deferred. Current behavior (identity auth, not per-competition) is acceptable with password gate on admin views.
+The 2026-05-28 triage below was assessed. Decisions:
 
-**Changes made during Section 14 (Security Testing) walkthrough:**
-- **SetPasswordView eager token validation** — Validates JWT on page load in `beforeEnter()`. Invalid/expired tokens show error notification without rendering the form. Empty tokens redirect to `/login`.
-- **Webhook missing HMAC header** — `@RequestHeader` changed to `required = false`, returns 401 for missing header (was returning HTML)
-- **Webhook HTTP method tampering** — Added explicit `@RequestMapping` for GET/PUT/DELETE/PATCH returning 405 (was falling through to Vaadin)
-- **Webhook email length validation** — Rejects orders with customer email > 255 chars
-- **Field length limits** — Added `setMaxLength(255)` to all email fields (LoginView, UserListView), `setMaxLength(128)` to all password fields (LoginView, SetPasswordView)
-- **Dev password logging** — Removed plaintext password from `DevUserInitializer` log output
-- **Mead name tooltip** — Added tooltip on mead name column in both MyEntriesView and DivisionEntryAdminView grids
-- **Contact email on My Entries** — Shows "Questions or need help? Contact: {email}" as mailto link, opposite the registration deadline
-- **Settings field widths** — Widened Name, Location, Contact Email fields in Competition Settings and Name in Division Settings to 400px
+- **(c) unified round-admin redesign is IN v0.4.0** — do it *before* finishing the walkthrough so the walkthrough validates the final UI (avoids re-walking the MedalRoundView/Rounds-grid screens that (c) replaces). It is the umbrella; **(b) medal scheduled date** and **P14 (date→date+time)** fold into it.
+- **(a) round → physical-table reassignment: DONE** (2026-05-29). The service method `assignRoundToPhysicalTable` already existed (gated PENDING/READY, rejects post-start) — only the UI was missing. Added a `Select<PhysicalTable>` (`edit-table-physical-table`) to `JudgingAdminView.openEditTableDialog`, enabled while PENDING/READY, disabled with helper text otherwise (new key `judging-admin.tables.dialog.physical-table.locked` × 5 locales). Pre-selects the round's current table by matching id within the items list (NOT a separately-fetched instance — `PhysicalTable` has identity equality, so `setValue` with a different instance silently fails to select). +2 UI tests (`shouldReassignPhysicalTableViaEditDialog`, `shouldPrefillCurrentPhysicalTableInEditDialog`). 1253 tests. Walkthrough §12.6.2 updated. **Will be re-folded into (c)'s unified Edit Round dialog.**
+- **P12 (download-button lifecycle) and P13 (participant counts): DEFERRED** unconditionally — independent of judging, post-v0.4.0.
+- **P15 (bottom-positioned notifications overlap page-bottom content): DEFERRED** (raised 2026-05-30 during the walkthrough; do after the walkthrough, or fold into the scoresheet field-layout redesign). Vaadin `Notification`s sit at the bottom of the viewport and can cover content that lives at the page bottom: the **ScoresheetView Save button** right after saving/entering the next sheet (also a validation-error toast covers Save), and the **last row of a long entry list** for a few seconds after an add/save. Suggested fix: add a bottom spacer / padding on every page (a shared MainLayout content style, or a reusable bottom-gap) so the actionable controls + list tails clear the notification zone; alternatively reposition notifications (e.g. top, or middle) and/or shorten their duration. Affects ScoresheetView + any list/form whose primary action or last item sits at the very bottom — sweep for the pattern when implementing. Not urgent.
+- ~~**P16** (clarify the RoundView Total `*` suffix)~~ — **RESOLVED 2026-05-30 by removing the `*`** (change #16): the Total column now shows the running sum plain (no marker), matching the medal-round grid. SUBMITTED = locked total, BLANK/DRAFT/FILLED = live running sum, "—" when no scores. `RoundView.formatTotalCell`. No test asserted the `*`.
+- ~~**P17 (judge "view mead details" action on the COMPARATIVE medal round): DEFERRED**~~ — **DONE 2026-05-31 (change #27, pulled forward at the user's request, scope widened to all rounds).** On a COMPARATIVE medal round the judge grid intentionally hides Total/Status and the scoresheet-eye (judges award by tasting, independently of the prelim scores/comments). But a judge may still want the **objective entry details** — category, sweetness/strength/carbonation, ABV, ingredients (honey/other/wood) — without seeing any prior judge's **scores or comments**. Explore adding a per-row icon action (e.g. 👁 "View mead details") opening a **read-only entry-detail dialog** that shows only the entry's declared characteristics (the same fields on the bottle label), explicitly **excluding** scoresheet scores/comments and the entrant/mead brand name (anonymity). Applies at least to the COMPARATIVE medal round (where the eye is currently admin-only); consider whether the SCORE_BASED medal round + scoring RoundView want the same affordance. Source data already exists on `Entry`; no schema change anticipated. Fold into the scoresheet field-layout redesign since both touch what a judge sees.
+- **P18 (entrant scoresheet view + PDF fixes — DEFERRED, fold into the scoresheet redesign; user will provide
+  screenshots/more info next session):** raised 2026-05-31 after the PDF downloads were fixed (change #35). The
+  scoresheet **content/anonymization** is wrong in two places:
+  - **On-screen `MyScoresheetView`** (`awards.internal`, the entrant page reached via the 👁 eye): does NOT show
+    per-criterion **comments** or the **advanced/advance-to-medal** info; shows the **entry CODE** in the heading
+    (entrants must NEVER see the anonymized code — show the **entry NUMBER**, e.g. PRO-1); the **judge** label
+    appears (decide anonymization — entrant shouldn't see judge identity). Consider rendering this as a **dialog**
+    instead of a separate page/route.
+  - **PDF (`ScoresheetPdfService`, ANONYMIZED level)**: heading reads **"Anonymized Scoresheet"** — drop the word
+    "Anonymized" (and it's misleading since the judge appears); uses the **entry code** (→ use the entry
+    **number**); has **no advancement** info (add it). (Per-criterion comments ARE already in the PDF's scores
+    table; the on-screen view is the one missing them.)
+  - Both share the entry-number-vs-code + judge-anonymization + advancement decisions — settle them as part of the
+    redesign. EntrantResultRow already carries the prefixed `entryNumber` (change #34) as a reference.
 
-### Priority 1: Post-i18n comprehensive walkthrough and hardening — COMPLETE
+**✅ (c) is DONE + PUSHED (2026-05-29)** — all 6 phases + the test-only `submit()` retire + the
+walkthrough substep rewrite are committed & pushed on `feature/judging-module` (per-phase record below
++ `git log`; commit hashes in "State on disk"). **NEXT NOW:** (1) the deferred scoresheet
+**field-layout redesign** — the only (c)-adjacent item left, **awaiting the user's screenshots/examples**;
+(2) **resume the walkthrough** (it now validates the final UI; was paused at §12.6.8.1 step 10) → code
+review → merge to main → **v0.4.0 release**. (c) was implemented per the (now **DONE**-marked) plan in
+`docs/plans/2026-05-29-unified-round-admin-scoresheet-redesign.md` — all scope flags settled with
+the user (MedalRoundView survives as the medal drill-in; Start/Revert move to the unified grid;
+single Type column with a colored badge; new `FILLED` scoresheet status with auto-save + a
+validating Save button; round-level Finalize/Submit + admin Reopen in the detail views; (b)+P14
+folded in). The plan is split into 6 independently-committable phases (Scoresheet status model →
+unified grid → Finalize/Reopen flow → i18n+tests → P14 date+time → docs).
 
-Full manual walkthrough completed 2026-03-17. All 4 parts done.
+**(c) PROGRESS — committing per phase (docs/walkthrough batched in Phase 6):**
+- **Phase 1 DONE (2026-05-29):** `ScoresheetStatus.FILLED` added between DRAFT and SUBMITTED.
+  Entity `markFilled()` (DRAFT→FILLED, idempotent on FILLED, throws if any field unscored) +
+  `demoteFromFilled()` on score/overall-comment edits; `submit()` precondition now FILLED→SUBMITTED;
+  per-criterion comment floor 3→**15**, `MIN_OVERALL_COMMENT_LENGTH` removed (overall comment is now
+  the optional "Additional comments"). `ScoresheetService.markFilled(id, judge)` (per-field comment
+  validation @15, no overall); per-sheet `submit()` kept as a **transitional bridge** (validate →
+  markFilled-if-DRAFT → submit → cascade) so RoundView's per-row judge submit + tests stay green
+  until Phase 3's round-level Finalize replaces it. `ScoresheetView` rewired: auto-saves each field
+  on blur (`scoresheet-save-status` Span), renamed **Save** button (`save-button`) validates →
+  `markFilled` (navigates back to round on success), **per-sheet Submit button removed**, overall →
+  optional "Additional comments". 6 new i18n keys × 5 locales (`scoresheet.action.save[.success]`,
+  `scoresheet.additional-comments.label`, `scoresheet.save.status.{saving,saved,error}`). Verified:
+  judging + awards regression **421 tests green**. (Dead keys `scoresheet.action.{save-draft*,submit*}`,
+  `scoresheet.comments.section`, `error.scoresheet.overall-comment-too-short`, `table.action.submit`
+  left for Phase 4 cleanup.)
+- **Phase 2 DONE (2026-05-29):** unified Rounds grid in `JudgingAdminView`. `createRoundsActionsCell`
+  (now public for tests) builds the SAME inline set for SCORING and MEDAL — Edit / Assign Judges /
+  Assign Entries / Start / Revert / Delete / Open (medal rows previously had only Delete + Open).
+  Type column is a colored Lumo badge (Scoring=contrast, Medal — Comparative=primary, Medal —
+  Score-based=success). New `rounds-status-filter` `CheckboxGroup<JudgingRoundStatus>` (all selected
+  by default; empty = show all) composes with the existing type filter. Add-Round dialog shows a
+  medal-mode `Select` (`add-round-medal-mode`) when Type=MEDAL — mode set at create time
+  (`createMedalRound` + `updateMedalRoundMode`); name field hides for MEDAL. `openRevertRoundDialog`
+  branches by type: medal → `resetMedalRoundById` (ACTIVE→READY + clears awards), scoring →
+  `revertScoringRound`; new medal revert body key. `openAssignEntriesDialog` is mode-aware:
+  SCORE_BASED medal → read-only preview + Sync (reuses `medal-round.assign-entries.*` keys). 3 new
+  i18n keys × 5 locales. +5 `JudgingAdminViewTest`. Verified: judging + awards **426 tests green**.
+- **Phase 3 DONE (2026-05-29):** round-level Finalize/Reopen flow. `ScoresheetService.finalizeScoringRound`
+  (ACTIVE SCORING + all sheets FILLED → submit all + COMPLETE + cascade; judge-or-admin) +
+  `reopenScoringRound` (admin; COMPLETE → ACTIVE, dropping SUBMITTED sheets → FILLED via new entity
+  `Scoresheet.revertToFilled()`). `JudgingServiceImpl.completeMedalRoundById` gains an undecided-entry
+  guard (`error.medal-round.undecided-entries`): every entry in `round.getEntries()` must have a
+  MedalAward (medal or explicit withhold). `RoundView`: round-level **Finalize** (`round-finalize-button`,
+  judge+admin, enabled only when all FILLED; dialog states N advancing + zero-advance + admin warnings)
+  + admin **Reopen** (`round-reopen-button`) on COMPLETE; per-row judge Submit removed; Open (eye) now
+  shown for judges AND admins; admin Move also offered on FILLED. `MedalRoundView`: Start + Reset removed
+  from header (Start is on the grid, Revert replaces Reset); Finalize dialog lists medals + admin warning.
+  19 new i18n keys × 5 locales (5 error + 14 UI). Verified: judging + awards **430 tests green**.
+  **Transitional debt for Phase 4:** per-sheet `ScoresheetService.submit()` (cascade bridge) still exists
+  + is only test-reachable now; orphan i18n keys (`scoresheet.action.{save-draft*,submit*}`,
+  `scoresheet.comments.section`, `error.scoresheet.overall-comment-too-short`, `table.action.submit`,
+  `medal-round.action.{start,reset}` + start/reset dialog keys); `AwardsModuleTest.fillAndSubmit` still
+  uses `submit()` (migrate to markFilled + finalizeScoringRound).
+- **Phase 4 (i18n prune) DONE (2026-05-29):** removed 21 orphan i18n keys × 5 locales
+  (`scoresheet.action.{save-draft*,submit*}`, `scoresheet.comments.section`,
+  `error.scoresheet.overall-comment-too-short`, `table.action.submit`, `medal-round.action.{start,reset}`
+  + start/reset dialog keys). `grep -nP "[^\x00-\x7F]"` → zero. Verified: judging + awards **430 green**.
+  **Still open (small follow-up within (c)):** retire the now test-only `ScoresheetService.submit()`
+  (no production caller — RoundView's per-row submit is gone) + migrate its `ScoresheetServiceTest`
+  cascade tests + `ScoresheetServiceFreezeGuardTest.shouldRejectSubmitWhenResultsPublished` +
+  `AwardsModuleTest.fillAndSubmit` to the `markFilled` + `finalizeScoringRound` path. Deferred to
+  preserve context for P14 + docs; `submit()` is dead UI-wise so leaving it is harmless transitional debt.
+- **Phase 5 (P14) DONE (2026-05-29):** `JudgingRound.scheduledDate` (LocalDate) → `scheduledAt`
+  (LocalDateTime) — display-only planning label, now date+time. V21 edited in place
+  (`scheduled_date DATE` → `scheduled_at TIMESTAMP`, un-deployed). `DatePicker` → `DateTimePicker` on
+  the Add + Edit Round dialogs; Rounds-grid Scheduled column formats `yyyy-MM-dd HH:mm`; medal rows
+  editable → schedulable. `JudgingService.createRound` + `updateRoundScheduledAt` take LocalDateTime;
+  `findNextDraftForJudge` sorts on `scheduledAt`. "Scheduled" dialog label reworded for date+time × 5
+  locales. All `LocalDate`/`scheduledDate` test sites migrated. Verified: judging + awards **430 green**.
+  **Dev-DB note:** editing V21 in place means a local dev DB that already ran V21 will hit a Flyway
+  checksum mismatch — recreate / `flyway clean` the dev DB before `mvn spring-boot:run` (Testcontainers
+  tests are unaffected — they migrate fresh).
+- **Phase 6 (docs) DONE (2026-05-29):** CLAUDE.md left unchanged (no *coding* convention changed —
+  the scoresheet status lifecycle is domain detail, captured here). SESSION_CONTEXT finalized (count +
+  state-on-disk + remaining items). Walkthrough rewritten for the new UI: authoritative **(c) summary
+  banner at §12.6** + the detailed substeps brought up to date — §12.6.1 (badge column, status filter,
+  date+time picker, medal-mode in Add Round), §12.6.8/§12.6.8.1 (unified medal-row actions, create-time
+  mode, grid Start/Assign, no Reset), §12.6.9 (Type + Status filters), §12.10.0 (round-level
+  Finalize/Reopen), §12.10.1 (per-row Open; judge Submit gone), §12.11.1/§12.11.2 (auto-save + Save→FILLED,
+  Additional comments, no Save-Draft/Submit), §12.12.0–§12.12.3 (Start/Revert on the grid, Finalize lists
+  medals + undecided guard, Reset gone). **Detailed substep rewrite COMPLETE (2026-05-29).**
+- **Build note:** project is on **JDK 25** — if `mvn` fails with "release version 25 not supported"
+  (BUILD FAILURE before any "Tests run:" line), the default JDK has drifted off 25; fix the JDK, not the code.
 
-**Changes made during walkthrough:**
-- **Part A — Error notification fix:** DivisionDetailView settings save caught wrong exception
-  type (`IllegalArgumentException` instead of `IllegalStateException`). Fixed. Admin views
-  now force `Locale.ENGLISH` in all `getTranslation()` calls for `BusinessRuleException`,
-  so error messages are consistently English regardless of user's locale preference.
-- **Part C — Double-click protection:** Added `setDisableOnClick(true)` (Vaadin built-in API)
-  to all dialog save/confirm/delete buttons across all views (40+ buttons). Re-enables on
-  validation failure and in catch blocks. LoginView: magic link and forgot password buttons
-  left unprotected (rate limiting handles abuse, and mistyped emails need easy retry);
-  login button is protected (form POST navigates away).
-- **Add Credits validation:** Empty email/amount now shows field-level errors instead of
-  silently returning.
-- **Meadery name confirmation banner:** MyEntriesView now shows green confirmation banner
-  with meadery name when set (divisions that require it), instead of just hiding the warning.
-- **Admin error locale consistency:** All admin view `BusinessRuleException` catch blocks use
-  `getTranslation(key, Locale.ENGLISH, params)` to force English errors, avoiding the
-  mixed-language issue where some errors were translated and others fell back to English.
+Resume the walkthrough only after (c) lands. The deeper scoresheet *field-layout* redesign (user
+will supply screenshots) is a separate follow-up, possibly slotted before the walkthrough resumes.
 
-### Priority 2: Deletion guards and cascade testing — COMPLETE
-Comprehensive review and hardening of all deletion operations across the application.
+---
 
-**Guards implemented:**
-- **Division deletion guard** — `DivisionDeletionGuard` interface (competition module) + `EntryDivisionDeletionGuard` impl (entry module). Blocks deletion when entries, credits, or product mappings exist.
-- **User hard-delete guard** — `UserDeletionGuard` interface (identity module) + `CompetitionUserDeletionGuard` impl (competition module). Blocks hard delete when user has participant records.
-- **Last-role removal fix** — `removeParticipantRole()` now invokes `ParticipantRemovalCleanup` interface when removing the last role (was bypassing cleanup, causing orphaned entries/credits).
-- **Competition deletion cleanup** — `deleteCompetition()` now cleans up participants and their roles before deleting the competition.
+### NEXT SESSION (original 2026-05-28 end-of-day handoff — superseded by triage outcome above)
 
-**Assessed and deferred:**
-- Category removal — DB FK constraint already blocks deletion when entries reference the category. View catches `DataIntegrityViolationException` with a user-friendly message. No code change needed.
+**Before resuming the walkthrough**, work through this triage in order:
 
-**Deletion path safety summary:**
-| Path | Guard | Status |
-|------|-------|--------|
-| Delete competition | Blocked if divisions exist; participants cleaned up | ✓ |
-| Delete division | `DivisionDeletionGuard` blocks if entries/credits/products exist | ✓ |
-| Delete participant | `ParticipantRemovalCleanup` cleans entries/credits | ✓ |
-| Remove last role | Now invokes cleanup (was missing) | ✓ Fixed |
-| Delete user (soft) | Deactivates, no cascade needed | ✓ |
-| Delete user (hard) | `UserDeletionGuard` blocks if participant records exist | ✓ |
-| Delete product mapping | No dependent data | ✓ |
-| Delete entry | Only DRAFT status allowed | ✓ |
-| Delete category | DB FK constraint blocks if entries reference it | ✓ |
-| Delete document | No dependent data | ✓ |
+1. **Re-evaluate the post-walkthrough deferred priorities (P12, P13, P14) — decide whether any are worth doing *before* continuing the walkthrough.** Look at each and judge whether picking it up now would simplify a walkthrough step, fold neatly into something already in flight (e.g. P14 ↔ medal-round scheduled date below), or risk derailing v0.4.0 if left for after.
 
-### Priority 3: Entry status management redesign — COMPLETE
+2. **Then a new shortlist (raised end-of-day 2026-05-28):**
 
-Replaced the dedicated "Mark as Received" button with `←` / `→` arrow buttons covering the
-full DRAFT → SUBMITTED → RECEIVED flow. WITHDRAWN entries revert to DRAFT via `←`.
-Both buttons show a confirmation dialog before acting. Button order: `[eye] [pencil] [←] [→] [ban] [trash]`.
+   - **(a) Round → physical-table reassignment.** Today the table assignment is locked at create time. There's no path to move a round to a different physical table after creation. Surface it in the existing Edit Round dialog as a `Select<PhysicalTable>` (same options as the Add dialog). Watch out for `JudgingService.startRound` table-busy validation — reassignment of an ACTIVE round to a busy table needs to reject cleanly.
 
-New domain methods on `Entry`: `advanceStatus()` and `revertStatus()`.
-New service methods on `EntryService`: `advanceEntryStatus()`, `revertEntryStatus()`, and
-`getTotalCreditBalance(divisionId)` (single aggregate query, replaces N+1 participant loop).
-`EntryCreditRepository.sumAmountByDivisionId()` added for the aggregate.
-`markReceived()` kept on entity/service for backwards compatibility.
-Summary row: credits label ("Credits balance: N") + entries label ("Total entries: N (Draft: X, Submitted: Y, Received: Z, Withdrawn: W)"). Span IDs added for testability.
-`advanceStatus()` delegates to `submit()`/`markReceived()` to avoid logic duplication.
-Authorization rejection tests added for both advance/revert; advance-from-RECEIVED rejection test added.
-Dialog handlers catch `IllegalStateException` for stale-state concurrent-edit edge case.
-Tooltip switch arms made exhaustive (no `default` fallthrough).
+   - **(b) Scheduled date on medal rounds — column is always empty + no edit path.** Currently `JudgingRound.scheduledDate` is settable on SCORING rounds only (Add Round dialog has a DatePicker; medal rounds use the auto-create path with no date). The grid's "Scheduled" column therefore reads `—` for every medal row, and there's no way to populate it. **Fold this into P14** (scheduled date → date + time): the same edit-dialog rework can both promote LocalDate → LocalDateTime and surface the field on medal rounds.
 
-### Priority 4: Admin view i18n — COMPLETE
+   - **(c) Round admin view redesign — uniform UX across SCORING and MEDAL.** This is the biggest item; explore + sketch before implementing.
+     - **Motivation:** the judge experience and the admin Rounds-tab UX currently varies a lot between SCORING and MEDAL rounds (different grids, different actions, different per-row affordances, different terminology). The user wants both round types to look and behave the same way wherever possible — the medal round is just another round with a different scoring mode, not a parallel universe.
+     - **Add Round dialog:** keep the Type radio/Select (SCORING / MEDAL). When MEDAL is picked, **show a second dropdown for medal mode** (COMPARATIVE / SCORE_BASED). Today, mode is set after creation via MedalRoundView's header switch — collapse that into create-time.
+     - **Rounds grid:** present a single uniform grid for all rounds (no separate MedalRoundView for the row interactions). Possible Type column treatment: render as a suffix on the type label (e.g. `Medal — Score`, `Medal — Comparative`, `Scoring`) OR split into Type + Mode columns.
+     - **Inline per-row actions** (icons in the grid, same icon vocabulary as SCORING rounds):
+       - 👥 Assign Judges
+       - 📦 Assign Entries
+       - ▶ Start
+       - ↶ Revert (replaces medal "Reopen")
+       - 🗑 Delete (existing)
+       - 👁 Open (drill into the detail view for the per-entry work)
+     - **Actions to retire / consolidate:**
+       - **Reset** (medal-only): the user is not sure this is needed. Resetting medals can be done manually inside the medal round via Withhold/Clear per row. Likely remove.
+       - **Reopen** (medal-only): unify under the existing **Revert** verb used on scoring rounds. Same icon, same confirm copy pattern.
+       - **Finalize**: the user wants to review *why* this exists and whether it can be unified across both round types.
+         - **Proposal to explore:** every round has a **Finalize** button (in the grid OR on the detail view, consistently).
+           - SCORING round Finalize = "Submit all DRAFT scoresheets" (warning dialog; equivalent to bulk-submitting; once all sheets are SUBMITTED, button disabled).
+           - MEDAL round Finalize = commit the medal decisions (current behavior).
+         - The verb and visual presence become uniform; the underlying semantics are round-type-specific but the user-visible affordance is the same.
+     - **Goal restated:** minimize the cognitive load on judges and admins by making the medal round feel like just-another-round, with the smallest possible vocabulary of distinct actions. The MedalRoundView could potentially shrink to just the per-row medal-awarding UI, with everything else (judges, entries, start, revert) handled inline on the unified Rounds grid.
+     - **Scope flags to settle before implementing:** does MedalRoundView still exist as a drill-in view (for the per-row 🥇🥈🥉 + Withhold + Clear), or do those move into a dialog on the unified grid? Where does the SCORE_BASED scoresheet flow (judges scoring directly on medal round) get its admin Start/Revert UI? Does the Rounds tab become long with mixed rounds, and is that fine?
 
-Extracted ~270 hardcoded English strings from 8 admin views into `getTranslation()` calls,
-added all keys to `messages.properties`, and translated to Portuguese in `messages_pt.properties`.
-Views updated: LoginView, SetPasswordView, UserListView, CompetitionListView, MyCompetitionsView,
-CompetitionDetailView, DivisionDetailView, DivisionEntryAdminView. ES/IT/PL fall back to EN.
-Fixed `ComboBox<>` type inference compilation errors introduced by Java 21 stricter inference
-(needed explicit `new ComboBox<String>(...)` where label arg comes from `getTranslation()`).
+After this triage, resume the walkthrough per the existing **CURRENT** section below.
 
-### Priority 1: Post-registration actions audit — COMPLETE
+### CURRENT (2026-05-27, evening): Cycles A + B + C landed — walkthrough paused mid-§12.6.8.1 step 10
 
-**Rules implemented:**
-- **Add credits / adjust credits** — blocked after REGISTRATION_OPEN. Allowed in DRAFT + REGISTRATION_OPEN. `EntryService.addCredits()` and `removeCredits()` throw `BusinessRuleException("error.credits.registration-closed")`. DivisionEntryAdminView Credits tab: "Add Credits" button and adjust icon both disabled with "Registration is closed" tooltip.
-- **Product mappings** — blocked after REGISTRATION_OPEN. `createProductMapping()`, `updateProductMapping()`, `removeProductMapping()` all throw `BusinessRuleException("error.product.registration-closed")`. DivisionEntryAdminView Products tab: "Add Mapping", edit, and delete buttons all disabled with "Registration is closed" tooltip.
-- **Entrant edit entries** — blocked after REGISTRATION_OPEN. `updateEntry()` throws `BusinessRuleException("error.entry.division-not-open")` if division status is not REGISTRATION_OPEN.
-- **Add/remove participants** — deferred. No change.
-- **Admin edit entries** — no change. Admins can still edit entries (set final category, correct fields) in any status via the admin view.
-- **`DivisionStatus.allowsRegistrationActions()`** — new helper on enum (DRAFT || REGISTRATION_OPEN) used by credits and product mapping guards.
-- **6 new tests** in `EntryServiceTest`: `shouldRejectCreateProductMappingWhenRegistrationClosed`, `shouldRejectUpdateProductMappingWhenRegistrationClosed`, `shouldRejectRemoveProductMappingWhenRegistrationClosed`, `shouldRejectAddCreditsWhenRegistrationClosed`, `shouldRejectRemoveCreditsWhenRegistrationClosed`, `shouldRejectUpdateEntryWhenDivisionNotOpen`.
+Cycle A + B answered the end-of-day design questions. Cycle C landed mid-walkthrough after the user (mid-§12.6.8.1 step 10) flagged that the MyJudgingView hub was redundant given the 1-active-round-per-judge invariant.
 
-### Priority 1 (NEXT): Judging category management
+- **Cycle A** (force-all-entries on SCORE_BASED, commit `ceef486`).
+- **Cycle B** (Withhold / Clear inline icons + ConfirmDialogs, commit `65d0092`).
+- **Cycle C** (MyJudgingView → redirect-or-stub + judge access tightened to ACTIVE rounds, commit `331743b`).
+- **Mid-walkthrough fix (2026-05-28)** — Final Category column on `DivisionEntryAdminView` Entries tab + `MyEntriesView` had `.setSortable(true)` but no comparator (component column with no value-provider = no sort). Mirrored the Initial Category pattern (`resolveCategoryCode(...).compareTo(...)`). Unset entries sort last (resolve to `"—"`). +1 test per view. Committed as `c9e2ed0`.
+- **Mid-walkthrough enhancement (2026-05-28)** — Round entry views: code/name split + admin-only Entry # cross-reference.
+  - `MedalRoundEntryRow` gained `int entryNumber`; both `JudgingServiceImpl` builders pass it through.
+  - `MedalRoundView` main grid: "Entry — code+name" column → three: Entry # / Code / Mead Name. Tie ⚠ prefix stays on the Code column. (View is admin-only so no gating.)
+  - `MedalRoundView` Assign Entries dialog: same split.
+  - `RoundView` scoresheets grid: Entry # column gated to admins (`isAdmin` already existed); existing Entry → Code, Mead → Mead Name renames for parity. `entryNumberLabel(Entry)` helper added.
+  - `ScoresheetView`: single "Category" line replaced with two — "Initial Category" + "Final Category". `categoryLabel` split into `initialCategoryLabel` / `finalCategoryLabel` over a new `categoryLabelFor(UUID)` helper.
+  - i18n: removed `medal-round.column.entry`, `medal-round.assign-entries.column.entry`, `table.column.entry`, `table.column.mead`. Added 7 new keys × 5 locales: `medal-round.column.entry-number/entry-code/mead-name`, `medal-round.assign-entries.column.entry-number/entry-code/mead-name`, `table.column.entry-number/entry-code/mead-name`, `entries.view.initial-category`.
+  - +4 tests (one per view + dialog + judge gate).
 
-**Problem:** After REGISTRATION_CLOSED, the admin needs to reorganize categories for judging
-(e.g. combine thin categories, create new groupings, rename). Currently, `allowsCategoryModification()`
-blocks all category changes after REGISTRATION_OPEN, and even if that were lifted, deleting a
-category referenced by `entry.initialCategoryId` would violate the FK constraint.
+- **Mid-walkthrough anonymity fix (2026-05-28)** — judges DO open MedalRoundView for ACTIVE SCORE_BASED medal rounds (small-category flow), so the Entry # and Mead Name columns on `MedalRoundView.createGrid` had to be gated on `isAdmin` (initial commit assumed the view was admin-only — wrong). Same anonymity rule extended to `RoundView.scoresheetsGrid.mead-name` column (was visible to judges). Search box on `RoundView` also gated: judges' `matchesSearch` no longer matches mead name; placeholder swaps to `table.filter.search.placeholder.judge` ("Entry code") × 5 locales. Now: judges on either view see only the Code column and can search by code only. Admins keep Entry # + Code + Mead Name + dual-field search. +2 tests.
 
-**Design: `scope` field on `DivisionCategory`**
+**State on disk** (`feature/judging-module` at `33633bb` + item (a) round→table
+reassignment + the **(c) unified round-admin + scoresheet redesign Phases 1-5 all committed**
+(`07673ef` FILLED status, `10eece5` unified grid, `5d680df` Finalize/Reopen, `0108c08` i18n prune,
+`0243e94` P14 date+time) + the **test-only `submit()` retire follow-up**, **all pushed 2026-05-29** —
+plus `58869c9` (test-only `submit()` retire) + `9193893` (walkthrough §12.6-§12.12 rewrite).
+**Walkthrough-found fix #1 (2026-05-30, committed `3313e2c`):** the Add Round dialog dropped the Scheduled
+date/time for MEDAL rounds (`createMedalRound` ignored it) — now persisted via `updateRoundScheduledAt`
+after create (id `add-round-scheduled` on the picker). Rounds-grid Category column now shows the **code
+only** with a full `code — name` tooltip (`setTooltipGenerator`, narrower via `setFlexGrow(0)`); Scheduled
+column given a fixed `12em` width so the full `yyyy-MM-dd HH:mm` fits. +1 UI test
+(`JudgingAdminViewTest.shouldPersistScheduledAtWhenCreatingMedalRoundViaAddRoundDialog`).
 
-Add a `scope` enum (`REGISTRATION` / `JUDGING`) to `DivisionCategory`:
+**Change #36 (P18 part 1 — entrant scoresheet CONTENT + anonymization, 2026-06-01, uncommitted):** the
+deferred P18 content/anonymization fixes (the **field-layout redesign is still pending** — awaiting the
+user's screenshots). Three cycles, no migration. **(Cycle 1, service)** `AnonymizedScoresheetView.FieldScore`
+dead `tierLabel` → **`comment`**; `AnonymizedScoresheet` gained **`boolean advanced`**.
+`AwardsServiceImpl.getAnonymizedScoresheet` now feeds the entrant's **prefixed entry NUMBER** (was
+`entry.getEntryCode()` — the anonymized code) into the view; `buildAnonymizedScoresheet` passes
+`f.getComment()` + `sheet.isAdvancedToMedalRound()`. New shared `formatEntryNumber(entry, prefix)` helper
+(also used by `buildEntrantRow`). +1 unit test
+(`AwardsServiceImplTest.shouldBuildAnonymizedScoresheetWithEntryNumberFieldCommentsAndAdvancedFlag`).
+**(Cycle 2, dialog)** the entrant scoresheet is now a **dialog**, not a routed page — **`MyScoresheetView`
+deleted** (route gone), new `EntrantScoresheetDialog` (awards.internal, modelled on `MeadDetailsDialog`)
+opened from `MyResultsView`'s 👁 eye via public `openScoresheetDialog(scoresheetId, userId)`. Shows entry
+number + mead name (header), category, per-criterion **comments**, an "Advanced to the medal round" line
+(green check, id `entrant-scoresheet-advanced-N`), total, overall comments — and **no judge/"Judge N" label
+at all** (user decision: entrants know judges evaluated; the individual judge isn't surfaced). +1 UI test
+(`MyResultsViewTest.shouldRenderEntrantScoresheetDialogWithCommentsAndAdvancedButNoJudgeLabel`). Pruned dead
+i18n `my-scoresheet.{judge-ordinal,download-pdf,back}`, added `my-scoresheet.advanced` × 5 locales.
+**(Cycle 3, PDF)** `ScoresheetPdfService`: heading `scoresheet.pdf.heading` "Anonymized Scoresheet" →
+**"Scoresheet"**; `scoresheet.pdf.entry-code` (+ `entry.getEntryCode()`) → **`scoresheet.pdf.entry-number`**
++ prefixed number; **judge meta row now only on the FULL (admin) PDF** — the ANONYMIZED entrant copy omits
+it; new **advancement row** (`scoresheet.pdf.advanced[.yes|.no]`). All new/changed keys × 5 locales, grep
+non-ASCII zero. **1301 tests green.** Walkthrough §13.5 / §13.12 + post-deployment-test.md updated.
 
-| Scope | Created during | Deletable? | Referenced by |
-|-------|----------------|-----------|---------------|
-| `REGISTRATION` | DRAFT / REGISTRATION_OPEN only | Blocked if any `initialCategoryId` references it | `entry.initialCategoryId` |
-| `JUDGING` | REGISTRATION_CLOSED or later | Blocked if any `finalCategoryId` references it | `entry.finalCategoryId` |
+**Change #37 (P18 part 2 — judge scoresheet field-layout redesign + MJP rubric, 2026-06-01, uncommitted):**
+the deferred scoresheet field-layout redesign, modelled on a reference MJP app (6 screenshots). No schema
+change. **(Cycle A)** `MjpScoringFieldDefinition` gained a `RubricBand` enum (6 bands: Unacceptable / Below
+average / Average / Very good / Excellent / Perfect) + per-field `Band(band, low, high)` ranges + a `slug`
+and `descriptionKey(band)` helper; `FieldDefinition` now `(fieldName, slug, maxValue, bands)`. New
+`MjpScoringFieldDefinitionTest` (4 tests: 5 fields total 100, 6 bands/field in canonical order, contiguous
+0..max coverage, key derivation). **(Cycle B)** `ScoresheetView` rewritten: (1) a **two-card info panel**
+(`scoresheet.basic-info` = categories + sweetness + **Strength** [was missing] + carbonation + ABV;
+`scoresheet.mead-info` = honey + other ingredients + wood + additional info), anonymized (mead name
+admin-only); (2) **one bordered card per criterion** with the localized title and **two columns** (rubric
+left = 6 bands with score ranges + descriptions; score right = "Your score" NumberField + "Max: N" +
+per-criterion comment), wrapping to one column on narrow screens; (3) a **prominent centered total card**
+(H3 `scoresheet-total` in its own banded box). All ids preserved (`score-<f>`, `score-comment-<f>`,
+`scoresheet-total`, `overall-comments`, `save-button`, `scoresheet-save-status`, `comment-language`,
+`advance-checkbox`). +1 UI test (`shouldRenderMjpRubricBandsRangesAndDescriptions`); all 17 existing
+ScoresheetView tests stay green. **(Cycle C)** 46 new i18n keys × 5 locales (5 criterion titles, 6 band
+names, 30 band descriptions, `your-score`/`max-note`/`comments.label`/`basic-info`/`mead-info`) via one-shot
+script (ASCII-escaped, zero non-ASCII); pruned orphan `scoresheet.scores.section`. EN wording per the user:
+always "within the style", "ideal for the style", "repulsive". PT uses formal "sua"; IT informal "tu".
+**1306 tests green.** Walkthrough §12.11 rewritten. **STILL DEFERRED:** **P15** (bottom-notification overlap)
+not yet folded in.
 
-**Confirmed design decisions:**
-- JUDGING categories require a description (same as REGISTRATION — no nullable change)
-- `finalCategoryId` is clearable (nullable) from admin UI — Select includes empty option
-- Standalone `EntryService.assignFinalCategory(entryId, finalCategoryId, userId)` method (not bundled into `adminUpdateEntry`)
-- Final category picker is **disabled** with helper text when no JUDGING categories exist yet (the original "fall back to ALL categories" design was reverted on 2026-05-17 — see Completed priorities — to prevent stale registration-scope assignments slipping past the judging-category deletion guard)
-- Judging category management allowed for any status >= REGISTRATION_CLOSED (through JUDGING, DELIBERATION, RESULTS_PUBLISHED)
-- "Initialize judging categories" is part of this feature; full judging module workflows come later
-- Unique constraint changes to `UNIQUE(division_id, code, scope)` — same code can exist in both scopes
+**Walkthrough finding — DEFERRED design item (P19, 2026-06-01):** medal awards cannot be corrected once
+judging is COMPLETE. `MedalRoundView` enables **Reopen** only when judging phase == `ACTIVE`
+(`judgingActive`), and reverting the *division* status (RESULTS_PUBLISHED→DELIBERATION→JUDGING) never moves the
+*judging phase* back to ACTIVE — so a COMPLETE medal round is unreopenable post-judging. BOS, by contrast, IS
+correctable at DELIBERATION (its Reopen is enabled at phase `COMPLETE`). So at DELIBERATION the only editable
+judging data is BOS — §13.8's "edit a medal" is not achievable; use a BOS edit instead. **Design constraint
+(user, 2026-06-01):** do NOT just relax the medal Reopen gate — confirmed GOLD medals are the BOS candidates,
+so editing a medal while BOS is finalized would desync BOS. The correct fix is an ordered dependency: medal
+reopen must require **BOS to be reopened/unfinalized first** (reopen BOS → reopen medal round → edit → finalize
+medals → finalize BOS → republish). Non-trivial phase-state change; revisit post-v0.4.0.
 
-**Key rules:**
-- REGISTRATION categories: fully managed via existing flow; once REGISTRATION_CLOSED, they become
-  read-only in the UI (visible but no add/edit/delete — they are historic record)
-- JUDGING categories: only appear after REGISTRATION_CLOSED; admin can freely add/edit/delete them
-  (guarded against deletion when referenced by `finalCategoryId`)
-- "Initialize judging categories" button clones all REGISTRATION categories into JUDGING ones
-  (same codes, names, descriptions, hierarchy; `catalogCategoryId = null` on clones) — admin can then diverge freely
-- When setting `finalCategoryId` on an entry (in DivisionEntryAdminView), the category picker shows
-  only JUDGING categories; disabled with helper text when none are initialized yet
-- Service rejects non-null `finalCategoryId` when no JUDGING categories exist, and validates the ID
-  is in JUDGING scope when they do
+**▶▶ DEFERRED — RESUME NEXT SESSION (raised 2026-06-01, NOT started):**
 
-**New files:**
-- `app.meads.competition.CategoryScope.java` — public enum (`REGISTRATION`, `JUDGING`)
-- `app.meads.competition.JudgingCategoryDeletionGuard.java` — public guard interface
-- `app.meads.entry.internal.EntryJudgingCategoryDeletionGuard.java` — guard impl
+**(P21) ✅ DONE 2026-06-03 — entry mutations hard-locked at DELIBERATION+ (uniform cutoff, hard block,
+revert-to-edit escape hatch). See the ✅ P21 block under "▶ RESUME HERE". The original audit follows for
+reference.**
 
-**Migration:** V18
-- Add `scope VARCHAR(20) NOT NULL DEFAULT 'REGISTRATION'` to `division_categories`
-- Drop `UNIQUE(division_id, code)` constraint
-- Add `UNIQUE(division_id, code, scope)` constraint
+**(P21) Entry/category mutations are not stage-gated for late stages — AUDIT DONE, FIX NOT STARTED, policy
+unconfirmed.** `EntryService` has **no late-stage/freeze guard at all** (the `requireNotFrozen` freeze guard
+only lives in the judging/scoresheet services). Audit of current gating:
+- `createEntry` / `updateEntry`: require `REGISTRATION_OPEN` only (code says blocked after registration).
+- `deleteEntry`: entry must be DRAFT.
+- **Unguarded against late stages (auth-only, no upper status bound):** `advanceEntryStatus`,
+  `revertEntryStatus`, `markReceived`, `withdrawEntry`, `assignFinalCategory`,
+  `assignFinalCategoriesByCode` (auto-assign).
+- `CompetitionService.addJudgingCategory`: gated by `DivisionStatus.allowsJudgingCategoryManagement()` =
+  `ordinal() >= REGISTRATION_CLOSED` — which **includes DELIBERATION + RESULTS_PUBLISHED** (no upper bound).
+- **⚠️ USER OBSERVATION (2026-06-01) CONTRADICTS THE CODE:** the user reported being able to **create AND edit
+  entries after RESULTS_PUBLISHED**, even though `createEntry`/`updateEntry` check `REGISTRATION_OPEN`. **FIRST
+  RESUME STEP:** investigate the admin add/edit path in `DivisionEntryAdminView` (the admin "Add Entry" two-step
+  + Edit dialog) — it likely calls a different service method, or bypasses the `REGISTRATION_OPEN` gate, or the
+  gate isn't reached for admins. Reproduce on Profissional (RESULTS_PUBLISHED) before designing the fix.
+- **Proposed policy (UNCONFIRMED — user paused before answering):** block the unguarded ops once the division
+  is at **DELIBERATION or later** (allowed through JUDGING, so late-RECEIVED + mid-judging category placement
+  still work); cap `allowsJudgingCategoryManagement()` below DELIBERATION. Open question the user wanted to
+  clarify: whether the cutoff is uniform per-op or some ops (e.g. changing final category after a scoresheet
+  exists) should also be blocked during JUDGING; and whether a "reopen-to-edit" model fits better than a hard
+  block. New `EntryService.requireEntryStageMutable(division)` + error key ×5 + UI gating in
+  `DivisionEntryAdminView` + tests. **Do NOT implement until the policy + the create/edit-post-publication
+  reproduction are settled with the user.**
 
-**New service methods (CompetitionService):**
-- `initializeJudgingCategories(divisionId, adminUserId)` — clones REGISTRATION → JUDGING; throws if JUDGING categories already exist
-- `addJudgingCategory(divisionId, code, name, description, parentJudgingCategoryId, adminUserId)`
-- `updateJudgingCategory(divisionId, categoryId, code, name, description, adminUserId)`
-- `removeJudgingCategory(divisionId, categoryId, adminUserId)` — guarded by `JudgingCategoryDeletionGuard`
-- `findJudgingCategories(divisionId)` — returns only JUDGING scope
+**(P22) Manual COI entry by admin — ✅ DONE (2026-06-02). 1321 tests.** Per-competition, judge↔entrant,
+hard-block (settled with the user). New `ManualCoi` entity (`judging.internal`) + `ManualCoiRepository` + V32
+migration `manual_cois` (UNIQUE on competition+judge+entrant). `CoiCheckServiceImpl.check()` consults it
+transparently (resolves entry→division→competition, then `existsByCompetitionIdAndJudgeUserIdAndEntrantUserId`)
+so `assignJudge`/`recordMedal`/`updateMedal` all enforce it for free. New public API on `CoiCheckService`:
+`addManualCoi`/`removeManualCoi`/`findManualCois` (admin auth via `isAuthorizedForCompetition`; rejects
+not-authorized/duplicate/same-user/not-found) + public `ManualCoiView` DTO. New "Conflicts of Interest" tab
+(5th) on `JudgingAdminView` — grid + add dialog (judge/entrant ComboBoxes from competition participants) +
+remove confirm; ids `add-coi-button`, `coi-grid`, `add-coi-judge`, `add-coi-entrant`. 18 i18n keys ×5 locales
+(4 error + 14 UI). 5 TDD cycles: repo / check() / management API / integration / UI. The original deferred
+note follows for reference:
 
-**New service method (EntryService):**
-- `assignFinalCategory(entryId, finalCategoryId, requestingUserId)` — nullable `finalCategoryId` to clear; validates category is JUDGING scope (when JUDGING categories exist)
+Automatic COI
+detection is **account/meadery based**: `CoiCheckService.check(judgeUserId, entryId)` → `CoiResult`
+(`blocking`/`warn`/`clear`), implemented in `CoiCheckServiceImpl` (judge owns the entry → hard block;
+meadery-name match via `MeaderyNameNormalizer` → soft warn). Consumed by `JudgingServiceImpl.assignJudge`
+(hard-COI rejection, `error.coi.assign-hard-block`, ~line 724) + medal recording (~1508). **Gap found in the
+real competition:** a professional entrant registered their meads under the **business email** but registered
+as a **judge under a different email** — two separate accounts for the same person, so `check()` (account-based)
+never matches → no COI is detected and the judge could be assigned to their own meads' category. **Need:** an
+admin-declared **manual COI**. Likely shape: a new table/entity recording a manual COI link (judge `userId` ↔
+entrant `userId`, or judge ↔ entry/category, scoped to division/competition); `CoiCheckServiceImpl.check()`
+consults it (return hardBlock or warn); admin UI to add/remove manual COIs (JudgingAdminView judges area or
+participant management). Decide hard vs soft for manual entries. No code started.
 
-**New repository methods:**
-- `DivisionCategoryRepository.findByDivisionIdAndScopeOrderByCode(divisionId, scope)`
-- `DivisionCategoryRepository.existsByDivisionIdAndCodeAndScope(divisionId, code, scope)`
-- `EntryRepository.existsByFinalCategoryId(categoryId)`
+**(§13.12) Anonymity sanity check — NOT YET REPORTED.** Last walkthrough step was presented but the user
+never reported the result. Re-run: entrant (`proentrant1@example.com`) → My Results → 👁 scoresheet dialog
+shows **no judge label**; ⬇ PDF heading "Scoresheet", **no judge row**, entry **number** (not code),
+advancement row. Confirm, then §13 Awards walkthrough is fully done.
 
-**New status helper on `DivisionStatus`:**
-- `allowsJudgingCategoryManagement()` → `ordinal() >= REGISTRATION_CLOSED.ordinal()`
+**Change #39 (BUG FIX — broken announcement login, walkthrough §13.9–13.11, 2026-06-01, uncommitted):** the
+results-announcement email CTA was unclickable-broken in **production**. `SmtpEmailService.sendResultsAnnouncement`
+built the CTA as `link + resultsUrl` — concatenating `competitions/.../my-entries` **directly onto the magic-link
+token value** (`…/login/magic?token=<JWT>competitions/…`), so `JwtMagicLinkService.extractEmail` failed to parse
+the corrupted JWT → `MagicLinkAuthenticationFilter` fell through to `/login?error`. (The filter also has no
+redirect-target support — it always `sendRedirect("/")`.) **Investigation:** this was the ONLY broken email —
+every other deep-link email (submission confirmation, credit notification, judging table-ready / scoresheet-
+reverted / medal-round-ready, magic login, password setup, MFA reset) passes the **bare** magic link, which
+logs in fine and lands on `/`, where `RootView` routes the user to their default page. Token validity is uniform
+**7 days** across all of them (`TOKEN_VALIDITY`/`LINK_VALIDITY`); only MFA reset is 1h. **Fix (chosen: minimal):**
+the announcement now passes the **bare magic link** too — after login `RootView` routes the entrant to their
+results (the change-#33 `resultsLandingPath`), so the deep-link was unnecessary. Removed the now-dead
+`resultsUrl` param from `EmailService.sendResultsAnnouncement` + impl + `AwardsServiceImpl` (no more
+`/competitions/.../my-entries` build); updated 2 `AwardsServiceImplTest` matchers + dropped 4 now-unused
+`getShortName()` stubs. **1306 green.** **DEFERRED (P20):** proper deep-link redirect support (`&redirect=<safe
+internal path>` on the magic filter, URL-encoded, open-redirect-guarded) so emails can land on an exact page
+rather than bouncing through `/`. Walkthrough §13.9 CTA expectation updated.
 
-**UI changes:**
-- `DivisionDetailView` Categories tab: split into "Registration Categories" (read-only after REGISTRATION_CLOSED) and "Judging Categories" section (only visible when `allowsJudgingCategoryManagement()`)
-- "Initialize from Registration Categories" button (only shown when no judging categories exist yet)
-- `DivisionEntryAdminView` admin edit dialog: add Final Category Select field (clearable); shows JUDGING categories or falls back to all categories
+**Change #38 (walkthrough §13.7 fix, 2026-06-01, uncommitted):** `AwardsAdminView` publish / republish /
+revert success notifications were never seen — each handler showed the toast then immediately called
+`UI.getCurrent().getPage().reload()`, a full browser reload that tore down the UI (and the toast) before it
+rendered. Fix: new private `refreshPage()` (re-fetches the division + `renderPage()` in the same UI) replaces
+the three `getPage().reload()` calls; the toast now survives and the actions/history re-render in place. `UI`
+import dropped (no longer used). Found running §13.6–13.7 on Profissional. Not Karibu-reproducible (a Karibu
+`getPage().reload()` is a no-op), so fast-cycle; existing `AwardsAdminViewTest` (per-status render) +
+`AwardsModuleTest` stay green. Walkthrough §13.6 (freeze guard — rewritten: controls hidden by status +
+service guard the backstop; only Add-Round save reaches the frozen notification) + §13.7 updated. **Two more
+AwardsAdminView fixes same session:** (a) the Re-publish + announcement **dialogs widened** (`setWidth("36em")`,
+TextArea min-height 120→180px — they were sizing to content); (b) removed `setDisableOnClick(true)` from the
+four actions-row opener buttons (publish/republish/announce/revert) — they disabled on click to open a
+(modal) dialog but never re-enabled on **Cancel**, leaving the button stuck disabled; the in-dialog confirm
+buttons keep disable-on-click as double-submit guards. (c) publication-history grid column proportions:
+**Version** narrowed to 90px fixed, Published-at 200px, Published-by 180px (all `flexGrow 0`), **Justification**
+now `flexGrow 1` (takes the slack) with a **tooltip** showing the full text when truncated.
 
-**Sequencing (TDD cycles):**
-1. ✅ Unit test: `CompetitionServiceJudgingCategoryTest` — `initializeJudgingCategories`, `addJudgingCategory`, `updateJudgingCategory`, `removeJudgingCategory` (11 tests). Also: `CategoryScope` enum, `JudgingCategoryDeletionGuard` interface, `DivisionStatus.allowsJudgingCategoryManagement()`, V18 migration, backward-compat 7-arg `DivisionCategory` constructor.
-2. ✅ Repository test: `DivisionCategoryRepositoryTest` — scope-based queries; `EntryRepository.existsByFinalCategoryId()` (3 new tests). Note: must use returned entity from `save()` when re-saving in `@Transactional` tests — `@PrePersist` fires on managed copy, not original Java object.
-3. ✅ Unit test: `EntryServiceTest` — `assignFinalCategory` (6 tests: sets, clears, fallback when no judging categories, validates JUDGING scope, entry not found, unauthorized)
-4. ✅ Module integration test: `CompetitionModuleTest` — 4 new tests: initialize judging categories, full lifecycle (add/update/find/remove), status rejection (DRAFT/REGISTRATION_OPEN), duplicate initialization rejection
-5. ✅ UI test: `DivisionDetailViewTest` — 5 new tests: Add Category disabled after REGISTRATION_CLOSED, Initialize Judging Categories button appears, absent before REGISTRATION_CLOSED, judging grid shown when categories exist, Add Judging Category button shown when categories exist. `DivisionDetailView` updated: judging categories section below registration grid (Initialize button when empty, grid + Add button when populated)
-6. ✅ UI test + guard: `DivisionEntryAdminViewTest` — `shouldRenderEntriesGridWhenEntryHasFinalCategoryAssigned` (grid renders without NPE when entry has finalCategoryId). `EntryModuleTest` — `shouldPreventDeletionOfJudgingCategoryReferencedByFinalCategoryId`. Created `EntryJudgingCategoryDeletionGuard`. Wired `assignFinalCategory` in admin edit Save handler with clearable JUDGING category Select.
+**Change #37 follow-up (visual refinements after the user reviewed it live, 2026-06-01, uncommitted):**
+fast-cycle tweaks to `ScoresheetView` + i18n (no schema, no net new tests — 1 existing test updated for the
+split label span; **1306 green**): title **"MJP Scoresheet — {0}"** (was "Scoresheet"); info-panel field
+labels now **bold**, headers same size as criterion titles; the mead-info card renamed **"Additional
+information"** and now **shows all remaining mead fields even when empty** (`—`); the score column is
+**right-aligned/hugs the right edge** of each criterion card; **"Comments"** is a bold Span label matching
+"Your score" (not the field caption) with a **lighter placeholder**
+(`--vaadin-input-field-placeholder-color` → tertiary); total reads **"Total: …"** (was "Current total");
+**comment language moved above Additional comments**, both inside a new **"Other Information"** box; the
+advance-to-medal checkbox moved into its own **"🏅 Progression to Medal Round"** box below the total. New
+i18n `scoresheet.other-info` + `scoresheet.progression.title` × 5 locales; `scoresheet.title`/`total.format`/
+`mead-info` values changed × 5. **Further layout tweaks (same review, layout-only, no i18n/tests):** in each
+criterion card the rubric column and the score column **share the width ~50/50** (both `flex: 1 1`); the band
+**score range sits well right-of-centre AND aligned across rows** via a fixed-width band-name column
+(`flex: 0 0 68%`, range follows) — note the earlier "flex-basis didn't work" was a stale-build artefact; with
+a fresh build it aligns correctly; the
+per-criterion **comments field fills the (now ~half-width) score column** (columns `align-items: stretch`,
+comment `flex-grow:1` + `height:100%` + `min-height:6em`) so it grows to the bottom of the card and **scrolls
+internally** instead of expanding the card. Score-column contents (Your score label, ticker, Comments label)
+are **left-aligned** (`Alignment.START`) to line up with the left edge of the full-width comments field.
 
-### Priority 1: Manual test of judging category management — COMPLETE
-Manual testing completed 2026-05-03. Issues found and fixed during walkthrough:
-- **Judging Categories moved to own tab** — previously embedded in the Categories tab; now a
-  separate "Judging Categories" tab (only visible when `allowsJudgingCategoryManagement()`).
-  Default tab is Judging Categories when status ≥ REGISTRATION_CLOSED.
-- **i18n for judging section** — all hardcoded English strings (button labels, dialog titles,
-  column headers, field labels, notifications) now use `getTranslation()`. Keys added under
-  `division-detail.judging.*` in both `messages.properties` and `messages_pt.properties`.
-- **Missing error keys added** — `error.category.judging-has-entries`,
-  `error.category.judging-not-allowed-status`, `error.category.judging-already-initialized`
-  added to both EN and PT. Previously showed raw key string instead of message.
-- **Admin error messages now locale-aware** — removed forced `Locale.ENGLISH` from all 40
-  `BusinessRuleException` catch blocks across 5 admin views (UserListView, CompetitionListView,
-  CompetitionDetailView, DivisionDetailView, DivisionEntryAdminView). Errors now render in the
-  user's preferred language, consistent with all other translated strings.
-- **Add Judging Category dialog** — fields now laid out vertically (Code → Name → Description
-  → Parent Category), matching the custom category dialog style. Parent select added.
+**▶ WALKTHROUGH IN PROGRESS (2026-06-08 — resume here). Full manual walkthrough being run from the
+beginning, guided step by step. Branch `feature/judging-module`, 1344 tests, head `82d38cc` + 1 uncommitted-then-
+committed walkthrough doc commit (this session changed ONLY `docs/walkthrough/manual-test.md`; no code).**
+- **Pacing agreed with the user:** §2–§11 (up to REGISTRATION_CLOSED) = *report-only-issues*; §12 Judging + §13
+  Awards = *section-by-section*; recently-fixed items + the entrant-scoresheet redesign (§13.5/§13.12) +
+  §12.10.3/§12.11 = *subsection-by-subsection*.
+- **✅ PASSED so far (all clean / confirmed):** §2 Auth · §3 Nav (incl. **P15** bottom-gap) · §4 Users · §5
+  Competitions · §6 Comp detail (incl. **P13** role counts) · §7 (catalog/settings; **7a/7b multilingual category
+  display DEFERRED to entrant-side testing, 7c judging-cat translations DONE here**) · §8 Entry Admin (incl. verbose
+  all-fields entry) · §9 Webhook · §10/§11 entrant view (incl. **P12** label withdrawal, verified on Profissional) ·
+  §12.1/12.1.1/12.2 · §12.4/12.4.1/12.4.2 + **7c** · §12.5/12.5.0/12.5.1/12.5.2.
+- **Code review (this session's diff `2f62893..HEAD`) DONE 2026-06-09.** 3 findings: (1) PDF scores box could clip long
+  comments → **box removed, spacing kept** (commit pending); (2) `producerLabel` "null" for a meadery-required entry
+  lacking a meadery name → **left as-is** (rare; the new results-preview lets admins fix the meadery first); (3)
+  `DivisionDetailView` fetched judging categories twice per render → **deduped** (fetch once, pass into the section).
+  No correctness regressions in the judging/awards logic. THEN merge → v0.4.0.
+- **⏸ RESUME POINT: WALKTHROUGH COMPLETE (2026-06-09). Next = post-walkthrough items → v0.4.0.** §2–§13 all walked
+  (clean, with the many fixes committed this session). **Skipped by user (acknowledged):** §12.9–§12.12 interactive
+  judge/scoring/medal views (exercised live during Amadora/Profissional round progression; this-session fixes —
+  filledBy=last-validator, category localization, grid sorts, clear-medal-sticks, medal-email scoping — are
+  unit-tested) and **§14 Cross-cutting concerns**. §13 Awards fully done incl. publish/preview/revert/republish/
+  announcements/anonymity. **NEXT (post-walkthrough):** (1) **judge tasting-label PDF** feature (NEW — start full TDD;
+  ask the user the open questions in the ⚑⚑ block: dimensions/sheet layout, what each label shows, which entries, where
+  the action lives); (2) full code review; (3) merge `feature/judging-module` → `main`; (4) **v0.4.0 release** (bump
+  pom, tag, CI deploy). Tests at **1363** green. Branch head advancing per-fix (see git log).
+  ⚠ Superseded line follows: - **(old) §12.8 Best of Show tab. §12.6 (all subsections incl. 12.6.8.1 A/B/C) + §12.7 Results tab PASSED clean 2026-06-09. After §12.8: §12.9+ judge/steward views → §12.10/12.11 scoring (RoundView/ScoresheetView, incl. the multi-judge §12.10.3 + recently-fixed grid items) → §12.12 medal rounds → §13 Awards. NOTE: full BOS start needs ALL medal rounds COMPLETE (M1A/M1B finalize in §12.10–12.12), so the actual Start BOS may be deferred until then.** §12.6.8 Add medal round PASSED clean. Batches 1–4 all **PASSED clean** (2026-06-09): §12.6 header +
+  §12.6.0 Tables + §12.6.1 Add round + §12.6.2 Edit round; §12.6.3 Assign judges + COI badges + §12.6.3.1 Manual COI
+  (see COI finding below); §12.6.4 Start round (Amadora now at **JUDGING**, ACTIVE round at Table 1) + §12.6.0.1
+  cross-division shared-tables; §12.6.4.1 Revert + §12.6.5/6 min-judge locks + §12.6.7 delete + §12.6.7.1
+  split-category entries (Profissional). Continue with **§12.6.8 Add medal round → §12.6.8.1 SCORE_BASED small-category
+  flow (big end-to-end: assign/sync entries, judges, start, judge scoring, auto-populate medals, finalize, reopen) →
+  §12.6.9 filters → §12.6.10 Open drill-ins → §12.7 Results tab.**
+- **RoundView row-click removed + columns sortable/resizable (§12.10.1, 2026-06-09, DONE — fast cycle):** the
+  scoresheets grid in `RoundView` no longer navigates to the scoresheet on row-click (redundant with the per-row 👁
+  mead-details + ✏ Open icons). **Update (same day):** grid set to `SelectionMode.SINGLE` (was briefly `NONE`) so a
+  row-click just **highlights** the row (toggle-off on re-click) to track which row's icons you're clicking — still no
+  navigation. (MedalRoundView + JudgingAdminView rounds grid already default to SINGLE-select — no change needed.)
+  ALSO: `RoundView` was the only judging grid whose
+  columns were not sortable/resizable — added `setResizable(true).setSortable(true)` to every data column (Actions =
+  resizable only), with numeric `setComparator`s for Entry # (`comparingInt`) and Total (`nullsLast` numeric via new
+  `sortableTotal` helper). All other judging grids (JudgingAdminView rounds/judges/entries/tables/COI, MedalRoundView,
+  BosView) already had it. Deleted the obsolete UI test
+  `RoundViewTest.shouldNavigateToScoresheetViewWhenGridRowClicked`. Walkthrough §12.10.1 + §12.10.6 updated. Test
+  count 1344 → **1343** (full suite green). Branch still `feature/judging-module`; this is uncommitted code +
+  walkthrough/doc edits.
+- **Blank republish justification crashed (§13.8, 2026-06-09, FIXED — fast cycle):** re-publishing with an empty
+  justification tripped the service's interface `@NotBlank` → raw `ConstraintViolationException` (error page); the
+  dialog only caught `BusinessRuleException`. Added a UI blank-check in `AwardsAdminView.openRepublishDialog` (field
+  error via `error.awards.justification-too-short`, service not called), matching the codebase "views do blank checks
+  for UX, service still enforces" pattern. Confirm button got id `awards-republish-confirm`. +1 test
+  `shouldRejectRepublishWithBlankJustificationWithoutException`. 1362 → **1363**. Walkthrough §13.8 updated.
+- **Admin results preview before publishing (§13.1.4, 2026-06-09, NEW FEATURE — full-ish cycle):** admins can preview
+  the public results page while still DELIBERATION. Same `/results` URL serves the published page to everyone OR an
+  admin-only preview when not yet published: `AwardsPublicResultsView` (now injects `AuthenticationContext`+`UserService`)
+  falls back to `awardsService.getResultsPreview(comp, div, locale, adminUserId)` on `not-published`, rendering with a
+  warning banner (`awards-preview-banner`); non-admins still forward to root (no leak). New `AwardsService.getResultsPreview`
+  (authorizes admin + requires status ≥ DELIBERATION, else `error.awards.preview-not-ready`); extracted shared
+  `buildResultsView`. New **"Preview results"** Anchor (`awards-preview-results-link`, target=_blank) in `AwardsAdminView`
+  actions. 3 i18n keys ×5 (`awards.admin.preview-results`, `awards.preview.banner`, `error.awards.preview-not-ready`).
+  +2 guard tests. 1360 → **1362**. Walkthrough §13.1.4 added.
+- **Scoresheet PDF spacing between outcome and scores (§13.5, 2026-06-09, DONE — fast cycle):** added a gap separating
+  the medal/outcome + advanced lines from the comment-language + scores block. *(A bordered box was briefly tried but
+  REMOVED in code review — a single tall composite `PdfPCell` risked clipping very long comments across pages; content
+  now flows directly with just the gap. `CARD_BORDER` color removed.)* 1363 green.
+- **Scoresheet PDF comment-language → full name (§13.5, 2026-06-09, DONE — fast cycle):** `ScoresheetPdfService`
+  showed the raw ISO code (e.g. "en"); now shows the localized full language name ("English") via
+  `languageDisplayName(code, locale)` (+ blank guard). Shared service → applies to entrant + judge/admin PDFs. No test
+  asserted the code; 1360 green.
+- **Entrant scoresheet dialog comment-language hard to spot (§13.5, 2026-06-09, DONE — fast cycle):** the dialog
+  rendered the comment language as a small grey raw-code Paragraph (e.g. "pt"), easily missed; the PDF had it. Made it
+  a **bold-labelled `attributeLine`** ("Comment language: {localized name}", e.g. "Português") via new
+  `languageDisplayName(code)` (Locale display name, capitalized), id `entrant-scoresheet-comment-language`. Same null
+  guard. No test asserted it; 1360 green. Walkthrough §13.5 updated.
+- **Withheld medal reappeared after reopen+save (§12.6.8.1, 2026-06-09, FIXED — full cycle):** `reopenMedalRoundById`
+  un-confirmed ALL awards via `revertConfirmation()`, including a withhold (confirmed null medal). Once unconfirmed,
+  the next save's autoPopulate deleted it and re-derived the medal. Fix: skip null-medal awards in the reopen
+  un-confirm loop — a deliberate withhold stays confirmed (autoPopulate keeps the entry "taken"); only awarded
+  (non-null) medals go provisional so score edits re-rank them. +1 test
+  `JudgingServiceMedalRoundTest.shouldKeepWithheldMedalConfirmedWhenReopeningScoreBasedMedalRound`. 1359 → **1360**.
+  Walkthrough §12.6.8.1 reopen bullet updated.
+- **Medal-round-ready email spammed prelim-panel judges (§12.12, 2026-06-09, FIXED — full cycle):** starting a
+  COMPARATIVE medal round emailed EVERY judge in the category — including the preliminary SCORING panels' judges
+  (e.g. M1A Panel A=judge1,2 + Panel B=judge4,5; medal round=judge1,2 → all 4 emailed). `JudgingNotificationListener.on(MedalRoundActivatedEvent)`
+  iterated all rounds via `findByDivisionCategoryId`; now filters to `RoundType.MEDAL` so only the medal round's
+  assigned judges are notified. Rewrote `JudgingNotificationListenerTest` medal test to the split-panel scenario
+  (asserts judge4/judge5 NOT emailed). 1359 (no net count change — test rewritten). 
+- **Public results producer label "null" + spacing (§13.3, 2026-06-09, FIXED — full cycle):** public results showed
+  "null" for amateur (Amadora) entries because the medal/BOS rows used raw `entrant.getMeaderyName()`. New
+  `AwardsServiceImpl.producerLabel(entrant, division, locale)` (public static, pure): **meadery name** when
+  `division.isMeaderyNameRequired()` else **meadmaker name**, ALWAYS suffixed ` (Country)` via `CountryDisplay` when set.
+  `PublicResultsView` records renamed `meaderyName`→`producer`; added top-level `boolean meaderyRequired` so the BOS
+  column header is "Meadery" vs new "Maker" (`awards.public.bos.maker-name` ×5). Removed dead `rows`/`rowMedalMatches`
+  block in `getPublicResults`; `filterByMedal` now takes division+locale. **AwardsPublicResultsView spacing:** medal
+  label tightened against its entries (group VerticalLayout, spacing off, `margin:0` lines), `margin-top:xl` before each
+  category H3, and `padding-bottom:xl` on the page. +3 unit tests (`producerLabel*`). 1356 → **1359**. Walkthrough §13.3 updated.
+- **Judging Categories tab disappeared at DELIBERATION (§13.1.2, 2026-06-09, FIXED — full cycle, user chose read-only):**
+  `DivisionDetailView` gated the tab's visibility on `allowsJudgingCategoryManagement()` (REGISTRATION_CLOSED..JUDGING),
+  conflating "can manage" with "can see" — so the tab vanished at DELIBERATION+. Now shown when
+  `canManage || judging categories exist`; at DELIBERATION+ it renders **read-only** (no Add button, no Edit/Remove
+  action column; auto-select only when canManage). +1 test
+  `DivisionDetailViewTest.shouldShowJudgingCategoriesTabReadOnlyAtDeliberation`. 1355 → **1356**. Walkthrough §13.1.2 updated.
+- **BOS place-edit onto occupied slot crashed (§12.8/§12.13, 2026-06-09, FIXED — full cycle):** editing a BOS
+  placement's place number onto an already-occupied place (e.g. 3rd → 1st) tripped the `(division_id, place)` UNIQUE
+  constraint as a raw `ConstraintViolationException` (`bos_placements_division_id_place_key`). User chose **clean
+  rejection, no swap, positions unchanged**. Added `BosPlacementRepository.findByDivisionIdAndPlace`; guard in BOTH
+  `JudgingServiceImpl.updateBosPlacement` and `recordBosPlacement` → throws `BusinessRuleException("error.bos.place-taken", place)`
+  (new i18n key ×5) when a *different* placement/entry holds the target place. UI already catches BusinessRuleException →
+  shows a notification. +2 tests in `JudgingServiceMedalsBosTest`. 1353 → **1355**. Walkthrough §12.8 updated.
+- **JudgingAdminView tab reorder (2026-06-09, DONE — fast cycle):** moved **Conflicts of Interest** to the **first**
+  tab (was 5th). New order: Conflicts(0) · Tables(1) · Rounds(2) · Results(3) · BOS(4). `computeDefaultTabIndex`
+  return values shifted +1 (default still resolves to the same tab by state — Tables/Rounds/Results/BOS, never
+  Conflicts). Reinforces "declare COIs before assigning judges" (judging-prep checklist). Updated all
+  `JudgingAdminViewTest` `setSelectedIndex`/`getSelectedIndex` (+1; Conflicts 4→0) + walkthrough §12.6/§12.6.3.1. 1353 green.
+- **SCORE_BASED cleared medal reappeared after finalize (§12.6.8.1, 2026-06-09, FIXED — full cycle):** clearing a
+  medal on a SCORE_BASED round called `deleteMedalAward` (hard delete), so finalize's `autoPopulateMedalsByScore`
+  re-run re-derived the medal from the score. autoPopulate already preserves CONFIRMED awards (incl. confirmed null),
+  so the fix persists the clear as a confirmed null award (= "decided: no medal"). New
+  `JudgingService.withholdMedal(entryId, userId)` (confirmed null `MedalAward`, COI-exempt, requires active medal
+  round + authz); `MedalRoundView.clearMedal` now branches — **SCORE_BASED → withholdMedal**, COMPARATIVE → keeps
+  `deleteMedalAward` (no auto re-derive there). To re-award: click a medal; to return to fully auto: revert/reopen.
+  +2 tests (`JudgingServiceMedalsBosTest.shouldWithholdMedalAsConfirmedNullAward`,
+  `JudgingServiceMedalRoundTest.shouldNotReDeriveMedalForAWithheldEntryOnScoreBasedMedalRound`). 1351 → **1353**.
+  Walkthrough §12.6.8.1 updated. (Edge noted: clearing the *top* medal would positionally promote a lower entry —
+  separate cascade-semantics question, not in scope.)
+- **Scoresheet `filledBy` → last validator (§12.10.3, 2026-06-09, DONE — full cycle, user chose "switch to last
+  validator"):** one shared scoresheet per entry; `filledByJudgeUserId` used to be first-scorer-wins (set only when
+  null). Non-standard but unblockable case: a second assigned judge edits + re-Saves another's sheet. Now
+  `ScoresheetServiceImpl.markFilled` sets `filledBy` to the validating user **iff they're an assigned judge on the
+  round** (new `isAssignedJudge(roundId, userId)` helper), else keeps the first-setter fallback when null — so an
+  admin "edit on behalf" never claims authorship. `updateScore`/`updateOverallComments` keep their set-when-null for
+  DRAFT-in-progress attribution; the authoritative flip happens at Save. NO DB migration (single `filledBy` column
+  kept; "track all contributors" was declined as overkill for a path that shouldn't happen). +2 tests in
+  `ScoresheetServiceTest` (switch-to-judge2; admin-doesn't-overwrite). 1349 → **1351**. Walkthrough §12.10.3 updated.
+- **Judge scoresheet category not localized (§12.6.8.1, 2026-06-09, FIXED — full cycle):** the judge `ScoresheetView`
+  showed catalog categories (M1, M1A, …) in English even when the entrant saw them localized. Root cause:
+  `DivisionCategory.getName(Locale)` only resolves **admin per-category translation rows**; catalog category names
+  live in `messages_*.properties` as `category.<code>.name`. The entrant views (`MyEntriesView.translateCategoryName`)
+  do a **two-tier** resolution (per-category translation → catalog properties key → English base); the judge view did
+  only tier 1. Replicated `translateCategoryName` into `ScoresheetView.categoryLabelFor`. New test
+  `ScoresheetViewTest.shouldTranslateCatalogCategoryNameToJudgeLocale` (drives locale via `judge.updatePreferredLanguage("pt")`
+  since MainLayout overrides UI locale from the user on navigate). 1343 → **1344**.
+- **Catalog category-name localization — FULL SWEEP DONE (2026-06-09, full cycle, user chose "full sweep now"):**
+  extracted the two-tier resolution into a shared public helper **`app.meads.competition.CategoryDisplay`**
+  (`name(category, locale, keyTranslator)` + `codeAndName(...)`; keyTranslator returns the key when missing — the
+  contract of both Vaadin `getTranslation` and a key-default `MessageSource`). 5 unit tests in `CategoryDisplayTest`.
+  Routed EVERY category-display site through it: views pass `this::getTranslation`
+  (`ScoresheetView`, `RoundView`, `MedalRoundView`, `StewardView`, `JudgingAdminView` formatCategory + add-round select,
+  `MyEntriesView`, `DivisionEntryAdminView` — the last had a bare `getName()` with NO locale at all);
+  services/email/PDF pass `key -> messageSource.getMessage(key, null, key, locale)` — **`MessageSource` newly injected
+  into `JudgingNotificationListener` (+ test n/a) and `AwardsServiceImpl` (AwardsServiceImplTest got a `@Mock MessageSource`)**;
+  `ScoresheetPdfService` reused its existing `msg()` helper. De-dups MyEntriesView + ScoresheetView. Full suite **1349**
+  (1344 + 5). The gap that was flagged open is now closed everywhere.
+- **Scoresheets grid default sort (§12.10.1, 2026-06-09, DONE — fast cycle):** same class of bug as the rounds grid —
+  `RoundView`'s scoresheets grid had no default sort and `findByRoundId` has no `ORDER BY`, so filling/saving a sheet
+  (status UPDATE → tuple relocate) made the row jump. Set `setMultiSort(true)` + default **entry code ascending** (via
+  `GridSortOrderBuilder`, matching MedalRoundView's entry-code ordering). Walkthrough §12.10.1 updated. 1351 green.
+- **Rounds grid default multi-sort (§12.6.1, 2026-06-09, DONE — fast cycle):** `JudgingAdminView` rounds grid had no
+  default sort and `findByJudgingId` has no `ORDER BY`, so starting a round made its row jump (status UPDATE relocates
+  the Postgres tuple). Set `roundsGrid.setMultiSort(true)` + a default sort via `GridSortOrderBuilder`: **Scheduled asc
+  (nulls last) → Name asc**. Added a null-safe `Comparator` on the Scheduled column (was sorting the formatted string,
+  empty = nulls first). Order is now stable across start/refresh; headers still re-sort. Walkthrough §12.6.1 updated.
+  Full suite green (1343). Uncommitted.
+- **COI ordering finding (§12.6.3.1, 2026-06-09, NOT fixing now — user decision):** declaring a manual COI **after**
+  judges are already assigned to rounds does NOT retroactively remove the now-conflicting assignment — no guard, no
+  event prunes existing assignments. Enforcement is assign-time + medal-record-time only. **Mitigation chosen:** order
+  the prep so COIs are declared before judge assignment. Created **`docs/reference/judging-prep-checklist.md`** (admin
+  runbook, per-division) — manual COI is **Phase 5**, before judge assignment in **Phase 7**, with this gap written up
+  as the ⚠ rationale + under "Known limitations". A retroactive guard/event remains a possible future item.
+- **State of the app DB:** the user advanced **Amadora REGISTRATION_OPEN → REGISTRATION_CLOSED**, initialized
+  judging categories, assigned final categories, set **BOS places = 3 / min judges = 2**, and created a scoring round
+  **`M1A Panel A`** (Table 1, PENDING). Amadora is **still REGISTRATION_CLOSED** (advances to JUDGING at §12.6.4.0).
+  Some throwaway entries may exist from §11 limit-testing. `user@example.com` was made **ADMIN of Test Competition**
+  (so it now shows "My Competitions" in the sidebar — intended, password setup pending).
+- **Deferred follow-ups to circle back to during/after the walkthrough:** §7 **7a/7b** (verify multilingual category
+  *display* from the entrant side, then remove the `X9Z`/`X1A`/catalog test categories) · §8 **P21** entry-lock
+  (needs a DELIBERATION division — test on Profissional in §13).
+- **Walkthrough doc fixes made this session (committed):** (1) §13.5 — added an explicit **criteria-order (V34)**
+  check (verify Appearance→Aroma→Flavour→Finish→Overall, esp. on `Mostra Loquaz`). (2) NEW **§12.10.3 Multi-judge
+  edge cases** — one shared scoresheet per entry (not per judge), `filledBy` = first scorer, no-duplicate-creation
+  (findByEntryId guard + DB UNIQUE backstop), second-judge-edit un-fills a FILLED sheet, concurrent-edit =
+  last-write-wins (no `@Version`), entry on only one scoring round (`error.entry.already-on-round`), own-entry COI
+  still blocks. (3) §8 Entries tab — fixed **stale "4 entries" → "12 entries"** with the correct 3/2/6/1 status spread
+  (matched `DevDataInitializer` line 348).
+- **AFTER the walkthrough:** the **judge tasting-label PDF** feature (see the ⚑⚑ block just below) + §13.12 anonymity
+  → code review → merge to `main` → **v0.4.0 release**.
 
-### Priority 2: Bitwarden compatibility on login page — INVESTIGATED, DEFERRED
-Bitwarden shows "This page is interfering with the Bitwarden experience." on the login page.
-Root cause confirmed (2026-05-03): Shadow DOM's effect on Bitwarden's `document.elementFromPoint()`
-visibility check — not fixable from the page side without structural changes.
-- Added `autocomplete="email"` and `autocomplete="current-password"` to the fields (kept for
-  general autofill correctness, but did not affect the Bitwarden warning).
-- The only structural fix would be replacing the custom form with Vaadin's `LoginForm`, which
-  would change the login page appearance. User chose not to pursue this.
-- Deferred: only affects admins using password login; functionality is unaffected by the warning.
+**⚑⚑ ASK THE USER AT THE START OF NEXT SESSION (requested 2026-06-06):** investigate a **judge tasting-label PDF** — printing, **available at REGISTRATION_CLOSED and JUDGING** (i.e. before/during judging), a sheet of **physical labels (PDF of specific dimensions), one per entry**, each showing the **judge-facing code** the judges use to identify the mead (the anonymized code, NOT the entrant entry number/name). Intent: print real labels to tape onto the tasting glasses. Open questions to settle with the user: label dimensions / sheet layout (e.g. Avery template, N-up grid); what each label shows (just the code? + category? + a QR/barcode of the code?); which entries (all RECEIVED in the division? per round/table?); where the action lives (judging admin view). This is a NEW feature — start with the usual full TDD. Possibly tackle **after** the full walkthrough. (Note: `LabelPdfService` in the *entry* module already makes entrant shipping labels with QR — different audience/data; the judge label uses the anonymized judging code from the *judging* side.)
 
-### Priority 3: MFA for system admins — COMPLETE (2026-05-03)
-TOTP-based 2FA for SYSTEM_ADMIN accounts. No external library — HMAC-SHA1 + Base32 implemented
-from scratch using standard Java APIs. Full implementation:
-- `TotpService` (internal): `generateSecret()`, `generateQrUri()`, `verifyCode()` (±1 timestep window)
-- `User` entity: `totp_secret` + `mfa_enabled` fields (V19 migration); `storePendingMfaSecret()`, `enableMfa()`, `disableMfa()`
-- `UserService`: `setupMfa()`, `confirmMfa()`, `verifyMfaCode()`, `disableMfa()` — full setup/confirm/verify/disable flow
-- `MfaAuthenticationSuccessHandler`: after form login, redirects MFA-enabled users to `/mfa` (clears SecurityContext, sets `MFA_PENDING_EMAIL` session attribute)
-- `MfaVerifyView` (`/mfa`, `@AnonymousAllowed`): TOTP code entry; on success re-authenticates via `UserDetailsService`, saves to HTTP session, redirects to `/`
-- `ProfileView` MFA section (SYSTEM_ADMIN only): "Set Up 2FA" (dialog with secret key + code field) or "Disable 2FA" button
-- i18n: `mfa.verify.*` + `profile.mfa.*` keys in EN and PT. `error.mfa.invalid-code` error key.
-23 new tests (7 TotpService + 3 UserRepository + 5 UserService unit + 5 MFA integration + 3 ProfileView UI). 777 total.
+**▶ LATEST (2026-06-06 — entrant scoresheet **PDF** restyled as a representation of the dialog; 1344 tests green; COMMITTED + PUSHED — working tree clean after this commit).**
+`ScoresheetPdfService.generatePdf` rewritten to look like the on-screen dialog (no Scores/Field/Value/Comment table): (a) **header** = logo + title **on the same line** via a 2-col borderless `PdfPTable` (logo cell = `new PdfPCell(logoImg, false)` per [[project memory on OpenPDF image-in-cell]]; title cell stacks "Competition — Division", **"MJP Scoresheet"** = `division.getScoringSystem().name()+" "+heading`, and "entryNumber — meadName"); falls back to stacked paragraphs when no logo; (b) **mead details** as `Label: value` paragraphs (new `labelValue` helper using `Chunk` bold label + normal value) — category + sweetness/strength/abv/carbonation/honey/other/wood-aged/wood-details/additional; (c) **outcome box** = highlighted `PdfPTable` cell (bg `OUTCOME_BG`) with bold **Medal** + **Best of Show** lines, omitted when neither (mirrors the dialog banner); (d) **advanced** = green line (`FONT_ADVANCED`) shown **only when advanced** (was always Yes/No); (e) **criteria** = per-field bold `Field: v/max` + grey comment below (no table); (f) **total** bumped to 16pt bold; (g) judge line FULL-only, comment-language as small grey line. Removed unused `addCell`/`addHeader`/`nullSafe`; added `Color`/`Chunk`/`Rectangle` imports + `FONT_RESULT/TOTAL/CRITERION/COMMENT/ADVANCED` + `SECONDARY/SUCCESS/OUTCOME_BG` colors. Reuses existing i18n (`entries.view.*`, `entry.{sweetness,strength,carbonation}.*`, `my-results.column.medal`, `my-results.medal.*`, `awards.public.bos.heading`, `my-scoresheet.bos.place`, `my-scoresheet.advanced`, `scoresheet.pdf.{heading,category,total,overall-comments,judge,comment-language}`) — **zero new keys** (`scoresheet.pdf.{scores,field,value,comment,mead-name,entry-number,advanced*}` now unused but left in properties). Test `shouldIncludeMedalBosAndMeadDetailsInPdf` extracts page text via OpenPDF `PdfTextExtractor`, asserts MJP/title/medal/BoS/mead-detail content; needed `entry.getId()` + `division.getScoringSystem()` stubs. 1343 tests. Walkthrough §13.5 + §13.12 updated.
+**Follow-ups (2026-06-06):** (0) **Scoresheet criteria order bug fixed** — `Scoresheet.fields` was an unordered bag (`@OneToMany` + `@JoinColumn`, no order column), so the DB could return criteria out of MJP order (seen on the long-comment entry in both dialog + PDF). Added **`@OrderColumn(name="position")`** + migration **V34** (`score_fields.position` NOT NULL DEFAULT 0, backfilled by `field_name` CASE to MJP order 0–4). Fixes order everywhere (judge RoundView/ScoresheetView, entrant dialog, PDF). New ordered test `ScoresheetRepositoryTest.shouldReturnScoreFieldsInCanonicalMjpOrder` (`containsExactly`). +1 → 1344. (i) considered adding emoji icons to the PDF — **not done** (Liberation Sans has only `●`/`•`, not ✓/★/medal/trophy; would need generated PNG icons; user said skip). (ii) **Total now shows `N / 100`** in BOTH the dialog and the PDF (`score + " / " + sum-of-criteria-max-values`); dialog test asserts `"88 / 24"` (its single test field maxes at 24).
 
-### Priority 4: Merge v0.3.0 fixes into `feature/judging-module`
+**▶ EARLIER (2026-06-05 — entrant "View scoresheet" dialog redesign; committed `1c000f2`).**
+**⚑ NEXT:** verify on the Fast Track / Mostra entries (`entrant@example.com` → My Results → 👁 + ⬇ PDF) that dialog and PDF match.
 
-`feature/judging-module` was forked before the v0.3.0 mid-walkthrough fixes landed.
-Once you resume judging work, merge `main` into it first:
+`EntrantScoresheetDialog` redesign (`app.meads.awards.internal`): (1) **total now prominent** — its own `Span` id `entrant-scoresheet-total-{ordinal}`, `--lumo-font-size-xl` + `font-weight:700` + a top divider, separated from the criteria (was an inconspicuous plain Span). (2) **Spacing between sections** — card `setSpacing(true)`, criteria grouped in their own spaced `VerticalLayout`, margins on overall-comments heading. (3) **Outcome banner** — new entry-level `HorizontalLayout` id `entrant-scoresheet-outcome` (primary-10pct background, rounded) showing the **medal** (🥇/🥈/🥉 + localized name, id `entrant-scoresheet-medal`) and **Best of Show** (🏆 + "Best of Show — Place N", id `entrant-scoresheet-bos`); omitted entirely when the entry won neither. (4) **"Advanced to the medal round"** moved **out of the comments card** to entry level (id `entrant-scoresheet-advanced`, was `-{ordinal}`), rendered below the outcome banner and above the card — entry_id is unique on scoresheets so there's a single sheet. (5) **Competition logo** — `MyResultsView` header now shows the logo (64px, id `my-results-logo`) like `MyEntriesView`; the scoresheet dialog shows a **smaller** logo (32px, id `entrant-scoresheet-logo`) in the **top-left of the dialog header bar, left of the title** (the dialog now uses a custom `getHeader()` layout: logo + title Span id `entrant-scoresheet-title`, instead of `setHeaderTitle` — so the title assertion is on that Span, not `getHeaderTitle()`). `AnonymizedScoresheetView` gained `String competitionLogoDataUri` (built in `AwardsServiceImpl.getAnonymizedScoresheet` from `competitionService.findCompetitionById(division.getCompetitionId())` when `hasLogo()`); DTO is now 10-arg. Seed: `Mostra Loquaz` also got a **very long mead name** to check title wrapping next to the logo. (6) **Full mead details** — the dialog now shows the complete mead characteristics below the name (Final Category, Sweetness, Strength, ABV, Carbonation, Honey, Other Ingredients, Wood Aged Y/N, Wood Details, Additional Info; id `entrant-scoresheet-mead-details`) instead of only the category. New nested record `AnonymizedScoresheetView.MeadDetails` (sweetness/strength/abv/carbonation/honey/other/woodAged/woodDetails/additional), populated from the `Entry` in the service; reuses `entries.view.*` + `entry.{sweetness,strength,carbonation}.*` keys. DTO is now 11-arg. DTO `AnonymizedScoresheetView` gained entry-level **`Medal medal`** + **`Integer bosPlace`** (populated in `AwardsServiceImpl.getAnonymizedScoresheet` via `judgingService.findMedalAwardByEntryId`/`findBosPlacementByEntryId` — mirrors `buildEntrantRow`); the only other construction site is the impl. New i18n `my-scoresheet.bos` (= "Best of Show" all locales) + `my-scoresheet.bos.place` (Place/Puesto/Posizione/Miejsce/Lugar {0}) ×5; medal name reuses `my-results.medal.{gold,silver,bronze}`. Seed tweak: `fillScoresheet` now takes an `advanced` flag and **Fast Track / Mostra now seeds 5 M1A entries** covering every scoresheet variation side by side — `Mostra Tradicional` (advanced, GOLD+BoS), `Mostra Reserva` (advanced, SILVER), `Mostra Loquaz` (advanced, BRONZE, long comments), `Mostra Finalista` (**advanced to medal round, no medal**), `Mostra Singela` (**did not advance**). Mostra per-subcategory limit raised 3→5; `DevDataInitializerTest` Mostra assertions 3→5. Tests: `MyResultsViewTest` dialog test renamed + asserts outcome banner (medal "Gold" + BoS "1") + prominent total (font-weight 700) + a new `shouldNotRenderOutcomeBannerWhenNoMedalOrBos`; `AwardsServiceImplTest` +`shouldIncludeMedalAndBosPlacementInAnonymizedScoresheet`. Walkthrough §13.5 updated (outcome banner + prominent total + section spacing). Test count +2 → **1342** (pending full-suite confirm).
 
-```bash
-git checkout feature/judging-module && git merge origin/main
-```
+**▶ EARLIER (2026-06-05 — dev-seed fast-path to a published entrant scoresheet + verbose all-fields demo entries in each CHIP division; 1340 tests green; fast-path committed `9a3b5e4`, verbose entries `126fbba`).**
+**⚑ NEXT SESSION (do this FIRST):** on a **fresh/cleared dev DB**, start the app and log in as **`entrant@example.com`** (magic-link via Mailpit `http://localhost:8025`) → **My Entries** → the **Fast Track 2026 / Mostra** division is already **RESULTS_PUBLISHED** → "View results" banner → **My Results** grid → **👁 view scoresheet** + **⬇ PDF**. **Capture both screenshots → this is the entrant-scoresheet redesign target** (Group B remaining / P18-entrant). No §12 walkthrough needed to reach it. Known P18-entrant issues to fix (per the FIRST ACTION roadmap below): entry **code** shown not **number**; on-screen view missing per-criterion comments + advancement; **judge label** shown (anonymity); PDF heading reads **"Anonymized Scoresheet"** (drop the word) + uses code not number + no advancement row.
 
-Expected conflict surface (the 6 mid-walkthrough fixes touched these files):
-- `CompetitionService.java` — keep both: feature branch's Phase 5 methods + main's
-  `findRegistrationCategories` and `findLeafJudgingCategories`
-- `DivisionEntryAdminView.java` — likely the biggest conflict. Reapply main's
-  dropdown changes: primary Category dropdowns use `findRegistrationCategories`;
-  Final Category Select uses `findLeafJudgingCategories` and disables with helper
-  text when empty.
-- `DivisionDetailView.java` — main switched the Categories tab grid
-  (`refreshCategoriesGrid`) and the Add Category dialog's Parent Category Select
-  (Custom tab) to `findRegistrationCategories`. Small.
-- `EntryService.assignFinalCategory()` — main rejects pre-init assignments; keep
-  that branch + whatever the feature branch adds.
-- `EntryService.updateEntry()` + new `checkEntryLimitsForUpdate` — main enforces
-  entry limits on entrant edits when category changes (subcategory + main category,
-  with same-main subtraction). Keep main's behavior; verify feature branch tests
-  still pass.
-- `MyEntriesView.java` — main switched primary-category dropdown to
-  `findRegistrationCategories`. Small.
-- `MfaVerifyView.java` — main added `setValueChangeMode(EAGER)`. Tiny.
-- `messages.properties` + `messages_pt.properties` — append both sets of new keys.
-- `pom.xml` — take feature branch's version (`0.4.0-SNAPSHOT`).
-- `docs/SESSION_CONTEXT.md` — reconcile manually; take feature branch's
-  `Branch:` line and Phase 5/6 status text, append main's v0.3.0 release entry.
-- `docs/walkthrough/manual-test.md` — keep both sides.
+New dev seed `DevDataInitializer.seedFastTrackPublished` builds a third competition **Fast Track 2026** (shortName `fast-track-2026`) with one division **Mostra** (`mostra`, prefix `FT`) and drives the **entire pipeline programmatically** as `compadmin` stepping in for the judges: **3** RECEIVED M1A entries owned by `entrant@example.com` (`Mostra Tradicional`, `Mostra Reserva`, **`Mostra Loquaz`** — the last carries deliberately **long per-criterion + overall comments**, each < the 2000-char column cap, to stress the scoresheet layout) → REGISTRATION_CLOSED → init judging cats + assign final cats → JUDGING → scoring round (Table 1, judges 1+2, all entries) started → all scoresheets filled by judge1 (5 MJP fields + per-criterion comments ≥15 chars + overall comment; `Mostra Loquaz` via `fillScoresheetVerbose`) → `finalizeScoringRound` (totals locked, COMPLETE; this **auto-creates a READY COMPARATIVE medal round**) → start medal round → `recordMedal` GOLD / SILVER / BRONZE → `completeMedalRoundById` → `startBos` → `recordBosPlacement` (GOLD at place 1, bosPlaces=1) → `completeBos` (phase → COMPLETE) → JUDGING→DELIBERATION → `awardsService.publish` → RESULTS_PUBLISHED. Seed wiring: `DevDataInitializer` gained `ScoresheetService` + `AwardsService` deps (constructor + `DevDataInitializerTest` updated); `createReceivedProEntry` now returns the `Entry` so the gold/silver/verbose entries can be targeted. `DevDataInitializerTest.shouldSeedDevDataOnStartup` now asserts 3 competitions + Mostra RESULTS_PUBLISHED + 3 RECEIVED entries w/ final cats + each entry's SUBMITTED scoresheet has a total + a publication exists + `getResultsForEntrant` returns 3 rows. Gotcha learned: finalizing a SCORING round **auto-creates a READY medal round** (`cascadeMarkCategoryReadyIfAllTablesComplete`), so BOS can't start until that medal round is COMPLETE — "no medal round" is not an option.
 
-Run `mvn test -Dsurefire.useFile=false 2>&1 | tail -50` to verify the merge.
+Also added (same session, same commit will follow): a **verbose all-fields demo entry** in **each CHIP 2026 division** — `DevDataInitializer.createDetailedReceivedEntry` admin-creates an entry named **"Hidromel de Demonstração — Campos Completos"** with long multi-sentence free-text in every field (honey varieties, other ingredients, wood-ageing details, additional information; kept under the form caps — honey/other/wood ≤255, additional ≤1000) and advances it to RECEIVED. **Amadora:** owned by buyer1, RECEIVED (admin-view check only — division at REGISTRATION_OPEN). **Profissional:** owned by buyer2, RECEIVED + final M1A + **assigned to M1A Panel A** so a judge opening the scoresheet sees the long descriptions (judges see all mead-detail fields except `meadName`, which is admin-only — `ScoresheetView.isAdminView`). Purpose: check how admin (Entry Admin view/edit dialog + label PDF) and judge (scoresheet card) views render long descriptions — wrapping/overflow/height. Long constants `LONG_HONEY/LONG_OTHER/LONG_WOOD/LONG_ADDITIONAL` on `DevDataInitializer`. Seed counts: Amadora 11→**12** (6 RECEIVED), Profissional 20→**21**, M1A Panel A 2→**3** entries; `DevDataInitializerTest` + walkthrough seeded-data summary + §12.6.7 Assign-Entries expectations updated. New dedicated walkthrough item **§8 "Verbose all-fields entry — long-description rendering"** (admin Amadora checks + judge Profissional cross-ref to §12.11). Test count steady at 1340 (assertions added to existing test, no new method). **THEN** continue with the entrant-scoresheet redesign.
 
-### Priority 5: Judging module
-Design and implementation. **Design in progress (multi-session):** see
-`docs/plans/2026-05-05-judging-module-design.md` for current state, decisions made,
-open questions, and the "Next Session: Start Here" marker. Reference:
-`docs/reference/chip-competition-rules.md` and `docs/specs/judging.md`.
+**▶ EARLIER (2026-06-04 — multilingual category names/descriptions + edit dialog; 1340 tests green; COMMITTED + PUSHED on `feature/judging-module`, branch head `df022c3`).**
+**⚑ NEXT SESSION (do this FIRST, then resume the walkthrough):** on a fresh/cleared DB, **test this feature**:
+(1) `compadmin` → CHIP → a division's **Categories tab** → **Add Category** (Custom tab) → fill code/name/desc +
+expand "Translations (optional)" → give a **Português** name+description → Save. (2) Switch the UI language
+(top-right) to **Português** → the admin **Categories grid still shows the English base by design** (canonical for
+editing), but **judge/entrant/results surfaces** (scoresheet, rounds, my-entries, published results) show the PT
+name; **Italiano** (no translation) falls back to English everywhere. (3) Click the **✎ Edit** pencil on that category → confirm fields + PT translation are **prefilled** →
+change them → Save → re-open Edit to confirm they round-trip (no duplicate-key error). (4) Same on the **Judging
+Categories** tab. Walkthrough steps: §"Custom category — multilingual" + §"Edit category" in
+`docs/walkthrough/manual-test.md`. **THEN** continue with the original plan in the "**⚑ FIRST ACTION NEXT
+SESSION**" block below (drive Profissional → RESULTS_PUBLISHED → entrant-scoresheet redesign). Detail of the
+feature follows:
 
-**Phase 4 ✅ COMPLETE (2026-05-09, post branch-reconciliation).** All 10
-items + §Q15 closed in a single session. §Q16 (per-entry tasting-label
-PDF) and §Q17 (mobile / touch UX review) deferred. **Phase 5
-(implementation) is next.**
+Custom (and any) division categories can now carry per-locale name + description; every display surface
+resolves to the viewer's locale, falling back to the English base. Settled with the user: localize
+**everywhere**, edit dialog offers **all 5 app locales** (EN base + ES/IT/PL/PT), applies to **both** initial
+(REGISTRATION) and final (JUDGING) categories. Built in 4 TDD cycles:
+- **Model:** new internal child entity `app.meads.competition.internal.CategoryTranslation` (id/locale/name/
+  description, no FK field — owned via `DivisionCategory @OneToMany @JoinColumn`, **EAGER** to survive lazy
+  access outside OSIV in PDF/email paths). New public value record `app.meads.competition.LocalizedText`
+  (name, description). `DivisionCategory` gains `getName(Locale)`/`getDescription(Locale)` (resolve language
+  → English base), `getTranslations(): Map<String,LocalizedText>`, `setTranslations(...)` (drops all-blank
+  rows). **Migration V33** `division_category_translations` (UNIQUE(division_category_id, locale), ON DELETE
+  CASCADE). English ("en") never stored — base columns ARE English.
+- **Service:** `addCustomCategory` / `addJudgingCategory` / `updateDivisionCategory` / `updateJudgingCategory`
+  each gain a `Map<String,LocalizedText> translations` overload (old signatures delegate with `Map.of()`).
+- **UI:** both add-category dialogs on `DivisionDetailView` (Custom tab + Judging Categories tab) get a
+  collapsible **Details** "Translations (optional)" section with Name/Description fields per non-English locale
+  (label = native language name via `MeadsI18NProvider.getLanguageLabel`); blank → English. 4 new i18n keys ×5
+  (`division-detail.categories.translation.{section,hint,name,description}`).
+- **Edit dialog (added same session):** both Categories grids gain a ✎ **Edit** action (pencil) next to the ✕
+  Remove (returned together in a `HorizontalLayout`). New **public** `DivisionDetailView.openEditCategoryDialog`
+  / `openEditJudgingCategoryDialog` (public for Karibu — grid component-column buttons aren't `_find`-able; see
+  [[project_karibu_action_buttons]]) open a prefilled dialog (code/name/description + translations section
+  pre-opened with existing per-locale values via `CategoryTranslationFields.prefill`) → call the
+  `updateDivisionCategory`/`updateJudgingCategory` translations overloads. 8 new i18n keys ×5
+  (`division-detail.{categories,judging}.{action.edit,edit.title,edit.button,edit.saved}`). Registration edit
+  button gated on `allowModification` like Remove. **Reconcile fix:** `DivisionCategory.setTranslations` now
+  updates existing rows in place / adds missing / drops orphans (new `CategoryTranslation.update`) instead of
+  clear()+re-add — the latter transiently violated `UNIQUE(division_category_id, locale)` at flush
+  (insert-before-delete on a same-locale row). See [[project_orphan_removal_unique_reconcile]].
+- **Display sweep (everywhere, viewer locale):** ScoresheetView, RoundView, MedalRoundView, StewardView,
+  JudgingAdminView, `ScoresheetPdfService` (uses its `locale` param), `JudgingNotificationListener` (per-recipient
+  locale — categoryLabel moved inside the loop), DivisionEntryAdminView, MyEntriesView (`translateCategoryName`
+  now: per-category translation → catalog properties `category.<code>.name` → base), DivisionDetailView selects/
+  confirms, and `AwardsServiceImpl` results DTOs. Awards: `getResultsForEntrant`/`getResultsForAdmin`/
+  `getAnonymizedScoresheet` resolve locale internally from the user (new `localeForUser`); `getPublicResults`
+  gained a `Locale` param (passed `getLocale()` from `AwardsPublicResultsView`). `EntryService` submission-event
+  category name localizes to the **submitter's** locale. Catalog (`Category`) source-list selects left as-is
+  (the MJP catalog is the English source; its entrant localization stays via properties files).
+- **Tests:** +7 → 1340. `DivisionCategoryTest` (unit resolution), `DivisionCategoryRepositoryTest` (+2 persist/
+  replace), `CompetitionServiceJudgingCategoryTest` (+2 add/update translations), `DivisionDetailViewTest` (+1
+  add-with-PT-translation, +1 edit-name+translation-via-dialog). Mock fixups: 6 `category.getName()` stubs →
+  `getName(any())`; lenient default `userService.findById(any())` in `EntryServiceTest` `@BeforeEach`; one user
+  stub in `AwardsServiceImplTest`; `getPublicResults` test call gained `Locale.ENGLISH`.
+- **Verification plan** is the **⚑ NEXT SESSION** paragraph at the top of this block (test add + language switch +
+  edit round-trip on both Categories and Judging Categories tabs). Walkthrough §"Custom category — multilingual" +
+  §"Edit category" updated.
 
-**Branch reconciliation (2026-05-09):** the abandoned
-`origin/judging-module` branch had two pushed commits with overlapping
-Phase 4.A/4.B work that diverged from main's first 3 Phase 4 commits.
-The user opted to discard the branch after a side-by-side comparison;
-each strategic difference was resolved decision-by-decision, and the
-better elements of both designs were merged into main:
-- Admin dashboard placement: **main wins** (new top-level view, three
-  tabs)
-- Save semantics: **main wins** (explicit Save Draft only)
-- URL convention: **new shared decision** — fully scoped under
-  division (`/competitions/:c/divisions/:d/...`) for scoresheets,
-  tables, medal-rounds, and BOS form
-- Per-table view: **main wins** (unified `TableView` with role-aware
-  columns/actions; admin gets revert + move actions; judges don't)
-- Medal round per-row: **hybrid** — button row primary
-  `[🥇][🥈][🥉]` + "More ▾" dropdown with Withhold/Clear
-- Tier 2 retreat actions: **main wins** (in form header, admin-only)
-- COMPARATIVE eligibility: **branch wins** (filter to
-  `advancedToMedalRound = true`); SCORE_BASED uses score regardless
-- BOS form: **branch wins** (dedicated `/bos` form with drag-and-drop
-  primary + [+] dialog fallback); dashboard tab summarizes and links
-- Resume next draft: **main wins** (prominent button on hub)
-- Branch touches kept: explicit blind-judging policy on scoresheet,
-  Notes-deferred-to-v2 note on medal round, service param rename
-  `judgeUserId → adminUserId` on BOS methods, sidebar visibility
-  gated by `hasAnyJudgeAssignment`
-- Polish from branch kept: filters (Status + Search) on `TableView`,
-  helpful empty-state CTAs on `MyJudgingView`, live summary line on
-  `MedalRoundView` (G/S/B/Withhold/unset counts)
-- **Project-wide policy refinement (new):** judges see no COI
-  indicators during scoring (admin vets at table-assignment time);
-  soft-COI warnings are admin-only. Hard-COI blocks remain at all
-  levels (defense in depth: view authorization + service-side
-  rejection).
-- §Q17 raised: mobile / touch UX review across judging surfaces.
+**▶ RESUME HERE (2026-06-03 — Group A + Group B/P21 ALL DONE, committed + PUSHED. Working tree clean.
+1333 tests green on JDK 25.** Branch `feature/judging-module` pushed through `880fdc0`. See the explicit
+**⚑ FIRST ACTION NEXT SESSION** block a few paragraphs down before re-reading the per-item detail.)
+Triage run with the user (2026-06-03): chose **"Group A code first"** — did all reset-independent
+code/UI items (P20, P15, P12, P13), then Group B/P21. Commits (hunk-split so each feature carries its
+own code+tests+i18n+walkthrough notes): `f4e0dbd` (P20), `b69a720` (P15), `914d350` (P12),
+`cb77364` (P13), `a73512f` (P21), `880fdc0` (P21 doc fix). Done this session:
+- **✅ P20 (magic-link deep-link redirect).** `MagicLinkAuthenticationFilter` now honours an optional
+  `&redirect=<same-origin path>` after login, open-redirect-guarded (`safeRedirectTarget` rejects `//`,
+  `/\`, `://`, control/whitespace → falls back to `/`). New `JwtMagicLinkService.generateLink(email,
+  validity, redirectPath)` overload appends a URL-encoded `redirect` (blank → plain link). **Capability
+  only** — no production email uses it; the announcement keeps the bare link by design (change #39) since
+  `RootView` routing already lands entrants on results. +4 tests.
+- **✅ P15 (notification overlap).** `MainLayout.showRouterLayoutContent` override adds a 5rem
+  `padding-bottom` to every routed view so bottom-fixed `Notification` toasts don't cover the last
+  control / list row. +1 `MainLayoutTest`.
+- **✅ P12 (label-download lifecycle) — scope settled with the user.** The "flip label→scoresheet after
+  RESULTS_PUBLISHED" half was **dropped**: the entrant already downloads scoresheets via the existing
+  **"View results" banner → MyResultsView** (per-row ⬇ + "Download all scoresheets"), and `entry`
+  (allowedDeps = {competition, identity}) can't reach the scoresheet PDF generator in judging/awards
+  without a boundary violation. Implemented the clean half: new `DivisionStatus.allowsLabelDownloads()`
+  (= `ordinal() < JUDGING`); `MyEntriesView` disables the batch "Download all labels" (tooltip
+  `entries.download-all.judging-disabled`) AND hides the per-row label download once status ≥ JUDGING —
+  closes the gap where still-SUBMITTED entries kept labels live mid-judging. **Admin
+  `DivisionEntryAdminView` keeps labels at every status** (reprints — user's call). +1 test, +1 i18n key ×5.
+- **✅ P13 (participant role counts).** New `CompetitionService.findParticipantCountsByRole` →
+  `Map<CompetitionRole, Long>` (all roles present, 0 default). `CompetitionDetailView` Participants tab
+  shows a localized summary Span (`participants-role-summary`) above the grid, refreshed in
+  `refreshParticipantsGrid`. +2 tests (service + UI), +1 i18n key ×5.
+- **Walkthrough:** added an **"Email CTA link regression sweep"** table (all 16 email CTAs) + a
+  "Magic-link deep-link redirect (P20)" check (per user request "meaningful regression tests for all types
+  of emails"); plus P15/P12/P13 verification notes; §13.9 P20 note updated.
 
-**Phase 4.A–4.C (2026-05-09) — design decisions:**
-- 4.A: §Q15 resolved — **admin-only BOS for v1**. SYSTEM_ADMIN +
-  competition ADMIN can record/edit/delete `BosPlacement`. No data-
-  model changes (no HEAD_JUDGE role, no JudgeAssignment.isHeadJudge,
-  no per-division designation table). Recordkeeping via
-  `BosPlacement.awardedBy`. §3.7 authorization table updated.
-- 4.B: admin division-level judging dashboard. New top-level view
-  `JudgingAdminView` at `/competitions/:c/divisions/:d/judging-admin`,
-  linked from DivisionDetailView via "Manage Judging" button (visible
-  when `status >= JUDGING`). TabSheet with three tabs: **Tables**
-  (CRUD + judge assignment with COI chips + start), **Medal Rounds**
-  (per-category mode + status + Tier 2 retreat actions), **BOS**
-  (header phase indicator + GOLD candidates list + placements grid;
-  disabled until `Judging.phase != NOT_STARTED`). Lazy-loaded
-  `Judging` row created on `beforeEnter()` if missing. Inline i18n
-  keys recorded; full inventory deferred to Item 10.
-- 4.C: judge scoresheet form. Full-page route `ScoresheetView` at
-  `/my-judging/scoresheets/:scoresheetId`. Three-tier authorization
-  (SYSTEM_ADMIN / competition ADMIN / assigned judge); hard COI page-
-  level rejection if `entry.userId == judge.userId`; soft COI banner
-  via `MeaderyNameNormalizer.areSimilar`. Layout: read-only entry
-  header card → 5 score-field cards (NumberField min=0/max=maxValue
-  with inline tier-label hints under each) → overall comments
-  TextArea → comment-language ComboBox (sourced from
-  `competition.commentLanguages ∪ judge.preferredCommentLanguage`,
-  sorted by display name) → advance-to-medal-round Checkbox →
-  Save Draft + Submit + Cancel buttons. Submit only enabled when all
-  5 score values non-null; confirmation Dialog. Read-only mode for
-  SUBMITTED scoresheets. Live total preview "Current total: N / 100".
-  Inline i18n keys recorded.
-- 4.D: judge hub + table drill-in. `MyJudgingView` at `/my-judging`
-  (cross-competition hub, parallel to `/my-entries`) and
-  `JudgeTableView` at `/my-judging/tables/:tableId`. Hub layout:
-  prominent "▶ Resume next draft scoresheet" button (jumps to oldest
-  DRAFT across assigned tables) → tables grouped by competition
-  (status badge, scheduled date, scoresheet progress) → Medal Rounds
-  section (only when CategoryJudgingConfig is ACTIVE for a category
-  covered by judge's tables). JudgeTableView: per-table scoresheet
-  grid; row click → ScoresheetView. Soft COI warning icon on rows
-  with similar meaderies. New service helpers:
-  `findTablesByJudgeUserId`, `hasAnyJudgeAssignment`,
-  `findActiveCategoryConfigsForJudge`, `findNextDraftForJudge`. Link
-  added to MainLayout sidebar (visible to any user with at least one
-  JudgeAssignment).
-- 4.E: medal round forms. Single shared route
-  `/competitions/:c/divisions/:d/medal-rounds/:divisionCategoryId` →
-  `MedalRoundView` (used by both judges and admins). Header: status +
-  mode + admin-only Reset/Reopen/Finalize buttons. COMPARATIVE: grid
-  of all entries with `[🥇][🥈][🥉][✗ Withhold][⊘ Clear]` action
-  buttons per row. SCORE_BASED: pre-populated MedalAward rows with
-  "(auto)" caption; tied-slot banner at top + warning-bg highlighting
-  on tied rows + inline resolver. `MedalAward.medal=null` = explicit
-  withhold (per D11). Hard COI on self-entries; soft COI tooltip.
-  Read-only mode when status=COMPLETE. Service-side: caller must be
-  admin OR judge with at least one JudgeAssignment for a table
-  covering this category. New helper:
-  `JudgingService.recomputeScorePreview` for SCORE_BASED tied-slot
-  read-side projection. Inline i18n keys recorded.
-- 4.F: admin Settings extensions. (1) `Competition.commentLanguages`
-  — `MultiSelectComboBox<String>` on `CompetitionDetailView` Settings
-  tab in a new "Judging" sub-section, sourced from
-  `MeadsI18NProvider.getSupportedLanguageCodes()`, sorted by display
-  name; editable any DivisionStatus. (2) `Division.bosPlaces` —
-  `IntegerField` (min 1) on `DivisionDetailView` Settings tab,
-  editable in DRAFT/REGISTRATION_OPEN, locked beyond with tooltip.
-  (3) `Division.minJudgesPerTable` — `IntegerField` (min 1, default 2)
-  on same tab, editable through REGISTRATION_CLOSED but locked once
-  any JudgingTable in the division has `status != NOT_STARTED`
-  (cross-module check via `MinJudgesPerTableLockGuard`). New
-  CompetitionService methods (Phase 5):
-  `updateCommentLanguages`, `updateDivisionBosPlaces`,
-  `updateDivisionMinJudgesPerTable`, `isMinJudgesPerTableLocked`. No
-  new migration — schema already in V20 per §2.G/§2.H. Inline i18n
-  keys recorded.
+**✅ Group B — P21 (entry/category stage-gating) DONE 2026-06-03, 1333 tests, committed+pushed `a73512f`.**
+Reproduced at the code level: `adminCreateEntry`/`adminUpdateEntry` had **no status gate** (only the
+entrant `createEntry`/`updateEntry` checked REGISTRATION_OPEN), so admins could create/edit entries at
+any status. Policy settled with the user: **uniform DELIBERATION cutoff** — all entry mutations allowed
+through JUDGING, blocked at DELIBERATION/RESULTS_PUBLISHED (**hard block**); escape hatch = revert the
+division back to JUDGING (verified: no revert guard blocks RESULTS_PUBLISHED→DELIBERATION→JUDGING). Impl:
+(1) `DivisionStatus.allowsEntryMutations()` (< DELIBERATION) + capped `allowsJudgingCategoryManagement()`
+to REGISTRATION_CLOSED..JUDGING (auto-hides auto-assign + judging-category tab at DELIBERATION+).
+(2) `EntryService.requireEntryStageMutable` applied to adminCreateEntry, adminUpdateEntry,
+advanceEntryStatus, revertEntryStatus, markReceived, withdrawEntry, assignFinalCategory,
+assignFinalCategoriesByCode → `error.entry.stage-locked` ×5. (3) `DivisionEntryAdminView`: Add Entry +
+per-row edit/revert/advance/withdraw disabled with locked tooltip at DELIBERATION+ (view + label
+download stay). +4 tests (2 DivisionStatus, 1 EntryService, 1 UI) + `entry-admin.entries.locked.tooltip`
+×5. **Delete (DRAFT-only) intentionally left ungated.** EntryServiceTest got a `@BeforeEach` lenient
+default (`findDivisionById`→JUDGING) so the 18 entry-status tests pass without per-test stubs.
 
-**Phase 2 ✅ COMPLETE (2026-05-08).** All design questions resolved
-(§Q1, §Q7, §Q8, §Q10, §Q11, §Q12, §Q13).
+**⚑ FIRST ACTION NEXT SESSION (decided 2026-06-03, user will do this FIRST on a fresh/cleared DB,
+possibly another machine):** the user starts the app with a **fresh DB** and wants to be **guided through
+the walkthrough to drive Profissional to RESULTS_PUBLISHED** so they can see an **entrant scoresheet**
+(the redesign target — Group B remaining), exercising this session's fixes along the way. Then they will
+**send screenshots of the on-screen `MyScoresheetView` + the downloaded PDF**, and we start the
+**entrant-scoresheet redesign** (P18-entrant / task #6). The condensed roadmap below is the path to walk —
+present it and guide step by step.
 
-**Phase 2.A–2.F (2026-05-07) — design decisions:**
-- 2.A: three-tier state model — division (`Judging.phase: NOT_STARTED → ACTIVE
-  → BOS → COMPLETE`), per-table (`JudgingTable.status: NOT_STARTED → ROUND_1
-  → COMPLETE`), per-category medal round (`CategoryJudgingConfig.medalRoundStatus:
-  PENDING → READY → ACTIVE → COMPLETE`). Seven independent aggregates
-  (Judging, JudgingTable, CategoryJudgingConfig, Scoresheet, MedalAward,
-  BosPlacement, JudgeProfile) with UUID FKs only. SCORE_BASED mode requires
-  manual judge intervention on tied scores.
-- 2.B: retreat semantics. Tier 0 per-scoresheet revert (admin-only) is the
-  foundation; Tier 1 per-table retreat is implicit. Tier 2 medal round:
-  preserve on COMPLETE → ACTIVE, wipe on ACTIVE → READY. Tier 3 division:
-  preserve on COMPLETE → BOS, require empty BosPlacements on BOS → ACTIVE.
-  Compensating retreat events paired with every advance event. Judging
-  module registers a `DivisionStatusRevertGuard`. §Q11 + §Q13 resolved.
-- 2.C: §2.1 trigger re-framed to per-table; sync rule unchanged.
-- 2.D: start triggers — per-table hard-blocks on judges < `Division.minJudgesPerTable`
-  (new field, NOT NULL DEFAULT 2). SCORE_BASED auto-population walks
-  gold→silver→bronze, stops cascade on first tie. Empty BOS allowed via UX
-  info message. §Q12 resolved.
-- 2.E: COI similarity — cross-country gate (skip if both countries set and
-  differ) + country-aware suffix-stripping normalization + Levenshtein
-  distance ≤ 2 + exact-match-on-normalized. Soft warning only. Initial
-  suffix lists cover EN/PT/ES/IT/PL/FR/DE/NL/global. §Q7 resolved.
-- 2.F: `JudgeProfile` aggregate (judging module) — `userId` UNIQUE,
-  `certifications: Set<Certification>` (enum: MJP, BJCP, OTHER),
-  `qualificationDetails: String` (free-text; also specifies what `OTHER`
-  is, e.g. WSET). v1 scoresheet PDF stays anonymized (privacy-safe;
-  per-jurisdiction template config deferred). §Q10 resolved.
+*Seed facts (from `DevDataInitializer`, verified 2026-06-03):* a fresh DB seeds **CHIP** with two
+divisions. **Amadora = REGISTRATION_OPEN** (11 entries). **Profissional = JUDGING, fully pre-staged**:
+20 RECEIVED entries (final categories assigned) across 4 pro entrants, 5 physical tables, **M1A split into
+Panel A** (judges 1+2, Table 1, 2 entries) **+ Panel B** (judges 4+5, Table 2, 3 entries) — both PENDING
+scoring rounds — and an **M1B COMPARATIVE medal round** (judges 1/2/6, Table 4, PENDING). So Profissional
+**skips walkthrough §12.1–12.5** and starts at **§12.6**. *Logins:* `admin@example.com`/`admin`,
+`compadmin@example.com`/`compadmin`; judges `judge@…`…`judge6@…` and `proentrant1@…`–`proentrant4@…` use
+**magic-link login** (Mailpit `http://localhost:8025`). *Gating reality:* RESULTS_PUBLISHED requires the
+judging **phase = COMPLETE** (`JudgingCompleteAdvanceGuard` blocks JUDGING→DELIBERATION otherwise; manual
+DELIBERATION→RESULTS_PUBLISHED is blocked — must use **Manage Results → Publish**). `startBos` only
+requires **configured** medal rounds COMPLETE (categories w/o a medal round are skipped). Scoresheets come
+from **SCORING** rounds (M1A panels), NOT the COMPARATIVE M1B medal round.
 
-**Phase 2.G (2026-05-08) — field-level entity finalization:**
-- Field-by-field types, JPA annotations, nullability, column lengths, and
-  invariants for all 7 aggregates and the 2 within-aggregate children
-  (`JudgeAssignment`, `ScoreField`). Domain methods enumerated for each
-  aggregate root (state-machine transitions, mutation gates).
-- New competition-module fields: `Division.bosPlaces` (int NOT NULL
-  DEFAULT 1, locked past REGISTRATION_OPEN — §1.6) and
-  `Division.minJudgesPerTable` (int NOT NULL DEFAULT 2, locked once any
-  table starts via cross-module `MinJudgesPerTableLockGuard` — §2.D).
-- V20 schema produced: `judgings`, `judging_tables`, `judge_assignments`,
-  `category_judging_configs`, `scoresheets`, `score_fields`,
-  `medal_awards`, `bos_placements`, `judge_profiles`,
-  `judge_profile_certifications` + the two `divisions` columns.
-- ScoreField names stored as canonical English (i18n keys); tier
-  descriptions UI-only via `MeadsI18NProvider`. MJP field constants
-  (`Appearance` 12, `Aroma/Bouquet` 30, `Flavour and Body` 32, `Finish`
-  14, `Overall Impression` 12) live in a `MjpScoringFieldDefinition`
-  in-code constant in v1.
+**Condensed Profissional → RESULTS_PUBLISHED roadmap (with session-fix checkpoints):**
+- **Phase 0 (quick wins, no setup):** (a) `compadmin` → CHIP → **Participants tab** → **[P13]** role-count
+  summary span. (b) `proentrant1` magic-link → **My Entries** (Profissional@JUDGING) → **[P12]** per-row
+  label gone + "Download all labels" disabled w/ judging tooltip. (c) in Mailpit, click a magic-link CTA →
+  **[P20]** logs in cleanly (no `/login?error`).
+- **Phase 1 — score M1A (§12.6→§12.11), produces the scoresheets:** `compadmin` → Profissional → Manage
+  Judging → **Rounds tab** → **Start M1A Panel A**. Log in `judge@…` (forwarded to active round, §12.9),
+  open each entry's scoresheet (§12.11), fill 5 MJP fields + per-criterion comments, **Save** →
+  **[P15]** success toast does NOT cover the Save button. Repeat as `judge2@…`. Back as `compadmin`,
+  **Finalize** the round (all FILLED → COMPLETE). (Panel B optional for more scored entries.)
+- **Phase 2 — medal + BOS to reach phase COMPLETE (§12.12→§12.13):** Start the **M1B medal round**, judges
+  1/2/6 award medals, complete it. Then **Best of Show tab** → Start BOS → place GOLD(s) → Finalize BOS →
+  judging phase flips to **COMPLETE**.
+- **Phase 3 — deliberation lock + publish (§13.1→§13.2):** Advance Profissional **JUDGING→DELIBERATION**.
+  **[P21 — headline check]** Entry Admin → Entries: **Add Entry disabled** (locked tooltip), per-row
+  edit/←/→/withdraw disabled (view + ⬇ stay), **Auto-assign hidden**. Then **Manage Results → Publish**
+  (§13.2). **[P20]** **Send announcement** (§13.9) → Mailpit → entrant CTA logs in + lands on results.
+- **Phase 4 — THE GOAL (§13.4→§13.5, §13.12):** log in as the pro entrant owning an **M1A Panel A** entry
+  (`proentrant1@…`) → My Results banner → grid → **👁 view scoresheet** + **⬇ PDF**. **Capture both →**
+  this is the redesign target. Known P18-entrant issues to fix: shows entry **code** not **number**;
+  on-screen view missing per-criterion comments + advancement; **judge label** shown (anonymity);
+  PDF heading reads **"Anonymized Scoresheet"** (drop the word) + uses code not number + no advancement row.
 
-**Phase 2.H (2026-05-08) — scoresheet PDF locale + comment-language tagging
-(closes Phase 2; resolves §Q14):**
-- Scoresheet PDF renders in printer's UI locale (locale-aware), same
-  mechanism as entry-side label PDFs.
-- New `Scoresheet.commentLanguage` (`VARCHAR(5)`, NOT NULL at SUBMIT;
-  ISO 639-1 / BCP 47) records the language of judge prose. Frozen at
-  SUBMIT. Default-resolution chain: `JudgeProfile.preferredCommentLanguage`
-  → `User.preferredLanguage` (UI locale).
-- New `JudgeProfile.preferredCommentLanguage` (`VARCHAR(5)`, nullable)
-  holds the sticky preference. Updated whenever the judge changes the
-  language on any scoresheet. Lifecycle adjusted: `JudgeProfile` row
-  auto-created on first `JudgeAssignment`.
-- New `Competition.commentLanguages` (Set<String>, `@ElementCollection`
-  → `competition_comment_languages` join table) is the admin-curated
-  per-competition dropdown source. Seeded with the 5 UI codes (`en`,
-  `es`, `it`, `pl`, `pt`) at competition creation; admin edits in
-  `CompetitionDetailView` Settings tab. Dropdown shown to judges =
-  union of `competition.commentLanguages` and the judge's current
-  `preferredCommentLanguage` (so a sticky value outside the list still
-  shows).
-- PDF: each comment block carries a "Comments — written in &lt;Language&gt;"
-  subheader (display name in printer's locale).
-- V20 SQL extended with `competition_comment_languages` table, plus
-  `comment_language` and `preferred_comment_language` columns on
-  `scoresheets` and `judge_profiles`.
+**Offered but DECLINED for now (user may request next session):** a temporary **dev-seed fast-path** that
+drives a small extra division all the way to RESULTS_PUBLISHED with 2 fully-scored entries, so a fresh DB
+lands directly on a published entrant scoresheet — much faster for iterating the redesign than re-walking
+§12 each reset. If the user asks, add it to `DevDataInitializer` (or a dev-only seed) behind the dev profile.
 
-**Phase 3 (2026-05-08) — service contracts, events, authorization, COI
-mechanism, cross-module guards (docs-only sketch; Java skeleton deferred
-to Phase 5):**
-- Module skeleton plan: `app.meads.judging` + `package-info.java` with
-  `@ApplicationModule(allowedDependencies = {"competition", "entry", "identity"})`.
-- Three judging-module services with full method signatures:
-  `JudgingService` (table CRUD, judge assignment, table/medal-round/BOS
-  state transitions, medal awards, BOS placements), `ScoresheetService`
-  (eager creation, edits, status transitions, comment language),
-  `JudgeProfileService` (ensure-on-assignment, CRUD, sticky language helper).
-- One competition-module extension: `CompetitionService.updateCommentLanguages`.
-- 13 event records (advance/retreat pairs across all 3 retreat tiers
-  from §2.B), denormalized to carry routing fields (`divisionId`,
-  `divisionCategoryId`, `totalScore`, etc.) so listeners don't reload.
-- Authorization rules table covering SYSTEM_ADMIN, competition ADMIN,
-  assigned judge, other judge, entrant. Hard COI block enforced
-  service-side; soft COI warning UI-only.
-- COI implementation contract: `MeaderyNameNormalizer` utility (with
-  full per-country suffix maps as compile-time constants per §2.E) +
-  `CoiCheckService` interface returning `CoiResult(hardBlock, softWarningKey)`.
-- Cross-module guards: `JudgingDivisionStatusRevertGuard` (judging
-  impl of existing competition interface) blocks JUDGING →
-  REGISTRATION_CLOSED retreat once data exists; new
-  `MinJudgesPerTableLockGuard` interface in competition module +
-  `JudgingMinJudgesLockGuard` impl.
-- Open: §Q15 (head-judge designation for BOS authorization) — deferred
-  to Phase 4 view design; default leaning is admin-only for v1.
+**After the redesign:** §13.12 anonymity sanity check (folds in) → code review → merge to `main` →
+**v0.4.0 release.**
 
-**Phase 4 ✅ COMPLETE (single session, 2026-05-09).** All 10 items + §Q15
-closed (see Phase 4.A–4.K above). §Q16 (per-entry tasting-label PDF
-variant for wine-glass tags) and §Q17 (mobile / touch UX review across
-judging surfaces) opened — both deferred. Phase 5 (implementation) is
-next; design doc has the recommended TDD order from module skeleton →
-V20 migration → entities → services → guards → events → views →
-PDF service → i18n keys → integration tests.
+----
 
-### Priority 5b: Judging module Phase 5 (implementation)
+The triage catalog below is **historical reference** (the triage was already run + acted on this session —
+Group A + P21 all DONE). **Key constraint still true:** the seed brings **Profissional to JUDGING only**,
+NOT RESULTS_PUBLISHED — the roadmap above is how to drive it the rest of the way.
 
-All design pinned in `docs/plans/2026-05-05-judging-module-design.md`.
-Implementation translates mechanically from Phases 2–4 (entities + V20
-schema in §2.G/§2.H, services in §3.2–§3.5, events in §3.6, COI
-mechanism in §3.8, cross-module guards in §3.9, views in §4.B–§4.J,
-i18n in §4.K).
+**▶▶ DEFERRED-ITEM TRIAGE CATALOG (all open items as of 2026-06-02):**
 
-When Phase 5 starts, switch to a feature branch (e.g.
-`feature/judging-module`) for code work — the design doc is on `main`
-and complete.
+*Group A — reset-independent (pure code/UI; can be done NOW, before touching the walkthrough):*
+- **P20 — magic-link deep-link redirect.** Add `&redirect=<safe internal path>` support to
+  `MagicLinkAuthenticationFilter` (URL-encoded, open-redirect-guarded) so emails can land on an exact page
+  instead of bouncing through `/` + `RootView`. Currently all deep-link emails pass the bare link by design
+  (see change #39). Code-only; no published division needed.
+- **P15 — bottom-positioned notifications overlap page-bottom content.** Vaadin `Notification`s cover the
+  ScoresheetView Save button (and validation toasts cover Save) and the last row of long entry lists. Fix:
+  shared bottom spacer/padding (MainLayout content style) or reposition/shorten notifications. Sweep for the
+  pattern. Code/UI-only.
+- **P12 — download-button lifecycle** and **P13 — participant counts.** Deferred unconditionally at the
+  2026-05-29 triage; independent of judging; **post-v0.4.0** unless pulled forward. Code-only.
 
-**Phase 5 (impl, deferred):** module skeleton → V20 migration →
-entities → services (TDD, repository tests first) → events + listeners
-→ views → integration tests. Java skeleton from Phase 3 translates
-mechanically.
+*Group B — needs the walkthrough advanced to RESULTS_PUBLISHED (do DURING/AFTER the re-walk):*
+- **Entrant scoresheet redesign — view + PDF (task #6 / P18-entrant).** The on-screen `MyScoresheetView`
+  (`awards.internal`) + the downloaded PDF (`ScoresheetPdfService`, ANONYMIZED level) need a redesign from the
+  **entrant's** POV (user flagged 2026-06-02). Only reachable/meaningful **after results are published** (the
+  entrant scoresheet is only visible then). Known issues from the original P18 note: missing per-criterion
+  comments + advancement info on-screen; "Anonymized" wording in the PDF heading; entry **code** shown instead
+  of entry **number**; judge-anonymization decision. User will provide screenshots/examples.
+- **§13.12 — anonymity sanity check.** Final Awards walkthrough step, never reported. Entrant → My Results →
+  👁 scoresheet dialog shows **no judge label**; ⬇ PDF heading "Scoresheet", no judge row, entry **number**
+  (not code), advancement row. Needs RESULTS_PUBLISHED. (Naturally folds into the entrant-scoresheet redesign.)
+- **P21 — entry/category mutations not stage-gated at late stages.** FIRST **reproduce** the user's observation
+  that create/edit entries worked **after** RESULTS_PUBLISHED (investigate the `DivisionEntryAdminView` admin
+  add/edit path — code says `createEntry`/`updateEntry` require `REGISTRATION_OPEN`, so the admin path likely
+  bypasses it). Reproduction needs a RESULTS_PUBLISHED division. THEN settle the policy with the user (see the
+  full P21 audit in the "▶▶ DEFERRED — RESUME NEXT SESSION" block below) and implement. Partly code, but gated
+  on the reproduction + a policy decision.
 
-### Priority 6: Awards module
-Design and implementation, after judging module. Reference: `docs/reference/chip-competition-rules.md` and `docs/specs/awards.md`.
+*Group C — post-v0.4.0 (non-trivial, explicitly deferred):*
+- **Medal-reopen-requires-BOS-reopen ordered dependency.** At DELIBERATION the only editable judging data is
+  BOS; editing a medal needs an ordered reopen (reopen BOS → reopen medal round → edit → finalize medals →
+  finalize BOS → republish). Non-trivial phase-state change; do NOT just relax the medal Reopen gate. See the
+  detail block above (~"reopen must require BOS to be reopened first").
+
+**Then:** code review → merge to main → **v0.4.0 release.** Full P21/§13.12/medal-reopen detail follows in the
+blocks below; the earlier resume pointers follow for reference:
+
+**▶ EARLIER RESUME (2026-06-01 end of session):**
+COMMITTED + pushed on `feature/judging-module`: `279f928` (P18 part 1), `6a23388` (medal/BOS grid polish),
+`229bc6a` (P18 part 2 — judge scoresheet redesign + MJP rubric), `0eed06e` (scoresheet layout refinements),
+`93a2855` (#38/#39 Awards admin UX + announcement magic-link fix). The earlier resume pointers follow:
+
+**▶ EARLIER RESUME (2026-05-31 end of day):** working tree clean, all
+commits through the entrant-results redesign + PDF-download fix are committed AND pushed to
+`origin/feature/judging-module`. **1299 tests green on JDK 25.** This session ran the full judging+awards
+walkthrough on a clean DB and fixed **~17 issues** (changes #21–#35 in the entries above — tie-banner count,
+stepper auto-save, stale-medal clear, SCORE_BASED reopen un-confirm, judges roster, mead-details eye, category
+badge, header read-only + grid mode picker, default medal mode = Score-based, derived medal-round entry count,
+BOS finalize gate, BOS-tab default, publication-history sortable, the **entrant results redesign** (MyResultsView
+grid + "View results" hub links + default-landing + "My Results" sidebar), **"Download all scoresheets"**, and
+the **PDF-download LazyInit fix**). **NEXT SESSION:**
+1. **Finish the Awards walkthrough (§13.6 onward)** — not yet run this session: **§13.6** freeze guard (judging
+   mutations rejected while RESULTS_PUBLISHED) → **§13.7** revert publication (type REVERT) → **§13.8** edit a
+   medal in DELIBERATION + **re-publish** (justification ≥20) → **§13.9–§13.11** send announcement (initial /
+   republish / custom templates; check Mailpit) → **§13.12** anonymity sanity check. Done on **Profissional**
+   (RESULTS_PUBLISHED now). Items 1–4 + Item 5 A–G (publish + results views) already validated this session.
+2. **Scoresheet redesign** — the deferred bundle: **P18** (entrant scoresheet view + PDF content/anonymization
+   fixes — comments/advanced missing, entry code→number, judge anonymization, "Anonymized" heading, view-as-dialog)
+   + the **field-layout redesign** — the user will provide screenshots/more info. Also fold in **P15** (bottom
+   notifications overlap).
+3. Then **code review → merge to main → v0.4.0 release.**
+
+The 2026-05-30 plan below (re-walk the judging flow on a clean DB) was **executed this session** — its ~20-fix
+validation pass is done; kept for reference:
+1. **§12.6.8.1** — small-category **SCORE_BASED** medal round (Profissional/M3B): create → Sync entries →
+   assign judges → Start → judge scores (Save→FILLED) → medals auto-populate → **judge Finalize** → COMPLETE.
+   Spot-check: editing a FILLED sheet recomputes medals; reopen reverts sheets to FILLED; medal-slot icons.
+2. **§12.6–§12.10** — **SCORING** rounds (Profissional/M1A Panel A + B): Start → judge scores → round-level
+   **Finalize** → both COMPLETE → cascade auto-creates **Medal — M1A (COMPARATIVE)** at READY.
+3. **§12.12** — COMPARATIVE M1A medal round: open (judge view hides Total/Status/scoresheet-eye), assign
+   table+judges on the grid, Start, award 🥇🥈🥉, **judge or admin Finalize** → COMPLETE. Confirm the gold
+   shows as a **BOS candidate** (awards get confirmed on finalize).
+4. **§12.8 / §12.13** — once every category's medal round is COMPLETE, **Start BOS** enables → BosView:
+   assign placements (Entry # / Code split grid), Finalize BOS.
+5. **§13** — Awards: publish → announce → entrant/public results.
+Watch the COMPARATIVE Assign-Entries icon is disabled on the grid; the scoring→medal cascade no longer
+duplicate-keys; deleting an in-use judging category gives a clean error; the Total column has no `*`.
+Earlier 2026-05-30 fixes `3313e2c`/`fb35d40` and the whole session's run (`553ac23`..`5ad7a18`) are all pushed.
+
+**Walkthrough-found change #21 (BUG FIX, 2026-05-31, uncommitted):** the SCORE_BASED medal-round ties
+banner mis-counted. `recomputeScorePreview` put **`openSlots`** (the number of *remaining unawarded medal
+slots*) into the count field, but the banner renders it as "{N} … tied" — so when the tie sat at the top
+boundary (no medals awarded yet) it always read "3", regardless of whether 2 or 3 entries actually tied
+(reproduced live: 3 identical sheets → "3"; break it so only 2 tie → still "3"). Fix: return the number of
+**tied entries** (`tied.size()`, which already equals `tiedEntryIds.size()`). Renamed the misleading record
+field `MedalRoundScorePreview.tiedSlotCount` → **`tiedEntryCount`** (the old name is what invited assigning
+`openSlots`); the `finalizeMedalRound` gate (`> 0`) is unaffected. Banner reworded "slots tied" → "entries
+tied" × 5 locales (`medal-round.banner.ties`). RED: strengthened the existing
+`JudgingServiceMedalRoundTest.shouldDetectTiedTopScoresInScoreBasedPreview` from `> 0` to exact `== 2`
+(no test had pinned the value — that's the gap that let it through). **1281 tests green** (count steady — assertion
+strengthened, not added). Walkthrough §12.6.8.1 / §12.12.2 updated.
+
+**Walkthrough-found change #22 (TWO BUG FIXES, 2026-05-31, uncommitted):** both raised live in §12.6.8.1.
+**(1) Stepper clicks didn't auto-save.** `ScoresheetView` score `NumberField`s used `ValueChangeMode.ON_BLUR`;
+Vaadin's +/- step buttons dispatch a `change` event but never `blur`, so clicking them changed the displayed
+value without firing the value-change listener → no `autoSaveField`, no persisted score, no total-preview
+update (typing worked because it blurs). Fix: `ON_CHANGE` (fires on stepper clicks AND on blur-after-typing —
+typed values persist exactly as before). Fast-cycle (the existing `ScoresheetViewTest` auto-save tests cover
+the listener; Karibu `setValue` fires regardless of mode so the mode itself isn't unit-testable).
+**(2) Editing a FILLED sheet left a stale medal.** On a SCORE_BASED medal round, medals auto-populate
+(`confirmed=false`) only when every sheet is FILLED (`onScoresheetFilled`). Re-opening a FILLED sheet and
+editing a score demotes it FILLED→DRAFT (`Scoresheet.demoteFromFilled`), but nothing fired — so the entry's
+Total vanished from the grid while its auto-medal lingered. Fix: new public-API event `ScoresheetUnfilledEvent`
+published by `ScoresheetServiceImpl.{updateScore,updateOverallComments}` when an edit drops a sheet out of
+FILLED (shared `publishUnfilledIfDemoted` helper); new `JudgingServiceImpl.onScoresheetUnfilled` listener
+clears the **unconfirmed** medal awards for the category (confirmed/manual tie-resolution awards preserved).
+Medals re-populate via `onScoresheetFilled` once the panel is all-FILLED again. NOT a re-derive — the panel is
+incomplete, so ranking on partial data would award wrong medals; clearing is correct. +1 unit test
+(`JudgingServiceMedalRoundTest.shouldClearUnconfirmedMedalsWhenFilledSheetEditedBackToDraftOnScoreBasedMedalRound`).
+**1282 tests green.** No migration. Walkthrough §12.6.8.1 / §12.11 updated.
+
+**Walkthrough-found change #23 (BUG FIX, 2026-05-31, uncommitted):** reopening a SCORE_BASED medal round
+left its medals **confirmed**, so editing scores after reopen never recomputed them. Finalize calls
+`confirmMedalAwardsForCategory` (so the gold becomes a BOS candidate); `reopenMedalRoundById` reverted the
+sheets to FILLED but kept the awards confirmed — and `autoPopulateMedalsByScore`'s reconcile only touches
+**unconfirmed** awards (confirmed = locked manual decisions), so after reopen the score-driven re-rank was
+dead. Fix: new `MedalAward.revertConfirmation()` (clears confirmed/confirmedAt/confirmedBy); `reopenMedalRoundById`
+now, for SCORE_BASED rounds, returns every award in the category to provisional (the sheet-revert loop is also
+scoped to SCORE_BASED — COMPARATIVE owns no sheets and awards by hand). Medals stay displayed but recompute on
+the next FILLED save; re-Finalize re-confirms. +1 unit test
+(`shouldRevertConfirmedMedalsToProvisionalWhenReopeningScoreBasedMedalRound`). **1283 tests green.** No
+migration. Walkthrough §12.6.8.1 (reopen + recompute-after-reopen steps) updated.
+
+**Walkthrough-found enhancement #24 (2026-05-31, uncommitted):** show the assigned-judge roster in the
+round drill-in views (admin-only), so an admin can see who judged once a round is COMPLETE and the Assign
+Judges dialog is locked. `RoundView` (scoring) and `MedalRoundView` (medal) headers now render a
+**"Judges: name1, name2"** line (`round-judges-line` / `medal-round-judges-line`) between the info row and
+the explanation, shown only when `isAdmin` (and, for medal, `medalRound != null`); `—` when none. Names
+resolved via the existing `JudgingService.findJudgeUserIdsForRound(roundId)` (assignments are EAGER) →
+`UserService.findById`. 1 new i18n key `round.judges` × 5 locales (shared by both views). Full TDD: +2 UI
+tests (`RoundViewTest.shouldShowAssignedJudgesLineToAdminOnScoringRound`,
+`MedalRoundViewTest.shouldShowAssignedJudgesLineToAdminOnMedalRound`). **1285 tests green.** No migration.
+Walkthrough §12.10 / §12.12.0 updated. **Layout follow-up (fast-cycle):** the **Table** info is pushed to
+the **far right** of the info row (`margin-left:auto`; Type badge + Status stay left) and the **Judges** line
+is **right-aligned** below it (`align-self:flex-end`) — both round views. Span ids/text unchanged, so the
+tests still cover them.
+
+**Walkthrough-found change #25 (BUG FIX, 2026-05-31, uncommitted):** the Rounds-grid **Entries** column
+showed **0** for a COMPARATIVE medal round even after its scoring rounds finished and MedalRoundView listed
+the advanced entries. The column used raw `JudgingRound.getEntries().size()`, but a COMPARATIVE medal round
+never materializes its `entries` set — it **derives** entries from advance-flagged prelim scoresheets (the
+same `findMedalRoundEntries` path MedalRoundView uses, with derivation fallback when `entries` is empty).
+Fix: new public `JudgingAdminView.roundEntryCount(round)` — for MEDAL rounds returns
+`findMedalRoundEntries(divisionCategoryId, medalMode).size()` (works for SCORE_BASED too: its entries set is
+materialized and read directly); SCORING rounds keep `getEntries().size()`. The grid Entries column now calls
+it. +1 UI test (`shouldCountDerivedEntriesForComparativeMedalRoundOnRoundsGrid`, asserts derived count `1`
+while `getEntries()` stays empty). **1286 tests green.** No migration. Walkthrough §12.10.0 updated.
+
+**Walkthrough-found change #26 (2026-05-31, uncommitted):** make MedalRoundView read-only (match scoring
+RoundView) + move medal-mode editing to the grid + default hand-created medal rounds to Score-based.
+**(1)** Removed `MedalRoundView.createEditableConfigRow` (+ `modeLabel`, unused `Select` import) — the header
+now always renders `createReadOnlyConfigLines` (type badge + status left, Table right) + the judges line. No
+more in-view Mode/Table dropdowns. **(2)** `JudgingAdminView.openEditTableDialog` gains a **medal-mode Select**
+(`edit-round-medal-mode`, MEDAL rounds only, enabled PENDING/READY, locked after start via new key
+`judging-admin.rounds.dialog.medal-mode.locked` × 5 locales) → `updateMedalRoundMode` on save. All round
+config (table/mode/schedule/judges) now lives on the unified Rounds grid. **(3)** Add-Round dialog medal-mode
+**default flipped COMPARATIVE → SCORE_BASED** (COMPARATIVE rounds are cascade-auto-created; hand-created ones
+are almost always the small-category Score-based flow). Pruned 4 orphaned i18n keys × 5 locales
+(`medal-round.mode`, `medal-round.mode.updated`, `medal-round.physical-table.updated`,
+`medal-round.physical-table.none-defined`); kept `medal-round.mode.comparative/score-based` +
+`medal-round.physical-table`. Tests: removed 2 MedalRoundView editable-select tests, repurposed 1
+(`shouldNotShowEditableModeOrTableSelectsInMedalRoundView`), added `JudgingAdminViewTest.shouldChangeMedalRoundModeViaEditDialog`.
+**1285 tests green.** No migration. Walkthrough §12.6.1 / §12.6.8 / §12.12.0 / §12.12.0.1 / §12.12.2 updated.
+
+**Walkthrough-found change #27 (FEATURE — P17 pulled forward, 2026-05-31, uncommitted):** per-row **"view
+mead details"** eye action on **all** round views. New `MeadDetailsDialog` (judging.internal) — a read-only
+dialog of an entry's tasting-relevant characteristics (sweetness, strength, ABV, carbonation, honey, other
+ingredients, wood-aged + details, additional info), modelled on the entry-admin "view entry" dialog but
+**omitting mead name, status, entrant, AND category (both initial + final)** — anonymity + category is
+constant per round. Title = the anonymized entry code. Reuses the existing `entry-admin.entries.view.*` field
+labels (DRY); 2 new keys `round.mead-details.title` + `round.action.mead-details` × 5 locales. **Icons:** the
+👁 **eye** now opens mead-details on every row of `RoundView` + `MedalRoundView` (all users — gives a
+COMPARATIVE judge, who can't open the prelim scoresheet, a way to see what they're tasting); the existing
+**scoresheet-open** icon changed **eye → ✏ pencil** (same behavior/visibility — judge+admin on scoring &
+SCORE_BASED, admin-only on COMPARATIVE). `MedalRoundView` gained an `EntryService` dependency. Each view
+exposes a public `openMeadDetailsDialog(entryId)` (the per-row button lives in a Grid component column Karibu
+can't click — same testability pattern as the other dialogs). +2 UI tests
+(`RoundViewTest.shouldOpenMeadDetailsDialogWithoutMeadName`,
+`MedalRoundViewTest.shouldOpenMeadDetailsDialogForJudgeOnComparativeMedalRoundWithoutMeadName`).
+**1287 tests green.** No migration. Walkthrough §12.10 / §12.12.1 updated.
+
+**Walkthrough-found change #28 (2026-05-31, uncommitted):** **category badge** in both round drill-in headers,
+next to the round-type badge, making the **final (judging) category** being evaluated explicit (it was only
+implied in the round title). New `RoundBadges.categoryBadge(code, name, tooltipLabel)` (judging.internal) —
+a **neutral grey pill** (`--lumo-contrast-10pct` bg, secondary text), deliberately *not* a Lumo status colour
+(primary/success/contrast are taken by the type badge) so it reads as a label, not a status. Shows the
+category **code** (e.g. `M1A`); hover tooltip = "Category: code — name". `RoundView` resolves the category via
+`competitionService.findDivisionCategoryById(table.getDivisionCategoryId())` (id `round-category-badge`);
+`MedalRoundView` uses its existing `category` field (id `medal-round-category-badge`). The round's
+`divisionCategoryId` *is* the final/judging category entries were assigned to. Reused the existing
+`judging-admin.rounds.column.category` label (no new i18n). +2 UI tests
+(`should ShowCategoryBadgeOn{Scoring,Medal}Round`). **1289 tests green.** No migration. Walkthrough §12.10 /
+§12.12.0 updated.
+
+**Walkthrough-found change #29 (fast-cycle, 2026-05-31, uncommitted):** `BosView` — both the placements
+(`bos-placements-grid`) and candidates (`bos-candidates-grid`) grids now `setAllRowsVisible(true)` (grow to fit
+rows, no fixed-height scrollbar — matches JudgingAdminView/MedalRoundView) and their data columns are
+`setResizable(true).setSortable(true)` (the placements Action component column is resizable, not sortable). No
+new tests (existing `BosViewTest` covers column structure, unchanged); **1289 green.** Walkthrough §12.13 updated.
+
+**Walkthrough-found change #30 (BUG FIX / decision reversal, 2026-05-31, uncommitted):** BOS could be finalized
+with empty places even when GOLD candidates were still unplaced (the old D11 "empty BOS allowed"). **Reversed**
+per the user to **"block only if fillable"**: `JudgingServiceImpl.completeBos` now rejects
+(`error.bos.cannot-complete-unfilled` × 5 locales) when an empty place could still be filled — i.e. a confirmed
+GOLD medal isn't placed AND `placements < bosPlaces`. Once candidates are exhausted, empty places are still
+allowed (a field shorter than `bosPlaces`). Extracted private `bosHasFillableEmptyPlace(divisionId)` + new
+public `JudgingService.canFinalizeBos(divisionId, adminUserId)` (single source of truth). UI: the BOS-tab
+**Finalize BOS** button is now **disabled with a tooltip** (`judging-admin.bos.action.finalize.disabled-tooltip`
+× 5 locales) when `!canFinalizeBos`, mirroring the Start/Reset pattern; the service guard remains as
+defense-in-depth. AwardsModuleTest unaffected (awards no gold → guard passes); the freeze test throws earlier
+(guard sits after `requireNotFrozen`). +4 tests (completeBos reject + allow-when-exhausted, canFinalizeBos,
+JudgingAdminView disabled-button). **1293 green.** No migration. Walkthrough §12.13.4 rewritten (D11 superseded).
+
+**Walkthrough-found change #31 (2026-05-31, uncommitted):** `JudgingAdminView.computeDefaultTabIndex` now opens
+the **BOS tab** by default once `Judging.phase` is `BOS` or `COMPLETE` (BOS-phase branch added first, ahead of
+the Tables/Results/Rounds logic) — so "← Back to dashboard" from the placements form (BosView) returns to BOS,
+not Results. Side-effect: the BOS-tab header buttons are now in the DOM by default, so 3 existing BOS dialog
+tests collided on button text ("Finalize/Reset/Reopen BOS" matched both the header button and the dialog
+confirm) — gave the dialog confirm buttons ids (`bos-{finalize,reset,reopen}-confirm`) and switched those
+tests to click by id. +1 test (`shouldDefaultToBosTabWhenPhaseIsBos`). **1294 green.** No migration.
+Walkthrough §12.13 updated.
+
+**Walkthrough-found change #32 (fast-cycle, 2026-05-31, uncommitted):** `AwardsAdminView` publication-history
+grid (`awards-publication-history`) — all four columns now `setResizable(true)`; the **Version** column is
+`setSortable(true)`. No new tests (existing `AwardsAdminViewTest` covers structure); **1294 green.** Walkthrough §13.2 updated.
+
+**Walkthrough-found change #33 (entrant results redesign — STEP 1 of 2, 2026-05-31, uncommitted):** rebuilt the
+awards-module `MyResultsView` grid to look like the entry grid: a **search field** (filters by mead name),
+**sortable + resizable** columns — **Entry #**, **Mead**, **Category** (code only, hover tooltip = full name via
+`setTooltipGenerator`), **Round 1 total** (numeric comparator), **Advanced** (green ✓ icon / `—`), **Medal**
+(🥇🥈🥉 emoji, comparator by `Medal.ordinal`), **BOS place** (numeric comparator) — plus an Action column with a
+per-row **👁 view-scoresheet** (works, navigates) and a **⬇ download** icon. `MyResultsView` gained a
+`ScoresheetPdfService` dep (awards→judging, allowed). 2 new i18n keys × 5 locales (`my-results.search.placeholder`,
+`my-results.download-scoresheet`). +1 test (`shouldRenderSearchFieldAboveResultsGrid`). **1295 green.**
+**Architectural note:** results stay in the awards module — the **entry** module (`MyEntriesView`) is only
+allowed `{competition, identity}`, so it can't read judging/awards data; merging results into the literal entry
+grid isn't possible without denormalization. **DEFERRED (per user):** the scoresheet **PDF download is broken**
+(StreamResource supplier) and the scoresheet view hides **per-criterion comments + advanced** — both deferred;
+the **download icon's functionality + a "Download all scoresheets" button** land with that PDF fix (the icon is
+present now but won't produce a file until then). **STEP 2 — chosen approach "reuse the entries hub":**
+- **STEP 2a DONE (2026-05-31):** `EntrantDivisionOverview` gained a `DivisionStatus status` field (builder in
+  `EntryService.findEntrantDivisionOverviews` passes `division.getStatus()`); the entries hub
+  (`EntrantOverviewView`, multi-division view) now renders a per-division **"View results"** link
+  (`overview-results-<divShortName>`, string Anchor → `…/my-results`, entry→awards boundary-safe) for each
+  `RESULTS_PUBLISHED` division. `/my-entries` single-division forward is **unchanged** (still → MyEntriesView,
+  which already has the results banner — so "My Entries" isn't hijacked). 1 new i18n key `overview.view-results`
+  × 5 locales; +1 assertion on `EntryServiceTest.shouldReturnEntrantDivisionOverviews`. **1295 green.**
+- **STEP 2b DONE (2026-05-31):** new shared checker `EntrantResultsChecker` (root interface, impl
+  `EntrantResultsCheckerImpl` in entry.internal — mirrors the `JudgeAssignmentChecker` pattern) →
+  `resultsLandingPath(email)`: empty when no published division, the division's `…/my-results` when exactly one,
+  `my-entries` (hub) when several. **RootView** now forwards an entrant to that path (default landing after
+  publication; `.orElse("my-entries")`). **MainLayout** adds a **"My Results"** SideNavItem (trophy icon,
+  `nav.my-results` × 5 locales) to the same target when the checker returns a path — keeping "My Entries". +3
+  unit tests (`EntrantResultsCheckerImplTest`). **1298 green.** Entrant results redesign (change #33) COMPLETE.
+  Walkthrough §13.4 updated.
+
+**Walkthrough-found change #34 (2026-05-31, uncommitted):** entrant results grid polish + download-all.
+**(bug)** `AwardsServiceImpl.buildEntrantRow` was feeding `entry.getEntryCode()` (anonymized) into the row's
+`entryNumber` — now passes the **prefixed entry number** (`prefix-number`, the entrant's own id). **(styling)**
+`MyResultsView` columns relabeled + sized to match the entry grid: **Entry #** (narrow, fixed), **Mead Name**
+(flex-grows for long names), **Final Category** (code + tooltip), **Score** (was "Round 1 total"), Advanced,
+Medal, BOS, **Actions** — the my-results column-label values were updated × 5 locales to the entry-grid wording;
+the per-row 👁/⬇ buttons are now small inline icon buttons (`LUMO_SMALL`) like the entry grid's, ⬇ uses
+`DOWNLOAD_ALT`. **(feature)** added the **"Download all scoresheets"** toolbar button (`my-results-download-all`,
+disabled when no submitted sheets) → new `ScoresheetPdfService.generateBatchPdf(ids, …)` which generates each
+via `generatePdf` and merges with OpenPDF `PdfCopy`. New keys `my-results.download-all` × 5. +1 test
+(`ScoresheetPdfServiceTest.shouldGenerateBatchPdfMergingScoresheets`); the batch test confirms `generatePdf`
+produces valid `%PDF` bytes server-side — the old "Site wasn't available" was the **old MyScoresheetView**'s
+`getLocale()`-inside-StreamResource-supplier; MyResultsView captures the locale eagerly. **Still DEFERRED:**
+the separate `MyScoresheetView` page hiding per-criterion **comments + advanced** (display gap). **1299 green.**
+No migration. Walkthrough §13.4 updated.
+
+**Walkthrough-found change #35 (BUG FIX, 2026-05-31, uncommitted):** the scoresheet PDF downloads ("Site
+wasn't available") — root cause was NOT the locale: `ScoresheetPdfService` wasn't `@Transactional`,
+`Scoresheet.fields` is LAZY, and `spring.jpa.open-in-view=false`, so when Vaadin runs the `StreamResource`
+supplier on the download request thread (no session bound) `sheet.getFields()` threw
+`LazyInitializationException` → 500. (Existing `ScoresheetPdfServiceTest` passed because the test keeps a
+session open — didn't reproduce the no-session path.) Fix: `@Transactional(readOnly = true)` on
+`generatePdf` + `generateBatchPdf` so each call opens its own session and the lazy fields load. Fixes both the
+per-row + "Download all" buttons in `MyResultsView` AND the old `MyScoresheetView` PDF button. **1299 green.**
+No migration. **Now resolved** (was the deferred "PDF broken" item); the only remaining DEFERRED item is the
+`MyScoresheetView` on-screen page hiding per-criterion **comments + advanced** (a display gap, separate from
+the download). Walkthrough §13.4 updated.
+
+**Walkthrough-found enhancement #3 (2026-05-30, NOT yet committed — working tree dirty):** two admin-UX
+polish items raised mid-§12.6.8.1. **(1) Role-phrased round explanation.** `RoundView` + `MedalRoundView`
+showed the same second-person "what the judge does" blurb to everyone; admins observe rather than score,
+so they now get a third-person variant. 3 new i18n keys × 5 locales
+(`round.explanation.{scoring,medal-comparative,medal-score-based}.admin`); both views switch on `isAdmin`.
+**(2) Scoresheet-status column on the medal grid.** `MedalRoundEntryRow` gained a nullable
+`ScoresheetStatus scoresheetStatus`; both `JudgingServiceImpl` builders pass `sheet.getStatus()`;
+`MedalRoundView` renders a **Status** column (reusing the existing `medal-round.status` = "Status" key,
+`—` when no sheet) between Code/Mead and Total — so a medal round's scoring progress (BLANK → FILLED →
+SUBMITTED) is visible at a glance, like a scoring round. +2 `MedalRoundViewTest` UI tests
+(`shouldRenderScoresheetStatusColumnOnMedalRoundGrid`, `shouldShowAdminPhrasedExplanationToAdmins`).
+**(3) MedalRoundView layout polish (fast-cycle, no new tests):** added vertical gap
+(`var(--lumo-space-s)`) between the header lines (title / table-type-status row / explanation); moved
+the bold medal-tally **summary** from below the grid to **above it**, right-aligned on the same
+`HorizontalLayout` as the Finalize button (`createSummary()` now built inside `createActions()`); the
+entries grid `setAllRowsVisible(true)` so it grows to fit all rows (matches JudgingAdminView).
+Walkthrough §12.6.8.1 / §12.10 / §12.12 updated.
+
+**Walkthrough-found change #4 (2026-05-30, NOT yet committed — Withhold action removed):** the per-row
+🚫 Withhold (explicit `MedalAward.medal = null`) was dropped — it was ambiguous (which of N non-medal
+entries do you withhold?) and only existed to satisfy the COMPARATIVE finalize "undecided-entries" guard.
+New model: **COMPARATIVE** finalize commits whatever medals were awarded; the rest get no medal — the
+`completeMedalRoundById` undecided guard is gone, and the **Finalize confirm dialog now states, in bold,
+how many entries will receive no medal** (`medal-round.finalize.confirm.no-medal`). **SCORE_BASED** is
+unchanged (auto-populate, then Clear to remove). Removed: 🚫 button + `openWithholdConfirmDialog`, the
+`medal-round.medal.withheld` label, the "Withhold" summary bucket (now `{3} no medal`), the `W:` count on
+the Rounds-Results outcome, AwardsServiceImpl "Withheld" admin label (→ "—"), `error.medal-round.undecided-entries`
++ the 4 `medal-round.action.withhold.*` keys × 5 locales; reworded `clear.confirm.body` (no longer suggests
+Withhold). `MedalAward.medal` stays nullable (no migration — judging not in prod; null is now only a
+defensive case). Tests: rewrote `shouldRejectCompleteMedalRoundWhenAnAssignedEntryIsUndecided` →
+`shouldCompleteMedalRoundEvenWhenSomeAssignedEntriesHaveNoMedal`; deleted 2 MedalRoundViewTest withhold
+tests + 1 BOS withhold test. Walkthrough §12.12.1/§12.12.3/§13.3/§13.4 + the (c) summary banner updated.
+**1272 tests passing on JDK 25.** **Follow-up (uncommitted):** the Finalize confirm dialog's "You can
+reopen later if needed" reassurance + the admin-warning are now gated to `isAdmin` only — a judge
+finalizing a SCORE_BASED medal round no longer sees a reopen claim (Reopen is admin-only). Fast-cycle, no
+new tests. **(committed `788db06`.)**
+
+**Walkthrough-found change #5 (committed `788db06`+):** reopening a **SCORE_BASED** medal round now reverts
+its SUBMITTED scoresheets back to FILLED (mirrors `reopenScoringRound`) — previously the medals were
+reassignable after reopen but the sheets stayed locked. `JudgingServiceImpl.reopenMedalRoundById` loops
+`scoresheetRepository.findByRoundId(roundId)` and calls `revertToFilled()` on SUBMITTED sheets (COMPARATIVE
+medal rounds own no sheets, so the loop is a no-op there). +1 unit test
+(`shouldRevertSubmittedScoresheetsToFilledWhenReopeningScoreBasedMedalRound`). Walkthrough §12.12.3 updated.
+
+**Walkthrough-found change #6 (uncommitted):** on a **COMPLETE** round, the Rounds-grid ✏ Edit and
+👥 Assign Judges icons are now **disabled** (nothing left to edit; judges can't be reassigned). Both wrapped
+with disabled tooltips (`judging-admin.tables.action.{edit,assign-judges}.disabled` × 5 locales) via the
+existing `roundOpenForChanges = status != COMPLETE` gate in `JudgingAdminView.createRoundsActionsCell`.
+Cell still returns 7 components (buttons wrapped, not removed). +1 UI test
+(`shouldDisableEditAndAssignJudgesIconsWhenRoundIsComplete`). Walkthrough (c) summary banner updated.
+
+**Walkthrough-found change #7 (uncommitted):** scoring-round URL segment renamed `tables` → `rounds`
+(finishes the Table→Round rename — the route param was already `:roundId`). `RoundView` `@Route` now
+`…/divisions/:divShortName/rounds/:roundId`; URL builders updated in `JudgingAdminView`, `MyJudgingView`,
+`ScoresheetView.roundViewUrl()`. (MedalRoundView stays `…/medal-rounds/:divisionCategoryId`; PhysicalTable
+URLs untouched.) Tests updated (RoundViewTest, ScoresheetViewTest) + walkthrough §12.6.10/§12.10. No new
+tests (fast-cycle rename). Note: `/medal-rounds/` does not contain the substring `/rounds/`, so the
+medal-vs-scoring back-anchor assertions stay valid.
+
+**Walkthrough-found change #8 (committed `4a4f6ca`):** the medal-round Current medal column prefixes the
+medal icon (🥇/🥈/🥉) before the label.
+
+**Walkthrough-found change #9 (BUG FIX, uncommitted):** finalizing a medal round now **confirms** its
+medal awards. BOS candidates filter on `MedalAward.confirmed`, but auto-populated SCORE_BASED awards are
+written `confirmed=false` — so after a SCORE_BASED finalize the gold never appeared as a BOS candidate
+("No GOLD medals were awarded"). New private `confirmMedalAwardsForCategory(categoryId, userId)` called
+from both `finalizeMedalRound` (SCORE_BASED) and `completeMedalRoundById` (COMPARATIVE — manual awards were
+already confirmed, so defensive there). Extended the end-to-end finalize test
+(`shouldLetAssignedJudgeFinalizeScoreBasedMedalRoundEndToEnd`) to assert the awards are confirmed + appear
+in `findGoldMedalAwardsForDivision`.
+
+**Walkthrough-found change #10 (committed `46f1c74`):** Results-tab medal Outcome now renders one glyph per
+medal slot (no counts — each medal is unique per category): the medal icon when awarded, `🚫` when not —
+e.g. `🥇 🥈 🥉` or `🥇 🚫 🥉`. Replaces `G:n S:n B:n`. Display-only, in `JudgingAdminView.formatRoundOutcome`.
+
+**Walkthrough-found change #20 (BUG FIX, uncommitted):** stop materializing a `CategoryJudgingConfig` for
+every judging category. `findCategoryConfigsForDivision` was a *read* that **persisted** a default config for
+any category lacking one (`orElseGet(save(...))`) — called on every BOS-tab render, so entry-less categories
+(e.g. M4S) silently gained config rows → became "in use"/undeletable AND permanently blocked "Start BOS"
+(`allCategoryRoundsComplete` required every config's medal round COMPLETE, impossible for entry-less ones).
+Fixes: **(a)** `findCategoryConfigsForDivision` now returns a *transient* default (no save), `@Transactional(readOnly)`.
+**(b)** `JudgingAdminView.allCategoryRoundsComplete` now gates on actual **medal rounds** (≥1 exists + all
+COMPLETE), mirroring the already-correct service `startBos` guard (which skips categories with no medal round).
+Empty categories no longer block BOS and stay deletable. Test renamed →
+`shouldReturnTransientDefaultConfigForCategoryWithoutOneWithoutPersisting` (asserts `never().save`). The #19
+deletion guard still applies to genuinely-configured categories.
+
+**Walkthrough-found change #19 (committed `080babf`):** deleting a JUDGING-scope category that's in judging
+use crashed with a raw FK violation (`category_judging_configs_division_category_id_fkey`) — the only
+`JudgingCategoryDeletionGuard` was the entry module's (checks `entry.finalCategoryId`), so a category with a
+`CategoryJudgingConfig`/rounds/awards but **no entries** (e.g. M4S) sailed past it to the DB delete. New
+`JudgingCategoryUsageDeletionGuard` (judging.internal) blocks deletion when the category has a judging config,
+judging rounds, or medal awards → clean `error.category.judging-in-use` × 5 locales. (Category management
+during judging stays allowed — `allowsJudgingCategoryManagement()` is REGISTRATION_CLOSED+ by design — it's
+just guarded against in-use categories now.) +3 unit tests (`JudgingCategoryUsageDeletionGuardTest`,
+including the config-only case).
+
+**Walkthrough-found change #11 (BUG FIX, committed `4749dc4`):** auto-populated medals now **recompute** when scores
+change. `autoPopulateMedalsByScore` previously only created an award for entries with none — so editing a
+sheet after auto-population never re-ranked (or cleared, on a new tie) the medals. It now reconciles the
+**unconfirmed** (auto) awards: `deleteAll` them + `flush()` (the flush matters — `finalizeMedalRound` runs
+autoPopulate twice, once via the `onScoresheetSubmitted` event and once explicitly, so delete-then-reinsert
+the same `entry_id` in one tx would trip the unique constraint without it) then re-derive from current
+totals. **Confirmed** (manual tie-resolution) awards are preserved, and their medal type + entry are treated
+as already taken so the cascade fills only the remaining slots. +1 unit test
+(`shouldRecomputeUnconfirmedMedalsWhenScoresChangeOnScoreBasedMedalRound`); 3 auto-populate tests had their
+now-unused `findByEntryId` stubs removed.
+
+**Walkthrough-found change #12 (committed `460db9a`):** the JudgingAdminView BOS-tab GOLD-candidates grid now has
+separate **Entry #** (prefixed, via new `formatEntryNumber(MedalAward)`) and **Code** columns — previously
+the code sat alone under an "Entry" header. i18n: `judging-admin.bos.candidates.column.entry` replaced by
+`.entry-number` + `.entry-code` × 5 locales (reusing the existing Entry #/Code strings). Display-only.
+
+**Walkthrough-found change #13 (committed `adc8277`):** same Entry # + Code split applied to **BosView**'s
+candidates grid (`bos.candidates.column.entry` → `.entry-number` + `.entry-code` × 5 locales; new
+`entryNumberFor(UUID)` helper). **Note:** BosView is only reachable once BOS is *started* — `beforeEnter`
+forwards to the judging-admin view (Rounds tab) while `judging.phase ∉ {BOS, COMPLETE}`; "Start BOS" is
+enabled only once every category's medal round is COMPLETE.
+
+**Walkthrough-found change #18 (uncommitted):** COMPARATIVE medal-round **Finalize is now judge-or-admin**
+(was admin-only) — the judges award the medals, so they can commit them. `MedalRoundView` shows Finalize to
+judges too (`showFinalize = medalRound != null`); `JudgingServiceImpl.completeMedalRoundById` now authorizes
+an assigned judge OR an admin (mirrors `finalizeMedalRound`). Reopen stays admin-only; the finalize dialog's
+reopen-reassurance + warning stay admin-only. +1 unit test
+(`shouldAllowAssignedJudgeToCompleteComparativeMedalRound`).
+
+**Walkthrough-found change #17 (committed `05a7f03`):** MedalRoundView grid is now mode/role-aware so a COMPARATIVE
+round doesn't leak the prelim scores to judges. **(a)** Scoresheet **Status** column shows only for
+SCORE_BASED (medal round owns the sheets); hidden on COMPARATIVE (prelim sheets are always SUBMITTED here —
+noise). **(b)** **Total** column hidden from judges on COMPARATIVE (they award by tasting, independent of
+prelim scores); admins keep it; SCORE_BASED shows it to all (it's the medal basis). **(c)** the 👁 Open-scoresheet
+icon is admin-only on COMPARATIVE (the sheet is on a prelim round the judge isn't assigned to — the icon just
+forwarded them away); judges keep it on SCORE_BASED (they own the sheet). Tests: rewrote the Status-column test
+to SCORE_BASED (`shouldRenderScoresheetStatusColumnOnScoreBasedMedalRound`) + added `doesNotContain` Status/Total
+assertions to the COMPARATIVE admin + judge column tests.
+
+**Walkthrough-found change #15+#16 (committed `75d6d06`, `ed66a71`):** RoundView header `gap: var(--lumo-space-s)`
+between title / info row / explanation that MedalRoundView already had (it was cramped with `setSpacing(false)`
+and no gap). Cosmetic, fast-cycle, no new test.
+
+**Walkthrough-found change #14 (committed `27ffb2c`):** the scoring→COMPARATIVE-medal cascade tripped
+`judging_round_entries_entry_id_key`. When the last scoring round in a category finalized, the cascade
+(`ScoresheetServiceImpl.cascadeMarkCategoryReadyIfAllTablesComplete` → `populateMedalRoundEntries`) copied
+the advance-flagged entries onto the medal round's `entries` — but those entries already live in their
+scoring rounds, and `judging_round_entries.entry_id` is **globally UNIQUE** (an entry is on exactly one
+round). Removed `populateMedalRoundEntries`: a prelim-fed medal round derives its candidates from the
+advance-flagged SUBMITTED scoresheets (`findMedalRoundEntries`'s derivation path); the explicit `entries`
+set is reserved for the SCORE_BASED small-category flow (medal round owns the entries, no scoring round
+holds them). Why no test caught it: `AwardsModuleTest` never sets the advance flag, so the COMPARATIVE
+populate skipped its lone entry. +1 integration test reproducing the violation
+(`MedalRoundViewTest.shouldNotDuplicateEntryWhenScoringCascadeReadiesMedalRound`); rewrote
+`ScoresheetServiceTest`'s populate test → `shouldReadyMedalRoundWithoutPopulatingEntriesWhenComparativeCascadeFires`.
+**Same root cause, also fixed:** the unified-grid **📦 Assign Entries** is now **disabled for COMPARATIVE
+medal rounds** (its dialog called `assignEntryToRound`, whose 1:1 guard only covers SCORING rounds — it
+would hit the same constraint). New tooltip key `judging-admin.tables.assign-entries.disabled-comparative-medal`
+× 5 locales; +1 UI test (`shouldDisableAssignEntriesForComparativeMedalRoundOnly`). SCORING + SCORE_BASED
+medal keep Assign Entries.
+
+**Earlier 2026-05-30 fixes** are **committed** (`3313e2c`, `fb35d40`) on `feature/judging-module` but
+**not yet pushed**.
+
+**Walkthrough-found fix #2 (2026-05-30, SCORE_BASED medal-round UX overhaul — committed `fb35d40`):** the (c)
+redesign left the small-category SCORE_BASED flow stranded — judges Save sheets to FILLED but the
+per-sheet Submit was retired, so nothing submitted them → medals never auto-populated → Finalize
+(admin-only) was unreachable and its dialog always read zero. Fixed end-to-end:
+- **Medals compute from FILLED sheets, not only SUBMITTED.** New `Scoresheet.medalEligibleTotal()`
+  (SUBMITTED→locked total; FILLED→live field sum). `autoPopulateMedalsByScore` + the grid Total +
+  `recomputeScorePreview` use FILLED totals for medal-owned sheets. New `ScoresheetFilledEvent`
+  (published by `markFilled`) + `JudgingServiceImpl.onScoresheetFilled` listener auto-populate once
+  **every** sheet on a SCORE_BASED medal round is FILLED. Idempotent — never overwrites an existing
+  award, so FILLED-time results (auto or manual tie-resolution) survive the later SUBMITTED locking.
+- **New `JudgingService.finalizeMedalRound(roundId, userId)` — judge OR admin.** SCORE_BASED + ACTIVE +
+  all FILLED + no unresolved tie → submits all sheets, re-runs autoPopulate, completes the round in one
+  judge-driven step (no admin hand-off; no per-entry undecided guard — score order decides). 4 new error
+  keys × 5 locales (`error.medal-round.{finalize-score-based-only,cannot-finalize-not-active,
+  cannot-finalize-unfilled,cannot-finalize-tied}`). `MedalRoundView` Finalize is judge+admin for
+  SCORE_BASED (calls `finalizeMedalRound`, disabled+tooltip until all-FILLED & no-tie); admin-only for
+  COMPARATIVE (still `completeMedalRoundById`).
+- **MedalRoundView + RoundView header reorder (uniform):** Table → colored **Type badge** → Status
+  (**admin-only**) → a per-round-type **"what judges do"** explanation (`round.explanation.{scoring,
+  medal-comparative,medal-score-based}` × 5 locales, id `round-explanation`).
+- **MedalRoundView: Assign Judges / Assign Entries buttons + their dialogs removed** (they live on the
+  unified Rounds grid now — `JudgingAdminView.openAssignEntriesDialog` is mode-aware). Dead
+  `entryService` dependency dropped. **"Advanced" column removed** from the medal grid (it flagged
+  scoring-round advance — meaningless on a medal round; the advance checkbox is already hidden on medal
+  sheets). Grid Total now shows the FILLED total (was "—" until SUBMITTED).
+- **ScoresheetView**: the autosave status next to the Save button changed from "Saved ✓" to
+  **"Draft saved ✓"** (`scoresheet.save.status.saved`) so it reads as state, not as the button's action.
+- Tests: +`onScoresheetFilled` unit tests, +`finalizeMedalRound` end-to-end integration test
+  (`MedalRoundViewTest`); 5 obsolete MedalRoundView assign-button tests deleted (functionality on the
+  grid). 1273 tests passing on JDK 25 at the time; now **1275** after enhancement #3 above. Verify with
+  `mvn test -Dsurefire.useFile=false`.
+
+**Remaining for (c) before the walkthrough resumes:** (1) **DONE (2026-05-29):** the test-only
+`ScoresheetService.submit()` is retired; its tests migrated to `markFilled` + `finalizeScoringRound`
+(`ScoresheetServiceTest`, `ScoresheetServiceFreezeGuardTest`, `AwardsModuleTest.fillAndSubmit`).
+(2) **DONE (2026-05-29):** the walkthrough §12.6-§12.12 detailed substeps are rewritten for the new UI
+(summary banner at §12.6 + updated §12.6.1/§12.6.8/§12.6.8.1/§12.6.9/§12.10.0/§12.10.1/§12.11/§12.12).
+(3) the separately-deferred scoresheet *field-layout* redesign (awaiting user screenshots) — the ONLY
+(c)-adjacent item left. Then resume the walkthrough, code review, merge, v0.4.0.
+Walkthrough paused at §12.6.8.1 step 10 (judge scoring the M3B SCORE_BASED
+medal round in Profissional) — **but per the triage outcome above, do the (c)
+unified round-admin redesign before resuming.** When the walkthrough does resume,
+the judge will land directly on the medal round via the new redirect.
+
+**Walkthrough resume checklist:**
+
+1. Finish the rest of §12.6.8 (Add a medal round — duplicate-rejection path, delete-button visibility).
+2. Walk the new **§12.6.8.1 (Small-category SCORE_BASED flow)** — create a fresh
+   judging category with 3 RECEIVED entries, add a MEDAL/SCORE_BASED round, run
+   the entire assign → judges → start → score → autoPopulate → finalize flow.
+   This exercises every Option A code path end-to-end. (See manual-test.md for
+   step-by-step.)
+3. **Defer §12.6.0.1** (cross-division shared-tables check) — still needs
+   Amadora to also have an ACTIVE round at `Table 1`. Unit-tested; skip in
+   the walkthrough or revisit after starting an Amadora round.
+4. Then proceed **§12.6.9 (Type filter)** → §12.6.10 (Open buttons) → §12.7
+   (Results tab) → §12.8 (Best of Show tab) → §12.9 (MyJudgingView — log in as
+   one of the judges actually assigned to a Profissional round; the seed has
+   `judge@`–`judge6@` available) → §12.10 (RoundView — **see the new judge row
+   Open + Submit shortcuts + Advances column + live Total for DRAFT + Blank
+   filter**) → §12.11 (ScoresheetView — **see the back-to-round anchor, +/- step
+   buttons, prominent H3 total, required per-criterion + overall comments,
+   narrow score inputs with horizontal label rows**) →
+   §12.12 (MedalRoundView — **see the Open scoresheet button per row, the
+   helper-text-by-mode in the Assign Entries dialog, medal buttons gated by
+   sheet status in SCORE_BASED, columns resizable + sortable, entry-code
+   stable order across reloads**) →
+   §12.13 → §12.14 → §12.15 (revert-guard relaxed — only ACTIVE/COMPLETE
+   block) → §12.16 → §12.17 → §12.18. Then §13 Awards.
+
+After the walkthrough completes: code review, merge, v0.4.0 release.
+
+---
+
+### Recently completed (2026-05-25 session)
+
+Two batches in one day. **Morning batch — five deferred walkthrough items + late-RECEIVED tweak** (1178 → 1189 tests, V29 → V31, `EntryReceivedEvent` removed):
+
+- `d5ff5c9` Late RECEIVED is manual-only: deleted `EntryReceivedScoresheetListener` + `EntryReceivedEvent`. Admin assigns final category + Rounds → Assign Entries; no more auto scoresheet creation.
+- `945dbcc` **Item #1** Judging setup at REGISTRATION_CLOSED: `JudgingAdminView.beforeEnter` gate lowered; "Manage Judging" button visible from REG_CLOSED; new service gate on `startRound` requiring `>= JUDGING` (key `error.round.cannot-start-before-judging` × 5 locales).
+- `001fd95` **Item #5** Table → Round i18n rename across EN + PT/ES/IT/PL.
+- `6fa4e1c` **Item #2** Cross-division shared tables flag: `Competition.sharedTables` (default TRUE) + V30 migration + cross-division busy-check + `error.round.physical-table-busy-shared` × 5 locales.
+- `8481a60` **Item #4** Scoresheet improvements: per-item comment TextArea per MJP field; comment language falls back to `User.preferredLanguage`; `meadName` hidden from judges.
+- `1e2b901` **Item #3a** V31 partial unique index backstops one-medal-round-per-category.
+- `57a6784` **Item #3b** Cascade populates `medalRound.entries` per mode at READY transition.
+- `760058d` **Item #3c** `MedalRoundView` Assign Entries dialog mirrors Rounds-tab equivalent.
+
+**Afternoon/evening batch — UX polish + revert guard relax** (1189 → 1200 tests):
+
+- `cc92cf0` / `408cb4f` CLAUDE.md + SESSION_CONTEXT.md trimming.
+- `c795f29` Post-deployment docs: judging + awards smoke tests added to `post-deployment-test.md`; new `post-deployment-v0.4.0.md` for the upgrade check; `deployment-checklist.md` Phase 6 + Release process now branch on fresh-deploy vs upgrade.
+- `d4eb5a6` Entries-count column on the Rounds grid (between Judges + Scheduled) × 5 locales.
+- `8b68ed4` `JudgingService.recomputeReadinessForDivision` + `@EventListener` on `DivisionStatusAdvancedEvent`: scoring rounds auto-flip PENDING ↔ READY when configuration completes (table + ≥ minJudgesPerRound + ≥1 entry) AND division ≥ JUDGING. Dynamic cross-round conflicts (table/judge busy) stay as Start-time errors.
+- `990db6a` **Group A** `ScoresheetStatus.BLANK` initial state; first `updateScore`/`updateOverallComments` promotes BLANK → DRAFT; `revertScoringRound` now blocks on any non-BLANK sheet (new key `error.round.cannot-revert-touched-scoresheets` × 5 locales; old `cannot-revert-submitted-scoresheets` removed).
+- `047e917` **Group B** Admins land in read-only `ScoresheetView` with an "Edit on behalf of judge" ConfirmDialog (4 new i18n keys × 5 locales). Judge-visibility regression test (`shouldForwardAwayJudgeWhoIsNotAssignedToTheRound`) locks in the existing `isAssignedJudge` gate.
+- `c2e3d3a` **Group C** Submit-time per-criterion + overall comment length requirements (`Scoresheet.MIN_PER_FIELD_COMMENT_LENGTH=3`, `MIN_OVERALL_COMMENT_LENGTH=20`). NumberField step buttons + full width fix label truncation. Total preview becomes a prominent H3 sized `--lumo-font-size-xxl`. "← Back to round" Anchor on ScoresheetView.
+- `1fad1cf` **Group D** RoundView grid: new Advances column (✓/—), live running-total via `ScoresheetService.runningTotalsByRoundId` (with " *" suffix for DRAFT), Blank filter option. Judges get per-row Open (eye) + Submit (paperplane, DRAFT only) shortcuts.
+- `c19ff0c` `JudgingDivisionStatusRevertGuard` relaxed: blocks JUDGING → REGISTRATION_CLOSED only when an ACTIVE or COMPLETE round exists. PENDING/READY rounds (set up but never started) survive the trip back.
+
+---
+
+<!-- Historical sections (round-model redesign 2026-05-24, completed Priority 1-6) removed 2026-05-25; full audit log in git history. -->
+
+### Priority 12: Label / scoresheet download button lifecycle (post-walkthrough)
+Today the per-entry 📄 Download Label button (on `MyEntriesView` and `DivisionEntryAdminView`'s
+Entries tab) plus the "Download all labels" batch button are enabled whenever entries are
+SUBMITTED. Two changes wanted:
+
+1. **Disable both during JUDGING.** Once `division.status >= JUDGING`, the bottles are with
+   judges — labels are useless to the entrant and confusing to keep visible. Disable with a
+   tooltip explaining why (e.g. "Labels are unavailable during judging — your bottles are
+   already in evaluation").
+2. **Re-enable as scoresheet downloads after RESULTS_PUBLISHED.** When
+   `division.status == RESULTS_PUBLISHED`, the same buttons should flip to "Download
+   scoresheet" / "Download all scoresheets" — generating anonymized PDFs via the existing
+   `ScoresheetPdfService.AnonymizationLevel.ANONYMIZED` path (already in the awards module,
+   currently surfaced via `MyResultsView` → `MyScoresheetView`). The label-generation code
+   path stays available for admin re-prints if needed (kept on `DivisionEntryAdminView`).
+
+Sketch when implementing:
+- `MyEntriesView` per-row Actions column + bottom batch button: switch label between "Label"
+  and "Scoresheet" based on `division.status`; rebind action to label-PDF or scoresheet-PDF
+  respectively; disable in JUDGING / DELIBERATION with explanatory tooltip.
+- `DivisionEntryAdminView` Entries tab per-row download + batch "Download all labels": same
+  three-state lifecycle.
+- New i18n keys × 5 locales for the scoresheet variants + the JUDGING-disabled tooltip.
+- Cross-module touch: `awards` module's PDF generation needs to be callable from `entry`'s
+  views. Either move `ScoresheetPdfService` further up (already in `judging` public API per
+  SESSION_CONTEXT) or have the entry view call awards-side `getAnonymizedScoresheet`. Verify
+  module-boundary dependency direction stays clean.
+- Tests: per-status rendering + click → correct PDF served.
+
+### Priority 13: Participant counts by role on Competition page (post-walkthrough)
+On `CompetitionDetailView`'s Participants tab, add an aggregate summary above the grid
+showing counts per role (e.g., "Entrants: 42 · Judges: 12 · Stewards: 4 · Admins: 2").
+Light enhancement using existing `ParticipantRole` data.
+
+Sketch when implementing:
+- New `CompetitionService.findParticipantCountsByRole(competitionId)` returning
+  `Map<CompetitionRole, Long>` (or a small DTO if more shape is wanted later).
+- Render as a Span / Spans above the Participants grid; locale-aware number formatting.
+- 1 new i18n key per role label + 1 for the aggregate line × 5 locales (reuse existing role
+  display names if possible).
+- Tests: service-level count test + UI rendering test.
+
+### Priority 14: Scheduled date → date + time on rounds (post-walkthrough)
+`JudgingRound.scheduledDate` is currently a `LocalDate` (DB column `scheduled_date`,
+edited via `DatePicker` in `JudgingAdminView`, surfaced as the "Scheduled" column on
+the Rounds grid). Promote it to date + time (HH:mm) — purely as a planning reference
+for admins to organise which rounds happen together at what time of day. **Not** a
+trigger: nothing binds, no scheduled job, no auto-status changes; it's a display
+label only.
+
+Sketch when implementing:
+- Migration: new `scheduled_at TIMESTAMP WITH TIME ZONE` (or `TIMESTAMP WITHOUT TIME ZONE`
+  if we want a wall-clock semantic), backfill from `scheduled_date` (midnight in the
+  competition's timezone), drop `scheduled_date` (or keep as a generated column if
+  worried about rollback — backward-compat policy says new versioned file, no edits).
+- Entity: `scheduledDate: LocalDate` → `scheduledAt: LocalDateTime` (or `Instant` —
+  decide based on whether HH:mm should drift with venue timezone). Update the
+  `addTable` / `updateScheduledDate` service signatures + the constructor.
+- UI: `DatePicker` → `DateTimePicker` on Add Round + Edit Round dialogs in
+  `JudgingAdminView`. Rounds-grid "Scheduled" column formats as `yyyy-MM-dd HH:mm`
+  (locale-aware). No other view consumes this field today.
+- i18n: column header key stays (`judging-admin.rounds.column.scheduled`); dialog
+  label key may need a copy refresh × 5 locales if "Scheduled date" reads wrong as a
+  date-time picker label.
+- Tests: entity unit test for the field; repo test; UI tests for the dialog +
+  column rendering with HH:mm.
+- Walkthrough: §12.6.1 / §12.6.2 add a time-of-day step.
 
 ### Priority 7: Auto-close + deadline reminders (deferred)
 - **Auto-close** — automatically advance division from REGISTRATION_OPEN → REGISTRATION_CLOSED
@@ -778,6 +1659,25 @@ move to `LoginForm` for other reasons or if Bitwarden softens the threshold.
 - bitwarden/clients PR #17400 — `apps/browser/src/autofill/overlay/inline-menu/content/autofill-inline-menu-content.service.ts`
 - community.bitwarden.com thread 92519 ("This page is interfering with the Bitwarden experience")
 
+### Priority 11: Translate the MJP catalog categories (deferred, low priority)
+The MJP catalog (`Category` rows seeded in `V7__create_categories_table_and_seed_mjp.sql`)
+stores category `name` and `description` as English strings. The admin sees those English
+names directly when picking from the catalog in `DivisionDetailView`'s Add Category dialog
+(Catalog tab), and they propagate to per-division `DivisionCategory.name/description` on
+selection. So even with the UI switched to PT/ES/IT/PL, the category strings stay English.
+
+Scope when picked up:
+- ~32 MJP categories (M1, M1A–M1F, M2, M2A–M2E, M3, M3A–M3B, M4, M4A, M4C, M4E, M4S, M5, M5A–M5E)
+  × (name + description) × 5 locales ≈ 300 strings.
+- Cleanest approach: i18n keys keyed by category code (e.g., `category.M1A.name`,
+  `category.M1A.description`) rendered via `getTranslation()` at display time. Keeps the DB
+  schema unchanged.
+- On "Add catalog category", the admin sees the localized name in the picker; the row
+  cloned into `division_categories` carries the localized strings at-clone-time. (Future
+  refinement: keep `DivisionCategory` codes only and look up names via the same i18n keys.)
+- Note: custom (admin-added) division categories stay free-text — i18n only applies to
+  catalog rows.
+
 ### Priority 10: Statistics / metrics view (deferred, low priority)
 A view — or a section within an existing admin view — surfacing aggregate competition
 metrics suitable for presentations, reports, and award ceremonies. Candidate metrics:
@@ -793,69 +1693,7 @@ vs. per-competition scope, visibility (admins only vs. a public page), and wheth
 charts are worth it (Vaadin Charts is a commercial add-on — plain Grids/Spans are
 likely enough for v1). CSV/PDF export would make the numbers presentation-ready.
 
-### Completed priorities
-- **European Portuguese country names + CI/dependency maintenance** — Completed 2026-05-20 (post-v0.3.1, on main). `CountryDisplay` now pins a region-less `pt` locale to `pt-PT` for the country-name lookup: the bare `pt` locale resolves to Brazilian forms in CLDR (Polônia, Romênia) but MEADS targets European Portuguese (Polónia, Roménia). 1 new test (`shouldUseEuropeanPortugueseForTheBarePtLocale`). Also: the GitHub Actions workflow (`ci.yml`) was moved off the deprecated Node 20 runtime — `actions/checkout@v6`, `actions/setup-java@v5`, `actions/cache@v5`, `docker/setup-buildx-action@v4`, `docker/login-action@v4`, `docker/build-push-action@v7` (all Node 24; `digitalocean/action-doctl@v2` was not affected). Dependency bumps: Vaadin 25.1.3 → 25.1.5, OpenPDF 3.0.3 → 3.0.4. 802 tests.
-- **Country names localized to the UI language** — Completed 2026-05-20. Country codes are stored as ISO 3166-1 alpha-2 (e.g. `PT`) but were always rendered with `getDisplayCountry(Locale.ENGLISH)` hardcoded in 9 spots across 4 views, so a user with the UI in Italian still saw English country names. New `app.meads.CountryDisplay` utility (`name(code, locale)`) wraps `Locale.of("", code).getDisplayCountry(locale)`; all 4 views (`UserListView`, `ProfileView`, `CompetitionDetailView`, `DivisionEntryAdminView`) now pass `getLocale()` — the current UI locale — for both the grid country columns and the country `ComboBox`es (item labels + sort order). `CountryDisplayTest` (1 unit test) + `UserListViewTest.shouldLocalizeCountryNamesInEditDialogToTheUiLocale` (1 UI test, sets the locale after navigation since `MainLayout` sets it from the user's preference on navigate). 801 tests.
-- **Entrant updateEntry now enforces entry limits** — Completed 2026-05-18. `EntryService.updateEntry()` previously called `entry.updateDetails()` directly without any limit check, so an entrant could edit a DRAFT entry into a subcategory or main category already at the limit (caught during v0.3.0 walkthrough Batch 11D). Fix: new `checkEntryLimitsForUpdate(division, existingEntry, newInitialCategoryId)` runs **only when the category actually changes**. Subcategory check: count of entries in the new category (the existing entry contributes to its OLD category's count, so no subtraction needed). Main-category check: count of entries in the new main-category group MINUS 1 when the existing entry's current main category equals the new main category (otherwise cross-subcategory moves within the same main category at the limit would be wrongly rejected). Total limit not re-checked on update (entry count unchanged). Admin path (`adminUpdateEntry`) intentionally still bypasses limits — admins routinely correct categories after registration. 2 new unit tests: `shouldRejectUpdateEntryWhenNewSubcategoryAtLimit`, `shouldAllowUpdateEntryWhenMovingWithinSameMainCategoryAtLimit`. 799 tests.
-- **Categories tab grid + Add Category parent select — REGISTRATION scope only** — Completed 2026-05-18. After Initialize Judging Categories (which clones REGISTRATION → JUDGING with the same codes), the DivisionDetailView's Categories tab TreeGrid showed duplicate codes (M1A, M1B, …) because `refreshCategoriesGrid()` sourced from `findDivisionCategories()` which returns all scopes. The same bug also surfaced in the Add Category dialog's Custom tab → Parent Category Select (let admins pick a JUDGING-scope parent for a new REGISTRATION-scope category). Caught during v0.3.0 mid-walkthrough sanity-test F (revert REGISTRATION_CLOSED → REGISTRATION_OPEN, judging tab hides, but Categories tab grid still shows the JUDGING clones). Fix: both call sites now use `CompetitionService.findRegistrationCategories(divisionId)` (introduced in `4cdd18e`). Third instance of the same scope-filter pattern after entry primary-category dropdowns. 2 new UI tests (`shouldExcludeJudgingScopeCategoriesFromCategoriesTabGrid`, `shouldExcludeJudgingScopeCategoriesFromCustomCategoryParentSelect`). 797 tests.
-- **Final Category picker — leaf categories only** — Completed 2026-05-17. The Final Category Select in the admin Edit Entry dialog used to list ALL judging-scope categories — both parents (M1, M2, ...) and subcategories (M1A, M1B, ...) — letting an admin assign a parent that has subcategories, which doesn't make semantic sense for a "final" classification. Fix: new `CompetitionService.findLeafJudgingCategories(divisionId)` returns only categories whose id is NOT referenced as parentId by any other JUDGING-scope category in the same division. Standalone categories without children are still considered leaves (e.g. a custom "CX1 — Combined" without subcategories shows). Service-side validation in `assignFinalCategory` is unchanged (still allows any JUDGING-scope id — UI is the only gate); a future hardening could reject non-leaf assignments service-side. 1 new unit test. 795 tests.
-- **Primary Category dropdowns — no duplicates after judging-category init** — Completed 2026-05-17. Once judging categories were initialized (cloned from registration with same codes), the entry primary-category dropdowns in the admin Add Entry, admin Edit Entry, and entrant edit dialogs all listed BOTH the REGISTRATION and JUDGING-scope rows (loaded via `findDivisionCategories` which doesn't filter by scope), so M1A, M1B, etc. appeared twice — making it look like there were duplicate categories. Fix: new `CompetitionService.findRegistrationCategories(divisionId)` (parallel to `findJudgingCategories`); all 3 dropdown sites now use it. `findDivisionCategories` is still called once at view init to cache all-scope rows for by-ID lookups (e.g., the grid Final Category column needs to resolve JUDGING-scope IDs). 1 new unit test `shouldFindRegistrationCategoriesOnlyExcludingJudgingScope`. 794 tests.
-- **Final Category picker — no fallback to registration categories** — Completed 2026-05-17. Reversed the original design decision that let the admin entry-edit dialog fall back to ALL division categories when no JUDGING-scope categories existed. Problem: an entry's `finalCategoryId` could end up pointing to a registration-scope row, which `EntryJudgingCategoryDeletionGuard` doesn't protect (it only walks JUDGING-scope), so a later admin could silently break the entry by removing the registration category. Fix: `DivisionEntryAdminView` now disables the Final Category Select with helper text "Initialize judging categories first to assign a final category" when `judgingCategories.isEmpty()`; `EntryService.assignFinalCategory()` now throws `BusinessRuleException("error.entry.final-category-no-judging-categories")` when a non-null `finalCategoryId` is passed before judging categories are initialized. Clearing (null) is still allowed unconditionally, so any stale prior assignments can be cleaned up. Also added the previously-missing `error.entry.final-category-not-judging` translation (referenced by the existing validation path but never defined in messages*.properties — would have rendered as raw key). 1 new test (`shouldAllowClearingFinalCategoryEvenWhenNoJudgingCategoriesExist`) + 1 reversed test (`shouldRejectAssignFinalCategoryWhenNoJudgingCategoriesExist`, formerly `shouldAssignFinalCategoryFromRegistrationCategoriesWhenNoJudgingCategoriesExist`). 793 tests.
-- **MFA verify Enter shortcut fix** — Completed 2026-05-17. `MfaVerifyView` code field now uses `ValueChangeMode.EAGER` so the Enter shortcut listener sees the currently typed value instead of the stale on-blur value. Before: user had to Tab/click out of the field before pressing Enter to submit. Same pattern as `LoginView` (password), `SetPasswordView` (password+confirm), `UserListView` (filter). 1 new UI test in `MfaVerifyViewTest` asserts `getValueChangeMode() == EAGER`. 792 tests.
-- **i18n cleanup: dialog buttons** — Completed 2026-05-16. Replaced 40+ hardcoded "Cancel"/"Save"/"Close"/"Delete" button strings with `getTranslation("button.*")` across `UserListView`, `DivisionEntryAdminView`, `DivisionDetailView`, `CompetitionListView`, `CompetitionDetailView`. Added missing `button.save` and `button.close` keys in EN+PT (`button.cancel` and `button.delete` already existed). Tests still pass because they run in default ENGLISH locale where `getTranslation("button.save") == "Save"`. 791 tests.
-- **i18n gaps in sidebar + entry edit dialog** — Completed 2026-05-16. `MainLayout` now resolves sidebar nav items via `getTranslation()` for SYSTEM_ADMIN ("Competitions"/"Users") and competition-admin ("My Competitions") roles — they were hardcoded English with a misleading "Admin-only, no i18n" comment. The Final Category select label and "— Not assigned —" placeholder in the admin entry edit dialog (`DivisionEntryAdminView`) were also hardcoded. New keys: `nav.users`, `entry-admin.entries.edit.final-category`, `entry-admin.entries.edit.final-category.unset` (EN+PT). 791 tests.
-- **MFA email reset (Lost your device?)** — Completed 2026-05-16. Recovery path for SYSTEM_ADMIN locked out of TOTP. On `/mfa`, a "Lost your device?" button triggers `EmailService.sendMfaReset(email, locale)`. Reset link points to new `/mfa-reset` route; clicking validates the JWT, calls `UserService.completeMfaReset(token)` which clears `totpSecret` + `mfaEnabled`, invalidates session, then renders a confirmation page with a "Continue to Login" button. Token validity is 1 hour (short — security-critical, not the 7-day generic). Rate-limited via the existing per-user 5-minute cooldown (`mfa-reset` key). i18n keys added in EN+PT (`mfa.verify.lost-device`, `mfa.verify.reset-link-sent`, `mfa.reset.*`, `email.mfa-reset.*`). New: `JwtMagicLinkService.generateMfaResetLink`, `UserService.completeMfaReset`, `EmailService.sendMfaReset`, `SmtpEmailService` impl with `MFA_RESET_TOKEN_VALIDITY=1h`, `MfaResetView` (`@AnonymousAllowed`), `MfaVerifyView` updated. SecurityConfig adds `/mfa-reset` to permitAll. Visibility fix: `MfaVerifyView` and `MfaResetView` made public so Karibu's `autoDiscoverViews` can find them (it skips package-private classes). 12 new tests (1 JWT + 3 UserService + 3 SmtpEmailService + 3 MfaResetView + 2 MfaVerifyView). 791 tests.
-- **Codebase-wide inline FQN cleanup** — Completed 2026-05-16. Applied the new CLAUDE.md "no inline fully-qualified names" rule across 10 files: `LabelPdfService`, `CompetitionService`, `CompetitionDetailView`, `DivisionDetailView`, `DivisionEntryAdminView`, `MyEntriesView`, `UserServiceTest`, `CompetitionServiceTest`, `DivisionDetailViewTest`, `CompetitionDetailViewTest`. Added the missing imports (e.g. `BufferedImage`, `Sort`, `HierarchicalQuery`, `ValueChangeMode`, `SortDirection`, `Image`, `IntegerField`, `Component`, `Function`, `DateTimeFormatter`/`FormatStyle`, `Collectors`) and replaced inline FQNs with simple names. Kept the documented exceptions intact (`org.springframework.security.core.userdetails.User` collision; `@org.springframework.modulith.ApplicationModule` in package-info.java). No behavior change.
-- **Judging-category parent-delete guard fix** — Completed 2026-05-16. `CompetitionService.removeJudgingCategory()` now walks the requested category + all descendants recursively, runs the `JudgingCategoryDeletionGuard` on every node, then deletes bottom-up so parent_id FKs are satisfied. Previously the guard was only checked on the requested category, so deleting a parent whose child was referenced by `entry.final_category_id` triggered a raw `DataIntegrityViolationException` instead of the friendly `error.category.judging-has-entries` message — the view caught only `BusinessRuleException`, so the user saw nothing. 1 new integration test in EntryModuleTest. Also: project-wide convention added to CLAUDE.md banning inline fully-qualified class/method names (with documented exceptions for the User collision and `package-info.java` annotations); cleaned up four pre-existing violations in the touched files. 779 tests.
-- **Webhook post-registration guard** — Completed 2026-05-16. `WebhookService.processOrderPaid()` now checks `division.getStatus().allowsRegistrationActions()` after the mutual-exclusivity and role-conflict checks. Orders for a division past REGISTRATION_OPEN are marked NEEDS_REVIEW with reason "Registration closed: division no longer accepting new credits" — no credits awarded, no ENTRANT promotion, no misleading credit-notification email. Admin gets the existing OrderRequiresReviewEvent alert email. 1 new unit test in WebhookServiceTest. 778 tests.
-- **Credits-grid stale-refresh fix** — Completed 2026-05-16. DivisionEntryAdminView's Credits tab now auto-refreshes after entry mutations that change per-user entry count (admin create, delete, withdraw, revert). Previously only `refreshEntriesGrid()` was called, leaving the Credits grid's per-user `Entries` column stale until manual reload. Symmetric with the existing pattern where credit mutations refresh both credits grid and balance. Regression check is manual (Karibu dialog disambiguation cost > value for this UI bookkeeping bug). 777 tests.
-- **Version bump to 0.3.0-SNAPSHOT** — 2026-05-02. Bumped from 0.2.9-SNAPSHOT to 0.3.0-SNAPSHOT ahead of judging category management and the judging module. 723 tests.
-- **Post-registration guards + admin add entry** — Completed 2026-05-02. Credits (add/adjust), product mappings (add/edit/delete), and entrant entry edits all blocked after REGISTRATION_OPEN. `DivisionStatus.allowsRegistrationActions()`. Disabled-button tooltips via Span wrapper. Credits balance auto-refreshes after credit operations. Submit All Drafts disabled when not REGISTRATION_OPEN. MyEntriesView shows "Registration is closed" in red when past REGISTRATION_OPEN. Admin "Add Entry" in Entries tab (two-step: warning confirmation → entry form with entrant email). `EntryService.adminCreateEntry()` skips credit check and status check. 8 new unit tests. 723 tests.
-- **v0.3.0 release** — Released 2026-05-18. Judging category management (initialize from REGISTRATION, add/edit/remove with deletion guards, leaf-only Final Category picker, entry → judging-category assignment with deletion guard recursing through subtree); TOTP-based MFA for SYSTEM_ADMIN (setup/verify/disable + email recovery "Lost your device?"); post-registration guards on credits/products/entrant edits with admin "Add Entry" bypass; entry status redesign (`←`/`→` arrow buttons for DRAFT → SUBMITTED → RECEIVED, summary row with per-status breakdown); admin view i18n (~270 strings, EN+PT); webhook credits blocked past REGISTRATION_OPEN; entrant updateEntry now enforces entry limits with same-main-category subtraction; codebase-wide inline FQN cleanup (new convention banning inline FQNs); dependency upgrades (Spring Boot 4.0.6, Vaadin 25.1.3, Spring Modulith 2.0.6, Testcontainers 2.0.5). Full pre-release walkthrough (`docs/walkthrough/manual-test.md`, 14 sections) completed 2026-05-18 with 6 mid-walkthrough fixes landed. Judging module design Phases 1–4 documented in `docs/plans/2026-05-05-judging-module-design.md` (no judging code on main yet — that work continues on `feature/judging-module`). 799 tests.
-- **v0.2.8 release** — Released 2026-05-02. Includes entry status redesign, expanded entries summary row (per-status breakdown), admin view i18n (PT translations), dependency upgrades, and PT translation fixes (pre-AO orthography, wood-aged terminology).
-- **Entry status management redesign** — Completed 2026-04-30. Replaced "Mark as Received" button with `←`/`→` arrow buttons for the full DRAFT → SUBMITTED → RECEIVED flow. WITHDRAWN entries revert to DRAFT. New domain methods `advanceStatus()`/`revertStatus()` on `Entry`; new service methods `advanceEntryStatus()`/`revertEntryStatus()` on `EntryService`. `advanceEntryStatus()` calls `publishSubmissionEventIfComplete()` (consistent with entrant-triggered path). `getTotalCreditBalance(divisionId)` replaces N+1 participant loop. Summary row: "Credits balance: N | Total entries: N (Draft: X, Submitted: Y, Received: Z, Withdrawn: W)". 715 tests.
-- **Dependency upgrades + entry admin summary row** — Completed 2026-04-29. Bumped Spring Boot 4.0.2→4.0.6, Vaadin 25.0.7→25.1.3, Spring Modulith 2.0.4→2.0.6, Testcontainers 2.0.4→2.0.5. Added summary row to DivisionEntryAdminView Entries tab (credits balance + full per-status entry breakdown). 696 tests.
-- **Admin view i18n** — Completed 2026-04-29. Extracted ~270 hardcoded strings from 8 admin views (LoginView, SetPasswordView, UserListView, CompetitionListView, MyCompetitionsView, CompetitionDetailView, DivisionDetailView, DivisionEntryAdminView). Added keys to `messages.properties`, Portuguese translations to `messages_pt.properties`. ES/IT/PL fall back to EN. Fixed `ComboBox<>` type inference issue under Java 21 (explicit `new ComboBox<String>(...)`).
-- **Italian informal language + dependency upgrades** — Completed 2026-03-23. Switched all Italian UI text from formal "Lei" to informal "tu" (UI, emails, PDF instructions, error messages). Upgraded dependencies: Vaadin 25.0.5→25.0.7, Spring Modulith 2.0.2→2.0.4, OpenPDF 2.0.3→3.0.3 (package rename com.lowagie→org.openpdf), BouncyCastle 1.80→1.83, Karibu Testing 2.6.2→2.7.0, Testcontainers 2.0.3→2.0.4. Added Vaadin-generated frontend files to .gitignore. 695 tests.
-- **Document language filtering** — Completed 2026-03-19. Added optional `language` field (VARCHAR(5)) to `CompetitionDocument` (V17 migration). `null` = visible to all languages, a language code (e.g. "pt") = visible only to that locale. Admin add-document dialog has Language dropdown (from `MeadsI18NProvider.getSupportedLanguageCodes()`). Admin grid shows Language column. Entrant view (`MyEntriesView`) filters via `getDocumentsForLocale()`. 685 tests.
-- **Date display** — Completed 2026-03-18. Registration deadline in entrant view now uses locale-aware `DateTimeFormatter.ofLocalizedDate(SHORT)` + `ofLocalizedTime(SHORT)` instead of hardcoded pattern. Timezone display removed.
-- **Logo update** — Completed 2026-03-18. Switched to new logo files: `meads-logo-white` for navbar and emails, `meads-logo-dark-grey` for README light mode.
-- **i18n review + plural resolution + Strength auto-calculation** — Completed 2026-03-18. Fixed PL grammar (locative case, honey validation, capitalization), IT formal "Lei" consistency, ES swapped limit texts, fruit examples alignment. Added CLDR-based `PluralRules` utility (EN/PT/ES/IT: one/other; PL: one/few/many) with `MeadsI18NProvider.getPlural()`. Converted email credit unit, credits remaining, submit-all confirm/success to plural-aware keys. Added `Strength.fromAbv()` (Hydromel <= 7.5, Standard <= 14, Sack > 14) — Strength auto-derived from ABV at domain level; removed from entrant dialog, read-only in admin edit dialog (updates live with ABV), PDF labels unchanged. 679 tests.
-- **Internationalization (i18n)** — Implementation completed 2026-03-16. 5 languages active: EN, ES, IT, PL, PT. Infrastructure: Vaadin I18NProvider + Spring MessageSource, BusinessRuleException across all services, entrant-facing view string extraction, email i18n with Locale, PDF label instructions i18n, MJP category translations, locale-aware date/timezone formatting, language switcher in navbar, User.preferredLanguage (V16 migration). PDF labels use embedded Liberation Sans font (metrically identical to Helvetica, full Unicode support including Polish diacritics). 586 tests. Design: `docs/plans/2026-03-10-i18n-design.md`.
-- **Post-deployment walkthrough** — Completed 2026-03-16. `docs/walkthrough/post-deployment-test.md` retained as reference for re-running after major changes.
-- **PR #4 code review & merge** — Merged `competition-module` into `main` (2026-03-14). Code review found 5 bugs (missing auth check, missing access code on role promotion, HMAC timing attack, hasCreditConflict inconsistency, entryPrefix DRAFT guard) and 4 convention fixes (ProfileView auth context, @Setter removal, setter→domain method renames, Category constructor). Deferred: test naming (313 methods) and cross-module test imports.
-- **Manual walkthrough (Sections 1–14)** — All sections completed. Security testing (Section 14) produced 7 fixes: SetPasswordView eager token validation, webhook missing HMAC header (401), webhook HTTP method tampering (405), webhook email length validation, field length limits on email/password fields, dev password logging cleanup, and UX improvements (contact email on My Entries, mead name tooltips, settings field widths).
-- **Configuration audit** — Properties reorganized, secrets in profile-specific files.
-- **Email sending** — SMTP with Thymeleaf templates, Mailpit dev, Resend prod.
-- **Entry labels (PDF)** — OpenPDF + ZXing, LabelPdfService, individual + batch download. QR code fix: ZXing TYPE_BYTE_BINARY → TYPE_INT_RGB conversion + nested PdfPTable for cell embedding.
-- **Competition documents** — PDF upload + external links, admin Documents tab, entrant list.
-- **Category code display** — Grid columns show code (e.g. M1A) with tooltip for full name in both MyEntriesView and DivisionEntryAdminView. View entry dialog shows "code — name" format. Entry creation filtered to subcategories only.
-- **Category guidance hints** — Informational hint text below category dropdown in entry dialog. All 16 MJP subcategories have style-specific guidance (ingredients, sweetness, ABV). No field locking or validation.
-- **Registration deadline** — `registrationDeadline` (LocalDateTime) + `registrationDeadlineTimezone` fields on Division. Displayed in entrant view, editable in DRAFT/REGISTRATION_OPEN. V4 migration modified in-place.
-- **Admin order alert emails** — `OrderRequiresReviewEvent` published by WebhookService, `OrderReviewNotificationListener` sends alert to all competition admins.
-- **Entry submission confirmation emails** — `SubmissionConfirmationListener` sends confirmation to entrant when entries submitted, with entry summary and link to MyEntriesView. Conditional: only fires when all credits used AND no drafts remain.
-- **Credit notification emails** — `CreditNotificationListener` sends email to entrant when credits are awarded (webhook or admin). `WebhookService` now publishes `CreditsAwardedEvent`.
-- **Submission email redesign** — `EntriesSubmittedEvent` now carries `List<EntryDetail>` instead of `int entryCount`. Event published only when credits fully used and all entries submitted. Email includes per-entry summary (number, name, category). "Submit All" renamed to "Submit All Drafts". Process info box added to MyEntriesView.
-- **Email rate limiting + credentials reminder + set password info** — Per-user 5-min cooldown on user-triggered emails (magic link, password reset, credentials reminder). Daily email counter with WARN at 50. Credentials reminder email sent to password users who request magic links. Set Password page shows info message about login links being disabled after password is set.
-- **Entry labels layout redesign** — Characteristics with field names (Sweetness/Strength/Carbonation), fixed 2-line height for mead name and ingredients (Honey/Other/Wood), QR code (left) + notes area (right) in 45/55 split, "FREE SAMPLES. NOT FOR RESALE." disclaimer.
-- **Email CTA magic links** — Credit notification and submission confirmation emails now use magic links (7-day validity via JwtMagicLinkService) for the CTA button, so recipients can log in directly.
-- **Entry admin UX fixes** — Download dialog auto-closes on click, product mapping validation with field-level errors.
-- **Order review email improvements** — Added competition name and affected division(s) to admin alert email. Refactored all email detail content from inline HTML strings (`detailHtml`/`th:utext`) to Thymeleaf template variables (`th:text`/`th:each`) for proper escaping and separation of concerns.
-- **Field length limits** — Added `setMaxLength()` to all text input fields across all 7 views to match DB column sizes (VARCHAR) or set reasonable limits (TEXT). TextArea fields capped at 500–1000 chars.
-- **Label PDF fixed height** — Changed from `setMinimumHeight` to `setFixedHeight` for mead name and ingredient fields so labels don't expand with long text. Text wraps within 2 lines then clips.
-- **Entry dialog improvements** — Per-field validation errors instead of generic notification. Category pre-populates correctly on edit (searches Select items, not full category list). View/submit dialogs use prefixed entry ID (e.g. AMA-1). "Download all labels" disabled until all entries submitted.
-- **Dev data** — Profissional division now has `meaderyNameRequired = true`.
-- **Admin entry view/edit** — Added view button (eye icon) to admin entries grid with read-only dialog showing all fields + status + entrant. Added Final Category column to grid. Expanded edit dialog from mead-name-only to all entry fields with per-field validation and confirmation gate. Edit works for any status except WITHDRAWN.
-- **Competition logo + name in division views** — DivisionDetailView, MyEntriesView, and DivisionEntryAdminView now show the competition logo (64px) and include the competition name in the header title (e.g. "CHIP 2026 — Amadora — My Entries").
-- **Credit removal guard** — `removeCredits()` now rejects adjustments that would drop balance below active entry count.
-- **Admin entries status filter** — DivisionEntryAdminView Entries tab now has a status dropdown filter alongside the text filter.
-- **Participant action icon reorder** — Edit (pencil) now appears before Send Login Link (envelope) in participants grid, consistent with Users grid.
-- **Full regression walkthrough (Sections 1–14)** — Completed 2026-03-14. All sections passed. No regressions found. Minor improvements made during walkthrough: competition logo/name in division views, participant icon reorder, credit removal guard, admin entries status filter.
-- **MEADS logo branding** — Replaced "MEADS" text with SVG logo in navbar (44px, left-aligned) and PNG logo as CID inline image in email header. Logo files at `META-INF/resources/images/meads-logo-white.{svg,png}` (app + email) and `meads-logo-dark-grey.{svg,png}` (README light mode). SecurityConfig permits `/images/**`. Navbar height increased to 60px.
-- **Deployment (2026-03-14)** — Deployed to DigitalOcean App Platform (Amsterdam) + Managed PostgreSQL 18. Resend for email (free tier). Domain `meads.app` (Namecheap) with Let's Encrypt SSL. Full reference: `docs/plans/deployment-checklist.md`.
-- **Image-based deploys (2026-03-15)** — Switched from source-based (DO builds from `main`) to image-based (CI builds Docker image from tagged commit, pushes to GHCR, updates DO app spec). Fixes SNAPSHOT version deploy bug. JVM tuned (`-Xmx400m -XX:MaxMetaspaceSize=150m -XX:+UseSerialGC`) for 1GB instance. Version display moved from user dropdown to drawer bottom. New secret: `GHCR_REGISTRY_CREDENTIALS`.
-
----
+<!-- Completed priorities log removed 2026-05-25; full audit log in git history. -->
 
 ## Design decisions
 - **Any user can set a password via "Forgot password?"** — even users without a role that
