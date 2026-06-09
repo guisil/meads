@@ -195,9 +195,17 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
         tabSheet.setWidthFull();
 
         tabSheet.add(getTranslation("division-detail.tab.categories"), createCategoriesTab());
-        if (division.getStatus().allowsJudgingCategoryManagement()) {
+        // Show the Judging Categories tab while management is allowed
+        // (REGISTRATION_CLOSED..JUDGING) AND afterwards (DELIBERATION+) whenever
+        // categories already exist — past judging it renders read-only (no
+        // Add/Edit/Remove) since the data still backs the published results.
+        boolean canManageJudging = division.getStatus().allowsJudgingCategoryManagement();
+        boolean hasJudgingCategories = !competitionService.findJudgingCategories(divisionId).isEmpty();
+        if (canManageJudging || hasJudgingCategories) {
             tabSheet.add(getTranslation("division-detail.tab.judging-categories"), createJudgingCategoriesSection());
-            tabSheet.setSelectedIndex(1);
+            if (canManageJudging) {
+                tabSheet.setSelectedIndex(1);
+            }
         }
         tabSheet.add(getTranslation("division-detail.tab.settings"), createSettingsTab());
 
@@ -272,11 +280,16 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
             initButton.setDisableOnClick(true);
             section.add(initButton);
         } else {
-            var judgingActions = new HorizontalLayout();
-            var addJudgingButton = new Button(getTranslation("division-detail.judging.add-button"),
-                    e -> openAddJudgingCategoryDialog());
-            judgingActions.add(addJudgingButton);
-            section.add(judgingActions);
+            // Management (Add / Edit / Remove) is only offered while the division
+            // is in the judging-setup window; at DELIBERATION+ the tab is read-only.
+            boolean canManage = division.getStatus().allowsJudgingCategoryManagement();
+            if (canManage) {
+                var judgingActions = new HorizontalLayout();
+                var addJudgingButton = new Button(getTranslation("division-detail.judging.add-button"),
+                        e -> openAddJudgingCategoryDialog());
+                judgingActions.add(addJudgingButton);
+                section.add(judgingActions);
+            }
 
             judgingCategoriesGrid = new TreeGrid<>(DivisionCategory.class, false);
             judgingCategoriesGrid.setAllRowsVisible(true);
@@ -290,19 +303,21 @@ public class DivisionDetailView extends VerticalLayout implements BeforeEnterObs
                     .setHeader(getTranslation("division-detail.judging.column.description"))
                     .setFlexGrow(2);
 
-            judgingCategoriesGrid.addComponentColumn(dc -> {
-                var editButton = new Button(new Icon(VaadinIcon.EDIT));
-                editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-                editButton.setAriaLabel(getTranslation("division-detail.judging.action.edit"));
-                editButton.setTooltipText(getTranslation("division-detail.judging.action.edit"));
-                editButton.addClickListener(ev -> openEditJudgingCategoryDialog(dc));
-                var removeButton = new Button(new Icon(VaadinIcon.CLOSE));
-                removeButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
-                removeButton.addClickListener(ev -> openRemoveJudgingCategoryDialog(dc));
-                var actionButtons = new HorizontalLayout(editButton, removeButton);
-                actionButtons.setSpacing(false);
-                return actionButtons;
-            }).setHeader(getTranslation("division-detail.judging.column.actions")).setAutoWidth(true);
+            if (canManage) {
+                judgingCategoriesGrid.addComponentColumn(dc -> {
+                    var editButton = new Button(new Icon(VaadinIcon.EDIT));
+                    editButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+                    editButton.setAriaLabel(getTranslation("division-detail.judging.action.edit"));
+                    editButton.setTooltipText(getTranslation("division-detail.judging.action.edit"));
+                    editButton.addClickListener(ev -> openEditJudgingCategoryDialog(dc));
+                    var removeButton = new Button(new Icon(VaadinIcon.CLOSE));
+                    removeButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
+                    removeButton.addClickListener(ev -> openRemoveJudgingCategoryDialog(dc));
+                    var actionButtons = new HorizontalLayout(editButton, removeButton);
+                    actionButtons.setSpacing(false);
+                    return actionButtons;
+                }).setHeader(getTranslation("division-detail.judging.column.actions")).setAutoWidth(true);
+            }
 
             refreshJudgingCategoriesGrid();
             section.add(judgingCategoriesGrid);

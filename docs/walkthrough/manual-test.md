@@ -2660,6 +2660,7 @@ Steps below are admin-driven unless noted.
 
 - [ ] Click "Advance Status" again → confirm.
 - [ ] **Expected:** Status badge updates to `DELIBERATION`.
+- [ ] **Expected (Judging Categories tab stays, read-only):** on the division detail TabSheet the **Judging Categories** tab is **still present** (it no longer disappears at DELIBERATION) but is **read-only** — the category tree shows, with **no** "Add Judging Category" button and **no** per-row Edit/Remove actions. (Management is locked past JUDGING; the data still backs the published results, so it stays viewable. Same at RESULTS_PUBLISHED.)
 - [ ] Navigate to Manage Judging.
 - [ ] **Expected:** A new "Manage Results" button appears in the JudgingAdminView
   header (between the title and the tabs).

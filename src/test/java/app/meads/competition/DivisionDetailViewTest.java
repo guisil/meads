@@ -668,6 +668,38 @@ class DivisionDetailViewTest {
 
     @Test
     @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldShowJudgingCategoriesTabReadOnlyAtDeliberation() {
+        // Past JUDGING the categories can't be managed, but they still back the
+        // results — keep the tab visible (read-only): grid present, no Add /
+        // Edit / Remove controls.
+        testDivision.advanceStatus(); // → REGISTRATION_OPEN
+        testDivision.advanceStatus(); // → REGISTRATION_CLOSED
+        testDivision.advanceStatus(); // → JUDGING
+        testDivision.advanceStatus(); // → DELIBERATION
+        divisionRepository.save(testDivision);
+        divisionCategoryRepository.save(new DivisionCategory(
+                testDivision.getId(), null, "CX1", "Combined Category", "desc", null, 0,
+                CategoryScope.JUDGING));
+
+        UI.getCurrent().navigate("competitions/" + testCompetition.getShortName()
+                + "/divisions/" + testDivision.getShortName());
+
+        // Judging Categories tab still at index 1 (Categories · Judging Categories · Settings).
+        var tabSheet = _get(TabSheet.class);
+        tabSheet.setSelectedIndex(1);
+
+        @SuppressWarnings("unchecked")
+        var judgingGrid = (TreeGrid<DivisionCategory>) _get(TreeGrid.class,
+                spec -> spec.withId("judging-categories-grid"));
+        assertThat(judgingGrid).isNotNull();
+
+        var buttons = _find(Button.class);
+        assertThat(buttons).noneMatch(b -> b.getText().equals("Add Judging Category"));
+        assertThat(buttons).noneMatch(b -> b.getText().equals("Initialize Judging Categories"));
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
     void shouldDisplayBosPlacesIntegerFieldInSettingsTab() {
         UI.getCurrent().navigate("competitions/" + testCompetition.getShortName()
                 + "/divisions/" + testDivision.getShortName());
