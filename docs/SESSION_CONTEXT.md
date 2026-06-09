@@ -601,12 +601,28 @@ committed walkthrough doc commit (this session changed ONLY `docs/walkthrough/ma
   display DEFERRED to entrant-side testing, 7c judging-cat translations DONE here**) · §8 Entry Admin (incl. verbose
   all-fields entry) · §9 Webhook · §10/§11 entrant view (incl. **P12** label withdrawal, verified on Profissional) ·
   §12.1/12.1.1/12.2 · §12.4/12.4.1/12.4.2 + **7c** · §12.5/12.5.0/12.5.1/12.5.2.
-- **⏸ RESUME POINT: §12.6 Rounds tab.** Batch 1 (§12.6 header + §12.6.0 Tables + §12.6.1 Add round + §12.6.2 Edit
-  round) was just **handed to the user but NOT yet reported back** — re-confirm it, then continue with
-  **§12.6.3 Assign judges + COI badges → §12.6.3.1 Manual COI → §12.6.4 Start round (advance Amadora to JUDGING) →
-  §12.6.4.1 Revert → 12.6.5/6 min-judge locks → 12.6.7/7.1 delete + split-category entries (Profissional) →
-  12.6.8/8.1 medal rounds → 12.6.9/10 filters/open.** **Deferred within §12.6:** §12.6.0.1 cross-division shared-
-  tables busy-check (needs an ACTIVE round — do right after §12.6.4 starts the first round).
+- **⏸ RESUME POINT: §12.6.4.1 Revert an ACTIVE scoring round.** Batch 1 (§12.6 header + §12.6.0 Tables + §12.6.1 Add
+  round + §12.6.2 Edit round), Batch 2 (§12.6.3 Assign judges + COI badges + §12.6.3.1 Manual COI), and Batch 3
+  (§12.6.4 Start round — Amadora now at **JUDGING** with an ACTIVE round at Table 1 — + §12.6.0.1 cross-division
+  shared-tables busy-check) all **PASSED clean** (2026-06-09) — see the COI finding below. Continue with **§12.6.4.1
+  Revert → 12.6.5/6 min-judge locks → 12.6.7/7.1 delete + split-category entries (Profissional) → 12.6.8/8.1 medal
+  rounds → 12.6.9/10 filters/open.**
+- **RoundView row-click removed + columns sortable/resizable (§12.10.1, 2026-06-09, DONE — fast cycle):** the
+  scoresheets grid in `RoundView` no longer navigates to the scoresheet on row-click (redundant with the per-row 👁
+  mead-details + ✏ Open icons); grid is now `SelectionMode.NONE`. ALSO: `RoundView` was the only judging grid whose
+  columns were not sortable/resizable — added `setResizable(true).setSortable(true)` to every data column (Actions =
+  resizable only), with numeric `setComparator`s for Entry # (`comparingInt`) and Total (`nullsLast` numeric via new
+  `sortableTotal` helper). All other judging grids (JudgingAdminView rounds/judges/entries/tables/COI, MedalRoundView,
+  BosView) already had it. Deleted the obsolete UI test
+  `RoundViewTest.shouldNavigateToScoresheetViewWhenGridRowClicked`. Walkthrough §12.10.1 + §12.10.6 updated. Test
+  count 1344 → **1343** (full suite green). Branch still `feature/judging-module`; this is uncommitted code +
+  walkthrough/doc edits.
+- **COI ordering finding (§12.6.3.1, 2026-06-09, NOT fixing now — user decision):** declaring a manual COI **after**
+  judges are already assigned to rounds does NOT retroactively remove the now-conflicting assignment — no guard, no
+  event prunes existing assignments. Enforcement is assign-time + medal-record-time only. **Mitigation chosen:** order
+  the prep so COIs are declared before judge assignment. Created **`docs/reference/judging-prep-checklist.md`** (admin
+  runbook, per-division) — manual COI is **Phase 5**, before judge assignment in **Phase 7**, with this gap written up
+  as the ⚠ rationale + under "Known limitations". A retroactive guard/event remains a possible future item.
 - **State of the app DB:** the user advanced **Amadora REGISTRATION_OPEN → REGISTRATION_CLOSED**, initialized
   judging categories, assigned final categories, set **BOS places = 3 / min judges = 2**, and created a scoring round
   **`M1A Panel A`** (Table 1, PENDING). Amadora is **still REGISTRATION_CLOSED** (advances to JUDGING at §12.6.4.0).

@@ -44,6 +44,7 @@ import jakarta.annotation.security.PermitAll;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Base64;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -226,37 +227,47 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
 
         if (isAdmin) {
             scoresheetsGrid.addColumn(s -> entryNumberLabel(entriesById.get(s.getEntryId())))
-                    .setHeader(getTranslation("table.column.entry-number"));
+                    .setHeader(getTranslation("table.column.entry-number"))
+                    .setComparator(Comparator.comparingInt(
+                            (Scoresheet s) -> {
+                                var e = entriesById.get(s.getEntryId());
+                                return e == null ? Integer.MAX_VALUE : e.getEntryNumber();
+                            }))
+                    .setResizable(true).setSortable(true);
         }
         scoresheetsGrid.addColumn(s -> entryCode(entriesById.get(s.getEntryId())))
-                .setHeader(getTranslation("table.column.entry-code"));
+                .setHeader(getTranslation("table.column.entry-code"))
+                .setResizable(true).setSortable(true);
         // Mead name is the entrant's brand label. Anonymity rule: judges judge
         // to style, not to a brand. Same rule already gates the mead name on
         // ScoresheetView (see shouldShowEntryCodeButNotMeadNameToAssignedJudge).
         if (isAdmin) {
             scoresheetsGrid.addColumn(s -> meadName(entriesById.get(s.getEntryId())))
-                    .setHeader(getTranslation("table.column.mead-name"));
+                    .setHeader(getTranslation("table.column.mead-name"))
+                    .setResizable(true).setSortable(true);
         }
         scoresheetsGrid.addColumn(s -> s.getStatus().name())
-                .setHeader(getTranslation("table.column.status"));
+                .setHeader(getTranslation("table.column.status"))
+                .setResizable(true).setSortable(true);
         scoresheetsGrid.addColumn(this::formatTotalCell)
-                .setHeader(getTranslation("table.column.total"));
+                .setHeader(getTranslation("table.column.total"))
+                .setComparator(Comparator.comparing(this::sortableTotal,
+                        Comparator.nullsLast(Comparator.naturalOrder())))
+                .setResizable(true).setSortable(true);
         scoresheetsGrid.addColumn(s -> s.isAdvancedToMedalRound() ? "✓" : "—")
-                .setHeader(getTranslation("table.column.advances"));
+                .setHeader(getTranslation("table.column.advances"))
+                .setResizable(true).setSortable(true);
         scoresheetsGrid.addColumn(s -> filledByName(s.getFilledByJudgeUserId(), usersById))
-                .setHeader(getTranslation("table.column.filled-by"));
+                .setHeader(getTranslation("table.column.filled-by"))
+                .setResizable(true).setSortable(true);
         scoresheetsGrid.addComponentColumn(this::createActionsCell)
-                .setHeader(getTranslation("table.column.actions"));
+                .setHeader(getTranslation("table.column.actions"))
+                .setResizable(true).setFlexGrow(0);
 
         scoresheetsGrid.setItems(allSheets);
-        scoresheetsGrid.asSingleSelect().addValueChangeListener(e -> {
-            if (e.getValue() != null) {
-                var url = "competitions/" + compShortName
-                        + "/divisions/" + divShortName
-                        + "/scoresheets/" + e.getValue().getId();
-                getUI().ifPresent(ui -> ui.navigate(url));
-            }
-        });
+        // No row-click navigation: each row carries dedicated 👁 mead-details and
+        // ✏ Open-scoresheet icons, so a row-click open would be redundant.
+        scoresheetsGrid.setSelectionMode(Grid.SelectionMode.NONE);
         return scoresheetsGrid;
     }
 
@@ -404,6 +415,15 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
         return running.toString();
     }
 
+    /** Numeric total used for column sorting; null (sorts last) when the cell shows "—". */
+    private Integer sortableTotal(Scoresheet sheet) {
+        if (sheet.getTotalScore() != null) {
+            return sheet.getTotalScore();
+        }
+        Integer running = runningTotals.get(sheet.getId());
+        return (running == null || running == 0) ? null : running;
+    }
+
     /** Opens the read-only mead-details dialog for an entry. Public for testability
      *  (the per-row eye button lives in a Grid component column). */
     public void openMeadDetailsDialog(UUID entryId) {
@@ -423,9 +443,9 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
         meadDetailsButton.addClickListener(e -> openMeadDetailsDialog(sheet.getEntryId()));
         actions.add(meadDetailsButton);
 
-        // Open scoresheet (pencil = edit) for judges AND admins — row-click also
-        // navigates. The per-row judge Submit is gone: judges Save each sheet
-        // (-> FILLED), then the round-level Finalize submits them all at once.
+        // Open scoresheet (pencil = edit) for judges AND admins. The per-row judge
+        // Submit is gone: judges Save each sheet (-> FILLED), then the round-level
+        // Finalize submits them all at once.
         var openButton = new Button(new Icon(VaadinIcon.PENCIL));
         openButton.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
         openButton.setId("open-" + sheet.getId());

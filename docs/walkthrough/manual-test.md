@@ -2208,11 +2208,11 @@ Access tightening: judges can only open **ACTIVE** rounds. RoundView, MedalRound
 - [ ] **(Split-category cascade — verifies the duplicate-key fix.)** For the M1A split (Panel A + Panel B, §12.6.7.1), score + Finalize **both** panels, flagging some entries "Advance to medal round" (§12.11). **Expected:** finalizing the **second** panel (the one that makes *all* M1A scoring rounds COMPLETE) **does not crash** — before the fix it threw `judging_round_entries_entry_id_key`. The cascade auto-creates **`Medal — M1A` (COMPARATIVE)** at READY, and 👁 Open shows the advance-flagged entries as candidates (derived from the scoresheets — the medal round does not own an `entries` set). **The Rounds-grid Entries column reflects this derived count** (e.g. shows `3` once three entries advanced) — not `0` — even though a COMPARATIVE medal round never materializes its `entries` set.
 - [ ] (Admin, on a COMPLETE round) click **Reopen** → confirm → round → ACTIVE; its SUBMITTED sheets drop back to **FILLED** (editing one demotes it to DRAFT, so the round has to be re-finalized).
 
-#### 12.10.1 Row click + per-row Open → ScoresheetView
+#### 12.10.1 Per-row Open → ScoresheetView
 
-- [ ] Click any row.
-- [ ] **Expected:** Navigation to `competitions/.../scoresheets/<id>`.
-- [ ] **Expected (per-row actions):** every row shows a 👁 **eye** = **View mead details** (`mead-details-<entryId>`) → a read-only dialog of the entry's characteristics (sweetness, strength, ABV, carbonation, honey, etc.) with **no mead name, status, entrant or category** (anonymity); and a ✏ **pencil** = **Open scoresheet** (`open-<sheetId>`) that navigates to the scoresheet (coexists with row click). Both judges and admins see both. The old per-row 📨 Submit is **gone** — judges Save each sheet (→ FILLED), then the round-level **Finalize** (§12.10.0) submits them all at once. Admins additionally see Revert / Move / Delete (§12.10.2).
+- [ ] **Expected (no row-click navigation):** clicking a row does **nothing** — the grid is non-selectable (`SelectionMode.NONE`). Opening a scoresheet is done via the ✏ pencil icon only (the row already carries dedicated icons, so a row-click open would be redundant).
+- [ ] **Expected (sortable + resizable columns):** every data column (Entry #, Code, Mead name, Status, Total, Advances, Filled by) is **sortable** and **resizable** like the other judging grids. Entry # and Total sort **numerically** (Total with blank "—" cells sorting last), not lexically. The Actions column is resizable but not sortable.
+- [ ] **Expected (per-row actions):** every row shows a 👁 **eye** = **View mead details** (`mead-details-<entryId>`) → a read-only dialog of the entry's characteristics (sweetness, strength, ABV, carbonation, honey, etc.) with **no mead name, status, entrant or category** (anonymity); and a ✏ **pencil** = **Open scoresheet** (`open-<sheetId>`) that navigates to `competitions/.../scoresheets/<id>`. Both judges and admins see both. The old per-row 📨 Submit is **gone** — judges Save each sheet (→ FILLED), then the round-level **Finalize** (§12.10.0) submits them all at once. Admins additionally see Revert / Move / Delete (§12.10.2).
 - [ ] **Expected (judge):** form opens in edit mode — a single **Save** button (id `save-button`) is visible, fields editable and **auto-saving on blur** (a "Saving…/Draft saved ✓" status shows). No "Save Draft", no per-sheet "Submit".
 - [ ] **Expected (admin):** form opens **read-only** (no **Save** button, score fields + comments / language / advance checkbox all marked read-only). Below the read-only form, an **"Edit on behalf of judge"** button (id `admin-edit-scoresheet`) is visible.
 - [ ] (As admin) Click "Edit on behalf of judge" → **Expected:** ConfirmDialog *"Edit scoresheet?"* — body warns the action should only be used in exceptional situations (judge left mid-round, correct an obvious typo) and that the admin is not silently overriding the judge's assessment. Buttons: Cancel + "Edit anyway".
@@ -2324,7 +2324,7 @@ created, even with two judges acting at once.
 > blur; the **Save** button validates the sheet → FILLED; the round-level **Finalize**
 > (on RoundView, §12.10.0) submits all FILLED sheets at once.
 
-*As `judge@example.com`, open any DRAFT scoresheet from `/my-judging` → "Open table" → row click.*
+*As `judge@example.com`, open any DRAFT scoresheet from `/my-judging` → "Open table" → ✏ pencil (Open scoresheet) on the row.*
 
 - [ ] **Expected:** URL `competitions/.../divisions/.../scoresheets/<id>`.
 - [ ] **Expected:** A **"← Back to round"** anchor (id `scoresheet-back-to-round`) appears at the very top of the view, pointing back at the round's RoundView. One click returns to the scoresheet list.
