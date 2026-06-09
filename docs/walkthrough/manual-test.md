@@ -2678,6 +2678,22 @@ Steps below are admin-driven unless noted.
   `RESULTS_PUBLISHED` is through `AwardsService.publish()` (§13.2) or
   `republish()` (§13.8), both of which create a Publication audit row.
 
+#### 13.1.4 Preview public results before publishing (admin-only)
+
+- [ ] On Manage Results (DELIBERATION), **Expected:** a **"Preview results"** link
+  (`awards-preview-results-link`) in the actions row. Click it → opens the public
+  results page (`/competitions/.../results`) **in a new tab**.
+- [ ] **Expected:** the page renders exactly as the public will see it (BoS + per-category
+  medal blocks, producer labels), topped by a **preview banner** (`awards-preview-banner`)
+  *"Preview — these results are not published yet."* — even though the division is still
+  `DELIBERATION` (not published).
+- [ ] **Expected (no leak):** open the same `/results` URL **logged out** (or as a
+  non-admin entrant) while still DELIBERATION → forwards to root (only an admin authorized
+  for the division sees the preview; everyone else is blocked until publication).
+- [ ] (Sanity) Before DELIBERATION the preview isn't available — `getResultsPreview` rejects
+  with `error.awards.preview-not-ready` (the admin link only appears in the Results admin
+  view, which itself is DELIBERATION+).
+
 ### 13.2 Publish — first publication
 
 *Stay on the Amadora JudgingAdminView header.*

@@ -27,5 +27,13 @@ public interface AwardsService {
     PublicResultsView getPublicResults(@NotBlank String competitionShortName, @NotBlank String divisionShortName,
                                        @NotNull Locale locale);
 
+    /**
+     * Admin-only preview of the public results page before publishing — available
+     * from DELIBERATION onward (results data exists once judging is COMPLETE).
+     * Authorizes {@code adminUserId} for the division.
+     */
+    PublicResultsView getResultsPreview(@NotBlank String competitionShortName, @NotBlank String divisionShortName,
+                                        @NotNull Locale locale, @NotNull UUID adminUserId);
+
     AnonymizedScoresheetView getAnonymizedScoresheet(@NotNull UUID scoresheetId, @NotNull UUID requestingUserId);
 }

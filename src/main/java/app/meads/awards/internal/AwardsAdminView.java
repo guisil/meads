@@ -176,6 +176,16 @@ public class AwardsAdminView extends VerticalLayout implements BeforeEnterObserv
             revertBtn.addThemeVariants(ButtonVariant.LUMO_ERROR);
             actions.add(revertBtn);
         }
+
+        // Preview the public results page (admin-only before publishing). Opens in
+        // a new tab so the admin keeps this view; the same URL serves the live
+        // page once published.
+        var previewLink = new Anchor(
+                "competitions/" + compShortName + "/divisions/" + divShortName + "/results",
+                getTranslation("awards.admin.preview-results"));
+        previewLink.setId("awards-preview-results-link");
+        previewLink.setTarget("_blank");
+        actions.add(previewLink);
         return actions;
     }
 

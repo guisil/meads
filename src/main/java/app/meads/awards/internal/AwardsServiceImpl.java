@@ -13,6 +13,7 @@ import app.meads.awards.ResultsPublishedEvent;
 import app.meads.awards.ResultsRepublishedEvent;
 import app.meads.CountryDisplay;
 import app.meads.competition.CategoryDisplay;
+import app.meads.competition.Competition;
 import app.meads.competition.CompetitionService;
 import app.meads.competition.Division;
 import app.meads.competition.DivisionCategory;
@@ -332,6 +333,29 @@ public class AwardsServiceImpl implements AwardsService {
         if (division.getStatus() != DivisionStatus.RESULTS_PUBLISHED) {
             throw new BusinessRuleException("error.awards.not-published");
         }
+        return buildResultsView(competition, division, locale);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PublicResultsView getResultsPreview(String competitionShortName,
+                                               String divisionShortName,
+                                               Locale locale,
+                                               UUID adminUserId) {
+        var competition = competitionService.findCompetitionByShortName(competitionShortName);
+        var division = competitionService.findDivisionByShortName(competition.getId(), divisionShortName);
+        if (!competitionService.isAuthorizedForDivision(division.getId(), adminUserId)) {
+            throw new BusinessRuleException("error.awards.unauthorized");
+        }
+        // Results data (finalized medals + BOS) exists from DELIBERATION onward —
+        // admins can preview the public page before publishing.
+        if (division.getStatus().ordinal() < DivisionStatus.DELIBERATION.ordinal()) {
+            throw new BusinessRuleException("error.awards.preview-not-ready");
+        }
+        return buildResultsView(competition, division, locale);
+    }
+
+    private PublicResultsView buildResultsView(Competition competition, Division division, Locale locale) {
         var judgingCategories = competitionService.findJudgingCategories(division.getId());
         var entries = entryService.findEntriesByDivision(division.getId());
         var entriesByCategory = new HashMap<UUID, List<Entry>>();

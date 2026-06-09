@@ -601,7 +601,7 @@ committed walkthrough doc commit (this session changed ONLY `docs/walkthrough/ma
   display DEFERRED to entrant-side testing, 7c judging-cat translations DONE here**) · §8 Entry Admin (incl. verbose
   all-fields entry) · §9 Webhook · §10/§11 entrant view (incl. **P12** label withdrawal, verified on Profissional) ·
   §12.1/12.1.1/12.2 · §12.4/12.4.1/12.4.2 + **7c** · §12.5/12.5.0/12.5.1/12.5.2.
-- **⏸ RESUME POINT: §13 Awards module.** §12 fully covered: §12.1–§12.8 + §12.13 walked clean on Amadora (driven through BOS Finalize); §12.6.8.1 A/B/C clean; **§12.9–§12.12 SKIPPED by user 2026-06-09** (acknowledged — exercised during Amadora round progression; this-session fixes incl. filledBy=last-validator, category localization, grid sorts, clear-medal-sticks were not formally re-walked but are unit-tested). §13.1+§13.2 clean; §13.3 surfaced producer-null + spacing fixes (done, re-confirm §13.3/§13.4). NOW at §13.5 entrant scoresheet drill-in (dialog + PDF). Remaining: §13.6 freeze → §13.7 revert → §13.8 edit+republish → §13.9–§13.11 announcements → §13.12 anonymity → §13.13 cleanup.
+- **⏸ RESUME POINT: §13 Awards module.** §12 fully covered: §12.1–§12.8 + §12.13 walked clean on Amadora (driven through BOS Finalize); §12.6.8.1 A/B/C clean; **§12.9–§12.12 SKIPPED by user 2026-06-09** (acknowledged — exercised during Amadora round progression; this-session fixes incl. filledBy=last-validator, category localization, grid sorts, clear-medal-sticks were not formally re-walked but are unit-tested). §13.1+§13.2 clean; §13.3 surfaced producer-null + spacing fixes (done, re-confirm §13.3/§13.4). §13.3/§13.4/§13.5 CLEAN (after the producer/spacing/comment-language/scores-box fixes). NOW at §13.6 freeze guard. Remaining: §13.6 freeze → §13.7 revert → §13.8 edit+republish → §13.9–§13.11 announcements → §13.12 anonymity → §13.13 cleanup.
   ⚠ Superseded line follows: - **(old) §12.8 Best of Show tab. §12.6 (all subsections incl. 12.6.8.1 A/B/C) + §12.7 Results tab PASSED clean 2026-06-09. After §12.8: §12.9+ judge/steward views → §12.10/12.11 scoring (RoundView/ScoresheetView, incl. the multi-judge §12.10.3 + recently-fixed grid items) → §12.12 medal rounds → §13 Awards. NOTE: full BOS start needs ALL medal rounds COMPLETE (M1A/M1B finalize in §12.10–12.12), so the actual Start BOS may be deferred until then.** §12.6.8 Add medal round PASSED clean. Batches 1–4 all **PASSED clean** (2026-06-09): §12.6 header +
   §12.6.0 Tables + §12.6.1 Add round + §12.6.2 Edit round; §12.6.3 Assign judges + COI badges + §12.6.3.1 Manual COI
   (see COI finding below); §12.6.4 Start round (Amadora now at **JUDGING**, ACTIVE round at Table 1) + §12.6.0.1
@@ -622,6 +622,15 @@ committed walkthrough doc commit (this session changed ONLY `docs/walkthrough/ma
   `RoundViewTest.shouldNavigateToScoresheetViewWhenGridRowClicked`. Walkthrough §12.10.1 + §12.10.6 updated. Test
   count 1344 → **1343** (full suite green). Branch still `feature/judging-module`; this is uncommitted code +
   walkthrough/doc edits.
+- **Admin results preview before publishing (§13.1.4, 2026-06-09, NEW FEATURE — full-ish cycle):** admins can preview
+  the public results page while still DELIBERATION. Same `/results` URL serves the published page to everyone OR an
+  admin-only preview when not yet published: `AwardsPublicResultsView` (now injects `AuthenticationContext`+`UserService`)
+  falls back to `awardsService.getResultsPreview(comp, div, locale, adminUserId)` on `not-published`, rendering with a
+  warning banner (`awards-preview-banner`); non-admins still forward to root (no leak). New `AwardsService.getResultsPreview`
+  (authorizes admin + requires status ≥ DELIBERATION, else `error.awards.preview-not-ready`); extracted shared
+  `buildResultsView`. New **"Preview results"** Anchor (`awards-preview-results-link`, target=_blank) in `AwardsAdminView`
+  actions. 3 i18n keys ×5 (`awards.admin.preview-results`, `awards.preview.banner`, `error.awards.preview-not-ready`).
+  +2 guard tests. 1360 → **1362**. Walkthrough §13.1.4 added.
 - **Scoresheet PDF scores box + spacing (§13.5, 2026-06-09, DONE — fast cycle):** wrapped comment-language + criteria +
   total + overall comments in a **bordered box** (`PdfPTable` single cell, `CARD_BORDER` 0.8pt, padding 10, `setSplitLate(false)`
   so long comments flow across pages) mirroring the dialog's bordered card; added a **gap before the box** so the

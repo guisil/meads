@@ -4,6 +4,10 @@ import app.meads.BusinessRuleException;
 import app.meads.MainLayout;
 import app.meads.awards.AwardsService;
 import app.meads.awards.PublicResultsView;
+import app.meads.identity.UserService;
+import com.vaadin.flow.spring.security.AuthenticationContext;
+import org.springframework.security.core.userdetails.UserDetails;
+import java.util.UUID;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
@@ -28,11 +32,17 @@ public class AwardsPublicResultsView extends VerticalLayout
         implements BeforeEnterObserver, LocaleChangeObserver {
 
     private final AwardsService awardsService;
+    private final transient AuthenticationContext authenticationContext;
+    private final UserService userService;
     private String compShortName;
     private String divShortName;
 
-    public AwardsPublicResultsView(AwardsService awardsService) {
+    public AwardsPublicResultsView(AwardsService awardsService,
+                                   AuthenticationContext authenticationContext,
+                                   UserService userService) {
         this.awardsService = awardsService;
+        this.authenticationContext = authenticationContext;
+        this.userService = userService;
         setSizeFull();
         setPadding(true);
     }
@@ -46,10 +56,13 @@ public class AwardsPublicResultsView extends VerticalLayout
             return;
         }
         try {
-            var view = awardsService.getPublicResults(compShortName, divShortName, getLocale());
-            render(view);
+            render(awardsService.getPublicResults(compShortName, divShortName, getLocale()), false);
         } catch (BusinessRuleException e) {
-            event.forwardTo("");
+            // Not published yet — offer an admin preview if the current user is
+            // authorized for the division; otherwise no leak (forward to root).
+            if (!tryRenderPreview()) {
+                event.forwardTo("");
+            }
         }
     }
 
@@ -57,15 +70,44 @@ public class AwardsPublicResultsView extends VerticalLayout
     public void localeChange(LocaleChangeEvent event) {
         if (compShortName != null && divShortName != null) {
             try {
-                render(awardsService.getPublicResults(compShortName, divShortName, getLocale()));
+                render(awardsService.getPublicResults(compShortName, divShortName, getLocale()), false);
             } catch (BusinessRuleException e) {
-                // Ignore — beforeEnter will have already forwarded on first render.
+                tryRenderPreview();
             }
         }
     }
 
-    private void render(PublicResultsView view) {
+    /** Renders the admin preview when the current user is authorized; else no-op. */
+    private boolean tryRenderPreview() {
+        var userId = currentUserId();
+        if (userId == null) {
+            return false;
+        }
+        try {
+            render(awardsService.getResultsPreview(compShortName, divShortName, getLocale(), userId), true);
+            return true;
+        } catch (BusinessRuleException e) {
+            return false;
+        }
+    }
+
+    private UUID currentUserId() {
+        return authenticationContext.getAuthenticatedUser(UserDetails.class)
+                .map(ud -> userService.findByEmail(ud.getUsername()).getId())
+                .orElse(null);
+    }
+
+    private void render(PublicResultsView view, boolean preview) {
         removeAll();
+        if (preview) {
+            var banner = new Span(getTranslation("awards.preview.banner"));
+            banner.setId("awards-preview-banner");
+            banner.getStyle().set("background-color", "var(--lumo-warning-color-10pct)")
+                    .set("padding", "var(--lumo-space-s) var(--lumo-space-m)")
+                    .set("border-radius", "var(--lumo-border-radius-m)")
+                    .set("font-weight", "600");
+            add(banner);
+        }
         var heading = new H2(getTranslation("awards.public.title",
                 view.competitionName(), view.divisionName()));
         heading.setId("awards-public-heading");

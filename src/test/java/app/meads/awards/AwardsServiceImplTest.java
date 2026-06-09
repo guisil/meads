@@ -255,6 +255,47 @@ class AwardsServiceImplTest {
                 .hasMessageContaining("error.awards.not-published");
     }
 
+    @Test
+    void shouldRejectResultsPreviewWhenNotAuthorized() {
+        var service = createService();
+        var competitionId = UUID.randomUUID();
+        var divisionId = UUID.randomUUID();
+        var adminUserId = UUID.randomUUID();
+        var competition = mock(app.meads.competition.Competition.class);
+        given(competition.getId()).willReturn(competitionId);
+        var division = mock(Division.class);
+        given(division.getId()).willReturn(divisionId);
+        given(competitionService.findCompetitionByShortName("test")).willReturn(competition);
+        given(competitionService.findDivisionByShortName(competitionId, "amateur")).willReturn(division);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(false);
+
+        assertThatThrownBy(() -> service.getResultsPreview("test", "amateur",
+                java.util.Locale.ENGLISH, adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.awards.unauthorized");
+    }
+
+    @Test
+    void shouldRejectResultsPreviewBeforeDeliberation() {
+        var service = createService();
+        var competitionId = UUID.randomUUID();
+        var divisionId = UUID.randomUUID();
+        var adminUserId = UUID.randomUUID();
+        var competition = mock(app.meads.competition.Competition.class);
+        given(competition.getId()).willReturn(competitionId);
+        var division = mock(Division.class);
+        given(division.getId()).willReturn(divisionId);
+        given(division.getStatus()).willReturn(DivisionStatus.JUDGING);
+        given(competitionService.findCompetitionByShortName("test")).willReturn(competition);
+        given(competitionService.findDivisionByShortName(competitionId, "amateur")).willReturn(division);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+
+        assertThatThrownBy(() -> service.getResultsPreview("test", "amateur",
+                java.util.Locale.ENGLISH, adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.awards.preview-not-ready");
+    }
+
     private Division divisionWithMeaderyRequired(boolean required) {
         var d = new Division(UUID.randomUUID(), "Div", "div", ScoringSystem.MJP,
                 LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
