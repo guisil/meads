@@ -609,13 +609,21 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         }
     }
 
-    /** Deletes the medal award row, returning the entry to the "no row" state. */
+    /**
+     * Clears an entry's medal. On a SCORE_BASED round this records a deliberate
+     * "no medal" (withhold) so the score-driven auto-populate — which re-runs at
+     * finalize — does not bring the medal back; on a COMPARATIVE round the judges
+     * own the awards outright, so it simply deletes the row.
+     */
     public void clearMedal(MedalRoundEntryRow row) {
-        if (row.medalAwardId() == null) {
-            return;
-        }
         try {
-            judgingService.deleteMedalAward(row.medalAwardId(), currentUserId);
+            if (currentMode() == MedalRoundMode.SCORE_BASED) {
+                judgingService.withholdMedal(row.entryId(), currentUserId);
+            } else if (row.medalAwardId() != null) {
+                judgingService.deleteMedalAward(row.medalAwardId(), currentUserId);
+            } else {
+                return;
+            }
             reload();
         } catch (BusinessRuleException ex) {
             Notification.show(getTranslation(ex.getMessageKey(), ex.getParams()))

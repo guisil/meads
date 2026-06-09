@@ -146,6 +146,28 @@ class JudgingServiceMedalsBosTest {
     }
 
     @Test
+    void shouldWithholdMedalAsConfirmedNullAward() {
+        // Clearing a medal on a SCORE_BASED round must persist a deliberate
+        // "no medal" decision (confirmed award, null medal) so the score-driven
+        // auto-populate (incl. the re-run at finalize) does not bring it back.
+        var entry = mockEntry();
+        given(entryService.findEntryById(entryId)).willReturn(entry);
+        givenActiveMedalRoundForCategory();
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(medalAwardRepository.findByEntryId(entryId)).willReturn(Optional.empty());
+        given(medalAwardRepository.save(any(MedalAward.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.withholdMedal(entryId, adminUserId);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(MedalAward.class);
+        then(medalAwardRepository).should().save(captor.capture());
+        assertThat(captor.getValue().getEntryId()).isEqualTo(entryId);
+        assertThat(captor.getValue().getMedal()).isNull();
+        assertThat(captor.getValue().isConfirmed()).isTrue();
+    }
+
+    @Test
     void shouldRejectRecordMedalWhenAnotherEntryInCategoryAlreadyHasSameType() {
         // At most one Gold / Silver / Bronze per category. Admin must clear or
         // reassign the existing award before stacking a duplicate medal of the

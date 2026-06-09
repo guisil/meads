@@ -222,6 +222,14 @@ public interface JudgingService {
     void deleteMedalAward(@NotNull UUID medalAwardId, @NotNull UUID judgeUserId);
 
     /**
+     * Records a deliberate "no medal" decision for an entry (confirmed award with a
+     * null medal). Unlike {@link #deleteMedalAward}, this persists the decision so a
+     * SCORE_BASED round's score-driven auto-populate (including the re-run at
+     * finalize) does not re-derive a medal for the entry.
+     */
+    void withholdMedal(@NotNull UUID entryId, @NotNull UUID judgeUserId);
+
+    /**
      * Marks a medal award as confirmed. Auto-fill on SCORE_BASED medal rounds
      * writes {@code confirmed = false} rows; the admin / medal-round judge
      * confirms each row to unlock results + BOS eligibility.

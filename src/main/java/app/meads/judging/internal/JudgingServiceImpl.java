@@ -1568,6 +1568,28 @@ public class JudgingServiceImpl implements JudgingService {
         log.info("Deleted medal award {} by judge {}", medalAwardId, judgeUserId);
     }
 
+    @Override
+    public void withholdMedal(UUID entryId, UUID judgeUserId) {
+        var entry = entryService.findEntryById(entryId);
+        var finalCategoryId = entry.getFinalCategoryId();
+        if (finalCategoryId == null) {
+            throw new BusinessRuleException("error.medal.no-final-category");
+        }
+        requireNotFrozen(entry.getDivisionId());
+        requireMedalRoundActive(finalCategoryId);
+        requireAuthorizedForMedalAction(entry.getDivisionId(), finalCategoryId, judgeUserId);
+        // A confirmed award with a null medal = "decided: no medal". autoPopulate
+        // treats the entry as taken, so the score-driven re-derive (incl. finalize)
+        // won't bring a medal back.
+        var award = medalAwardRepository.findByEntryId(entryId)
+                .orElseGet(() -> new MedalAward(entryId, entry.getDivisionId(),
+                        finalCategoryId, null, judgeUserId));
+        award.updateMedal(null, judgeUserId);
+        award.confirm(judgeUserId);
+        medalAwardRepository.save(award);
+        log.info("Withheld medal for entry {} by judge {}", entryId, judgeUserId);
+    }
+
     // === BOS lifecycle (admin-only per §Q15) ===
 
     @Override

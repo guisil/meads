@@ -404,6 +404,56 @@ class JudgingServiceMedalRoundTest {
     }
 
     @Test
+    void shouldNotReDeriveMedalForAWithheldEntryOnScoreBasedMedalRound() {
+        // Repro of the finalize bug: a judge cleared the lower entry's auto medal,
+        // recorded (via withholdMedal) as a CONFIRMED null award. The score-driven
+        // re-derive — which also runs at finalize — must treat that entry as taken
+        // and NOT bring a medal back; only the unconfirmed gold is re-derived.
+        var medalRound = new JudgingRound(judging.getId(), UUID.randomUUID(), "Medal",
+                divisionCategoryId, null);
+        medalRound.convertToMedalRound(MedalRoundMode.SCORE_BASED);
+        var entryA = UUID.randomUUID(); // higher score
+        var entryB = UUID.randomUUID(); // lower score, withheld
+        medalRound.assignJudge(UUID.randomUUID());
+        medalRound.assignEntry(entryA);
+        medalRound.assignEntry(entryB);
+        medalRound.start();
+        var sheetA = mock(app.meads.judging.Scoresheet.class);
+        given(sheetA.getRoundId()).willReturn(medalRound.getId());
+        given(sheetA.getStatus()).willReturn(ScoresheetStatus.FILLED);
+        given(sheetA.medalEligibleTotal()).willReturn(95);
+        given(sheetA.getEntryId()).willReturn(entryA);
+        var sheetB = mock(app.meads.judging.Scoresheet.class);
+        given(sheetB.getRoundId()).willReturn(medalRound.getId());
+        given(sheetB.getStatus()).willReturn(ScoresheetStatus.FILLED);
+        given(sheetB.medalEligibleTotal()).willReturn(80);
+        given(sheetB.getEntryId()).willReturn(entryB);
+        var autoGoldA = new MedalAward(entryA, divisionId, divisionCategoryId, Medal.GOLD, adminUserId);
+        var withheldB = new MedalAward(entryB, divisionId, divisionCategoryId, null, adminUserId);
+        withheldB.confirm(adminUserId);
+        given(judgingRoundRepository.findById(medalRound.getId())).willReturn(Optional.of(medalRound));
+        given(judgingRoundRepository.findByJudgingId(judging.getId())).willReturn(List.of(medalRound));
+        given(judgingRepository.findById(judging.getId())).willReturn(Optional.of(judging));
+        given(judgingRepository.findByDivisionId(divisionId)).willReturn(Optional.of(judging));
+        given(scoresheetService.countByRoundIdAndStatusNot(medalRound.getId(), ScoresheetStatus.FILLED))
+                .willReturn(0L);
+        given(scoresheetRepository.findByRoundId(medalRound.getId()))
+                .willReturn(List.of(sheetA, sheetB));
+        given(medalAwardRepository.findByFinalCategoryId(divisionCategoryId))
+                .willReturn(List.of(autoGoldA, withheldB));
+
+        service.onScoresheetFilled(new ScoresheetFilledEvent(UUID.randomUUID(), entryA,
+                medalRound.getId(), adminUserId, java.time.Instant.now()));
+
+        // The confirmed withhold is preserved; only the unconfirmed gold is re-derived.
+        then(medalAwardRepository).should().deleteAll(List.of(autoGoldA));
+        var captor = org.mockito.ArgumentCaptor.forClass(MedalAward.class);
+        then(medalAwardRepository).should(org.mockito.Mockito.times(1)).save(captor.capture());
+        assertThat(captor.getValue().getEntryId()).isEqualTo(entryA);
+        assertThat(captor.getValue().getMedal()).isEqualTo(Medal.GOLD);
+    }
+
+    @Test
     void shouldClearUnconfirmedMedalsWhenFilledSheetEditedBackToDraftOnScoreBasedMedalRound() {
         // A judge re-opens a FILLED sheet and edits a score, demoting it to DRAFT
         // without re-Saving. The panel is no longer complete, so the auto

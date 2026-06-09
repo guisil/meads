@@ -621,6 +621,17 @@ committed walkthrough doc commit (this session changed ONLY `docs/walkthrough/ma
   `RoundViewTest.shouldNavigateToScoresheetViewWhenGridRowClicked`. Walkthrough §12.10.1 + §12.10.6 updated. Test
   count 1344 → **1343** (full suite green). Branch still `feature/judging-module`; this is uncommitted code +
   walkthrough/doc edits.
+- **SCORE_BASED cleared medal reappeared after finalize (§12.6.8.1, 2026-06-09, FIXED — full cycle):** clearing a
+  medal on a SCORE_BASED round called `deleteMedalAward` (hard delete), so finalize's `autoPopulateMedalsByScore`
+  re-run re-derived the medal from the score. autoPopulate already preserves CONFIRMED awards (incl. confirmed null),
+  so the fix persists the clear as a confirmed null award (= "decided: no medal"). New
+  `JudgingService.withholdMedal(entryId, userId)` (confirmed null `MedalAward`, COI-exempt, requires active medal
+  round + authz); `MedalRoundView.clearMedal` now branches — **SCORE_BASED → withholdMedal**, COMPARATIVE → keeps
+  `deleteMedalAward` (no auto re-derive there). To re-award: click a medal; to return to fully auto: revert/reopen.
+  +2 tests (`JudgingServiceMedalsBosTest.shouldWithholdMedalAsConfirmedNullAward`,
+  `JudgingServiceMedalRoundTest.shouldNotReDeriveMedalForAWithheldEntryOnScoreBasedMedalRound`). 1351 → **1353**.
+  Walkthrough §12.6.8.1 updated. (Edge noted: clearing the *top* medal would positionally promote a lower entry —
+  separate cascade-semantics question, not in scope.)
 - **Scoresheet `filledBy` → last validator (§12.10.3, 2026-06-09, DONE — full cycle, user chose "switch to last
   validator"):** one shared scoresheet per entry; `filledByJudgeUserId` used to be first-scorer-wins (set only when
   null). Non-standard but unblockable case: a second assigned judge edits + re-Saves another's sheet. Now
