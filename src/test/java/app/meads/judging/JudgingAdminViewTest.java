@@ -269,7 +269,7 @@ class JudgingAdminViewTest {
                 + "/divisions/" + division.getShortName() + "/judging-admin");
 
         var tabSheet = _get(TabSheet.class);
-        tabSheet.setSelectedIndex(2); // Results tab (after cycle 6c renumbering)
+        tabSheet.setSelectedIndex(3); // Results tab (after cycle 6c renumbering)
 
         var grids = _find(Grid.class);
         var resultsGrid = grids.stream()
@@ -301,7 +301,7 @@ class JudgingAdminViewTest {
                 + "/divisions/" + division.getShortName() + "/judging-admin");
 
         var tabSheet = _get(TabSheet.class);
-        tabSheet.setSelectedIndex(1); // Rounds tab (after cycle 6c renumbering)
+        tabSheet.setSelectedIndex(2); // Rounds tab (after cycle 6c renumbering)
 
         var grids = _find(Grid.class);
         var roundsGrid = grids.stream()
@@ -351,7 +351,7 @@ class JudgingAdminViewTest {
                 + "/divisions/" + division.getShortName() + "/judging-admin");
 
         var tabSheet = _get(TabSheet.class);
-        tabSheet.setSelectedIndex(1);
+        tabSheet.setSelectedIndex(2);
 
         var roundsGrid = (Grid<JudgingRound>) _find(Grid.class).stream()
                 .filter(g -> "rounds-grid".equals(g.getId().orElse(null)))
@@ -829,7 +829,7 @@ class JudgingAdminViewTest {
         var physicalTable = judgingService.createPhysicalTable(division.getId(), "Table 1", admin.getId());
 
         var tabSheet = _get(TabSheet.class);
-        tabSheet.setSelectedIndex(1); // Rounds tab
+        tabSheet.setSelectedIndex(2); // Rounds tab
 
         _click(_get(Button.class, spec -> spec.withId("add-round-button")));
 
@@ -1079,7 +1079,7 @@ class JudgingAdminViewTest {
                 + "/divisions/" + division.getShortName() + "/judging-admin");
 
         var tabSheet = _get(TabSheet.class);
-        tabSheet.setSelectedIndex(1); // Rounds tab
+        tabSheet.setSelectedIndex(2); // Rounds tab
 
         var statusFilter = (com.vaadin.flow.component.checkbox.CheckboxGroup<JudgingRoundStatus>)
                 _get(com.vaadin.flow.component.checkbox.CheckboxGroup.class,
@@ -1135,7 +1135,7 @@ class JudgingAdminViewTest {
                 + "/divisions/" + division.getShortName() + "/judging-admin");
 
         var tabSheet = _get(TabSheet.class);
-        tabSheet.setSelectedIndex(3); // BOS tab (index shifted)
+        tabSheet.setSelectedIndex(4); // BOS tab (index shifted)
 
         var spans = _find(com.vaadin.flow.component.html.Span.class);
         var hasDisabledMessage = spans.stream()
@@ -1165,7 +1165,7 @@ class JudgingAdminViewTest {
                 + "/divisions/" + division.getShortName() + "/judging-admin");
 
         var tabSheet = _get(TabSheet.class);
-        tabSheet.setSelectedIndex(3); // BOS tab (index shifted)
+        tabSheet.setSelectedIndex(4); // BOS tab (index shifted)
 
         var grids = _find(Grid.class);
         var placementsGrid = grids.stream()
@@ -1193,7 +1193,7 @@ class JudgingAdminViewTest {
                 + "/divisions/" + division.getShortName() + "/judging-admin");
 
         var tabSheet = _get(TabSheet.class);
-        tabSheet.setSelectedIndex(3); // BOS tab (index shifted by Physical Tables tab)
+        tabSheet.setSelectedIndex(4); // BOS tab (index shifted by Physical Tables tab)
 
         var emptyMsg = _get(com.vaadin.flow.component.html.Span.class,
                 spec -> spec.withId("bos-candidates-empty"));
@@ -1217,7 +1217,7 @@ class JudgingAdminViewTest {
 
         // Once BOS is the active phase, the dashboard opens on the BOS tab (3)
         // — so "Back to dashboard" from the placements form lands there.
-        assertThat(_get(TabSheet.class).getSelectedIndex()).isEqualTo(3);
+        assertThat(_get(TabSheet.class).getSelectedIndex()).isEqualTo(4);
     }
 
     @Test
@@ -1249,7 +1249,7 @@ class JudgingAdminViewTest {
         UI.getCurrent().navigate("competitions/" + competition.getShortName()
                 + "/divisions/" + division.getShortName() + "/judging-admin");
         var tabSheet = _get(TabSheet.class);
-        tabSheet.setSelectedIndex(3); // BOS tab
+        tabSheet.setSelectedIndex(4); // BOS tab
 
         // bosPlaces defaults to 1, 0 placements, one unplaced confirmed gold ->
         // an empty place is still fillable, so Finalize must be disabled.
@@ -1347,7 +1347,7 @@ class JudgingAdminViewTest {
                 + "/divisions/" + division.getShortName() + "/judging-admin");
 
         var tabSheet = _get(TabSheet.class);
-        tabSheet.setSelectedIndex(3); // BOS tab (index shifted)
+        tabSheet.setSelectedIndex(4); // BOS tab (index shifted)
 
         var expectedHref = "competitions/" + competition.getShortName()
                 + "/divisions/" + division.getShortName() + "/bos";
@@ -1366,7 +1366,7 @@ class JudgingAdminViewTest {
                 + "/divisions/" + division.getShortName() + "/judging-admin");
 
         var tabSheet = _get(TabSheet.class);
-        tabSheet.setSelectedIndex(4); // Conflicts of Interest tab
+        tabSheet.setSelectedIndex(0); // Conflicts of Interest tab
 
         var addButton = _get(Button.class, spec -> spec.withId("add-coi-button"));
         assertThat(addButton).isNotNull();

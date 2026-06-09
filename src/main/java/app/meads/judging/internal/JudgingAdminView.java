@@ -203,11 +203,11 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
     private TabSheet createTabSheet() {
         var tabSheet = new TabSheet();
         tabSheet.setWidthFull();
+        tabSheet.add(getTranslation("judging-admin.tab.conflicts"), createConflictsTab());
         tabSheet.add(getTranslation("judging-admin.tab.physical-tables"), createPhysicalTablesTab());
         tabSheet.add(getTranslation("judging-admin.tab.rounds"), createRoundsTab());
         tabSheet.add(getTranslation("judging-admin.tab.results"), createResultsTab());
         tabSheet.add(getTranslation("judging-admin.tab.bos"), createBosTab());
-        tabSheet.add(getTranslation("judging-admin.tab.conflicts"), createConflictsTab());
         tabSheet.setSelectedIndex(computeDefaultTabIndex());
         return tabSheet;
     }
@@ -227,20 +227,21 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         // Once BOS is the active (or completed) phase, the work is on the BOS
         // tab — open there so "Back to dashboard" from the placements form
         // returns to BOS, not Results.
+        // Tab order: 0 Conflicts · 1 Tables · 2 Rounds · 3 Results · 4 BOS.
         var phase = judging.getPhase();
         if (phase == JudgingPhase.BOS || phase == JudgingPhase.COMPLETE) {
-            return 3; // BOS
+            return 4; // BOS
         }
         var physicalTables = judgingService.findPhysicalTablesByDivision(division.getId());
         if (physicalTables.isEmpty()) {
-            return 0; // Tables
+            return 1; // Tables
         }
         var rounds = judgingService.findRoundsByJudgingId(judging.getId());
         if (!rounds.isEmpty()
                 && rounds.stream().allMatch(r -> r.getStatus() == JudgingRoundStatus.COMPLETE)) {
-            return 2; // Results
+            return 3; // Results
         }
-        return 1; // Rounds
+        return 2; // Rounds
     }
 
     private Grid<app.meads.judging.ManualCoiView> coiGrid;

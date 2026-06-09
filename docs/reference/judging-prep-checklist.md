@@ -57,7 +57,7 @@ the division to be at **`JUDGING`**.
 ## Phase 5 — Conflicts of interest ⚠ (do this BEFORE Phase 6/7)
 
 - [ ] Declare any **manual conflicts of interest** (Judging Admin → *Conflicts of
-      Interest* tab → Add). Use this for a real person who appears under two
+      Interest* tab — the **first** tab → Add). Use this for a real person who appears under two
       accounts (e.g. registers entries on a business email but judges on a
       personal email) — automatic COI only catches matching account/meadery.
 

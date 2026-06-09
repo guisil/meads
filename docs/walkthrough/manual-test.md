@@ -1911,7 +1911,7 @@ division detail. (This button is visible from REGISTRATION_CLOSED onwards — se
 - [ ] **Expected:** URL is `/competitions/chip-2026/divisions/amadora/judging-admin`.
 - [ ] **Expected:** Breadcrumb: `My Competitions / CHIP 2026 / Amadora / Judging Admin`.
 - [ ] **Expected:** H2 header `CHIP 2026 — Amadora — Judging Admin` with competition logo.
-- [ ] **Expected:** TabSheet with **four** tabs in this order: `Tables`, `Rounds`, `Results`, `Best of Show`. (The tab is labelled "Tables" but the underlying entity, i18n keys, grid id, and route segments are still `physical-tables*`.)
+- [ ] **Expected:** TabSheet with **five** tabs in this order: `Conflicts of Interest`, `Tables`, `Rounds`, `Results`, `Best of Show`. (The "Tables" tab is labelled "Tables" but the underlying entity, i18n keys, grid id, and route segments are still `physical-tables*`. Conflicts of Interest sits first — declare COIs before assigning judges, per the judging-prep checklist.)
 - [ ] **Expected default tab:** `computeDefaultTabIndex()` picks the tab based on state — *no tables yet* → Tables; *all rounds COMPLETE* → Results; otherwise → **Rounds**. Since the dev seed pre-creates 3 tables for Amadora, the default here is **Rounds**. Click the **Tables** tab to walk §12.6.0.
 
 #### 12.6.0 Tables tab
@@ -1983,7 +1983,7 @@ Automatic COI is account/meadery based, so it misses one real person using **two
 registered entries under a business email but judges under a personal email). An admin can declare this link
 manually; it then hard-blocks that judge from that entrant's entries exactly like a self-entry.
 
-- [ ] On Judging Admin, open the **"Conflicts of Interest"** tab (5th tab).
+- [ ] On Judging Admin, open the **"Conflicts of Interest"** tab (**first** tab).
 - [ ] **Expected:** a help line explaining manual COI, an **"Add conflict of interest"** button (`add-coi-button`), and an empty grid (`coi-grid`) with columns Judge / Entrant / Actions.
 - [ ] Click **Add conflict of interest**. **Expected:** dialog with two ComboBoxes — **Judge** (`add-coi-judge`, the competition's JUDGE participants) and **Entrant** (`add-coi-entrant`, the competition's ENTRANT participants).
 - [ ] Pick a judge + an entrant (use two accounts that are the *same real person* in your seed, or any judge+entrant pair to exercise the flow), click **Save**.
