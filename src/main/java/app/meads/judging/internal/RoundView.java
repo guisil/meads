@@ -265,9 +265,11 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
                 .setResizable(true).setFlexGrow(0);
 
         scoresheetsGrid.setItems(allSheets);
-        // No row-click navigation: each row carries dedicated 👁 mead-details and
-        // ✏ Open-scoresheet icons, so a row-click open would be redundant.
-        scoresheetsGrid.setSelectionMode(Grid.SelectionMode.NONE);
+        // Single-select (with toggle-off) so clicking a row just highlights it —
+        // useful to keep track of which row's icons you're clicking in a large grid.
+        // Opening a scoresheet stays on the explicit ✏ icon (no row-click navigation),
+        // since the row already carries dedicated 👁 mead-details + ✏ Open icons.
+        scoresheetsGrid.setSelectionMode(Grid.SelectionMode.SINGLE);
         return scoresheetsGrid;
     }
 

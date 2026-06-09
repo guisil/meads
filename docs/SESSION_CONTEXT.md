@@ -601,15 +601,19 @@ committed walkthrough doc commit (this session changed ONLY `docs/walkthrough/ma
   display DEFERRED to entrant-side testing, 7c judging-cat translations DONE here**) · §8 Entry Admin (incl. verbose
   all-fields entry) · §9 Webhook · §10/§11 entrant view (incl. **P12** label withdrawal, verified on Profissional) ·
   §12.1/12.1.1/12.2 · §12.4/12.4.1/12.4.2 + **7c** · §12.5/12.5.0/12.5.1/12.5.2.
-- **⏸ RESUME POINT: §12.6.4.1 Revert an ACTIVE scoring round.** Batch 1 (§12.6 header + §12.6.0 Tables + §12.6.1 Add
-  round + §12.6.2 Edit round), Batch 2 (§12.6.3 Assign judges + COI badges + §12.6.3.1 Manual COI), and Batch 3
-  (§12.6.4 Start round — Amadora now at **JUDGING** with an ACTIVE round at Table 1 — + §12.6.0.1 cross-division
-  shared-tables busy-check) all **PASSED clean** (2026-06-09) — see the COI finding below. Continue with **§12.6.4.1
-  Revert → 12.6.5/6 min-judge locks → 12.6.7/7.1 delete + split-category entries (Profissional) → 12.6.8/8.1 medal
-  rounds → 12.6.9/10 filters/open.**
+- **⏸ RESUME POINT: §12.6.8.1 SCORE_BASED small-category flow (being run in 3 chunks: A setup+sync / B judges+start+scoring+auto-medals / C recompute+finalize+reopen).** §12.6.8 Add medal round PASSED clean. Batches 1–4 all **PASSED clean** (2026-06-09): §12.6 header +
+  §12.6.0 Tables + §12.6.1 Add round + §12.6.2 Edit round; §12.6.3 Assign judges + COI badges + §12.6.3.1 Manual COI
+  (see COI finding below); §12.6.4 Start round (Amadora now at **JUDGING**, ACTIVE round at Table 1) + §12.6.0.1
+  cross-division shared-tables; §12.6.4.1 Revert + §12.6.5/6 min-judge locks + §12.6.7 delete + §12.6.7.1
+  split-category entries (Profissional). Continue with **§12.6.8 Add medal round → §12.6.8.1 SCORE_BASED small-category
+  flow (big end-to-end: assign/sync entries, judges, start, judge scoring, auto-populate medals, finalize, reopen) →
+  §12.6.9 filters → §12.6.10 Open drill-ins → §12.7 Results tab.**
 - **RoundView row-click removed + columns sortable/resizable (§12.10.1, 2026-06-09, DONE — fast cycle):** the
   scoresheets grid in `RoundView` no longer navigates to the scoresheet on row-click (redundant with the per-row 👁
-  mead-details + ✏ Open icons); grid is now `SelectionMode.NONE`. ALSO: `RoundView` was the only judging grid whose
+  mead-details + ✏ Open icons). **Update (same day):** grid set to `SelectionMode.SINGLE` (was briefly `NONE`) so a
+  row-click just **highlights** the row (toggle-off on re-click) to track which row's icons you're clicking — still no
+  navigation. (MedalRoundView + JudgingAdminView rounds grid already default to SINGLE-select — no change needed.)
+  ALSO: `RoundView` was the only judging grid whose
   columns were not sortable/resizable — added `setResizable(true).setSortable(true)` to every data column (Actions =
   resizable only), with numeric `setComparator`s for Entry # (`comparingInt`) and Total (`nullsLast` numeric via new
   `sortableTotal` helper). All other judging grids (JudgingAdminView rounds/judges/entries/tables/COI, MedalRoundView,
