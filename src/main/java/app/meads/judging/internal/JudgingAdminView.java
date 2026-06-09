@@ -34,6 +34,7 @@ import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.datetimepicker.DateTimePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.grid.GridSortOrderBuilder;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Image;
@@ -59,6 +60,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -1004,9 +1006,9 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         roundsGrid.setAllRowsVisible(true);
         roundsGrid.addComponentColumn(this::roundTypeBadge)
                 .setHeader(getTranslation("judging-admin.rounds.column.type"))
-                .setComparator(java.util.Comparator.comparing(this::roundTypeBadgeLabel))
+                .setComparator(Comparator.comparing(this::roundTypeBadgeLabel))
                 .setResizable(true).setSortable(true).setAutoWidth(true);
-        roundsGrid.addColumn(JudgingRound::getName)
+        var nameColumn = roundsGrid.addColumn(JudgingRound::getName)
                 .setHeader(getTranslation("judging-admin.rounds.column.name"))
                 .setResizable(true).setSortable(true).setAutoWidth(true);
         roundsGrid.addColumn(r -> formatCategoryCode(r.getDivisionCategoryId()))
@@ -1029,13 +1031,26 @@ public class JudgingAdminView extends VerticalLayout implements BeforeEnterObser
         roundsGrid.addColumn(this::roundEntryCount)
                 .setHeader(getTranslation("judging-admin.rounds.column.entries"))
                 .setResizable(true).setSortable(true).setAutoWidth(true);
-        roundsGrid.addColumn(r -> r.getScheduledAt() == null ? ""
+        var scheduledColumn = roundsGrid.addColumn(r -> r.getScheduledAt() == null ? ""
                         : r.getScheduledAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")))
                 .setHeader(getTranslation("judging-admin.rounds.column.scheduled"))
+                .setComparator(Comparator.comparing(JudgingRound::getScheduledAt,
+                        Comparator.nullsLast(Comparator.naturalOrder())))
                 .setResizable(true).setSortable(true).setWidth("12em").setFlexGrow(0);
         roundsGrid.addComponentColumn(this::createRoundsActionsCell)
                 .setHeader(getTranslation("judging-admin.rounds.column.actions"))
                 .setResizable(true).setAutoWidth(true).setFlexGrow(0);
+
+        // The backing query has no ORDER BY, so DB tuple order is unstable — a row
+        // moves when its round is started (status UPDATE relocates the tuple). Pin a
+        // deterministic default sort (Scheduled asc, nulls last; Name as tiebreaker)
+        // so the order never jumps. Multi-sort stays enabled so admins can compose
+        // their own column sorts; clicking a header overrides this default.
+        roundsGrid.setMultiSort(true);
+        roundsGrid.sort(new GridSortOrderBuilder<JudgingRound>()
+                .thenAsc(scheduledColumn)
+                .thenAsc(nameColumn)
+                .build());
 
         refreshRoundsGrid();
         tab.add(roundsGrid);

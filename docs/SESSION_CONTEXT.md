@@ -617,6 +617,12 @@ committed walkthrough doc commit (this session changed ONLY `docs/walkthrough/ma
   `RoundViewTest.shouldNavigateToScoresheetViewWhenGridRowClicked`. Walkthrough §12.10.1 + §12.10.6 updated. Test
   count 1344 → **1343** (full suite green). Branch still `feature/judging-module`; this is uncommitted code +
   walkthrough/doc edits.
+- **Rounds grid default multi-sort (§12.6.1, 2026-06-09, DONE — fast cycle):** `JudgingAdminView` rounds grid had no
+  default sort and `findByJudgingId` has no `ORDER BY`, so starting a round made its row jump (status UPDATE relocates
+  the Postgres tuple). Set `roundsGrid.setMultiSort(true)` + a default sort via `GridSortOrderBuilder`: **Scheduled asc
+  (nulls last) → Name asc**. Added a null-safe `Comparator` on the Scheduled column (was sorting the formatted string,
+  empty = nulls first). Order is now stable across start/refresh; headers still re-sort. Walkthrough §12.6.1 updated.
+  Full suite green (1343). Uncommitted.
 - **COI ordering finding (§12.6.3.1, 2026-06-09, NOT fixing now — user decision):** declaring a manual COI **after**
   judges are already assigned to rounds does NOT retroactively remove the now-conflicting assignment — no guard, no
   event prunes existing assignments. Enforcement is assign-time + medal-record-time only. **Mitigation chosen:** order
