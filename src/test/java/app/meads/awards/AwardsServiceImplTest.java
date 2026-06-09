@@ -41,6 +41,7 @@ class AwardsServiceImplTest {
     @Mock UserService userService;
     @Mock EmailService emailService;
     @Mock ApplicationEventPublisher eventPublisher;
+    @Mock org.springframework.context.MessageSource messageSource;
 
     @Test
     void shouldPublishInitialResults() {
@@ -528,6 +529,7 @@ class AwardsServiceImplTest {
 
     private AwardsServiceImpl createService() {
         return new AwardsServiceImpl(publicationRepository, competitionService,
-                entryService, judgingService, scoresheetService, userService, emailService, eventPublisher);
+                entryService, judgingService, scoresheetService, userService, emailService,
+                eventPublisher, messageSource);
     }
 }

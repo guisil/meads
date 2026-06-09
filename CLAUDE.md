@@ -71,6 +71,9 @@ app.meads.identity            ← User/Role/UserStatus, UserService, JwtMagicLin
 app.meads.competition         ← Competition/Division/Participant/Category/DivisionCategory/CompetitionDocument,
                                 LocalizedText (per-locale category name+desc; DivisionCategory.getName(Locale)/
                                 getDescription(Locale), English base fallback, internal/CategoryTranslation child),
+                                CategoryDisplay (shared two-tier category-name localization: per-category translation →
+                                catalog properties key `category.<code>.name` → English base; ALL category displays must
+                                use it, passing getTranslation or a key-default MessageSource as the translator),
                                 DivisionStatus, CompetitionRole, ScoringSystem, CompetitionService,
                                 Division{Advance,Revert,Deletion}Guard, DivisionStatusAdvancedEvent; allowed = {identity}
 app.meads.entry               ← Entry, JumpsellerOrder/LineItem, ProductMapping, EntryCredit,

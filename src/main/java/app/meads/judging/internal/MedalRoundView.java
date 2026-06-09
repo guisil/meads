@@ -2,6 +2,7 @@ package app.meads.judging.internal;
 
 import app.meads.BusinessRuleException;
 import app.meads.MainLayout;
+import app.meads.competition.CategoryDisplay;
 import app.meads.competition.Competition;
 import app.meads.competition.CompetitionService;
 import app.meads.competition.Division;
@@ -282,7 +283,8 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
         var physicalTableLine = new Span(getTranslation("medal-round.physical-table") + ": " + physicalTableLabel);
         physicalTableLine.setId("medal-round-physical-table-line");
 
-        var categoryBadge = RoundBadges.categoryBadge(category.getCode(), category.getName(getLocale()),
+        var categoryBadge = RoundBadges.categoryBadge(category.getCode(),
+                CategoryDisplay.name(category, getLocale(), this::getTranslation),
                 getTranslation("judging-admin.rounds.column.category"));
         categoryBadge.setId("medal-round-category-badge");
 
@@ -734,7 +736,7 @@ public class MedalRoundView extends VerticalLayout implements BeforeEnterObserve
     }
 
     private String categoryLabel() {
-        return category.getCode() + " " + category.getName(getLocale());
+        return category.getCode() + " " + CategoryDisplay.name(category, getLocale(), this::getTranslation);
     }
 
     private String formatEntryNumber(int entryNumber) {

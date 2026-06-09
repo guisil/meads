@@ -2,10 +2,10 @@ package app.meads.judging.internal;
 
 import app.meads.BusinessRuleException;
 import app.meads.MainLayout;
+import app.meads.competition.CategoryDisplay;
 import app.meads.competition.Competition;
 import app.meads.competition.CompetitionService;
 import app.meads.competition.Division;
-import app.meads.competition.DivisionCategory;
 import app.meads.entry.Entry;
 import app.meads.entry.EntryService;
 import app.meads.identity.Role;
@@ -567,25 +567,7 @@ public class ScoresheetView extends VerticalLayout implements BeforeEnterObserve
             return "—";
         }
         var category = competitionService.findDivisionCategoryById(categoryId);
-        return category.getCode() + " — " + translateCategoryName(category);
-    }
-
-    /**
-     * Two-tier category name resolution, mirroring the entrant-facing views:
-     * an admin-provided per-category translation wins (covers custom categories);
-     * otherwise fall back to the catalog properties translation
-     * ({@code category.<code>.name}), then the English base name. Without the
-     * catalog fallback, judges saw standard catalog categories (M1, M1A, …) in
-     * English even when the entrant saw them localized.
-     */
-    private String translateCategoryName(DivisionCategory category) {
-        var localized = category.getName(getLocale());
-        if (!localized.equals(category.getName())) {
-            return localized;
-        }
-        var key = "category." + category.getCode() + ".name";
-        var translated = getTranslation(key);
-        return translated.equals(key) ? category.getName() : translated;
+        return CategoryDisplay.codeAndName(category, getLocale(), this::getTranslation);
     }
 
     private String orDash(String value) {

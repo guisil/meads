@@ -1,6 +1,7 @@
 package app.meads.judging.internal;
 
 import app.meads.MainLayout;
+import app.meads.competition.CategoryDisplay;
 import app.meads.competition.CompetitionService;
 import app.meads.competition.Division;
 import app.meads.competition.DivisionStatus;
@@ -105,7 +106,8 @@ public class StewardView extends VerticalLayout implements BeforeEnterObserver {
 
         var category = competitionService.findDivisionCategoryById(table.getDivisionCategoryId());
         var title = new Span(table.getName() + " — " + category.getCode() + " "
-                + category.getName(getLocale()) + " (" + table.getStatus().name() + ")");
+                + CategoryDisplay.name(category, getLocale(), this::getTranslation)
+                + " (" + table.getStatus().name() + ")");
         title.getStyle().set("font-weight", "600");
         card.add(title);
 

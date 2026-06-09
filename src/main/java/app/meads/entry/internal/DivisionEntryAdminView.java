@@ -3,6 +3,7 @@ package app.meads.entry.internal;
 import app.meads.BusinessRuleException;
 import app.meads.CountryDisplay;
 import app.meads.MainLayout;
+import app.meads.competition.CategoryDisplay;
 import app.meads.competition.Competition;
 import app.meads.competition.CompetitionService;
 import app.meads.competition.Division;
@@ -647,7 +648,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 .orElse(null);
         if (cat == null) return new Span("—");
         var span = new Span(cat.getCode());
-        span.setTitle(cat.getName(getLocale()));
+        span.setTitle(categoryName(cat));
         return span;
     }
 
@@ -747,7 +748,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 .filter(c -> c.getParentId() != null)
                 .toList();
         categorySelect.setItems(subcategories);
-        categorySelect.setItemLabelGenerator(c -> c.getCode() + " — " + c.getName(getLocale()));
+        categorySelect.setItemLabelGenerator(this::categoryCodeAndName);
 
         var meadNameField = new TextField(getTranslation("entry-admin.entries.edit.mead-name"));
         meadNameField.setMaxLength(255);
@@ -934,8 +935,17 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         return divisionCategories.stream()
                 .filter(c -> c.getId().equals(categoryId))
                 .findFirst()
-                .map(c -> c.getCode() + " — " + c.getName())
+                .map(this::categoryCodeAndName)
                 .orElse("—");
+    }
+
+    /** Localized category name with the catalog-properties fallback (see CategoryDisplay). */
+    private String categoryName(DivisionCategory category) {
+        return CategoryDisplay.name(category, getLocale(), this::getTranslation);
+    }
+
+    private String categoryCodeAndName(DivisionCategory category) {
+        return CategoryDisplay.codeAndName(category, getLocale(), this::getTranslation);
     }
 
     private void openEditEntryDialog(Entry entry) {
@@ -970,7 +980,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         categorySelect.setLabel(getTranslation("entry-admin.entries.edit.category"));
         categorySelect.setWidthFull();
         categorySelect.setItemLabelGenerator(dc ->
-                dc.getCode() + " — " + dc.getName(getLocale()));
+                categoryCodeAndName(dc));
         categorySelect.setItems(competitionService.findRegistrationCategories(divisionId).stream()
                 .filter(dc -> dc.getParentId() != null)
                 .toList());
@@ -1047,7 +1057,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         finalCategorySelect.setEmptySelectionAllowed(true);
         finalCategorySelect.setEmptySelectionCaption(getTranslation("entry-admin.entries.edit.final-category.unset"));
         finalCategorySelect.setItemLabelGenerator(dc ->
-                dc != null ? dc.getCode() + " — " + dc.getName(getLocale()) : "");
+                dc != null ? categoryCodeAndName(dc) : "");
         if (leafJudgingCategories.isEmpty()) {
             finalCategorySelect.setEnabled(false);
             finalCategorySelect.setHelperText(

@@ -11,6 +11,7 @@ import app.meads.awards.PublicResultsView;
 import app.meads.awards.Publication;
 import app.meads.awards.ResultsPublishedEvent;
 import app.meads.awards.ResultsRepublishedEvent;
+import app.meads.competition.CategoryDisplay;
 import app.meads.competition.CompetitionService;
 import app.meads.competition.DivisionCategory;
 import app.meads.competition.DivisionStatus;
@@ -27,6 +28,7 @@ import app.meads.judging.ScoresheetService;
 import app.meads.judging.ScoresheetStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
@@ -57,6 +59,7 @@ public class AwardsServiceImpl implements AwardsService {
     private final UserService userService;
     private final EmailService emailService;
     private final ApplicationEventPublisher eventPublisher;
+    private final MessageSource messageSource;
 
     public AwardsServiceImpl(PublicationRepository publicationRepository,
                              CompetitionService competitionService,
@@ -65,7 +68,8 @@ public class AwardsServiceImpl implements AwardsService {
                              ScoresheetService scoresheetService,
                              UserService userService,
                              EmailService emailService,
-                             ApplicationEventPublisher eventPublisher) {
+                             ApplicationEventPublisher eventPublisher,
+                             MessageSource messageSource) {
         this.publicationRepository = publicationRepository;
         this.competitionService = competitionService;
         this.entryService = entryService;
@@ -74,6 +78,13 @@ public class AwardsServiceImpl implements AwardsService {
         this.userService = userService;
         this.emailService = emailService;
         this.eventPublisher = eventPublisher;
+        this.messageSource = messageSource;
+    }
+
+    /** Localized category name with the catalog-properties fallback (see CategoryDisplay). */
+    private String categoryName(DivisionCategory category, Locale locale) {
+        return CategoryDisplay.name(category, locale,
+                key -> messageSource.getMessage(key, null, key, locale));
     }
 
     @Override
@@ -261,7 +272,7 @@ public class AwardsServiceImpl implements AwardsService {
                     (AdminResultsView.AdminEntryRow r) -> r.round1Total() == null ? -1 : r.round1Total())
                     .reversed());
             leaderboards.add(new AdminResultsView.AdminCategoryLeaderboard(
-                    category.getId(), category.getCode(), category.getName(locale), rows));
+                    category.getId(), category.getCode(), categoryName(category, locale), rows));
         }
         var bosRows = new ArrayList<AdminResultsView.AdminBosRow>();
         var placements = judgingService.findBosPlacementsForDivision(divisionId, adminUserId);
@@ -349,7 +360,7 @@ public class AwardsServiceImpl implements AwardsService {
             var bronzes = filterByMedal(entriesByCategory.getOrDefault(category.getId(), List.of()), Medal.BRONZE);
             if (!golds.isEmpty() || !silvers.isEmpty() || !bronzes.isEmpty()) {
                 sections.add(new PublicResultsView.PublicCategorySection(
-                        category.getCode(), category.getName(locale), golds, silvers, bronzes));
+                        category.getCode(), categoryName(category, locale), golds, silvers, bronzes));
             }
         }
         var publicBos = new ArrayList<PublicResultsView.PublicBosRow>();
@@ -472,7 +483,7 @@ public class AwardsServiceImpl implements AwardsService {
             return new CategoryInfo("", "");
         }
         DivisionCategory cat = competitionService.findDivisionCategoryById(catId);
-        return new CategoryInfo(cat.getCode(), cat.getName(locale));
+        return new CategoryInfo(cat.getCode(), categoryName(cat, locale));
     }
 
     private Locale localeForUser(UUID userId) {

@@ -628,11 +628,18 @@ committed walkthrough doc commit (this session changed ONLY `docs/walkthrough/ma
   do a **two-tier** resolution (per-category translation → catalog properties key → English base); the judge view did
   only tier 1. Replicated `translateCategoryName` into `ScoresheetView.categoryLabelFor`. New test
   `ScoresheetViewTest.shouldTranslateCatalogCategoryNameToJudgeLocale` (drives locale via `judge.updatePreferredLanguage("pt")`
-  since MainLayout overrides UI locale from the user on navigate). 1343 → **1344**. **⚠ SAME GAP STILL OPEN elsewhere
-  (catalog fallback missing — sweep candidate):** `RoundView:741`, `MedalRoundView:285,737`, `JudgingAdminView:514,1169`,
-  `StewardView:108`, `JudgingNotificationListener:71,128` (judge emails), `ScoresheetPdfService:172`,
-  `AwardsServiceImpl:264,352,475` (public/entrant results). Real fix = a shared two-tier helper (the logic is
-  duplicated in MyEntriesView + now ScoresheetView). Decide scope/timing with the user.
+  since MainLayout overrides UI locale from the user on navigate). 1343 → **1344**.
+- **Catalog category-name localization — FULL SWEEP DONE (2026-06-09, full cycle, user chose "full sweep now"):**
+  extracted the two-tier resolution into a shared public helper **`app.meads.competition.CategoryDisplay`**
+  (`name(category, locale, keyTranslator)` + `codeAndName(...)`; keyTranslator returns the key when missing — the
+  contract of both Vaadin `getTranslation` and a key-default `MessageSource`). 5 unit tests in `CategoryDisplayTest`.
+  Routed EVERY category-display site through it: views pass `this::getTranslation`
+  (`ScoresheetView`, `RoundView`, `MedalRoundView`, `StewardView`, `JudgingAdminView` formatCategory + add-round select,
+  `MyEntriesView`, `DivisionEntryAdminView` — the last had a bare `getName()` with NO locale at all);
+  services/email/PDF pass `key -> messageSource.getMessage(key, null, key, locale)` — **`MessageSource` newly injected
+  into `JudgingNotificationListener` (+ test n/a) and `AwardsServiceImpl` (AwardsServiceImplTest got a `@Mock MessageSource`)**;
+  `ScoresheetPdfService` reused its existing `msg()` helper. De-dups MyEntriesView + ScoresheetView. Full suite **1349**
+  (1344 + 5). The gap that was flagged open is now closed everywhere.
 - **Rounds grid default multi-sort (§12.6.1, 2026-06-09, DONE — fast cycle):** `JudgingAdminView` rounds grid had no
   default sort and `findByJudgingId` has no `ORDER BY`, so starting a round made its row jump (status UPDATE relocates
   the Postgres tuple). Set `roundsGrid.setMultiSort(true)` + a default sort via `GridSortOrderBuilder`: **Scheduled asc

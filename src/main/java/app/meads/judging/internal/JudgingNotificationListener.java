@@ -1,7 +1,9 @@
 package app.meads.judging.internal;
 
 import app.meads.LanguageMapping;
+import app.meads.competition.CategoryDisplay;
 import app.meads.competition.CompetitionService;
+import app.meads.competition.DivisionCategory;
 import app.meads.entry.EntryService;
 import app.meads.identity.EmailService;
 import app.meads.identity.JwtMagicLinkService;
@@ -10,11 +12,13 @@ import app.meads.judging.MedalRoundActivatedEvent;
 import app.meads.judging.ScoresheetRevertedEvent;
 import app.meads.judging.RoundStartedEvent;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.util.LinkedHashSet;
+import java.util.Locale;
 import java.util.UUID;
 
 /**
@@ -37,6 +41,7 @@ public class JudgingNotificationListener {
     private final UserService userService;
     private final EmailService emailService;
     private final JwtMagicLinkService jwtMagicLinkService;
+    private final MessageSource messageSource;
 
     JudgingNotificationListener(JudgingRoundRepository judgingRoundRepository,
                                 ScoresheetRepository scoresheetRepository,
@@ -44,7 +49,8 @@ public class JudgingNotificationListener {
                                 EntryService entryService,
                                 UserService userService,
                                 EmailService emailService,
-                                JwtMagicLinkService jwtMagicLinkService) {
+                                JwtMagicLinkService jwtMagicLinkService,
+                                MessageSource messageSource) {
         this.judgingRoundRepository = judgingRoundRepository;
         this.scoresheetRepository = scoresheetRepository;
         this.competitionService = competitionService;
@@ -52,6 +58,13 @@ public class JudgingNotificationListener {
         this.userService = userService;
         this.emailService = emailService;
         this.jwtMagicLinkService = jwtMagicLinkService;
+        this.messageSource = messageSource;
+    }
+
+    /** Localized "CODE — Name" for a judge email, with the catalog-properties fallback. */
+    private String categoryLabel(DivisionCategory category, Locale locale) {
+        return CategoryDisplay.codeAndName(category, locale,
+                key -> messageSource.getMessage(key, null, key, locale));
     }
 
     @ApplicationModuleListener
@@ -68,7 +81,7 @@ public class JudgingNotificationListener {
         for (var assignment : table.getAssignments()) {
             var judge = userService.findById(assignment.getJudgeUserId());
             var locale = LanguageMapping.resolveLocale(judge.getPreferredLanguage(), judge.getCountry());
-            var categoryLabel = category.getCode() + " — " + category.getName(locale);
+            var categoryLabel = categoryLabel(category, locale);
             var link = jwtMagicLinkService.generateLink(judge.getEmail(), LINK_VALIDITY);
             emailService.sendJudgingTableReady(judge.getEmail(), table.getName(),
                     categoryLabel, competition.getName(), division.getName(), link, locale);
@@ -125,7 +138,7 @@ public class JudgingNotificationListener {
         for (var judgeUserId : judgeUserIds) {
             var judge = userService.findById(judgeUserId);
             var locale = LanguageMapping.resolveLocale(judge.getPreferredLanguage(), judge.getCountry());
-            var categoryLabel = category.getCode() + " — " + category.getName(locale);
+            var categoryLabel = categoryLabel(category, locale);
             var link = jwtMagicLinkService.generateLink(judge.getEmail(), LINK_VALIDITY);
             emailService.sendMedalRoundReady(judge.getEmail(), categoryLabel,
                     competition.getName(), division.getName(), link, locale);

@@ -4,6 +4,7 @@ import app.meads.BusinessRuleException;
 import app.meads.LanguageMapping;
 import app.meads.MainLayout;
 import app.meads.PluralRules;
+import app.meads.competition.CategoryDisplay;
 import app.meads.competition.Competition;
 import app.meads.competition.CompetitionService;
 import app.meads.competition.Division;
@@ -520,15 +521,7 @@ public class MyEntriesView extends VerticalLayout implements BeforeEnterObserver
     }
 
     private String translateCategoryName(DivisionCategory cat) {
-        // Admin-provided per-category translation wins (covers custom categories).
-        var localized = cat.getName(getLocale());
-        if (!localized.equals(cat.getName())) {
-            return localized;
-        }
-        // Otherwise fall back to the catalog properties translation, then the English base.
-        var key = "category." + cat.getCode() + ".name";
-        var translated = getTranslation(key);
-        return translated.equals(key) ? cat.getName() : translated;
+        return CategoryDisplay.name(cat, getLocale(), this::getTranslation);
     }
 
     private String resolveCategoryCodeAndName(UUID categoryId) {

@@ -1,6 +1,7 @@
 package app.meads.judging;
 
 import app.meads.BusinessRuleException;
+import app.meads.competition.CategoryDisplay;
 import app.meads.competition.CompetitionService;
 import app.meads.competition.Division;
 import app.meads.competition.DivisionStatus;
@@ -169,7 +170,7 @@ public class ScoresheetPdfService {
             // Mead details as label: value lines (mirrors the dialog's detail block).
             if (category != null) {
                 document.add(labelValue(msg("scoresheet.pdf.category", locale),
-                        category.getCode() + " — " + category.getName(locale)));
+                        CategoryDisplay.codeAndName(category, locale, k -> msg(k, locale))));
             }
             document.add(labelValue(msg("entries.view.sweetness", locale),
                     enumLabel("entry.sweetness.", entry.getSweetness(), locale)));

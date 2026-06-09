@@ -2,6 +2,7 @@ package app.meads.judging.internal;
 
 import app.meads.BusinessRuleException;
 import app.meads.MainLayout;
+import app.meads.competition.CategoryDisplay;
 import app.meads.competition.Competition;
 import app.meads.competition.CompetitionService;
 import app.meads.competition.Division;
@@ -738,7 +739,8 @@ public class RoundView extends VerticalLayout implements BeforeEnterObserver {
         badge.getElement().getThemeList().add("badge contrast");
 
         var category = competitionService.findDivisionCategoryById(table.getDivisionCategoryId());
-        var categoryBadge = RoundBadges.categoryBadge(category.getCode(), category.getName(getLocale()),
+        var categoryBadge = RoundBadges.categoryBadge(category.getCode(),
+                CategoryDisplay.name(category, getLocale(), this::getTranslation),
                 getTranslation("judging-admin.rounds.column.category"));
         categoryBadge.setId("round-category-badge");
 
