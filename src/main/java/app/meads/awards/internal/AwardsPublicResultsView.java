@@ -34,6 +34,8 @@ public class AwardsPublicResultsView extends VerticalLayout
         this.awardsService = awardsService;
         setSizeFull();
         setPadding(true);
+        // Breathing room at the bottom so the last category isn't flush against the edge.
+        getStyle().set("padding-bottom", "var(--lumo-space-xl)");
     }
 
     @Override
@@ -78,8 +80,10 @@ public class AwardsPublicResultsView extends VerticalLayout
                     .setHeader(getTranslation("awards.public.bos.place"));
             bosGrid.addColumn(PublicResultsView.PublicBosRow::meadName)
                     .setHeader(getTranslation("awards.public.bos.mead-name"));
-            bosGrid.addColumn(PublicResultsView.PublicBosRow::meaderyName)
-                    .setHeader(getTranslation("awards.public.bos.meadery-name"));
+            bosGrid.addColumn(PublicResultsView.PublicBosRow::producer)
+                    .setHeader(getTranslation(view.meaderyRequired()
+                            ? "awards.public.bos.meadery-name"
+                            : "awards.public.bos.maker-name"));
             bosGrid.setItems(view.bosLeaderboard());
             bosGrid.setAllRowsVisible(true);
             add(bosGrid);
@@ -87,6 +91,9 @@ public class AwardsPublicResultsView extends VerticalLayout
 
         for (var section : view.categories()) {
             var sectionHeading = new H3(section.categoryCode() + " — " + section.categoryName());
+            // Extra breathing room before each category so the page reads as
+            // distinct blocks.
+            sectionHeading.getStyle().set("margin-top", "var(--lumo-space-xl)");
             add(sectionHeading);
             renderMedalGroup(section.golds(), "awards.public.medal.gold");
             renderMedalGroup(section.silvers(), "awards.public.medal.silver");
@@ -107,11 +114,20 @@ public class AwardsPublicResultsView extends VerticalLayout
         if (rows.isEmpty()) {
             return;
         }
+        // Keep the medal label tight against its entries (no inter-child spacing),
+        // with only a small gap between medal groups.
+        var group = new VerticalLayout();
+        group.setPadding(false);
+        group.setSpacing(false);
+        group.getStyle().set("margin-top", "var(--lumo-space-s)");
         var label = new Span(getTranslation(labelKey));
         label.getStyle().set("font-weight", "bold");
-        add(label);
+        group.add(label);
         for (var row : rows) {
-            add(new Paragraph(row.meadName() + " — " + row.meaderyName()));
+            var line = new Paragraph(row.meadName() + " — " + row.producer());
+            line.getStyle().set("margin", "0");
+            group.add(line);
         }
+        add(group);
     }
 }

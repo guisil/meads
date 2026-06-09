@@ -11,8 +11,10 @@ import app.meads.awards.PublicResultsView;
 import app.meads.awards.Publication;
 import app.meads.awards.ResultsPublishedEvent;
 import app.meads.awards.ResultsRepublishedEvent;
+import app.meads.CountryDisplay;
 import app.meads.competition.CategoryDisplay;
 import app.meads.competition.CompetitionService;
+import app.meads.competition.Division;
 import app.meads.competition.DivisionCategory;
 import app.meads.competition.DivisionStatus;
 import app.meads.entry.Entry;
@@ -341,23 +343,12 @@ public class AwardsServiceImpl implements AwardsService {
         }
         var sections = new ArrayList<PublicResultsView.PublicCategorySection>();
         for (var category : judgingCategories) {
-            var rows = new ArrayList<PublicResultsView.PublicMedalRow>();
-            for (var entry : entriesByCategory.getOrDefault(category.getId(), List.of())) {
-                var medalAward = judgingService.findMedalAwardByEntryId(entry.getId()).orElse(null);
-                if (medalAward == null || medalAward.getMedal() == null) {
-                    continue;
-                }
-                var entrant = userService.findById(entry.getUserId());
-                var row = new PublicResultsView.PublicMedalRow(entry.getMeadName(), entrant.getMeaderyName());
-                if (!rowMedalMatches(medalAward, Medal.GOLD) && !rowMedalMatches(medalAward, Medal.SILVER)
-                        && !rowMedalMatches(medalAward, Medal.BRONZE)) {
-                    continue;
-                }
-                rows.add(row);
-            }
-            var golds = filterByMedal(entriesByCategory.getOrDefault(category.getId(), List.of()), Medal.GOLD);
-            var silvers = filterByMedal(entriesByCategory.getOrDefault(category.getId(), List.of()), Medal.SILVER);
-            var bronzes = filterByMedal(entriesByCategory.getOrDefault(category.getId(), List.of()), Medal.BRONZE);
+            var golds = filterByMedal(entriesByCategory.getOrDefault(category.getId(), List.of()),
+                    Medal.GOLD, division, locale);
+            var silvers = filterByMedal(entriesByCategory.getOrDefault(category.getId(), List.of()),
+                    Medal.SILVER, division, locale);
+            var bronzes = filterByMedal(entriesByCategory.getOrDefault(category.getId(), List.of()),
+                    Medal.BRONZE, division, locale);
             if (!golds.isEmpty() || !silvers.isEmpty() || !bronzes.isEmpty()) {
                 sections.add(new PublicResultsView.PublicCategorySection(
                         category.getCode(), categoryName(category, locale), golds, silvers, bronzes));
@@ -369,30 +360,45 @@ public class AwardsServiceImpl implements AwardsService {
             var entry = entryService.findEntryById(placement.getEntryId());
             var entrant = userService.findById(entry.getUserId());
             publicBos.add(new PublicResultsView.PublicBosRow(
-                    placement.getPlace(), entry.getMeadName(), entrant.getMeaderyName()));
+                    placement.getPlace(), entry.getMeadName(),
+                    producerLabel(entrant, division, locale)));
         }
         var history = publicationRepository.findByDivisionIdOrderByVersionAsc(division.getId());
         var latest = history.isEmpty() ? null : history.get(history.size() - 1);
         return new PublicResultsView(
                 competition.getName(), division.getName(),
                 latest != null ? latest.getPublishedAt() : null,
-                history.size() > 1, sections, publicBos);
+                history.size() > 1, sections, publicBos, division.isMeaderyNameRequired());
     }
 
-    private List<PublicResultsView.PublicMedalRow> filterByMedal(List<Entry> entries, Medal medal) {
+    /**
+     * Public-facing producer label, always suffixed with the entrant's country when
+     * set: in a meadery-required division (e.g. commercial) the meadery name is
+     * shown; otherwise (e.g. amateur) the meadmaker's name — never a bare
+     * {@code null} when no meadery was given.
+     */
+    public static String producerLabel(User entrant, Division division, Locale locale) {
+        var primary = division.isMeaderyNameRequired()
+                ? entrant.getMeaderyName()
+                : entrant.getName();
+        var country = entrant.getCountry();
+        return (country != null && !country.isBlank())
+                ? primary + " (" + CountryDisplay.name(country, locale) + ")"
+                : primary;
+    }
+
+    private List<PublicResultsView.PublicMedalRow> filterByMedal(List<Entry> entries, Medal medal,
+                                                                 Division division, Locale locale) {
         var rows = new ArrayList<PublicResultsView.PublicMedalRow>();
         for (var entry : entries) {
             var award = judgingService.findMedalAwardByEntryId(entry.getId()).orElse(null);
             if (award != null && award.getMedal() == medal) {
                 var entrant = userService.findById(entry.getUserId());
-                rows.add(new PublicResultsView.PublicMedalRow(entry.getMeadName(), entrant.getMeaderyName()));
+                rows.add(new PublicResultsView.PublicMedalRow(entry.getMeadName(),
+                        producerLabel(entrant, division, locale)));
             }
         }
         return rows;
-    }
-
-    private boolean rowMedalMatches(app.meads.judging.MedalAward award, Medal medal) {
-        return award.getMedal() == medal;
     }
 
     private List<app.meads.judging.BosPlacement> publicBosPlacements(UUID divisionId) {

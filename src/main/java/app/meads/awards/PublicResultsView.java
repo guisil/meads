@@ -9,7 +9,8 @@ public record PublicResultsView(
         Instant lastUpdatedAt,
         boolean hasMultiplePublications,
         List<PublicCategorySection> categories,
-        List<PublicBosRow> bosLeaderboard) {
+        List<PublicBosRow> bosLeaderboard,
+        boolean meaderyRequired) {
 
     public record PublicCategorySection(
             String categoryCode,
@@ -19,9 +20,10 @@ public record PublicResultsView(
             List<PublicMedalRow> bronzes) {
     }
 
-    public record PublicMedalRow(String meadName, String meaderyName) {
+    /** {@code producer} = meadery name in meadery-required divisions, else "Maker (Country)". */
+    public record PublicMedalRow(String meadName, String producer) {
     }
 
-    public record PublicBosRow(int place, String meadName, String meaderyName) {
+    public record PublicBosRow(int place, String meadName, String producer) {
     }
 }

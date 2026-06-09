@@ -622,6 +622,15 @@ committed walkthrough doc commit (this session changed ONLY `docs/walkthrough/ma
   `RoundViewTest.shouldNavigateToScoresheetViewWhenGridRowClicked`. Walkthrough §12.10.1 + §12.10.6 updated. Test
   count 1344 → **1343** (full suite green). Branch still `feature/judging-module`; this is uncommitted code +
   walkthrough/doc edits.
+- **Public results producer label "null" + spacing (§13.3, 2026-06-09, FIXED — full cycle):** public results showed
+  "null" for amateur (Amadora) entries because the medal/BOS rows used raw `entrant.getMeaderyName()`. New
+  `AwardsServiceImpl.producerLabel(entrant, division, locale)` (public static, pure): **meadery name** when
+  `division.isMeaderyNameRequired()` else **meadmaker name**, ALWAYS suffixed ` (Country)` via `CountryDisplay` when set.
+  `PublicResultsView` records renamed `meaderyName`→`producer`; added top-level `boolean meaderyRequired` so the BOS
+  column header is "Meadery" vs new "Maker" (`awards.public.bos.maker-name` ×5). Removed dead `rows`/`rowMedalMatches`
+  block in `getPublicResults`; `filterByMedal` now takes division+locale. **AwardsPublicResultsView spacing:** medal
+  label tightened against its entries (group VerticalLayout, spacing off, `margin:0` lines), `margin-top:xl` before each
+  category H3, and `padding-bottom:xl` on the page. +3 unit tests (`producerLabel*`). 1356 → **1359**. Walkthrough §13.3 updated.
 - **Judging Categories tab disappeared at DELIBERATION (§13.1.2, 2026-06-09, FIXED — full cycle, user chose read-only):**
   `DivisionDetailView` gated the tab's visibility on `allowsJudgingCategoryManagement()` (REGISTRATION_CLOSED..JUDGING),
   conflating "can manage" with "can see" — so the tab vanished at DELIBERATION+. Now shown when

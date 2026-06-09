@@ -2713,11 +2713,20 @@ Steps below are admin-driven unless noted.
 - [ ] **Expected:** Page renders without requiring login (`@AnonymousAllowed`).
 - [ ] **Expected:** Heading "CHIP 2026 — Amadora — Results".
 - [ ] **Expected:** "Best of Show" section visible only when at least one
-  BosPlacement exists; columns: Place, Mead, Meadery (no entry IDs).
+  BosPlacement exists; columns: Place, Mead, and a **producer** column (no entry IDs).
+- [ ] **Expected (producer label):** the producer is `Mead name — {producer}` where
+  `{producer}` is the **meadery name** in a meadery-required division (e.g. Profissional)
+  or the **meadmaker's name** in an amateur division (e.g. Amadora) — **and in both cases
+  suffixed with ` (Country)`** when the entrant has a country set (e.g. `Jane Maker (Portugal)`
+  or `Hidromel Co (Portugal)`). It must **never render `null`** when no meadery was given.
+  The **BOS producer column header** is "Meadery" in a meadery-required division and "Maker"
+  in an amateur division (`awards.public.bos.maker-name`).
 - [ ] **Expected:** Per-category sections rendered for each category that has
   at least one medal awarded. Within each section, separate blocks for Gold /
-  Silver / Bronze, listing `Mead name — Meadery name` only (no entry IDs, no
-  entrant names, no category in BOS rows).
+  Silver / Bronze, listing `Mead name — {producer}` only (no entry IDs).
+- [ ] **Expected (spacing):** the medal label (Gold/Silver/Bronze) sits **tight** above its
+  entries; there is **extra space before each category title**; and the page has **bottom
+  padding** so the last category isn't flush against the edge.
 - [ ] **Expected:** Entries without a medal are **not** rendered in the medal blocks (only Gold/Silver/Bronze entries appear).
 - [ ] Hard refresh the page in a logged-out window for a division still in
   `REGISTRATION_OPEN` (e.g., another division of CHIP 2026 you haven't published):

@@ -7,10 +7,13 @@ import app.meads.competition.Competition;
 import app.meads.competition.CompetitionService;
 import app.meads.competition.Division;
 import app.meads.competition.DivisionStatus;
+import app.meads.competition.ScoringSystem;
 import app.meads.entry.EntryService;
 import app.meads.identity.EmailService;
+import app.meads.identity.Role;
 import app.meads.identity.User;
 import app.meads.identity.UserService;
+import app.meads.identity.UserStatus;
 import app.meads.judging.JudgingService;
 import app.meads.judging.ScoresheetService;
 import org.junit.jupiter.api.Test;
@@ -20,6 +23,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -249,6 +253,48 @@ class AwardsServiceImplTest {
         assertThatThrownBy(() -> service.getPublicResults("test", "amateur", java.util.Locale.ENGLISH))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("error.awards.not-published");
+    }
+
+    private Division divisionWithMeaderyRequired(boolean required) {
+        var d = new Division(UUID.randomUUID(), "Div", "div", ScoringSystem.MJP,
+                LocalDateTime.of(2026, 12, 31, 23, 59), "UTC");
+        if (required) {
+            d.updateMeaderyNameRequired(true);
+        }
+        return d;
+    }
+
+    private User entrant(String name, String meadery, String country) {
+        var u = new User("e-" + UUID.randomUUID() + "@example.com", name,
+                UserStatus.ACTIVE, Role.USER);
+        if (meadery != null) {
+            u.updateMeaderyName(meadery);
+        }
+        if (country != null) {
+            u.updateCountry(country);
+        }
+        return u;
+    }
+
+    @Test
+    void producerLabelShowsMeadmakerWithCountryWhenMeaderyNotRequired() {
+        var u = entrant("Jane Maker", null, "PT");
+        assertThat(AwardsServiceImpl.producerLabel(u, divisionWithMeaderyRequired(false),
+                java.util.Locale.ENGLISH)).isEqualTo("Jane Maker (Portugal)");
+    }
+
+    @Test
+    void producerLabelShowsMeaderyWithCountryWhenMeaderyRequired() {
+        var u = entrant("Jane Maker", "Hidromel Co", "PT");
+        assertThat(AwardsServiceImpl.producerLabel(u, divisionWithMeaderyRequired(true),
+                java.util.Locale.ENGLISH)).isEqualTo("Hidromel Co (Portugal)");
+    }
+
+    @Test
+    void producerLabelOmitsCountrySuffixWhenEntrantHasNoCountry() {
+        var u = entrant("Jane Maker", null, null);
+        assertThat(AwardsServiceImpl.producerLabel(u, divisionWithMeaderyRequired(false),
+                java.util.Locale.ENGLISH)).isEqualTo("Jane Maker");
     }
 
     @Test
