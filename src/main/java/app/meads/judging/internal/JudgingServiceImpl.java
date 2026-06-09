@@ -1727,6 +1727,13 @@ public class JudgingServiceImpl implements JudgingService {
         if (!medal.get().isConfirmed()) {
             throw new BusinessRuleException("error.bos.gold-not-confirmed");
         }
+        // Reject (cleanly) a place already held by a different entry — no swap,
+        // positions unchanged — instead of letting the (division, place) unique
+        // constraint surface as a raw ConstraintViolationException.
+        var occupant = bosPlacementRepository.findByDivisionIdAndPlace(divisionId, place);
+        if (occupant.isPresent() && !occupant.get().getEntryId().equals(entryId)) {
+            throw new BusinessRuleException("error.bos.place-taken", String.valueOf(place));
+        }
         var existingAtEntry = bosPlacementRepository.findByEntryId(entryId);
         BosPlacement placement;
         if (existingAtEntry.isPresent()) {
@@ -1758,6 +1765,15 @@ public class JudgingServiceImpl implements JudgingService {
         if (place < 1 || place > division.getBosPlaces()) {
             throw new BusinessRuleException("error.bos.invalid-place",
                     String.valueOf(place), String.valueOf(division.getBosPlaces()));
+        }
+        // Moving onto an occupied place fails cleanly (no swap, positions
+        // unchanged) rather than tripping the (division, place) unique constraint.
+        if (place != placement.getPlace()) {
+            var occupant = bosPlacementRepository.findByDivisionIdAndPlace(
+                    placement.getDivisionId(), place);
+            if (occupant.isPresent() && !occupant.get().getId().equals(placementId)) {
+                throw new BusinessRuleException("error.bos.place-taken", String.valueOf(place));
+            }
         }
         placement.updatePlace(place, adminUserId);
         bosPlacementRepository.save(placement);

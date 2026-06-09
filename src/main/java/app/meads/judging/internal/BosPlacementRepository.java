@@ -12,4 +12,6 @@ public interface BosPlacementRepository extends JpaRepository<BosPlacement, UUID
     List<BosPlacement> findByDivisionIdOrderByPlace(UUID divisionId);
 
     Optional<BosPlacement> findByEntryId(UUID entryId);
+
+    Optional<BosPlacement> findByDivisionIdAndPlace(UUID divisionId, int place);
 }

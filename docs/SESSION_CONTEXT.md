@@ -601,7 +601,8 @@ committed walkthrough doc commit (this session changed ONLY `docs/walkthrough/ma
   display DEFERRED to entrant-side testing, 7c judging-cat translations DONE here**) · §8 Entry Admin (incl. verbose
   all-fields entry) · §9 Webhook · §10/§11 entrant view (incl. **P12** label withdrawal, verified on Profissional) ·
   §12.1/12.1.1/12.2 · §12.4/12.4.1/12.4.2 + **7c** · §12.5/12.5.0/12.5.1/12.5.2.
-- **⏸ RESUME POINT: §12.8 Best of Show tab. §12.6 (all subsections incl. 12.6.8.1 A/B/C) + §12.7 Results tab PASSED clean 2026-06-09. After §12.8: §12.9+ judge/steward views → §12.10/12.11 scoring (RoundView/ScoresheetView, incl. the multi-judge §12.10.3 + recently-fixed grid items) → §12.12 medal rounds → §13 Awards. NOTE: full BOS start needs ALL medal rounds COMPLETE (M1A/M1B finalize in §12.10–12.12), so the actual Start BOS may be deferred until then.** §12.6.8 Add medal round PASSED clean. Batches 1–4 all **PASSED clean** (2026-06-09): §12.6 header +
+- **⏸ RESUME POINT: §12.8 Start BOS + §12.13 BosView placements on Amadora (user drove Amadora's scoring+medal rounds to COMPLETE, so BOS is available). STILL TO COVER (interactive, need ACTIVE rounds → run on Profissional): §12.9 MyJudgingView, §12.10 RoundView, §12.10.3 multi-judge (filledBy=last-validator), §12.11 ScoresheetView (category localization), §12.12 MedalRoundView (clear-medal-sticks). Then §13 Awards.**
+  ⚠ Superseded line follows: - **(old) §12.8 Best of Show tab. §12.6 (all subsections incl. 12.6.8.1 A/B/C) + §12.7 Results tab PASSED clean 2026-06-09. After §12.8: §12.9+ judge/steward views → §12.10/12.11 scoring (RoundView/ScoresheetView, incl. the multi-judge §12.10.3 + recently-fixed grid items) → §12.12 medal rounds → §13 Awards. NOTE: full BOS start needs ALL medal rounds COMPLETE (M1A/M1B finalize in §12.10–12.12), so the actual Start BOS may be deferred until then.** §12.6.8 Add medal round PASSED clean. Batches 1–4 all **PASSED clean** (2026-06-09): §12.6 header +
   §12.6.0 Tables + §12.6.1 Add round + §12.6.2 Edit round; §12.6.3 Assign judges + COI badges + §12.6.3.1 Manual COI
   (see COI finding below); §12.6.4 Start round (Amadora now at **JUDGING**, ACTIVE round at Table 1) + §12.6.0.1
   cross-division shared-tables; §12.6.4.1 Revert + §12.6.5/6 min-judge locks + §12.6.7 delete + §12.6.7.1
@@ -621,6 +622,13 @@ committed walkthrough doc commit (this session changed ONLY `docs/walkthrough/ma
   `RoundViewTest.shouldNavigateToScoresheetViewWhenGridRowClicked`. Walkthrough §12.10.1 + §12.10.6 updated. Test
   count 1344 → **1343** (full suite green). Branch still `feature/judging-module`; this is uncommitted code +
   walkthrough/doc edits.
+- **BOS place-edit onto occupied slot crashed (§12.8/§12.13, 2026-06-09, FIXED — full cycle):** editing a BOS
+  placement's place number onto an already-occupied place (e.g. 3rd → 1st) tripped the `(division_id, place)` UNIQUE
+  constraint as a raw `ConstraintViolationException` (`bos_placements_division_id_place_key`). User chose **clean
+  rejection, no swap, positions unchanged**. Added `BosPlacementRepository.findByDivisionIdAndPlace`; guard in BOTH
+  `JudgingServiceImpl.updateBosPlacement` and `recordBosPlacement` → throws `BusinessRuleException("error.bos.place-taken", place)`
+  (new i18n key ×5) when a *different* placement/entry holds the target place. UI already catches BusinessRuleException →
+  shows a notification. +2 tests in `JudgingServiceMedalsBosTest`. 1353 → **1355**. Walkthrough §12.8 updated.
 - **JudgingAdminView tab reorder (2026-06-09, DONE — fast cycle):** moved **Conflicts of Interest** to the **first**
   tab (was 5th). New order: Conflicts(0) · Tables(1) · Rounds(2) · Results(3) · BOS(4). `computeDefaultTabIndex`
   return values shifted +1 (default still resolves to the same tab by state — Tables/Rounds/Results/BOS, never

@@ -2154,6 +2154,7 @@ The Results tab is a read-only summary of every round that has reached COMPLETE 
 - [ ] **Expected:** "Start BOS" button is disabled with tooltip "All medal rounds must be COMPLETE before BOS can start." until every medal `JudgingRound` in the division is `COMPLETE` (categories with no medal round are ignored — they don't block).
 - [ ] After all medal rounds COMPLETE, click "Start BOS" → confirm.
 - [ ] **Expected:** Notification "BOS started"; phase badge updates to `Phase: BOS`; "Finalize BOS" and "Reset BOS" appear.
+- [ ] **(Edit a placement's place onto an occupied slot — clean rejection.)** With at least two placements filled (e.g. 1st and 3rd), edit the 3rd-place row (✏, `bos-edit-place-field`) and set the place to `1` (already taken) → Save. **Expected:** a clean error notification *"Place 1 is already assigned. Free that place first or pick another."* (key `error.bos.place-taken`); **positions are unchanged** (no swap). Previously this surfaced a raw `bos_placements_division_id_place_key` constraint exception. (Same guard protects the BosView reassign path.)
 
 ### 12.9 MyJudgingView (Cycle C: redirect-or-stub)
 

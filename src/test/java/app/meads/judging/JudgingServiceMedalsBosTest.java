@@ -475,6 +475,46 @@ class JudgingServiceMedalsBosTest {
     }
 
     @Test
+    void shouldRejectRecordBosPlacementWhenTargetPlaceTakenByAnotherEntry() {
+        judging.markActive();
+        judging.startBos();
+        var goldAward = new MedalAward(entryId, divisionId, divisionCategoryId,
+                Medal.GOLD, adminUserId);
+        goldAward.confirm(adminUserId);
+        var occupant = new BosPlacement(divisionId, UUID.randomUUID(), 1, adminUserId);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(judgingRepository.findByDivisionId(divisionId)).willReturn(Optional.of(judging));
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(medalAwardRepository.findByEntryId(entryId)).willReturn(Optional.of(goldAward));
+        given(bosPlacementRepository.findByDivisionIdAndPlace(divisionId, 1))
+                .willReturn(Optional.of(occupant));
+
+        assertThatThrownBy(() -> service.recordBosPlacement(divisionId, entryId, 1, adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.bos.place-taken");
+        then(bosPlacementRepository).should(never()).save(any(BosPlacement.class));
+    }
+
+    @Test
+    void shouldRejectUpdateBosPlacementWhenTargetPlaceTakenByAnotherEntry() {
+        // Moving a placement onto an already-occupied place must fail cleanly
+        // (no swap, positions unchanged) instead of tripping the DB unique
+        // constraint on (division_id, place).
+        var moving = new BosPlacement(divisionId, UUID.randomUUID(), 3, adminUserId);
+        var occupant = new BosPlacement(divisionId, UUID.randomUUID(), 1, adminUserId);
+        given(bosPlacementRepository.findById(moving.getId())).willReturn(Optional.of(moving));
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(bosPlacementRepository.findByDivisionIdAndPlace(divisionId, 1))
+                .willReturn(Optional.of(occupant));
+
+        assertThatThrownBy(() -> service.updateBosPlacement(moving.getId(), 1, adminUserId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("error.bos.place-taken");
+        then(bosPlacementRepository).should(never()).save(any(BosPlacement.class));
+    }
+
+    @Test
     void shouldRejectRecordBosPlacementWhenPlaceOutOfRange() {
         judging.markActive();
         judging.startBos();
