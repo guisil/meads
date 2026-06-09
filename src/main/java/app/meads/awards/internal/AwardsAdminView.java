@@ -258,8 +258,18 @@ public class AwardsAdminView extends VerticalLayout implements BeforeEnterObserv
         justification.setMinHeight("180px");
         dialog.add(justification);
         var confirm = new Button(getTranslation("awards.admin.republish"), e -> {
+            // Blank check for UX feedback (the service's @NotBlank would otherwise
+            // surface as a raw ConstraintViolationException); the service still
+            // enforces the 20-char minimum.
+            var value = justification.getValue();
+            if (value == null || value.isBlank()) {
+                justification.setInvalid(true);
+                justification.setErrorMessage(getTranslation("error.awards.justification-too-short"));
+                e.getSource().setEnabled(true);
+                return;
+            }
             try {
-                awardsService.republish(division.getId(), justification.getValue(), currentUserId);
+                awardsService.republish(division.getId(), value, currentUserId);
                 Notification.show(getTranslation("awards.admin.republish.success"))
                         .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 dialog.close();
@@ -270,6 +280,7 @@ public class AwardsAdminView extends VerticalLayout implements BeforeEnterObserv
                 e.getSource().setEnabled(true);
             }
         });
+        confirm.setId("awards-republish-confirm");
         confirm.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         confirm.setDisableOnClick(true);
         dialog.getFooter().add(new Button(getTranslation("button.cancel"), e -> dialog.close()), confirm);

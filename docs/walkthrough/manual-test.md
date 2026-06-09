@@ -2907,6 +2907,11 @@ absent, then confirm the guard fires on the one path that stays reachable:
 - [ ] **Expected:** Dialog with title "Re-publish results" and a TextArea
   labeled "Justification (required)" with helper text about the 20-char
   minimum.
+- [ ] **Leave the justification blank** and click the in-dialog "Re-publish".
+- [ ] **Expected:** a clean inline **field error** on the justification TextArea
+  (no raw `ConstraintViolationException`/error page); the dialog stays open and
+  nothing is published. (UI blank-check; the service's `@NotBlank` is the
+  defense-in-depth backstop.)
 - [ ] Type a short string (e.g., `oops`) and click the in-dialog "Re-publish".
 - [ ] **Expected:** Error notification ending with
   `error.awards.justification-too-short` (locale-dependent text); dialog stays

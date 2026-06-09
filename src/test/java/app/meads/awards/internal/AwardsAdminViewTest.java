@@ -17,6 +17,7 @@ import com.github.mvysny.kaributesting.v10.Routes;
 import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.server.VaadinServletRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,6 +39,7 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.UUID;
 
+import static com.github.mvysny.kaributesting.v10.LocatorJ._click;
 import static com.github.mvysny.kaributesting.v10.LocatorJ._find;
 import static com.github.mvysny.kaributesting.v10.LocatorJ._get;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -171,6 +173,28 @@ class AwardsAdminViewTest {
         assertThat(_find(Button.class).stream()
                 .anyMatch(b -> "awards-publish-button".equals(b.getId().orElse(""))))
                 .isFalse();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldRejectRepublishWithBlankJustificationWithoutException() {
+        // A blank justification must give a clean field error, not a raw
+        // ConstraintViolationException from the service's @NotBlank.
+        advanceToDeliberation();
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        publicationRepository.save(new Publication(division.getId(), admin.getId()));
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/results-admin");
+
+        _click(_get(Button.class, spec -> spec.withId("awards-republish-button")));
+        var justification = _get(TextArea.class);
+        // leave justification blank
+        _click(_get(Button.class, spec -> spec.withId("awards-republish-confirm")));
+
+        assertThat(justification.isInvalid()).isTrue();
+        // republish was not invoked — still a single publication version.
+        assertThat(publicationRepository.findByDivisionIdOrderByVersionAsc(division.getId()))
+                .hasSize(1);
     }
 
     @Test

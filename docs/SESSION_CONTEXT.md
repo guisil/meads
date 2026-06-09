@@ -622,6 +622,12 @@ committed walkthrough doc commit (this session changed ONLY `docs/walkthrough/ma
   `RoundViewTest.shouldNavigateToScoresheetViewWhenGridRowClicked`. Walkthrough §12.10.1 + §12.10.6 updated. Test
   count 1344 → **1343** (full suite green). Branch still `feature/judging-module`; this is uncommitted code +
   walkthrough/doc edits.
+- **Blank republish justification crashed (§13.8, 2026-06-09, FIXED — fast cycle):** re-publishing with an empty
+  justification tripped the service's interface `@NotBlank` → raw `ConstraintViolationException` (error page); the
+  dialog only caught `BusinessRuleException`. Added a UI blank-check in `AwardsAdminView.openRepublishDialog` (field
+  error via `error.awards.justification-too-short`, service not called), matching the codebase "views do blank checks
+  for UX, service still enforces" pattern. Confirm button got id `awards-republish-confirm`. +1 test
+  `shouldRejectRepublishWithBlankJustificationWithoutException`. 1362 → **1363**. Walkthrough §13.8 updated.
 - **Admin results preview before publishing (§13.1.4, 2026-06-09, NEW FEATURE — full-ish cycle):** admins can preview
   the public results page while still DELIBERATION. Same `/results` URL serves the published page to everyone OR an
   admin-only preview when not yet published: `AwardsPublicResultsView` (now injects `AuthenticationContext`+`UserService`)
