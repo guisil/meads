@@ -228,9 +228,9 @@ public class ScoresheetPdfService {
                 document.add(labelValue(msg("scoresheet.pdf.judge", locale),
                         formatJudgeLabel(sheet, ordinal, level, locale)));
             }
-            if (sheet.getCommentLanguage() != null) {
+            if (sheet.getCommentLanguage() != null && !sheet.getCommentLanguage().isBlank()) {
                 document.add(new Paragraph(msg("scoresheet.pdf.comment-language", locale) + ": "
-                        + sheet.getCommentLanguage(), FONT_COMMENT));
+                        + languageDisplayName(sheet.getCommentLanguage(), locale), FONT_COMMENT));
             }
 
             document.add(new Paragraph(" ", FONT_SMALL));
@@ -362,6 +362,15 @@ public class ScoresheetPdfService {
 
     private String msg(String key, Locale locale, Object... args) {
         return messageSource.getMessage(key, args, key, locale);
+    }
+
+    /** Localized language name for an ISO 639-1 code (e.g. "en" → "English"), capitalized. */
+    private static String languageDisplayName(String code, Locale locale) {
+        var name = Locale.of(code).getDisplayLanguage(locale);
+        if (name.isBlank()) {
+            return code;
+        }
+        return Character.toUpperCase(name.charAt(0)) + name.substring(1);
     }
 
 }
