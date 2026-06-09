@@ -242,7 +242,13 @@ public class ScoresheetServiceImpl implements ScoresheetService {
         requireNotFrozenForSheet(sheet);
         enforceCoi(judgeUserId, sheet);
         requireFieldCommentsLongEnough(sheet);
-        if (sheet.getFilledByJudgeUserId() == null) {
+        // "Filled by" = the judge who last validates (Saves) the sheet. In the
+        // non-standard case where a second assigned judge edits + re-Saves another
+        // judge's sheet, authorship follows the latest validator. An admin editing
+        // on behalf of a judge is not an assigned judge, so they never overwrite an
+        // existing author; a never-filled sheet keeps the first-setter as a fallback.
+        if (isAssignedJudge(sheet.getRoundId(), judgeUserId)
+                || sheet.getFilledByJudgeUserId() == null) {
             sheet.setFilledBy(judgeUserId);
         }
         try {
@@ -489,6 +495,11 @@ public class ScoresheetServiceImpl implements ScoresheetService {
     private JudgingRound requireTable(UUID id) {
         return judgingRoundRepository.findById(id)
                 .orElseThrow(() -> new BusinessRuleException("error.judging-table.not-found"));
+    }
+
+    private boolean isAssignedJudge(UUID roundId, UUID userId) {
+        return requireTable(roundId).getAssignments().stream()
+                .anyMatch(a -> a.getJudgeUserId().equals(userId));
     }
 
     private Judging requireJudging(UUID id) {

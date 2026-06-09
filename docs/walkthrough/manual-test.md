@@ -2278,9 +2278,10 @@ scoresheet via `JudgingService.assignEntryToRound`.
 The data model is **one scoresheet per entry** (`scoresheets.entry_id` is **UNIQUE**),
 not one per judge. A scoring round/table has several judges who **share** that single
 set of per-entry sheets — they split the entries between them rather than each filling
-their own copy. `filledByJudgeUserId` records **which judge first scored** a given
-sheet. These checks verify that shared model and that no duplicate sheet can ever be
-created, even with two judges acting at once.
+their own copy. `filledByJudgeUserId` records **which judge last validated (Saved)** a
+given sheet — in the normal split, one judge per entry, so it just credits that judge.
+These checks verify that shared model and that no duplicate sheet can ever be created,
+even with two judges acting at once.
 
 *Best run on **Profissional → M1A Panel A** (seeded with **judge@** + **judge2@**, Table 1,
 3 RECEIVED entries). Start the round (§12.6.4) so it is ACTIVE with 3 BLANK scoresheets.*
@@ -2289,10 +2290,10 @@ created, even with two judges acting at once.
   RoundView → **Expected:** the scoresheets grid has exactly **3 rows** (one per entry), **not 6**.
   Log in as `judge2@example.com`, open the same round → **Expected:** the **same 3 rows** — both
   judges see and act on the same shared sheets.
-- [ ] **`Filled by` = the first judge to score that entry.** As `judge@`, score + **Save** entry
+- [ ] **`Filled by` = the judge who Saved that entry.** As `judge@`, score + **Save** entry
   #1 (§12.11) → its row shows **Filled by: Dev Judge**. As `judge2@`, score entries #2 and #3 →
   those rows show **Filled by: Dev Judge 2**. The panel splits the entries; each sheet credits the
-  judge who first filled it.
+  judge who validated it.
 - [ ] **No duplicate sheet is ever created (idempotency).** As `compadmin@`, Manage Judging →
   Rounds → **Assign Entries** on Panel A and re-confirm the same entries (or just re-open the
   round) → **Expected:** still exactly **3 rows** — re-assigning an already-assigned entry is a
@@ -2300,12 +2301,15 @@ created, even with two judges acting at once.
   and `ensureScoresheetForRound` all guard with a `findByEntryId` existence check before inserting,
   and `scoresheets.entry_id` is UNIQUE at the DB — so even two judges/admins acting simultaneously
   cannot produce a duplicate; the second insert would be rejected.)*
-- [ ] **A second judge editing an already-FILLED sheet un-fills it.** `judge@` Saves entry #1 →
-  status **FILLED**. Now `judge2@` opens entry #1's sheet and changes any score → **Expected:** the
-  sheet drops back to **DRAFT** (the round-level **Finalize** disables again until it is re-Saved),
-  and **Filled by stays "Dev Judge"** (the first editor — it does **not** flip to Dev Judge 2). The
-  panel must re-Save to re-validate. *(This is the `demoteFromFilled` rule — any content edit on a
-  FILLED sheet requires a fresh Save.)*
+- [ ] **A second judge editing an already-FILLED sheet un-fills it, and re-Save reassigns `Filled by`.**
+  `judge@` Saves entry #1 → status **FILLED**, Filled by **Dev Judge**. Now `judge2@` opens entry #1's
+  sheet and changes any score → **Expected:** the sheet drops back to **DRAFT** (the round-level
+  **Finalize** disables again) and Filled by **stays Dev Judge** while it is an unsaved DRAFT. When
+  `judge2@` clicks **Save** → **Expected:** status returns to **FILLED** and **Filled by now flips to
+  Dev Judge 2** — `filledBy` follows the **last judge to validate**. *(An admin editing on behalf via
+  "Edit on behalf of judge" is **not** an assigned judge, so re-Saving keeps the existing judge as
+  Filled by, never the admin.)* *(This is the `demoteFromFilled` rule — any content edit on a FILLED
+  sheet requires a fresh Save.)*
 - [ ] **Concurrent edit = last write wins (no lock / no conflict dialog).** Open entry #1's sheet
   as `judge@` in one browser and as `judge2@` in another; both change the same field and Save.
   **Expected:** no error, no optimistic-lock/version conflict, no merge prompt — the **later Save

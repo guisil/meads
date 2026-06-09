@@ -213,6 +213,54 @@ class ScoresheetServiceTest {
         assertThat(appearance.getComment()).isEqualTo("looks great");
     }
 
+    private Scoresheet filledSheet(UUID entryId, UUID filledBy) {
+        var sheet = new Scoresheet(roundId, entryId);
+        for (var def : MjpScoringFieldDefinition.MJP_FIELDS) {
+            sheet.updateScore(def.fieldName(), def.maxValue(), "good depth and balance");
+        }
+        sheet.updateOverallComments("A reasonably-worded overall assessment.");
+        sheet.setFilledBy(filledBy);
+        sheet.markFilled();
+        return sheet;
+    }
+
+    @Test
+    void shouldSwitchFilledByToTheLastAssignedJudgeWhoRevalidates() {
+        // Non-standard but unblockable: a second assigned judge edits + re-Saves
+        // another judge's sheet. "Filled by" follows the latest validator.
+        var judge2 = UUID.randomUUID();
+        table.assignJudge(judgeUserId);
+        table.assignJudge(judge2);
+        var entryId = UUID.randomUUID();
+        var scoresheet = filledSheet(entryId, judgeUserId);
+        given(scoresheetRepository.findById(scoresheet.getId())).willReturn(Optional.of(scoresheet));
+        given(coiCheckService.check(judge2, entryId)).willReturn(CoiResult.clear());
+        given(scoresheetRepository.save(any(Scoresheet.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.markFilled(scoresheet.getId(), judge2);
+
+        assertThat(scoresheet.getFilledByJudgeUserId()).isEqualTo(judge2);
+    }
+
+    @Test
+    void shouldNotChangeFilledByWhenNonAssignedUserRevalidates() {
+        // An admin editing on behalf of a judge is not an assigned judge and must
+        // not claim authorship of an already-filled sheet.
+        var admin = UUID.randomUUID();
+        table.assignJudge(judgeUserId);
+        var entryId = UUID.randomUUID();
+        var scoresheet = filledSheet(entryId, judgeUserId);
+        given(scoresheetRepository.findById(scoresheet.getId())).willReturn(Optional.of(scoresheet));
+        given(coiCheckService.check(admin, entryId)).willReturn(CoiResult.clear());
+        given(scoresheetRepository.save(any(Scoresheet.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.markFilled(scoresheet.getId(), admin);
+
+        assertThat(scoresheet.getFilledByJudgeUserId()).isEqualTo(judgeUserId);
+    }
+
     @Test
     void shouldRejectUpdateScoreWhenHardCoiBlock() {
         var entryId = UUID.randomUUID();

@@ -621,6 +621,15 @@ committed walkthrough doc commit (this session changed ONLY `docs/walkthrough/ma
   `RoundViewTest.shouldNavigateToScoresheetViewWhenGridRowClicked`. Walkthrough §12.10.1 + §12.10.6 updated. Test
   count 1344 → **1343** (full suite green). Branch still `feature/judging-module`; this is uncommitted code +
   walkthrough/doc edits.
+- **Scoresheet `filledBy` → last validator (§12.10.3, 2026-06-09, DONE — full cycle, user chose "switch to last
+  validator"):** one shared scoresheet per entry; `filledByJudgeUserId` used to be first-scorer-wins (set only when
+  null). Non-standard but unblockable case: a second assigned judge edits + re-Saves another's sheet. Now
+  `ScoresheetServiceImpl.markFilled` sets `filledBy` to the validating user **iff they're an assigned judge on the
+  round** (new `isAssignedJudge(roundId, userId)` helper), else keeps the first-setter fallback when null — so an
+  admin "edit on behalf" never claims authorship. `updateScore`/`updateOverallComments` keep their set-when-null for
+  DRAFT-in-progress attribution; the authoritative flip happens at Save. NO DB migration (single `filledBy` column
+  kept; "track all contributors" was declined as overkill for a path that shouldn't happen). +2 tests in
+  `ScoresheetServiceTest` (switch-to-judge2; admin-doesn't-overwrite). 1349 → **1351**. Walkthrough §12.10.3 updated.
 - **Judge scoresheet category not localized (§12.6.8.1, 2026-06-09, FIXED — full cycle):** the judge `ScoresheetView`
   showed catalog categories (M1, M1A, …) in English even when the entrant saw them localized. Root cause:
   `DivisionCategory.getName(Locale)` only resolves **admin per-category translation rows**; catalog category names
