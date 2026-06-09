@@ -9,6 +9,7 @@ import app.meads.identity.EmailService;
 import app.meads.identity.JwtMagicLinkService;
 import app.meads.identity.UserService;
 import app.meads.judging.MedalRoundActivatedEvent;
+import app.meads.judging.RoundType;
 import app.meads.judging.ScoresheetRevertedEvent;
 import app.meads.judging.RoundStartedEvent;
 import lombok.extern.slf4j.Slf4j;
@@ -119,10 +120,15 @@ public class JudgingNotificationListener {
 
     @ApplicationModuleListener
     public void on(MedalRoundActivatedEvent event) {
-        var tables = judgingRoundRepository.findByDivisionCategoryId(event.divisionCategoryId());
+        // Notify ONLY the judges assigned to the MEDAL round — not the judges of
+        // the preliminary SCORING rounds in the same category (different panels
+        // may have entirely different judges).
         var judgeUserIds = new LinkedHashSet<UUID>();
-        for (var table : tables) {
-            for (var assignment : table.getAssignments()) {
+        for (var round : judgingRoundRepository.findByDivisionCategoryId(event.divisionCategoryId())) {
+            if (round.getType() != RoundType.MEDAL) {
+                continue;
+            }
+            for (var assignment : round.getAssignments()) {
                 judgeUserIds.add(assignment.getJudgeUserId());
             }
         }

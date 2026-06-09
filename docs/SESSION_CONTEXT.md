@@ -622,6 +622,12 @@ committed walkthrough doc commit (this session changed ONLY `docs/walkthrough/ma
   `RoundViewTest.shouldNavigateToScoresheetViewWhenGridRowClicked`. Walkthrough §12.10.1 + §12.10.6 updated. Test
   count 1344 → **1343** (full suite green). Branch still `feature/judging-module`; this is uncommitted code +
   walkthrough/doc edits.
+- **Medal-round-ready email spammed prelim-panel judges (§12.12, 2026-06-09, FIXED — full cycle):** starting a
+  COMPARATIVE medal round emailed EVERY judge in the category — including the preliminary SCORING panels' judges
+  (e.g. M1A Panel A=judge1,2 + Panel B=judge4,5; medal round=judge1,2 → all 4 emailed). `JudgingNotificationListener.on(MedalRoundActivatedEvent)`
+  iterated all rounds via `findByDivisionCategoryId`; now filters to `RoundType.MEDAL` so only the medal round's
+  assigned judges are notified. Rewrote `JudgingNotificationListenerTest` medal test to the split-panel scenario
+  (asserts judge4/judge5 NOT emailed). 1359 (no net count change — test rewritten). 
 - **Public results producer label "null" + spacing (§13.3, 2026-06-09, FIXED — full cycle):** public results showed
   "null" for amateur (Amadora) entries because the medal/BOS rows used raw `entrant.getMeaderyName()`. New
   `AwardsServiceImpl.producerLabel(entrant, division, locale)` (public static, pure): **meadery name** when
