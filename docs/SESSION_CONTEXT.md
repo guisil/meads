@@ -601,7 +601,7 @@ committed walkthrough doc commit (this session changed ONLY `docs/walkthrough/ma
   display DEFERRED to entrant-side testing, 7c judging-cat translations DONE here**) · §8 Entry Admin (incl. verbose
   all-fields entry) · §9 Webhook · §10/§11 entrant view (incl. **P12** label withdrawal, verified on Profissional) ·
   §12.1/12.1.1/12.2 · §12.4/12.4.1/12.4.2 + **7c** · §12.5/12.5.0/12.5.1/12.5.2.
-- **⏸ RESUME POINT: §13 Awards module.** §12 fully covered: §12.1–§12.8 + §12.13 walked clean on Amadora (driven through BOS Finalize); §12.6.8.1 A/B/C clean; **§12.9–§12.12 SKIPPED by user 2026-06-09** (acknowledged — exercised during Amadora round progression; this-session fixes incl. filledBy=last-validator, category localization, grid sorts, clear-medal-sticks were not formally re-walked but are unit-tested). Now run §13.1 → §13.13 (Awards: publish → public results → entrant scoresheet drill-in §13.5 + PDF + anonymity §13.12 → freeze/revert/republish → announcements → cleanup).
+- **⏸ RESUME POINT: §13 Awards module.** §12 fully covered: §12.1–§12.8 + §12.13 walked clean on Amadora (driven through BOS Finalize); §12.6.8.1 A/B/C clean; **§12.9–§12.12 SKIPPED by user 2026-06-09** (acknowledged — exercised during Amadora round progression; this-session fixes incl. filledBy=last-validator, category localization, grid sorts, clear-medal-sticks were not formally re-walked but are unit-tested). §13.1+§13.2 clean; §13.3 surfaced producer-null + spacing fixes (done, re-confirm §13.3/§13.4). NOW at §13.5 entrant scoresheet drill-in (dialog + PDF). Remaining: §13.6 freeze → §13.7 revert → §13.8 edit+republish → §13.9–§13.11 announcements → §13.12 anonymity → §13.13 cleanup.
   ⚠ Superseded line follows: - **(old) §12.8 Best of Show tab. §12.6 (all subsections incl. 12.6.8.1 A/B/C) + §12.7 Results tab PASSED clean 2026-06-09. After §12.8: §12.9+ judge/steward views → §12.10/12.11 scoring (RoundView/ScoresheetView, incl. the multi-judge §12.10.3 + recently-fixed grid items) → §12.12 medal rounds → §13 Awards. NOTE: full BOS start needs ALL medal rounds COMPLETE (M1A/M1B finalize in §12.10–12.12), so the actual Start BOS may be deferred until then.** §12.6.8 Add medal round PASSED clean. Batches 1–4 all **PASSED clean** (2026-06-09): §12.6 header +
   §12.6.0 Tables + §12.6.1 Add round + §12.6.2 Edit round; §12.6.3 Assign judges + COI badges + §12.6.3.1 Manual COI
   (see COI finding below); §12.6.4 Start round (Amadora now at **JUDGING**, ACTIVE round at Table 1) + §12.6.0.1
@@ -622,6 +622,11 @@ committed walkthrough doc commit (this session changed ONLY `docs/walkthrough/ma
   `RoundViewTest.shouldNavigateToScoresheetViewWhenGridRowClicked`. Walkthrough §12.10.1 + §12.10.6 updated. Test
   count 1344 → **1343** (full suite green). Branch still `feature/judging-module`; this is uncommitted code +
   walkthrough/doc edits.
+- **Entrant scoresheet dialog comment-language hard to spot (§13.5, 2026-06-09, DONE — fast cycle):** the dialog
+  rendered the comment language as a small grey raw-code Paragraph (e.g. "pt"), easily missed; the PDF had it. Made it
+  a **bold-labelled `attributeLine`** ("Comment language: {localized name}", e.g. "Português") via new
+  `languageDisplayName(code)` (Locale display name, capitalized), id `entrant-scoresheet-comment-language`. Same null
+  guard. No test asserted it; 1360 green. Walkthrough §13.5 updated.
 - **Withheld medal reappeared after reopen+save (§12.6.8.1, 2026-06-09, FIXED — full cycle):** `reopenMedalRoundById`
   un-confirmed ALL awards via `revertConfirmation()`, including a withhold (confirmed null medal). Once unconfirmed,
   the next save's autoPopulate deleted it and re-derived the medal. Fix: skip null-medal awards in the reopen

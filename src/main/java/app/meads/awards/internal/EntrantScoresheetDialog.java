@@ -2,6 +2,7 @@ package app.meads.awards.internal;
 
 import app.meads.awards.AnonymizedScoresheetView;
 import app.meads.judging.Medal;
+import java.util.Locale;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.H3;
@@ -131,6 +132,15 @@ class EntrantScoresheetDialog extends Dialog {
         return value == null || value.isBlank() ? "—" : value;
     }
 
+    /** Localized language name for an ISO 639-1 code (e.g. "pt" → "Português"), capitalized. */
+    private String languageDisplayName(String code) {
+        var name = Locale.of(code).getDisplayLanguage(getLocale());
+        if (name.isBlank()) {
+            return code;
+        }
+        return Character.toUpperCase(name.charAt(0)) + name.substring(1);
+    }
+
     /**
      * Entry-level outcome banner: the medal won and/or the Best of Show
      * placement, rendered prominently. Returns {@code null} when the entry won
@@ -183,11 +193,12 @@ class EntrantScoresheetDialog extends Dialog {
         card.getStyle().set("border", "1px solid var(--lumo-contrast-20pct)")
                 .set("border-radius", "var(--lumo-border-radius-m)");
 
-        if (sheet.commentLanguage() != null) {
-            var lang = new Paragraph(getTranslation("my-scoresheet.comment-language") + ": "
-                    + sheet.commentLanguage());
-            lang.getStyle().set("margin", "0")
-                    .set("color", "var(--lumo-secondary-text-color)");
+        if (sheet.commentLanguage() != null && !sheet.commentLanguage().isBlank()) {
+            // Clear, labelled indication (bold label like the mead-detail lines),
+            // showing the localized language name rather than the raw ISO code.
+            var lang = attributeLine("my-scoresheet.comment-language",
+                    languageDisplayName(sheet.commentLanguage()));
+            lang.setId("entrant-scoresheet-comment-language");
             card.add(lang);
         }
 

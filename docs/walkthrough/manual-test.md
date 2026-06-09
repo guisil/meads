@@ -2789,7 +2789,10 @@ Steps below are admin-driven unless noted.
 - [ ] **Expected:** One card per submitted scoresheet (likely just one in dev),
   with **no "Judge N" / judge label at all**, and **clear spacing between each
   section** (comment language, criteria, total, overall comments). The card holds
-  the comment-language line, then each score field as `field: value / max` **with
+  the comment-language line (a **bold-labelled** "Comment language: {localized
+  language name}", e.g. "Comment language: Português" — id
+  `entrant-scoresheet-comment-language`; shown only when the judge set one), then
+  each score field as `field: value / max` **with
   its per-criterion comment below it**, then the **total — rendered prominently**
   (bold, extra-large, separated from the criteria by a top divider line), shown as
   **`N / 100`** (score out of the maximum), then overall comments (if any).
