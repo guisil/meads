@@ -622,6 +622,10 @@ committed walkthrough doc commit (this session changed ONLY `docs/walkthrough/ma
   `RoundViewTest.shouldNavigateToScoresheetViewWhenGridRowClicked`. Walkthrough §12.10.1 + §12.10.6 updated. Test
   count 1344 → **1343** (full suite green). Branch still `feature/judging-module`; this is uncommitted code +
   walkthrough/doc edits.
+- **Scoresheet PDF scores box + spacing (§13.5, 2026-06-09, DONE — fast cycle):** wrapped comment-language + criteria +
+  total + overall comments in a **bordered box** (`PdfPTable` single cell, `CARD_BORDER` 0.8pt, padding 10, `setSplitLate(false)`
+  so long comments flow across pages) mirroring the dialog's bordered card; added a **gap before the box** so the
+  outcome/advanced lines are separated from it. Judge line (FULL) stays above the box. 1360 green.
 - **Scoresheet PDF comment-language → full name (§13.5, 2026-06-09, DONE — fast cycle):** `ScoresheetPdfService`
   showed the raw ISO code (e.g. "en"); now shows the localized full language name ("English") via
   `languageDisplayName(code, locale)` (+ blank guard). Shared service → applies to entrant + judge/admin PDFs. No test

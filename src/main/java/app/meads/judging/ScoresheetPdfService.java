@@ -57,6 +57,7 @@ public class ScoresheetPdfService {
     private static final Color SECONDARY = new Color(0x5F, 0x63, 0x68);
     private static final Color SUCCESS = new Color(0x2E, 0x7D, 0x32);
     private static final Color OUTCOME_BG = new Color(0xEA, 0xF1, 0xFB);
+    private static final Color CARD_BORDER = new Color(0xD0, 0xD4, 0xD8);
 
     private static final Font FONT_TITLE = new Font(BASE_BOLD, 14);
     private static final Font FONT_HEADER = new Font(BASE_BOLD, 11);
@@ -221,45 +222,57 @@ public class ScoresheetPdfService {
                 document.add(new Paragraph(msg("my-scoresheet.advanced", locale), FONT_ADVANCED));
             }
 
-            // Judge identity appears only on the admin (FULL) PDF; comment language
-            // is a small secondary line, like the dialog.
+            // Judge identity appears only on the admin (FULL) PDF; it sits above
+            // the scores box, like the dialog's metadata.
             if (level == AnonymizationLevel.FULL) {
                 int ordinal = computeJudgeOrdinal(sheet);
                 document.add(labelValue(msg("scoresheet.pdf.judge", locale),
                         formatJudgeLabel(sheet, ordinal, level, locale)));
             }
-            if (sheet.getCommentLanguage() != null && !sheet.getCommentLanguage().isBlank()) {
-                document.add(new Paragraph(msg("scoresheet.pdf.comment-language", locale) + ": "
-                        + languageDisplayName(sheet.getCommentLanguage(), locale), FONT_COMMENT));
-            }
 
+            // Scores + comments grouped in a bordered box (mirrors the dialog's
+            // bordered card), separated from the outcome / advanced lines above by
+            // a gap. The box may flow across pages for long comments.
             document.add(new Paragraph(" ", FONT_SMALL));
+            var scoresBox = new PdfPTable(1);
+            scoresBox.setWidthPercentage(100);
+            scoresBox.setSplitLate(false);
+            var scoresCell = new PdfPCell();
+            scoresCell.setBorderColor(CARD_BORDER);
+            scoresCell.setBorderWidth(0.8f);
+            scoresCell.setPadding(10);
+
+            if (sheet.getCommentLanguage() != null && !sheet.getCommentLanguage().isBlank()) {
+                scoresCell.addElement(new Paragraph(msg("scoresheet.pdf.comment-language", locale) + ": "
+                        + languageDisplayName(sheet.getCommentLanguage(), locale), FONT_COMMENT));
+                scoresCell.addElement(new Paragraph(" ", FONT_SMALL));
+            }
 
             // Criteria — each as "Field: value / max" with its comment below,
             // instead of a Field/Value/Comment table (mirrors the dialog cards).
             for (ScoreField field : sheet.getFields()) {
-                document.add(new Paragraph(field.getFieldName() + ": " + formatValue(field), FONT_CRITERION));
+                scoresCell.addElement(new Paragraph(field.getFieldName() + ": " + formatValue(field), FONT_CRITERION));
                 if (field.getComment() != null && !field.getComment().isBlank()) {
                     var comment = new Paragraph(field.getComment(), FONT_COMMENT);
                     comment.setIndentationLeft(12);
-                    document.add(comment);
+                    scoresCell.addElement(comment);
                 }
-                document.add(new Paragraph(" ", FONT_SMALL));
+                scoresCell.addElement(new Paragraph(" ", FONT_SMALL));
             }
 
-            // Total — prominent, with a separating rule above it.
-            var totalSep = new Paragraph(" ", FONT_SMALL);
-            document.add(totalSep);
+            // Total — prominent, inside the box.
             int maxTotal = sheet.getFields().stream().mapToInt(ScoreField::getMaxValue).sum();
-            document.add(new Paragraph(msg("scoresheet.pdf.total", locale) + ": "
+            scoresCell.addElement(new Paragraph(msg("scoresheet.pdf.total", locale) + ": "
                     + (sheet.getTotalScore() != null ? sheet.getTotalScore() + " / " + maxTotal : "—"),
                     FONT_TOTAL));
 
             if (sheet.getOverallComments() != null && !sheet.getOverallComments().isBlank()) {
-                document.add(new Paragraph(" ", FONT_SMALL));
-                document.add(new Paragraph(msg("scoresheet.pdf.overall-comments", locale), FONT_HEADER));
-                document.add(new Paragraph(sheet.getOverallComments(), FONT_NORMAL));
+                scoresCell.addElement(new Paragraph(" ", FONT_SMALL));
+                scoresCell.addElement(new Paragraph(msg("scoresheet.pdf.overall-comments", locale), FONT_HEADER));
+                scoresCell.addElement(new Paragraph(sheet.getOverallComments(), FONT_NORMAL));
             }
+            scoresBox.addCell(scoresCell);
+            document.add(scoresBox);
             document.close();
         } catch (Exception e) {
             log.error("Failed to generate scoresheet PDF for {}", scoresheetId, e);
