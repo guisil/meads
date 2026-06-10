@@ -11,7 +11,8 @@ scoring + medal rounds + BOS, honouring:
     span (BOTTLE_SPAN: same half-day / same day / unlimited)
   * medal-round judges disjoint from that category's scoring judges (across half-days too)
   * a team stays put for a whole half-day; teams re-seated between half-days; no idle judge
-  * trios only when the head-count forces one, given to TRIO_JUDGES (e.g. Tiago)
+  * 2- vs 3-judge tables set by TABLE_SIZING (PAIRS / BALANCED / TRIOS); trio slots go to
+    TRIO_JUDGES (e.g. Tiago)
   * pending entries (a 2nd number per category) deferred past the arrival deadline
   * sparkling categories kept in consecutive slots; TOGETHER co-judging preference
   * categories auto-assigned to days (DAY_FILL_TARGET); BOS on Friday afternoon
@@ -67,7 +68,16 @@ PRE_DEADLINE_SLOTS = {("THU-AM", 0)}
 # Thursday afternoon; too close to 1.0 gets hard to schedule (no slack for medal ordering).
 DAY_FILL_TARGET = 1
 
-MAX_TABLES = 5
+MAX_TABLES = 6
+# Table sizing — how many tables to open, which sets the 2- vs 3-judge mix (every judge is
+# always seated, never idle):
+#   "PAIRS"    — as many tables as possible: mostly 2-judge tables, a trio only when an odd
+#                head-count forces one (most parallel flights / fastest)
+#   "TRIOS"    — as few tables as possible: mostly 3-judge tables (fewer parallel flights, so
+#                the schedule needs more slots — may not fit at a high DAY_FILL_TARGET)
+#   "BALANCED" — a middle number of tables: a mix of 2s and 3s (coarse for small rosters,
+#                since it can only shift by a whole table)
+TABLE_SIZING = "PAIRS"
 # Judges PREFERRED in a 3-judge table (e.g. so they can step out without sinking the
 # table). They get first claim on the trio slots the head-count naturally creates; a pair
 # is still fine when there's no free trio slot (and there are usually only 1-2 trio slots
@@ -216,19 +226,22 @@ def wants_together(team):
 
 
 def form_teams(roster, n_tables, rng):
-    """Partition the whole roster into teams of 2-3 with **no idle judge**, maximising
-    the number of tables (<= n_tables). Trios are used only when the head-count forces
-    them (odd roster, or more judges than tables); the available trio slots go first to
-    requested TOGETHER trios, then to judges in TRIO_JUDGES (each anchoring a trio with a
-    preferably experienced >=L2 backup). Teams are preferred (softly) to be multinational
-    and to keep TOGETHER groups intact. Returns list[set] or None if everyone can't be
-    seated within n_tables."""
+    """Partition the whole roster into teams of 2-3 with **no idle judge**. How many
+    tables are opened (and thus the 2- vs 3-judge mix) follows TABLE_SIZING: PAIRS opens
+    as many as possible (mostly pairs), TRIOS as few as possible (mostly trios), BALANCED
+    a middle count. Trio slots go first to requested TOGETHER trios, then to judges in
+    TRIO_JUDGES (each anchoring a trio with a preferably experienced >=L2 backup). Teams
+    are preferred (softly) to be multinational and to keep TOGETHER groups intact. Returns
+    list[set] or None if everyone can't be seated within n_tables."""
     pool = set(roster)
     n = len(pool)
     if n < 2:
         return None
-    k = min(n_tables, n // 2)            # tables to open (as many as possible)
-    n_trios = n - 2 * k                  # trios required so every judge is placed
+    lo = -(-n // 3)                      # fewest tables (largest teams; all trios)
+    hi = n // 2                          # most tables (all pairs)
+    k = {"TRIOS": lo, "BALANCED": (lo + hi) // 2}.get(TABLE_SIZING, hi)
+    k = min(k, n_tables)                 # cap at the available table count
+    n_trios = n - 2 * k                  # trios needed so every judge is seated
     if not 0 <= n_trios <= k:
         return None                      # too many judges for n_tables teams of 2-3
 
