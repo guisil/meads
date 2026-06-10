@@ -14,9 +14,10 @@ Committed on the `judging-planner` branch (names anonymised); `original_rounds_i
 
 ## Command summary
 ```
-python3 judging_scheduler.py 7                          # plan with seed 7
+python3 judging_scheduler.py 7                                # plan with seed 7
 python3 judging_scheduler.py 7 --plan --done-through THU-PM   # also write plan.txt (Thu done)
-python3 judging_scheduler.py --resume plan.txt          # re-plan the remaining rounds
+python3 judging_scheduler.py 7 --plan --done-through FRI-AM:1 # ... done through 1st Fri-AM slot
+python3 judging_scheduler.py --resume plan.txt               # re-plan the remaining rounds
 ```
 
 ## Run it
@@ -37,9 +38,10 @@ python3 judging-planner/judging_scheduler.py [seed]        # from repo root
 ## Re-planning mid-competition (resume)
 If the day deviates from the plan — a judge leaves, a round is skipped, pending entries never arrive, you run out of time — you can freeze what already happened and reschedule only what's left.
 
-**Step 1 — write an editable plan from the seed you ran.** `--done-through HD` pre-marks everything up to and including that half-day as `done`:
+**Step 1 — write an editable plan from the seed you ran.** `--done-through HD` pre-marks everything up to and including that half-day as `done`; use `HD:slot` to cut **mid-half-day** (leaves that half-day partial and still in the window):
 ```
-python3 judging_scheduler.py 7 --plan --done-through THU-PM
+python3 judging_scheduler.py 7 --plan --done-through THU-PM     # all of Thursday done
+python3 judging_scheduler.py 7 --plan --done-through FRI-AM:1   # + the 1st Fri-morning slot done
 ```
 This still prints the normal schedule and also writes **`plan.txt`** (gitignored), e.g.:
 ```
@@ -65,10 +67,10 @@ python3 judging_scheduler.py --resume plan.txt
 ```
 It prints the frozen `done` rounds, then a fresh schedule for everything still owed, placed into the `Remaining:` half-days. Each medal still avoids whoever already scored that category (even from a previous day).
 
-**Notes / limits:**
+**Notes:**
 - Only `done` rounds and the current `rounds_input.txt` counts matter; `todo` lines are informational (their placement is recomputed).
-- v1 needs the cutoff at a **half-day boundary**: a half-day can't be both in `Remaining:` and contain `done` rounds (the tool will tell you if so). If you got partway through a half-day, either count that whole half-day as `done` (its unfinished rounds become `todo` and move later) or drop it from `Remaining:`.
-- Remaining rounds are scheduled with fresh teams (you said that's fine); same-half-day team continuity for a partially-finished half-day isn't preserved in v1.
+- **Partially-finished half-days are supported.** Keep the half-day in `Remaining:` (at its full slot count) and mark the rounds that happened `done` with their `Mesa` + judges. The tool **reuses each table's team** for that half-day's remaining rounds and just fills the free cells; medals still land after their scoring and avoid the scorers. (Tables that no `done` round revealed are left unused for the rest of that half-day.)
+- Remaining rounds in fully-fresh half-days get fresh teams. In the printed result, completed rounds are tagged `(done)`.
 
 ## What it always enforces (don't need to re-specify)
 - Flight sizing: 5–8 samples; >8 splits into parallel scoring flights (`ceil(entries/8)`).
@@ -143,4 +145,4 @@ Full Name: level N; COI cat, COI cat (or -); AVAILABILITY; Lang1, Lang2
 ## Tips
 - Re-run with several seeds and pick the layout you like.
 - The schedule shows tables as `Mesa 1..N`; within a half-day a table = one fixed team across its slots.
-- Last validated state (2026-06-10): 11 judges (Mike withdrew). 13 categories, 135 entries, 19 pending across 10 categories. **No hand-assignment** — `PINS={}`, categories auto-assigned to days. `BOTTLE_SPAN="DAY"`; per-day solver; pending-driven flight deferral with a **slot-level** deadline (`PRE_DEADLINE_SLOTS={("THU-AM",0)}`) — safe flights run Thu-AM slot 1, pending flights slot 2 (still morning), medals later. `Sparkling: AMA M4S` (consecutive same-half-day slots); no score-based categories yet. Slots THU-AM 2 / THU-PM 4 / FRI-AM 3 / FRI-PM 2. Thu-AM fills both slots (9-10 rounds, 5 tables × 2 — no idle judge, Tiago paired since the roster is even). `DAY_FILL_TARGET` packs Thursday heavy (Thursday afternoon uses its slots, Friday a short morning, Fri-PM free for BOS); values near 1.0 fill most but get slow/fragile. `TOGETHER=[]` by default (soft co-judging preference available). BOS Amateur = Filip, Marc, Carlos. **Resume mode** (`--plan` / `--done-through` / `--resume`) freezes completed rounds and reschedules the rest, with medals still avoiding prior scorers across days — verified end-to-end (emit, missed-medal disjoint, trimmed time, overlap guard). Judge names anonymised to first-name keys.
+- Last validated state (2026-06-10): 11 judges (Mike withdrew). 13 categories, 135 entries, 19 pending across 10 categories. **No hand-assignment** — `PINS={}`, categories auto-assigned to days. `BOTTLE_SPAN="DAY"`; per-day solver; pending-driven flight deferral with a **slot-level** deadline (`PRE_DEADLINE_SLOTS={("THU-AM",0)}`) — safe flights run Thu-AM slot 1, pending flights slot 2 (still morning), medals later. `Sparkling: AMA M4S` (consecutive same-half-day slots); no score-based categories yet. Slots THU-AM 2 / THU-PM 4 / FRI-AM 3 / FRI-PM 2. Thu-AM fills both slots (9-10 rounds, 5 tables × 2 — no idle judge, Tiago paired since the roster is even). `DAY_FILL_TARGET` packs Thursday heavy (Thursday afternoon uses its slots, Friday a short morning, Fri-PM free for BOS); values near 1.0 fill most but get slow/fragile. `TOGETHER=[]` by default (soft co-judging preference available). BOS Amateur = Filip, Marc, Carlos. **Resume mode** (`--plan` / `--done-through HD[:slot]` / `--resume`) freezes completed rounds and reschedules the rest, with medals still avoiding prior scorers across days. Partially-finished half-days are supported: the teams already seated are reused for that half-day's remaining rounds. Verified end-to-end (emit, missed-medal disjoint, trimmed time, partial-half-day team reuse). Judge names anonymised to first-name keys.

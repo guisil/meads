@@ -363,13 +363,18 @@ def assign_categories(blocks_list, rng, cats=None, rounds_fn=None):
     return assigned
 
 
-def schedule_block(block, cats, rng, tries=8000, rounds_fn=None, scored_by=None):
+def schedule_block(block, cats, rng, tries=8000, rounds_fn=None, scored_by=None,
+                   pinned_teams=None, occupied=None, seed_sc=None):
     """Schedule the given categories across the block's half-days (teams are re-seated
     each half-day). `rounds_fn(cat)` supplies the rounds to place (defaults to the full
     `category_rounds`; used by resume to pass only the remaining rounds). `scored_by`
     seeds, per category, judges who already scored it elsewhere so the medal panel still
-    excludes them. Returns {hd: [(local_slot, table, kind, cat, team)]} or None."""
+    excludes them. For a partially-completed half-day, `pinned_teams[hd]` fixes its teams
+    (a list, `None` for tables not revealed by the done rounds), `occupied` holds the
+    cells already used, and `seed_sc` the done-scoring (hd, slot) positions. Returns
+    {hd: [(local_slot, table, kind, cat, team)]} or None."""
     rounds_of = rounds_fn or category_rounds
+    pinned_teams = pinned_teams or {}
     slots = [(hd, ls) for hd in block for ls in range(HALFDAY_SLOTS[hd])]  # global slot order
     home_pos = {c: (block.index(PINS[c]) if c in PINS else 0) for c in cats}
     blockpos = {hd: i for i, hd in enumerate(block)}
@@ -379,10 +384,12 @@ def schedule_block(block, cats, rng, tries=8000, rounds_fn=None, scored_by=None)
         return None  # assignment overfills this block
 
     for _ in range(tries):
-        teams = {hd: form_teams(ROSTER[hd], MAX_TABLES, rng) for hd in block}
+        teams = {hd: (pinned_teams[hd] if hd in pinned_teams else form_teams(ROSTER[hd], MAX_TABLES, rng))
+                 for hd in block}
         if any(t is None for t in teams.values()):
             continue
-        placed = _place_block(insts, teams, slots, home_pos, blockpos, predead, rng, scored_by)
+        placed = _place_block(insts, teams, slots, home_pos, blockpos, predead, rng,
+                              scored_by, occupied, seed_sc)
         if placed is not None:
             out = {}
             for si, t, kind, c in placed:
@@ -392,12 +399,14 @@ def schedule_block(block, cats, rng, tries=8000, rounds_fn=None, scored_by=None)
     return None
 
 
-def _place_block(insts, teams, slots, home_pos, blockpos, predead, rng, scored_by=None):
+def _place_block(insts, teams, slots, home_pos, blockpos, predead, rng, scored_by=None,
+                 occupied=None, seed_sc=None):
     """Backtracking placement of round-instances onto (global_slot, table). Scoring
     first, medals last (tightest first). Honours: home (no round before its half-day),
     the arrival deadline (late rounds skip pre-deadline slots), one medal strictly
     after all of its scoring with a judge-disjoint panel, and sparkling categories in
     consecutive same-half-day slots. Returns assignment list or None."""
+    occupied = occupied or set()
     hd_of = [hd for hd, _ in slots]
     nslot = len(slots)
 
@@ -406,7 +415,7 @@ def _place_block(insts, teams, slots, home_pos, blockpos, predead, rng, scored_b
 
     # feasibility precheck: every category needs at least one team that can judge it
     for c in home_pos:
-        if not any(blockpos[hd] >= home_pos[c] and team_can_judge(tm, c)
+        if not any(blockpos[hd] >= home_pos[c] and tm is not None and team_can_judge(tm, c)
                    for hd in teams for tm in teams[hd]):
             return None
 
@@ -414,11 +423,18 @@ def _place_block(insts, teams, slots, home_pos, blockpos, predead, rng, scored_b
     medals = [x for x in insts if x[1] == "M"]
     rng.shuffle(scoring)
     medals.sort(key=lambda x: sum(1 for hd in teams for tm in teams[hd]
-                                  if team_can_judge(tm, x[0])))  # tightest first
+                                  if tm is not None and team_can_judge(tm, x[0])))  # tightest first
     order = scoring + medals
 
     grid = [[False] * MAX_TABLES for _ in range(nslot)]
-    sc_slots = {c: [] for c in home_pos}
+    for si, (hd, ls) in enumerate(slots):           # block cells already used by 'done' rounds
+        for t in range(MAX_TABLES):
+            if (hd, ls, t) in occupied:
+                grid[si][t] = True
+    # seed each category's scoring slots already completed in this window (so a still-owed
+    # medal lands after them, and a sparkling medal stays consecutive with them)
+    sc_slots = {c: [si for si, (hd, ls) in enumerate(slots) if (hd, ls) in (seed_sc or {}).get(c, ())]
+                for c in home_pos}
     sc_judges = {c: set(scored_by.get(c, ())) if scored_by else set() for c in home_pos}
     assignment = []
     nodes = [0]
@@ -436,7 +452,7 @@ def _place_block(insts, teams, slots, home_pos, blockpos, predead, rng, scored_b
                         continue
             ts = teams[hd_of[si]]
             for t in range(len(ts)):
-                if grid[si][t] or not team_can_judge(ts[t], c):
+                if ts[t] is None or grid[si][t] or not team_can_judge(ts[t], c):
                     continue
                 if kind == "M" and (ts[t] & sc_judges[c]):
                     continue
@@ -554,7 +570,8 @@ TAG = {"S": "scoring", "M": "MEDAL  ", "SB": "score  "}
 PLAN_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "plan.txt")
 
 
-def print_grid(out):
+def print_grid(out, done_cells=None):
+    done_cells = done_cells or set()
     for hd in HALFDAY_ORDER:
         if hd not in out:
             continue
@@ -562,7 +579,8 @@ def print_grid(out):
         note = f"  [slot {','.join(str(l + 1) for l in pre)}: fully-received rounds only]" if pre else ""
         print(f"\n=== {LABEL[hd]}{note} ===")
         for slot, table, kind, cat, team in sorted(out[hd], key=lambda r: (r[0], r[1])):
-            print(f"  Slot {slot+1}  Mesa {table+1}  {TAG[kind]}  {cat:<11}  {', '.join(sorted(team))}")
+            mark = "  (done)" if (hd, slot, table) in done_cells else ""
+            print(f"  Slot {slot+1}  Mesa {table+1}  {TAG[kind]}  {cat:<11}  {', '.join(sorted(team))}{mark}")
 
 
 def print_reports(out):
@@ -595,14 +613,16 @@ def print_reports(out):
             print(f"  {c}: {pend[c]} of {CATEGORIES[c]} pending")
 
 
-def schedule_all(rng, cats=None, rounds_fn=None, scored_by=None):
+def schedule_all(rng, cats=None, rounds_fn=None, scored_by=None,
+                 pinned_teams=None, occupied=None, seed_sc=None):
     """Run the full assign + place loop; returns the schedule dict or None."""
     blocks_list = blocks()
     for _ in range(60):
         assigned = assign_categories(blocks_list, rng, cats, rounds_fn)
         attempt = {}
         for b, bcats in zip(blocks_list, assigned):
-            res = schedule_block(b, bcats, rng, tries=3000, rounds_fn=rounds_fn, scored_by=scored_by)
+            res = schedule_block(b, bcats, rng, tries=3000, rounds_fn=rounds_fn, scored_by=scored_by,
+                                 pinned_teams=pinned_teams, occupied=occupied, seed_sc=seed_sc)
             if res is None:
                 break
             for hd, rows in res.items():
@@ -624,16 +644,30 @@ def check_bos():
 
 
 def emit_plan(out, done_through):
-    """Write an editable resume plan: a Remaining line + every round marked done/todo."""
-    cutoff = HALFDAY_ORDER.index(done_through) if done_through else -1
+    """Write an editable resume plan: a Remaining line + every round marked done/todo.
+    `done_through` is a half-day (whole half-day done) or `half-day:slot` (done through
+    that slot — leaves the half-day partial and still in the Remaining window)."""
+    if done_through:
+        ct_hd, _, ct_s = done_through.partition(":")
+        ct_idx = HALFDAY_ORDER.index(ct_hd)
+        ct_slot = (int(ct_s) - 1) if ct_s else HALFDAY_SLOTS.get(ct_hd, 1) - 1
+    else:
+        ct_idx, ct_slot = -1, -1
+
+    def is_done(hd, slot):
+        hi = HALFDAY_ORDER.index(hd)
+        return hi < ct_idx or (hi == ct_idx and slot <= ct_slot)
+
     rem = [(hd, HALFDAY_SLOTS[hd]) for hd in HALFDAY_ORDER
-           if hd in HALFDAY_SLOTS and HALFDAY_ORDER.index(hd) > cutoff]
+           if hd in out and any(not is_done(hd, s) for s, *_ in out[hd])]
     lines = [
         "# Resume plan. Edit, then re-plan the remaining rounds with:",
         f"#     python3 judging_scheduler.py --resume {os.path.basename(PLAN_FILE)}",
         "#",
         "# - Mark each round 'done' (it happened) or 'todo' (missed / not done). Only 'done'",
         "#   rounds are kept; everything still owed is rescheduled into the 'Remaining' half-days.",
+        "# - A half-day may be partly done: keep it in 'Remaining' and mark the rounds that",
+        "#   happened 'done' (with their Mesa + judges) — its teams are reused for the rest.",
         "# - Pending entries didn't arrive? edit the counts in rounds_input.txt.",
         "# - A judge left? edit their availability in rounds_input.txt (e.g. THU/FRI -> THU).",
         "# - Lost time? trim the 'Remaining' line (cut a slot count or delete a half-day).",
@@ -645,9 +679,8 @@ def emit_plan(out, done_through):
     for hd in HALFDAY_ORDER:
         if hd not in out:
             continue
-        is_done = HALFDAY_ORDER.index(hd) <= cutoff
         for slot, table, kind, cat, team in sorted(out[hd], key=lambda r: (r[0], r[1])):
-            if is_done:
+            if is_done(hd, slot):
                 lines.append(f"done  {hd}  slot{slot+1}  Mesa{table+1}  {TAG[kind].strip()}  "
                              f"{cat}   {', '.join(sorted(team))}")
             else:
@@ -697,20 +730,20 @@ def run_resume(rng, plan_path):
     if not windows:
         print("!! no 'Remaining:' half-days in the plan — nothing to schedule."); return 1
     win_hds = {hd for hd, _ in windows}
-    overlap = sorted({hd for hd, *_ in done if hd in win_hds})
-    if overlap:
-        print("!! these half-days are both in 'Remaining' and have 'done' rounds: " + ", ".join(overlap))
-        print("   v1 needs the cutoff at a half-day boundary — mark the whole half-day done, "
-              "or drop it from Remaining.")
-        return 1
 
     scoring_done, medal_done, scored_by = {}, set(), {}
+    pinned_idx, occupied, seed_sc = {}, set(), {}   # for partially-completed Remaining half-days
     for hd, slot, table, kind, cat, team in done:
         if kind in ("S", "SB"):
             scoring_done[cat] = scoring_done.get(cat, 0) + 1
             scored_by.setdefault(cat, set()).update(team)
         elif kind == "M":
             medal_done.add(cat)
+        if hd in win_hds:                            # done inside a half-day we're still filling
+            pinned_idx.setdefault(hd, {})[table] = team   # reuse this team at this table
+            occupied.add((hd, slot, table))
+            if kind in ("S", "SB"):
+                seed_sc.setdefault(cat, set()).add((hd, slot))
 
     remaining = {}
     for cat in CATEGORIES:
@@ -729,7 +762,11 @@ def run_resume(rng, plan_path):
 
     HALFDAY_SLOTS = dict(windows)
     ROSTER = {hd: {j for j in JUDGES if hd in AVAIL[j]} for hd in HALFDAY_SLOTS}
-    out = schedule_all(rng, cats=list(remaining), rounds_fn=lambda c: remaining[c], scored_by=scored_by)
+    # pinned team list per partial half-day: revealed teams at their table index, None elsewhere
+    pinned_teams = {hd: [idx_team.get(i) for i in range(max(idx_team) + 1)]
+                    for hd, idx_team in pinned_idx.items()}
+    out = schedule_all(rng, cats=list(remaining), rounds_fn=lambda c: remaining[c],
+                       scored_by=scored_by, pinned_teams=pinned_teams, occupied=occupied, seed_sc=seed_sc)
     if out is None:
         print("!! could not schedule the remaining rounds (free up a slot in Remaining, "
               "raise MAX_TABLES, or try another seed)")
@@ -741,17 +778,15 @@ def run_resume(rng, plan_path):
             print("   -", v)
         return 1
 
-    print("=== already completed (frozen) ===")
-    for hd in HALFDAY_ORDER:
-        rows = sorted([(s, t, k, c, tm) for (h, s, t, k, c, tm) in done if h == hd], key=lambda r: (r[0], r[1]))
-        if not rows:
-            continue
-        print(f"\n  {LABEL[hd]}:")
-        for s, t, k, c, tm in rows:
-            print(f"    Slot {s+1}  Mesa {t+1}  {TAG[k]}  {c:<11}  {', '.join(sorted(tm))}")
-    print("\n=== RE-PLANNED remaining rounds ===")
-    print_grid(out)
-    print_reports(out)
+    # unified view: re-planned rounds + the frozen done rounds (marked), past days included
+    display = {hd: list(rows) for hd, rows in out.items()}
+    done_cells = set()
+    for hd, slot, table, kind, cat, team in done:
+        display.setdefault(hd, []).append((slot, table, kind, cat, team))
+        done_cells.add((hd, slot, table))
+    print("=== schedule  ('(done)' = already completed and frozen; the rest is re-planned) ===")
+    print_grid(display, done_cells)
+    print_reports(display)
     return 0
 
 
