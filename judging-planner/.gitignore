@@ -1,0 +1,4 @@
+# Local-only working files (contain the original full names / are generated)
+original_rounds_input.txt
+plan.txt
+__pycache__/
