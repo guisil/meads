@@ -11,11 +11,15 @@ scoring + medal rounds + BOS, honouring:
     span (BOTTLE_SPAN: same half-day / same day / unlimited)
   * medal-round judges disjoint from that category's scoring judges (across half-days too)
   * a team stays put for a whole half-day; teams re-seated between half-days; no idle judge
-  * 2- vs 3-judge tables set by TABLE_SIZING (PAIRS / BALANCED / TRIOS); trio slots go to
-    TRIO_JUDGES (e.g. Tiago)
+  * no linguistically-isolated judge: each shares a language with a tablemate (a bilingual
+    judge can bridge a mono-lingual one); nationality is unconstrained
+  * 2- vs 3-judge tables set by TABLE_SIZING (PAIRS / BALANCED / TRIOS), optionally tightened
+    per half-day via TABLE_CAP to force trios; trio slots go to TRIO_JUDGES (e.g. Tiago)
   * pending entries (a 2nd number per category) deferred past the arrival deadline
-  * sparkling categories kept in consecutive slots; TOGETHER co-judging preference
-  * categories auto-assigned to days (DAY_FILL_TARGET); BOS on Friday afternoon
+  * sparkling categories kept in consecutive slots; score-based categories run a single
+    round (scoring = medal); TOGETHER co-judging preference
+  * categories auto-assigned to days (DAY_FILL_TARGET); BOS Friday afternoon, after any
+    scoring/medal rounds that spill into the afternoon
 
 Config knobs are at the top — tweak and re-run. The schedule is found by randomized
 backtracking; run again for a different valid layout. See the GUIDE for full usage.
@@ -37,16 +41,17 @@ INPUT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "rounds_in
 
 # ----------------------------------------------------------------------------
 # CONFIG — the only things not taken from rounds_input.txt. Tweak + re-run.
-# Each category is completed (scoring + medal) inside ONE half-day so no bottle
-# is left open overnight. Front-loaded so Friday morning finishes and the
-# afternoon is free for BOS only.
+# A category's scoring + medal stay within the open-bottle span (BOTTLE_SPAN, currently
+# same day, never overnight) so no bottle is left open too long. Work is front-loaded
+# onto Thursday; Friday afternoon is kept light, but it carries rounds (not only BOS)
+# whenever the earlier half-days don't have room — e.g. once FRI-AM is capped or trimmed.
 # ----------------------------------------------------------------------------
 # Categories are auto-assigned to days (balanced by capacity) and the solver picks
 # the slots — you don't pin anything by hand. PINS is an optional override: map a
 # category code to a half-day to force its earliest slot there (e.g. {"AMA M2": "THU-AM"}).
 # Leave empty to let the solver place everything.
 PINS = {}
-HALFDAY_SLOTS = {"THU-AM": 2, "THU-PM": 3, "FRI-AM": 3, "FRI-PM": 2}
+HALFDAY_SLOTS = {"THU-AM": 2, "THU-PM": 3, "FRI-AM": 2, "FRI-PM": 2}
 HALFDAY_ORDER = ["THU-AM", "THU-PM", "FRI-AM", "FRI-PM"]  # chronological
 
 # Open-bottle span: how far a category's first flight and its medal may be apart.
@@ -90,14 +95,14 @@ TABLE_SIZING = "PAIRS"
 # table). They get first claim on the trio slots the head-count naturally creates; a pair
 # is still fine when there's no free trio slot (and there are usually only 1-2 trio slots
 # in the whole event, so not everyone listed will get one). Add names as needed.
-TRIO_JUDGES = {"Tiago", "António", "Samuel"}
+TRIO_JUDGES = {"Tiago", "António", "Samuel", "Carlos"}
 
 # Judge groups (pairs or trios) you'd PREFER to see judging together on a team at some
 # point — a soft nudge, not a hard rule (the schedule won't fail to honour it). Each
 # entry is a set of judge keys; they can only end up together in a half-day where all are
 # available. The run reports which were achieved.
 # Example: TOGETHER = [{"Aleli", "Filip"}, {"Marc", "Ivonne", "Gonçalo"}]
-TOGETHER = []
+TOGETHER = [{"Carlos", "Marek L"}]
 
 BOS = {
     "BOS Professional": ["Marek L", "Marek P", "Ivonne"],
@@ -213,25 +218,16 @@ def flights(entries):
     return max(1, math.ceil(entries / 8))
 
 
-def team_pref(members):
-    """Soft preference: multinational (not all the same nationality, not all-Polish).
-    Teams that fail this are still allowed (see team_ok) — we just try harder to
-    avoid them first."""
-    nats = [NAT[m] for m in members]
-    if len(set(nats)) == 1:
-        return False
-    if all(n == "PL" for n in nats):
-        return False
-    return True
-
-
 def team_ok(members):
-    """Hard constraint on team composition: every team must share at least one
-    common language so the judges can confer. Nationality is only a soft
-    preference (team_pref). In practice every judge speaks English except the
-    Portuguese-only judges, so this rule forces those (e.g. Carlos) to be seated
-    with a fellow Portuguese speaker."""
-    return bool(set.intersection(*(LANGS[m] for m in members)))
+    """Hard constraint on team composition: NO linguistically-isolated judge — every
+    judge must share a language with at least one OTHER judge at the table. A bilingual
+    judge can bridge, so e.g. a Portuguese-only judge (Carlos) may sit with a PT+EN judge
+    and an EN-only judge: Carlos shares PT with the bridge, the EN judge shares EN with it.
+    (For a pair this still means the two must share a language directly.) Nationality is
+    NOT constrained — any mix, including a fully same-country team, is allowed. NAT is
+    still parsed if a nationality rule is ever wanted again (add it + mirror in validate)."""
+    members = list(members)
+    return all(any(m != o and LANGS[m] & LANGS[o] for o in members) for m in members)
 
 
 def team_can_judge(members, cat):
@@ -248,8 +244,9 @@ def form_teams(roster, n_tables, rng):
     tables are opened (and thus the 2- vs 3-judge mix) follows TABLE_SIZING: PAIRS opens
     as many as possible (mostly pairs), TRIOS as few as possible (mostly trios), BALANCED
     a middle count. Trio slots go first to requested TOGETHER trios, then to judges in
-    TRIO_JUDGES (each anchoring a trio with a preferably experienced >=L2 backup). Teams
-    are preferred (softly) to be multinational and to keep TOGETHER groups intact. Returns
+    TRIO_JUDGES (each anchoring a trio with a preferably experienced >=L2 backup). Every
+    judge must share a language with a tablemate (team_ok); TOGETHER groups are softly kept
+    intact. Nationality is not constrained. Returns
     list[set] or None if everyone can't be seated within n_tables."""
     pool = set(roster)
     n = len(pool)
@@ -272,10 +269,10 @@ def form_teams(roster, n_tables, rng):
         combos = [c for c in combos if team_ok(({anchor} | c) if anchor else c)]
         if not combos:
             return None
-        def key(extra):                  # prefer co-judging group, then multinational, then experienced backup
+        def key(extra):                  # prefer co-judging group, then an experienced backup
             tm = ({anchor} | extra) if anchor else extra
             backup = extra if anchor else tm
-            return (wants_together(tm), team_pref(tm), max(LEVEL[j] for j in backup) >= 2)
+            return (wants_together(tm), max(LEVEL[j] for j in backup) >= 2)
         combos.sort(key=key, reverse=True)
         return ({anchor} | combos[0]) if anchor else combos[0]
 
@@ -316,7 +313,7 @@ def form_teams(roster, n_tables, rng):
         candidates = [b for b in rest if team_ok({a, b})]
         if not candidates:
             return None
-        partner = max(candidates, key=lambda b: (wants_together({a, b}), team_pref({a, b})))
+        partner = max(candidates, key=lambda b: wants_together({a, b}))
         rest.remove(partner)
         teams.append({a, partner})
     if rest:                             # leftover means the arithmetic was off

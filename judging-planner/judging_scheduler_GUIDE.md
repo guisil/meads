@@ -80,8 +80,8 @@ It prints the frozen `done` rounds, then a fresh schedule for everything still o
 - A team stays at one table for a whole half-day; teams are **re-seated** between half-days.
 - **No idle judge**: every judge in a half-day is seated in teams of 2-3. How many tables open (the 2- vs 3-judge mix) follows `TABLE_SIZING` (PAIRS / BALANCED / TRIOS). Whatever trio slots exist go first to judges in `TRIO_JUDGES` (e.g. Tiago, so he can step out), preferably with an experienced backup.
 - **Co-judging preference** (`TOGETHER`): requested judge pairs/trios are softly preferred to share a team (see config note); never enforced, always reported.
-- Multinational teams are **preferred** (avoid all-Polish / all-same-nationality), but a same-nationality team is allowed when nothing else fits.
-- Every team must **share a common language** (hard rule, `team_ok`). Since every judge speaks English except the Portuguese-only ones, in practice this just forces a Portuguese-only judge (e.g. Carlos) to be seated with a fellow Portuguese speaker.
+- Nationality is **not** constrained — any mix, including a fully same-country team, is allowed. (The `NAT` of each judge is still parsed in case a rule is wanted again.)
+- **No linguistically-isolated judge** (hard rule, `team_ok`): every judge must share a language with at least one *other* judge at the table — a bilingual judge can bridge. So a Portuguese-only judge (Carlos) can sit with a PT+EN judge and an EN-only judge (Carlos shares PT with the bridge, the EN judge shares EN with it), but never with tablemates who all lack Portuguese. For a 2-judge table this still means the pair must share a language directly.
 - **Pending entries** (the optional 2nd number in `CODE (total, pending)`): already-full ("safe") flights may run in the first Thursday-morning slot; the flight(s) holding pending entries — and the medal — are deferred past the **arrival deadline** (`PRE_DEADLINE_SLOTS`, default just the first `THU-AM` slot — so a 2-flight category starts in slot 1 and runs its pending flight in slot 2, still Thursday morning). `safe_flights = (total − pending) // 8`.
 - **Sparkling** categories (the `Sparkling:` list): their rounds are forced into **consecutive slots in one half-day** (so the open sparkling bottle isn't left to go flat). A category on the `Score-based:` list instead runs as a **single score-based round** (scoring = medal, no second pour).
 - Scheduling **packs early** (fills the safe Thu-AM window, pulls rounds forward, keeps Fri-PM mostly for BOS).
@@ -125,7 +125,7 @@ Full Name: level N; COI cat, COI cat (or -); AVAILABILITY; Lang1, Lang2
 - Note: `Sparkling` / `Score-based` are set in `rounds_input.txt`, not here.
 
 ## Where to change the RULES themselves (code)
-- `team_pref(members)` — the **soft** multinational preference (avoid all-same / all-Polish). `team_ok(members)` is the **hard** constraint: teams must share a common language (`LANGS` intersection), enforced in `form_teams` (both the trio `pick_trio` filter and the pairing loop, which seats the most language-constrained judge first). To also make nationality mandatory, add that logic to `team_ok` and re-add the validate() check.
+- `team_ok(members)` — the **hard** team-composition constraint: no linguistically-isolated judge — each must share a language (`LANGS`) with at least one other tablemate (a bilingual judge can bridge a mono-lingual one). Enforced in `form_teams` (both the trio `pick_trio` filter and the pairing loop, which seats the most language-constrained judge first). Nationality is no longer constrained (the old `team_pref` soft preference was removed); `NAT` is still parsed, so to add a nationality rule, put the logic in `team_ok` and mirror it in validate().
 - `team_can_judge(members, cat)` — COI check.
 - `form_teams(...)` — partitions the whole roster into 2-3 person teams with no idle judge, maximising tables; trios only when forced (odd roster / more judges than tables). Trio slots go to TOGETHER trios, then `TRIO_JUDGES` (shuffled), then generic, each with a preferably experienced (`>=L2`) backup.
 - `safe_flights(total, pending)` / `category_rounds(cat)` — how many flights are pending-free, and the list of rounds with which are "late" (must wait past the deadline).
@@ -142,7 +142,7 @@ Full Name: level N; COI cat, COI cat (or -); AVAILABILITY; Lang1, Lang2
 - **More/less parallelism** → `MAX_TABLES` and/or team-size logic in `form_teams`.
 - **Get a specific judge into a trio** → cap their available half-day's tables via `TABLE_CAP` (e.g. `{"FRI-AM": 4}` for a Friday-only judge); confirm via the "preferred trios" report.
 - **Different day balance / earlier Friday finish** → raise/lower `DAY_FILL_TARGET` (higher = more on Thursday), adjust `HALFDAY_SLOTS`, or `PINS` a category onto a specific day/half-day.
-- **Change/again-soften a rule** → edit `team_pref` / `form_teams` and mirror in `validate`.
+- **Change a team-composition rule** → edit `team_ok` / `form_teams` and mirror in `validate`.
 - **BOS judges / a late-Friday-only judge** → `BOS` config; add the judge to `rounds_input.txt` with availability `FRI-aft`.
 - **A judge/category/count changes** → just edit `rounds_input.txt`.
 
