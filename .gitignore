@@ -69,6 +69,10 @@ types.d.ts
 # Spring Boot
 *.pid
 
+# Python (judging-planner tooling)
+__pycache__/
+*.py[cod]
+
 # Claude Code
 .claude/settings.local.json
 .claude/*.lock
