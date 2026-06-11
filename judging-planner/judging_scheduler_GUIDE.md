@@ -38,6 +38,8 @@ python3 judging-planner/judging_scheduler.py [seed]        # from repo root
 ## Re-planning mid-competition (resume)
 If the day deviates from the plan — a judge leaves, a round is skipped, pending entries never arrive, you run out of time — you can freeze what already happened and reschedule only what's left.
 
+**Picking the plan to commit to.** Output is reproducible (a given seed always produces the same schedule — the script re-execs with `PYTHONHASHSEED=0` to pin it), so you don't have to `--plan` every run "just in case". Browse with plain runs (`… 1`, `… 2`, `… 3` …), note the seed of the one you like, then regenerate exactly that schedule with `--plan` (Step 1). The seed is your durable handle; `plan.txt` is only written when you ask for it.
+
 **Step 1 — write an editable plan from the seed you ran.** `--done-through HD` pre-marks everything up to and including that half-day as `done`; use `HD:slot` to cut **mid-half-day** (leaves that half-day partial and still in the window):
 ```
 python3 judging_scheduler.py 7 --plan --done-through THU-PM     # all of Thursday done
@@ -82,6 +84,7 @@ It prints the frozen `done` rounds, then a fresh schedule for everything still o
 - **Co-judging preference** (`TOGETHER`): requested judge pairs/trios are softly preferred to share a team (see config note); never enforced, always reported.
 - Nationality is **not** constrained — any mix, including a fully same-country team, is allowed. (The `NAT` of each judge is still parsed in case a rule is wanted again.)
 - **No linguistically-isolated judge** (hard rule, `team_ok`): every judge must share a language with at least one *other* judge at the table — a bilingual judge can bridge. So a Portuguese-only judge (Carlos) can sit with a PT+EN judge and an EN-only judge (Carlos shares PT with the bridge, the EN judge shares EN with it), but never with tablemates who all lack Portuguese. For a 2-judge table this still means the pair must share a language directly.
+- **At least one experienced (≥L2) judge per table** (hard rule, `team_ok`): two level-1 novices can't be a pair, but they may share a table as a *trio* anchored by a more experienced judge. (With only two L1 judges — Carlos & Gonçalo — this just stops the two of them forming a pair.)
 - **Pending entries** (the optional 2nd number in `CODE (total, pending)`): already-full ("safe") flights may run in the first Thursday-morning slot; the flight(s) holding pending entries — and the medal — are deferred past the **arrival deadline** (`PRE_DEADLINE_SLOTS`, default just the first `THU-AM` slot — so a 2-flight category starts in slot 1 and runs its pending flight in slot 2, still Thursday morning). `safe_flights = (total − pending) // 8`.
 - **Sparkling** categories (the `Sparkling:` list): their rounds are forced into **consecutive slots in one half-day** (so the open sparkling bottle isn't left to go flat). A category on the `Score-based:` list instead runs as a **single score-based round** (scoring = medal, no second pour).
 - Scheduling **packs early** (fills the safe Thu-AM window, pulls rounds forward, keeps Fri-PM mostly for BOS).
@@ -125,7 +128,7 @@ Full Name: level N; COI cat, COI cat (or -); AVAILABILITY; Lang1, Lang2
 - Note: `Sparkling` / `Score-based` are set in `rounds_input.txt`, not here.
 
 ## Where to change the RULES themselves (code)
-- `team_ok(members)` — the **hard** team-composition constraint: no linguistically-isolated judge — each must share a language (`LANGS`) with at least one other tablemate (a bilingual judge can bridge a mono-lingual one). Enforced in `form_teams` (both the trio `pick_trio` filter and the pairing loop, which seats the most language-constrained judge first). Nationality is no longer constrained (the old `team_pref` soft preference was removed); `NAT` is still parsed, so to add a nationality rule, put the logic in `team_ok` and mirror it in validate().
+- `team_ok(members)` — the **hard** team-composition constraints: (1) no linguistically-isolated judge — each must share a language (`LANGS`) with at least one other tablemate (a bilingual judge can bridge a mono-lingual one); (2) at least one experienced (`LEVEL >= 2`) judge per table (blocks an all-novice pair). Enforced in `form_teams` (both the trio `pick_trio` filter and the pairing loop, which seats the most language-constrained judge first). Nationality is no longer constrained (the old `team_pref` soft preference was removed); `NAT` is still parsed, so to add a nationality rule, put the logic in `team_ok` and mirror it in validate().
 - `team_can_judge(members, cat)` — COI check.
 - `form_teams(...)` — partitions the whole roster into 2-3 person teams with no idle judge, maximising tables; trios only when forced (odd roster / more judges than tables). Trio slots go to TOGETHER trios, then `TRIO_JUDGES` (shuffled), then generic, each with a preferably experienced (`>=L2`) backup.
 - `safe_flights(total, pending)` / `category_rounds(cat)` — how many flights are pending-free, and the list of rounds with which are "late" (must wait past the deadline).
