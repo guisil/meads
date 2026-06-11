@@ -81,7 +81,10 @@ PRE_DEADLINE_SLOTS = {("THU-AM", 0)}
 # How full each day is packed before the next day is used, as a fraction of its cell
 # capacity (slots x tables). Higher = more onto Thursday / less onto Friday and a fuller
 # Thursday afternoon; too close to 1.0 gets hard to schedule (no slack for medal ordering).
-DAY_FILL_TARGET = 1
+# NOTE: at 1.0 each day is packed to 100% capacity, and with TABLE_CAP forcing trios the
+# backtracker can thrash for tens of seconds (or appear to hang). Keep some slack (~0.85)
+# whenever TABLE_CAP is set.
+DAY_FILL_TARGET = 0.85
 
 MAX_TABLES = 5
 # Per-half-day table cap (optional). Overrides MAX_TABLES for the named half-day, opening
