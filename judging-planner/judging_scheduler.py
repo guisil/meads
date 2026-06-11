@@ -13,6 +13,8 @@ scoring + medal rounds + BOS, honouring:
   * a team stays put for a whole half-day; teams re-seated between half-days; no idle judge
   * no linguistically-isolated judge: each shares a language with a tablemate (a bilingual
     judge can bridge a mono-lingual one); nationality is unconstrained
+  * at least one experienced (>=L2) judge per table: two level-1 novices can't pair, but
+    may share a table as a trio anchored by a more experienced judge
   * 2- vs 3-judge tables set by TABLE_SIZING (PAIRS / BALANCED / TRIOS), optionally tightened
     per half-day via TABLE_CAP to force trios; trio slots go to TRIO_JUDGES (e.g. Tiago)
   * pending entries (a 2nd number per category) deferred past the arrival deadline
@@ -36,6 +38,14 @@ import re
 import sys
 import unicodedata
 from itertools import combinations
+
+# Reproducibility: a given [seed] should yield the SAME schedule every run, so you can
+# browse seeds and later regenerate the chosen one with --plan. random.Random(seed) already
+# pins the RNG, but Python randomizes set-iteration order per process (PYTHONHASHSEED), which
+# leaks into team formation. Re-exec once with it fixed. Set PYTHONHASHSEED yourself to override.
+if os.environ.get("PYTHONHASHSEED") != "0":
+    os.environ["PYTHONHASHSEED"] = "0"
+    os.execv(sys.executable, [sys.executable, *sys.argv])
 
 INPUT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "rounds_input.txt")
 
@@ -102,11 +112,11 @@ TRIO_JUDGES = {"Tiago", "António", "Samuel", "Carlos"}
 # entry is a set of judge keys; they can only end up together in a half-day where all are
 # available. The run reports which were achieved.
 # Example: TOGETHER = [{"Aleli", "Filip"}, {"Marc", "Ivonne", "Gonçalo"}]
-TOGETHER = [{"Carlos", "Marek L"}]
+TOGETHER = []
 
 BOS = {
     "BOS Professional": ["Marek L", "Marek P", "Ivonne"],
-    "BOS Amateur":      ["Filip", "Marc", "Carlos"],  # Mike withdrew; Filip is the most experienced replacement with no AMA conflict
+    "BOS Amateur":      ["Filip", "Marc", "Aleli"],
 }
 
 LANG_TO_NAT = {"english": "EN", "spanish": "ES", "polish": "PL",
@@ -219,14 +229,18 @@ def flights(entries):
 
 
 def team_ok(members):
-    """Hard constraint on team composition: NO linguistically-isolated judge — every
-    judge must share a language with at least one OTHER judge at the table. A bilingual
-    judge can bridge, so e.g. a Portuguese-only judge (Carlos) may sit with a PT+EN judge
-    and an EN-only judge: Carlos shares PT with the bridge, the EN judge shares EN with it.
-    (For a pair this still means the two must share a language directly.) Nationality is
-    NOT constrained — any mix, including a fully same-country team, is allowed. NAT is
-    still parsed if a nationality rule is ever wanted again (add it + mirror in validate)."""
+    """Hard constraints on team composition:
+    1. NO linguistically-isolated judge — every judge must share a language with at least
+       one OTHER judge at the table. A bilingual judge can bridge, so e.g. a Portuguese-only
+       judge (Carlos) may sit with a PT+EN judge and an EN-only judge: Carlos shares PT with
+       the bridge, the EN judge shares EN with it. (A pair still must share a language directly.)
+    2. At least one experienced (>=L2) judge per table — two level-1 novices can't be a pair,
+       but they may share a table as a trio anchored by a more experienced judge.
+    Nationality is NOT constrained — any mix, including a fully same-country team, is allowed.
+    NAT is still parsed if a nationality rule is ever wanted again (add it + mirror in validate)."""
     members = list(members)
+    if all(LEVEL[m] == 1 for m in members):
+        return False
     return all(any(m != o and LANGS[m] & LANGS[o] for o in members) for m in members)
 
 
