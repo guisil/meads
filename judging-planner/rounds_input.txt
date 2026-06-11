@@ -13,8 +13,8 @@ Marc: level 3; PRO M2-M, PRO M3-D/M, PRO M4; THU/FRI; Spanish, English
 Marek L: level 4; AMA M1, AMA M3-S, AMA M4S; THU/FRI; Polish, English
 Marek P: level 3; AMA M3-S; THU/FRI; Polish, English
 Filip: level 2; PRO M2-S, PRO M3-D/M, PRO M4; THU/FRI; Polish, English
-Carlos: level 2; PRO M1A/B, PRO M1C; THU/FRI; Portuguese, English
-Samuel: level 2; -; THU; Portuguese, English
+Carlos: level 2; PRO M1A/B, PRO M1C; THU/FRI; Portuguese
+Samuel: level 2; -; FRI; Portuguese, English
 António: level 2; -; THU-aft; Portuguese, English
 Tiago: level 3; -; THU (all day), FRI-mor; Portuguese, English (head judge; may step out for duties)
 Gonçalo: level 1; -; THU/FRI; Portuguese, English

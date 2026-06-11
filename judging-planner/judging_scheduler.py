@@ -68,7 +68,15 @@ PRE_DEADLINE_SLOTS = {("THU-AM", 0)}
 # Thursday afternoon; too close to 1.0 gets hard to schedule (no slack for medal ordering).
 DAY_FILL_TARGET = 1
 
-MAX_TABLES = 6
+MAX_TABLES = 5
+# Per-half-day table cap (optional). Overrides MAX_TABLES for the named half-day, opening
+# FEWER tables there — which forces larger (3-judge) teams, since every judge is still
+# seated. Use it to manufacture trio slots on a specific half-day: e.g. {"FRI-AM": 4}
+# turns Friday morning's 10 judges from 5 pairs into 2 trios + 2 pairs (so Samuel can take
+# a trio). Caution: fewer tables = fewer parallel flights, so the half-day's slots must
+# still hold its rounds (a fully-packed half-day like Thursday afternoon will overflow
+# unless you also free room — lower DAY_FILL_TARGET or add a slot). Empty = MAX_TABLES.
+TABLE_CAP = {"THU-PM": 4, "FRI-AM": 4}
 # Table sizing — how many tables to open, which sets the 2- vs 3-judge mix (every judge is
 # always seated, never idle):
 #   "PAIRS"    — as many tables as possible: mostly 2-judge tables, a trio only when an odd
@@ -82,7 +90,7 @@ TABLE_SIZING = "PAIRS"
 # table). They get first claim on the trio slots the head-count naturally creates; a pair
 # is still fine when there's no free trio slot (and there are usually only 1-2 trio slots
 # in the whole event, so not everyone listed will get one). Add names as needed.
-TRIO_JUDGES = {"Tiago"}
+TRIO_JUDGES = {"Tiago", "António", "Samuel"}
 
 # Judge groups (pairs or trios) you'd PREFER to see judging together on a team at some
 # point — a soft nudge, not a hard rule (the schedule won't fail to honour it). Each
@@ -172,17 +180,18 @@ def parse_input(path):
             coi = set() if fields[1] in ("-", "") else {c.strip() for c in fields[1].split(",")}
             avail = _parse_availability(fields[2]) if len(fields) > 2 else set()
             langs = fields[3] if len(fields) > 3 else "english"
+            langset = {l.strip().lower() for l in langs.split(",") if l.strip()}
             nat = LANG_TO_NAT.get(langs.split(",")[0].strip().lower(), "??")
-            raw_judges.append((name.strip(), level, coi, avail, nat))
+            raw_judges.append((name.strip(), level, coi, avail, nat, langset))
 
     first_counts = {}
     for nm, *_ in raw_judges:
         first_counts[nm.split()[0]] = first_counts.get(nm.split()[0], 0) + 1
     judges = {}
-    for full, level, coi, avail, nat in raw_judges:
+    for full, level, coi, avail, nat, langset in raw_judges:
         parts = full.split()
         key = parts[0] if first_counts[parts[0]] == 1 else f"{parts[0]} {_ascii_initial(parts[-1])}"
-        judges[key] = (level, nat, coi, avail)
+        judges[key] = (level, nat, coi, avail, langset)
     return judges, cats, pend, sparkling, scorebased
 
 
@@ -191,7 +200,13 @@ NAT = {n: v[1] for n, v in JUDGES.items()}
 LEVEL = {n: v[0] for n, v in JUDGES.items()}
 COI = {n: v[2] for n, v in JUDGES.items()}
 AVAIL = {n: v[3] for n, v in JUDGES.items()}
+LANGS = {n: v[4] for n, v in JUDGES.items()}
 ROSTER = {hd: {j for j in JUDGES if hd in AVAIL[j]} for hd in HALFDAY_SLOTS}
+
+
+def cap_for(hd):
+    """Max tables to open in a half-day: MAX_TABLES, or a tighter per-half-day override."""
+    return min(MAX_TABLES, TABLE_CAP.get(hd, MAX_TABLES))
 
 
 def flights(entries):
@@ -211,9 +226,12 @@ def team_pref(members):
 
 
 def team_ok(members):
-    """Hard constraint on team composition. Nationality is now only a soft
-    preference (team_pref), so any composition is permitted."""
-    return True
+    """Hard constraint on team composition: every team must share at least one
+    common language so the judges can confer. Nationality is only a soft
+    preference (team_pref). In practice every judge speaks English except the
+    Portuguese-only judges, so this rule forces those (e.g. Carlos) to be seated
+    with a fellow Portuguese speaker."""
+    return bool(set.intersection(*(LANGS[m] for m in members)))
 
 
 def team_can_judge(members, cat):
@@ -251,6 +269,7 @@ def form_teams(roster, n_tables, rng):
         members = [j for j in pool if j != anchor]
         rng.shuffle(members)
         combos = [set(c) for c in combinations(members, 2 if anchor else 3)]
+        combos = [c for c in combos if team_ok(({anchor} | c) if anchor else c)]
         if not combos:
             return None
         def key(extra):                  # prefer co-judging group, then multinational, then experienced backup
@@ -290,8 +309,14 @@ def form_teams(roster, n_tables, rng):
     rest = list(pool)
     rng.shuffle(rest)
     while len(rest) >= 2:
-        a = rest.pop()
-        partner = max(rest, key=lambda b: (wants_together({a, b}), team_pref({a, b})))
+        # seat the most-constrained judge first (fewest language-compatible partners)
+        # so a Portuguese-only judge isn't stranded with no valid partner left
+        a = min(rest, key=lambda x: sum(1 for b in rest if b != x and team_ok({x, b})))
+        rest.remove(a)
+        candidates = [b for b in rest if team_ok({a, b})]
+        if not candidates:
+            return None
+        partner = max(candidates, key=lambda b: (wants_together({a, b}), team_pref({a, b})))
         rest.remove(partner)
         teams.append({a, partner})
     if rest:                             # leftover means the arithmetic was off
@@ -352,7 +377,7 @@ def assign_categories(blocks_list, rng, cats=None, rounds_fn=None):
     half-day. Bigger categories placed first for tighter packing. `cats`/`rounds_fn`
     let resume restrict to the still-unfinished categories and their remaining rounds."""
     rounds_of = rounds_fn or category_rounds
-    caps = [sum(HALFDAY_SLOTS[hd] * min(MAX_TABLES, len(ROSTER[hd]) // 2) for hd in b)
+    caps = [sum(HALFDAY_SLOTS[hd] * min(cap_for(hd), len(ROSTER[hd]) // 2) for hd in b)
             for b in blocks_list]
     targets = [c * DAY_FILL_TARGET for c in caps]
     load = [0] * len(blocks_list)
@@ -393,11 +418,11 @@ def schedule_block(block, cats, rng, tries=8000, rounds_fn=None, scored_by=None,
     blockpos = {hd: i for i, hd in enumerate(block)}
     predead = [(hd, ls) in PRE_DEADLINE_SLOTS for hd, ls in slots]
     insts = [(c, kind, late) for c in cats for kind, late in rounds_of(c)]
-    if len(insts) > len(slots) * MAX_TABLES:
+    if len(insts) > sum(cap_for(hd) for hd, _ in slots):
         return None  # assignment overfills this block
 
     for _ in range(tries):
-        teams = {hd: (pinned_teams[hd] if hd in pinned_teams else form_teams(ROSTER[hd], MAX_TABLES, rng))
+        teams = {hd: (pinned_teams[hd] if hd in pinned_teams else form_teams(ROSTER[hd], cap_for(hd), rng))
                  for hd in block}
         if any(t is None for t in teams.values()):
             continue
