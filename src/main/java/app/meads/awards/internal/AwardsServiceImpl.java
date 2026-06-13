@@ -389,10 +389,14 @@ public class AwardsServiceImpl implements AwardsService {
         }
         var history = publicationRepository.findByDivisionIdOrderByVersionAsc(division.getId());
         var latest = history.isEmpty() ? null : history.get(history.size() - 1);
+        var logoDataUri = competition.hasLogo()
+                ? "data:" + competition.getLogoContentType() + ";base64,"
+                        + java.util.Base64.getEncoder().encodeToString(competition.getLogo())
+                : null;
         return new PublicResultsView(
                 competition.getName(), division.getName(),
                 latest != null ? latest.getPublishedAt() : null,
-                history.size() > 1, sections, publicBos, division.isMeaderyNameRequired());
+                history.size() > 1, sections, publicBos, division.isMeaderyNameRequired(), logoDataUri);
     }
 
     /**

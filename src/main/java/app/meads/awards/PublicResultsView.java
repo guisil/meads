@@ -10,7 +10,8 @@ public record PublicResultsView(
         boolean hasMultiplePublications,
         List<PublicCategorySection> categories,
         List<PublicBosRow> bosLeaderboard,
-        boolean meaderyRequired) {
+        boolean meaderyRequired,
+        String competitionLogoDataUri) {
 
     public record PublicCategorySection(
             String categoryCode,

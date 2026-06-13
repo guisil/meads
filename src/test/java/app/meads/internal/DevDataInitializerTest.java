@@ -121,7 +121,7 @@ class DevDataInitializerTest {
         assertThat(mostra.getStatus()).isEqualTo(DivisionStatus.RESULTS_PUBLISHED);
 
         var mostraEntries = entryService.findEntriesByDivision(mostra.getId());
-        assertThat(mostraEntries).hasSize(5);
+        assertThat(mostraEntries).hasSize(15);
         assertThat(mostraEntries).allSatisfy(e -> {
             assertThat(e.getStatus().name()).isEqualTo("RECEIVED");
             assertThat(e.getFinalCategoryId()).isNotNull();

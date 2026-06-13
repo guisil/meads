@@ -213,3 +213,25 @@ vaadin-app-layout::part(drawer) {
   color: var(--lumo-body-text-color);
   margin-top: var(--lumo-space-xs);
 }
+
+/* --- Print --- */
+@media print {
+  /* Hide chrome that adds no value on paper */
+  vaadin-app-layout::part(navbar),
+  vaadin-app-layout::part(drawer) {
+    display: none !important;
+  }
+
+  /*
+   * AppLayout's content slot has overflow:auto + a fixed height, which
+   * causes the browser to treat it as a clipping rectangle and only print
+   * the currently visible portion.  Resetting to block + visible lets the
+   * full document flow onto as many pages as needed.
+   */
+  vaadin-app-layout,
+  vaadin-app-layout::part(content) {
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+}

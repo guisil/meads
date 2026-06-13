@@ -9,11 +9,13 @@ import com.vaadin.flow.spring.security.AuthenticationContext;
 import org.springframework.security.core.userdetails.UserDetails;
 import java.util.UUID;
 import com.vaadin.flow.component.grid.Grid;
-import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.H3;
+import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.i18n.LocaleChangeObserver;
 import com.vaadin.flow.router.BeforeEnterEvent;
@@ -43,7 +45,7 @@ public class AwardsPublicResultsView extends VerticalLayout
         this.awardsService = awardsService;
         this.authenticationContext = authenticationContext;
         this.userService = userService;
-        setSizeFull();
+        setWidth("100%");
         setPadding(true);
     }
 
@@ -111,13 +113,26 @@ public class AwardsPublicResultsView extends VerticalLayout
         var heading = new H2(getTranslation("awards.public.title",
                 view.competitionName(), view.divisionName()));
         heading.setId("awards-public-heading");
-        add(heading);
+        heading.getStyle().set("margin", "0");
+        if (view.competitionLogoDataUri() != null) {
+            var logo = new Image(view.competitionLogoDataUri(), view.competitionName());
+            logo.setId("awards-public-logo");
+            logo.setHeight("48px");
+            logo.getStyle().set("flex-shrink", "0");
+            var headingRow = new HorizontalLayout(logo, heading);
+            headingRow.setAlignItems(FlexComponent.Alignment.CENTER);
+            headingRow.setSpacing(true);
+            headingRow.setPadding(false);
+            add(headingRow);
+        } else {
+            add(heading);
+        }
 
         if (!view.bosLeaderboard().isEmpty()) {
             add(new H3(getTranslation("awards.public.bos.heading")));
             var bosGrid = new Grid<PublicResultsView.PublicBosRow>();
             bosGrid.setId("awards-public-bos");
-            bosGrid.addColumn(PublicResultsView.PublicBosRow::place)
+            bosGrid.addColumn(row -> bosPlaceLabel(row.place()))
                     .setHeader(getTranslation("awards.public.bos.place"));
             bosGrid.addColumn(PublicResultsView.PublicBosRow::meadName)
                     .setHeader(getTranslation("awards.public.bos.mead-name"));
@@ -136,9 +151,9 @@ public class AwardsPublicResultsView extends VerticalLayout
             // distinct blocks.
             sectionHeading.getStyle().set("margin-top", "var(--lumo-space-xl)");
             add(sectionHeading);
-            renderMedalGroup(section.golds(), "awards.public.medal.gold");
-            renderMedalGroup(section.silvers(), "awards.public.medal.silver");
-            renderMedalGroup(section.bronzes(), "awards.public.medal.bronze");
+            renderMedalGroup(section.golds(),   "awards.public.medal.gold",   "🥇");
+            renderMedalGroup(section.silvers(), "awards.public.medal.silver", "🥈");
+            renderMedalGroup(section.bronzes(), "awards.public.medal.bronze", "🥉");
         }
 
         if (view.hasMultiplePublications() && view.lastUpdatedAt() != null) {
@@ -150,16 +165,10 @@ public class AwardsPublicResultsView extends VerticalLayout
             add(footer);
         }
 
-        // The view is setSizeFull, so a CSS padding-bottom sits at the viewport
-        // edge and overflowing content spills past it. A real trailing element
-        // guarantees visible breathing room after the last category when scrolled.
-        var bottomSpacer = new Div();
-        bottomSpacer.setHeight("4rem");
-        bottomSpacer.getStyle().set("flex", "0 0 auto");
-        add(bottomSpacer);
     }
 
-    private void renderMedalGroup(java.util.List<PublicResultsView.PublicMedalRow> rows, String labelKey) {
+    private void renderMedalGroup(java.util.List<PublicResultsView.PublicMedalRow> rows,
+                                  String labelKey, String emoji) {
         if (rows.isEmpty()) {
             return;
         }
@@ -169,14 +178,29 @@ public class AwardsPublicResultsView extends VerticalLayout
         group.setPadding(false);
         group.setSpacing(false);
         group.getStyle().set("margin-top", "var(--lumo-space-s)");
-        var label = new Span(getTranslation(labelKey));
-        label.getStyle().set("font-weight", "bold");
-        group.add(label);
+        var emojiSpan = new Span(emoji + " ");
+        emojiSpan.getStyle().set("font-size", "var(--lumo-font-size-m)");
+        var labelSpan = new Span(getTranslation(labelKey));
+        labelSpan.getStyle().set("font-weight", "bold");
+        var labelRow = new HorizontalLayout(emojiSpan, labelSpan);
+        labelRow.setPadding(false);
+        labelRow.setSpacing(false);
+        labelRow.setAlignItems(FlexComponent.Alignment.BASELINE);
+        group.add(labelRow);
         for (var row : rows) {
             var line = new Paragraph(row.meadName() + " — " + row.producer());
             line.getStyle().set("margin", "0");
             group.add(line);
         }
         add(group);
+    }
+
+    private static String bosPlaceLabel(int place) {
+        return switch (place) {
+            case 1 -> "🥇 1";
+            case 2 -> "🥈 2";
+            case 3 -> "🥉 3";
+            default -> String.valueOf(place);
+        };
     }
 }
