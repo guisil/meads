@@ -616,6 +616,10 @@ committed walkthrough doc commit (this session changed ONLY `docs/walkthrough/ma
 - **✅ v0.4.1 RELEASED + DEPLOYED 2026-06-13.** Patch release on `main`. Seeds `commentLanguage` on dev
   scoresheets (`"en"` for standard fill, `"pt"` for verbose fill) so the entrant scoresheet dialog's
   "Comment language" line is exercised on a fresh dev DB. No migration. **main now at `0.4.2-SNAPSHOT`.**
+- **✅ v0.4.2 RELEASED + DEPLOYED 2026-06-13.** Patch release on `main`. Public results layout polish:
+  producer/meadery now stacks below the mead name (secondary colour, smaller font) in medal groups
+  instead of inline; BOS grid place column fixed to 5em, mead name + producer collapsed into one
+  stacked component column — no more truncation on narrow screens. No migration. **main now at `0.4.3-SNAPSHOT`.**
 - **⏸ (prior) WALKTHROUGH COMPLETE (2026-06-09).** §2–§13 all walked
   (clean, with the many fixes committed this session). **Skipped by user (acknowledged):** §12.9–§12.12 interactive
   judge/scoring/medal views (exercised live during Amadora/Profissional round progression; this-session fixes —
