@@ -133,13 +133,22 @@ public class AwardsPublicResultsView extends VerticalLayout
             var bosGrid = new Grid<PublicResultsView.PublicBosRow>();
             bosGrid.setId("awards-public-bos");
             bosGrid.addColumn(row -> bosPlaceLabel(row.place()))
-                    .setHeader(getTranslation("awards.public.bos.place"));
-            bosGrid.addColumn(PublicResultsView.PublicBosRow::meadName)
-                    .setHeader(getTranslation("awards.public.bos.mead-name"));
-            bosGrid.addColumn(PublicResultsView.PublicBosRow::producer)
-                    .setHeader(getTranslation(view.meaderyRequired()
-                            ? "awards.public.bos.meadery-name"
-                            : "awards.public.bos.maker-name"));
+                    .setHeader(getTranslation("awards.public.bos.place"))
+                    .setWidth("5em").setFlexGrow(0);
+            var producerHeader = getTranslation(view.meaderyRequired()
+                    ? "awards.public.bos.meadery-name"
+                    : "awards.public.bos.maker-name");
+            bosGrid.addComponentColumn(row -> {
+                var meadName = new Span(row.meadName());
+                meadName.getStyle().set("font-weight", "600");
+                var producer = new Span(row.producer());
+                producer.getStyle().set("color", "var(--lumo-secondary-text-color)")
+                        .set("font-size", "var(--lumo-font-size-s)");
+                var cell = new VerticalLayout(meadName, producer);
+                cell.setPadding(false);
+                cell.setSpacing(false);
+                return cell;
+            }).setHeader(getTranslation("awards.public.bos.mead-name") + " / " + producerHeader);
             bosGrid.setItems(view.bosLeaderboard());
             bosGrid.setAllRowsVisible(true);
             add(bosGrid);
@@ -188,9 +197,17 @@ public class AwardsPublicResultsView extends VerticalLayout
         labelRow.setAlignItems(FlexComponent.Alignment.BASELINE);
         group.add(labelRow);
         for (var row : rows) {
-            var line = new Paragraph(row.meadName() + " — " + row.producer());
-            line.getStyle().set("margin", "0");
-            group.add(line);
+            var meadName = new Paragraph(row.meadName());
+            meadName.getStyle().set("margin", "0");
+            var producer = new Paragraph(row.producer());
+            producer.getStyle().set("margin", "0")
+                    .set("color", "var(--lumo-secondary-text-color)")
+                    .set("font-size", "var(--lumo-font-size-s)");
+            var entry = new VerticalLayout(meadName, producer);
+            entry.setPadding(false);
+            entry.setSpacing(false);
+            entry.getStyle().set("margin-top", "var(--lumo-space-xs)");
+            group.add(entry);
         }
         add(group);
     }
