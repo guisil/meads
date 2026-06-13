@@ -873,6 +873,7 @@ class DevDataInitializer {
         scoresheetService.updateOverallComments(scoresheetId,
                 "A solid mead overall; a touch more acidity would lift the balance further.",
                 judgeUserId);
+        scoresheetService.setCommentLanguage(scoresheetId, "en", judgeUserId);
         scoresheetService.setAdvancedToMedalRound(scoresheetId, advanced, judgeUserId);
         scoresheetService.markFilled(scoresheetId, judgeUserId);
     }
@@ -937,6 +938,7 @@ class DevDataInitializer {
                         + "and with the minor refinement noted it has clear medal potential at the highest level. "
                         + "Congratulations on a very well-made mead, and best of luck with this and future batches.",
                 judgeUserId);
+        scoresheetService.setCommentLanguage(scoresheetId, "pt", judgeUserId);
         scoresheetService.setAdvancedToMedalRound(scoresheetId, true, judgeUserId);
         scoresheetService.markFilled(scoresheetId, judgeUserId);
     }
