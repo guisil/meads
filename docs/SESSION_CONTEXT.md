@@ -609,10 +609,13 @@ committed walkthrough doc commit (this session changed ONLY `docs/walkthrough/ma
 - **✅ v0.4.0 RELEASED + DEPLOYED 2026-06-09.** `feature/judging-module` merged to `main` (PR #9, merge commit), tagged
   `v0.4.0`, CI deploy succeeded (one transient GHCR `error writing layer blob` on first attempt → `gh run rerun --failed`
   fixed it). DO App Platform rolled out the new image; Flyway V20–V34 run on boot (audited safe: new/empty tables +
-  V27/V30 ALTERs use NOT NULL DEFAULT constants, no destructive ops, V1–V19 untouched). **main now at `0.4.1-SNAPSHOT`.**
+  V27/V30 ALTERs use NOT NULL DEFAULT constants, no destructive ops, V1–V19 untouched). **main now at `0.4.2-SNAPSHOT`.**
   Judging + Awards live. **POST-DEPLOY to verify (user):** meads.app healthy + app log shows Flyway "Successfully applied"
   V20–V34. **Deferred next:** judge tasting-label PDF (design Qs in the ⚑⚑ block); §12.9–§12.12 + §14 walkthrough
   sections skipped (covered live / unit-tested).
+- **✅ v0.4.1 RELEASED + DEPLOYED 2026-06-13.** Patch release on `main`. Seeds `commentLanguage` on dev
+  scoresheets (`"en"` for standard fill, `"pt"` for verbose fill) so the entrant scoresheet dialog's
+  "Comment language" line is exercised on a fresh dev DB. No migration. **main now at `0.4.2-SNAPSHOT`.**
 - **⏸ (prior) WALKTHROUGH COMPLETE (2026-06-09).** §2–§13 all walked
   (clean, with the many fixes committed this session). **Skipped by user (acknowledged):** §12.9–§12.12 interactive
   judge/scoring/medal views (exercised live during Amadora/Profissional round progression; this-session fixes —
