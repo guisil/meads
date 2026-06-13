@@ -670,10 +670,11 @@ class DevDataInitializer {
         var mostra = competitionService.createDivision(
                 fastTrack.getId(), "Mostra", "mostra", ScoringSystem.MJP,
                 LocalDateTime.of(2026, 7, 31, 23, 59), "Europe/Lisbon", compAdminId);
-        competitionService.updateDivisionEntryLimits(mostra.getId(), 5, 5, 10, compAdminId);
+        competitionService.updateDivisionEntryLimits(mostra.getId(), 5, 20, 50, compAdminId);
         competitionService.updateDivision(mostra.getId(),
                 mostra.getName(), mostra.getShortName(), mostra.getScoringSystem(),
                 "FT", compAdminId);
+        competitionService.updateDivisionBosPlaces(mostra.getId(), 3, compAdminId);
         competitionService.advanceDivisionStatus(mostra.getId(), compAdminId); // → REGISTRATION_OPEN
 
         // Judges (must not own entries — entrant@ owns them, so COI is clear).
@@ -684,7 +685,7 @@ class DevDataInitializer {
 
         // Entrant + 5 RECEIVED entries in M1A, chosen to show every scoresheet
         // variation side by side:
-        //   • Mostra Tradicional — advanced, GOLD + Best of Show
+        //   • Mostra Tradicional — advanced, GOLD + Best of Show place 1
         //   • Mostra Reserva     — advanced, SILVER
         //   • Mostra Loquaz      — advanced, BRONZE (long comments — layout stress)
         //   • Mostra Finalista   — advanced to the medal round, but NO medal
@@ -693,6 +694,10 @@ class DevDataInitializer {
         entryService.addCredits(mostra.getId(), entrant.getEmail(), 5, compAdminId);
         var categories = competitionService.findDivisionCategories(mostra.getId());
         var m1a = findCategoryByCode(categories, "M1A");
+        var m1b = findCategoryByCode(categories, "M1B");
+        var m1c = findCategoryByCode(categories, "M1C");
+        var m2c = findCategoryByCode(categories, "M2C");
+        var m3b = findCategoryByCode(categories, "M3B");
         var goldEntry = createReceivedProEntry(mostra, entrant, compAdminId, "Mostra Tradicional", m1a,
                 Sweetness.DRY, 12.0, Carbonation.STILL, "Wildflower honey");
         var silverEntry = createReceivedProEntry(mostra, entrant, compAdminId, "Mostra Reserva", m1a,
@@ -708,13 +713,56 @@ class DevDataInitializer {
         var notAdvancedEntry = createReceivedProEntry(mostra, entrant, compAdminId, "Mostra Singela", m1a,
                 Sweetness.DRY, 10.5, Carbonation.STILL, "Wildflower honey");
 
+        // Additional entries across four more categories (M1B, M1C, M2C, M3B) from
+        // four pro entrants — fills the public results page with medals across multiple
+        // categories so the full-page layout can be checked.
+        var pro1 = userService.findByEmail("proentrant1@example.com");
+        var pro2 = userService.findByEmail("proentrant2@example.com");
+        var pro3 = userService.findByEmail("proentrant3@example.com");
+        var pro4 = userService.findByEmail("proentrant4@example.com");
+        entryService.addCredits(mostra.getId(), pro1.getEmail(), 3, compAdminId);
+        entryService.addCredits(mostra.getId(), pro2.getEmail(), 3, compAdminId);
+        entryService.addCredits(mostra.getId(), pro3.getEmail(), 3, compAdminId);
+        entryService.addCredits(mostra.getId(), pro4.getEmail(), 3, compAdminId);
+
+        // M1B: 3 entries → GOLD / SILVER / BRONZE
+        var m1bGold   = createReceivedProEntry(mostra, pro1, compAdminId, "Lúa de Mel Suave",  m1b, Sweetness.MEDIUM, 12.5, Carbonation.STILL,    "Heather honey");
+        var m1bSilver = createReceivedProEntry(mostra, pro2, compAdminId, "Néctar da Serra",    m1b, Sweetness.MEDIUM, 11.5, Carbonation.STILL,    "Wildflower honey");
+        var m1bBronze = createReceivedProEntry(mostra, pro3, compAdminId, "Miel Dorada",        m1b, Sweetness.MEDIUM, 13.0, Carbonation.STILL,    "Orange blossom honey");
+        // M1C: 2 entries → GOLD / SILVER
+        var m1cGold   = createReceivedProEntry(mostra, pro2, compAdminId, "Doçura Suprema",     m1c, Sweetness.SWEET,  13.5, Carbonation.STILL,    "Acacia honey");
+        var m1cSilver = createReceivedProEntry(mostra, pro4, compAdminId, "Dolcezza Infinita",  m1c, Sweetness.SWEET,  14.0, Carbonation.STILL,    "Chestnut honey");
+        // M2C: 3 entries → GOLD / SILVER / BRONZE
+        var m2cGold   = createReceivedProEntry(mostra, pro1, compAdminId, "Framboesa Selvagem", m2c, Sweetness.MEDIUM, 12.0, Carbonation.PETILLANT, "Wildflower honey");
+        var m2cSilver = createReceivedProEntry(mostra, pro3, compAdminId, "Bayas del Norte",    m2c, Sweetness.DRY,    11.5, Carbonation.STILL,    "Heather honey");
+        var m2cBronze = createReceivedProEntry(mostra, pro4, compAdminId, "Frutti di Bosco",    m2c, Sweetness.MEDIUM, 13.0, Carbonation.STILL,    "Wildflower honey");
+        // M3B: 2 entries → GOLD / SILVER
+        var m3bGold   = createReceivedProEntry(mostra, pro2, compAdminId, "Cardamomo & Lavanda", m3b, Sweetness.MEDIUM, 12.5, Carbonation.STILL,   "Heather honey");
+        var m3bSilver = createReceivedProEntry(mostra, pro4, compAdminId, "Erbe Aromatiche",     m3b, Sweetness.DRY,   11.0, Carbonation.STILL,    "Wildflower honey");
+
         // REGISTRATION_OPEN → REGISTRATION_CLOSED → init judging cats + assign → JUDGING
         competitionService.advanceDivisionStatus(mostra.getId(), compAdminId); // → REGISTRATION_CLOSED
         competitionService.initializeJudgingCategories(mostra.getId(), compAdminId);
-        var m1aJudging = findCategoryByCode(
-                competitionService.findJudgingCategories(mostra.getId()), "M1A");
-        for (var entry : entryService.findEntriesByDivision(mostra.getId())) {
+        var judgingCats = competitionService.findJudgingCategories(mostra.getId());
+        var m1aJudging = findCategoryByCode(judgingCats, "M1A");
+        var m1bJudging = findCategoryByCode(judgingCats, "M1B");
+        var m1cJudging = findCategoryByCode(judgingCats, "M1C");
+        var m2cJudging = findCategoryByCode(judgingCats, "M2C");
+        var m3bJudging = findCategoryByCode(judgingCats, "M3B");
+        for (var entry : java.util.List.of(goldEntry, silverEntry, verboseEntry, advancedNoMedalEntry, notAdvancedEntry)) {
             entryService.assignFinalCategory(entry.getId(), m1aJudging.getId(), compAdminId);
+        }
+        for (var entry : java.util.List.of(m1bGold, m1bSilver, m1bBronze)) {
+            entryService.assignFinalCategory(entry.getId(), m1bJudging.getId(), compAdminId);
+        }
+        for (var entry : java.util.List.of(m1cGold, m1cSilver)) {
+            entryService.assignFinalCategory(entry.getId(), m1cJudging.getId(), compAdminId);
+        }
+        for (var entry : java.util.List.of(m2cGold, m2cSilver, m2cBronze)) {
+            entryService.assignFinalCategory(entry.getId(), m2cJudging.getId(), compAdminId);
+        }
+        for (var entry : java.util.List.of(m3bGold, m3bSilver)) {
+            entryService.assignFinalCategory(entry.getId(), m3bJudging.getId(), compAdminId);
         }
         competitionService.advanceDivisionStatus(mostra.getId(), compAdminId); // → JUDGING
 
@@ -723,6 +771,8 @@ class DevDataInitializer {
         var table = judgingService.createPhysicalTable(mostra.getId(), "Table 1", compAdminId);
         var judge1Id = userService.findByEmail("judge@example.com").getId();
         var judge2Id = userService.findByEmail("judge2@example.com").getId();
+
+        // M1A scoring + medal round.
         var round = judgingService.createRound(
                 judging.getId(), "Mostra M1A", m1aJudging.getId(), null, compAdminId);
         judgingService.assignRoundToPhysicalTable(round.getId(), table.getId(), compAdminId);
@@ -731,11 +781,7 @@ class DevDataInitializer {
         for (var entry : entryService.findEntriesByFinalCategoryId(m1aJudging.getId())) {
             judgingService.assignEntryToRound(round.getId(), entry.getId(), compAdminId);
         }
-        judgingService.startRound(round.getId(), compAdminId); // creates BLANK scoresheets
-
-        // Fill + finalize: judge1 scores every sheet, then the round is finalized.
-        // "Loquaz" gets long comments; "Singela" is the only one NOT flagged to
-        // advance to the medal round (so its scoresheet shows no advanced line).
+        judgingService.startRound(round.getId(), compAdminId);
         for (var sheet : scoresheetService.findByRoundId(round.getId())) {
             if (sheet.getEntryId().equals(verboseEntry.getId())) {
                 fillScoresheetVerbose(sheet.getId(), judge1Id);
@@ -744,34 +790,73 @@ class DevDataInitializer {
                 fillScoresheet(sheet.getId(), judge1Id, advanced);
             }
         }
-        scoresheetService.finalizeScoringRound(round.getId(), compAdminId); // → COMPLETE, totals locked
-
-        // Finalizing the scoring round auto-creates a READY COMPARATIVE medal
-        // round for the category. Run it (admin steps in for the judges): award
-        // GOLD / SILVER / BRONZE, then complete it so BOS can start.
-        var medalRound = judgingService.findRoundsByDivisionAndCategory(mostra.getId(), m1aJudging.getId())
-                .stream()
-                .filter(r -> r.getType() == RoundType.MEDAL)
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("Expected an auto-created medal round"));
-        judgingService.assignRoundToPhysicalTable(medalRound.getId(), table.getId(), compAdminId);
-        judgingService.startRound(medalRound.getId(), compAdminId);
+        scoresheetService.finalizeScoringRound(round.getId(), compAdminId);
+        var m1aMedalRound = judgingService.findRoundsByDivisionAndCategory(mostra.getId(), m1aJudging.getId())
+                .stream().filter(r -> r.getType() == RoundType.MEDAL).findFirst()
+                .orElseThrow(() -> new IllegalStateException("Expected medal round for M1A"));
+        judgingService.assignRoundToPhysicalTable(m1aMedalRound.getId(), table.getId(), compAdminId);
+        judgingService.startRound(m1aMedalRound.getId(), compAdminId);
         judgingService.recordMedal(goldEntry.getId(), Medal.GOLD, compAdminId);
         judgingService.recordMedal(silverEntry.getId(), Medal.SILVER, compAdminId);
         judgingService.recordMedal(verboseEntry.getId(), Medal.BRONZE, compAdminId);
-        judgingService.completeMedalRoundById(medalRound.getId(), compAdminId);
+        judgingService.completeMedalRoundById(m1aMedalRound.getId(), compAdminId);
 
-        // Best of Show: place the confirmed GOLD (bosPlaces defaults to 1), then
-        // complete BOS — judging phase flips to COMPLETE.
+        // M1B, M1C, M2C, M3B: each category gets its own scoring + medal round.
+        runCategoryRound(mostra.getId(), judging, m1bJudging, table.getId(), judge1Id, judge2Id, compAdminId,
+                "Mostra M1B", java.util.Map.of(m1bGold.getId(), Medal.GOLD, m1bSilver.getId(), Medal.SILVER, m1bBronze.getId(), Medal.BRONZE));
+        runCategoryRound(mostra.getId(), judging, m1cJudging, table.getId(), judge1Id, judge2Id, compAdminId,
+                "Mostra M1C", java.util.Map.of(m1cGold.getId(), Medal.GOLD, m1cSilver.getId(), Medal.SILVER));
+        runCategoryRound(mostra.getId(), judging, m2cJudging, table.getId(), judge1Id, judge2Id, compAdminId,
+                "Mostra M2C", java.util.Map.of(m2cGold.getId(), Medal.GOLD, m2cSilver.getId(), Medal.SILVER, m2cBronze.getId(), Medal.BRONZE));
+        runCategoryRound(mostra.getId(), judging, m3bJudging, table.getId(), judge1Id, judge2Id, compAdminId,
+                "Mostra M3B", java.util.Map.of(m3bGold.getId(), Medal.GOLD, m3bSilver.getId(), Medal.SILVER));
+
+        // Best of Show: 3 places from the category gold winners, then complete —
+        // judging phase flips to COMPLETE.
         judgingService.startBos(mostra.getId(), compAdminId);
-        judgingService.recordBosPlacement(mostra.getId(), goldEntry.getId(), 1, compAdminId);
+        judgingService.recordBosPlacement(mostra.getId(), goldEntry.getId(),  1, compAdminId);
+        judgingService.recordBosPlacement(mostra.getId(), m2cGold.getId(),    2, compAdminId);
+        judgingService.recordBosPlacement(mostra.getId(), m1bGold.getId(),    3, compAdminId);
         judgingService.completeBos(mostra.getId(), compAdminId);
 
         // JUDGING → DELIBERATION → publish (RESULTS_PUBLISHED).
         competitionService.advanceDivisionStatus(mostra.getId(), compAdminId);
         awardsService.publish(mostra.getId(), compAdminId);
-        log.info("Fast Track Mostra: published with 5 fully-scored entries "
+        log.info("Fast Track Mostra: published with 15 fully-scored entries across 5 categories "
                 + "(entrant@example.com → My Results → scoresheet + PDF)");
+    }
+
+    private void runCategoryRound(UUID divisionId,
+                                  app.meads.judging.Judging judging,
+                                  DivisionCategory judgingCat,
+                                  UUID tableId,
+                                  UUID judge1Id,
+                                  UUID judge2Id,
+                                  UUID compAdminId,
+                                  String roundName,
+                                  java.util.Map<UUID, Medal> medals) {
+        var round = judgingService.createRound(
+                judging.getId(), roundName, judgingCat.getId(), null, compAdminId);
+        judgingService.assignRoundToPhysicalTable(round.getId(), tableId, compAdminId);
+        judgingService.assignJudge(round.getId(), judge1Id, compAdminId);
+        judgingService.assignJudge(round.getId(), judge2Id, compAdminId);
+        for (var entry : entryService.findEntriesByFinalCategoryId(judgingCat.getId())) {
+            judgingService.assignEntryToRound(round.getId(), entry.getId(), compAdminId);
+        }
+        judgingService.startRound(round.getId(), compAdminId);
+        for (var sheet : scoresheetService.findByRoundId(round.getId())) {
+            fillScoresheet(sheet.getId(), judge1Id, true);
+        }
+        scoresheetService.finalizeScoringRound(round.getId(), compAdminId);
+        var medalRound = judgingService.findRoundsByDivisionAndCategory(divisionId, judgingCat.getId())
+                .stream().filter(r -> r.getType() == RoundType.MEDAL).findFirst()
+                .orElseThrow(() -> new IllegalStateException("Expected medal round for " + judgingCat.getCode()));
+        judgingService.assignRoundToPhysicalTable(medalRound.getId(), tableId, compAdminId);
+        judgingService.startRound(medalRound.getId(), compAdminId);
+        for (var e : medals.entrySet()) {
+            judgingService.recordMedal(e.getKey(), e.getValue(), compAdminId);
+        }
+        judgingService.completeMedalRoundById(medalRound.getId(), compAdminId);
     }
 
     private void fillScoresheet(UUID scoresheetId, UUID judgeUserId, boolean advanced) {

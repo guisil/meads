@@ -243,7 +243,7 @@ public class MyResultsView extends VerticalLayout implements BeforeEnterObserver
         view.setTooltipText(getTranslation("my-results.view-scoresheet"));
         view.addClickListener(e -> openScoresheetDialog(row.scoresheetId(), currentUserId));
         cell.add(view);
-        cell.add(downloadAnchor(row.scoresheetId(), currentUserId));
+        cell.add(downloadAnchor(row.scoresheetId(), row.entryNumber(), currentUserId));
         return cell;
     }
 
@@ -269,9 +269,9 @@ public class MyResultsView extends VerticalLayout implements BeforeEnterObserver
                 + java.util.Base64.getEncoder().encodeToString(competition.getLogo());
     }
 
-    private Anchor downloadAnchor(UUID scoresheetId, UUID userId) {
+    private Anchor downloadAnchor(UUID scoresheetId, String entryNumber, UUID userId) {
         var locale = getLocale();
-        var resource = new StreamResource("scoresheet-" + scoresheetId + ".pdf",
+        var resource = new StreamResource("scoresheet_" + entryNumber + ".pdf",
                 () -> new ByteArrayInputStream(scoresheetPdfService.generatePdf(
                         scoresheetId, userId, AnonymizationLevel.ANONYMIZED, locale)));
         var anchor = new Anchor(resource, "");
