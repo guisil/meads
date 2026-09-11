@@ -7,6 +7,50 @@ needed to continue even without memory files or prior conversation history.
 
 ---
 
+## ⚑ Current state (2026-09-11) — read this first
+
+**Everything below this section** (Project Overview's branch/test-count narrative, the
+"What's Next" priorities list, etc.) describes the judging+awards module development that
+ran through 2026-05 to 2026-06 on `feature/judging-module`. **That work is long since merged
+and shipped** — `main` is released through **v0.4.2** (2026-06-13), currently at
+`0.4.3-SNAPSHOT`, and CHIP 2026 was actually run on the app in June. Treat the rest of this
+file as a historical development log, not a live status board — only this section is current.
+
+**Active thread right now is on branch `explore/judging-tools-review`** (based on `main`,
+not pushed), created 2026-09-11 after a post-competition review session. It contains:
+- The `judging-planner` (standalone Python judge/round scheduler) and `make_labels`
+  (ad-hoc judging-label PDF generator) tools, brought over as committed reference material —
+  including the actual CHIP 2026 schedule/plan run outputs (judge names anonymized to a
+  consistent fake set; the two files with full real names, `original_rounds_input.txt` +
+  `plan.txt`, stay gitignored on purpose).
+- **`docs/plans/2026-09-11-post-competition-todo.md`** — the canonical, decided-and-undecided
+  TODO list for what comes next, consolidating the still-open pre-competition
+  `SESSION_CONTEXT.md` priorities (P7/P7b/P8/P9/P10/P11) with post-competition notes. **Read
+  that file before doing anything else** — it records exactly what's decided (e.g. "build an
+  in-app judging-label PDF generator, integrate the steward-mapping print into the same
+  feature, SCORE_BASED entries get the 'advanced' marker, COI goes per-entry") vs. explicitly
+  left open for discussion (judging-planner integration approach, infra scaling, RAM
+  profiling, serving order, BOS mead-details visibility, MJP scoring-guidance wording,
+  barcode orientation, P7/P7b/P10/P11).
+- A dependency bump (Spring Boot 4.0.6→**4.1.1**, Vaadin 25.1.5→**25.2.7**, Spring Modulith
+  2.0.6→**2.1.1**, bcprov 1.84→1.85.2, openpdf 3.0.4→3.0.5, karibu-testing 2.7.0→2.7.2),
+  fixed for a Jackson 3 migration issue: Spring Boot 4.1 replaced Jackson 2 with Jackson 3 as
+  its managed JSON stack (new `tools.jackson:*` coordinates / `tools.jackson.databind.*`
+  package). `WebhookService` and `DevDataInitializer` construct their own `ObjectMapper`
+  directly rather than injecting Spring's bean, so their `com.fasterxml.jackson.databind.*`
+  imports stopped resolving — fixed by switching both to `tools.jackson.databind.*` (purely
+  mechanical; neither file used any Jackson-2-specific API). `jjwt-jackson` still pulls old
+  Jackson 2.22.1 at `runtime` scope only, isolated inside that library — not a conflict.
+  **Full suite verified green after the fix: 1363 tests, 0 failures/errors**, including
+  `ModulithStructureTest`.
+
+**Suggested first action next session:** open the TODO doc, pick up where the "Suggested next
+step" section points (the Entries-view judged/scoresheet indicator, or the in-app
+judging-label PDF generator — both fully decided, no open design questions), or continue
+working through the still-`(undecided)` items with the user.
+
+---
+
 ## Project Overview
 
 **MEADS (Mead Evaluation and Awards Data System)** — Spring Boot 4 + Vaadin 25
