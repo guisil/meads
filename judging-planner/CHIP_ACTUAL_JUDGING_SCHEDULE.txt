@@ -1,53 +1,53 @@
 
 === THURSDAY morning  [slot 1: fully-received rounds only] ===
-  Slot 1  Mesa 1  scoring  AMA M2       Carlos, Filip, Tiago
-  Slot 1  Mesa 2  scoring  AMA M4       Gonçalo, Marek P
-  Slot 1  Mesa 3  scoring  AMA M2       Aleli, Marc
-  Slot 1  Mesa 4  scoring  PRO M3-D/M   Ivonne, Marek L
-  Slot 2  Mesa 1  score    AMA M4S      Carlos, Filip, Tiago
-  Slot 2  Mesa 2  scoring  PRO M1A/B    Gonçalo, Marek P
-  Slot 2  Mesa 3  scoring  AMA M3-D/M   Aleli, Marc
-  Slot 2  Mesa 4  scoring  AMA M4       Ivonne, Marek L
+  Slot 1  Mesa 1  scoring  AMA M2       Renato, Milan, Rafael
+  Slot 1  Mesa 2  scoring  AMA M4       Simao, Bartek
+  Slot 1  Mesa 3  scoring  AMA M2       Noor, Theo
+  Slot 1  Mesa 4  scoring  PRO M3-D/M   Petra, Dariusz
+  Slot 2  Mesa 1  score    AMA M4S      Renato, Milan, Rafael
+  Slot 2  Mesa 2  scoring  PRO M1A/B    Simao, Bartek
+  Slot 2  Mesa 3  scoring  AMA M3-D/M   Noor, Theo
+  Slot 2  Mesa 4  scoring  AMA M4       Petra, Dariusz
 
 === THURSDAY afternoon ===
-  Slot 1  Mesa 1  scoring  PRO M3-D/M   António, Carlos, Marek L
-  Slot 1  Mesa 2  scoring  AMA M3-D/M   Aleli, Ivonne, Tiago
-  Slot 1  Mesa 3  scoring  AMA M3-S     Filip, Marc
-  Slot 1  Mesa 4  scoring  PRO M1A/B    Gonçalo, Marek P
-  Slot 2  Mesa 1  MEDAL    AMA M3-D/M   António, Carlos, Marek L
-  Slot 2  Mesa 2  MEDAL    AMA M3-S     Aleli, Ivonne, Tiago
-  Slot 2  Mesa 3  MEDAL    PRO M1A/B    Filip, Marc
-  Slot 2  Mesa 4  MEDAL    PRO M3-D/M   Gonçalo, Marek P
-  Slot 3  Mesa 3  MEDAL    AMA M4       Filip, Marc
-  Slot 3  Mesa 4  MEDAL    AMA M2       Gonçalo, Marek P
+  Slot 1  Mesa 1  scoring  PRO M3-D/M   Duarte, Renato, Dariusz
+  Slot 1  Mesa 2  scoring  AMA M3-D/M   Noor, Petra, Rafael
+  Slot 1  Mesa 3  scoring  AMA M3-S     Milan, Theo
+  Slot 1  Mesa 4  scoring  PRO M1A/B    Simao, Bartek
+  Slot 2  Mesa 1  MEDAL    AMA M3-D/M   Duarte, Renato, Dariusz
+  Slot 2  Mesa 2  MEDAL    AMA M3-S     Noor, Petra, Rafael
+  Slot 2  Mesa 3  MEDAL    PRO M1A/B    Milan, Theo
+  Slot 2  Mesa 4  MEDAL    PRO M3-D/M   Simao, Bartek
+  Slot 3  Mesa 3  MEDAL    AMA M4       Milan, Theo
+  Slot 3  Mesa 4  MEDAL    AMA M2       Simao, Bartek
 
 === FRIDAY morning ===
-  Slot 1  Mesa 1  scoring  AMA M1       Aleli, Carlos, Samuel
-  Slot 1  Mesa 2  scoring  PRO M4       Marek L, Marek P, Tiago
-  Slot 1  Mesa 3  scoring  PRO M3-S     Filip, Marc
-  Slot 1  Mesa 4  scoring  PRO M2-M     Gonçalo, Ivonne
-  Slot 2  Mesa 1  MEDAL    PRO M3-S     Aleli, Carlos, Samuel
-  Slot 2  Mesa 2  scoring  PRO M2-S     Marek L, Marek P, Tiago
-  Slot 2  Mesa 3  scoring  PRO M1C      Filip, Marc
-  Slot 2  Mesa 4  MEDAL    PRO M4       Gonçalo, Ivonne
+  Slot 1  Mesa 1  scoring  AMA M1       Noor, Renato, Kwame
+  Slot 1  Mesa 2  scoring  PRO M4       Dariusz, Bartek, Rafael
+  Slot 1  Mesa 3  scoring  PRO M3-S     Milan, Theo
+  Slot 1  Mesa 4  scoring  PRO M2-M     Simao, Petra
+  Slot 2  Mesa 1  MEDAL    PRO M3-S     Noor, Renato, Kwame
+  Slot 2  Mesa 2  scoring  PRO M2-S     Dariusz, Bartek, Rafael
+  Slot 2  Mesa 3  scoring  PRO M1C      Milan, Theo
+  Slot 2  Mesa 4  MEDAL    PRO M4       Simao, Petra
 
 === FRIDAY afternoon ===
-  Slot 1  Mesa 1  scoring  PRO M2-S     Carlos, Marek P, Samuel
-  Slot 1  Mesa 2  MEDAL    PRO M1C      Aleli, Gonçalo
-  Slot 1  Mesa 3  MEDAL    AMA M1       Ivonne, Marc
-  Slot 1  Mesa 4  scoring  PRO M2-M     Filip, Marek L
-  Slot 2  Mesa 1  MEDAL    PRO M2-M     Carlos, Marek P, Samuel
-  Slot 2  Mesa 3  MEDAL    PRO M2-S     Ivonne, Marc
+  Slot 1  Mesa 1  scoring  PRO M2-S     Renato, Bartek, Kwame
+  Slot 1  Mesa 2  MEDAL    PRO M1C      Noor, Simao
+  Slot 1  Mesa 3  MEDAL    AMA M1       Petra, Theo
+  Slot 1  Mesa 4  scoring  PRO M2-M     Milan, Dariusz
+  Slot 2  Mesa 1  MEDAL    PRO M2-M     Renato, Bartek, Kwame
+  Slot 2  Mesa 3  MEDAL    PRO M2-S     Petra, Theo
 
 === FRIDAY afternoon — Best of Show ===
-  BOS Professional: Marek L, Marek P, Ivonne
-  BOS Amateur: Filip, Marc, Aleli
+  BOS Professional: Dariusz, Bartek, Petra
+  BOS Amateur: Milan, Theo, Noor
 
 === preferred trios ===
-  António: trio in THURSDAY afternoon
-  Carlos: trio in THURSDAY morning, THURSDAY afternoon, FRIDAY morning, FRIDAY afternoon
-  Samuel: trio in FRIDAY morning, FRIDAY afternoon
-  Tiago: trio in THURSDAY morning, THURSDAY afternoon, FRIDAY morning
+  Duarte: trio in THURSDAY afternoon
+  Renato: trio in THURSDAY morning, THURSDAY afternoon, FRIDAY morning, FRIDAY afternoon
+  Kwame: trio in FRIDAY morning, FRIDAY afternoon
+  Rafael: trio in THURSDAY morning, THURSDAY afternoon, FRIDAY morning
 
 === pending entries (still to be received) ===
   AMA M3-S: 2 of 7 pending

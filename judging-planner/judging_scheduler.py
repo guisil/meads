@@ -16,7 +16,7 @@ scoring + medal rounds + BOS, honouring:
   * at least one experienced (>=L2) judge per table: two level-1 novices can't pair, but
     may share a table as a trio anchored by a more experienced judge
   * 2- vs 3-judge tables set by TABLE_SIZING (PAIRS / BALANCED / TRIOS), optionally tightened
-    per half-day via TABLE_CAP to force trios; trio slots go to TRIO_JUDGES (e.g. Tiago)
+    per half-day via TABLE_CAP to force trios; trio slots go to TRIO_JUDGES (e.g. Rafael)
   * pending entries (a 2nd number per category) deferred past the arrival deadline
   * sparkling categories kept in consecutive slots; score-based categories run a single
     round (scoring = medal); TOGETHER co-judging preference
@@ -90,7 +90,7 @@ MAX_TABLES = 5
 # Per-half-day table cap (optional). Overrides MAX_TABLES for the named half-day, opening
 # FEWER tables there — which forces larger (3-judge) teams, since every judge is still
 # seated. Use it to manufacture trio slots on a specific half-day: e.g. {"FRI-AM": 4}
-# turns Friday morning's 10 judges from 5 pairs into 2 trios + 2 pairs (so Samuel can take
+# turns Friday morning's 10 judges from 5 pairs into 2 trios + 2 pairs (so Kwame can take
 # a trio). Caution: fewer tables = fewer parallel flights, so the half-day's slots must
 # still hold its rounds (a fully-packed half-day like Thursday afternoon will overflow
 # unless you also free room — lower DAY_FILL_TARGET or add a slot). Empty = MAX_TABLES.
@@ -108,18 +108,18 @@ TABLE_SIZING = "PAIRS"
 # table). They get first claim on the trio slots the head-count naturally creates; a pair
 # is still fine when there's no free trio slot (and there are usually only 1-2 trio slots
 # in the whole event, so not everyone listed will get one). Add names as needed.
-TRIO_JUDGES = {"Tiago", "António", "Samuel", "Carlos"}
+TRIO_JUDGES = {"Rafael", "Duarte", "Kwame", "Renato"}
 
 # Judge groups (pairs or trios) you'd PREFER to see judging together on a team at some
 # point — a soft nudge, not a hard rule (the schedule won't fail to honour it). Each
 # entry is a set of judge keys; they can only end up together in a half-day where all are
 # available. The run reports which were achieved.
-# Example: TOGETHER = [{"Aleli", "Filip"}, {"Marc", "Ivonne", "Gonçalo"}]
+# Example: TOGETHER = [{"Noor", "Milan"}, {"Theo", "Petra", "Simao"}]
 TOGETHER = []
 
 BOS = {
-    "BOS Professional": ["Marek L", "Marek P", "Ivonne"],
-    "BOS Amateur":      ["Filip", "Marc", "Aleli"],
+    "BOS Professional": ["Dariusz", "Bartek", "Petra"],
+    "BOS Amateur":      ["Milan", "Theo", "Noor"],
 }
 
 LANG_TO_NAT = {"english": "EN", "spanish": "ES", "polish": "PL",
@@ -158,7 +158,7 @@ def parse_input(path):
     written `CODE (total)` or `CODE (total, still_to_receive)`; the optional second
     number is how many of that category's entries have not yet arrived (defaults 0).
     Judge keys are first names, disambiguated with an ASCII last-initial on collision
-    (e.g. 'Marek L')."""
+    (e.g. 'Dariusz')."""
     cats = {}
     pend = {}
     sparkling = set()
@@ -235,7 +235,7 @@ def team_ok(members):
     """Hard constraints on team composition:
     1. NO linguistically-isolated judge — every judge must share a language with at least
        one OTHER judge at the table. A bilingual judge can bridge, so e.g. a Portuguese-only
-       judge (Carlos) may sit with a PT+EN judge and an EN-only judge: Carlos shares PT with
+       judge (Renato) may sit with a PT+EN judge and an EN-only judge: Renato shares PT with
        the bridge, the EN judge shares EN with it. (A pair still must share a language directly.)
     2. At least one experienced (>=L2) judge per table — two level-1 novices can't be a pair,
        but they may share a table as a trio anchored by a more experienced judge.
@@ -294,7 +294,7 @@ def form_teams(roster, n_tables, rng):
         return ({anchor} | combos[0]) if anchor else combos[0]
 
     # requested co-judging trios claim trio slots first (so they actually form, since
-    # otherwise Tiago takes the lone trio); then Tiago's trio; then any remaining trios
+    # otherwise Rafael takes the lone trio); then Rafael's trio; then any remaining trios
     for g in TOGETHER:
         if n_trios == 0:
             break
