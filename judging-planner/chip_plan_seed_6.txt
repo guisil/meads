@@ -1,0 +1,46 @@
+# Resume plan. Edit, then re-plan the remaining rounds with:
+#     python3 judging_scheduler.py --resume plan.txt
+#
+# - Mark each round 'done' (it happened) or 'todo' (missed / not done). Only 'done'
+#   rounds are kept; everything still owed is rescheduled into the 'Remaining' half-days.
+# - A half-day may be partly done: keep it in 'Remaining' and mark the rounds that
+#   happened 'done' (with their Mesa + judges) — its teams are reused for the rest.
+# - Pending entries didn't arrive? edit the counts in rounds_input.txt.
+# - A judge left? edit their availability in rounds_input.txt (e.g. THU/FRI -> THU).
+# - Lost time? trim the 'Remaining' line (cut a slot count or delete a half-day).
+
+Remaining: THU-AM=2, THU-PM=3, FRI-AM=2, FRI-PM=2
+
+Rounds:
+todo  THU-AM  -  -  scoring  AMA M4
+todo  THU-AM  -  -  scoring  AMA M2
+todo  THU-AM  -  -  scoring  PRO M2-S
+todo  THU-AM  -  -  scoring  PRO M4
+todo  THU-AM  -  -  scoring  AMA M4
+todo  THU-AM  -  -  scoring  AMA M2
+todo  THU-AM  -  -  score  AMA M4S
+todo  THU-AM  -  -  scoring  PRO M2-M
+todo  THU-PM  -  -  MEDAL  PRO M4
+todo  THU-PM  -  -  scoring  PRO M2-M
+todo  THU-PM  -  -  scoring  PRO M1A/B
+todo  THU-PM  -  -  MEDAL  AMA M4
+todo  THU-PM  -  -  MEDAL  PRO M2-M
+todo  THU-PM  -  -  scoring  PRO M2-S
+todo  THU-PM  -  -  scoring  PRO M1A/B
+todo  THU-PM  -  -  MEDAL  PRO M2-S
+todo  THU-PM  -  -  MEDAL  PRO M1A/B
+todo  THU-PM  -  -  MEDAL  AMA M2
+todo  FRI-AM  -  -  scoring  AMA M1
+todo  FRI-AM  -  -  scoring  AMA M3-D/M
+todo  FRI-AM  -  -  scoring  PRO M3-D/M
+todo  FRI-AM  -  -  scoring  AMA M3-D/M
+todo  FRI-AM  -  -  scoring  PRO M3-S
+todo  FRI-AM  -  -  scoring  PRO M3-D/M
+todo  FRI-AM  -  -  scoring  PRO M1C
+todo  FRI-PM  -  -  scoring  AMA M3-S
+todo  FRI-PM  -  -  MEDAL  PRO M1C
+todo  FRI-PM  -  -  MEDAL  PRO M3-D/M
+todo  FRI-PM  -  -  MEDAL  AMA M3-S
+todo  FRI-PM  -  -  MEDAL  AMA M1
+todo  FRI-PM  -  -  MEDAL  AMA M3-D/M
+todo  FRI-PM  -  -  MEDAL  PRO M3-S
