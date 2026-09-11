@@ -6,7 +6,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>4.0.6</version>
+		<version>4.1.1</version>
 		<relativePath/>
 	</parent>
 
@@ -18,13 +18,13 @@
 
 	<properties>
 		<java.version>25</java.version>
-		<vaadin.version>25.1.5</vaadin.version>
-		<spring-modulith.version>2.0.6</spring-modulith.version>
+		<vaadin.version>25.2.7</vaadin.version>
+		<spring-modulith.version>2.1.1</spring-modulith.version>
 		<jjwt.version>0.13.0</jjwt.version>
-		<bcprov-jdk18on.version>1.84</bcprov-jdk18on.version>
-		<openpdf.version>3.0.4</openpdf.version>
+		<bcprov-jdk18on.version>1.85.2</bcprov-jdk18on.version>
+		<openpdf.version>3.0.5</openpdf.version>
 		<google.zxing.version>3.5.4</google.zxing.version>
-		<karibu-testing.version>2.7.0</karibu-testing.version>
+		<karibu-testing.version>2.7.2</karibu-testing.version>
 		<testcontainers.version>2.0.5</testcontainers.version>
 		<awaitility.version>4.3.0</awaitility.version>
 	</properties>
