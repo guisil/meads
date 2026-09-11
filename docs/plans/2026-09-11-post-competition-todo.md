@@ -36,8 +36,17 @@ Considerations:
   `JudgingAdminView` can bulk-import (a CSV/JSON of round → table → judges → entries) instead
   of the human-readable text report it produces now.
 
-**(decide)** — read `judging_scheduler_GUIDE.md` against `JudgingAdminView`'s current round
-creation flow and pick one of the three.
+**(undecided, 2026-09-11)** — leaning toward wanting it integrated (running two systems for
+one competition isn't appealing), but a full Vaadin UI for editing the constraint model
+(judge languages/levels/COI, trio preferences, table-size mix) feels like overkill and risks
+being worse to actually use than the current text/CLI workflow during event-week iteration.
+Idea worth exploring next time this is picked up: **integrate the solver into the app but
+keep configuring it declarative** — e.g. upload/edit a config file (YAML/JSON) for the
+judge roster + constraints, run the solve server-side, review/adjust the result in a normal
+Vaadin view, then commit it as rounds + judge assignments. That would keep the fast
+config-file iteration `judging_scheduler_GUIDE.md`'s workflow depends on while removing the
+separate app + the hand-transcription step. Not designed yet — revisit before the next
+competition, not urgent now.
 
 ### A2. Judge tasting-label PDF — supersedes the old SESSION_CONTEXT item
 The originally-planned in-app feature ("judge tasting-label PDF... to tape on glasses") never
@@ -45,40 +54,48 @@ got built; `make_labels/make_labels.py` was used instead as a stopgap for the ac
 a one-off script reading a hardcoded `~/Downloads/CHIP_judging_labels.txt` and writing an A4
 grid PDF (2-col, entry-number row + 3 entry-code rows per page, font auto-shrink to fit).
 
-**(decide, then implement)** — the real ask is broader than "generate this one PDF": see
-section E below (Labels) for the full scope, which also covers the steward-facing
-code-mapping print and the barcode-scanning idea. Settle E first, then this item becomes
-"add a bulk anonymized-code label PDF generator to the app," reusing
-`ScoresheetPdfService`'s PDF patterns (OpenPDF, `PdfPTable`/`PdfPCell`) rather than `fpdf2`.
+**(decided, 2026-09-11) — integrate.** Confirmed by reconstructing the actual event workflow
+from file timestamps: `CHIP_judging_labels.pdf` (136 pages — the file actually printed) came
+from `make_labels.py` reading a manually SQL-exported `(entry number, entry code)` list; an
+earlier mail-merge attempt (`CHIP_etiquetas.*`) was abandoned. `Entry.entryCode` and the
+number formatting already exist in the app (`LabelPdfService.formatEntryId`) — nothing to
+export by hand once this is built. Becomes: add a bulk anonymized-code label PDF generator
+(port `make_labels.py`'s layout into `LabelPdfService` using its existing OpenPDF/`PdfPTable`
+setup) + a "Download judging labels" button, most likely on `DivisionEntryAdminView`'s
+Entries tab next to the existing label-download actions. Barcode/QR-instead-of-text and the
+steward-safe code-mapping print (section E) are separate follow-ons on top of this, not
+blockers — this item is just the direct script→button port.
 
 ---
 
 ## B. Infrastructure
 
-- **(decide)** Provision more capacity right as judging starts. Observed: the app was fine
-  most of the day on a dedicated container, then hit 503s the moment judging began (load
-  jumped from idle to peak), recovered after what looked like a cloud-provider auto-adjustment,
-  then ran high-RAM the rest of the day; doubling RAM fixed day 2. Need either a manual
-  "scale up before judging, scale down after" runbook step, or autoscaling on the DO app spec
-  (check what App Platform's autoscaling actually supports before assuming it's available).
-- **(decide)** Year-round footprint is oversized for how the app is actually used (managed
-  Postgres running 24/7 for a once-a-year judging spike). Sketch a cheaper steady-state
-  deployment (e.g. scale the DB/app down outside the competition window) vs. a
-  cheaper-provider alternative — user flagged mikr.us as one option to look at; worth a
-  wider survey, not just that one.
+- **(undecided, 2026-09-11)** Provision more capacity right as judging starts. Observed: the
+  app was fine most of the day on a dedicated container, then hit 503s the moment judging
+  began (load jumped from idle to peak), recovered after what looked like a cloud-provider
+  auto-adjustment, then ran high-RAM the rest of the day; doubling RAM fixed day 2. Two
+  candidate fixes floated, neither picked: a manual "scale up before judging, scale down
+  after" runbook step in `deployment-checklist.md`, or checking whether DigitalOcean App
+  Platform's autoscaling actually covers this tier (could replace the manual step if so).
+  Revisit before the next competition.
+- **(undecided, 2026-09-11)** Year-round footprint is oversized for how the app is actually
+  used (managed Postgres running 24/7 for a once-a-year judging spike). Needs a proper
+  provider/cost survey (mikr.us was one option flagged, not the only one to check) before a
+  scale-down plan can be picked — not a quick decision, revisit in a future session.
 
 ## C. Code / performance
 
-- **(decide)** Root-cause the RAM pressure before assuming more infra is the fix: is this
-  inherent to a JVM + Vaadin server-side-rendering app (each active session holds server-side
-  UI state), or is it something in *this* app's code (N+1 loads, unbounded collections read
-  into memory, session data not being cleaned up)? Profile a judging-load scenario
-  (many concurrent judges filling scoresheets) locally before the next event and look at
-  actual heap composition, not just the `-Xmx` ceiling.
-- **(decide)** Whether a different stack would meaningfully help is really a follow-on
-  question to the profiling above — premature to pick a target stack before knowing what's
-  actually consuming memory. Revisit only if profiling shows the cost is structural to
-  Vaadin Flow (e.g. per-session component tree retention) rather than fixable in this app.
+- **(undecided, 2026-09-11)** Root-cause the RAM pressure before assuming more infra is the
+  fix: is this inherent to a JVM + Vaadin server-side-rendering app (each active session holds
+  server-side UI state), or is it something in *this* app's code (N+1 loads, unbounded
+  collections read into memory, session data not being cleaned up)? Needs an actual profiling
+  session under judging-like load (many concurrent judges filling scoresheets), not something
+  to settle without data — revisit before the next competition.
+- **(undecided, contingent on the item above, 2026-09-11)** Whether a different stack would
+  meaningfully help. Explicitly a follow-on to the profiling item — premature to pick a target
+  stack before knowing what's actually consuming memory. Only becomes live if profiling shows
+  the cost is structural to Vaadin Flow (e.g. per-session component tree retention) rather than
+  fixable in this app's code.
 - **(implement, ongoing)** General code-quality pass — no specific finding yet; fold into
   normal review/refactor cadence rather than a standalone task.
 
@@ -93,25 +110,23 @@ code-mapping print and the barcode-scanning idea. Settle E first, then this item
   row to its scoresheet, (3) an aggregate count (e.g. "38/40 entries scored") so admins can
   confirm nothing was missed before finalizing. This is the most concrete, well-scoped item in
   the whole list — good candidate for the first TDD cycle out of this doc.
-- **(decide)** Let admins choose whether a round's entries go to the table all at once vs. one
-  at a time; for the one-at-a-time case, order by "intensity" (sweetness/strength/ABV
-  ascending) so judges taste light-to-heavy. Needs a concrete ordering heuristic before
-  implementation (e.g. sort key = strength then sweetness then ABV) — probably start
-  with a manual admin-settable order and treat auto-ordering as a stretch goal.
-- **(decide)** Registration-time validation tied to category (melomels requiring a fruit/other
-  ingredient field, etc.), configurable per category. This overlaps directly with the existing
-  deferred **Priority 8 — full category constraint system** below (sweetness/strength/ABV/
-  carbonation locking + admin-configurable constraints); treat as the same effort rather than
-  building two overlapping constraint systems.
-- **(decide)** Should judges see mead details (category, ABV, ingredients — not the
-  entrant/mead name) during Best of Show? Today BOS is comparative/blind by design; settle
-  whether BOS wants the same "view mead details" affordance already shipped for other rounds
-  (SESSION_CONTEXT's now-DONE P17), or should stay fully blind on purpose.
-- **(decide)** MJP scoresheet field guidance reads inconsistently with the "60+ = award-worthy"
-  convention — an "average" mead scored per the printed field guidance lands under 60. Either
-  reword the per-field guidance to be consistent with the threshold, or add a live warning when
-  the running total is trending under 60 so judges notice before submitting. Needs the actual
-  MJP field-guidance text in front of you to decide which fix reads better.
+- **(undecided, 2026-09-11)** Let admins choose whether a round's entries go to the table all
+  at once vs. one at a time; for the one-at-a-time case, order by "intensity"
+  (sweetness/strength/ABV ascending) so judges taste light-to-heavy. No concrete ordering
+  heuristic settled — revisit in a future session.
+- **(undecided, 2026-09-11 — same effort as Priority 8 below)** Registration-time validation
+  tied to category (melomels requiring a fruit/other ingredient field, etc.), configurable per
+  category. Merges with the deferred **Priority 8 — full category constraint system**
+  (sweetness/strength/ABV/carbonation locking + admin-configurable constraints) — treat as one
+  effort, not two overlapping constraint systems, when picked up.
+- **(undecided, 2026-09-11)** Should judges see mead details (category, ABV, ingredients — not
+  the entrant/mead name) during Best of Show? Today BOS is comparative/blind by design; open
+  question whether it should stay that way or match the "view mead details" affordance already
+  shipped for other rounds (P17).
+- **(undecided, 2026-09-11)** MJP scoresheet field guidance reads inconsistently with the
+  "60+ = award-worthy" convention — an "average" mead scored per the printed field guidance
+  lands under 60. Reword-the-guidance vs. add-a-live-warning both floated; needs the actual MJP
+  field-guidance text in front of you to pick one — revisit in a future session.
 - **(implement)** Add a "should be served cold" flag on entry registration (steward-facing
   logistics, not judged). Straightforward boolean field: migration + entity + registration
   form checkbox + display wherever entrants' serving instructions matter.
@@ -122,66 +137,106 @@ code-mapping print and the barcode-scanning idea. Settle E first, then this item
 - **(implement)** "Preview results" button/label should read as "View results" (not
   "Preview") once results are actually published — it currently keeps the pre-publish "Preview"
   wording after publication, which misleadingly suggests it's still a draft.
-- **(decide)** Entries judged in a SCORE_BASED medal round aren't marked "advanced to medal
-  round" (that flag/label exists for the COMPARATIVE prelim→medal flow). Decide whether
-  SCORE_BASED entries should get the same "advanced" marker for consistency, given SCORE_BASED
-  by design skips the separate prelim step.
-- **(decide)** Conflict-of-interest declarations are per judge↔entrant today (manual COI,
-  already shipped); consider whether COI should be expressible per judge↔**entry** instead
-  (the example given: a judge related to one specific mead within an otherwise-unrelated
-  entrant's lineup) — a narrower, more precise COI than blocking the judge from the entrant's
-  entire portfolio. Needs a decision on whether the coarser judge↔entrant COI is actually
-  causing real problems before adding the finer-grained model.
+- **(decided, 2026-09-11) — yes.** Entries judged in a SCORE_BASED medal round aren't marked
+  "advanced to medal round" (that flag/label exists for the COMPARATIVE prelim→medal flow).
+  For consistency, SCORE_BASED entries get the same "advanced" marker/label even though
+  SCORE_BASED skips the separate prelim step by design. **(implement)**.
+- **(decided, 2026-09-11) — yes.** Conflict-of-interest declarations are per judge↔entrant
+  today (manual COI, already shipped); extend COI to be expressible per judge↔**entry**
+  instead (the example given: a judge related to one specific mead within an otherwise-
+  unrelated entrant's lineup) — narrower and more precise than blocking the judge from the
+  entrant's entire portfolio. **(implement)** — needs a design pass on the manual-COI UI/data
+  model first (currently keyed judge↔entrant) but the direction is settled.
 
 ## E. Labels
 
-- **(decide)** Vertical vs. square barcode orientation, raised as a suggestion to make
-  scanning easier on a bottle (round surface, label sometimes wraps or gets printed small).
-  Needs a concrete prototype/comparison before deciding — worth testing both orientations
-  against a real bottle + phone scanner before committing to one in the generated PDF.
-- **(implement, follows E's barcode decision)** Small-print legibility: entrants sometimes
-  print labels tiny enough that the entry number/code text becomes unreadable. A scannable
-  barcode/QR alongside (or instead of) the human-readable code would make this a non-issue —
-  reinforces doing the barcode work regardless of orientation.
-  addressed together.
+- **(undecided, 2026-09-11)** Vertical vs. square barcode/QR orientation, raised as a
+  suggestion to make scanning easier on a bottle (round surface, label sometimes wraps or gets
+  printed small). Needs a real prototype/comparison against an actual bottle + phone scanner
+  before picking one — revisit in a future session. Note `LabelPdfService` already embeds a
+  square QR code on the entrant bottle-shipping label (see `generateQrImage`), so whatever's
+  decided here should stay consistent with that existing usage unless there's a specific
+  reason judging labels need a different shape.
+- **(implement, follows the barcode-orientation decision above)** Small-print legibility:
+  entrants sometimes print labels tiny enough that the entry number/code text becomes
+  unreadable. A scannable barcode/QR alongside (or instead of) the human-readable code would
+  make this a non-issue.
 - **(implement)** Bring label generation for judging in-app, replacing `make_labels.py`.
   Scope: bulk-generate the same "entry number (small) + entry code (large, ×3)" A4 grid PDF for
-  all RECEIVED entries in a division/category, reusing `ScoresheetPdfService`'s OpenPDF
-  patterns rather than the script's `fpdf2` dependency. This is the direct in-app replacement
-  for the old "judge tasting-label PDF" SESSION_CONTEXT item (A2 above).
-- **(decide, then implement)** Automate the steward-facing print: stewards need a mapping from
-  entry number to entry code *without* seeing both codes/IDs together in a way that would leak
-  the anonymization (i.e., whatever a steward carries around the room to know which bottle is
-  which must not double as a way to de-anonymize a scoresheet). Currently done by hand with a
-  local script (`make_labels/CHIP_judging_label_scheme.txt` shows the intended cell layout).
-  Needs a decision on exactly what a steward is allowed to see at once before it can be
-  automated safely.
+  all RECEIVED entries in a division/category, reusing `LabelPdfService`'s OpenPDF patterns
+  rather than the script's `fpdf2` dependency. This is A2 above — see that entry for the
+  decision record.
+- **(decided, 2026-09-11) — fold into the A2 judging-labels feature, not a separate print.**
+  Stewards need a mapping from entry number to entry code *without* seeing both codes/IDs
+  together in a way that would leak the anonymization (whatever a steward carries around the
+  room to know which bottle is which must not double as a way to de-anonymize a scoresheet).
+  Currently done by hand with a local script (`make_labels/CHIP_judging_label_scheme.txt`
+  shows the intended cell layout). Treat as a variant/view of the same in-app label feature
+  (same underlying number↔code data, different filtering/columns for the steward audience)
+  rather than a separate tool — but note the open sub-question isn't resolved yet: exactly
+  what a steward is allowed to see at once (e.g. maybe only "which table has entry N," never
+  the code, or only the code without the entrant-facing number) needs to be settled as part of
+  designing that feature, not before it.
 
 ## F. Still-open items carried over from `docs/SESSION_CONTEXT.md`
 
 These were already deferred pre-competition and remain open; nothing above changes their
 priority, they're listed here so this doc is the single place to look.
 
-- **P7 — Auto-close + deadline reminders**: auto-advance REGISTRATION_OPEN →
-  REGISTRATION_CLOSED on deadline; entrant reminders for DRAFT entries as the deadline nears.
-- **P7b — MFA recovery codes**: one-time backup codes as a second self-service MFA recovery
-  path alongside the existing email-based reset. Worth revisiting given D's registration/judging
-  operational load — but no new signal from this competition either way.
+- **(undecided, 2026-09-11) P7 — Auto-close + deadline reminders**: auto-advance
+  REGISTRATION_OPEN → REGISTRATION_CLOSED on deadline; entrant reminders for DRAFT entries as
+  the deadline nears. No new signal from this competition either way — kept open.
+- **(undecided, 2026-09-11) P7b — MFA recovery codes**: one-time backup codes as a second
+  self-service MFA recovery path alongside the existing email-based reset. No new signal from
+  this competition either way — kept open.
 - **P8 — Full category constraint system**: merge with D's ingredient/category validation item
-  above; same effort.
-- **P9 — Bitwarden compatibility warning on login**: cosmetic dev-experience nuisance, root
-  cause understood (Vaadin's popover-based overlays vs. Bitwarden's inline-menu heuristics), no
-  functional impact. Low priority.
-- **P10 — Statistics/metrics view**: aggregate competition metrics for presentations/awards
-  ceremonies. Still open questions on scope/placement (see SESSION_CONTEXT for the sketch).
-- **P11 — Translate the MJP catalog categories**: ~32 categories × name+description × 5
-  locales still English-only in the catalog picker.
+  above; same effort, same undecided status.
+- **(decided, 2026-09-11) P9 — Bitwarden compatibility warning on login: closed, accept as-is.**
+  Cosmetic dev-experience nuisance, root cause understood (Vaadin's popover-based overlays vs.
+  Bitwarden's inline-menu heuristics), no functional impact. Not pursuing a fix.
+- **(undecided, 2026-09-11) P10 — Statistics/metrics view**: aggregate competition metrics for
+  presentations/awards ceremonies. Still open questions on scope/placement (see
+  SESSION_CONTEXT for the sketch) — kept open.
+- **(undecided, 2026-09-11) P11 — Translate the MJP catalog categories**: ~32 categories ×
+  name+description × 5 locales still English-only in the catalog picker — kept open.
 
 ---
 
+## Decision pass — 2026-09-11 summary
+
+Went through every item once. Result:
+
+**Decided (ready to implement, no further design needed beyond what's noted inline):**
+- A2 — in-app judging-label PDF generator (integrate, replacing `make_labels.py`)
+- E — steward-safe code mapping folds into the A2 feature (sub-question on exact visibility
+  still needs settling as part of that design, not before it)
+- D — SCORE_BASED medal-round entries get the "advanced" marker too
+- D — per-entry (not just per-entrant) manual COI
+- P9 — Bitwarden warning: closed, not pursuing a fix
+
+**Undecided — revisit in a future session:**
+- A1 — judging-planner integration (leaning toward integrating with a declarative
+  config-file approach instead of a full UI, not designed yet)
+- B1/B2 — judging-day scaling, off-season cost/provider survey
+- C1/C2 — RAM profiling, and stack choice contingent on it
+- D — serving order (all-at-once vs. one-at-a-time + intensity sort)
+- D/P8 — category-tied registration validation (ingredient requirements + full constraint
+  system)
+- D — BOS mead-details visibility
+- D — MJP scoresheet guidance vs. the 60+ threshold
+- E — barcode/QR orientation (vertical vs. square)
+- P7 — auto-close + deadline reminders
+- P7b — MFA recovery codes
+- P10 — statistics/metrics view
+- P11 — translate the MJP catalog categories
+
+**Already unambiguous, no decision needed (just queued implementation):** entry number/code
+visibility in judging rounds, judged/scoresheet status on the Entries view, cold-serving flag,
+results-email recipient scoping, "Preview" → "View results" label fix.
+
 ## Suggested next step
 
-Work section **A** first (both are yes/no/how decisions, not implementation) since they
-determine whether D's "entry ↔ judging status" item and E's label work touch one app or two.
-Then D's "judged/scoresheet indicator on the Entries view" is the best first **(implement)**
-cycle — small, well-scoped, existing tests to extend, no open design questions.
+The "judged/scoresheet indicator on the Entries view" item (section D) is the best first
+**(implement)** cycle among the decided/unambiguous items — small, well-scoped, existing
+tests to extend, no open design questions. A2 (judging labels) is the other strong candidate
+now that its decision is locked in and the actual print workflow is understood end-to-end.
