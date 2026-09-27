@@ -2974,9 +2974,13 @@ republish variant. Adjust expectations accordingly.
 - [ ] **Expected:** Green success notification "Announcement queued for
   delivery."; dialog closes.
 - [ ] Open Mailpit at `http://localhost:8025`.
-- [ ] **Expected:** One email per entrant in the division (each entrant gets
-  a single email — even those without entries don't, since the recipient
-  list comes from distinct entry `userId`s).
+- [ ] **Expected:** One email per entrant with **at least one RECEIVED entry** in the
+  division (each gets a single email). Entrants whose entries are all DRAFT / SUBMITTED
+  (never received) / WITHDRAWN get **nothing** — they have no results. For the Amadora seed
+  that's exactly **4 emails**: `user@example.com`, `entrant@example.com`,
+  `buyer1@example.com`, `judge3@example.com` (every Amadora entrant has a received entry, so
+  nobody is excluded here; the exclusion is covered by `EntryRepositoryTest` +
+  `AwardsServiceImplTest`).
 - [ ] Open one email.
 - [ ] **Expected:** Subject "Your CHIP 2026 — Amadora results are available".
 - [ ] **Expected:** Body uses the standard "results published" template:

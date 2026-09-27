@@ -143,7 +143,7 @@ blockers — this item is just the direct script→button port.
 - **(implement)** Add a "should be served cold" flag on entry registration (steward-facing
   logistics, not judged). Straightforward boolean field: migration + entity + registration
   form checkbox + display wherever entrants' serving instructions matter.
-- **(implement)** Results-published notification email currently goes to every participant
+- **(done, 2026-09-27 — option (a): entrants with ≥1 RECEIVED entry)** Results-published notification email currently goes to every participant
   regardless of whether they have any scoresheets — including entries that were never
   RECEIVED. Scope the recipient list to entrants who actually have entries with results (or at
   minimum entries that reached RECEIVED), not just "everyone in the division."
@@ -247,10 +247,11 @@ Went through every item once. Result:
 visibility in judging rounds, ~~judged/scoresheet status on the Entries view~~ (done
 2026-09-27), cold-serving flag,
 results-email recipient scoping, ~~"Preview" → "View results" label fix~~ (done 2026-09-27).
+~~Results-email recipient scoping~~ (done 2026-09-27).
 
 ## Suggested next step
 
 Done 2026-09-27: the "judged/scoresheet indicator on the Entries view" (section D) and **A2
-(in-app judging-label PDF)**, and the "Preview" → "View results" label fix. Next queued (small,
-decided): results-email recipient scoping, the cold-serving flag. Bigger follow-on: the
+(in-app judging-label PDF)**, the "Preview" → "View results" label fix, and results-email
+recipient scoping. Next queued (small, decided): the cold-serving flag. Bigger follow-on: the
 steward code-mapping print (section E, needs its visibility sub-question settled first).

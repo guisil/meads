@@ -70,10 +70,17 @@ not pushed), created 2026-09-11 after a post-competition review session. It cont
   Test: `AwardsAdminViewTest#shouldLabelResultsLinkViewResultsWhenStatusPublished` (+ the
   pre-publish label pinned in the DELIBERATION test); walkthrough §13.2.
   **Full suite: 1372 tests, 0 failures/errors.**
+- **Results-announcement recipients scoped (2026-09-27):** `AwardsServiceImpl.sendAnnouncement`
+  now emails only entrants with ≥1 **RECEIVED** entry in the division (was: anyone with any
+  entry, incl. DRAFT/SUBMITTED/WITHDRAWN-only). New `EntryService.findUserIdsWithReceivedEntries`
+  → `EntryRepository.findDistinctUserIdsByDivisionIdAndStatus`; the old unfiltered
+  `findEntrantUserIdsForDivision` / `findDistinctUserIdsByDivisionId` were removed (no other
+  callers). Tests: `EntryRepositoryTest` + `AwardsServiceImplTest` (1 new each); walkthrough
+  §13.9. **Full suite: 1374 tests, 0 failures/errors.**
 
 **Suggested first action next session:** open the TODO doc, pick up where the "Suggested next
 step" section points (the Entries-view indicator and A2 judging labels are done; next are
-the small queued items — results-email scoping, cold-serving flag), or
+the cold-serving flag — the last small queued item), or
 continue working through the still-`(undecided)` items with the user.
 
 ---

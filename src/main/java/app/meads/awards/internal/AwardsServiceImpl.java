@@ -167,7 +167,7 @@ public class AwardsServiceImpl implements AwardsService {
             type = EmailService.ResultsAnnouncementType.INITIAL_NO_CUSTOM;
             body = null;
         }
-        var userIds = entryService.findEntrantUserIdsForDivision(divisionId);
+        var userIds = entryService.findUserIdsWithReceivedEntries(divisionId);
         int sent = 0;
         for (var userId : userIds) {
             User user;

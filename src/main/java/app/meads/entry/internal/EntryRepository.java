@@ -43,6 +43,7 @@ public interface EntryRepository extends JpaRepository<Entry, UUID> {
     List<Entry> findByUserIdAndCompetitionId(@Param("userId") UUID userId,
                                              @Param("competitionId") UUID competitionId);
 
-    @Query("SELECT DISTINCT e.userId FROM Entry e WHERE e.divisionId = :divisionId")
-    List<UUID> findDistinctUserIdsByDivisionId(@Param("divisionId") UUID divisionId);
+    @Query("SELECT DISTINCT e.userId FROM Entry e WHERE e.divisionId = :divisionId AND e.status = :status")
+    List<UUID> findDistinctUserIdsByDivisionIdAndStatus(@Param("divisionId") UUID divisionId,
+                                                        @Param("status") EntryStatus status);
 }

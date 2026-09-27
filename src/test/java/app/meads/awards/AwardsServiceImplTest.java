@@ -24,12 +24,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
@@ -503,7 +506,7 @@ class AwardsServiceImplTest {
         given(publicationRepository.findTopByDivisionIdOrderByVersionDesc(divisionId))
                 .willReturn(Optional.of(new Publication(divisionId, adminUserId)));
         var user1 = UUID.randomUUID();
-        given(entryService.findEntrantUserIdsForDivision(divisionId))
+        given(entryService.findUserIdsWithReceivedEntries(divisionId))
                 .willReturn(java.util.List.of(user1));
         var u1 = mock(User.class);
         given(u1.getEmail()).willReturn("entrant@test.com");
@@ -527,6 +530,37 @@ class AwardsServiceImplTest {
     }
 
     @Test
+    void shouldSendAnnouncementOnlyToEntrantsWithReceivedEntries() {
+        var service = createService();
+        var divisionId = UUID.randomUUID();
+        var adminUserId = UUID.randomUUID();
+        var competitionId = UUID.randomUUID();
+        var division = mock(Division.class);
+        given(division.getStatus()).willReturn(DivisionStatus.RESULTS_PUBLISHED);
+        given(division.getCompetitionId()).willReturn(competitionId);
+        given(division.getName()).willReturn("Amadora");
+        given(competitionService.findDivisionById(divisionId)).willReturn(division);
+        given(competitionService.isAuthorizedForDivision(divisionId, adminUserId)).willReturn(true);
+        var competition = mock(Competition.class);
+        given(competition.getName()).willReturn("CHIP 2026");
+        given(competitionService.findCompetitionById(competitionId)).willReturn(competition);
+        given(publicationRepository.findTopByDivisionIdOrderByVersionDesc(divisionId))
+                .willReturn(Optional.of(new Publication(divisionId, adminUserId)));
+        var receivedEntrant = UUID.randomUUID();
+        given(entryService.findUserIdsWithReceivedEntries(divisionId)).willReturn(List.of(receivedEntrant));
+        var user = mock(User.class);
+        given(user.getEmail()).willReturn("received@test.com");
+        given(userService.findById(receivedEntrant)).willReturn(user);
+
+        service.sendAnnouncement(divisionId, null, adminUserId);
+
+        then(emailService).should().sendResultsAnnouncement(eq("received@test.com"), any(),
+                eq(EmailService.ResultsAnnouncementType.INITIAL_NO_CUSTOM), eq("CHIP 2026"),
+                eq("Amadora"), isNull(), any());
+        then(emailService).shouldHaveNoMoreInteractions();
+    }
+
+    @Test
     void shouldSendRepublishAnnouncementWithJustification() {
         var service = createService();
         var divisionId = UUID.randomUUID();
@@ -546,7 +580,7 @@ class AwardsServiceImplTest {
         given(publicationRepository.findTopByDivisionIdOrderByVersionDesc(divisionId))
                 .willReturn(Optional.of(republished));
         var user1 = UUID.randomUUID();
-        given(entryService.findEntrantUserIdsForDivision(divisionId))
+        given(entryService.findUserIdsWithReceivedEntries(divisionId))
                 .willReturn(java.util.List.of(user1));
         var u1 = mock(User.class);
         given(u1.getEmail()).willReturn("a@test.com");
@@ -577,7 +611,7 @@ class AwardsServiceImplTest {
         given(competitionService.findCompetitionById(competitionId)).willReturn(competition);
         given(publicationRepository.findTopByDivisionIdOrderByVersionDesc(divisionId))
                 .willReturn(Optional.of(new Publication(divisionId, adminUserId)));
-        given(entryService.findEntrantUserIdsForDivision(divisionId))
+        given(entryService.findUserIdsWithReceivedEntries(divisionId))
                 .willReturn(java.util.List.of());
 
         service.sendAnnouncement(divisionId, "Thanks to all entrants!", adminUserId);

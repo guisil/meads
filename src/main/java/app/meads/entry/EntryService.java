@@ -451,8 +451,8 @@ public class EntryService {
         return entryRepository.findByFinalCategoryId(finalCategoryId);
     }
 
-    public List<UUID> findEntrantUserIdsForDivision(@NotNull UUID divisionId) {
-        return entryRepository.findDistinctUserIdsByDivisionId(divisionId);
+    public List<UUID> findUserIdsWithReceivedEntries(@NotNull UUID divisionId) {
+        return entryRepository.findDistinctUserIdsByDivisionIdAndStatus(divisionId, EntryStatus.RECEIVED);
     }
 
     public Entry assignFinalCategory(@NotNull UUID entryId, UUID finalCategoryId,

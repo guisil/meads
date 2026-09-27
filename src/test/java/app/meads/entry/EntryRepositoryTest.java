@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -127,6 +128,44 @@ class EntryRepositoryTest {
         var found = entryRepository.findByDivisionId(division.getId());
 
         assertThat(found).hasSize(2);
+    }
+
+    @Test
+    void shouldFindDistinctUserIdsWithEntriesInStatusWhenFilteringByReceived() {
+        var division = createAndSaveDivision();
+        var category = createAndSaveCategory(division);
+        var received = userRepository.save(new User("received@test.com", "Received",
+                UserStatus.ACTIVE, Role.USER));
+        var draftOnly = userRepository.save(new User("draft@test.com", "Draft",
+                UserStatus.ACTIVE, Role.USER));
+        var submittedOnly = userRepository.save(new User("submitted@test.com", "Submitted",
+                UserStatus.ACTIVE, Role.USER));
+        var withdrawnOnly = userRepository.save(new User("withdrawn@test.com", "Withdrawn",
+                UserStatus.ACTIVE, Role.USER));
+
+        var receivedOne = entry(division, received, 1, category);
+        receivedOne.submit();
+        receivedOne.markReceived();
+        var receivedTwo = entry(division, received, 2, category);
+        receivedTwo.submit();
+        receivedTwo.markReceived();
+        var submitted = entry(division, submittedOnly, 4, category);
+        submitted.submit();
+        var withdrawn = entry(division, withdrawnOnly, 5, category);
+        withdrawn.withdraw();
+        entryRepository.saveAll(List.of(receivedOne, receivedTwo,
+                entry(division, draftOnly, 3, category), submitted, withdrawn));
+
+        var found = entryRepository.findDistinctUserIdsByDivisionIdAndStatus(
+                division.getId(), EntryStatus.RECEIVED);
+
+        assertThat(found).containsExactly(received.getId());
+    }
+
+    private Entry entry(Division division, User user, int number, DivisionCategory category) {
+        return new Entry(division.getId(), user.getId(), number, "CODE" + number,
+                "Mead " + number, category.getId(), Sweetness.DRY, new BigDecimal("12.5"),
+                Carbonation.STILL, "Wildflower honey", null, false, null, null);
     }
 
     @Test
