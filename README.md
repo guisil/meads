@@ -33,7 +33,9 @@ The application uses **Spring Modulith** for modular domain-driven design. Each 
 app.meads
 ├── identity      User management, authentication, email
 ├── competition   Competitions, divisions, participants, categories
-└── entry         Webhooks, credits, mead entries, PDF labels
+├── entry         Webhooks, credits, mead entries, PDF labels
+├── judging       Rounds, scoresheets, judge assignment, medals, Best of Show
+└── awards        Results publication, public results, entrant scoresheets
 ```
 
 ## Features
@@ -61,6 +63,17 @@ app.meads
 - Entry status workflow: `DRAFT` -> `SUBMITTED` -> `RECEIVED` / `WITHDRAWN`
 - PDF label generation (OpenPDF + ZXing QR codes) with individual and batch download
 - Meadery name requirement per division with profile validation
+- Admin entries grid shows each entry's scoresheet status ("Scored" / "In progress", linking to the scoresheet) and, once judging starts, a "Scored: X/Y" count of received entries
+
+### Judging
+- Scoring rounds per judging category with MJP scoresheets (auto-save, validation, round-level finalize)
+- Judge assignment with conflict-of-interest checks (automatic and manual)
+- Medal rounds in comparative or score-based mode, plus Best of Show
+- Anonymized judge and steward views; scoresheet PDF export
+
+### Awards
+- Results publication with an audit trail, republish and announcement emails
+- Public results page and anonymized scoresheets for entrants
 
 ### Email Notifications
 - SMTP email with Thymeleaf HTML templates
@@ -84,8 +97,8 @@ app.meads
 | `identity` | Complete |
 | `competition` | Complete |
 | `entry` | Complete |
-| `judging` | Planned |
-| `awards` | Planned |
+| `judging` | Complete |
+| `awards` | Complete |
 
 ## Development
 

@@ -2,12 +2,15 @@ package app.meads.entry.internal;
 
 import app.meads.BusinessRuleException;
 import app.meads.CountryDisplay;
+import app.meads.EntryScoresheetChecker;
+import app.meads.EntryScoresheetChecker.ScoresheetState;
 import app.meads.MainLayout;
 import app.meads.competition.CategoryDisplay;
 import app.meads.competition.Competition;
 import app.meads.competition.CompetitionService;
 import app.meads.competition.Division;
 import app.meads.competition.DivisionCategory;
+import app.meads.competition.DivisionStatus;
 import app.meads.entry.*;
 import app.meads.identity.Role;
 import app.meads.identity.UserService;
@@ -67,6 +70,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
     private final CompetitionService competitionService;
     private final UserService userService;
     private final LabelPdfService labelPdfService;
+    private final EntryScoresheetChecker entryScoresheetChecker;
     private final transient AuthenticationContext authenticationContext;
 
     private UUID divisionId;
@@ -83,6 +87,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
     private Grid<JumpsellerOrder> ordersGrid;
     private Map<UUID, List<JumpsellerOrderLineItem>> lineItemsByOrderId;
     private List<DivisionCategory> divisionCategories;
+    private Map<UUID, ScoresheetState> scoresheetStates = Map.of();
 
     // Entries tab filter state
     private String entriesNameFilter = "";
@@ -91,16 +96,19 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
     // Entries tab summary
     private Span totalCreditsLabel;
     private Span entriesSummaryLabel;
+    private Span scoresheetsSummaryLabel;
 
     public DivisionEntryAdminView(EntryService entryService,
                                    CompetitionService competitionService,
                                    UserService userService,
                                    LabelPdfService labelPdfService,
+                                   EntryScoresheetChecker entryScoresheetChecker,
                                    AuthenticationContext authenticationContext) {
         this.entryService = entryService;
         this.competitionService = competitionService;
         this.userService = userService;
         this.labelPdfService = labelPdfService;
+        this.entryScoresheetChecker = entryScoresheetChecker;
         this.authenticationContext = authenticationContext;
     }
 
@@ -459,9 +467,15 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         totalCreditsLabel.setId("credits-balance-label");
         entriesSummaryLabel = new Span();
         entriesSummaryLabel.setId("entries-summary-label");
-        var separator = new Span("|");
-        separator.getStyle().set("color", "var(--lumo-contrast-30pct)").set("padding", "0 var(--lumo-space-m)");
-        var summary = new HorizontalLayout(totalCreditsLabel, separator, entriesSummaryLabel);
+        var separator = createSummarySeparator();
+        scoresheetsSummaryLabel = new Span();
+        scoresheetsSummaryLabel.setId("scoresheets-summary-label");
+        var scoresheetsSeparator = createSummarySeparator();
+        var judgingStarted = division.getStatus().ordinal() >= DivisionStatus.JUDGING.ordinal();
+        scoresheetsSeparator.setVisible(judgingStarted);
+        scoresheetsSummaryLabel.setVisible(judgingStarted);
+        var summary = new HorizontalLayout(totalCreditsLabel, separator, entriesSummaryLabel,
+                scoresheetsSeparator, scoresheetsSummaryLabel);
         summary.setSpacing(false);
         summary.getStyle().set("color", "var(--lumo-secondary-text-color)").set("font-size", "var(--lumo-font-size-s)");
         tab.add(summary);
@@ -504,6 +518,8 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         }).setHeader(getTranslation("entry-admin.entries.column.country")).setSortable(true).setAutoWidth(true);
         entriesGrid.addColumn(entry -> entry.getStatus().name())
                 .setHeader(getTranslation("entry-admin.entries.column.status")).setSortable(true).setAutoWidth(true);
+        entriesGrid.addComponentColumn(this::createScoresheetCell).setKey("scoresheet")
+                .setHeader(getTranslation("entry-admin.entries.column.scoresheet")).setAutoWidth(true);
         entriesGrid.addComponentColumn(entry -> {
             // P21: from DELIBERATION onward entries are locked; only viewing + label reprint remain.
             var entriesMutable = division.getStatus().allowsEntryMutations();
@@ -663,8 +679,28 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         var entries = entryService.findEntriesByDivision(divisionId).stream()
                 .sorted(Comparator.comparingInt(Entry::getEntryNumber))
                 .toList();
+        scoresheetStates = entryScoresheetChecker.findScoresheetStates(
+                entries.stream().map(Entry::getId).toList());
         entriesGrid.setItems(entries);
         updateEntriesSummary(entries);
+    }
+
+    private Span createSummarySeparator() {
+        var separator = new Span("|");
+        separator.getStyle().set("color", "var(--lumo-contrast-30pct)").set("padding", "0 var(--lumo-space-m)");
+        return separator;
+    }
+
+    private Component createScoresheetCell(Entry entry) {
+        var state = scoresheetStates.get(entry.getId());
+        if (state == null) {
+            return new Span("—");
+        }
+        return new Anchor("competitions/" + compShortName + "/divisions/" + divShortName
+                + "/scoresheets/" + state.scoresheetId(),
+                getTranslation(state.submitted()
+                        ? "entry-admin.entries.scoresheet.submitted"
+                        : "entry-admin.entries.scoresheet.in-progress"));
     }
 
     private void updateEntriesSummary(List<Entry> entries) {
@@ -677,6 +713,12 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         long total = entries.size();
         totalCreditsLabel.setText(getTranslation("entry-admin.entries.summary.credits", creditsBalance));
         entriesSummaryLabel.setText(getTranslation("entry-admin.entries.summary.entries", total, draft, submitted, received, withdrawn));
+        long scored = entries.stream()
+                .filter(entry -> entry.getStatus() == EntryStatus.RECEIVED)
+                .map(entry -> scoresheetStates.get(entry.getId()))
+                .filter(state -> state != null && state.submitted())
+                .count();
+        scoresheetsSummaryLabel.setText(getTranslation("entry-admin.entries.summary.scored", scored, received));
     }
 
     private void refreshCreditsBalance() {

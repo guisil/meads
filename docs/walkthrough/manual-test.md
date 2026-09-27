@@ -1148,7 +1148,7 @@ toasts don't cover the page's last interactive control or list row.
 - [ ] Navigate back to Amadora entry-admin
 - [ ] Click the "Entries" tab
 - [ ] **Expected:** Filter field: "Filter by mead name, entrant, or entry code..." + status dropdown ("All statuses")
-- [ ] **Expected:** Grid with columns: Entry # (with AMA prefix, e.g. "AMA-1"), Code, Mead Name, Category (code with tooltip for full name), Final Category (code with tooltip, or "—" if not set), Entrant, Meadery, Country, Status, Actions (view/edit/←/→/withdraw/delete icons)
+- [ ] **Expected:** Grid with columns: Entry # (with AMA prefix, e.g. "AMA-1"), Code, Mead Name, Category (code with tooltip for full name), Final Category (code with tooltip, or "—" if not set), Entrant, Meadery, Country, Status, Scoresheet, Actions (view/edit/←/→/withdraw/delete icons)
 - [ ] **Expected:** Meadery column shows user's meadery name (or empty if not set)
 - [ ] **Expected:** Country column shows the display name based on the user's ISO country code, localized to the current UI language (e.g. "Portugal" in English, "Portogallo" in Italian) — switch the language in the top-right menu to confirm the column updates
 - [ ] **Expected:** 12 entries total, sorted by entry number — 5 from `user@example.com`, 3 from
@@ -1167,7 +1167,8 @@ toasts don't cover the page's last interactive control or list row.
 - [ ] **Expected:** `←` (revert) button disabled for DRAFT entries; `→` (advance) button disabled for RECEIVED and WITHDRAWN entries
 - [ ] **Expected:** `←` tooltip: "← Revert to Draft" for SUBMITTED/WITHDRAWN, "← Revert to Submitted" for RECEIVED
 - [ ] **Expected:** `→` tooltip: "→ Submit" for DRAFT, "→ Mark as Received" for SUBMITTED
-- [ ] **Expected:** Summary row below the grid shows "Credits balance: N  |  Total entries: 12 (Draft: 3, Submitted: 2, Received: 6, Withdrawn: 1)"
+- [ ] **Expected:** Summary row below the grid shows "Credits balance: N  |  Total entries: 12 (Draft: 3, Submitted: 2, Received: 6, Withdrawn: 1)" — **no** "Scored: X/Y" segment yet (it only appears once the division reaches JUDGING; verified in §12.10.0.1)
+- [ ] **Expected:** Scoresheet column shows "—" for every entry (no scoresheets exist before judging)
 - [ ] **Expected:** View button (eye) opens read-only dialog showing all entry fields, status, and entrant email
 - [ ] **Expected:** Edit button opens confirmation dialog ("Are you sure you want to edit this entry's data?"), then full edit dialog with all fields (mead name, category, sweetness, strength (read-only, auto-derived from ABV), ABV, carbonation, honey, other ingredients, wood aged, wood ageing details, additional info)
 - [ ] **Expected:** Edit works for entries in any status except WITHDRAWN
@@ -2211,6 +2212,16 @@ Access tightening: judges can only open **ACTIVE** rounds. RoundView, MedalRound
 - [ ] (Once all sheets are FILLED — see §12.11) click **Finalize** → confirm dialog states **"N entries advancing to the medal round"**, shows a prominent **zero-advance warning** if none are flagged, and (for admins) an extra "you're finalizing on behalf of the judges" warning. Confirm → all sheets submit (totals computed), round → COMPLETE, and the category's medal-round cascade fires.
 - [ ] **(Split-category cascade — verifies the duplicate-key fix.)** For the M1A split (Panel A + Panel B, §12.6.7.1), score + Finalize **both** panels, flagging some entries "Advance to medal round" (§12.11). **Expected:** finalizing the **second** panel (the one that makes *all* M1A scoring rounds COMPLETE) **does not crash** — before the fix it threw `judging_round_entries_entry_id_key`. The cascade auto-creates **`Medal — M1A` (COMPARATIVE)** at READY, and 👁 Open shows the advance-flagged entries as candidates (derived from the scoresheets — the medal round does not own an `entries` set). **The Rounds-grid Entries column reflects this derived count** (e.g. shows `3` once three entries advanced) — not `0` — even though a COMPARATIVE medal round never materializes its `entries` set.
 - [ ] (Admin, on a COMPLETE round) click **Reopen** → confirm → round → ACTIVE; its SUBMITTED sheets drop back to **FILLED** (editing one demotes it to DRAFT, so the round has to be re-finalized).
+
+#### 12.10.0.1 Entry Admin — scoresheet status + Scored count
+
+*As `compadmin@example.com`, after finalizing at least one M1A panel above (and with another round still unfinished, e.g. the other panel mid-way), open Amadora → Manage Entries → Entries tab.*
+
+- [ ] **Expected:** the **Scoresheet** column shows, per entry: **"Scored"** (link) when its scoresheet is SUBMITTED, **"In progress"** (link) when a scoresheet exists but isn't submitted yet (BLANK / DRAFT / FILLED), and **"—"** when the entry has no scoresheet (not assigned to a started round, or not RECEIVED).
+- [ ] Click a **"Scored"** link → **Expected:** navigates to `competitions/chip-2026/divisions/amadora/scoresheets/<id>` and ScoresheetView opens **read-only** (admin view, "Edit on behalf of judge" button below). Browser back returns to Entry Admin.
+- [ ] Click an **"In progress"** link → same ScoresheetView, showing the judge's work so far.
+- [ ] **Expected:** the summary row now ends with **"| Scored: X/Y"**, where Y = the number of **RECEIVED** entries (withdrawn / submitted-but-not-received ones don't count) and X = how many of those have a SUBMITTED scoresheet. Finalize the remaining panel (or Reopen a finished one, §12.10.0) and reload the tab → X changes accordingly. When X = Y, every received entry has been scored.
+- [ ] Switch UI language (e.g. Português) → column header "Folha de avaliação", cells "Avaliada" / "Em curso", summary "Avaliadas: X/Y".
 
 #### 12.10.1 Per-row Open → ScoresheetView
 

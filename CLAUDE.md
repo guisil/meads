@@ -6,13 +6,13 @@
 
 ## Tech Stack
 
-- **Java 25**, Spring Boot 4.0.6, Spring Modulith 2.0.6, Jakarta Bean Validation
-- **Vaadin 25.1.5** (Java Flow — server-side, NOT React/Hilla)
+- **Java 25**, Spring Boot 4.1.1, Spring Modulith 2.1.1, Jakarta Bean Validation
+- **Vaadin 25.3.0** (Java Flow — server-side, NOT React/Hilla)
 - **PostgreSQL 18**, Flyway (managed by Boot)
-- **Testcontainers 2.0.5**, Karibu Testing 2.7.0, Mockito, Awaitility 4.3.0, JUnit 5, AssertJ
+- **Testcontainers 2.0.5**, Karibu Testing 2.7.3, Mockito, Awaitility 4.3.0, JUnit 5, AssertJ
 - **jjwt 0.13.0** (JWT magic link tokens)
 - **spring-boot-starter-mail** + **spring-boot-starter-thymeleaf** (SMTP + HTML email)
-- **Spring Security 7.0.2**
+- **Spring Security 7.1.1**
 
 ---
 
@@ -62,7 +62,8 @@ Each direct sub-package of `app.meads` is an **application module**:
 
 ```
 app.meads                     ← root: MeadsApplication, MainLayout, shared interfaces (CompetitionAdminChecker,
-                                JudgeAssignmentChecker, StewardChecker, UserLocaleResolver, UserLanguageUpdater),
+                                JudgeAssignmentChecker, StewardChecker, EntrantResultsChecker,
+                                EntryScoresheetChecker, UserLocaleResolver, UserLanguageUpdater),
                                 BusinessRuleException, MeadsI18NProvider, PluralRules, LanguageMapping,
                                 CountryDisplay, internal/RootView
 app.meads.identity            ← User/Role/UserStatus, UserService, JwtMagicLinkService, EmailService,

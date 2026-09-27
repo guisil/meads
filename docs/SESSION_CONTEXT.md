@@ -7,7 +7,7 @@ needed to continue even without memory files or prior conversation history.
 
 ---
 
-## ⚑ Current state (2026-09-11) — read this first
+## ⚑ Current state (updated 2026-09-27) — read this first
 
 **Everything below this section** (Project Overview's branch/test-count narrative, the
 "What's Next" priorities list, etc.) describes the judging+awards module development that
@@ -43,11 +43,23 @@ not pushed), created 2026-09-11 after a post-competition review session. It cont
   Jackson 2.22.1 at `runtime` scope only, isolated inside that library — not a conflict.
   **Full suite verified green after the fix: 1363 tests, 0 failures/errors**, including
   `ModulithStructureTest`.
+- A second, smaller dependency bump (2026-09-27): Vaadin 25.2.7→**25.3.0**, bcprov
+  1.85.2→**1.86**, karibu-testing 2.7.2→**2.7.3**. No code changes needed.
+- **First TODO item implemented (2026-09-27): judging status on the Entry Admin → Entries
+  grid.** New **Scoresheet** column ("Scored" / "In progress" link to
+  `.../scoresheets/<id>`, "—" when the entry has no scoresheet) and, from JUDGING onward, a
+  **"Scored: X/Y"** summary segment (Y = RECEIVED entries, X = those with a SUBMITTED
+  scoresheet). Since `entry` can't depend on `judging`, it goes through a new root interface
+  `app.meads.EntryScoresheetChecker` (same pattern as `EntrantResultsChecker`), implemented by
+  `judging/internal/EntryScoresheetCheckerImpl` with one bulk `findByEntryIdIn` query per grid
+  refresh. Tests: `EntryScoresheetCheckerImplTest` (unit) + 3 new `DivisionEntryAdminViewTest`
+  cases; walkthrough §8 + new §12.10.0.1. i18n in all 5 locales.
+  **Full suite: 1368 tests, 0 failures/errors.**
 
 **Suggested first action next session:** open the TODO doc, pick up where the "Suggested next
-step" section points (the Entries-view judged/scoresheet indicator, or the in-app
-judging-label PDF generator — both fully decided, no open design questions), or continue
-working through the still-`(undecided)` items with the user.
+step" section points (now the in-app judging-label PDF generator, A2 — fully decided, no open
+design questions; the Entries-view indicator is done), or continue working through the
+still-`(undecided)` items with the user.
 
 ---
 

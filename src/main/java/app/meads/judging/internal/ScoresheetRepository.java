@@ -6,6 +6,7 @@ import app.meads.judging.ScoresheetStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -13,6 +14,8 @@ import java.util.UUID;
 public interface ScoresheetRepository extends JpaRepository<Scoresheet, UUID> {
 
     Optional<Scoresheet> findByEntryId(UUID entryId);
+
+    List<Scoresheet> findByEntryIdIn(Collection<UUID> entryIds);
 
     List<Scoresheet> findByEntryIdOrderBySubmittedAtAsc(UUID entryId);
 

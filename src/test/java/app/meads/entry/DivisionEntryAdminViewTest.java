@@ -13,6 +13,11 @@ import app.meads.identity.Role;
 import app.meads.identity.User;
 import app.meads.identity.UserStatus;
 import app.meads.identity.internal.UserRepository;
+import app.meads.judging.JudgingRound;
+import app.meads.judging.JudgingService;
+import app.meads.judging.Scoresheet;
+import app.meads.judging.internal.MjpScoringFieldDefinition;
+import app.meads.judging.internal.ScoresheetRepository;
 import com.github.mvysny.fakeservlet.FakeRequest;
 import com.github.mvysny.kaributesting.v10.MockVaadin;
 import com.github.mvysny.kaributesting.v10.Routes;
@@ -20,6 +25,7 @@ import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.tabs.TabSheet;
 import com.vaadin.flow.data.provider.SortDirection;
@@ -45,6 +51,7 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.UUID;
 
+import static com.github.mvysny.kaributesting.v10.GridKt._getCellComponent;
 import static com.github.mvysny.kaributesting.v10.LocatorJ.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import com.vaadin.flow.component.html.Span;
@@ -85,6 +92,12 @@ class DivisionEntryAdminViewTest {
 
     @Autowired
     EntryRepository entryRepository;
+
+    @Autowired
+    JudgingService judgingService;
+
+    @Autowired
+    ScoresheetRepository scoresheetRepository;
 
     private Competition competition;
     private Division division;
@@ -291,11 +304,11 @@ class DivisionEntryAdminViewTest {
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("Entries grid not found"));
 
-        // Grid has 10 columns: Entry #, Code, Mead Name, Category, Final Category,
-        // Entrant, Meadery, Country, Status, Actions (view/edit/←/→/withdraw/delete)
+        // Grid has 11 columns: Entry #, Code, Mead Name, Category, Final Category,
+        // Entrant, Meadery, Country, Status, Scoresheet, Actions (view/edit/←/→/withdraw/delete)
         // Note: buttons inside addComponentColumn are not reachable via _find (Karibu limitation).
         // Advance/revert service behavior is tested in EntryServiceTest.
-        assertThat(entriesGrid.getColumns()).hasSize(10);
+        assertThat(entriesGrid.getColumns()).hasSize(11);
 
         @SuppressWarnings("rawtypes")
         var headers = entriesGrid.getColumns().stream()
@@ -305,7 +318,7 @@ class DivisionEntryAdminViewTest {
                 .toList();
         assertThat(headers).containsExactlyInAnyOrder(
                 "Entry #", "Code", "Mead Name", "Category", "Final Category",
-                "Entrant", "Meadery", "Country", "Status", "Actions");
+                "Entrant", "Meadery", "Country", "Status", "Scoresheet", "Actions");
     }
 
     @Test
@@ -344,7 +357,7 @@ class DivisionEntryAdminViewTest {
                 .orElseThrow(() -> new AssertionError("Entries grid not found"));
 
         // Grid renders without error and has the correct column count
-        assertThat(entriesGrid.getColumns()).hasSize(10);
+        assertThat(entriesGrid.getColumns()).hasSize(11);
 
         // Entry with final category is present in the grid
         @SuppressWarnings("unchecked")
@@ -408,5 +421,134 @@ class DivisionEntryAdminViewTest {
                 .as("AAA must sort before ZZZ ascending").isNegative();
         assertThat(comparator.compare(zzzEntry, aaaEntry))
                 .as("ZZZ must sort after AAA ascending").isPositive();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldLinkToScoresheetWhenEntryHasSubmittedScoresheet() {
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var category = judgingCategoryInJudgingDivision();
+        var round = createScoringRound(category, admin.getId());
+
+        var judgedEntry = receivedEntry(1, "JUDGED", category.getId(), admin.getId());
+        receivedEntry(2, "UNJUDG", category.getId(), admin.getId());
+        var sheet = submittedScoresheet(round, judgedEntry);
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/entry-admin");
+        var entriesGrid = entriesGrid();
+
+        var judgedCell = _getCellComponent(entriesGrid, 0, "scoresheet");
+        assertThat(judgedCell).isInstanceOf(Anchor.class);
+        assertThat(((Anchor) judgedCell).getHref()).isEqualTo("competitions/"
+                + competition.getShortName() + "/divisions/" + division.getShortName()
+                + "/scoresheets/" + sheet.getId());
+        assertThat(((Anchor) judgedCell).getText()).isEqualTo("Scored");
+
+        var unjudgedCell = _getCellComponent(entriesGrid, 1, "scoresheet");
+        assertThat(unjudgedCell).isInstanceOf(Span.class);
+        assertThat(((Span) unjudgedCell).getText()).isEqualTo("\u2014");
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldShowInProgressLinkWhenEntryScoresheetIsNotSubmitted() {
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var category = judgingCategoryInJudgingDivision();
+        var round = createScoringRound(category, admin.getId());
+        var entry = receivedEntry(1, "DRAFTS", category.getId(), admin.getId());
+        var sheet = new Scoresheet(round.getId(), entry.getId());
+        sheet.updateOverallComments("Started tasting");
+        sheet = scoresheetRepository.save(sheet);
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/entry-admin");
+        var entriesGrid = entriesGrid();
+
+        var cell = _getCellComponent(entriesGrid, 0, "scoresheet");
+        assertThat(cell).isInstanceOf(Anchor.class);
+        assertThat(((Anchor) cell).getHref()).endsWith("/scoresheets/" + sheet.getId());
+        assertThat(((Anchor) cell).getText()).isEqualTo("In progress");
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldCountScoredOutOfReceivedEntriesWhenDivisionIsJudging() {
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var category = judgingCategoryInJudgingDivision();
+        var round = createScoringRound(category, admin.getId());
+        var scored = receivedEntry(1, "SCORED", category.getId(), admin.getId());
+        receivedEntry(2, "UNJUDG", category.getId(), admin.getId());
+        var notReceived = new Entry(division.getId(), admin.getId(), 3, "NOTREC", "Mead 3",
+                category.getId(), Sweetness.DRY, new BigDecimal("12.0"), Carbonation.STILL,
+                "Honey", null, false, null, null);
+        notReceived.submit();
+        entryRepository.save(notReceived);
+        submittedScoresheet(round, scored);
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/entry-admin");
+        entriesGrid();
+
+        var label = _get(Span.class, spec -> spec.withId("scoresheets-summary-label"));
+        assertThat(label.getText()).isEqualTo("Scored: 1/2");
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldHideScoredCountWhenDivisionIsBeforeJudging() {
+        division.advanceStatus(); // DRAFT → REGISTRATION_OPEN
+        division = divisionRepository.save(division);
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/entry-admin");
+        entriesGrid();
+
+        assertThat(_find(Span.class, spec -> spec.withId("scoresheets-summary-label"))).isEmpty();
+    }
+
+    private DivisionCategory judgingCategoryInJudgingDivision() {
+        division.advanceStatus(); // DRAFT → REGISTRATION_OPEN
+        division.advanceStatus(); // → REGISTRATION_CLOSED
+        division.advanceStatus(); // → JUDGING
+        division = divisionRepository.save(division);
+        return divisionCategoryRepository.save(new DivisionCategory(
+                division.getId(), null, "M1A", "Dry Mead", "Dry mead", null, 1,
+                CategoryScope.JUDGING));
+    }
+
+    private JudgingRound createScoringRound(DivisionCategory category, UUID adminId) {
+        var judging = judgingService.ensureJudgingExists(division.getId());
+        return judgingService.createRound(judging.getId(), "M1A Panel",
+                category.getId(), null, adminId);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Grid<Entry> entriesGrid() {
+        _get(TabSheet.class).setSelectedIndex(1);
+        return _find(Grid.class).stream()
+                .filter(g -> "entries-grid".equals(g.getId().orElse(null)))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Entries grid not found"));
+    }
+
+    private Scoresheet submittedScoresheet(JudgingRound round, Entry entry) {
+        var sheet = new Scoresheet(round.getId(), entry.getId());
+        for (var def : MjpScoringFieldDefinition.MJP_FIELDS) {
+            sheet.updateScore(def.fieldName(), def.maxValue(), null);
+        }
+        sheet.markFilled();
+        sheet.submit();
+        return scoresheetRepository.save(sheet);
+    }
+
+    private Entry receivedEntry(int number, String code, UUID categoryId, UUID userId) {
+        var entry = new Entry(division.getId(), userId, number, code, "Mead " + number,
+                categoryId, Sweetness.DRY, new BigDecimal("12.0"), Carbonation.STILL,
+                "Honey", null, false, null, null);
+        entry.submit();
+        entry.markReceived();
+        entry.assignFinalCategory(categoryId);
+        return entryRepository.save(entry);
     }
 }

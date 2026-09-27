@@ -105,11 +105,11 @@ blockers — this item is just the direct script→button port.
   looking at a judging round — currently requires switching to the Entries view. Surface the
   entry number next to (or instead of) the code wherever a round/scoresheet shows the code, at
   least for admin views (judges should keep seeing only the anonymized code).
-- **(implement)** No link between the Entries view and judging status. Missing: (1) a
-  per-entry indicator of "has been judged / has a scoresheet," (2) a direct link from an entry
-  row to its scoresheet, (3) an aggregate count (e.g. "38/40 entries scored") so admins can
-  confirm nothing was missed before finalizing. This is the most concrete, well-scoped item in
-  the whole list — good candidate for the first TDD cycle out of this doc.
+- **(done, 2026-09-27)** ~~No link between the Entries view and judging status.~~ Entry Admin
+  → Entries grid now has a **Scoresheet** column ("Scored" / "In progress" links to the
+  scoresheet, "—" when none) and, from JUDGING onward, a **"Scored: X/Y"** summary (Y =
+  RECEIVED entries, X = those with a SUBMITTED scoresheet). Cross-module via the root
+  `EntryScoresheetChecker` interface, implemented in `judging/internal`.
 - **(undecided, 2026-09-11)** Let admins choose whether a round's entries go to the table all
   at once vs. one at a time; for the one-at-a-time case, order by "intensity"
   (sweetness/strength/ABV ascending) so judges taste light-to-heavy. No concrete ordering
@@ -231,12 +231,13 @@ Went through every item once. Result:
 - P11 — translate the MJP catalog categories
 
 **Already unambiguous, no decision needed (just queued implementation):** entry number/code
-visibility in judging rounds, judged/scoresheet status on the Entries view, cold-serving flag,
+visibility in judging rounds, ~~judged/scoresheet status on the Entries view~~ (done
+2026-09-27), cold-serving flag,
 results-email recipient scoping, "Preview" → "View results" label fix.
 
 ## Suggested next step
 
-The "judged/scoresheet indicator on the Entries view" item (section D) is the best first
-**(implement)** cycle among the decided/unambiguous items — small, well-scoped, existing
-tests to extend, no open design questions. A2 (judging labels) is the other strong candidate
-now that its decision is locked in and the actual print workflow is understood end-to-end.
+The "judged/scoresheet indicator on the Entries view" item (section D) is **done**
+(2026-09-27). Next strongest candidate: **A2 (in-app judging-label PDF generator)** — decided,
+and the actual print workflow is understood end-to-end. Smaller queued alternatives: the
+"Preview" → "View results" label fix, results-email recipient scoping, the cold-serving flag.
