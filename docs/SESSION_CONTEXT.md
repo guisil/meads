@@ -17,7 +17,7 @@ and shipped** — `main` is released through **v0.4.2** (2026-06-13), currently 
 file as a historical development log, not a live status board — only this section is current.
 
 **Active thread right now is on branch `explore/judging-tools-review`** (based on `main`,
-not pushed), created 2026-09-11 after a post-competition review session. It contains:
+pushed to `origin` 2026-09-27), created 2026-09-11 after a post-competition review session. It contains:
 - The `judging-planner` (standalone Python judge/round scheduler) and `make_labels`
   (ad-hoc judging-label PDF generator) tools, brought over as committed reference material —
   including the actual CHIP 2026 schedule/plan run outputs (judge names anonymized to a
@@ -83,7 +83,7 @@ step" section points: **next is the "serve cold" entry flag** (TODO section D �
 shape is written up there; first confirm with the user where it's displayed, recommended
 Entry Admin + steward/round views + entrant bottle label). After that: the steward
 code-mapping print (section E) or the still-`(undecided)` items. Branch
-`explore/judging-tools-review` is still local-only (not pushed).
+`explore/judging-tools-review` is pushed to `origin` (2026-09-27, tracking set up).
 
 ---
 
