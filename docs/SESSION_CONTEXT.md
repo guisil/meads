@@ -55,11 +55,20 @@ not pushed), created 2026-09-11 after a post-competition review session. It cont
   refresh. Tests: `EntryScoresheetCheckerImplTest` (unit) + 3 new `DivisionEntryAdminViewTest`
   cases; walkthrough §8 + new §12.10.0.1. i18n in all 5 locales.
   **Full suite: 1368 tests, 0 failures/errors.**
+- **A2 implemented (2026-09-27): in-app judging labels PDF**, replacing `make_labels.py`.
+  Entry Admin → Entries tab → "Download judging labels" → PDF of the division's RECEIVED
+  entries (one A4 page each: entry number ×2 + entry code ×6), via
+  `LabelPdfService.generateJudgingLabels` (direct `PdfContentByte` drawing, core
+  Helvetica-Bold, exact mm geometry). Verified pixel-identical against the CHIP 2026 printed
+  PDF (details + a data glitch found in the hand-exported input: see the TODO doc, A2). The
+  existing "Download all labels" dialog and the new one share `openPdfDownloadDialog`.
+  Tests: 2 new `LabelPdfServiceTest` + 1 new `DivisionEntryAdminViewTest`; walkthrough §8
+  "Judging labels -- batch download (admin)". **Full suite: 1371 tests, 0 failures/errors.**
 
 **Suggested first action next session:** open the TODO doc, pick up where the "Suggested next
-step" section points (now the in-app judging-label PDF generator, A2 — fully decided, no open
-design questions; the Entries-view indicator is done), or continue working through the
-still-`(undecided)` items with the user.
+step" section points (the Entries-view indicator and A2 judging labels are done; next are
+the small queued items — "View results" label, results-email scoping, cold-serving flag), or
+continue working through the still-`(undecided)` items with the user.
 
 ---
 

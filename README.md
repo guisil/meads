@@ -62,6 +62,7 @@ app.meads
 - Entry limits enforcement (per subcategory, per main category, total)
 - Entry status workflow: `DRAFT` -> `SUBMITTED` -> `RECEIVED` / `WITHDRAWN`
 - PDF label generation (OpenPDF + ZXing QR codes) with individual and batch download
+- Judging labels PDF for received entries: one A4 page per entry with the entry number and anonymized entry code, cut out and taped on judging glasses
 - Meadery name requirement per division with profile validation
 - Admin entries grid shows each entry's scoresheet status ("Scored" / "In progress", linking to the scoresheet) and, once judging starts, a "Scored: X/Y" count of received entries
 

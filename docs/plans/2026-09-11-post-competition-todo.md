@@ -54,6 +54,19 @@ got built; `make_labels/make_labels.py` was used instead as a stopgap for the ac
 a one-off script reading a hardcoded `~/Downloads/CHIP_judging_labels.txt` and writing an A4
 grid PDF (2-col, entry-number row + 3 entry-code rows per page, font auto-shrink to fit).
 
+**(done, 2026-09-27)** — Entry Admin → Entries tab → **"Download judging labels"** generates
+the PDF for the division's RECEIVED entries (entry-number order) via
+`LabelPdfService.generateJudgingLabels`. Drawn directly with `PdfContentByte` (not `PdfPTable`)
+to reproduce the script's geometry exactly: exact 210×297mm page, 10mm margin, 28mm number row
++ 3 × 83mm code rows, 0.2mm borders, core Helvetica-Bold 34/56pt, same fpdf baseline formula
+and 1pt-step font shrink. Verified against the actually printed `CHIP_judging_labels.pdf`: all
+134 non-glitch pages render pixel-identical at 150dpi (text origins identical, borders within
+0.01pt). **Data glitch found in the printed file:** the hand SQL export had
+`PRO-1 / PRO-1 / 698RFT / 8BETP3`, so page 61 printed "PRO-1" as its own code and page 62
+printed "698RFT" as an entry number — the in-app feature reads real entry data and can't
+reproduce that. `make_labels/` stays as historical reference. Steward code-mapping (E) and
+QR/barcode (E) remain separate follow-ons.
+
 **(decided, 2026-09-11) — integrate.** Confirmed by reconstructing the actual event workflow
 from file timestamps: `CHIP_judging_labels.pdf` (136 pages — the file actually printed) came
 from `make_labels.py` reading a manually SQL-exported `(entry number, entry code)` list; an
@@ -161,7 +174,7 @@ blockers — this item is just the direct script→button port.
   entrants sometimes print labels tiny enough that the entry number/code text becomes
   unreadable. A scannable barcode/QR alongside (or instead of) the human-readable code would
   make this a non-issue.
-- **(implement)** Bring label generation for judging in-app, replacing `make_labels.py`.
+- **(done, 2026-09-27 — see A2)** Bring label generation for judging in-app, replacing `make_labels.py`.
   Scope: bulk-generate the same "entry number (small) + entry code (large, ×3)" A4 grid PDF for
   all RECEIVED entries in a division/category, reusing `LabelPdfService`'s OpenPDF patterns
   rather than the script's `fpdf2` dependency. This is A2 above — see that entry for the
@@ -237,7 +250,7 @@ results-email recipient scoping, "Preview" → "View results" label fix.
 
 ## Suggested next step
 
-The "judged/scoresheet indicator on the Entries view" item (section D) is **done**
-(2026-09-27). Next strongest candidate: **A2 (in-app judging-label PDF generator)** — decided,
-and the actual print workflow is understood end-to-end. Smaller queued alternatives: the
-"Preview" → "View results" label fix, results-email recipient scoping, the cold-serving flag.
+Done 2026-09-27: the "judged/scoresheet indicator on the Entries view" (section D) and **A2
+(in-app judging-label PDF)**. Next queued (all small, decided): the "Preview" → "View results"
+label fix, results-email recipient scoping, the cold-serving flag. Bigger follow-on: the
+steward code-mapping print (section E, needs its visibility sub-question settled first).

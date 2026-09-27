@@ -60,6 +60,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 @Route(value = "competitions/:compShortName/divisions/:divShortName/entry-admin", layout = MainLayout.class)
@@ -413,27 +414,20 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
                 Notification.show(getTranslation("entry-admin.entries.download-all.empty"));
                 return;
             }
-            var dialog = new Dialog();
-            dialog.setHeaderTitle(getTranslation("entry-admin.entries.download-all.confirm.title"));
-            dialog.add(new Span(getTranslation("entry-admin.entries.download-all.confirm.body", qualifyingEntries.size())));
-
-            var resource = new StreamResource("all-labels.pdf", () -> {
-                Function<UUID, DivisionCategory> resolver = id ->
-                        divisionCategories.stream()
-                                .filter(c -> c.getId().equals(id)).findFirst().orElse(null);
-                return new ByteArrayInputStream(
-                        labelPdfService.generateLabels(qualifyingEntries, competition,
-                                division, resolver));
-            });
-            resource.setContentType("application/pdf");
-            var downloadAnchor = new Anchor(resource, getTranslation("entry-admin.entries.download-all.anchor"));
-            downloadAnchor.getElement().setAttribute("download", true);
-            downloadAnchor.getElement().addEventListener("click", ev -> dialog.close());
-
-            var cancelBtn = new Button(getTranslation("button.cancel"), ev -> dialog.close());
-            dialog.getFooter().add(cancelBtn, downloadAnchor);
-            dialog.open();
+            Function<UUID, DivisionCategory> resolver = id ->
+                    divisionCategories.stream()
+                            .filter(c -> c.getId().equals(id)).findFirst().orElse(null);
+            openPdfDownloadDialog(null,
+                    getTranslation("entry-admin.entries.download-all.confirm.title"),
+                    getTranslation("entry-admin.entries.download-all.confirm.body", qualifyingEntries.size()),
+                    "all-labels.pdf",
+                    () -> labelPdfService.generateLabels(qualifyingEntries, competition, division, resolver));
         });
+
+        var judgingLabelsBtn = new Button(getTranslation("entry-admin.entries.download-judging-labels"),
+                new Icon(VaadinIcon.DOWNLOAD_ALT));
+        judgingLabelsBtn.setId("download-judging-labels-button");
+        judgingLabelsBtn.addClickListener(e -> openJudgingLabelsDialog());
 
         var statusSelect = new Select<EntryStatus>();
         statusSelect.setPlaceholder(getTranslation("entry-admin.entries.status.all"));
@@ -457,7 +451,7 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
         autoAssignBtn.setId("auto-assign-final-categories-button");
         autoAssignBtn.setVisible(division.getStatus().allowsJudgingCategoryManagement());
 
-        var toolbar = new HorizontalLayout(filterField, statusSelect, addEntryButton, autoAssignBtn, downloadAllBtn);
+        var toolbar = new HorizontalLayout(filterField, statusSelect, addEntryButton, autoAssignBtn, downloadAllBtn, judgingLabelsBtn);
         toolbar.setWidthFull();
         toolbar.setFlexGrow(1, filterField);
         toolbar.setDefaultVerticalComponentAlignment(Alignment.BASELINE);
@@ -610,6 +604,42 @@ public class DivisionEntryAdminView extends VerticalLayout implements BeforeEnte
 
         tab.add(entriesGrid);
         return tab;
+    }
+
+    private void openJudgingLabelsDialog() {
+        var receivedEntries = entryService.findEntriesByDivision(divisionId).stream()
+                .filter(entry -> entry.getStatus() == EntryStatus.RECEIVED)
+                .sorted(Comparator.comparingInt(Entry::getEntryNumber))
+                .toList();
+        if (receivedEntries.isEmpty()) {
+            Notification.show(getTranslation("entry-admin.entries.download-judging-labels.empty"));
+            return;
+        }
+        openPdfDownloadDialog("judging-labels-dialog",
+                getTranslation("entry-admin.entries.download-judging-labels"),
+                getTranslation("entry-admin.entries.download-judging-labels.confirm.body", receivedEntries.size()),
+                "judging-labels-" + divShortName + ".pdf",
+                () -> labelPdfService.generateJudgingLabels(receivedEntries, division));
+    }
+
+    private void openPdfDownloadDialog(String id, String title, String body, String fileName,
+                                       Supplier<byte[]> pdf) {
+        var dialog = new Dialog();
+        if (id != null) {
+            dialog.setId(id);
+        }
+        dialog.setHeaderTitle(title);
+        dialog.add(new Span(body));
+
+        var resource = new StreamResource(fileName, () -> new ByteArrayInputStream(pdf.get()));
+        resource.setContentType("application/pdf");
+        var downloadAnchor = new Anchor(resource, getTranslation("entry-admin.entries.download-all.anchor"));
+        downloadAnchor.getElement().setAttribute("download", true);
+        downloadAnchor.getElement().addEventListener("click", ev -> dialog.close());
+
+        var cancelBtn = new Button(getTranslation("button.cancel"), ev -> dialog.close());
+        dialog.getFooter().add(cancelBtn, downloadAnchor);
+        dialog.open();
     }
 
     private void applyEntriesFilters() {

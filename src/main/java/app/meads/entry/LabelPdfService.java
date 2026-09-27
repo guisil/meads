@@ -14,7 +14,9 @@ import org.openpdf.text.Image;
 import org.openpdf.text.PageSize;
 import org.openpdf.text.Paragraph;
 import org.openpdf.text.Phrase;
+import org.openpdf.text.Rectangle;
 import org.openpdf.text.pdf.BaseFont;
+import org.openpdf.text.pdf.PdfContentByte;
 import org.openpdf.text.pdf.PdfPCell;
 import org.openpdf.text.pdf.PdfPTable;
 import org.openpdf.text.pdf.PdfWriter;
@@ -62,6 +64,35 @@ public class LabelPdfService {
     private static final Font FONT_SMALL_BOLD = new Font(BASE_BOLD, 7);
     private static final Font FONT_DISCLAIMER = new Font(BASE_BOLD, 8);
     private static final int QR_CODE_SIZE = 130;
+
+    // Judging labels (cut out and taped on glasses): one A4 page per entry, a 2-column grid of
+    // the entry number (one short row) and the entry code (three tall rows). Geometry and fonts
+    // match the fpdf script used to print CHIP 2026's labels, hence mm units + core Helvetica.
+    private static final BaseFont BASE_HELVETICA_BOLD;
+
+    static {
+        try {
+            BASE_HELVETICA_BOLD = BaseFont.createFont(BaseFont.HELVETICA_BOLD, BaseFont.WINANSI,
+                    BaseFont.NOT_EMBEDDED);
+        } catch (Exception e) {
+            throw new ExceptionInInitializerError("Failed to load Helvetica-Bold: " + e.getMessage());
+        }
+    }
+
+    private static final float POINTS_PER_MM = 72f / 25.4f;
+    // Exact 210x297mm; OpenPDF's PageSize.A4 is rounded to 595x842pt.
+    private static final Rectangle JUDGING_LABEL_PAGE = new Rectangle(210 * POINTS_PER_MM, 297 * POINTS_PER_MM);
+    private static final float JUDGING_LABEL_MARGIN = 10 * POINTS_PER_MM;
+    private static final float JUDGING_LABEL_NUMBER_ROW_HEIGHT = 28 * POINTS_PER_MM;
+    private static final int JUDGING_LABEL_COLUMNS = 2;
+    private static final int JUDGING_LABEL_CODE_ROWS = 3;
+    private static final float JUDGING_LABEL_NUMBER_FONT_SIZE = 34;
+    private static final float JUDGING_LABEL_CODE_FONT_SIZE = 56;
+    private static final float JUDGING_LABEL_BORDER_WIDTH = 0.2f * POINTS_PER_MM;
+    private static final float JUDGING_LABEL_COLUMN_WIDTH =
+            (JUDGING_LABEL_PAGE.getWidth() - 2 * JUDGING_LABEL_MARGIN) / JUDGING_LABEL_COLUMNS;
+    private static final float JUDGING_LABEL_TEXT_PADDING = 6 * POINTS_PER_MM;
+    private static final float JUDGING_LABEL_MIN_FONT_SIZE = 8;
     private static final float TWO_LINE_HEIGHT = 21f; // 2 lines at 8pt font with 10pt leading
 
     private final MessageSource messageSource;
@@ -115,6 +146,85 @@ public class LabelPdfService {
         log.info("Generated label PDF for {} entries in division {} of competition {}",
                 entries.size(), division.getName(), competition.getShortName());
         return baos.toByteArray();
+    }
+
+    public byte[] generateJudgingLabels(List<Entry> entries, Division division) {
+        var baos = new ByteArrayOutputStream();
+        var document = new Document(JUDGING_LABEL_PAGE, 0, 0, 0, 0);
+
+        try {
+            var writer = PdfWriter.getInstance(document, baos);
+            document.open();
+            var pageHeight = JUDGING_LABEL_PAGE.getHeight();
+            var codeRowHeight = (pageHeight - 2 * JUDGING_LABEL_MARGIN - JUDGING_LABEL_NUMBER_ROW_HEIGHT)
+                    / JUDGING_LABEL_CODE_ROWS;
+
+            for (int i = 0; i < entries.size(); i++) {
+                if (i > 0) {
+                    document.newPage();
+                }
+                var entry = entries.get(i);
+                var entryId = formatEntryId(entry, division);
+                var canvas = writer.getDirectContent();
+                canvas.setLineWidth(JUDGING_LABEL_BORDER_WIDTH);
+                canvas.setLineCap(PdfContentByte.LINE_CAP_PROJECTING_SQUARE);
+                for (int column = 0; column < JUDGING_LABEL_COLUMNS; column++) {
+                    drawJudgingLabelCell(canvas, pageHeight,
+                            JUDGING_LABEL_MARGIN + column * JUDGING_LABEL_COLUMN_WIDTH, JUDGING_LABEL_MARGIN,
+                            JUDGING_LABEL_COLUMN_WIDTH, JUDGING_LABEL_NUMBER_ROW_HEIGHT,
+                            entryId, JUDGING_LABEL_NUMBER_FONT_SIZE);
+                }
+                for (int row = 0; row < JUDGING_LABEL_CODE_ROWS; row++) {
+                    var top = JUDGING_LABEL_MARGIN + JUDGING_LABEL_NUMBER_ROW_HEIGHT + row * codeRowHeight;
+                    for (int column = 0; column < JUDGING_LABEL_COLUMNS; column++) {
+                        drawJudgingLabelCell(canvas, pageHeight,
+                                JUDGING_LABEL_MARGIN + column * JUDGING_LABEL_COLUMN_WIDTH, top,
+                                JUDGING_LABEL_COLUMN_WIDTH, codeRowHeight,
+                                entry.getEntryCode(), JUDGING_LABEL_CODE_FONT_SIZE);
+                    }
+                }
+                writer.setPageEmpty(false);
+            }
+
+            document.close();
+        } catch (Exception e) {
+            log.error("Failed to generate judging label PDF", e);
+            throw new RuntimeException("Failed to generate judging label PDF", e);
+        }
+
+        log.info("Generated judging label PDF for {} entries in division {}",
+                entries.size(), division.getName());
+        return baos.toByteArray();
+    }
+
+    /**
+     * Draws one bordered cell with its text centred. {@code top} is measured from the top of the
+     * page (fpdf convention); the baseline sits at {@code top + height / 2 + 0.3 * fontSize}, which
+     * is how fpdf vertically centres cell text.
+     */
+    private void drawJudgingLabelCell(PdfContentByte canvas, float pageHeight, float left, float top,
+                                      float width, float height, String text, float fontSize) {
+        canvas.rectangle(left, pageHeight - top - height, width, height);
+        canvas.stroke();
+        var size = fitJudgingLabelFontSize(text, fontSize);
+        var textWidth = BASE_HELVETICA_BOLD.getWidthPoint(text, size);
+        canvas.beginText();
+        canvas.setFontAndSize(BASE_HELVETICA_BOLD, size);
+        canvas.setTextMatrix(left + (width - textWidth) / 2,
+                pageHeight - (top + height / 2 + 0.3f * size));
+        canvas.showText(text);
+        canvas.endText();
+    }
+
+    /** Shrinks the font 1pt at a time until the text fits the cell with 3mm padding per side. */
+    float fitJudgingLabelFontSize(String text, float startSize) {
+        var maxWidth = JUDGING_LABEL_COLUMN_WIDTH - JUDGING_LABEL_TEXT_PADDING;
+        var size = startSize;
+        while (BASE_HELVETICA_BOLD.getWidthPoint(text, size) > maxWidth
+                && size > JUDGING_LABEL_MIN_FONT_SIZE) {
+            size--;
+        }
+        return size;
     }
 
     private void addPage(Document document, Entry entry, Competition competition,

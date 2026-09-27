@@ -1238,6 +1238,20 @@ toasts don't cover the page's last interactive control or list row.
 - [ ] **Expected:** Browser downloads `all-labels.pdf` containing one page per qualifying entry (SUBMITTED + RECEIVED)
 - [ ] If no qualifying entries exist, clicking the button shows notification "No submitted or received entries to generate labels for"
 
+### Judging labels -- batch download (admin)
+
+*Labels stewards cut out and tape on judging glasses: only the anonymized entry code (for judges) plus the entry number (for stewards to match the bottle). Replaces the `make_labels/make_labels.py` script used at CHIP 2026.*
+
+- [ ] **Expected:** "Download judging labels" button in the Entries tab toolbar, next to "Download all labels"
+- [ ] Click it → **Expected:** dialog "Download judging labels" with "This will generate judging labels for 6 received entries. Continue?" (Amadora seed: 6 RECEIVED — DRAFT / SUBMITTED / WITHDRAWN entries are **not** included); footer "Cancel" + "Download"
+- [ ] Click "Download" → dialog closes, browser downloads `judging-labels-amadora.pdf`
+- [ ] Open the PDF → **Expected:** 6 A4 portrait pages, **one per received entry, in entry-number order** (AMA-4, AMA-5, AMA-8, AMA-9, AMA-11, AMA-12 — the Entry # values of the RECEIVED rows). Each page is a 2-column grid of bordered cells, 10mm page margin:
+  - a short top row with the entry number (e.g. `AMA-3`) twice,
+  - three tall rows with the entry code twice each (6 copies), in large bold type.
+- [ ] **Expected:** no mead name, category, entrant or competition name anywhere on the page
+- [ ] Cross-check one page against the grid: the code under `AMA-N` matches that entry's Code column
+- [ ] (Optional) With a division that has no RECEIVED entries (e.g. before marking any received), clicking the button shows notification "No received entries to generate judging labels for"
+
 ### Products tab
 
 - [ ] Click the "Products" tab

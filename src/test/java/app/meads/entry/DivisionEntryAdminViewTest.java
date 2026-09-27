@@ -24,6 +24,7 @@ import com.github.mvysny.kaributesting.v10.Routes;
 import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.H2;
@@ -505,6 +506,29 @@ class DivisionEntryAdminViewTest {
         entriesGrid();
 
         assertThat(_find(Span.class, spec -> spec.withId("scoresheets-summary-label"))).isEmpty();
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldOfferJudgingLabelsForReceivedEntriesOnlyWhenDownloadClicked() {
+        var admin = userRepository.findByEmail(ADMIN_EMAIL).orElseThrow();
+        var category = judgingCategoryInJudgingDivision();
+        receivedEntry(1, "RECEI1", category.getId(), admin.getId());
+        receivedEntry(2, "RECEI2", category.getId(), admin.getId());
+        var submittedOnly = new Entry(division.getId(), admin.getId(), 3, "SUBMIT", "Mead 3",
+                category.getId(), Sweetness.DRY, new BigDecimal("12.0"), Carbonation.STILL,
+                "Honey", null, false, null, null);
+        submittedOnly.submit();
+        entryRepository.save(submittedOnly);
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/entry-admin");
+        entriesGrid();
+        _click(_get(Button.class, spec -> spec.withId("download-judging-labels-button")));
+
+        var dialog = _get(Dialog.class, spec -> spec.withId("judging-labels-dialog"));
+        assertThat(_get(dialog, Span.class).getText())
+                .isEqualTo("This will generate judging labels for 2 received entries. Continue?");
     }
 
     private DivisionCategory judgingCategoryInJudgingDivision() {

@@ -10,6 +10,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import org.openpdf.text.pdf.PdfName;
 import org.openpdf.text.pdf.PdfReader;
+import org.openpdf.text.pdf.parser.PdfTextExtractor;
 
 import org.springframework.context.support.ResourceBundleMessageSource;
 
@@ -159,6 +160,37 @@ class LabelPdfServiceTest {
         var pdfBytes = labelPdfService.generateLabel(entry, competition, division, category);
         assertThat(pdfBytes).isNotNull();
         assertThat(new String(pdfBytes, 0, 5)).startsWith("%PDF");
+    }
+
+    @Test
+    void shouldGenerateOneJudgingLabelPageWithNumberTwiceAndCodeSixTimesPerEntry() throws Exception {
+        var division = createDivision("Home Division", "HOME");
+        var categoryId = UUID.randomUUID();
+        var first = createSubmittedEntry(division.getId(), categoryId, 1, "Mead A");
+        var second = createSubmittedEntry(division.getId(), categoryId, 2, "Mead B");
+
+        var pdfBytes = labelPdfService.generateJudgingLabels(List.of(first, second), division);
+
+        var reader = new PdfReader(pdfBytes);
+        assertThat(reader.getNumberOfPages()).isEqualTo(2);
+        var extractor = new PdfTextExtractor(reader);
+        var firstPage = extractor.getTextFromPage(1);
+        var secondPage = extractor.getTextFromPage(2);
+        reader.close();
+        assertThat(countOccurrences(firstPage, "HOME-1")).isEqualTo(2);
+        assertThat(countOccurrences(firstPage, "CODE1")).isEqualTo(6);
+        assertThat(countOccurrences(secondPage, "HOME-2")).isEqualTo(2);
+        assertThat(countOccurrences(secondPage, "CODE2")).isEqualTo(6);
+    }
+
+    @Test
+    void shouldShrinkJudgingLabelFontWhenTextIsWiderThanCell() {
+        assertThat(labelPdfService.fitJudgingLabelFontSize("ABC123", 56)).isEqualTo(56);
+        assertThat(labelPdfService.fitJudgingLabelFontSize("WWWWWW", 56)).isEqualTo(44);
+    }
+
+    private int countOccurrences(String text, String token) {
+        return text.split(token, -1).length - 1;
     }
 
     private Entry createSubmittedEntry(UUID divisionId, UUID categoryId, int entryNumber, String name) {
