@@ -64,10 +64,16 @@ not pushed), created 2026-09-11 after a post-competition review session. It cont
   existing "Download all labels" dialog and the new one share `openPdfDownloadDialog`.
   Tests: 2 new `LabelPdfServiceTest` + 1 new `DivisionEntryAdminViewTest`; walkthrough §8
   "Judging labels -- batch download (admin)". **Full suite: 1371 tests, 0 failures/errors.**
+- **"Preview results" → "View results" (2026-09-27):** the results link on Results admin
+  (`AwardsAdminView`) reads "View results" once the division is RESULTS_PUBLISHED, "Preview
+  results" before (and again after a revert). New key `awards.admin.view-results` (5 locales).
+  Test: `AwardsAdminViewTest#shouldLabelResultsLinkViewResultsWhenStatusPublished` (+ the
+  pre-publish label pinned in the DELIBERATION test); walkthrough §13.2.
+  **Full suite: 1372 tests, 0 failures/errors.**
 
 **Suggested first action next session:** open the TODO doc, pick up where the "Suggested next
 step" section points (the Entries-view indicator and A2 judging labels are done; next are
-the small queued items — "View results" label, results-email scoping, cold-serving flag), or
+the small queued items — results-email scoping, cold-serving flag), or
 continue working through the still-`(undecided)` items with the user.
 
 ---

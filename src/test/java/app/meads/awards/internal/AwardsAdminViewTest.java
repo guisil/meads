@@ -17,6 +17,7 @@ import com.github.mvysny.kaributesting.v10.Routes;
 import com.github.mvysny.kaributesting.v10.spring.MockSpringServlet;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.server.VaadinServletRequest;
 import org.junit.jupiter.api.AfterEach;
@@ -153,6 +154,8 @@ class AwardsAdminViewTest {
 
         var publish = _get(Button.class, spec -> spec.withId("awards-publish-button"));
         assertThat(publish.getText()).contains("Publish");
+        var resultsLink = _get(Anchor.class, spec -> spec.withId("awards-preview-results-link"));
+        assertThat(_get(resultsLink, Button.class).getText()).isEqualTo("Preview results");
         assertThat(_find(Button.class).stream()
                 .anyMatch(b -> "awards-republish-button".equals(b.getId().orElse(""))))
                 .isFalse();
@@ -210,6 +213,18 @@ class AwardsAdminViewTest {
                 .toList();
         assertThat(buttonIds).contains("awards-announce-button", "awards-revert-button");
         assertThat(buttonIds).doesNotContain("awards-republish-button", "awards-publish-button");
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_EMAIL, roles = "SYSTEM_ADMIN")
+    void shouldLabelResultsLinkViewResultsWhenStatusPublished() {
+        advanceToPublished();
+
+        UI.getCurrent().navigate("competitions/" + competition.getShortName()
+                + "/divisions/" + division.getShortName() + "/results-admin");
+
+        var link = _get(Anchor.class, spec -> spec.withId("awards-preview-results-link"));
+        assertThat(_get(link, Button.class).getText()).isEqualTo("View results");
     }
 
     @Test

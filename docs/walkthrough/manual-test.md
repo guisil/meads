@@ -2746,6 +2746,10 @@ Steps below are admin-driven unless noted.
 - [ ] **Expected:** Publication history grid now has one row: version `1`,
   current timestamp, "compadmin" (or admin's display name), justification
   empty.
+- [ ] **Expected:** the results link on the right of the actions row
+  (`awards-preview-results-link`) now reads **"View results"** (not "Preview results" — the
+  results are live). Click it → new tab with the public page, **no** preview banner. (If you
+  later Revert the publication, §13.7, the label goes back to "Preview results".)
 
 ### 13.3 Public results page
 

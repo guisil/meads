@@ -147,7 +147,7 @@ blockers — this item is just the direct script→button port.
   regardless of whether they have any scoresheets — including entries that were never
   RECEIVED. Scope the recipient list to entrants who actually have entries with results (or at
   minimum entries that reached RECEIVED), not just "everyone in the division."
-- **(implement)** "Preview results" button/label should read as "View results" (not
+- **(done, 2026-09-27)** "Preview results" button/label should read as "View results" (not
   "Preview") once results are actually published — it currently keeps the pre-publish "Preview"
   wording after publication, which misleadingly suggests it's still a draft.
 - **(decided, 2026-09-11) — yes.** Entries judged in a SCORE_BASED medal round aren't marked
@@ -246,11 +246,11 @@ Went through every item once. Result:
 **Already unambiguous, no decision needed (just queued implementation):** entry number/code
 visibility in judging rounds, ~~judged/scoresheet status on the Entries view~~ (done
 2026-09-27), cold-serving flag,
-results-email recipient scoping, "Preview" → "View results" label fix.
+results-email recipient scoping, ~~"Preview" → "View results" label fix~~ (done 2026-09-27).
 
 ## Suggested next step
 
 Done 2026-09-27: the "judged/scoresheet indicator on the Entries view" (section D) and **A2
-(in-app judging-label PDF)**. Next queued (all small, decided): the "Preview" → "View results"
-label fix, results-email recipient scoping, the cold-serving flag. Bigger follow-on: the
+(in-app judging-label PDF)**, and the "Preview" → "View results" label fix. Next queued (small,
+decided): results-email recipient scoping, the cold-serving flag. Bigger follow-on: the
 steward code-mapping print (section E, needs its visibility sub-question settled first).
