@@ -7,7 +7,7 @@ needed to continue even without memory files or prior conversation history.
 
 ---
 
-## ⚑ Current state (updated 2026-09-27) — read this first
+## ⚑ Current state (updated 2026-09-27, end of session) — read this first
 
 **Everything below this section** (Project Overview's branch/test-count narrative, the
 "What's Next" priorities list, etc.) describes the judging+awards module development that
@@ -79,9 +79,11 @@ not pushed), created 2026-09-11 after a post-competition review session. It cont
   §13.9. **Full suite: 1374 tests, 0 failures/errors.**
 
 **Suggested first action next session:** open the TODO doc, pick up where the "Suggested next
-step" section points (the Entries-view indicator and A2 judging labels are done; next are
-the cold-serving flag — the last small queued item), or
-continue working through the still-`(undecided)` items with the user.
+step" section points: **next is the "serve cold" entry flag** (TODO section D — the proposed
+shape is written up there; first confirm with the user where it's displayed, recommended
+Entry Admin + steward/round views + entrant bottle label). After that: the steward
+code-mapping print (section E) or the still-`(undecided)` items. Branch
+`explore/judging-tools-review` is still local-only (not pushed).
 
 ---
 

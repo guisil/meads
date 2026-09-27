@@ -140,9 +140,24 @@ blockers — this item is just the direct script→button port.
   "60+ = award-worthy" convention — an "average" mead scored per the printed field guidance
   lands under 60. Reword-the-guidance vs. add-a-live-warning both floated; needs the actual MJP
   field-guidance text in front of you to pick one — revisit in a future session.
-- **(implement)** Add a "should be served cold" flag on entry registration (steward-facing
-  logistics, not judged). Straightforward boolean field: migration + entity + registration
-  form checkbox + display wherever entrants' serving instructions matter.
+- **(implement — NEXT, explained + agreed 2026-09-27, deferred to the next session)** Add a
+  "should be served cold" flag on entry registration (steward-facing logistics, not judged).
+  Proposed shape (medium-sized, ~4–6 TDD cycles):
+  - `V35__add_entries_serve_cold.sql`: `serve_cold BOOLEAN NOT NULL DEFAULT FALSE`
+    (backward-compatible). `Entry.serveCold`, set via the existing
+    `updateDetails` / `adminUpdateDetails` domain methods (+ create paths) — **not** by
+    widening the 14-arg constructor (~95 call sites, mostly tests).
+  - Checkbox in the entrant add/edit form (`MyEntriesView`) and admin add/edit dialog
+    (`DivisionEntryAdminView`); shown in both view dialogs.
+  - Edit rule: same as other entry details (entrant: DRAFT only; admin: later too).
+  - Dev seed: mark one Amadora RECEIVED entry serve-cold for the walkthrough.
+  - i18n in all 5 locales.
+  - **Open question to confirm at the start of that session — where it's displayed.**
+    Recommended: Entry Admin (grid or view dialog), steward view (`/my-stewarding`) + per-round
+    table view (where stewards pull bottles), and the entrant **bottle/shipping label PDF**
+    (e.g. a "SERVE COLD" line, so whoever unpacks bottles can chill them on arrival).
+    Optional: the judge-facing mead-details dialog (not identifying, harmless). **Not** the
+    judging labels (must stay identical to the CHIP 2026 script output).
 - **(done, 2026-09-27 — option (a): entrants with ≥1 RECEIVED entry)** Results-published notification email currently goes to every participant
   regardless of whether they have any scoresheets — including entries that were never
   RECEIVED. Scope the recipient list to entrants who actually have entries with results (or at
@@ -253,5 +268,6 @@ results-email recipient scoping, ~~"Preview" → "View results" label fix~~ (don
 
 Done 2026-09-27: the "judged/scoresheet indicator on the Entries view" (section D) and **A2
 (in-app judging-label PDF)**, the "Preview" → "View results" label fix, and results-email
-recipient scoping. Next queued (small, decided): the cold-serving flag. Bigger follow-on: the
-steward code-mapping print (section E, needs its visibility sub-question settled first).
+recipient scoping. **Next: the cold-serving flag** (section D — shape proposed there; confirm
+the display locations first). Bigger follow-on: the steward code-mapping print (section E,
+needs its visibility sub-question settled first).
