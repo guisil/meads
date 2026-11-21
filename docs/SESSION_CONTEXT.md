@@ -7,7 +7,7 @@ needed to continue even without memory files or prior conversation history.
 
 ---
 
-## ⚑ Current state (updated 2026-09-27, end of session) — read this first
+## ⚑ Current state (updated 2026-11-21, end of session) — read this first
 
 **Everything below this section** (Project Overview's branch/test-count narrative, the
 "What's Next" priorities list, etc.) describes the judging+awards module development that
@@ -77,6 +77,24 @@ pushed to `origin` 2026-09-27), created 2026-09-11 after a post-competition revi
   `findEntrantUserIdsForDivision` / `findDistinctUserIdsByDivisionId` were removed (no other
   callers). Tests: `EntryRepositoryTest` + `AwardsServiceImplTest` (1 new each); walkthrough
   §13.9. **Full suite: 1374 tests, 0 failures/errors.**
+
+- **Session 2026-11-21 (housekeeping, no feature code):**
+  - **Dependencies bumped again** (commit `d3f0dd8`, pushed): Spring Boot **4.2.0**, Vaadin **25.3.5**,
+    Spring Modulith **2.2.0**, bcprov **1.87** (openpdf stays 3.0.5). **The full suite has NOT been re-run
+    since this bump** -- run `mvn test -Dsurefire.useFile=false 2>&1 | tail -50` first (last known green:
+    1374 on the previous versions; needs JDK 25).
+  - **Branch cleanup done:** deleted the fully-merged / redundant branches (`auth-mechanism-decision`,
+    `competition-module`, `feature/judging-module`, `judging-module`, `origin/judging-planner` -- the planner
+    commits live on in this branch). Only `main` and `explore/judging-tools-review` remain.
+  - **"Java4Shell" (CVE-2026-114938, Vaadin advisory) assessed:** a JDK flaw in the AVX-512-VBMI-accelerated
+    Base64 decoder, not Vaadin/app code. Repo only *encodes* Base64 (logo data URIs, webhook HMAC); Flow
+    isn't an exposure path (Hilla signals are, unused here). Prod container (Temurin 25.0.3, Intel Cascade
+    Lake, no `avx512_vbmi`) is **not exposed today**. Still TODO: when this branch is done and merged, rebuild
+    the image on a patched `eclipse-temurin:25` (floating tag; track adoptium/temurin issue 326) -- the host
+    CPU could change on redeploy. Optional stopgap: `-XX:-UseBASE64Intrinsics` in the Dockerfile ENTRYPOINT.
+    Not verified: whether jjwt (magic-link tokens) reaches the JDK decoder on user input.
+  - Note: the judge tasting-label PDF (earlier "next feature") is already built here as the in-app judging
+    labels PDF (A2).
 
 **Suggested first action next session:** open the TODO doc, pick up where the "Suggested next
 step" section points: **next is the "serve cold" entry flag** (TODO section D — the proposed
